@@ -33,7 +33,7 @@ namespace Solve {
         }
 
     /******************************************************************************//**
-     * @brief Approximate solution fo linear system, A x = b, by x = R^-1 b, where
+     * @brief Approximate solution for linear system, A x = b, by x = R^-1 b, where
      *        R is the row sum of A.
      * @param [in]     a_A Matrix, A
      * @param [in/out] a_x Solution vector, x, with initial guess

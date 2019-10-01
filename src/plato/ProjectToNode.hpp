@@ -52,7 +52,6 @@ class ProjectToNode : public Plato::Simplex<SpaceDim>
                                              Plato::Scalar scale = 1.0 ) const
     /******************************************************************************/
     {  
-        const Plato::OrdinalType tNumDofs = aStateValues.extent(1);
         for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < mNumNodesPerCell; tNodeIndex++)
         {
             Plato::OrdinalType tMyDofIndex = (NumDofsPerNode * tNodeIndex) + DofOffset;

@@ -158,8 +158,8 @@ public:
       Plato::InterpolateFromNodal   <mSpaceDim, mNumDofsPerNode, mPressDofOffset>  tInterpolatePressureFromNodal;
       Plato::InterpolateFromNodal   <mSpaceDim, mSpaceDim, 0 /* dof offset */, mSpaceDim> tInterpolatePGradFromNodal;
       
-      Plato::PressureDivergence     <mSpaceDim, mNumDofsPerNode>             tPressureDivergence;
-      Plato::StressDivergence       <mSpaceDim, mNumDofsPerNode, mMechDofOffset> tStressDivergence;
+      Plato::PressureDivergence     <mSpaceDim, mNumDofsPerNode>                  tPressureDivergence;
+      Plato::StressDivergence       <mSpaceDim, mNumDofsPerNode, mMechDofOffset>  tStressDivergence;
       Plato::FluxDivergence         <mSpaceDim, mNumDofsPerNode, mPressDofOffset> tStabilizedDivergence;
 
       Plato::ProjectToNode          <mSpaceDim, mNumDofsPerNode, mPressDofOffset> tProjectVolumeStrain;

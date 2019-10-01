@@ -10,43 +10,50 @@ namespace Plato
 /******************************************************************************/
 /*! Pressure gradient functor.
 
-    Given a gradient matrix, b, and state array, s, compute the pressure gradient, g.
+ Given a gradient matrix, b, and state array, s, compute the pressure gradient, g.
 
-    g_{i} = s_{e,I} b_{e,I,i}
+ g_{i} = s_{e,I} b_{e,I,i}
 
-        e:  element index
-        I:  local node index
-        i:  dimension index
+ e:  element index
+ I:  local node index
+ i:  dimension index
 
-*/
+ */
 /******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 class PressureGradient : public Plato::Simplex<SpaceDim>
 {
-  private:
+private:
+    using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
 
-    using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
-
-  public:
-
+public:
+    /******************************************************************************//**
+     * @brief Compute pressure gradient at cubature point, i.e. integration point
+     * @param [in] aCellOrdinal cell (i.e. element) ordinal
+     * @param [in/out] aPressureGrad pressure gradient workset
+     * @param [in] aState state workset
+     * @param [in] aGradient configuration gradient workset
+    **********************************************************************************/
     template<typename ResultScalarType, typename StateScalarType, typename GradientScalarType>
-    DEVICE_TYPE inline void
-    operator()( Plato::OrdinalType cellOrdinal,
-                Plato::ScalarMultiVectorT< ResultScalarType   > const& pgrad,
-                Plato::ScalarMultiVectorT< StateScalarType    > const& state,
-                Plato::ScalarArray3DT<     GradientScalarType > const& gradient) const {
-
-      // compute pgrad
-      //
-      for(Plato::OrdinalType iDof=0; iDof<SpaceDim; iDof++){
-        pgrad(cellOrdinal,iDof) = 0.0;
-        for( Plato::OrdinalType iNode=0; iNode<mNumNodesPerCell; iNode++){
-          pgrad(cellOrdinal,iDof) += state(cellOrdinal,iNode)*gradient(cellOrdinal,iNode,iDof);
+    DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
+                                       Plato::ScalarMultiVectorT<ResultScalarType> const& aPressureGrad,
+                                       Plato::ScalarMultiVectorT<StateScalarType> const& aState,
+                                       Plato::ScalarArray3DT<GradientScalarType> const& aGradient) const
+    {
+        for(Plato::OrdinalType tDimIndex = 0; tDimIndex < SpaceDim; tDimIndex++)
+        {
+            aPressureGrad(aCellOrdinal, tDimIndex) = 0.0;
+            for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < mNumNodesPerCell; tNodeIndex++)
+            {
+                aPressureGrad(aCellOrdinal, tDimIndex) += aState(aCellOrdinal, tNodeIndex)
+                        * aGradient(aCellOrdinal, tNodeIndex, tDimIndex);
+            }
         }
-      }
     }
 };
+// class PressureGradient
 
-} // namespace Plato
+}
+// namespace Plato
 
 #endif
