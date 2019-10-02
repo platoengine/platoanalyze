@@ -66,7 +66,7 @@ private:
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule; /*!< cubature/integration rule interface */
     Teuchos::RCP<Plato::LinearElasticMaterial<mSpaceDim>> mMaterialModel; /*!< material model interface */
 
-    std::vector<std::string> mPlotTable; /*!< array of output data identifiers */
+    std::vector<std::string> mPlotTable; /*!< array with output data identifiers */
 
 private:
     /******************************************************************************//**
