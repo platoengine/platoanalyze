@@ -70,7 +70,7 @@ private:
 
 private:
     /******************************************************************************//**
-     * \brief initialize member material, loads and output data
+     * \brief initialize material, loads and output data
      * \param [in] aProblemParams input XML data
     **********************************************************************************/
     void initialize(Teuchos::ParameterList& aProblemParams)
