@@ -26,7 +26,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Stabilized elastostatic residual (reference: M. Chiumenti et al. (2004))
+ * \brief Stabilized elastostatic residual (reference: M. Chiumenti et al. (2004))
 **********************************************************************************/
 template<typename EvaluationType, typename IndicatorFunctionType>
 class StabilizedElastostaticResidual :
@@ -70,8 +70,8 @@ private:
 
 private:
     /******************************************************************************//**
-     * @brief initialize member material, loads and output data
-     * @param [in] aProblemParams input XML data
+     * \brief initialize member material, loads and output data
+     * \param [in] aProblemParams input XML data
     **********************************************************************************/
     void initialize(Teuchos::ParameterList& aProblemParams)
     {
@@ -105,12 +105,12 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Constructor
-     * @param [in] aMesh mesh metadata
-     * @param [in] aMeshSets side-sets metadata
-     * @param [in] aDataMap output data map
-     * @param [in] aProblemParams input XML data
-     * @param [in] aPenaltyParams penalty function input XML data
+     * \brief Constructor
+     * \param [in] aMesh mesh metadata
+     * \param [in] aMeshSets side-sets metadata
+     * \param [in] aDataMap output data map
+     * \param [in] aProblemParams input XML data
+     * \param [in] aPenaltyParams penalty function input XML data
     **********************************************************************************/
     StabilizedElastostaticResidual(Omega_h::Mesh& aMesh,
                                    Omega_h::MeshSets& aMeshSets,
@@ -130,13 +130,13 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate stabilized elastostatics residual
-     * @param [in] aStateWS state, {disp_x, disp_y, disp_z, pressure}, workset
-     * @param [in] aPressGradWS pressure gradient workset
-     * @param [in] aControlWS control workset
-     * @param [in] aConfigWS configuration workset
-     * @param [in/out] aResultWS result, e.g. residual, workset
-     * @param [in] aTimeStep time step
+     * \brief Evaluate stabilized elastostatics residual
+     * \param [in] aStateWS state, {disp_x, disp_y, disp_z, pressure}, workset
+     * \param [in] aPressGradWS pressure gradient workset
+     * \param [in] aControlWS control workset
+     * \param [in] aConfigWS configuration workset
+     * \param [in/out] aResultWS result, e.g. residual, workset
+     * \param [in] aTimeStep time step
     **********************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<StateScalarType>     & aStateWS,
                   const Plato::ScalarMultiVectorT<NodeStateScalarType> & aPressGradWS,

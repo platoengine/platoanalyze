@@ -28,11 +28,11 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Compute pressure gradient at cubature point, i.e. integration point
-     * @param [in] aCellOrdinal cell (i.e. element) ordinal
-     * @param [in/out] aPressureGrad pressure gradient workset
-     * @param [in] aState state workset
-     * @param [in] aGradient configuration gradient workset
+     * \brief Compute pressure gradient at cubature point, i.e. integration point
+     * \param [in] aCellOrdinal cell (i.e. element) ordinal
+     * \param [in/out] aPressureGrad pressure gradient workset
+     * \param [in] aState state workset
+     * \param [in] aGradient configuration gradient workset
     **********************************************************************************/
     template<typename ResultScalarType, typename StateScalarType, typename GradientScalarType>
     DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,

@@ -20,12 +20,12 @@ namespace PlasticityFactory
 struct FunctionFactory
 {
     /******************************************************************************//**
-     * @brief Create a PLATO local vector function  inc (i.e. local residual equations)
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Analyze physics-based database
-     * @param [in] aInputParams input parameters
-     * @param [in] aFuncName vector function name
+     * \brief Create a PLATO local vector function  inc (i.e. local residual equations)
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Analyze physics-based database
+     * \param [in] aInputParams input parameters
+     * \param [in] aFuncName vector function name
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<EvaluationType>>
@@ -56,7 +56,7 @@ struct FunctionFactory
 
 
 /****************************************************************************//**
- * @brief Concrete class for use as the PhysicsT template argument in VectorFunctionVMS
+ * \brief Concrete class for use as the PhysicsT template argument in VectorFunctionVMS
  *******************************************************************************/
 template<Plato::OrdinalType SpaceDimParam>
 class Plasticity: public Plato::SimplexPlasticity<SpaceDimParam>

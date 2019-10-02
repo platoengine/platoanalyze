@@ -1,5 +1,4 @@
-#ifndef PRESSURE_GRADIENT_PROJECTION_RESIDUAL_HPP
-#define PRESSURE_GRADIENT_PROJECTION_RESIDUAL_HPP
+#pragma once
 
 #include <memory>
 
@@ -17,7 +16,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Evaluate pressure gradient projection residual (reference Chiumenti et al. (2004))
+ * \brief Evaluate pressure gradient projection residual (reference Chiumenti et al. (2004))
  *
  *               \langle \nabla{p},\eta \rangle - <\Phi,\eta> = 0
  *
@@ -46,12 +45,12 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Constructor
-     * @param [in] aMesh mesh metadata
-     * @param [in] aMeshSets side-sets metadata
-     * @param [in] aDataMap output data map
-     * @param [in] aProblemParams input XML data
-     * @param [in] aPenaltyParams penalty function input XML data
+     * \brief Constructor
+     * \param [in] aMesh mesh metadata
+     * \param [in] aMeshSets side-sets metadata
+     * \param [in] aDataMap output data map
+     * \param [in] aProblemParams input XML data
+     * \param [in] aPenaltyParams penalty function input XML data
     **********************************************************************************/
     PressureGradientProjectionResidual(Omega_h::Mesh& aMesh,
                                        Omega_h::MeshSets& aMeshSets,
@@ -66,13 +65,13 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate stabilized elastostatics residual
-     * @param [in] aNodalPGradWS pressure gradient workset on H^1(\Omega)
-     * @param [in] aPressureWS pressure gradient workset on H^1(\Omega)
-     * @param [in] aControlWS control workset
-     * @param [in] aConfigWS configuration workset
-     * @param [in/out] aResultWS result, e.g. residual workset
-     * @param [in] aTimeStep time step
+     * \brief Evaluate stabilized elastostatics residual
+     * \param [in] aNodalPGradWS pressure gradient workset on H^1(\Omega)
+     * \param [in] aPressureWS pressure gradient workset on H^1(\Omega)
+     * \param [in] aControlWS control workset
+     * \param [in] aConfigWS configuration workset
+     * \param [in/out] aResultWS result, e.g. residual workset
+     * \param [in] aTimeStep time step
     **********************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aNodalPGradWS,
                   const Plato::ScalarMultiVectorT<NodeStateScalarType> & aPressureWS,
@@ -129,4 +128,3 @@ public:
 
 }
 // namespace Plato
-#endif

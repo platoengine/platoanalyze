@@ -1,5 +1,4 @@
-#ifndef SIMPLEX_STABILIZED_MECHANICS_HPP
-#define SIMPLEX_STABILIZED_MECHANICS_HPP
+#pragma once
 
 #include "plato/Simplex.hpp"
 #include "plato/PlatoStaticsTypes.hpp"
@@ -37,7 +36,7 @@ class SimplexStabilizedMechanics : public Plato::Simplex<SpaceDim>
 
     static constexpr Plato::OrdinalType mNumLocalDofsPerCell = 0;
 };
+// class SimplexStabilizedMechanics
 
-} // namespace Plato
-
-#endif
+}
+// namespace Plato

@@ -28,7 +28,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Manage scalar and vector function evaluations
+ * \brief Manage scalar and vector function evaluations
 **********************************************************************************/
 template<typename SimplexPhysics>
 class EllipticVMSProblem: public Plato::AbstractProblem
@@ -66,10 +66,10 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief PLATO problem constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aInputParams input parameters database
+     * \brief PLATO problem constructor
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     EllipticVMSProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams) :
             mEqualityConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
@@ -91,8 +91,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return number of degrees of freedom in solution.
-     * @return Number of degrees of freedom
+     * \brief Return number of degrees of freedom in solution.
+     * \return Number of degrees of freedom
     **********************************************************************************/
     Plato::OrdinalType getNumSolutionDofs()
     {
@@ -100,8 +100,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set state variables
-     * @param [in] aState 2D view of state variables
+     * \brief Set state variables
+     * \param [in] aState 2D view of state variables
     **********************************************************************************/
     void setState(const Plato::ScalarMultiVector & aState)
     {
@@ -111,8 +111,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return 2D view of state variables
-     * @return aState 2D view of state variables
+     * \brief Return 2D view of state variables
+     * \return aState 2D view of state variables
     **********************************************************************************/
     Plato::ScalarMultiVector getState()
     {
@@ -120,8 +120,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return 2D view of adjoint variables
-     * @return 2D view of adjoint variables
+     * \brief Return 2D view of adjoint variables
+     * \return 2D view of adjoint variables
     **********************************************************************************/
     Plato::ScalarMultiVector getAdjoint()
     {
@@ -129,9 +129,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Apply Dirichlet constraints
-     * @param [in] aMatrix Compressed Row Storage (CRS) matrix
-     * @param [in] aVector 1D view of Right-Hand-Side forces
+     * \brief Apply Dirichlet constraints
+     * \param [in] aMatrix Compressed Row Storage (CRS) matrix
+     * \param [in] aVector 1D view of Right-Hand-Side forces
     **********************************************************************************/
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
@@ -148,17 +148,17 @@ public:
     void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
 
     /******************************************************************************//**
-     * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 1D container of control variables
+     * \brief Update physics-based parameters within optimization iterations
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 1D container of control variables
     **********************************************************************************/
     void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     { return; }
 
     /******************************************************************************//**
-     * @brief Solve system of equations
-     * @param [in] aControl 1D view of control variables
-     * @return 2D view of state variables
+     * \brief Solve system of equations
+     * \param [in] aControl 1D view of control variables
+     * \return 2D view of state variables
     **********************************************************************************/
     Plato::ScalarMultiVector solution(const Plato::ScalarVector & aControl)
     {
@@ -205,10 +205,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate objective function
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
-     * @return objective function value
+     * \brief Evaluate objective function
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aState 2D view of state variables
+     * \return objective function value
     **********************************************************************************/
     Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
@@ -229,10 +229,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate constraint function
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
-     * @return constraint function value
+     * \brief Evaluate constraint function
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aState 2D view of state variables
+     * \return constraint function value
     **********************************************************************************/
     Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
@@ -255,9 +255,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate objective function
-     * @param [in] aControl 1D view of control variables
-     * @return objective function value
+     * \brief Evaluate objective function
+     * \param [in] aControl 1D view of control variables
+     * \return objective function value
     **********************************************************************************/
     Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl)
     {
@@ -276,9 +276,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate constraint function
-     * @param [in] aControl 1D view of control variables
-     * @return constraint function value
+     * \brief Evaluate constraint function
+     * \param [in] aControl 1D view of control variables
+     * \return constraint function value
     **********************************************************************************/
     Plato::Scalar constraintValue(const Plato::ScalarVector & aControl)
     {
@@ -298,10 +298,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate objective gradient wrt control variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
-     * @return 1D view - objective gradient wrt control variables
+     * \brief Evaluate objective gradient wrt control variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aState 2D view of state variables
+     * \return 1D view - objective gradient wrt control variables
     **********************************************************************************/
     Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
@@ -383,10 +383,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate objective gradient wrt configuration variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
-     * @return 1D view - objective gradient wrt configuration variables
+     * \brief Evaluate objective gradient wrt configuration variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aState 2D view of state variables
+     * \return 1D view - objective gradient wrt configuration variables
     **********************************************************************************/
     Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
@@ -470,9 +470,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate constraint partial derivative wrt control variables
-     * @param [in] aControl 1D view of control variables
-     * @return 1D view - constraint partial derivative wrt control variables
+     * \brief Evaluate constraint partial derivative wrt control variables
+     * \param [in] aControl 1D view of control variables
+     * \return 1D view - constraint partial derivative wrt control variables
     **********************************************************************************/
     Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl)
     {
@@ -492,10 +492,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate constraint partial derivative wrt control variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
-     * @return 1D view - constraint partial derivative wrt control variables
+     * \brief Evaluate constraint partial derivative wrt control variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aState 2D view of state variables
+     * \return 1D view - constraint partial derivative wrt control variables
     **********************************************************************************/
     Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
@@ -518,9 +518,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate objective partial derivative wrt control variables
-     * @param [in] aControl 1D view of control variables
-     * @return 1D view - objective partial derivative wrt control variables
+     * \brief Evaluate objective partial derivative wrt control variables
+     * \param [in] aControl 1D view of control variables
+     * \return 1D view - objective partial derivative wrt control variables
     **********************************************************************************/
     Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl)
     {
@@ -538,9 +538,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate objective partial derivative wrt configuration variables
-     * @param [in] aControl 1D view of control variables
-     * @return 1D view - objective partial derivative wrt configuration variables
+     * \brief Evaluate objective partial derivative wrt configuration variables
+     * \param [in] aControl 1D view of control variables
+     * \return 1D view - objective partial derivative wrt configuration variables
     **********************************************************************************/
     Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl)
     {
@@ -558,9 +558,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate constraint partial derivative wrt configuration variables
-     * @param [in] aControl 1D view of control variables
-     * @return 1D view - constraint partial derivative wrt configuration variables
+     * \brief Evaluate constraint partial derivative wrt configuration variables
+     * \param [in] aControl 1D view of control variables
+     * \return 1D view - constraint partial derivative wrt configuration variables
     **********************************************************************************/
     Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl)
     {
@@ -580,10 +580,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate constraint partial derivative wrt configuration variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
-     * @return 1D view - constraint partial derivative wrt configuration variables
+     * \brief Evaluate constraint partial derivative wrt configuration variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aState 2D view of state variables
+     * \return 1D view - constraint partial derivative wrt configuration variables
     **********************************************************************************/
     Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
@@ -607,10 +607,10 @@ public:
 
 private:
     /******************************************************************************//**
-     * @brief Initialize member data
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aInputParams input parameters database
+     * \brief Initialize member data
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {

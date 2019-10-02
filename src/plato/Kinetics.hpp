@@ -31,8 +31,8 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Constructor
-     * @param [in] aMaterialModel material model interface
+     * \brief Constructor
+     * \param [in] aMaterialModel material model interface
     **********************************************************************************/
     StabilizedKinetics(const Teuchos::RCP<Plato::LinearElasticMaterial<SpaceDim>> aMaterialModel) :
             mCellStiffness(aMaterialModel->getStiffnessMatrix()),
@@ -55,16 +55,16 @@ public:
     }
 
     /***********************************************************************************
-     * @brief Compute deviatoric stress, volume flux, cell stabilization
-     * @param [in] aCellOrdinal cell ordinal
-     * @param [in] aCellVolume cell volume workset
-     * @param [in] aProjectedPGrad projected pressure gradient workset on H^{1}(\Omega)
-     * @param [in] aPressure pressure workset on L^2(\Omega)
-     * @param [in] aStrain displacement strains workset on H^{1}(\Omega)
-     * @param [in] aPressureGrad pressure gradient workset on L^2(\Omega)
-     * @param [out] aDevStress deviatoric stress workset
-     * @param [out] aVolumeFlux volume flux workset
-     * @param [out] aCellStabilization stabilization term workset
+     * \brief Compute deviatoric stress, volume flux, cell stabilization
+     * \param [in] aCellOrdinal cell ordinal
+     * \param [in] aCellVolume cell volume workset
+     * \param [in] aProjectedPGrad projected pressure gradient workset on H^{1}(\Omega)
+     * \param [in] aPressure pressure workset on L^2(\Omega)
+     * \param [in] aStrain displacement strains workset on H^{1}(\Omega)
+     * \param [in] aPressureGrad pressure gradient workset on L^2(\Omega)
+     * \param [out] aDevStress deviatoric stress workset
+     * \param [out] aVolumeFlux volume flux workset
+     * \param [out] aCellStabilization stabilization term workset
      **********************************************************************************/
     template<typename KineticsScalarType, typename KinematicsScalarType, typename NodeStateScalarType,
             typename VolumeScalarType>

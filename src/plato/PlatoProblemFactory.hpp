@@ -32,7 +32,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Manages the construction of a PLATO problem, i.e. physics simulation, in
+ * \brief Manages the construction of a PLATO problem, i.e. physics simulation, in
  * PLATO Analyze.  There are multiple options: 1) mechanics, thermal, thermo-mechanics,
  * and electro-statics.  Also, PLATO Analyze supports transient simulations for thermal
  * and thermo-mechanics problems.
@@ -42,11 +42,11 @@ class ProblemFactory
 {
 public:
     /******************************************************************************//**
-     * @brief Returns a shared pointer to a PLATO problem
-     * @param [in] aMesh mesh metadata
-     * @param [in] aMeshSets sidesets mesh metadata
-     * @param [in] aInputParams xml metadata
-     * @returns shared pointer to a PLATO problem
+     * \brief Returns a shared pointer to a PLATO problem
+     * \param [in] aMesh mesh metadata
+     * \param [in] aMeshSets sidesets mesh metadata
+     * \param [in] aInputParams xml metadata
+     * \returns shared pointer to a PLATO problem
      **********************************************************************************/
     std::shared_ptr<Plato::AbstractProblem> create(Omega_h::Mesh& aMesh,
                                                    Omega_h::MeshSets& aMeshSets,

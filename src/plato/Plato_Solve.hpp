@@ -12,10 +12,10 @@ namespace Plato {
 namespace Solve {
 
     /******************************************************************************//**
-     * @brief Solve linear system, A x = b.
-     * @param [in]     a_A Matrix, A
-     * @param [in/out] a_x Solution vector, x, with initial guess
-     * @param [in]     a_b Forcing vector, b
+     * \brief Solve linear system, A x = b.
+     * \param [in]     a_A Matrix, A
+     * \param [in/out] a_x Solution vector, x, with initial guess
+     * \param [in]     a_b Forcing vector, b
     **********************************************************************************/
     template <Plato::OrdinalType NumDofsPerNode>
     void Consistent(
@@ -33,11 +33,11 @@ namespace Solve {
         }
 
     /******************************************************************************//**
-     * @brief Approximate solution for linear system, A x = b, by x = R^-1 b, where
+     * \brief Approximate solution for linear system, A x = b, by x = R^-1 b, where
      *        R is the row sum of A.
-     * @param [in]     a_A Matrix, A
-     * @param [in/out] a_x Solution vector, x, with initial guess
-     * @param [in]     a_b Forcing vector, b
+     * \param [in]     a_A Matrix, A
+     * \param [in/out] a_x Solution vector, x, with initial guess
+     * \param [in]     a_b Forcing vector, b
     **********************************************************************************/
     template <Plato::OrdinalType NumDofsPerNode>
     void RowSummed(

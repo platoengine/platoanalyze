@@ -33,13 +33,13 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Compute the divergence of the pressure field
-     * @param [in] aCellOrdinal cell (i.e. element ordinal)
-     * @param [in/out] aOutput pressure divergence workset
-     * @param [in] aPressure pressure workset
-     * @param [in] aGradient configuration gradients
-     * @param [in] aCellVolume cell (i.e. element) volume
-     * @param [in] aScale scalar parameter (default = 1.0)
+     * \brief Compute the divergence of the pressure field
+     * \param [in] aCellOrdinal cell (i.e. element ordinal)
+     * \param [in/out] aOutput pressure divergence workset
+     * \param [in] aPressure pressure workset
+     * \param [in] aGradient configuration gradients
+     * \param [in] aCellVolume cell (i.e. element) volume
+     * \param [in] aScale scalar parameter (default = 1.0)
     **********************************************************************************/
     template<typename ForcingScalarType, typename PressureScalarType, typename GradientScalarType, typename VolumeScalarType>
     DEVICE_TYPE inline

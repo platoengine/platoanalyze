@@ -66,12 +66,12 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Constructor
-    * @param [in] aMesh mesh data base
-    * @param [in] aMeshSets mesh sets data base
-    * @param [in] aDataMap problem-specific data map 
-    * @param [in] aParamList Teuchos parameter list with input data
-    * @param [in] aProblemType problem type 
+    * \brief Constructor
+    * \param [in] aMesh mesh data base
+    * \param [in] aMeshSets mesh sets data base
+    * \param [in] aDataMap problem-specific data map
+    * \param [in] aParamList Teuchos parameter list with input data
+    * \param [in] aProblemType problem type
     *
     ******************************************************************************/
     LocalVectorFunctionInc(Omega_h::Mesh& aMesh,
@@ -110,9 +110,9 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Constructor
-    * @param [in] aMesh mesh data base
-    * @param [in] aDataMap problem-specific data map 
+    * \brief Constructor
+    * \param [in] aMesh mesh data base
+    * \param [in] aDataMap problem-specific data map
     *
     ******************************************************************************/
     LocalVectorFunctionInc(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
@@ -132,8 +132,8 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Allocate residual evaluator
-    * @param [in] aResidual residual evaluator
+    * \brief Allocate residual evaluator
+    * \param [in] aResidual residual evaluator
     *
     ******************************************************************************/
     void allocateResidual(const std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<Residual>>& aResidual)
@@ -143,8 +143,8 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Allocate global jacobian evaluator
-    * @param [in] aJacobian global jacobian evaluator
+    * \brief Allocate global jacobian evaluator
+    * \param [in] aJacobian global jacobian evaluator
     *
     ******************************************************************************/
     void allocateJacobianU(const std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<GlobalJacobian>>& aJacobian)
@@ -154,8 +154,8 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Allocate previous global jacobian evaluator
-    * @param [in] aJacobian previous global jacobian evaluator
+    * \brief Allocate previous global jacobian evaluator
+    * \param [in] aJacobian previous global jacobian evaluator
     *
     ******************************************************************************/
     void allocateJacobianUP(const std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<GlobalJacobianP>>& aJacobian)
@@ -165,8 +165,8 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Allocate local jacobian evaluator
-    * @param [in] aJacobian local jacobian evaluator
+    * \brief Allocate local jacobian evaluator
+    * \param [in] aJacobian local jacobian evaluator
     *
     ******************************************************************************/
     void allocateJacobianC(const std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<LocalJacobian>>& aJacobian)
@@ -176,8 +176,8 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Allocate previous local jacobian evaluator
-    * @param [in] aJacobian previous local jacobian evaluator
+    * \brief Allocate previous local jacobian evaluator
+    * \param [in] aJacobian previous local jacobian evaluator
     *
     ******************************************************************************/
     void allocateJacobianCP(const std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<LocalJacobianP>>& aJacobian)
@@ -187,8 +187,8 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Allocate partial derivative with respect to control evaluator
-    * @param [in] aGradientZ partial derivative with respect to control evaluator
+    * \brief Allocate partial derivative with respect to control evaluator
+    * \param [in] aGradientZ partial derivative with respect to control evaluator
     *
     ******************************************************************************/
     void allocateJacobianZ(const std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<GradientZ>>& aGradientZ)
@@ -198,8 +198,8 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Allocate partial derivative with respect to configuration evaluator
-    * @param [in] GradientX partial derivative with respect to configuration evaluator
+    * \brief Allocate partial derivative with respect to configuration evaluator
+    * \param [in] GradientX partial derivative with respect to configuration evaluator
     *
     ******************************************************************************/
     void allocateJacobianX(const std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<GradientX>>& aGradientX)
@@ -209,7 +209,7 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Return total number of local degrees of freedom
+    * \brief Return total number of local degrees of freedom
     *
     ******************************************************************************/
     Plato::OrdinalType size() const
@@ -219,7 +219,7 @@ class LocalVectorFunctionInc
 
     /**************************************************************************//**
     *
-    * @brief Return state names
+    * \brief Return state names
     *
     ******************************************************************************/
     std::vector<std::string> getDofNames() const
@@ -228,13 +228,13 @@ class LocalVectorFunctionInc
     }
 
     /**************************************************************************//**
-    * @brief Update the local state variables
-    * @param [in]  aGlobalState global state at current time step
-    * @param [in]  aPrevGlobalState global state at previous time step
-    * @param [out] aLocalState local state at current time step
-    * @param [in]  aPrevLocalState local state at previous time step
-    * @param [in]  aControl control parameters
-    * @param [in]  aTimeStep time step
+    * \brief Update the local state variables
+    * \param [in]  aGlobalState global state at current time step
+    * \param [in]  aPrevGlobalState global state at previous time step
+    * \param [out] aLocalState local state at current time step
+    * \param [in]  aPrevLocalState local state at previous time step
+    * \param [in]  aControl control parameters
+    * \param [in]  aTimeStep time step
     ******************************************************************************/
     void
     updateLocalState(const Plato::ScalarVector & aGlobalState,
@@ -303,14 +303,14 @@ class LocalVectorFunctionInc
 
 
     /**************************************************************************//**
-    * @brief Compute the local residual vector
-    * @param [in]  aGlobalState global state at current time step
-    * @param [in]  aPrevGlobalState global state at previous time step
-    * @param [in]  aLocalState local state at current time step
-    * @param [in]  aPrevLocalState local state at previous time step
-    * @param [in]  aControl control parameters
-    * @param [in]  aTimeStep time step
-    * @return local residual vector
+    * \brief Compute the local residual vector
+    * \param [in]  aGlobalState global state at current time step
+    * \param [in]  aPrevGlobalState global state at previous time step
+    * \param [in]  aLocalState local state at current time step
+    * \param [in]  aPrevLocalState local state at previous time step
+    * \param [in]  aControl control parameters
+    * \param [in]  aTimeStep time step
+    * \return local residual vector
     ******************************************************************************/
     Plato::ScalarVectorT<typename Residual::ResultScalarType>
     value(const Plato::ScalarVector & aGlobalState,
@@ -390,14 +390,14 @@ class LocalVectorFunctionInc
 
 
     /**************************************************************************//**
-    * @brief Compute the gradient wrt configuration of the local residual vector
-    * @param [in]  aGlobalState global state at current time step
-    * @param [in]  aPrevGlobalState global state at previous time step
-    * @param [in]  aLocalState local state at current time step
-    * @param [in]  aPrevLocalState local state at previous time step
-    * @param [in]  aControl control parameters
-    * @param [in]  aTimeStep time step
-    * @return gradient wrt configuration of the local residual vector
+    * \brief Compute the gradient wrt configuration of the local residual vector
+    * \param [in]  aGlobalState global state at current time step
+    * \param [in]  aPrevGlobalState global state at previous time step
+    * \param [in]  aLocalState local state at current time step
+    * \param [in]  aPrevLocalState local state at previous time step
+    * \param [in]  aControl control parameters
+    * \param [in]  aTimeStep time step
+    * \return gradient wrt configuration of the local residual vector
     ******************************************************************************/
     Plato::ScalarMultiVectorT<typename GradientX::ResultScalarType>
     gradient_x(const Plato::ScalarVector & aGlobalState,
@@ -462,14 +462,14 @@ class LocalVectorFunctionInc
     }
 
     /**************************************************************************//**
-    * @brief Compute the gradient wrt global state of the local residual vector
-    * @param [in]  aGlobalState global state at current time step
-    * @param [in]  aPrevGlobalState global state at previous time step
-    * @param [in]  aLocalState local state at current time step
-    * @param [in]  aPrevLocalState local state at previous time step
-    * @param [in]  aControl control parameters
-    * @param [in]  aTimeStep time step
-    * @return gradient wrt global state of the local residual vector
+    * \brief Compute the gradient wrt global state of the local residual vector
+    * \param [in]  aGlobalState global state at current time step
+    * \param [in]  aPrevGlobalState global state at previous time step
+    * \param [in]  aLocalState local state at current time step
+    * \param [in]  aPrevLocalState local state at previous time step
+    * \param [in]  aControl control parameters
+    * \param [in]  aTimeStep time step
+    * \return gradient wrt global state of the local residual vector
     ******************************************************************************/
     Plato::ScalarMultiVectorT<typename GlobalJacobian::ResultScalarType>
     gradient_u(const Plato::ScalarVector & aGlobalState,
@@ -534,14 +534,14 @@ class LocalVectorFunctionInc
     }
 
     /**************************************************************************//**
-    * @brief Compute the gradient wrt previous global state of the local residual vector
-    * @param [in]  aGlobalState global state at current time step
-    * @param [in]  aPrevGlobalState global state at previous time step
-    * @param [in]  aLocalState local state at current time step
-    * @param [in]  aPrevLocalState local state at previous time step
-    * @param [in]  aControl control parameters
-    * @param [in]  aTimeStep time step
-    * @return gradient wrt previous global state of the local residual vector
+    * \brief Compute the gradient wrt previous global state of the local residual vector
+    * \param [in]  aGlobalState global state at current time step
+    * \param [in]  aPrevGlobalState global state at previous time step
+    * \param [in]  aLocalState local state at current time step
+    * \param [in]  aPrevLocalState local state at previous time step
+    * \param [in]  aControl control parameters
+    * \param [in]  aTimeStep time step
+    * \return gradient wrt previous global state of the local residual vector
     ******************************************************************************/
     Plato::ScalarMultiVectorT<typename GlobalJacobianP::ResultScalarType>
     gradient_up(const Plato::ScalarVector & aGlobalState,
@@ -606,14 +606,14 @@ class LocalVectorFunctionInc
     }
 
     /**************************************************************************//**
-    * @brief Compute the gradient wrt local state of the local residual vector
-    * @param [in]  aGlobalState global state at current time step
-    * @param [in]  aPrevGlobalState global state at previous time step
-    * @param [in]  aLocalState local state at current time step
-    * @param [in]  aPrevLocalState local state at previous time step
-    * @param [in]  aControl control parameters
-    * @param [in]  aTimeStep time step
-    * @return gradient wrt local state of the local residual vector
+    * \brief Compute the gradient wrt local state of the local residual vector
+    * \param [in]  aGlobalState global state at current time step
+    * \param [in]  aPrevGlobalState global state at previous time step
+    * \param [in]  aLocalState local state at current time step
+    * \param [in]  aPrevLocalState local state at previous time step
+    * \param [in]  aControl control parameters
+    * \param [in]  aTimeStep time step
+    * \return gradient wrt local state of the local residual vector
     ******************************************************************************/
     Plato::ScalarMultiVectorT<typename LocalJacobian::ResultScalarType>
     gradient_c(const Plato::ScalarVector & aGlobalState,
@@ -678,14 +678,14 @@ class LocalVectorFunctionInc
     }
 
     /**************************************************************************//**
-    * @brief Compute the gradient wrt previous local state of the local residual vector
-    * @param [in]  aGlobalState global state at current time step
-    * @param [in]  aPrevGlobalState global state at previous time step
-    * @param [in]  aLocalState local state at current time step
-    * @param [in]  aPrevLocalState local state at previous time step
-    * @param [in]  aControl control parameters
-    * @param [in]  aTimeStep time step
-    * @return gradient wrt previous local state of the local residual vector
+    * \brief Compute the gradient wrt previous local state of the local residual vector
+    * \param [in]  aGlobalState global state at current time step
+    * \param [in]  aPrevGlobalState global state at previous time step
+    * \param [in]  aLocalState local state at current time step
+    * \param [in]  aPrevLocalState local state at previous time step
+    * \param [in]  aControl control parameters
+    * \param [in]  aTimeStep time step
+    * \return gradient wrt previous local state of the local residual vector
     ******************************************************************************/
     Plato::ScalarMultiVectorT<typename LocalJacobianP::ResultScalarType>
     gradient_cp(const Plato::ScalarVector & aGlobalState,
@@ -750,14 +750,14 @@ class LocalVectorFunctionInc
     }
 
     /**************************************************************************//**
-    * @brief Compute the gradient wrt control of the local residual vector
-    * @param [in]  aGlobalState global state at current time step
-    * @param [in]  aPrevGlobalState global state at previous time step
-    * @param [in]  aLocalState local state at current time step
-    * @param [in]  aPrevLocalState local state at previous time step
-    * @param [in]  aControl control parameters
-    * @param [in]  aTimeStep time step
-    * @return gradient wrt control of the local residual vector
+    * \brief Compute the gradient wrt control of the local residual vector
+    * \param [in]  aGlobalState global state at current time step
+    * \param [in]  aPrevGlobalState global state at previous time step
+    * \param [in]  aLocalState local state at current time step
+    * \param [in]  aPrevLocalState local state at previous time step
+    * \param [in]  aControl control parameters
+    * \param [in]  aTimeStep time step
+    * \return gradient wrt control of the local residual vector
     ******************************************************************************/
     Plato::ScalarMultiVectorT<typename GradientZ::ResultScalarType>
     gradient_z(const Plato::ScalarVector & aGlobalState,

@@ -69,7 +69,7 @@ struct FunctionFactory
 
 
 /****************************************************************************//**
- * @brief Concrete class for use as the PhysicsT template argument in VectorFunctionVMS
+ * \brief Concrete class for use as the PhysicsT template argument in VectorFunctionVMS
  *******************************************************************************/
 template<
   Plato::OrdinalType SpaceDimParam,

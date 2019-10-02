@@ -10,7 +10,7 @@
 namespace Plato
 {
 /**************************************************************************//**
-* @brief J2 Plasticity Utilities Class
+* \brief J2 Plasticity Utilities Class
 ******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 class J2PlasticityUtilities
@@ -21,24 +21,24 @@ class J2PlasticityUtilities
 
   public:
     /**************************************************************************//**
-    * @brief Constructor
+    * \brief Constructor
     ******************************************************************************/
     J2PlasticityUtilities()
     {
     }
 
     /**************************************************************************//**
-    * @brief Destructor
+    * \brief Destructor
     ******************************************************************************/
     ~J2PlasticityUtilities(){}
 
     /******************************************************************************//**
-     * @brief Update the plastic strain and backstress for a plastic step
-     * @param [in] aCellOrdinal cell/element index
-     * @param [in] aPrevLocalState 2D container of previous local state variables
-     * @param [in] aYieldSurfaceNormal 2D container of yield surface normal tensor components
-     * @param [in] aHardeningModulusKinematic penalized kinematic hardening modulus
-     * @param [out] aLocalState 2D container of local state variables to update
+     * \brief Update the plastic strain and backstress for a plastic step
+     * \param [in] aCellOrdinal cell/element index
+     * \param [in] aPrevLocalState 2D container of previous local state variables
+     * \param [in] aYieldSurfaceNormal 2D container of yield surface normal tensor components
+     * \param [in] aHardeningModulusKinematic penalized kinematic hardening modulus
+     * \param [out] aLocalState 2D container of local state variables to update
     **********************************************************************************/
     DEVICE_TYPE inline void
     updatePlasticStrainAndBackstressPlasticStep( 
@@ -49,10 +49,10 @@ class J2PlasticityUtilities
                 const Plato::ScalarMultiVector & aLocalState) const;
 
     /******************************************************************************//**
-     * @brief Update the plastic strain and backstress for an elastic step
-     * @param [in] aCellOrdinal cell/element index
-     * @param [in] aPrevLocalState 2D container of previous local state variables
-     * @param [out] aLocalState 2D container of local state variables to update
+     * \brief Update the plastic strain and backstress for an elastic step
+     * \param [in] aCellOrdinal cell/element index
+     * \param [in] aPrevLocalState 2D container of previous local state variables
+     * \param [out] aLocalState 2D container of local state variables to update
     **********************************************************************************/
     DEVICE_TYPE inline void
     updatePlasticStrainAndBackstressElasticStep( 
@@ -61,12 +61,12 @@ class J2PlasticityUtilities
                 const Plato::ScalarMultiVector & aLocalState) const;
 
     /******************************************************************************//**
-     * @brief Compute the yield surface normal and the norm of the deviatoric stress minus the backstress
-     * @param [in] aCellOrdinal cell/element index
-     * @param [in] aDeviatoricStress deviatoric stress tensor
-     * @param [in] aLocalState 2D container of local state variables to update
-     * @param [out] aYieldSurfaceNormal 2D container of yield surface normal tensor components
-     * @param [out] aDevStressMinusBackstressNorm norm(deviatoric_stress - backstress)
+     * \brief Compute the yield surface normal and the norm of the deviatoric stress minus the backstress
+     * \param [in] aCellOrdinal cell/element index
+     * \param [in] aDeviatoricStress deviatoric stress tensor
+     * \param [in] aLocalState 2D container of local state variables to update
+     * \param [out] aYieldSurfaceNormal 2D container of yield surface normal tensor components
+     * \param [out] aDevStressMinusBackstressNorm norm(deviatoric_stress - backstress)
     **********************************************************************************/
     template<typename LocalStateT, typename StressT>
     DEVICE_TYPE inline void
@@ -78,11 +78,11 @@ class J2PlasticityUtilities
                 const Plato::ScalarVectorT< StressT >              & aDevStressMinusBackstressNorm) const;
 
     /******************************************************************************//**
-     * @brief Compute the deviatoric stress
-     * @param [in] aCellOrdinal cell/element index
-     * @param [in] aElasticStrain elastic strain tensor
-     * @param [in] aPenalizedShearModulus penalized elastic shear modulus
-     * @param [out] aDeviatoricStress deviatoric stress tensor
+     * \brief Compute the deviatoric stress
+     * \param [in] aCellOrdinal cell/element index
+     * \param [in] aElasticStrain elastic strain tensor
+     * \param [in] aPenalizedShearModulus penalized elastic shear modulus
+     * \param [out] aDeviatoricStress deviatoric stress tensor
     **********************************************************************************/
     template<typename ElasticStrainT, typename ControlT, typename StressT>
     DEVICE_TYPE inline void
@@ -93,12 +93,12 @@ class J2PlasticityUtilities
                 const Plato::ScalarMultiVectorT< StressT >         & aDeviatoricStress) const;
 
     /******************************************************************************//**
-     * @brief Fill the local residual vector with the plastic strain residual equation for plastic step
-     * @param [in] aCellOrdinal cell/element index
-     * @param [in] aLocalState 2D container of local state variables
-     * @param [in] aPrevLocalState 2D container of previous local state variables
-     * @param [in] aYieldSurfaceNormal 2D container of yield surface normal tensor components
-     * @param [out] aResult 2D container of local residual equations
+     * \brief Fill the local residual vector with the plastic strain residual equation for plastic step
+     * \param [in] aCellOrdinal cell/element index
+     * \param [in] aLocalState 2D container of local state variables
+     * \param [in] aPrevLocalState 2D container of previous local state variables
+     * \param [in] aYieldSurfaceNormal 2D container of yield surface normal tensor components
+     * \param [out] aResult 2D container of local residual equations
     **********************************************************************************/
     template<typename LocalStateT, typename PrevLocalStateT, typename YieldSurfNormalT, typename ResultT>
     DEVICE_TYPE inline void
@@ -110,13 +110,13 @@ class J2PlasticityUtilities
                 const Plato::ScalarMultiVectorT< ResultT >          & aResult ) const;
 
     /******************************************************************************//**
-     * @brief Fill the local residual vector with the backstress residual equation for plastic step
-     * @param [in] aCellOrdinal cell/element index
-     * @param [in] aHardeningModulusKinematic penalized kinematic hardening modulus
-     * @param [in] aLocalState 2D container of local state variables
-     * @param [in] aPrevLocalState 2D container of previous local state variables
-     * @param [in] aYieldSurfaceNormal 2D container of yield surface normal tensor components
-     * @param [out] aResult 2D container of local residual equations
+     * \brief Fill the local residual vector with the backstress residual equation for plastic step
+     * \param [in] aCellOrdinal cell/element index
+     * \param [in] aHardeningModulusKinematic penalized kinematic hardening modulus
+     * \param [in] aLocalState 2D container of local state variables
+     * \param [in] aPrevLocalState 2D container of previous local state variables
+     * \param [in] aYieldSurfaceNormal 2D container of yield surface normal tensor components
+     * \param [out] aResult 2D container of local residual equations
     **********************************************************************************/
     template<typename ControlT, typename LocalStateT, typename PrevLocalStateT, 
              typename YieldSurfNormalT, typename ResultT>
@@ -130,11 +130,11 @@ class J2PlasticityUtilities
                 const Plato::ScalarMultiVectorT< ResultT >          & aResult ) const;
 
     /******************************************************************************//**
-     * @brief Fill the local residual vector with the plastic strain residual equation for elastic step
-     * @param [in] aCellOrdinal cell/element index
-     * @param [in] aLocalState 2D container of local state variables
-     * @param [in] aPrevLocalState 2D container of previous local state variables
-     * @param [out] aResult 2D container of local residual equations
+     * \brief Fill the local residual vector with the plastic strain residual equation for elastic step
+     * \param [in] aCellOrdinal cell/element index
+     * \param [in] aLocalState 2D container of local state variables
+     * \param [in] aPrevLocalState 2D container of previous local state variables
+     * \param [out] aResult 2D container of local residual equations
     **********************************************************************************/
     template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
     DEVICE_TYPE inline void
@@ -145,11 +145,11 @@ class J2PlasticityUtilities
                 const Plato::ScalarMultiVectorT< ResultT >          & aResult ) const;
 
     /******************************************************************************//**
-     * @brief Fill the local residual vector with the backstress residual equation for plastic step
-     * @param [in] aCellOrdinal cell/element index
-     * @param [in] aLocalState 2D container of local state variables
-     * @param [in] aPrevLocalState 2D container of previous local state variables
-     * @param [out] aResult 2D container of local residual equations
+     * \brief Fill the local residual vector with the backstress residual equation for plastic step
+     * \param [in] aCellOrdinal cell/element index
+     * \param [in] aLocalState 2D container of local state variables
+     * \param [in] aPrevLocalState 2D container of previous local state variables
+     * \param [out] aResult 2D container of local residual equations
     **********************************************************************************/
     template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
     DEVICE_TYPE inline void
@@ -166,7 +166,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * @brief Update the plastic strain and backstress for a plastic step in 2D
+   * \brief Update the plastic strain and backstress for a plastic step in 2D
   **********************************************************************************/
   template<>
   DEVICE_TYPE inline void
@@ -191,7 +191,7 @@ class J2PlasticityUtilities
   }
 
   /******************************************************************************//**
-   * @brief Update the plastic strain and backstress for a plastic step in 3D
+   * \brief Update the plastic strain and backstress for a plastic step in 3D
   **********************************************************************************/
   template<>
   DEVICE_TYPE inline void
@@ -226,7 +226,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * @brief Update the plastic strain and backstress for an elastic step in 2D
+   * \brief Update the plastic strain and backstress for an elastic step in 2D
   **********************************************************************************/
   template<>
   DEVICE_TYPE inline void
@@ -247,7 +247,7 @@ class J2PlasticityUtilities
   }
 
   /******************************************************************************//**
-   * @brief Update the plastic strain and backstress for an elastic step in 3D
+   * \brief Update the plastic strain and backstress for an elastic step in 3D
   **********************************************************************************/
   template<>
   DEVICE_TYPE inline void
@@ -278,7 +278,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * @brief Compute the yield surface normal and the norm of the deviatoric stress minus the backstress for 2D
+   * \brief Compute the yield surface normal and the norm of the deviatoric stress minus the backstress for 2D
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename StressT>
@@ -307,7 +307,7 @@ class J2PlasticityUtilities
   }
 
   /******************************************************************************//**
-   * @brief Compute the yield surface normal and the norm of the deviatoric stress minus the backstress for 3D
+   * \brief Compute the yield surface normal and the norm of the deviatoric stress minus the backstress for 3D
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename StressT>
@@ -349,7 +349,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * @brief Compute the deviatoric stress for 2D
+   * \brief Compute the deviatoric stress for 2D
   **********************************************************************************/
   template<>
   template<typename ElasticStrainT, typename ControlT, typename StressT>
@@ -369,7 +369,7 @@ class J2PlasticityUtilities
   }
 
   /******************************************************************************//**
-   * @brief Compute the deviatoric stress for 3D
+   * \brief Compute the deviatoric stress for 3D
   **********************************************************************************/
   template<>
   template<typename ElasticStrainT, typename ControlT, typename StressT>
@@ -398,7 +398,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
   
   /******************************************************************************//**
-   * @brief Fill the local residual vector with the plastic strain residual equation for plastic step in 2D
+   * \brief Fill the local residual vector with the plastic strain residual equation for plastic step in 2D
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename PrevLocalStateT, typename YieldSurfNormalT, typename ResultT>
@@ -419,7 +419,7 @@ class J2PlasticityUtilities
   }
 
   /******************************************************************************//**
-   * @brief Fill the local residual vector with the plastic strain residual equation for plastic step in 3D
+   * \brief Fill the local residual vector with the plastic strain residual equation for plastic step in 3D
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename PrevLocalStateT, typename YieldSurfNormalT, typename ResultT>
@@ -449,7 +449,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * @brief Fill the local residual vector with the backstress residual equation for plastic step in 2D
+   * \brief Fill the local residual vector with the backstress residual equation for plastic step in 2D
   **********************************************************************************/
   template<>
   template<typename ControlT, typename LocalStateT, typename PrevLocalStateT, 
@@ -475,7 +475,7 @@ class J2PlasticityUtilities
   }
 
   /******************************************************************************//**
-   * @brief Fill the local residual vector with the backstress residual equation for plastic step in 3D
+   * \brief Fill the local residual vector with the backstress residual equation for plastic step in 3D
   **********************************************************************************/
   template<>
   template<typename ControlT, typename LocalStateT, typename PrevLocalStateT, 
@@ -513,7 +513,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * @brief Fill the local residual vector with the plastic strain residual equation for elastic step in 2D
+   * \brief Fill the local residual vector with the plastic strain residual equation for elastic step in 2D
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
@@ -530,7 +530,7 @@ class J2PlasticityUtilities
   }
 
   /******************************************************************************//**
-   * @brief Fill the local residual vector with the plastic strain residual equation for elastic step in 3D
+   * \brief Fill the local residual vector with the plastic strain residual equation for elastic step in 3D
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
@@ -553,7 +553,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * @brief Fill the local residual vector with the backstress residual equation for elastic step in 2D
+   * \brief Fill the local residual vector with the backstress residual equation for elastic step in 2D
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
@@ -570,7 +570,7 @@ class J2PlasticityUtilities
   }
 
   /******************************************************************************//**
-   * @brief Fill the local residual vector with the backstress residual equation for elastic step in 3D
+   * \brief Fill the local residual vector with the backstress residual equation for elastic step in 3D
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>

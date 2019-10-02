@@ -20,7 +20,7 @@ namespace Plato
 {
 
 /**************************************************************************//**
-* @brief J2 Plasticity Local Residual class
+* \brief J2 Plasticity Local Residual class
 ******************************************************************************/
 template<typename EvaluationType, typename PhysicsType>
 class J2PlasticityLocalResidual : 
@@ -63,8 +63,8 @@ class J2PlasticityLocalResidual :
     const Plato::Scalar mSqrt3Over2 = std::sqrt(3.0/2.0);
 
     /**************************************************************************//**
-    * @brief Return the names of the local state degrees of freedom
-    * @return vector of local state dof names
+    * \brief Return the names of the local state degrees of freedom
+    * \return vector of local state dof names
     ******************************************************************************/
     std::vector<std::string> getLocalStateDofNames ()
     {
@@ -107,87 +107,109 @@ class J2PlasticityLocalResidual :
     }
 
     /**************************************************************************//**
-    * @brief Initialize problem parameters
-    * @param [in] aProblemParams Teuchos parameter list
+    * \brief Initialize problem parameters
+    * \param [in] aProblemParams Teuchos parameter list
     ******************************************************************************/
     void initialize(Teuchos::ParameterList& aProblemParams)
     {
       auto tMaterialParamList = aProblemParams.get<Teuchos::ParameterList>("Material Model");
+      this->initializeIsotropicElasticMaterial(tMaterialParamList);
+      this->initializeJ2Plasticity(tMaterialParamList);
+    }
 
-      if( tMaterialParamList.isSublist("Isotropic Linear Elastic") )
-      {
-        auto tElasticSubList = tMaterialParamList.sublist("Isotropic Linear Elastic");
-        mThermalExpansionCoefficient = 0.0;
-        mReferenceTemperature        = 0.0;
+    /**************************************************************************//**
+    * \brief Initialize isotropic material parameters
+    * \param [in] aProblemParams Teuchos parameter list
+    ******************************************************************************/
+    void initializeIsotropicElasticMaterial(Teuchos::ParameterList& aMaterialParamList)
+    {
+        if( aMaterialParamList.isSublist("Isotropic Linear Elastic") )
+        {
+          auto tElasticSubList = aMaterialParamList.sublist("Isotropic Linear Elastic");
+          mThermalExpansionCoefficient = 0.0;
+          mReferenceTemperature        = 0.0;
 
-        auto tElasticModulus = tElasticSubList.get<Plato::Scalar>("Youngs Modulus");
-        auto tPoissonsRatio  = tElasticSubList.get<Plato::Scalar>("Poissons Ratio");
-        mElasticShearModulus = tElasticModulus / (2.0 * (1.0 + tPoissonsRatio));
-      }
-      else if( tMaterialParamList.isSublist("Isotropic Linear Thermoelastic") )
-      {
-        auto tThermoelasticSubList = tMaterialParamList.sublist("Isotropic Linear Thermoelastic");
+          auto tElasticModulus = tElasticSubList.get<Plato::Scalar>("Youngs Modulus");
+          auto tPoissonsRatio  = tElasticSubList.get<Plato::Scalar>("Poissons Ratio");
+          mElasticShearModulus = tElasticModulus /
+                  (static_cast<Plato::Scalar>(2.0) * (static_cast<Plato::Scalar>(1.0) + tPoissonsRatio));
+        }
+        else if( aMaterialParamList.isSublist("Isotropic Linear Thermoelastic") )
+        {
+          auto tThermoelasticSubList = aMaterialParamList.sublist("Isotropic Linear Thermoelastic");
 
-        mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
-        mReferenceTemperature        = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
+          mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
+          mReferenceTemperature        = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
 
-        auto tElasticModulus = tThermoelasticSubList.get<Plato::Scalar>("Youngs Modulus");
-        auto tPoissonsRatio  = tThermoelasticSubList.get<Plato::Scalar>("Poissons Ratio");
-        mElasticShearModulus = tElasticModulus / (2.0 * (1.0 + tPoissonsRatio));
-      }
-      else
-      {
-        THROWERR("'Isotropic Linear Elastic' or 'Isotropic Linear Thermoelastic' sublist of 'Material Model' does not exist.")
-      }
+          auto tElasticModulus = tThermoelasticSubList.get<Plato::Scalar>("Youngs Modulus");
+          auto tPoissonsRatio  = tThermoelasticSubList.get<Plato::Scalar>("Poissons Ratio");
+          mElasticShearModulus = tElasticModulus /
+                  (static_cast<Plato::Scalar>(2.0) * (static_cast<Plato::Scalar>(1.0) + tPoissonsRatio));
+        }
+        else
+        {
+          THROWERR("'Isotropic Linear Elastic' or 'Isotropic Linear Thermoelastic' sublist of 'Material Model' does not exist.")
+        }
+    }
 
-      if( tMaterialParamList.isSublist("J2 Plasticity") )
-      {
-        auto tJ2PlasticitySubList = tMaterialParamList.sublist("J2 Plasticity");
+    /**************************************************************************//**
+    * \brief Initialize J2 plasticity parameters
+    * \param [in] aProblemParams Teuchos parameter list
+    ******************************************************************************/
+    void initializeJ2Plasticity(Teuchos::ParameterList& aMaterialParamList)
+    {
+        if( aMaterialParamList.isSublist("J2 Plasticity") )
+        {
+          auto tJ2PlasticitySubList = aMaterialParamList.sublist("J2 Plasticity");
 
-        mHardeningModulusIsotropic = tJ2PlasticitySubList.get<Plato::Scalar>("Hardening Modulus Isotropic");
-        mHardeningModulusKinematic = tJ2PlasticitySubList.get<Plato::Scalar>("Hardening Modulus Kinematic");
-        mInitialYieldStress        = tJ2PlasticitySubList.get<Plato::Scalar>("Initial Yield Stress");
+          mHardeningModulusIsotropic = tJ2PlasticitySubList.get<Plato::Scalar>("Hardening Modulus Isotropic");
+          mHardeningModulusKinematic = tJ2PlasticitySubList.get<Plato::Scalar>("Hardening Modulus Kinematic");
+          mInitialYieldStress        = tJ2PlasticitySubList.get<Plato::Scalar>("Initial Yield Stress");
 
-        mElasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Penalty Exponent");
-        mElasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Minimum Ersatz");
+          mElasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Penalty Exponent");
+          mElasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Minimum Ersatz");
 
-        mPlasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Penalty Exponent");
-        mPlasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Minimum Ersatz");
-      }
-      else
-      {
-        THROWERR("'J2 Plasticity' sublist of 'Material Model' does not exist. Needed for J2Plasticity Implementation.")
-      }
+          mPlasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Penalty Exponent");
+          mPlasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Minimum Ersatz");
+        }
+        else
+        {
+          THROWERR("'J2 Plasticity' sublist of 'Material Model' does not exist. Needed for J2Plasticity Implementation.")
+        }
     }
 
   public:
     /**************************************************************************//**
-    * @brief Constructor
-    * @param [in] aMesh mesh data base
-    * @param [in] aMeshSets mesh sets data base
-    * @param [in] aDataMap problem-specific data map 
-    * @param [in] aProblemParams Teuchos parameter list
+    * \brief Constructor
+    * \param [in] aMesh mesh data base
+    * \param [in] aMeshSets mesh sets data base
+    * \param [in] aDataMap problem-specific data map
+    * \param [in] aProblemParams Teuchos parameter list
     ******************************************************************************/
     J2PlasticityLocalResidual( Omega_h::Mesh& aMesh,
-                               Omega_h::MeshSets& aMeshSets,
-                               Plato::DataMap& aDataMap,
-                               Teuchos::ParameterList& aProblemParams) :
-     AbstractLocalVectorFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, getLocalStateDofNames() ),
-     mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+                              Omega_h::MeshSets& aMeshSets,
+                              Plato::DataMap& aDataMap,
+                              Teuchos::ParameterList& aProblemParams) :
+            AbstractLocalVectorFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, getLocalStateDofNames() ),
+            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     {
-      initialize(aProblemParams);
+        this->initialize(aProblemParams);
     }
 
+    /**************************************************************************//**
+    * \brief Destructor
+    ******************************************************************************/
+    virtual ~J2PlasticityLocalResidual(){}
 
     /**************************************************************************//**
-    * @brief Evaluate the local J2 plasticity residual
-    * @param [in] aGlobalState global state at current time step
-    * @param [in] aPrevGlobalState global state at previous time step
-    * @param [in] aLocalState local state at current time step
-    * @param [in] aPrevLocalState local state at previous time step
-    * @param [in] aControl control parameters
-    * @param [in] aConfig configuration parameters
-    * @param [out] aResult evaluated local residuals
+    * \brief Evaluate the local J2 plasticity residual
+    * \param [in] aGlobalState global state at current time step
+    * \param [in] aPrevGlobalState global state at previous time step
+    * \param [in] aLocalState local state at current time step
+    * \param [in] aPrevLocalState local state at previous time step
+    * \param [in] aControl control parameters
+    * \param [in] aConfig configuration parameters
+    * \param [out] aResult evaluated local residuals
     ******************************************************************************/
     virtual void
     evaluate( const Plato::ScalarMultiVectorT< GlobalStateT >     & aGlobalState,
@@ -305,13 +327,13 @@ class J2PlasticityLocalResidual :
     }
 
     /**************************************************************************//**
-    * @brief Update the local state variables
-    * @param [in]  aGlobalState global state at current time step
-    * @param [in]  aPrevGlobalState global state at previous time step
-    * @param [out] aLocalState local state at current time step
-    * @param [in]  aPrevLocalState local state at previous time step
-    * @param [in]  aControl control parameters
-    * @param [in]  aConfig configuration parameters
+    * \brief Update the local state variables
+    * \param [in]  aGlobalState global state at current time step
+    * \param [in]  aPrevGlobalState global state at previous time step
+    * \param [out] aLocalState local state at current time step
+    * \param [in]  aPrevLocalState local state at previous time step
+    * \param [in]  aControl control parameters
+    * \param [in]  aConfig configuration parameters
     ******************************************************************************/
     virtual void
     updateLocalState( const Plato::ScalarMultiVector & aGlobalState,
@@ -401,7 +423,7 @@ class J2PlasticityLocalResidual :
         if (tTrialStateYieldFunction > 0.0) // plastic step
         {
           // Plastic Multiplier Increment (for J2 w/ linear isotropic/kinematic hardening -> analytical return mapping)
-          aLocalState(aCellOrdinal, 1) = tTrialStateYieldFunction / (3.0 * tPenalizedShearModulus +
+          aLocalState(aCellOrdinal, 1) = tTrialStateYieldFunction / (static_cast<Plato::Scalar>(3.0) * tPenalizedShearModulus +
                                          tPenalizedHardeningModulusIsotropic + tPenalizedHardeningModulusKinematic);
 
           // Accumulated Plastic Strain
