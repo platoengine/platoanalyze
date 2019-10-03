@@ -35,7 +35,7 @@ public:
     template<typename StrainScalarType, typename StateScalarType, typename GradientScalarType>
     DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
                                        Plato::ScalarMultiVectorT<StrainScalarType> const& aStrain,
-                                       Plato::ScalarMultiVectorT<StrainScalarType> const& aPressureGra,
+                                       Plato::ScalarMultiVectorT<StrainScalarType> const& aPressureGrad,
                                        Plato::ScalarMultiVectorT<StateScalarType> const& aState,
                                        Plato::ScalarArray3DT<GradientScalarType> const& aGradient) const
     {
@@ -74,11 +74,11 @@ public:
         //
         for(Plato::OrdinalType tDofIndex = 0; tDofIndex < SpaceDim; tDofIndex++)
         {
-            aPressureGra(aCellOrdinal, tDofIndex) = 0.0;
+            aPressureGrad(aCellOrdinal, tDofIndex) = 0.0;
             for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < mNumNodesPerCell; tNodeIndex++)
             {
                 Plato::OrdinalType tLocalOrdinal = tNodeIndex * mNumDofsPerNode + mPDofOffset;
-                aPressureGra(aCellOrdinal, tDofIndex) += aState(aCellOrdinal, tLocalOrdinal)
+                aPressureGrad(aCellOrdinal, tDofIndex) += aState(aCellOrdinal, tLocalOrdinal)
                         * aGradient(aCellOrdinal, tNodeIndex, tDofIndex);
             }
         }
