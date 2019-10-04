@@ -28,7 +28,7 @@ class ThermoPlasticityUtilities
     * @param [in] aThermalExpansionCoefficient thermal expansion coefficient
     * @param [in] aReferenceTemperature reference temperature
     ******************************************************************************/
-    ThermoPlasticityUtilities(Plato::Scalar aThermalExpansionCoefficient, Plato::Scalar aReferenceTemperature) :
+    ThermoPlasticityUtilities(Plato::Scalar aThermalExpansionCoefficient = 0.0, Plato::Scalar aReferenceTemperature = 0.0) :
       mThermalExpansionCoefficient(aThermalExpansionCoefficient),
       mReferenceTemperature(aReferenceTemperature)
     {
