@@ -56,8 +56,8 @@ public:
      * \param [in]  aDataMap output data map
      ******************************************************************************/
     explicit AbstractVectorFunctionImplicitVMS(Omega_h::Mesh &aMesh,
-                                          Omega_h::MeshSets &aMeshSets,
-                                          Plato::DataMap &aDataMap) :
+                                               Omega_h::MeshSets &aMeshSets,
+                                               Plato::DataMap &aDataMap) :
         mMesh(aMesh),
         mDataMap(aDataMap),
         mMeshSets(aMeshSets)
@@ -485,7 +485,7 @@ public:
                                     Omega_h::MeshSets &aMeshSets,
                                     Plato::DataMap &aDataMap,
                                     Teuchos::ParameterList &aProblemParams) :
-        Plato::AbstractVectorFunctionVMSInc<EvaluationType>(aMesh, aMeshSets, aDataMap),
+        Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>(aMesh, aMeshSets, aDataMap),
         mElasticPropertiesPenaltySIMP(3),
         mElasticPropertiesMinErsatzSIMP(1e-9),
         mBodyLoads(nullptr),
