@@ -339,7 +339,7 @@ public:
  *
  ******************************************************************************/
 template<typename EvaluationType, typename PhysicsType>
-class StabilizedElastoPlasticityResidual: public Plato::AbstractVectorFunctionVMSInc<EvaluationType>
+class StabilizedElastoPlasticResidual: public Plato::AbstractVectorFunctionVMSInc<EvaluationType>
 {
 // Private member data
 private:
@@ -484,7 +484,7 @@ public:
      * \param [in] aProblemParams input XML data
      * \param [in] aPenaltyParams penalty function input XML data
      **********************************************************************************/
-    StabilizedElastoPlasticityResidual(Omega_h::Mesh &aMesh,
+    StabilizedElastoPlasticResidual(Omega_h::Mesh &aMesh,
                                        Omega_h::MeshSets &aMeshSets,
                                        Plato::DataMap &aDataMap,
                                        Teuchos::ParameterList &aProblemParams) :
@@ -501,7 +501,7 @@ public:
     /******************************************************************************//**
      * \brief Destructor
      **********************************************************************************/
-    virtual ~StabilizedElastoPlasticityResidual()
+    virtual ~StabilizedElastoPlasticResidual()
     {
     }
 
@@ -635,7 +635,7 @@ public:
         this->outputData(tPressure, "pressure");
     }
 };
-// class J2PlasticityLocalResidual
+// class StabilizedElastoPlasticResidual
 
 }
 // namespace Plato
