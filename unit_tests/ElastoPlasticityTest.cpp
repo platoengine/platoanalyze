@@ -301,17 +301,17 @@ template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
 class SimplexStabilizedElastoPasticity: public Plato::Simplex<SpaceDim>
 {
 public:
+    using Plato::Simplex<SpaceDim>::mNumSpatialDims;  /*!< number of nodes per cell */
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of spatial dimensions */
-    using Plato::Simplex<SpaceDim>::mNumSpatialDims; /*!< number of nodes per cell */
 
     static constexpr Plato::OrdinalType mNumVoigtTerms = (SpaceDim == 3) ? 6 : ((SpaceDim == 2) ? 3 : (((SpaceDim == 1) ? 1 : 0))); /*!< number of Voigt terms */
 
     // degree-of-freedom attributes
     //
-    static constexpr Plato::OrdinalType mPDofOffset = SpaceDim; /*!< number of pressure degrees of freedom offset */
-    static constexpr Plato::OrdinalType mNumDofsPerNode = SpaceDim + 1; /*!< number of degrees of freedom per node { disp_x, disp_y, disp_z, pressure} */
+    static constexpr Plato::OrdinalType mNumControl = NumControls;                            /*!< number of controls */
+    static constexpr Plato::OrdinalType mNumDofsPerNode = SpaceDim + 1;                       /*!< number of degrees of freedom per node { disp_x, disp_y, disp_z, pressure} */
+    static constexpr Plato::OrdinalType mPressureDofOffset = SpaceDim;                        /*!< number of pressure degrees of freedom offset */
     static constexpr Plato::OrdinalType mNumDofsPerCell = mNumDofsPerNode * mNumNodesPerCell; /*!< number of degrees of freedom per cell */
-    static constexpr Plato::OrdinalType mNumControl = NumControls; /*!< number of controls */
 
     // this physics can be used with VMS functionality in PA.  The
     // following defines the nodal state attributes required by VMS
@@ -343,19 +343,15 @@ class StabilizedElastoPlasticResidual: public Plato::AbstractVectorFunctionVMSIn
 {
 // Private member data
 private:
-    static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
-
-    using Plato::Simplex<mSpaceDim>::mNumNodesPerCell;                         /*!< number of nodes per cell */
-    using Plato::SimplexStabilizedElastoPasticity<mSpaceDim>::mNumVoigtTerms;  /*!< number of Voigt terms */
-    using Plato::SimplexStabilizedElastoPasticity<mSpaceDim>::mNumDofsPerNode; /*!< number of nodes per node */
-    using Plato::SimplexStabilizedElastoPasticity<mSpaceDim>::mNumDofsPerCell; /*!< number of nodes per cell */
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;               /*!< spatial dimensions */
+    static constexpr auto mNumVoigtTerms = PhysicsType::mNumVoigtTerms;         /*!< number of voigt terms */
+    static constexpr auto mNumDofsPerCell = PhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
+    static constexpr auto mNumDofsPerNode = PhysicsType::mNumDofsPerNode;       /*!< number of dofs per node */
+    static constexpr auto mNumNodesPerCell = PhysicsType::mNumNodesPerCell;     /*!< number nodes per cell */
+    static constexpr auto mPressureDofOffset = PhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
 
     static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
-    static constexpr auto mPressureDofOffset = mSpaceDim;   /*!< pressure degree of freedom offset */
     static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
-
-    static constexpr auto mNumVoigtTerms = PhysicsType::mNumVoigtTerms;     /*!< number of voigt terms */
-    static constexpr auto mNumNodesPerCell = PhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
 
     using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mMesh;     /*!< mesh database */
     using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
@@ -485,9 +481,9 @@ public:
      * \param [in] aPenaltyParams penalty function input XML data
      **********************************************************************************/
     StabilizedElastoPlasticResidual(Omega_h::Mesh &aMesh,
-                                       Omega_h::MeshSets &aMeshSets,
-                                       Plato::DataMap &aDataMap,
-                                       Teuchos::ParameterList &aProblemParams) :
+                                    Omega_h::MeshSets &aMeshSets,
+                                    Plato::DataMap &aDataMap,
+                                    Teuchos::ParameterList &aProblemParams) :
         Plato::AbstractVectorFunctionVMSInc<EvaluationType>(aMesh, aMeshSets, aDataMap),
         mElasticPropertiesPenaltySIMP(3),
         mElasticPropertiesMinErsatzSIMP(1e-9),
@@ -636,6 +632,19 @@ public:
     }
 };
 // class StabilizedElastoPlasticResidual
+
+template<typename PhysicsT>
+class ElastoPlasticityVectorFunction
+{
+private:
+    static constexpr Plato::OrdinalType mNumDofsPerCell = PhysicsT::mNumDofsPerCell;
+    static constexpr Plato::OrdinalType mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    static constexpr Plato::OrdinalType mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    static constexpr Plato::OrdinalType mNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    static constexpr Plato::OrdinalType mNumSpatialDims = PhysicsT::mNumSpatialDims;
+    static constexpr Plato::OrdinalType mNumControl = PhysicsT::mNumControl;
+};
+// class ElastoPlasticityVectorFunction
 
 }
 // namespace Plato
