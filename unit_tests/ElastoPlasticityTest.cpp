@@ -15,6 +15,7 @@
 #include "plato/BodyLoads.hpp"
 #include "plato/NaturalBCs.hpp"
 #include "plato/ScalarGrad.hpp"
+#include "plato/WorksetBase.hpp"
 #include "plato/ProjectToNode.hpp"
 #include "plato/FluxDivergence.hpp"
 #include "plato/SimplexFadTypes.hpp"
@@ -37,7 +38,7 @@ namespace Plato
  *   type for the vector function (e.g. Residual, Jacobian, GradientZ, GradientU, etc.)
  **********************************************************************************/
 template<typename EvaluationType>
-class AbstractVectorFunctionVMSInc
+class AbstractVectorFunctionImplicitVMS
 {
 // Protected member data
 protected:
@@ -54,7 +55,7 @@ public:
      * \param [in]  aMeshSets mesh side-sets metadata
      * \param [in]  aDataMap output data map
      ******************************************************************************/
-    explicit AbstractVectorFunctionVMSInc(Omega_h::Mesh &aMesh,
+    explicit AbstractVectorFunctionImplicitVMS(Omega_h::Mesh &aMesh,
                                           Omega_h::MeshSets &aMeshSets,
                                           Plato::DataMap &aDataMap) :
         mMesh(aMesh),
@@ -66,7 +67,7 @@ public:
     /**************************************************************************//**
      * \brief Destructor
      ******************************************************************************/
-    virtual ~AbstractVectorFunctionVMSInc()
+    virtual ~AbstractVectorFunctionImplicitVMS()
     {
     }
 
@@ -316,8 +317,8 @@ public:
     // this physics can be used with VMS functionality in PA.  The
     // following defines the nodal state attributes required by VMS
     //
-    static constexpr Plato::OrdinalType mNumNSPerNode = SpaceDim; /*!< number of node states per node */
-    static constexpr Plato::OrdinalType mNumNSPerCell = mNumNSPerNode * mNumNodesPerCell; /*!< number of node states per cell */
+    static constexpr Plato::OrdinalType mNumNodeStatePerNode = SpaceDim;                                /*!< number of node states per node */
+    static constexpr Plato::OrdinalType mNumNodeStatePerCell = mNumNodeStatePerNode * mNumNodesPerCell; /*!< number of node states per cell */
 
     static constexpr Plato::OrdinalType mNumLocalDofsPerCell = (SpaceDim == 3) ? 14 : ((SpaceDim == 2) ? 8 : (((SpaceDim == 1) ? 4 : 0))); /*!< number of local degrees of freedom per cell for J2-plasticity*/
 };
@@ -339,7 +340,7 @@ public:
  *
  ******************************************************************************/
 template<typename EvaluationType, typename PhysicsType>
-class StabilizedElastoPlasticResidual: public Plato::AbstractVectorFunctionVMSInc<EvaluationType>
+class StabilizedElastoPlasticResidual: public Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>
 {
 // Private member data
 private:
@@ -353,9 +354,9 @@ private:
     static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
     static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
 
-    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mMesh;     /*!< mesh database */
-    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
-    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mMeshSets; /*!< side-sets metadata */
+    using Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>::mMesh;     /*!< mesh database */
+    using Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
+    using Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>::mMeshSets; /*!< side-sets metadata */
 
     using GlobalStateT = typename EvaluationType::StateScalarType;             /*!< global state variables automatic differentiation type */
     using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
@@ -637,12 +638,38 @@ template<typename PhysicsT>
 class ElastoPlasticityVectorFunction
 {
 private:
-    static constexpr Plato::OrdinalType mNumDofsPerCell = PhysicsT::mNumDofsPerCell;
-    static constexpr Plato::OrdinalType mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
-    static constexpr Plato::OrdinalType mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
-    static constexpr Plato::OrdinalType mNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    static constexpr Plato::OrdinalType mNumSpatialDims = PhysicsT::mNumSpatialDims;
-    static constexpr Plato::OrdinalType mNumControl = PhysicsT::mNumControl;
+    using Residual          = typename Plato::Evaluation<PhysicsT>::Residual;
+    using GradientX         = typename Plato::Evaluation<PhysicsT>::GradientX;
+    using GradientZ         = typename Plato::Evaluation<PhysicsT>::GradientZ;
+    using LocalJacobian     = typename Plato::Evaluation<PhysicsT>::LocalJacobian;
+    using LocalJacobianP    = typename Plato::Evaluation<PhysicsT>::LocalJacobianP;
+    using GlobalJacobian    = typename Plato::Evaluation<PhysicsT>::Jacobian;
+    using GlobalJacobianP   = typename Plato::Evaluation<PhysicsT>::JacobianP;
+    using ProjPressJacobian = typename Plato::Evaluation<PhysicsT>::JacobianN;
+
+    static constexpr auto mNumControl = PhysicsT::mNumControl;
+    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;
+    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell;
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    static constexpr auto mNumNodeStatePerNode = PhysicsT::mNumNodeStatePerNode;
+    static constexpr auto mNumNodeStatePerCell = PhysicsT::mNumNodeStatePerCell;
+    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;
+
+    const Plato::OrdinalType mNumNodes;
+    const Plato::OrdinalType mNumCells;
+
+    Plato::DataMap& mDataMap;
+    Plato::WorksetBase<PhysicsT> mWorksetBase;
+
+    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<Residual>>        mGlobalVecFuncResidual;
+    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<GradientX>>       mGlobalVecFuncJacobianX;
+    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<GradientZ>>       mGlobalVecFuncJacobianZ;
+    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<LocalJacobian>>   mGlobalVecFuncJacobianC;
+    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<LocalJacobianP>>  mGlobalVecFuncJacobianCP;
+    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<GlobalJacobian>>  mGlobalVecFuncJacobianU;
+    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<GlobalJacobianP>> mGlobalVecFuncJacobianUP;
 };
 // class ElastoPlasticityVectorFunction
 
