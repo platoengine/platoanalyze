@@ -78,7 +78,7 @@ class LocalVectorFunctionInc
                            Omega_h::MeshSets& aMeshSets,
                            Plato::DataMap& aDataMap,
                            Teuchos::ParameterList& aParamList,
-                           std::string& aProblemType) :
+                           std::string& aLocalEquationModel) :
                            mWorksetBase(aMesh),
                            mNumCells(aMesh.nelems()),
                            mNumNodes(aMesh.nverts()),
@@ -87,25 +87,25 @@ class LocalVectorFunctionInc
       typename PhysicsT::FunctionFactory tFunctionFactory;
 
       mLocalVectorFunctionResidual  = tFunctionFactory.template createLocalVectorFunctionInc<Residual>
-                                                                (aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+                                                                (aMesh, aMeshSets, aDataMap, aParamList, aLocalEquationModel);
 
       mLocalVectorFunctionJacobianU = tFunctionFactory.template createLocalVectorFunctionInc<GlobalJacobian>
-                                                                (aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+                                                                (aMesh, aMeshSets, aDataMap, aParamList, aLocalEquationModel);
 
       mLocalVectorFunctionJacobianUP = tFunctionFactory.template createLocalVectorFunctionInc<GlobalJacobianP>
-                                                                (aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+                                                                (aMesh, aMeshSets, aDataMap, aParamList, aLocalEquationModel);
 
       mLocalVectorFunctionJacobianC = tFunctionFactory.template createLocalVectorFunctionInc<LocalJacobian>
-                                                                (aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+                                                                (aMesh, aMeshSets, aDataMap, aParamList, aLocalEquationModel);
 
       mLocalVectorFunctionJacobianCP = tFunctionFactory.template createLocalVectorFunctionInc<LocalJacobianP>
-                                                                (aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+                                                                (aMesh, aMeshSets, aDataMap, aParamList, aLocalEquationModel);
 
       mLocalVectorFunctionJacobianZ = tFunctionFactory.template createLocalVectorFunctionInc<GradientZ>
-                                                                (aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+                                                                (aMesh, aMeshSets, aDataMap, aParamList, aLocalEquationModel);
 
       mLocalVectorFunctionJacobianX = tFunctionFactory.template createLocalVectorFunctionInc<GradientX>
-                                                                (aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+                                                                (aMesh, aMeshSets, aDataMap, aParamList, aLocalEquationModel);
     }
 
     /**************************************************************************//**

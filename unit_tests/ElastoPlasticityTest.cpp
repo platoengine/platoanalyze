@@ -13,10 +13,12 @@
 #include "plato/Simplex.hpp"
 #include "plato/Kinetics.hpp"
 #include "plato/BodyLoads.hpp"
+#include "plato/ParseTools.hpp"
 #include "plato/NaturalBCs.hpp"
 #include "plato/ScalarGrad.hpp"
 #include "plato/Projection.hpp"
 #include "plato/WorksetBase.hpp"
+#include "plato/EssentialBCs.hpp"
 #include "plato/ProjectToNode.hpp"
 #include "plato/FluxDivergence.hpp"
 #include "plato/SimplexFadTypes.hpp"
@@ -35,6 +37,11 @@
 #include "plato/LocalVectorFunctionInc.hpp"
 #include "plato/ThermoPlasticityUtilities.hpp"
 #include "plato/LinearTetCubRuleDegreeOne.hpp"
+
+#include "plato/Plato_Solve.hpp"
+#include "plato/ApplyConstraints.hpp"
+#include "plato/ScalarFunctionBaseFactory.hpp"
+#include "plato/ScalarFunctionIncBaseFactory.hpp"
 
 namespace Plato
 {
@@ -152,11 +159,46 @@ inline ScalarType compute_bulk_modulus(const ScalarType & aElasticModulus, const
     return (tShearModulus);
 }
 
+
+
+
+
+
+Plato::OrdinalType parse_num_newton_iterations(Teuchos::ParameterList & aParamList)
+{
+    Plato::OrdinalType tOutput = 2;
+    if(aParamList.isSublist("Newton Iteration") == true)
+    {
+        tOutput = aParamList.sublist("Newton Iteration").get<int>("Number Iterations");
+    }
+    return (tOutput);
+}
+
+Plato::OrdinalType parse_num_time_steps(Teuchos::ParameterList & aParamList)
+{
+    Plato::OrdinalType tOutput = 1;
+    if(aParamList.isSublist("Time Stepping") == true)
+    {
+        tOutput = aParamList.sublist("Time Stepping").get<Plato::OrdinalType>("Number Time Steps");
+    }
+    return (tOutput);
+}
+
+Plato::Scalar parse_time_step(Teuchos::ParameterList & aParamList)
+{
+    Plato::Scalar tOutput = 1.0;
+    if(aParamList.isSublist("Time Stepping") == true)
+    {
+        tOutput = aParamList.sublist("Time Stepping").get<Plato::Scalar>("Time Step");
+    }
+    return (tOutput);
+}
+
 Plato::Scalar parse_elastic_modulus(Teuchos::ParameterList & aParamList)
 {
-    if (aParamList.isParameter("Youngs Modulus"))
+    if(aParamList.isParameter("Youngs Modulus"))
     {
-        Plato::Scalar tElasticModulus = aParamList.get < Plato::Scalar > ("Youngs Modulus");
+        Plato::Scalar tElasticModulus = aParamList.get<Plato::Scalar>("Youngs Modulus");
         return (tElasticModulus);
     }
     else
@@ -167,9 +209,9 @@ Plato::Scalar parse_elastic_modulus(Teuchos::ParameterList & aParamList)
 
 Plato::Scalar parse_poissons_ratio(Teuchos::ParameterList & aParamList)
 {
-    if (aParamList.isParameter("Poissons Ratio"))
+    if(aParamList.isParameter("Poissons Ratio"))
     {
-        Plato::Scalar tPoissonsRatio = aParamList.get < Plato::Scalar > ("Poissons Ratio");
+        Plato::Scalar tPoissonsRatio = aParamList.get<Plato::Scalar>("Poissons Ratio");
         return (tPoissonsRatio);
     }
     else
@@ -787,6 +829,15 @@ public:
     ******************************************************************************/
     ~VectorFunctionVMSInc(){}
 
+
+    /**************************************************************************//**
+     * \brief Return total number of degrees of freedom
+     ******************************************************************************/
+    Plato::OrdinalType size() const
+    {
+        return mNumNodes * mNumGlobalDofsPerNode;
+    }
+
     /**************************************************************************//**
     * \brief Compute the global residual vector
     * \param [in] aGlobalState global state at current time step
@@ -1318,25 +1369,237 @@ public:
 template<typename SimplexPhysics>
 class PlasticityProblem : public Plato::AbstractProblem
 {
+// private member data
 private:
     static constexpr auto mSpatialDim = SimplexPhysics::mNumSpatialDims; /*!< spatial dimensions */
 
     // Required
-    Plato::VectorFunctionVMSInc<SimplexPhysics> mGlobalResidualEq;           /*!< global equality constraint interface */
-    Plato::LocalVectorFunctionInc<SimplexPhysics> mLocalResidualEq;          /*!< local equality constraint interface */
-    Plato::VectorFunctionVMS<SimplexPhysics::ProjectorT> mProjectResidualEq; /*!< global pressure gradient projection interface */
+    Plato::VectorFunctionVMSInc<SimplexPhysics> mGlobalResidualEq;      /*!< global equality constraint interface */
+    Plato::LocalVectorFunctionInc<SimplexPhysics> mLocalResidualEq;     /*!< local equality constraint interface */
+    Plato::VectorFunctionVMS<SimplexPhysics::ProjectorT> mProjectionEq; /*!< global pressure gradient projection interface */
 
     // Optional
-    std::shared_ptr<const Plato::ScalarFunctionBase> mConstraint;    /*!< constraint constraint interface */
-    std::shared_ptr<const Plato::ScalarFunctionIncBase> mObjective;  /*!< objective constraint interface */
+    std::shared_ptr<const Plato::ScalarFunctionBase> mConstraint;   /*!< constraint constraint interface */
+    std::shared_ptr<const Plato::ScalarFunctionIncBase> mObjective; /*!< objective constraint interface */
 
     Plato::Scalar mTimeStep;
     Plato::OrdinalType mNumTimeSteps;
-    Plato::OrdinalType mNumNewtonSteps;
+    Plato::OrdinalType mNumNewtonIter;
 
+    Plato::ScalarVector mLocalResidual;
     Plato::ScalarVector mGlobalResidual;
-    Plato::ScalarMultiVector mGlobalStates; /*!< state variables */
+    Plato::ScalarVector mProjResidual;
+    Plato::ScalarVector mProjPressGrad;
+    Plato::ScalarVector mProjectPressure;
+    Plato::ScalarVector mProjResidualAdjoint;
 
+    Plato::ScalarMultiVector mLocalStates;   /*!< local state variables */
+    Plato::ScalarMultiVector mLocalAdjoint;  /*!< local adjoint variables */
+    Plato::ScalarMultiVector mGlobalStates;  /*!< global state variables */
+    Plato::ScalarMultiVector mGlobalAdjoint; /*!< global adjoint variables */
+
+    Teuchos::RCP<Plato::CrsMatrixType> mProjJacobian;   /*!< projection residual Jacobian matrix */
+    Teuchos::RCP<Plato::CrsMatrixType> mGlobalJacobian; /*!< global residual Jacobian matrix */
+
+    Plato::ScalarVector mDirichletValues; /*!< values associated with the Dirichlet boundary conditions */
+    Plato::LocalOrdinalVector mDirichletDofs; /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
+
+// public functions
+public:
+    /******************************************************************************//**
+     * \brief PLATO Plasticity Problem constructor
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aInputParams input parameters database
+    **********************************************************************************/
+    PlasticityProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams) :
+            mGlobalResidualEq(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
+            mLocalResidualEq(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("Plasticity Model")),
+            mProjectionEq(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
+            mConstraint(nullptr),
+            mObjective(nullptr),
+            mTimeStep(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Time Step", 1.0)),
+            mNumTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 1)),
+            mNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton Iteration", "Number Iterations", 2)),
+            mLocalResidual("Local Residual", mLocalResidualEq.size()),
+            mGlobalResidual("Global Residual", mGlobalResidualEq.size()),
+            mProjResidual("Projected Residual", mProjectionEq.size()),
+            mProjPressGrad("Projected Pressure Gradient", mProjectionEq.size()),
+            mProjectPressure("Project Pressure", aMesh.nverts()),
+            mLocalStates("Local States", mNumTimeSteps, mLocalResidualEq.size()),
+            mGlobalStates("Global States", mNumTimeSteps, mGlobalResidualEq.size())
+    {
+        this->initialize(aMesh, aMeshSets, aInputParams);
+    }
+
+    /******************************************************************************//**
+     * \brief PLATO Plasticity Problem destructor
+    **********************************************************************************/
+    virtual ~PlasticityProblem(){}
+
+    /******************************************************************************//**
+     * \brief Return number of global degrees of freedom in solution.
+     * \return Number of global degrees of freedom
+    **********************************************************************************/
+    Plato::OrdinalType getNumSolutionDofs()
+    {
+        return (mGlobalResidualEq.size());
+    }
+
+    /******************************************************************************//**
+     * \brief Set global state variables
+     * \param [in] aState 2D view of global state variables - (NumTimeSteps, TotalDofs)
+    **********************************************************************************/
+    void setState(const Plato::ScalarMultiVector & aState)
+    {
+        assert(aState.extent(0) == mGlobalStates.extent(0));
+        assert(aState.extent(1) == mGlobalStates.extent(1));
+        Kokkos::deep_copy(mGlobalStates, aState);
+    }
+
+    /******************************************************************************//**
+     * \brief Return 2D view of global state variables - (NumTimeSteps, TotalDofs)
+     * \return aState 2D view of global state variables
+    **********************************************************************************/
+    Plato::ScalarMultiVector getState()
+    {
+        return mGlobalStates;
+    }
+
+    /******************************************************************************//**
+     * \brief Return 2D view of global adjoint variables - (2, TotalDofs)
+     * \return 2D view of global adjoint variables
+    **********************************************************************************/
+    Plato::ScalarMultiVector getAdjoint()
+    {
+        return mGlobalAdjoint;
+    }
+
+    /******************************************************************************//**
+     * \brief Apply Dirichlet constraints
+     * \param [in] aMatrix Compressed Row Storage (CRS) matrix
+     * \param [in] aVector 1D view of Right-Hand-Side forces
+    **********************************************************************************/
+    void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
+    {
+        if(mGlobalJacobian->isBlockMatrix())
+        {
+            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDirichletValues);
+        }
+        else
+        {
+            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDirichletValues);
+        }
+    }
+
+    /******************************************************************************//**
+     * \brief Fill right-hand-side vector values
+    **********************************************************************************/
+    void applyBoundaryLoads(const Plato::ScalarVector & aForce) { return; }
+
+    /******************************************************************************//**
+     * \brief Update physics-based parameters within optimization iterations
+     * \param [in] aControl 1D container of control variables
+     * \param [in] aState 2D container of state variables
+    **********************************************************************************/
+    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState) { return; }
+
+    /******************************************************************************//**
+     * \brief Solve system of equations
+     * \param [in] aControl 1D view of control variables
+     * \return 2D view of state variables
+    **********************************************************************************/
+    Plato::ScalarMultiVector solution(const Plato::ScalarVector & aControl)
+    {
+        // TODO: FINISH IMPLEMENTATION
+        Plato::ScalarVector tGlobalStateIncrement("Global State increment", mGlobalResidualEq.size());
+
+        // outer loop for load/time steps
+        for(Plato::OrdinalType tStepIndex = 1; tStepIndex < mNumTimeSteps; tStepIndex++)
+        {
+            // compute the projected pressure gradient
+            Plato::ScalarVector tCurrentState = Kokkos::subview(mGlobalStates, tStepIndex, Kokkos::ALL());
+            Plato::fill(static_cast<Plato::Scalar>(0.0), tCurrentState);
+            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjPressGrad);
+            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjectPressure);
+
+            // inner loop for load/time steps
+            for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonIter; tNewtonIndex++)
+            {
+                mProjResidual = mProjectionEq.value      (mProjPressGrad, mProjectPressure, aControl);
+                mProjJacobian = mProjectionEq.gradient_u (mProjPressGrad, mProjectPressure, aControl);
+
+                Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPressGrad, mProjResidual);
+
+                // compute the state solution
+                mGlobalResidual = mGlobalResidualEq.value(tCurrentState, mProjectPressure, aControl);
+                auto tGlobalJacobianWS = mGlobalResidualEq.gradient_u(tCurrentState, mProjectPressure, aControl);
+
+                this->applyConstraints(mGlobalJacobian, mGlobalResidual);
+
+                Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mGlobalJacobian, tGlobalStateIncrement, mGlobalResidual);
+
+                // update the state with the new increment
+                Plato::update(-1.0, tGlobalStateIncrement, 1.0, tCurrentState);
+
+                // copy projection state
+                Plato::extract<SimplexPhysics::mNumDofsPerNode,
+                               SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tCurrentState, mProjectPressure);
+            }
+
+            mGlobalResidual = mGlobalResidualEq.value(tCurrentState, mProjPressGrad, aControl);
+
+        }
+
+        return mGlobalStates;
+    }
+
+// private functions
+private:
+    /******************************************************************************//**
+     * \brief Initialize member data
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aInputParams input parameters database
+     **********************************************************************************/
+    void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    {
+        mTimeStep = Plato::parse_time_step(aInputParams);
+        mNumTimeSteps = Plato::parse_num_time_steps(aInputParams);
+        mNumNewtonIter = Plato::parse_num_newton_iterations(aInputParams);
+
+        this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
+        this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
+
+        // Parse Dirichlet boundary conditions
+        Plato::EssentialBCs<SimplexPhysics> tDirichletBCs(aInputParams.sublist("Essential Boundary Conditions", false));
+        tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);
+    }
+
+    void allocateObjectiveFunction(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    {
+        if(aInputParams.isType<std::string>("Objective"))
+        {
+            std::string tObjectiveType = aInputParams.get<std::string>("Objective");
+            Plato::ScalarFunctionIncBaseFactory<SimplexPhysics> tObjectiveFunctionFactory;
+            mObjective = tObjectiveFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tObjectiveType);
+
+            // Allocate adjoint variable containers
+            mProjResidualAdjoint("Projected Residual Adjoint", mProjectionEq.size());
+            mLocalAdjoint("Local Adjoint", static_cast<Plato::OrdinalType>(2), mLocalResidualEq.size());
+            mGlobalAdjoint("Global Adjoint", static_cast<Plato::OrdinalType>(2), mGlobalResidualEq.size());
+        }
+    }
+
+    void allocateConstraintFunction(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    {
+        if(aInputParams.isType<std::string>("Constraint"))
+        {
+            Plato::ScalarFunctionBaseFactory<SimplexPhysics> tContraintFunctionFactory;
+            std::string tConstraintType = aInputParams.get<std::string>("Constraint");
+            mConstraint = tContraintFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tConstraintType);
+        }
+    }
 };
 // class PlasticityProblem
 
