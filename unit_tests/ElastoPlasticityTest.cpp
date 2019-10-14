@@ -20,11 +20,15 @@
 #include "plato/FluxDivergence.hpp"
 #include "plato/SimplexFadTypes.hpp"
 #include "plato/StressDivergence.hpp"
+#include "plato/VectorFunctionVMS.hpp"
 #include "plato/PlatoStaticsTypes.hpp"
 #include "plato/PressureDivergence.hpp"
+#include "plato/StabilizedMechanics.hpp"
+#include "plato/PlatoAbstractProblem.hpp"
 #include "plato/Plato_TopOptFunctors.hpp"
 #include "plato/InterpolateFromNodal.hpp"
 #include "plato/LinearElasticMaterial.hpp"
+#include "plato/LocalVectorFunctionInc.hpp"
 #include "plato/ThermoPlasticityUtilities.hpp"
 #include "plato/LinearTetCubRuleDegreeOne.hpp"
 
@@ -38,10 +42,10 @@ public:
     using Plato::Simplex<SpaceDim>::mNumSpatialDims;  /*!< number of nodes per cell */
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of spatial dimensions */
 
-    static constexpr Plato::OrdinalType mNumVoigtTerms = (SpaceDim == 3) ? 6 : ((SpaceDim == 2) ? 3 : (((SpaceDim == 1) ? 1 : 0))); /*!< number of Voigt terms */
+    static constexpr Plato::OrdinalType mNumVoigtTerms =
+            (SpaceDim == 3) ? 6 : ((SpaceDim == 2) ? 3 : (((SpaceDim == 1) ? 1 : 0))); /*!< number of Voigt terms */
 
     // degree-of-freedom attributes
-    //
     static constexpr auto mNumControl = NumControls;                            /*!< number of controls */
     static constexpr auto mNumDofsPerNode = SpaceDim + 1;                       /*!< number of degrees of freedom per node { disp_x, disp_y, disp_z, pressure} */
     static constexpr auto mPressureDofOffset = SpaceDim;                        /*!< number of pressure degrees of freedom offset */
@@ -49,9 +53,8 @@ public:
 
     // this physics can be used with VMS functionality in PA.  The
     // following defines the nodal state attributes required by VMS
-    //
-    static constexpr auto mNumNodeStatePerNode = SpaceDim;                                /*!< number of node states per node */
-    static constexpr auto mNumNodeStatePerCell = mNumNodeStatePerNode * mNumNodesPerCell; /*!< number of node states per cell */
+    static constexpr auto mNumNodeStatePerNode = SpaceDim;                                /*!< number of node states, i.e. pressure gradient, dofs per node */
+    static constexpr auto mNumNodeStatePerCell = mNumNodeStatePerNode * mNumNodesPerCell; /*!< number of node states, i.e. pressure gradient, dofs  per cell */
 
     static constexpr Plato::OrdinalType mNumLocalDofsPerCell =
             (SpaceDim == 3) ? 14 : ((SpaceDim == 2) ? 8 : (((SpaceDim == 1) ? 4 : 0))); /*!< number of local degrees of freedom per cell for J2-plasticity*/
@@ -1338,9 +1341,16 @@ public:
 
 
 
-class PlasticityProblem
+template<typename SimplexPhysics>
+class PlasticityProblem : public Plato::AbstractProblem
 {
+private:
+    static constexpr auto mSpatialDim = SimplexPhysics::mNumSpatialDims; /*!< spatial dimensions */
 
+    // Required
+    Plato::VectorFunctionVMSInc<SimplexPhysics> mGlobalResidual;  /*!< global equality constraint interface */
+    Plato::LocalVectorFunctionInc<SimplexPhysics> mLocalResidual; /*!< local equality constraint interface */
+    Plato::VectorFunctionVMS<Plato::StabilizedMechanics<mSpatialDim>::ProjectorT> mProjectResidual; /*!< global pressure gradient projection interface */
 };
 // class PlasticityProblem
 
