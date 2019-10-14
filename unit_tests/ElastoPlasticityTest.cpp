@@ -773,10 +773,10 @@ public:
                          Plato::DataMap& aDataMap,
                          Teuchos::ParameterList& aParamList,
                          std::string& aVectorFuncType) :
-            mWorksetBase(aMesh),
-            mNumCells(aMesh.nelems()),
             mNumNodes(aMesh.nverts()),
-            mDataMap(aDataMap)
+            mNumCells(aMesh.nelems()),
+            mDataMap(aDataMap),
+            mWorksetBase(aMesh)
     {
         typename PhysicsT::FunctionFactory tFunctionFactory;
 
