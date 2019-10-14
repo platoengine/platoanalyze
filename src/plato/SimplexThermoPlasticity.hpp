@@ -21,8 +21,8 @@ public:
 
     static constexpr Plato::OrdinalType mNumControl = NumControls;
 
-    static constexpr Plato::OrdinalType mNumNSPerNode = SpaceDim;
-    static constexpr Plato::OrdinalType mNumNSPerCell = mNumNSPerNode*mNumNodesPerCell;
+    static constexpr Plato::OrdinalType mNumNodeStatePerNode = SpaceDim;
+    static constexpr Plato::OrdinalType mNumNodeStatePerCell = mNumNodeStatePerNode * mNumNodesPerCell;
 };
 // class SimplexPlasticity
 

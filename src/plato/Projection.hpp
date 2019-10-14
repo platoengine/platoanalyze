@@ -80,7 +80,7 @@ class Projection: public Plato::SimplexProjection<SpaceDimParam>
 {
 public:
     typedef Plato::ProjectionFactory::FunctionFactory FunctionFactory;
-    using SimplexT        = SimplexProjection<SpaceDimParam, TotalDofsParam, ProjectionDofOffset, NumProjectionDofs>;
+    using SimplexT = SimplexProjection<SpaceDimParam, TotalDofsParam, ProjectionDofOffset, NumProjectionDofs>;
     static constexpr Plato::OrdinalType SpaceDim = SpaceDimParam;
 };
 

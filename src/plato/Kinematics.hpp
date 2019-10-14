@@ -18,10 +18,10 @@ template<Plato::OrdinalType SpaceDim>
 class StabilizedKinematics : public Plato::SimplexStabilizedMechanics<SpaceDim>
 {
 private:
-    using Plato::SimplexStabilizedMechanics<SpaceDim>::mNumVoigtTerms; /*!< number of Voigt terms */
-    using Plato::SimplexStabilizedMechanics<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
-    using Plato::SimplexStabilizedMechanics<SpaceDim>::mNumDofsPerNode; /*!< number of nodes per node */
-    using Plato::SimplexStabilizedMechanics<SpaceDim>::mPDofOffset; /*!< number of nodes per cell */
+    using Plato::SimplexStabilizedMechanics<SpaceDim>::mNumVoigtTerms;     /*!< number of Voigt terms */
+    using Plato::SimplexStabilizedMechanics<SpaceDim>::mNumNodesPerCell;   /*!< number of nodes per cell */
+    using Plato::SimplexStabilizedMechanics<SpaceDim>::mNumDofsPerNode;    /*!< number of nodes per node */
+    using Plato::SimplexStabilizedMechanics<SpaceDim>::mPressureDofOffset; /*!< number of pressure dofs offset */
 
 public:
     /***********************************************************************************
@@ -77,7 +77,7 @@ public:
             aPressureGrad(aCellOrdinal, tDofIndex) = 0.0;
             for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < mNumNodesPerCell; tNodeIndex++)
             {
-                Plato::OrdinalType tLocalOrdinal = tNodeIndex * mNumDofsPerNode + mPDofOffset;
+                Plato::OrdinalType tLocalOrdinal = tNodeIndex * mNumDofsPerNode + mPressureDofOffset;
                 aPressureGrad(aCellOrdinal, tDofIndex) += aState(aCellOrdinal, tLocalOrdinal)
                         * aGradient(aCellOrdinal, tNodeIndex, tDofIndex);
             }

@@ -15,57 +15,29 @@
 #include "plato/BodyLoads.hpp"
 #include "plato/NaturalBCs.hpp"
 #include "plato/ScalarGrad.hpp"
+#include "plato/Projection.hpp"
 #include "plato/WorksetBase.hpp"
 #include "plato/ProjectToNode.hpp"
 #include "plato/FluxDivergence.hpp"
 #include "plato/SimplexFadTypes.hpp"
 #include "plato/StressDivergence.hpp"
+#include "plato/SimplexPlasticity.hpp"
 #include "plato/VectorFunctionVMS.hpp"
 #include "plato/PlatoStaticsTypes.hpp"
+#include "plato/ScalarFunctionBase.hpp"
 #include "plato/PressureDivergence.hpp"
 #include "plato/StabilizedMechanics.hpp"
 #include "plato/PlatoAbstractProblem.hpp"
 #include "plato/Plato_TopOptFunctors.hpp"
 #include "plato/InterpolateFromNodal.hpp"
 #include "plato/LinearElasticMaterial.hpp"
+#include "plato/ScalarFunctionIncBase.hpp"
 #include "plato/LocalVectorFunctionInc.hpp"
 #include "plato/ThermoPlasticityUtilities.hpp"
 #include "plato/LinearTetCubRuleDegreeOne.hpp"
 
 namespace Plato
 {
-
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
-class SimplexElastoPasticity: public Plato::Simplex<SpaceDim>
-{
-public:
-    using Plato::Simplex<SpaceDim>::mNumSpatialDims;  /*!< number of nodes per cell */
-    using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of spatial dimensions */
-
-    static constexpr Plato::OrdinalType mNumVoigtTerms =
-            (SpaceDim == 3) ? 6 : ((SpaceDim == 2) ? 3 : (((SpaceDim == 1) ? 1 : 0))); /*!< number of Voigt terms */
-
-    // degree-of-freedom attributes
-    static constexpr auto mNumControl = NumControls;                            /*!< number of controls */
-    static constexpr auto mNumDofsPerNode = SpaceDim + 1;                       /*!< number of degrees of freedom per node { disp_x, disp_y, disp_z, pressure} */
-    static constexpr auto mPressureDofOffset = SpaceDim;                        /*!< number of pressure degrees of freedom offset */
-    static constexpr auto mNumDofsPerCell = mNumDofsPerNode * mNumNodesPerCell; /*!< number of degrees of freedom per cell */
-
-    // this physics can be used with VMS functionality in PA.  The
-    // following defines the nodal state attributes required by VMS
-    static constexpr auto mNumNodeStatePerNode = SpaceDim;                                /*!< number of node states, i.e. pressure gradient, dofs per node */
-    static constexpr auto mNumNodeStatePerCell = mNumNodeStatePerNode * mNumNodesPerCell; /*!< number of node states, i.e. pressure gradient, dofs  per cell */
-
-    static constexpr Plato::OrdinalType mNumLocalDofsPerCell =
-            (SpaceDim == 3) ? 14 : ((SpaceDim == 2) ? 8 : (((SpaceDim == 1) ? 4 : 0))); /*!< number of local degrees of freedom per cell for J2-plasticity*/
-};
-// class SimplexElastoPasticity
-
-
-
-
-
-
 
 /******************************************************************************//**
  * \brief Abstract vector function interface for Variational Multi-Scale (VMS)
@@ -686,7 +658,7 @@ struct FunctionFactory
         if(aFunctionName == "ElastoPlasticity")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
-            return std::make_shared<Plato::ElastoPlasticityResidual<EvaluationType, Plato::SimplexElastoPasticity<tSpaceDim>> > (aMesh, aMeshSets, aDataMap, aInputParams);
+            return std::make_shared<Plato::ElastoPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>> > (aMesh, aMeshSets, aDataMap, aInputParams);
         }
         else
         {
@@ -708,12 +680,14 @@ struct FunctionFactory
  * Here, the (Inc) in VectorFunctionVMSInc denotes increment.
  *******************************************************************************/
 template<Plato::OrdinalType NumSpaceDim>
-class ElastoPlasticity: public Plato::SimplexElastoPasticity<NumSpaceDim>
+class ElastoPlasticity: public Plato::SimplexPlasticity<NumSpaceDim>
 {
 public:
-    static constexpr auto SpaceDim = NumSpaceDim;
-    using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>;
+    static constexpr auto mSpaceDim = NumSpaceDim;
     typedef Plato::ElastoPlasticityFactory::FunctionFactory FunctionFactory;
+
+    using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>;
+    using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset, /* numProjectionDofs=*/ 1>;
 };
 // class ElastoPlasticity
 
@@ -1348,9 +1322,21 @@ private:
     static constexpr auto mSpatialDim = SimplexPhysics::mNumSpatialDims; /*!< spatial dimensions */
 
     // Required
-    Plato::VectorFunctionVMSInc<SimplexPhysics> mGlobalResidual;  /*!< global equality constraint interface */
-    Plato::LocalVectorFunctionInc<SimplexPhysics> mLocalResidual; /*!< local equality constraint interface */
-    Plato::VectorFunctionVMS<Plato::StabilizedMechanics<mSpatialDim>::ProjectorT> mProjectResidual; /*!< global pressure gradient projection interface */
+    Plato::VectorFunctionVMSInc<SimplexPhysics> mGlobalResidualEq;           /*!< global equality constraint interface */
+    Plato::LocalVectorFunctionInc<SimplexPhysics> mLocalResidualEq;          /*!< local equality constraint interface */
+    Plato::VectorFunctionVMS<SimplexPhysics::ProjectorT> mProjectResidualEq; /*!< global pressure gradient projection interface */
+
+    // Optional
+    std::shared_ptr<const Plato::ScalarFunctionBase> mConstraint;    /*!< constraint constraint interface */
+    std::shared_ptr<const Plato::ScalarFunctionIncBase> mObjective;  /*!< objective constraint interface */
+
+    Plato::Scalar mTimeStep;
+    Plato::OrdinalType mNumTimeSteps;
+    Plato::OrdinalType mNumNewtonSteps;
+
+    Plato::ScalarVector mGlobalResidual;
+    Plato::ScalarMultiVector mGlobalStates; /*!< state variables */
+
 };
 // class PlasticityProblem
 

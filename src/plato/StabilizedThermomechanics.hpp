@@ -137,7 +137,7 @@ public:
 
     using ProjectorT = typename Plato::Projection<SpaceDimParam,
                                                   SimplexT::mNumDofsPerNode,
-                                                  SimplexT::mPDofOffset,
+                                                  SimplexT::mPressureDofOffset,
                                                   /* numProjectionDofs=*/ 1>;
 
 

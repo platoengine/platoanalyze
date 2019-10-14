@@ -41,7 +41,7 @@ class StabilizedElastostaticEnergy :
     static constexpr Plato::OrdinalType mNPressDims = 1;
 
     static constexpr Plato::OrdinalType mMDofOffset = 0;
-    static constexpr Plato::OrdinalType mPDofOffset = mSpaceDim;
+    static constexpr Plato::OrdinalType mPressureDofOffset = mSpaceDim;
     
     using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumVoigtTerms;
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell;
@@ -113,7 +113,7 @@ class StabilizedElastostaticEnergy :
       Plato::StabilizedKinetics     <mSpaceDim> kinetics(mMaterialModel);
 
       Plato::InterpolateFromNodal   <mSpaceDim, mSpaceDim, 0, mSpaceDim>     interpolatePGradFromNodal;
-      Plato::InterpolateFromNodal   <mSpaceDim, mNumDofsPerNode, mPDofOffset> interpolatePressureFromNodal;
+      Plato::InterpolateFromNodal   <mSpaceDim, mNumDofsPerNode, mPressureDofOffset> interpolatePressureFromNodal;
 
       Plato::ScalarProduct<mNumVoigtTerms> deviatorScalarProduct;
       

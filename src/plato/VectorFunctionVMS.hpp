@@ -35,8 +35,8 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
     using Plato::WorksetBase<PhysicsT>::mNumNodes;
     using Plato::WorksetBase<PhysicsT>::mNumCells;
 
-    using Plato::WorksetBase<PhysicsT>::mNumNSPerNode;
-    using Plato::WorksetBase<PhysicsT>::mNumNSPerCell;
+    using Plato::WorksetBase<PhysicsT>::mNumNodeStatePerNode;
+    using Plato::WorksetBase<PhysicsT>::mNumNodeStatePerCell;
 
     using Plato::WorksetBase<PhysicsT>::mStateEntryOrdinal;
     using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
@@ -175,7 +175,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
       // Workset node state
       //
-      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNSPerCell);
+      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
       Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
 
       // Workset control
@@ -226,7 +226,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
         // Workset state
         //
-        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNSPerCell);
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
         Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset node state
@@ -290,7 +290,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
       // Workset node state
       //
-      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNSPerCell);
+      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNodeStatePerCell);
       Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
 
       // Workset control
@@ -348,7 +348,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
       // Workset node state
       //
-      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNSPerCell);
+      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNodeStatePerCell);
       Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
 
       // Workset control
@@ -406,7 +406,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
       // Workset node state
       //
-      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNSPerCell);
+      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
       Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
 
       // Workset control
@@ -435,7 +435,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
       //
       auto tMesh = mVectorFunctionVMSJacobianN->getMesh();
       Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumNSPerNode>( &tMesh );
+              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumNodeStatePerNode>( &tMesh );
 
       // create entry ordinal functor:
       // tJacobianMatEntryOrdinal(e, k, l) => G
@@ -447,11 +447,11 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
       // Template parameters:
       //   mNumSpatialDims: Nv-1
       //   mNumSpatialDims: Nd
-      //   mNumNSPerNode:   Nn
+      //   mNumNodeStatePerNode:   Nn
       //
       // Note that the second two template parameters must match the block shape of the destination matrix, tJacobianMat
       //
-      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumNSPerNode>
+      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumNodeStatePerNode>
           tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
       // Assemble from the AD-typed result, tJacobian, into the POD-typed global matrix, tJacobianMat.
@@ -462,7 +462,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
       auto tJacobianMatEntries = tJacobianMat->entries();
       Plato::WorksetBase<PhysicsT>::assembleJacobian(
         mNumDofsPerCell,          /* (Nv x Nd) */
-        mNumNSPerCell,            /* (Nv x Nn) */
+        mNumNodeStatePerCell,            /* (Nv x Nn) */
         tJacobianMatEntryOrdinal, /* entry ordinal functor */
         tJacobian,                /* source data */
         tJacobianMatEntries       /* destination */
@@ -497,7 +497,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
       // Workset node state
       //
-      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNSPerCell);
+      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
       Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
 
       // Workset control
@@ -526,7 +526,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
       //
       auto tMesh = mVectorFunctionVMSJacobianN->getMesh();
       Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumNSPerNode, mNumDofsPerNode>( &tMesh );
+              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumNodeStatePerNode, mNumDofsPerNode>( &tMesh );
 
       // create entry ordinal functor:
       // tJacobianMatEntryOrdinal(e, k, l) => G
@@ -537,12 +537,12 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
       // 
       // Template parameters:
       //   mNumSpatialDims: Nv-1
-      //   mNumNSPerNode:   Nn
+      //   mNumNodeStatePerNode:   Nn
       //   mNumDofsPerNode: Nd
       //
       // Note that the second two template parameters must match the block shape of the destination matrix, tJacobianMat
       //
-      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumNSPerNode, mNumDofsPerNode>
+      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumNodeStatePerNode, mNumDofsPerNode>
           tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
       // Assemble from the AD-typed result, tJacobian, into the POD-typed global matrix, tJacobianMat.
@@ -554,7 +554,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
       auto tJacobianMatEntries = tJacobianMat->entries();
       Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(
         mNumDofsPerCell,          /* (Nv x Nd) */
-        mNumNSPerCell,            /* (Nv x Nn) */
+        mNumNodeStatePerCell,            /* (Nv x Nn) */
         tJacobianMatEntryOrdinal, /* entry ordinal functor */
         tJacobian,                /* source data */
         tJacobianMatEntries       /* destination */
@@ -595,7 +595,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
       // Workset node state
       //
-      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNSPerCell);
+      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNodeStatePerCell);
       Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
 
       // create result 

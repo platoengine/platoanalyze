@@ -200,9 +200,8 @@ class StabilizedMechanics : public Plato::SimplexStabilizedMechanics<SpaceDimPar
 public:
     typedef Plato::StabilizedMechanicsFactory::FunctionFactory FunctionFactory;
 
-    using SimplexT        = SimplexStabilizedMechanics<SpaceDimParam>;
-    using LocalStateT   = typename Plato::Plasticity<SpaceDimParam>;
-    using ProjectorT = typename Plato::Projection<SpaceDimParam, SimplexT::mNumDofsPerNode, SimplexT::mPDofOffset, /* numProjectionDofs=*/ 1>;
+    using SimplexT    = SimplexStabilizedMechanics<SpaceDimParam>;
+    using ProjectorT  = typename Plato::Projection<SpaceDimParam, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset, /* numProjectionDofs=*/ 1>;
 
     static constexpr Plato::OrdinalType SpaceDim = SpaceDimParam;
 };

@@ -21,7 +21,7 @@ namespace Plato {
                                            SimplexPhysics::mNumSpatialDims*
                                            SimplexPhysics::mNumNodesPerCell>;
     using NodeStateFad = Sacado::Fad::SFad<Plato::Scalar,
-                                           SimplexPhysics::mNumNSPerNode*
+                                           SimplexPhysics::mNumNodeStatePerNode*
                                            SimplexPhysics::mNumNodesPerCell>;
   };
 
