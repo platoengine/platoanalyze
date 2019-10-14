@@ -31,6 +31,39 @@
 namespace Plato
 {
 
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
+class SimplexElastoPasticity: public Plato::Simplex<SpaceDim>
+{
+public:
+    using Plato::Simplex<SpaceDim>::mNumSpatialDims;  /*!< number of nodes per cell */
+    using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of spatial dimensions */
+
+    static constexpr Plato::OrdinalType mNumVoigtTerms = (SpaceDim == 3) ? 6 : ((SpaceDim == 2) ? 3 : (((SpaceDim == 1) ? 1 : 0))); /*!< number of Voigt terms */
+
+    // degree-of-freedom attributes
+    //
+    static constexpr auto mNumControl = NumControls;                            /*!< number of controls */
+    static constexpr auto mNumDofsPerNode = SpaceDim + 1;                       /*!< number of degrees of freedom per node { disp_x, disp_y, disp_z, pressure} */
+    static constexpr auto mPressureDofOffset = SpaceDim;                        /*!< number of pressure degrees of freedom offset */
+    static constexpr auto mNumDofsPerCell = mNumDofsPerNode * mNumNodesPerCell; /*!< number of degrees of freedom per cell */
+
+    // this physics can be used with VMS functionality in PA.  The
+    // following defines the nodal state attributes required by VMS
+    //
+    static constexpr auto mNumNodeStatePerNode = SpaceDim;                                /*!< number of node states per node */
+    static constexpr auto mNumNodeStatePerCell = mNumNodeStatePerNode * mNumNodesPerCell; /*!< number of node states per cell */
+
+    static constexpr Plato::OrdinalType mNumLocalDofsPerCell =
+            (SpaceDim == 3) ? 14 : ((SpaceDim == 2) ? 8 : (((SpaceDim == 1) ? 4 : 0))); /*!< number of local degrees of freedom per cell for J2-plasticity*/
+};
+// class SimplexElastoPasticity
+
+
+
+
+
+
+
 /******************************************************************************//**
  * \brief Abstract vector function interface for Variational Multi-Scale (VMS)
  *   Partial Differential Equations (PDEs) with history dependent states
@@ -38,7 +71,7 @@ namespace Plato
  *   type for the vector function (e.g. Residual, Jacobian, GradientZ, GradientU, etc.)
  **********************************************************************************/
 template<typename EvaluationType>
-class AbstractVectorFunctionImplicitVMS
+class AbstractVectorFunctionVMSInc
 {
 // Protected member data
 protected:
@@ -55,7 +88,7 @@ public:
      * \param [in]  aMeshSets mesh side-sets metadata
      * \param [in]  aDataMap output data map
      ******************************************************************************/
-    explicit AbstractVectorFunctionImplicitVMS(Omega_h::Mesh &aMesh,
+    explicit AbstractVectorFunctionVMSInc(Omega_h::Mesh &aMesh,
                                                Omega_h::MeshSets &aMeshSets,
                                                Plato::DataMap &aDataMap) :
         mMesh(aMesh),
@@ -67,7 +100,7 @@ public:
     /**************************************************************************//**
      * \brief Destructor
      ******************************************************************************/
-    virtual ~AbstractVectorFunctionImplicitVMS()
+    virtual ~AbstractVectorFunctionVMSInc()
     {
     }
 
@@ -298,31 +331,7 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
 
 
 
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
-class SimplexStabilizedElastoPasticity: public Plato::Simplex<SpaceDim>
-{
-public:
-    using Plato::Simplex<SpaceDim>::mNumSpatialDims;  /*!< number of nodes per cell */
-    using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of spatial dimensions */
 
-    static constexpr Plato::OrdinalType mNumVoigtTerms = (SpaceDim == 3) ? 6 : ((SpaceDim == 2) ? 3 : (((SpaceDim == 1) ? 1 : 0))); /*!< number of Voigt terms */
-
-    // degree-of-freedom attributes
-    //
-    static constexpr Plato::OrdinalType mNumControl = NumControls;                            /*!< number of controls */
-    static constexpr Plato::OrdinalType mNumDofsPerNode = SpaceDim + 1;                       /*!< number of degrees of freedom per node { disp_x, disp_y, disp_z, pressure} */
-    static constexpr Plato::OrdinalType mPressureDofOffset = SpaceDim;                        /*!< number of pressure degrees of freedom offset */
-    static constexpr Plato::OrdinalType mNumDofsPerCell = mNumDofsPerNode * mNumNodesPerCell; /*!< number of degrees of freedom per cell */
-
-    // this physics can be used with VMS functionality in PA.  The
-    // following defines the nodal state attributes required by VMS
-    //
-    static constexpr Plato::OrdinalType mNumNodeStatePerNode = SpaceDim;                                /*!< number of node states per node */
-    static constexpr Plato::OrdinalType mNumNodeStatePerCell = mNumNodeStatePerNode * mNumNodesPerCell; /*!< number of node states per cell */
-
-    static constexpr Plato::OrdinalType mNumLocalDofsPerCell = (SpaceDim == 3) ? 14 : ((SpaceDim == 2) ? 8 : (((SpaceDim == 1) ? 4 : 0))); /*!< number of local degrees of freedom per cell for J2-plasticity*/
-};
-// class SimplexStabilizedElastoPasticity
 
 /**************************************************************************//**
  * \brief Evaluate stabilized elasto-plastic residual, defined as
@@ -340,7 +349,7 @@ public:
  *
  ******************************************************************************/
 template<typename EvaluationType, typename PhysicsType>
-class StabilizedElastoPlasticResidual: public Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>
+class ElastoPlasticityResidual: public Plato::AbstractVectorFunctionVMSInc<EvaluationType>
 {
 // Private member data
 private:
@@ -354,9 +363,9 @@ private:
     static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
     static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
 
-    using Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>::mMesh;     /*!< mesh database */
-    using Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
-    using Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>::mMeshSets; /*!< side-sets metadata */
+    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mMesh;     /*!< mesh database */
+    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
+    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mMeshSets; /*!< side-sets metadata */
 
     using GlobalStateT = typename EvaluationType::StateScalarType;             /*!< global state variables automatic differentiation type */
     using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
@@ -430,8 +439,8 @@ private:
             auto tElasticSubList = aMaterialParamList.sublist("Isotropic Linear Elastic");
             mPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
             mElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
-            mElasticBulkModulus = Plato::compute_bulk_modulus<Plato::Scalar>(mElasticModulus, tPoissonsRatio);
-            mElasticShearModulus = Plato::compute_shear_modulus<Plato::Scalar>(mElasticModulus, tPoissonsRatio);
+            mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, tPoissonsRatio);
+            mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, tPoissonsRatio);
             this->parsePressureTermScaling(aMaterialParamList)
         }
         else
@@ -481,11 +490,15 @@ public:
      * \param [in] aProblemParams input XML data
      * \param [in] aPenaltyParams penalty function input XML data
      **********************************************************************************/
-    StabilizedElastoPlasticResidual(Omega_h::Mesh &aMesh,
-                                    Omega_h::MeshSets &aMeshSets,
-                                    Plato::DataMap &aDataMap,
-                                    Teuchos::ParameterList &aProblemParams) :
-        Plato::AbstractVectorFunctionImplicitVMS<EvaluationType>(aMesh, aMeshSets, aDataMap),
+    ElastoPlasticityResidual(Omega_h::Mesh &aMesh,
+                             Omega_h::MeshSets &aMeshSets,
+                             Plato::DataMap &aDataMap,
+                             Teuchos::ParameterList &aProblemParams) :
+        Plato::AbstractVectorFunctionVMSInc<EvaluationType>(aMesh, aMeshSets, aDataMap),
+        mPoissonsRatio(-1.0),
+        mElasticModulus(-1.0),
+        mElasticBulkModulus(-1.0),
+        mElasticShearModulus(-1.0),
         mElasticPropertiesPenaltySIMP(3),
         mElasticPropertiesMinErsatzSIMP(1e-9),
         mBodyLoads(nullptr),
@@ -498,8 +511,16 @@ public:
     /******************************************************************************//**
      * \brief Destructor
      **********************************************************************************/
-    virtual ~StabilizedElastoPlasticResidual()
+    virtual ~ElastoPlasticityResidual()
     {
+    }
+
+    void setIsotropicLinearElasticProperties(const Plato::Scalar & aElasticModulus, const Plato::Scalar & aPoissonsRatio)
+    {
+        mPoissonsRatio = aPoissonsRatio;
+        mElasticModulus = aElasticModulus;
+        mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
+        mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
     }
 
     /****************************************************************************//**
@@ -634,44 +655,237 @@ public:
 };
 // class StabilizedElastoPlasticResidual
 
-template<typename PhysicsT>
-class ElastoPlasticityVectorFunction
+
+
+
+
+
+
+namespace ElastoPlasticityFactory
 {
-private:
-    using Residual          = typename Plato::Evaluation<PhysicsT>::Residual;
-    using GradientX         = typename Plato::Evaluation<PhysicsT>::GradientX;
-    using GradientZ         = typename Plato::Evaluation<PhysicsT>::GradientZ;
-    using LocalJacobian     = typename Plato::Evaluation<PhysicsT>::LocalJacobian;
-    using LocalJacobianP    = typename Plato::Evaluation<PhysicsT>::LocalJacobianP;
-    using GlobalJacobian    = typename Plato::Evaluation<PhysicsT>::Jacobian;
-    using GlobalJacobianP   = typename Plato::Evaluation<PhysicsT>::JacobianP;
-    using ProjPressJacobian = typename Plato::Evaluation<PhysicsT>::JacobianN;
 
-    static constexpr auto mNumControl = PhysicsT::mNumControl;
-    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;
-    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell;
-    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
-    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
-    static constexpr auto mNumNodeStatePerNode = PhysicsT::mNumNodeStatePerNode;
-    static constexpr auto mNumNodeStatePerCell = PhysicsT::mNumNodeStatePerCell;
-    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;
-
-    const Plato::OrdinalType mNumNodes;
-    const Plato::OrdinalType mNumCells;
-
-    Plato::DataMap& mDataMap;
-    Plato::WorksetBase<PhysicsT> mWorksetBase;
-
-    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<Residual>>        mGlobalVecFuncResidual;
-    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<GradientX>>       mGlobalVecFuncJacobianX;
-    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<GradientZ>>       mGlobalVecFuncJacobianZ;
-    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<LocalJacobian>>   mGlobalVecFuncJacobianC;
-    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<LocalJacobianP>>  mGlobalVecFuncJacobianCP;
-    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<GlobalJacobian>>  mGlobalVecFuncJacobianU;
-    std::shared_ptr<Plato::AbstractVectorFunctionImplicitVMS<GlobalJacobianP>> mGlobalVecFuncJacobianUP;
+/******************************************************************************/
+struct FunctionFactory
+{
+    /******************************************************************************//**
+     * \brief Create a PLATO local vector function  inc (i.e. local residual equations)
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap output data database
+     * \param [in] aInputParams input parameters
+     * \param [in] aFunctionName vector function name
+     * \return shared pointer to a stabilized vector function integrated in time
+    **********************************************************************************/
+    template<typename EvaluationType>
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<EvaluationType>>
+    createVectorFunctionVMSInc(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap, Teuchos::ParameterList& aInputParams, std::string aFunctionName)
+    {
+        if(aFunctionName == "ElastoPlasticity")
+        {
+            constexpr auto tSpaceDim = EvaluationType::SpatialDim;
+            return std::make_shared<Plato::ElastoPlasticityResidual<EvaluationType, Plato::SimplexElastoPasticity<tSpaceDim>> > (aMesh, aMeshSets, aDataMap, aInputParams);
+        }
+        else
+        {
+            const std::string tError = std::string("Unknown createVectorFunctionVMSInc '") + aFunctionName + "' specified.";
+            THROWERR(tError)
+        }
+    }
 };
-// class ElastoPlasticityVectorFunction
+// struct FunctionFactory
+
+}
+// namespace ElastoPlasticityFactory
+
+/****************************************************************************//**
+ * \brief Concrete class defining the Physics Type template argument for a
+ * VectorFunctionVMSInc.  A VectorFunctionVMSInc is defined by a stabilized
+ * Partial Differential Equation (PDE) integrated implicitly in time.  The
+ * stabilization technique is based on the Variational Multiscale (VMS) method.
+ * Here, the (Inc) in VectorFunctionVMSInc denotes increment.
+ *******************************************************************************/
+template<Plato::OrdinalType NumSpaceDim>
+class ElastoPlasticity: public Plato::SimplexElastoPasticity<NumSpaceDim>
+{
+public:
+    static constexpr auto SpaceDim = NumSpaceDim;
+    using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>;
+    typedef Plato::ElastoPlasticityFactory::FunctionFactory FunctionFactory;
+};
+// class ElastoPlasticity
+
+
+
+
+
+
+template<typename PhysicsT>
+class VectorFunctionVMSInc
+{
+// Private access member data
+private:
+    using Residual        = typename Plato::Evaluation<PhysicsT>::Residual;       /*!< automatic differentiation (AD) type for the residual */
+    using GradientX       = typename Plato::Evaluation<PhysicsT>::GradientX;      /*!< AD type for the configuration */
+    using GradientZ       = typename Plato::Evaluation<PhysicsT>::GradientZ;      /*!< AD type for the controls */
+    using JacobianPgrad   = typename Plato::Evaluation<PhysicsT>::JacobianN;      /*!< AD type for the nodal pressure gradient */
+    using LocalJacobian   = typename Plato::Evaluation<PhysicsT>::LocalJacobian;  /*!< AD type for the current local states */
+    using LocalJacobianP  = typename Plato::Evaluation<PhysicsT>::LocalJacobianP; /*!< AD type for the previous local states */
+    using GlobalJacobian  = typename Plato::Evaluation<PhysicsT>::Jacobian;       /*!< AD type for the current global states */
+    using GlobalJacobianP = typename Plato::Evaluation<PhysicsT>::JacobianP;      /*!< AD type for the previous global states */
+
+    static constexpr auto mNumControl = PhysicsT::mNumControl;                        /*!< number of control fields, i.e. vectors, number of materials */
+    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;                /*!< number of spatial dimensions */
+    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode;                /*!< number of global degrees of freedom per node */
+    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell;                /*!< number of global degrees of freedom per cell (i.e. element) */
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;              /*!< number of nodes per cell (i.e. element) */
+    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;      /*!< number of local degrees of freedom per cell (i.e. element) */
+    static constexpr auto mNumNodeStatePerNode = PhysicsT::mNumNodeStatePerNode;      /*!< number of pressure gradient degrees of freedom per node */
+    static constexpr auto mNumNodeStatePerCell = PhysicsT::mNumNodeStatePerCell;      /*!< number of pressure gradient degrees of freedom per cell (i.e. element) */
+    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell; /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
+
+    const Plato::OrdinalType mNumNodes; /*!< total number of nodes */
+    const Plato::OrdinalType mNumCells; /*!< total number of cells (i.e. elements) */
+
+    Plato::DataMap& mDataMap;  /*!< output data map */
+    Plato::WorksetBase<PhysicsT> mWorksetBase; /*!< assembly routine interface */
+
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<Residual>>        mGlobalVecFuncResidual;   /*!< global vector function residual */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientX>>       mGlobalVecFuncJacobianX;  /*!< global vector function Jacobian wrt configuration */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientZ>>       mGlobalVecFuncJacobianZ;  /*!< global vector function Jacobian wrt controls */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<JacobianPgrad>>   mGlobalVecFuncJacPgrad;   /*!< global vector function Jacobian wrt projected pressure gradient */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobian>>   mGlobalVecFuncJacobianC;  /*!< global vector function Jacobian wrt current local states */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobianP>>  mGlobalVecFuncJacobianCP; /*!< global vector function Jacobian wrt previous local states */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobian>>  mGlobalVecFuncJacobianU;  /*!< global vector function Jacobian wrt current global states */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobianP>> mGlobalVecFuncJacobianUP; /*!< global vector function Jacobian wrt previous global states */
+
+// Public access functions
+public:
+    /**************************************************************************//**
+     * \brief Constructor
+     * \param [in] aMesh mesh data base
+     * \param [in] aMeshSets mesh sets data base
+     * \param [in] aDataMap problem-specific data map
+     * \param [in] aParamList Teuchos parameter list with input data
+     * \param [in] aVectorFuncType vector function type string
+     ******************************************************************************/
+    VectorFunctionVMSInc(Omega_h::Mesh& aMesh,
+                         Omega_h::MeshSets& aMeshSets,
+                         Plato::DataMap& aDataMap,
+                         Teuchos::ParameterList& aParamList,
+                         std::string& aVectorFuncType) :
+            mWorksetBase(aMesh),
+            mNumCells(aMesh.nelems()),
+            mNumNodes(aMesh.nverts()),
+            mDataMap(aDataMap)
+    {
+        typename PhysicsT::FunctionFactory tFunctionFactory;
+
+        mGlobalVecFuncResidual = tFunctionFactory.template createVectorFunctionVMSInc<Residual>
+                                                           (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+
+        mGlobalVecFuncJacobianU = tFunctionFactory.template createVectorFunctionVMSInc<GlobalJacobian>
+                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+
+        mGlobalVecFuncJacobianUP = tFunctionFactory.template createVectorFunctionVMSInc<GlobalJacobianP>
+                                                             (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+
+        mGlobalVecFuncJacobianC = tFunctionFactory.template createVectorFunctionVMSInc<LocalJacobian>
+                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+
+        mGlobalVecFuncJacobianCP = tFunctionFactory.template createVectorFunctionVMSInc<LocalJacobianP>
+                                                             (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+
+        mGlobalVecFuncJacobianZ = tFunctionFactory.template createVectorFunctionVMSInc<GradientZ>
+                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+
+        mGlobalVecFuncJacobianX = tFunctionFactory.template createVectorFunctionVMSInc<GradientX>
+                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+
+        mGlobalVecFuncJacPgrad = tFunctionFactory.template createVectorFunctionVMSInc<JacobianPgrad>
+                                                           (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+    }
+
+    /**************************************************************************//**
+     * \brief Destructor
+    ******************************************************************************/
+    ~VectorFunctionVMSInc(){}
+
+    /**************************************************************************//**
+    * \brief Compute the global residual vector
+    * \param [in] aGlobalState global state at current time step
+    * \param [in] aPrevGlobalState global state at previous time step
+    * \param [in] aLocalState local state at current time step
+    * \param [in] aPrevLocalState local state at previous time step
+    * \param [in] aControl control parameters
+    * \param [in] aTimeStep time step
+    * \return global residual vector
+    ******************************************************************************/
+    Plato::ScalarVectorT<typename Residual::ResultScalarType>
+    value(const Plato::ScalarVector & aGlobalState,
+          const Plato::ScalarVector & aPrevGlobalState,
+          const Plato::ScalarVector & aLocalState,
+          const Plato::ScalarVector & aPrevLocalState,
+          const Plato::ScalarVector & aNodeState,
+          const Plato::ScalarVector & aControl,
+          Plato::Scalar aTimeStep = 0.0) const
+    {
+        // Workset config
+        using ConfigScalar = typename Residual::ConfigScalarType;
+        Plato::ScalarArray3DT<ConfigScalar>
+            tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
+        mWorksetBase.worksetConfig(tConfigWS);
+
+        // Workset current global state
+        using GlobalStateScalar = typename Residual::StateScalarType;
+        Plato::ScalarMultiVectorT<GlobalStateScalar>
+            tGlobalStateWS("Current Global State Workset", mNumCells, mNumDofsPerCell);
+        mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
+
+        // Workset previous global state
+        using PrevGlobalStateScalar = typename Residual::PrevStateScalarType;
+        Plato::ScalarMultiVectorT<PrevGlobalStateScalar>
+            tPrevGlobalStateWS("Previous Global State Workset", mNumCells, mNumDofsPerCell);
+        mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
+
+        // Workset local state
+        using LocalStateScalar = typename Residual::LocalStateScalarType;
+        Plato::ScalarMultiVectorT<LocalStateScalar>
+            tLocalStateWS("Local Current State Workset", mNumCells, mNumLocalDofsPerCell);
+        mWorksetBase.worksetLocalState(aLocalState, tLocalStateWS);
+
+        // Workset previous local state
+        using PrevLocalStateScalar = typename Residual::PrevLocalStateScalarType;
+        Plato::ScalarMultiVectorT<PrevLocalStateScalar>
+            tPrevLocalStateWS("Previous Local State Workset", mNumCells, mNumLocalDofsPerCell);
+        mWorksetBase.worksetLocalState(aPrevLocalState, tPrevLocalStateWS);
+
+        // Workset node state, i.e. projected pressure gradient
+        using NodeStateScalar = typename Residual::NodeStateScalarType;
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
+        Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
+
+        // Workset control
+        using ControlScalar = typename Residual::ControlScalarType;
+        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
+        mWorksetBase.worksetControl(aControl, tControlWS);
+
+        // Workset residual
+        using ResultScalar = typename Residual::ResultScalarType;
+        Plato::ScalarMultiVectorT<ResultScalar> tResidualWS("Residual Workset", mNumCells, mNumDofsPerCell);
+
+        // evaluate global residual
+        mGlobalVecFuncResidual->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
+                                         tNodeStateWS, tControlWS, tConfigWS, tResidualWS, aTimeStep);
+
+        // create and assemble to return view
+        const auto tTotalNumDofs = mNumDofsPerNode * mNumNodes;
+        Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace>  tAssembledResidual("Assembled Residual", tTotalNumDofs);
+        Plato::WorksetBase<PhysicsT>::assembleResidual( tResidualWS, tAssembledResidual );
+
+        return tAssembledResidual;
+    }
+};
+// class StabilizedVectorFunctionInc
 
 }
 // namespace Plato
