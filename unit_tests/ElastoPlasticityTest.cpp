@@ -555,12 +555,6 @@ public:
             Plato::Scalar tScale = -1.0;
             mBodyLoads->get(mMesh, aGlobalState, aControl, aResult, tScale);
         }
-
-        if (mBoundaryLoads != nullptr)
-        {
-            Plato::Scalar tScale = -1.0;
-            mBoundaryLoads->get(&mMesh, mMeshSets, aGlobalState, aControl, aResult, tScale);
-        }
     }
 
     /****************************************************************************//**
@@ -1382,15 +1376,19 @@ private:
     std::shared_ptr<const Plato::ScalarFunctionBase> mConstraint;   /*!< constraint constraint interface */
     std::shared_ptr<const Plato::ScalarFunctionIncBase> mObjective; /*!< objective constraint interface */
 
-    Plato::Scalar mTimeStep;
-    Plato::OrdinalType mNumTimeSteps;
-    Plato::OrdinalType mNumNewtonIter;
+    Plato::Scalar mPseudoTimeStep;
+    Plato::Scalar mInitialNormResidual;
+    Plato::Scalar mCurrentPseudoTimeStep;
+    Plato::Scalar mNewtonRaphsonTolerance;
+
+    Plato::OrdinalType mNumPseudoTimeSteps;
+    Plato::OrdinalType mMaxNumNewtonIter;
 
     Plato::ScalarVector mLocalResidual;
-    Plato::ScalarVector mGlobalResidual;
+    Plato::ScalarVector mGlobalResidualVec;
     Plato::ScalarVector mProjResidual;
     Plato::ScalarVector mProjPressGrad;
-    Plato::ScalarVector mProjectPressure;
+    Plato::ScalarVector mProjPressure;
     Plato::ScalarVector mProjResidualAdjoint;
 
     Plato::ScalarMultiVector mLocalStates;   /*!< local state variables */
@@ -1402,6 +1400,7 @@ private:
     Teuchos::RCP<Plato::CrsMatrixType> mGlobalJacobian; /*!< global residual Jacobian matrix */
 
     Plato::ScalarVector mDirichletValues; /*!< values associated with the Dirichlet boundary conditions */
+    Plato::ScalarVector mDispControlDirichletValues; /*!< values associated with the Dirichlet boundary conditions at the current pseudo time step */
     Plato::LocalOrdinalVector mDirichletDofs; /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
 
 // public functions
@@ -1418,16 +1417,19 @@ public:
             mProjectionEq(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
             mConstraint(nullptr),
             mObjective(nullptr),
-            mTimeStep(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Time Step", 1.0)),
-            mNumTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 1)),
-            mNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton Iteration", "Number Iterations", 2)),
+            mPseudoTimeStep(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Time Step", 1.0)),
+            mCurrentPseudoTimeStep(0.0),
+            mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
+            mNewtonRaphsonTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
+            mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 2)),
+            mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Number Iterations", 10)),
             mLocalResidual("Local Residual", mLocalResidualEq.size()),
-            mGlobalResidual("Global Residual", mGlobalResidualEq.size()),
+            mGlobalResidualVec("Global Residual", mGlobalResidualEq.size()),
             mProjResidual("Projected Residual", mProjectionEq.size()),
             mProjPressGrad("Projected Pressure Gradient", mProjectionEq.size()),
-            mProjectPressure("Project Pressure", aMesh.nverts()),
-            mLocalStates("Local States", mNumTimeSteps, mLocalResidualEq.size()),
-            mGlobalStates("Global States", mNumTimeSteps, mGlobalResidualEq.size())
+            mProjPressure("Project Pressure", aMesh.nverts()),
+            mLocalStates("Local States", mNumPseudoTimeSteps, mLocalResidualEq.size()),
+            mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalResidualEq.size())
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
     }
@@ -1482,13 +1484,16 @@ public:
     **********************************************************************************/
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
+        // apply displacement control, i.e. continuation
+        Plato::update(mCurrentPseudoTimeStep, mDirichletValues, static_cast<Plato::Scalar>(0), mDispControlDirichletValues);
+
         if(mGlobalJacobian->isBlockMatrix())
         {
-            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDirichletValues);
+            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDispControlDirichletValues);
         }
         else
         {
-            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDirichletValues);
+            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDispControlDirichletValues);
         }
     }
 
@@ -1502,7 +1507,12 @@ public:
      * \param [in] aControl 1D container of control variables
      * \param [in] aState 2D container of state variables
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState) { return; }
+    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+    {
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        auto tStatesSubView = Kokkos::subview(aState, tTIME_STEP_INDEX, Kokkos::ALL());
+        mObjective->updateProblem(tStatesSubView, aControl);
+    }
 
     /******************************************************************************//**
      * \brief Solve system of equations
@@ -1511,47 +1521,89 @@ public:
     **********************************************************************************/
     Plato::ScalarMultiVector solution(const Plato::ScalarVector & aControl)
     {
-        // TODO: FINISH IMPLEMENTATION
         Plato::ScalarVector tGlobalStateIncrement("Global State increment", mGlobalResidualEq.size());
 
         // outer loop for load/time steps
-        for(Plato::OrdinalType tStepIndex = 1; tStepIndex < mNumTimeSteps; tStepIndex++)
+        for(Plato::OrdinalType tTimeStepIndex = 1; tTimeStepIndex < mNumPseudoTimeSteps; tTimeStepIndex++)
         {
-            // compute the projected pressure gradient
-            Plato::ScalarVector tCurrentState = Kokkos::subview(mGlobalStates, tStepIndex, Kokkos::ALL());
-            Plato::fill(static_cast<Plato::Scalar>(0.0), tCurrentState);
+            auto tPreviousTimeStep = tTimeStepIndex - static_cast<Plato::OrdinalType>(1);
+            Plato::ScalarVector tCurrentLocalState = Kokkos::subview(mLocalStates, tTimeStepIndex, Kokkos::ALL());
+            Plato::ScalarVector tCurrentGlobalState = Kokkos::subview(mGlobalStates, tTimeStepIndex, Kokkos::ALL());
+            Plato::ScalarVector tPreviousLocalState = Kokkos::subview(mLocalStates, tPreviousTimeStep, Kokkos::ALL());
+            Plato::ScalarVector tPreviousGlobalState = Kokkos::subview(mGlobalStates, tPreviousTimeStep, Kokkos::ALL());
+            Plato::fill(static_cast<Plato::Scalar>(0.0), tCurrentGlobalState);
             Plato::fill(static_cast<Plato::Scalar>(0.0), mProjPressGrad);
-            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjectPressure);
+            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjPressure);
 
             // inner loop for load/time steps
-            for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonIter; tNewtonIndex++)
+            mCurrentPseudoTimeStep = static_cast<Plato::Scalar>(tTimeStepIndex) * mPseudoTimeStep;
+            for(Plato::OrdinalType tNewtonIteration = 0; tNewtonIteration < mMaxNumNewtonIter; tNewtonIteration++)
             {
-                mProjResidual = mProjectionEq.value      (mProjPressGrad, mProjectPressure, aControl);
-                mProjJacobian = mProjectionEq.gradient_u (mProjPressGrad, mProjectPressure, aControl);
-
+                // compute projected pressure gradient
+                mProjResidual = mProjectionEq.value(mProjPressGrad, mProjPressure, aControl);
+                mProjJacobian = mProjectionEq.gradient_u(mProjPressGrad, mProjPressure, aControl);
                 Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPressGrad, mProjResidual);
 
-                // compute the state solution
-                mGlobalResidual = mGlobalResidualEq.value(tCurrentState, mProjectPressure, aControl);
-                auto tGlobalJacobianWS = mGlobalResidualEq.gradient_u(tCurrentState, mProjectPressure, aControl);
+                // compute the global state residual
+                mGlobalResidualVec = mGlobalResidualEq.value(tCurrentGlobalState, tPreviousGlobalState,
+                                                          tCurrentLocalState, tPreviousLocalState,
+                                                          mProjPressure, aControl);
 
-                this->applyConstraints(mGlobalJacobian, mGlobalResidual);
+                if(this->checkNewtonRaphsonStoppingCriteria(tNewtonIteration) == true)
+                {
+                    break;
+                }
 
-                Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mGlobalJacobian, tGlobalStateIncrement, mGlobalResidual);
-
-                // update the state with the new increment
-                Plato::update(-1.0, tGlobalStateIncrement, 1.0, tCurrentState);
-
-                // copy projection state
+                // compute global state Jacobian
+                auto tGlobalJacobianWS = mGlobalResidualEq.gradient_u(tCurrentGlobalState, tPreviousGlobalState,
+                                                                      tCurrentLocalState, tPreviousLocalState,
+                                                                      mProjPressure, aControl);
+                // apply dirichlet conditions
+                this->applyConstraints(mGlobalJacobian, mGlobalResidualVec);
+                // solve global system of equations
+                Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mGlobalJacobian, tGlobalStateIncrement, mGlobalResidualVec);
+                // update global state
+                this->zeroDirichletDofs(tGlobalStateIncrement);
+                Plato::update(static_cast<Plato::Scalar>(-1.0), tGlobalStateIncrement, static_cast<Plato::Scalar>(1.0), tCurrentGlobalState);
+                // update local state
+                mLocalResidualEq.updateLocalState(tCurrentGlobalState, tPreviousGlobalState, tCurrentLocalState, tPreviousLocalState, aControl);
+                // copy projection state, i.e. pressure
                 Plato::extract<SimplexPhysics::mNumDofsPerNode,
-                               SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tCurrentState, mProjectPressure);
+                               SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tCurrentGlobalState, mProjPressure);
             }
-
-            mGlobalResidual = mGlobalResidualEq.value(tCurrentState, mProjPressGrad, aControl);
-
         }
 
         return mGlobalStates;
+    }
+
+    void zeroDirichletDofs(Plato::ScalarVector & aGlobalStateIncrement)
+    {
+        auto tDirichletDofs = mDirichletDofs;
+        auto tNumDirichletDofs = mDirichletDofs.size();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
+        {
+            Plato::OrdinalType tLocalDofIndex = tDirichletDofs[aDofOrdinal];
+            aGlobalStateIncrement(tLocalDofIndex) = 0.0;
+        },"zero global state increment dirichlet dofs");
+    }
+
+    bool checkNewtonRaphsonStoppingCriteria(const Plato::OrdinalType & aNewtonIteration)
+    {
+        bool tStop = false;
+        auto tNormResidual = Plato::norm(mGlobalResidualVec);
+        if(aNewtonIteration == static_cast<Plato::OrdinalType>(0))
+        {
+            mInitialNormResidual = tNormResidual;
+        }
+        else
+        {
+            auto tStoppingMeasure = tNormResidual / mInitialNormResidual; // compute relative stopping criterion
+            if(tStoppingMeasure < mNewtonRaphsonTolerance)
+            {
+                tStop = true;
+            }
+        }
+        return (tStop);
     }
 
 // private functions
@@ -1564,9 +1616,9 @@ private:
      **********************************************************************************/
     void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
-        mTimeStep = Plato::parse_time_step(aInputParams);
-        mNumTimeSteps = Plato::parse_num_time_steps(aInputParams);
-        mNumNewtonIter = Plato::parse_num_newton_iterations(aInputParams);
+        mPseudoTimeStep = Plato::parse_time_step(aInputParams);
+        mNumPseudoTimeSteps = Plato::parse_num_time_steps(aInputParams);
+        mMaxNumNewtonIter = Plato::parse_num_newton_iterations(aInputParams);
 
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
         this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
