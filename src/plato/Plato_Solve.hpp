@@ -46,21 +46,21 @@ namespace Solve {
         Plato::ScalarVector a_b)
         {
 
-            Plato::RowSum rowSum(a_A);
+            Plato::RowSum tRowSum(a_A);
 
-            Plato::InverseWeight<NumDofsPerNode> inverseWeight;
+            Plato::InverseWeight<NumDofsPerNode> tInverseWeight;
 
             Plato::ScalarVector tRowSum("row sum", a_x.extent(0));
 
             // a_x[i] 1.0/sum_j(a_A[i,j]) * a_b[i]
             auto tNumBlockRows = a_A->rowMap().size() - 1;
-            Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumBlockRows), LAMBDA_EXPRESSION(int blockRowOrdinal)
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumBlockRows), LAMBDA_EXPRESSION(Plato::OrdinalType& aBlockRowOrdinal)
             {
                 // compute row sum
-                rowSum(blockRowOrdinal, tRowSum);
+                tRowSum(aBlockRowOrdinal, tRowSum);
 
                 // apply inverse weight
-                inverseWeight(blockRowOrdinal, tRowSum, a_b, a_x, /*scale=*/-1.0);
+                tInverseWeight(aBlockRowOrdinal, tRowSum, a_b, a_x, /*scale=*/-1.0);
                 
             }, "row sum inverse");
         }

@@ -1549,6 +1549,7 @@ public:
                                                           tCurrentLocalState, tPreviousLocalState,
                                                           mProjPressure, aControl);
 
+                // check convergence
                 if(this->checkNewtonRaphsonStoppingCriteria(tNewtonIteration) == true)
                 {
                     break;
