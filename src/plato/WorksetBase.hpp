@@ -25,16 +25,16 @@ inline Scalar local_result_sum(const Plato::OrdinalType& aNumCells, const Result
 
 /*************************************************************************//**
 *
-* @brief Assemble scalar function global value
+* \brief Assemble scalar function global value
 *
 * Assemble scalar function global value from local values.
 *
-* @fn Scalar assemble_scalar_func_value(const Plato::OrdinalType& aNumCells, const Result& aResult)
-* @tparam Scalar typename of return value
-* @tparam Result result vector view typename
-* @param aNumCells number of cells (i.e. elements)
-* @param aResult scalar vector
-* @return global function value
+* \fn Scalar assemble_scalar_func_value(const Plato::OrdinalType& aNumCells, const Result& aResult)
+* \tparam Scalar typename of return value
+* \tparam Result result vector view typename
+* \param aNumCells number of cells (i.e. elements)
+* \param aResult scalar vector
+* \return global function value
 *
 *****************************************************************************/
 template <class Scalar, class Result>
@@ -51,18 +51,18 @@ inline Scalar assemble_scalar_func_value(const Plato::OrdinalType& aNumCells, co
 
 /*************************************************************************//**
 *
-* @brief Assemble vector gradient of a scalar function
+* \brief Assemble vector gradient of a scalar function
 *
-* @fn void assemble_vector_gradient(const Plato::OrdinalType& aNumCells,const EntryOrdinal& aEntryOrdinal,const Gradient& aGradient,ReturnVal& aOutput)
-* @tparam NumNodesPerCell number of nodes per cells (i.e. elements)
-* @tparam NumDofsPerNode number of degrees of freedom per node
-* @tparam EntryOrdinal entry ordinal view type
-* @tparam Gradient gradient workset view type
-* @tparam ReturnVal output (i.e. assembled gradient) view type
-* @param aNumCells number of cells
-* @param aEntryOrdinal global indices to output vector
-* @param aGradien gradient workset - gradient values for each cell
-* @param aOutput assembled global gradient
+* \fn void assemble_vector_gradient(const Plato::OrdinalType& aNumCells,const EntryOrdinal& aEntryOrdinal,const Gradient& aGradient,ReturnVal& aOutput)
+* \tparam NumNodesPerCell number of nodes per cells (i.e. elements)
+* \tparam NumDofsPerNode number of degrees of freedom per node
+* \tparam EntryOrdinal entry ordinal view type
+* \tparam Gradient gradient workset view type
+* \tparam ReturnVal output (i.e. assembled gradient) view type
+* \param aNumCells number of cells
+* \param aEntryOrdinal global indices to output vector
+* \param aGradien gradient workset - gradient values for each cell
+* \param aOutput assembled global gradient
 *
 * *****************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell, Plato::OrdinalType NumDofsPerNode, class EntryOrdinal, class Gradient, class ReturnVal>
@@ -87,17 +87,17 @@ inline void assemble_vector_gradient(const Plato::OrdinalType& aNumCells,
 
 /*************************************************************************//**
 *
-* @brief Assemble scalar gradient of a scalar function
+* \brief Assemble scalar gradient of a scalar function
 *
-* @fn void assemble_scalar_gradient(const Plato::OrdinalType& aNumCells,const EntryOrdinal& aEntryOrdinal,const Gradient& aGradient,ReturnVal& aOutput)
-* @tparam NumNodesPerCell number of nodes per cell
-* @tparam EntryOrdinal entry ordinal view type
-* @tparam Gradient gradient workset view type
-* @tparam ReturnVal output (i.e. assembled gradient) view type
-* @param aNumCells number of cells (i.e. elements)
-* @param aEntryOrdinal global indices to output vector
-* @param aGradien gradient workset - gradient values for each cell
-* @param aOutput assembled global gradient
+* \fn void assemble_scalar_gradient(const Plato::OrdinalType& aNumCells,const EntryOrdinal& aEntryOrdinal,const Gradient& aGradient,ReturnVal& aOutput)
+* \tparam NumNodesPerCell number of nodes per cell
+* \tparam EntryOrdinal entry ordinal view type
+* \tparam Gradient gradient workset view type
+* \tparam ReturnVal output (i.e. assembled gradient) view type
+* \param aNumCells number of cells (i.e. elements)
+* \param aEntryOrdinal global indices to output vector
+* \param aGradien gradient workset - gradient values for each cell
+* \param aOutput assembled global gradient
 *
 *****************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell, class EntryOrdinal, class Gradient, class ReturnVal>
@@ -118,18 +118,18 @@ inline void assemble_scalar_gradient(const Plato::OrdinalType& aNumCells,
 // function assemble_scalar_gradient
 
 /******************************************************************************/
-template<int numNodesPerCell, class ControlEntryOrdinal, class Control, class ControlWS>
-inline void workset_control_scalar_scalar(int aNumCells,
+template<Plato::OrdinalType numNodesPerCell, class ControlEntryOrdinal, class Control, class ControlWS>
+inline void workset_control_scalar_scalar(Plato::OrdinalType aNumCells,
                                           ControlEntryOrdinal aControlEntryOrdinal,
                                           Control aControl,
                                           ControlWS aControlWS)
 /******************************************************************************/
 {
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(int tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
+        for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
         {
-            int tEntryOrdinal = aControlEntryOrdinal(aCellOrdinal, tNodeIndex);
+            Plato::OrdinalType tEntryOrdinal = aControlEntryOrdinal(aCellOrdinal, tNodeIndex);
             aControlWS(aCellOrdinal,tNodeIndex) = aControl(tEntryOrdinal);
         }
     }, "workset_control_scalar_scalar");
@@ -137,18 +137,18 @@ inline void workset_control_scalar_scalar(int aNumCells,
 // function workset_control_scalar_scalar
 
 /******************************************************************************/
-template<int numNodesPerCell, class ControlFad, class ControlEntryOrdinal, class Control, class FadControlWS>
-inline void workset_control_scalar_fad(int aNumCells,
+template<Plato::OrdinalType numNodesPerCell, class ControlFad, class ControlEntryOrdinal, class Control, class FadControlWS>
+inline void workset_control_scalar_fad(Plato::OrdinalType aNumCells,
                                        ControlEntryOrdinal aControlEntryOrdinal,
                                        Control aControl,
                                        FadControlWS aFadControlWS)
 /******************************************************************************/
 {
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(int tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
+        for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
         {
-            int tEntryOrdinal = aControlEntryOrdinal(aCellOrdinal, tNodeIndex);
+            Plato::OrdinalType tEntryOrdinal = aControlEntryOrdinal(aCellOrdinal, tNodeIndex);
             aFadControlWS(aCellOrdinal,tNodeIndex) = ControlFad( numNodesPerCell, tNodeIndex, aControl(tEntryOrdinal));
         }
     }, "workset_control_scalar_fad");
@@ -156,18 +156,18 @@ inline void workset_control_scalar_fad(int aNumCells,
 // function workset_control_scalar_fad
 
 /******************************************************************************/
-template<int numDofsPerNode, int numNodesPerCell, class StateEntryOrdinal, class State, class StateWS>
-inline void workset_state_scalar_scalar(int aNumCells, StateEntryOrdinal aStateEntryOrdinal, State aState, StateWS aStateWS)
+template<Plato::OrdinalType numDofsPerNode, Plato::OrdinalType numNodesPerCell, class StateEntryOrdinal, class State, class StateWS>
+inline void workset_state_scalar_scalar(Plato::OrdinalType aNumCells, StateEntryOrdinal aStateEntryOrdinal, State aState, StateWS aStateWS)
 /******************************************************************************/
 {
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(int tDofIndex = 0; tDofIndex < numDofsPerNode; tDofIndex++)
+        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < numDofsPerNode; tDofIndex++)
         {
-            for(int tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
+            for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
             {
-                int tEntryOrdinal = aStateEntryOrdinal(aCellOrdinal, tNodeIndex, tDofIndex);
-                int tLocalDof = (tNodeIndex * numDofsPerNode) + tDofIndex;
+                Plato::OrdinalType tEntryOrdinal = aStateEntryOrdinal(aCellOrdinal, tNodeIndex, tDofIndex);
+                Plato::OrdinalType tLocalDof = (tNodeIndex * numDofsPerNode) + tDofIndex;
                 aStateWS(aCellOrdinal, tLocalDof) = aState(tEntryOrdinal);
             }
         }
@@ -176,21 +176,21 @@ inline void workset_state_scalar_scalar(int aNumCells, StateEntryOrdinal aStateE
 // function workset_state_scalar_scalar
 
 /******************************************************************************/
-template<int numDofsPerNode, int numNodesPerCell, class StateFad, class StateEntryOrdinal, class State, class FadStateWS>
-inline void workset_state_scalar_fad(int aNumCells,
+template<Plato::OrdinalType numDofsPerNode, Plato::OrdinalType numNodesPerCell, class StateFad, class StateEntryOrdinal, class State, class FadStateWS>
+inline void workset_state_scalar_fad(Plato::OrdinalType aNumCells,
                                      StateEntryOrdinal aStateEntryOrdinal,
                                      State aState,
                                      FadStateWS aFadStateWS)
 /******************************************************************************/
 {
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(int tDofIndex = 0; tDofIndex < numDofsPerNode; tDofIndex++)
+        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < numDofsPerNode; tDofIndex++)
         {
-            for(int tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
+            for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
             {
-                int tEntryOrdinal = aStateEntryOrdinal(aCellOrdinal, tNodeIndex, tDofIndex);
-                int tLocalDof = tNodeIndex * numDofsPerNode + tDofIndex;
+                Plato::OrdinalType tEntryOrdinal = aStateEntryOrdinal(aCellOrdinal, tNodeIndex, tDofIndex);
+                Plato::OrdinalType tLocalDof = tNodeIndex * numDofsPerNode + tDofIndex;
                 aFadStateWS(aCellOrdinal,tLocalDof) = StateFad(numDofsPerNode*numNodesPerCell, tLocalDof, aState(tEntryOrdinal));
             }
         }
@@ -233,15 +233,15 @@ inline void workset_local_state_scalar_fad(Plato::OrdinalType aNumCells,
 // function workset_local_state_scalar_fad
 
 /******************************************************************************/
-template<int spaceDim, int numNodesPerCell, class ConfigWS, class NodeCoordinates>
-inline void workset_config_scalar(int aNumCells, NodeCoordinates aNodeCoordinate, ConfigWS aConfigWS)
+template<Plato::OrdinalType spaceDim, Plato::OrdinalType numNodesPerCell, class ConfigWS, class NodeCoordinates>
+inline void workset_config_scalar(Plato::OrdinalType aNumCells, NodeCoordinates aNodeCoordinate, ConfigWS aConfigWS)
 /******************************************************************************/
 {
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(int tDimIndex = 0; tDimIndex < spaceDim; tDimIndex++)
+        for(Plato::OrdinalType tDimIndex = 0; tDimIndex < spaceDim; tDimIndex++)
         {
-            for(int tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
+            for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
             {
                 aConfigWS(aCellOrdinal,tNodeIndex,tDimIndex) = aNodeCoordinate(aCellOrdinal,tNodeIndex,tDimIndex);
             }
@@ -251,17 +251,17 @@ inline void workset_config_scalar(int aNumCells, NodeCoordinates aNodeCoordinate
 // function workset_config_scalar
 
 /******************************************************************************/
-template<int spaceDim, int numNodesPerCell, int numConfigDofsPerCell, class ConfigFad, class FadConfigWS, class NodeCoordinates>
-inline void workset_config_fad(int aNumCells, NodeCoordinates aNodeCoordinate, FadConfigWS aFadConfigWS)
+template<Plato::OrdinalType spaceDim, Plato::OrdinalType numNodesPerCell, Plato::OrdinalType numConfigDofsPerCell, class ConfigFad, class FadConfigWS, class NodeCoordinates>
+inline void workset_config_fad(Plato::OrdinalType aNumCells, NodeCoordinates aNodeCoordinate, FadConfigWS aFadConfigWS)
 /******************************************************************************/
 {
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(int tDimIndex = 0; tDimIndex < spaceDim; tDimIndex++)
+        for(Plato::OrdinalType tDimIndex = 0; tDimIndex < spaceDim; tDimIndex++)
         {
-            for(int tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
+            for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++)
             {
-                int tLocalDim = tNodeIndex * spaceDim + tDimIndex;
+                Plato::OrdinalType tLocalDim = tNodeIndex * spaceDim + tDimIndex;
                 aFadConfigWS(aCellOrdinal,tNodeIndex,tDimIndex) =
                         ConfigFad(numConfigDofsPerCell, tLocalDim, aNodeCoordinate(aCellOrdinal,tNodeIndex,tDimIndex));
             }
@@ -271,18 +271,18 @@ inline void workset_config_fad(int aNumCells, NodeCoordinates aNodeCoordinate, F
 // function workset_config_fad
 
 /******************************************************************************/
-template<int numNodesPerCell, int numDofsPerNode, class StateEntryOrdinal, class Residual, class ReturnVal>
-inline void assemble_residual(int aNumCells, 
+template<Plato::OrdinalType numNodesPerCell, Plato::OrdinalType numDofsPerNode, class StateEntryOrdinal, class Residual, class ReturnVal>
+inline void assemble_residual(Plato::OrdinalType aNumCells,
                               const StateEntryOrdinal & aStateEntryOrdinal, 
                               const Residual & aResidual, 
                               ReturnVal & aReturnValue)
 /******************************************************************************/
 {
-  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,aNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+  Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0,aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
   {
-    for(int tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++){
-      for(int tDofIndex = 0; tDofIndex < numDofsPerNode; tDofIndex++){
-        int tEntryOrdinal = aStateEntryOrdinal(aCellOrdinal, tNodeIndex, tDofIndex);
+    for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < numNodesPerCell; tNodeIndex++){
+      for(Plato::OrdinalType tDofIndex = 0; tDofIndex < numDofsPerNode; tDofIndex++){
+        Plato::OrdinalType tEntryOrdinal = aStateEntryOrdinal(aCellOrdinal, tNodeIndex, tDofIndex);
         Kokkos::atomic_add(&aReturnValue(tEntryOrdinal), aResidual(aCellOrdinal,tNodeIndex*numDofsPerNode+tDofIndex));
       }
     }
@@ -292,19 +292,19 @@ inline void assemble_residual(int aNumCells,
 
 /******************************************************************************/
 template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
-inline void assemble_jacobian(int aNumCells,
-                              int aNumRowsPerCell,
-                              int aNumColumnsPerCell,
+inline void assemble_jacobian(Plato::OrdinalType aNumCells,
+                              Plato::OrdinalType aNumRowsPerCell,
+                              Plato::OrdinalType aNumColumnsPerCell,
                               const MatrixEntriesOrdinal & aMatrixEntryOrdinal,
                               const Jacobian & aJacobianWorkset,
                               ReturnVal & aReturnValue)
 /******************************************************************************/
 {
-  Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+  Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
   {
-    for(int tRowIndex = 0; tRowIndex < aNumRowsPerCell; tRowIndex++){
-      for(int tColumnIndex = 0; tColumnIndex < aNumColumnsPerCell; tColumnIndex++){
-        int tEntryOrdinal = aMatrixEntryOrdinal(aCellOrdinal, tRowIndex, tColumnIndex);
+    for(Plato::OrdinalType tRowIndex = 0; tRowIndex < aNumRowsPerCell; tRowIndex++){
+      for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < aNumColumnsPerCell; tColumnIndex++){
+        Plato::OrdinalType tEntryOrdinal = aMatrixEntryOrdinal(aCellOrdinal, tRowIndex, tColumnIndex);
         Kokkos::atomic_add(&aReturnValue(tEntryOrdinal), aJacobianWorkset(aCellOrdinal,tRowIndex).dx(tColumnIndex));
       }
     }
@@ -314,19 +314,19 @@ inline void assemble_jacobian(int aNumCells,
 
 /******************************************************************************/
 template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
-inline void assemble_transpose_jacobian(int aNumCells,
-                                        int aNumRowsPerCell,
-                                        int aNumColumnsPerCell,
+inline void assemble_transpose_jacobian(Plato::OrdinalType aNumCells,
+                                        Plato::OrdinalType aNumRowsPerCell,
+                                        Plato::OrdinalType aNumColumnsPerCell,
                                         const MatrixEntriesOrdinal & aMatrixEntryOrdinal,
                                         const Jacobian & aJacobianWorkset,
                                         ReturnVal & aReturnValue)
 /******************************************************************************/
 {
-  Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+  Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
   {
-    for(int tRowIndex = 0; tRowIndex < aNumRowsPerCell; tRowIndex++){
-      for(int tColumnIndex = 0; tColumnIndex < aNumColumnsPerCell; tColumnIndex++){
-        int tEntryOrdinal = aMatrixEntryOrdinal(aCellOrdinal, tColumnIndex, tRowIndex);
+    for(Plato::OrdinalType tRowIndex = 0; tRowIndex < aNumRowsPerCell; tRowIndex++){
+      for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < aNumColumnsPerCell; tColumnIndex++){
+        Plato::OrdinalType tEntryOrdinal = aMatrixEntryOrdinal(aCellOrdinal, tColumnIndex, tRowIndex);
         Kokkos::atomic_add(&aReturnValue(tEntryOrdinal), aJacobianWorkset(aCellOrdinal,tRowIndex).dx(tColumnIndex));
       }
     }
@@ -358,8 +358,8 @@ class WorksetBase : public SimplexPhysics
     using ControlFad    = typename Plato::SimplexFadTypes<SimplexPhysics>::ControlFad;
     using ConfigFad     = typename Plato::SimplexFadTypes<SimplexPhysics>::ConfigFad;
 
-    static constexpr int SpaceDim = SimplexPhysics::mNumSpatialDims;
-    static constexpr int mNumConfigDofsPerCell = SpaceDim*mNumNodesPerCell;
+    static constexpr Plato::OrdinalType SpaceDim = SimplexPhysics::mNumSpatialDims;
+    static constexpr Plato::OrdinalType mNumConfigDofsPerCell = SpaceDim*mNumNodesPerCell;
 
     Plato::VectorEntryOrdinal<SpaceDim,mNumDofsPerNode> mStateEntryOrdinal;
     Plato::VectorEntryOrdinal<SpaceDim,mNumNodeStatePerNode>   mNodeStateEntryOrdinal;
@@ -481,8 +481,8 @@ class WorksetBase : public SimplexPhysics
 
     /**************************************************************************/
     template<class MatrixEntriesOrdinalType, class JacobianWorksetType, class AssembledJacobianType>
-    void assembleJacobian(int aNumRows, 
-                          int aNumColumns,
+    void assembleJacobian(Plato::OrdinalType aNumRows,
+                          Plato::OrdinalType aNumColumns,
                           const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
                           const JacobianWorksetType & aJacobianWorkset,
                           AssembledJacobianType & aReturnValue) const
@@ -493,8 +493,8 @@ class WorksetBase : public SimplexPhysics
 
     /**************************************************************************/
     template<class MatrixEntriesOrdinalType, class JacobianWorksetType, class AssembledJacobianType>
-    void assembleTransposeJacobian(int aNumRows,
-                                   int aNumColumns,
+    void assembleTransposeJacobian(Plato::OrdinalType aNumRows,
+                                   Plato::OrdinalType aNumColumns,
                                    const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
                                    const JacobianWorksetType & aJacobianWorkset,
                                    AssembledJacobianType & aReturnValue) const

@@ -217,6 +217,29 @@ class LocalVectorFunctionInc
       return mNumCells * mNumLocalDofsPerCell;
     }
 
+
+    /**************************************************************************//**
+     *
+     * \brief Return total number of nodes
+     * \return total number of nodes
+     *
+     ******************************************************************************/
+    Plato::OrdinalType numNodes() const
+    {
+        return mNumNodes;
+    }
+
+    /**************************************************************************//**
+     *
+     * \brief Return total number of cells
+     * \return total number of cells
+     *
+     ******************************************************************************/
+    Plato::OrdinalType numCells() const
+    {
+        return mNumCells;
+    }
+
     /**************************************************************************//**
     *
     * \brief Return state names
