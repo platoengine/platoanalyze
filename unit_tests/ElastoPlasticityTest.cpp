@@ -2531,7 +2531,9 @@ public:
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--)
         {
+            // TODO: COMPUTE INVERSE(DhDc) JUST ONCE AND PASS IT
             this->updateGlobalAdjoint(aControl, aGlobalState, tStepIndex);
+            this->updateLocalAdjoint(aControl, aGlobalState, tStepIndex)
         }
     }
 
@@ -2540,7 +2542,61 @@ public:
                             const Plato::OrdinalType & aStepIndex,
                             Plato::Scalar aTimeStep = 0.0)
     {
-        // TODO: FINISH IMPLEMENTATION
+        // Get global and local state information
+        Plato::ScalarVector tCurrentLocalState = Kokkos::subview(mLocalStates, aStepIndex, Kokkos::ALL());
+        Plato::ScalarVector tCurrentGlobalState = Kokkos::subview(aGlobalState, aStepIndex, Kokkos::ALL());
+        Plato::ScalarVector tProjectedPressGrad = Kokkos::subview(mProjectedPressGrad, aStepIndex, Kokkos::ALL());
+        auto tPreviousTimeStep = aStepIndex + static_cast<Plato::OrdinalType>(1);
+        Plato::ScalarVector tPreviousLocalState = Kokkos::subview(mLocalStates, tPreviousTimeStep, Kokkos::ALL());
+        Plato::ScalarVector tPreviousGlobalState = Kokkos::subview(aGlobalState, tPreviousTimeStep, Kokkos::ALL());
+
+        // Get current global adjoint workset
+        auto tNumCells = mLocalResidualEq.numCells();
+        Plato::OrdinalType tCurrentTimeIndex = 1;
+        Plato::ScalarVector tCurrentGlobalAdjoint = Kokkos::subview(mGlobalAdjoint, tCurrentTimeIndex, Kokkos::ALL());
+        Plato::ScalarMultiVector tCurrentGlobalAdjointWS("Current Global Adjoint Workset", tNumCells, mNumGlobalDofsPerCell);
+        mWorksetBase.worksetLocalState(tCurrentGlobalAdjoint, tCurrentGlobalAdjointWS);
+
+        // Compute Right Hand Side (RHS) = [ (tDrDc^T * tCurrentGlobalAdjoint) + ( tDfDc + (tDhDcp^T * tPrevLocalAdjoint) ) ]
+        auto tDrDc = mGlobalResidualEq.gradient_c(tCurrentGlobalState, tPreviousGlobalState,
+                                                  tCurrentLocalState , tPreviousLocalState,
+                                                  tProjectedPressGrad, aControl, aTimeStep);
+        Plato::Scalar tBeta = 0.0;
+        Plato::Scalar tAlpha = 1.0;
+        Plato::ScalarMultiVector tRHS("Local Adjoint RHS", tNumCells, mNumLocalDofsPerCell);
+        Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDrDc, tCurrentGlobalAdjointWS, tBeta, tRHS);
+
+        auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
+        if(aStepIndex != tLastStepIndex)
+        {
+
+            // Get previous local adjoint workset
+            const Plato::OrdinalType tPreviousTimeIndex = 0;
+            Plato::ScalarMultiVector tPreviousLocalAdjointWS("Local Previous Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
+            auto tPreviousLocalAdjoint = Kokkos::subview(mLocalAdjoint, tPreviousTimeIndex, Kokkos::ALL());
+            mWorksetBase.worksetLocalState(tPreviousLocalAdjoint, tPreviousLocalAdjointWS);
+
+            // Add tDfDc + (tDhDcp^T * tPrevLocalAdjoint) to tRHS
+            auto tDfDc = mObjective->gradient_c(tCurrentGlobalState, tCurrentLocalState, aControl, aTimeStep);
+            Plato::vector_plus_vector_workset(tNumCells, tAlpha, tDfDc, tRHS);
+            auto tDhDcp = mLocalResidualEq.gradient_cp(tCurrentGlobalState, tPreviousGlobalState,
+                                                       tCurrentLocalState , tPreviousLocalState,
+                                                       tProjectedPressGrad, aControl, aTimeStep);
+            tBeta = 1.0;
+            Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDcp, tPreviousLocalAdjointWS, tBeta, tRHS);
+        }
+
+        // Compute -[ Inv(tDhDc^T) * tRHS ]
+        auto tDhDc = mLocalResidualEq.gradient_c(tCurrentGlobalState, tPreviousGlobalState,
+                                                 tCurrentLocalState , tPreviousLocalState,
+                                                 tProjectedPressGrad, aControl, aTimeStep);
+        Plato::ScalarArray3D tInvDhDc("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
+        Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, tInvDhDc);
+        Plato::ScalarMultiVector tCurrentLocalAdjointWS("Local Previous Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
+        tAlpha = -1.0; tBeta = 0.0;
+        Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tInvDhDc, tRHS, tBeta, tCurrentLocalAdjointWS);
+
+        // TODO: ASSEMBLE LOCAL ADJOINT SOLUTION
     }
 
     void updateGlobalAdjoint(const Plato::ScalarVector & aControl,
@@ -2576,7 +2632,7 @@ public:
         auto tDfDu = mObjective->gradient_u(tCurrentGlobalState, tCurrentLocalState, aControl, aTimeStep);
 
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
-        if(aTimeStep != tLastStepIndex)
+        if(aStepIndex != tLastStepIndex)
         {
             // Get projected pressure gradient and previous global and local states
             Plato::ScalarVector tProjectedPressGrad = Kokkos::subview(mProjectedPressGrad, aStepIndex, Kokkos::ALL());
@@ -2587,7 +2643,7 @@ public:
             // Compute partial derivative of objective with respect to current local states
             auto tDfDc = mObjective->gradient_u(tCurrentGlobalState, tCurrentLocalState, aControl, aTimeStep);
 
-            // Compute previous local Jacobian workset
+            // Compute previous local adjoint workset
             auto tNumCells = mLocalResidualEq.numCells();
             Plato::ScalarMultiVector tLocalPrevAdjointWS("Local Previous Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
             const Plato::OrdinalType tPrevAdjIndex = 0;
