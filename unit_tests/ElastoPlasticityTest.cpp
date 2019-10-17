@@ -50,6 +50,7 @@
 #include "KokkosBatched_Trsm_Serial_Impl.hpp"
 
 #include <Kokkos_Concepts.hpp>
+#include <KokkosBlas2_gemv.hpp>
 #include <KokkosBlas3_gemm.hpp>
 #include "KokkosKernels_SparseUtils.hpp"
 #include "KokkosSparse_spgemm.hpp"
@@ -61,11 +62,11 @@ namespace Plato
 {
 
 template<class AViewType, class BViewType>
-void matrix_update_3DView(const Plato::OrdinalType& aNumCells,
-                          typename AViewType::const_value_type& aAlpha,
-                          const AViewType& aA,
-                          typename BViewType::const_value_type& aBeta,
-                          const BViewType& aB)
+void matrix_update_workset(const Plato::OrdinalType& aNumCells,
+                           typename AViewType::const_value_type& aAlpha,
+                           const AViewType& aA,
+                           typename BViewType::const_value_type& aBeta,
+                           const BViewType& aB)
 {
     if(aA.extent(1) != aB.extent(1))
     {
@@ -104,6 +105,42 @@ void matrix_update_3DView(const Plato::OrdinalType& aNumCells,
     }, "matrix update 3DView");
 }
 
+template<class XViewType, class YViewType>
+void vector_update_workset(const Plato::OrdinalType& aNumCells,
+                           typename XViewType::const_value_type& aAlpha,
+                           const XViewType& aXvec,
+                           typename YViewType::const_value_type& aBeta,
+                           const YViewType& aYvec)
+{
+    if(aXvec.size() != aYvec.size())
+    {
+        THROWERR("\nDimension mismatch.\n")
+    }
+    if(Kokkos::Impl::is_view<XViewType>::value)
+    {
+        THROWERR("\nA is not a Kokkos::View.\n")
+    }
+    if(Kokkos::Impl::is_view<YViewType>::value)
+    {
+        THROWERR("\nB is not a Kokkos::View.\n")
+    }
+    if(aNumCells <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nNumber of input cells, i.e. elements, is less or equal to zero.\n");
+    }
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tXvec = Kokkos::subview(aXvec, aCellOrdinal, Kokkos::ALL());
+        auto tYvec = Kokkos::subview(aYvec, aCellOrdinal, Kokkos::ALL());
+        const auto tLength = tXvec.size();
+        for(Plato::OrdinalType tIndex = 0; tIndex < tLength; tIndex++)
+        {
+            tYvec(tIndex) = aAlpha * tXvec(tIndex) + aBeta * tYvec(tIndex);
+        }
+    }, "matrix update 3DView");
+}
+
 /******************************************************************************//**
  *
  * \brief Dense matrix-matrix multiplication: C = \f$ \beta*C + \alpha*op(A)*op(B)\f$.
@@ -126,15 +163,44 @@ void matrix_update_3DView(const Plato::OrdinalType& aNumCells,
  *
 ***********************************************************************************/
 template<class AViewType, class BViewType, class CViewType>
-void matrix_matrix_multiplication_3DView(const char aTransA[],
-                                         const char aTransB[],
-                                         const Plato::OrdinalType& aNumCells,
-                                         typename AViewType::const_value_type& aAlpha,
-                                         const AViewType& aA,
-                                         const BViewType& aB,
-                                         typename CViewType::const_value_type& aBeta,
-                                         const CViewType& aC)
+void matrix_matrix_multiplication_workset(const char aTransA[],
+                                          const char aTransB[],
+                                          const Plato::OrdinalType& aNumCells,
+                                          typename AViewType::const_value_type& aAlpha,
+                                          const AViewType& aA,
+                                          const BViewType& aB,
+                                          typename CViewType::const_value_type& aBeta,
+                                          const CViewType& aC)
 {
+    if(Kokkos::Impl::is_view<AViewType>::value)
+    {
+        THROWERR("\nA matrix is not a Kokkos::View.\n")
+    }
+    if(Kokkos::Impl::is_view<BViewType>::value)
+    {
+        THROWERR("\nB matrix is not a Kokkos::View.\n")
+    }
+    if(Kokkos::Impl::is_view<CViewType>::value)
+    {
+        THROWERR("\nC matrix is not a Kokkos::View.\n")
+    }
+
+    // Check validity of transpose argument
+    bool tValidTransA = (aTransA[0] == 'N') || (aTransA[0] == 'n') ||
+                        (aTransA[0] == 'T') || (aTransA[0] == 't') ||
+                        (aTransA[0] == 'C') || (aTransA[0] == 'c');
+    bool tValidTransB = (aTransB[0] == 'N') || (aTransB[0] == 'n') ||
+                        (aTransB[0] == 'T') || (aTransB[0] == 't') ||
+                        (aTransB[0] == 'C') || (aTransB[0] == 'c');
+    if(!(tValidTransA && tValidTransB))
+    {
+        std::ostringstream tOuputStream;
+        tOuputStream << "\ntransA[0] = '" << aTransA[0] << " transB[0] = '" << aTransB[0] << "'. "
+                     << "Valid values include 'N' or 'n' (No transpose), 'T' or 't' (Transpose), "
+                     "and 'C' or 'c' (Conjugate transpose).\n";
+        THROWERR(tOuputStream.str())
+    }
+
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         auto tA = Kokkos::subview(aA, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
@@ -142,6 +208,89 @@ void matrix_matrix_multiplication_3DView(const char aTransA[],
         auto tC = Kokkos::subview(aC, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
         KokkosBlas::gemm(aTransA, aTransB, aAlpha, tA, tB, aBeta, tC);
     }, "matrix matrix multiplication 3DView");
+}
+
+/******************************************************************************//**
+ *
+ * \brief Dense matrix-vector multiply: y = beta*y + alpha*A*x.
+ *
+ * \tparam AViewType Input matrix, as a 2-D Kokkos::View
+ * \tparam XViewType Input vector, as a 1-D Kokkos::View
+ * \tparam YViewType Output vector, as a nonconst 1-D Kokkos::View
+ * \tparam AlphaCoeffType Type of input coefficient alpha
+ * \tparam BetaCoeffType Type of input coefficient beta
+ *
+ * \param trans [in] "N" for non-transpose, "T" for transpose, "C"
+ *   for conjugate transpose.  All characters after the first are
+ *   ignored.  This works just like the BLAS routines.
+ * \param alpha [in] Input coefficient of A*x
+ * \param A [in] Input matrix, as a 2-D Kokkos::View
+ * \param x [in] Input vector, as a 1-D Kokkos::View
+ * \param beta [in] Input coefficient of y
+ * \param y [in/out] Output vector, as a nonconst 1-D Kokkos::View
+ *
+************************************************************************************/
+template<class AViewType, class XViewType, class YViewType>
+void matrix_times_vector_workset(const char aTransA[],
+                                 const Plato::OrdinalType& aNumCells,
+                                 typename AViewType::const_value_type& aAlpha,
+                                 const AViewType& aAmat,
+                                 const XViewType& aXvec,
+                                 typename YViewType::const_value_type& aBeta,
+                                 const YViewType& aYvec)
+{
+    if(Kokkos::Impl::is_view<AViewType>::value)
+    {
+        THROWERR("\nA matrix is not a Kokkos::View.\n")
+    }
+    if(Kokkos::Impl::is_view<XViewType>::value)
+    {
+        THROWERR("\nX vector is not a Kokkos::View.\n")
+    }
+    if(Kokkos::Impl::is_view<YViewType>::value)
+    {
+        THROWERR("\nY vector is not a Kokkos::View.\n")
+    }
+
+    // Check validity of transpose argument
+    bool tValidTransA = (aTransA[0] == 'N') || (aTransA[0] == 'n') ||
+                        (aTransA[0] == 'T') || (aTransA[0] == 't') ||
+                        (aTransA[0] == 'C') || (aTransA[0] == 'c');
+
+    if(!tValidTransA)
+    {
+        std::ostringstream tOuputStream;
+        tOuputStream << "\ntransA[0] = '" << aTransA[0] "'. "
+                     << "Valid values include 'N' or 'n' (No transpose), 'T' or 't' (Transpose), "
+                     "and 'C' or 'c' (Conjugate transpose).\n";
+        THROWERR(tOuputStream.str())
+    }
+
+    // KOKKOS CHECKS DIMENSIONS INSIDE GEMV
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tXvec = Kokkos::subview(aXvec, aCellOrdinal, Kokkos::ALL());
+        auto tYvec = Kokkos::subview(aYvec, aCellOrdinal, Kokkos::ALL());
+        auto tAmat = Kokkos::subview(aAmat, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
+        KokkosBlas::gemv(aTransA, aAlpha, tAmat, tXvec, aBeta, tYvec);
+    }, "matrix vector multiplication 3DView");
+}
+
+template<class XViewType, class YViewType>
+void vector_plus_vector_workset(const Plato::OrdinalType & aNumCells,
+                                const Plato::Scalar & aAlpha,
+                                const XViewType & aInput,
+                                const YViewType & aOutput)
+{
+    assert(aInput.size() == aOutput.size());
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tInput = Kokkos::subview(aInput, aCellOrdinal, Kokkos::ALL());
+        auto tOutput = Kokkos::subview(aOutput, aCellOrdinal, Kokkos::ALL());
+        tOutput(aCellOrdinal) += aAlpha * tInput(aCellOrdinal);
+    }, "vector plus vector workset");
 }
 
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, typename ScalarType>
@@ -199,7 +348,7 @@ void identity_3DView(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& 
 }
 
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, class AViewType>
-void inverse_matrix_3DView(const Plato::OrdinalType& aNumCells, AViewType& aA, AViewType& aAinverse)
+void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, AViewType& aAinverse)
 {
     if(aA.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -2065,10 +2214,9 @@ private:
     Plato::OrdinalType mNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps */
     Plato::OrdinalType mMaxNumNewtonIter;      /*!< maximum number of Newton-Raphson iterations */
 
-    Plato::ScalarVector mLocalResidual;        /*!< local residual */
     Plato::ScalarVector mGlobalResidual;       /*!< global residual */
     Plato::ScalarVector mProjResidual;         /*!< projection residual, i.e. projected pressure gradient solve residual */
-    Plato::ScalarVector mProjectedPressure;       /*!< projected pressure */
+    Plato::ScalarVector mProjectedPressure;    /*!< projected pressure */
     Plato::ScalarVector mProjPressGradAdjoint; /*!< projected pressure gradient adjoint */
 
     Plato::ScalarMultiVector mLocalStates;        /*!< local state variables */
@@ -2107,7 +2255,6 @@ public:
             mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
             mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 2)),
             mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Number Iterations", 10)),
-            mLocalResidual("Local Residual", mLocalResidualEq.size()),
             mGlobalResidual("Global Residual", mGlobalResidualEq.size()),
             mProjResidual("Projected Residual", mProjectionEq.size()),
             mProjectedPressure("Project Pressure", aMesh.nverts()),
@@ -2355,10 +2502,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate objective gradient wrt control variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aGlobalState 2D view of global state variables
-     * @return 1D view of the objective gradient wrt control variables
+     * \brief Evaluate objective gradient wrt control variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aGlobalState 2D view of global state variables
+     * \return 1D view of the objective gradient wrt control variables
     **********************************************************************************/
     Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     {
@@ -2384,18 +2531,34 @@ public:
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--)
         {
-            // Assemble adjoint Jacobian into mGlobalJacobian
-            this->assembleAdjointJacobian(aControl, aGlobalState, tStepIndex);
-            // Assemble right hand side vector into mGlobalResidual
-            this->assembleAdjointForceVector(aControl, aGlobalState, tStepIndex);
-            // Apply Dirichlet conditions
-            this->applyConstraints(mGlobalJacobian, mGlobalResidual);
-            // solve global system of equations
-            Plato::OrdinalType tAdjointIndex = 1;
-            Plato::ScalarVector tCurrentGlobalAdjoint = Kokkos::subview(mGlobalAdjoint, tAdjointIndex, Kokkos::ALL());
-            Plato::fill(static_cast<Plato::Scalar>(0.0), tCurrentGlobalAdjoint);
-            Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, tCurrentGlobalAdjoint, mGlobalResidual);
+            this->updateGlobalAdjoint(aControl, aGlobalState, tStepIndex);
         }
+    }
+
+    void updateLocalAdjoint(const Plato::ScalarVector & aControl,
+                            const Plato::ScalarVector & aGlobalState,
+                            const Plato::OrdinalType & aStepIndex,
+                            Plato::Scalar aTimeStep = 0.0)
+    {
+        // TODO: FINISH IMPLEMENTATION
+    }
+
+    void updateGlobalAdjoint(const Plato::ScalarVector & aControl,
+                             const Plato::ScalarVector & aGlobalState,
+                             const Plato::OrdinalType & aStepIndex,
+                             Plato::Scalar aTimeStep = 0.0)
+    {
+        // Assemble adjoint Jacobian into mGlobalJacobian
+        this->assembleAdjointJacobian(aControl, aGlobalState, aStepIndex);
+        // Assemble right hand side vector into mGlobalResidual
+        this->assembleAdjointForceVector(aControl, aGlobalState, aStepIndex);
+        // Apply Dirichlet conditions
+        this->applyConstraints(mGlobalJacobian, mGlobalResidual);
+        // solve global system of equations
+        Plato::OrdinalType tGlobalAdjointIndex = 1;
+        Plato::ScalarVector tCurrentGlobalAdjoint = Kokkos::subview(mGlobalAdjoint, tGlobalAdjointIndex, Kokkos::ALL());
+        Plato::fill(static_cast<Plato::Scalar>(0.0), tCurrentGlobalAdjoint);
+        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, tCurrentGlobalAdjoint, mGlobalResidual);
     }
 
     void assembleAdjointForceVector(const Plato::ScalarVector & aControl,
@@ -2403,15 +2566,11 @@ public:
                                     const Plato::OrdinalType & aStepIndex,
                                     Plato::Scalar aTimeStep = 0.0)
     {
-        // TODO: FINISH IMPLEMENTATION
+        // TODO: MODIFY OUTPUT FROM LOCAL VECTOR FUNCTION, I WANT TO RETURN SCALAR_ARRAY_3D NOT THE AD TYPE MULTIVECTOR
 
-        // Get current and previous state information
+        // Get current global and local state information
         Plato::ScalarVector tCurrentLocalState = Kokkos::subview(mLocalStates, aStepIndex, Kokkos::ALL());
         Plato::ScalarVector tCurrentGlobalState = Kokkos::subview(aGlobalState, aStepIndex, Kokkos::ALL());
-        Plato::ScalarVector tProjectedPressGrad = Kokkos::subview(mProjectedPressGrad, aStepIndex, Kokkos::ALL());
-        auto tPreviousTimeStep = aStepIndex + static_cast<Plato::OrdinalType>(1);
-        Plato::ScalarVector tPreviousLocalState = Kokkos::subview(mLocalStates, tPreviousTimeStep, Kokkos::ALL());
-        Plato::ScalarVector tPreviousGlobalState = Kokkos::subview(aGlobalState, tPreviousTimeStep, Kokkos::ALL());
 
         // Compute partial derivative of objective with respect to current global states
         auto tDfDu = mObjective->gradient_u(tCurrentGlobalState, tCurrentLocalState, aControl, aTimeStep);
@@ -2419,41 +2578,55 @@ public:
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aTimeStep != tLastStepIndex)
         {
-            // Compute cell local Jacobian with respect to the current local states
-            auto tDhDc = mLocalResidualEq.gradient_c(tCurrentGlobalState, tPreviousGlobalState,
-                                                     tCurrentLocalState , tPreviousLocalState,
-                                                     tProjectedPressGrad, aControl, aTimeStep);
-
-            // Compute cell inverse of the Jacobian of the local residual with respect to the current local state WorkSet (WS)
-            auto tNumCells = mLocalResidualEq.numCells();
-            Plato::ScalarArray3D tInvDhDc("Inverse DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-            Plato::inverse_matrix_3DView<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, tInvDhDc);
-
-            // Compute cell local Jacobian with respect to the previous local states
-            auto tDhDcp = mLocalResidualEq.gradient_cp(tCurrentGlobalState, tPreviousGlobalState,
-                                                       tCurrentLocalState , tPreviousLocalState,
-                                                       tProjectedPressGrad, aControl, aTimeStep);
-
-            // Compute cell local Jacobian with respect to the current global states
-            auto tDhDu = mLocalResidualEq.gradient_u(tCurrentGlobalState, tPreviousGlobalState,
-                                                     tCurrentLocalState , tPreviousLocalState,
-                                                     tProjectedPressGrad, aControl, aTimeStep);
+            // Get projected pressure gradient and previous global and local states
+            Plato::ScalarVector tProjectedPressGrad = Kokkos::subview(mProjectedPressGrad, aStepIndex, Kokkos::ALL());
+            auto tPreviousTimeStep = aStepIndex + static_cast<Plato::OrdinalType>(1);
+            Plato::ScalarVector tPreviousLocalState = Kokkos::subview(mLocalStates, tPreviousTimeStep, Kokkos::ALL());
+            Plato::ScalarVector tPreviousGlobalState = Kokkos::subview(aGlobalState, tPreviousTimeStep, Kokkos::ALL());
 
             // Compute partial derivative of objective with respect to current local states
             auto tDfDc = mObjective->gradient_u(tCurrentGlobalState, tCurrentLocalState, aControl, aTimeStep);
 
             // Compute previous local Jacobian workset
+            auto tNumCells = mLocalResidualEq.numCells();
+            Plato::ScalarMultiVector tLocalPrevAdjointWS("Local Previous Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
             const Plato::OrdinalType tPrevAdjIndex = 0;
             auto tPrevLocalAdjoint = Kokkos::subview(mLocalAdjoint, tPrevAdjIndex, Kokkos::ALL());
+            mWorksetBase.worksetLocalState(tPrevLocalAdjoint, tLocalPrevAdjointWS);
 
-            // 1. COMPUTE tDhDcp * LOCAL ADJOINT
-            // 2. COMPUTE tDfDc + tDhDcp * LOCAL ADJOINT
-            // 3. COMPUTE INV(tDhDc) * (tDfDc + tDhDcp * LOCAL ADJOINT)
-            // 4. COMPUTE tDhDu * [ INV(tDhDc) * (tDfDc + tDhDcp * LOCAL ADJOINT) ]
-            // 5. COMPUTE tDfDu - { tDhDu * [ INV(tDhDc) * (tDfDc + tDhDcp * LOCAL ADJOINT) ] }
+            // Compute tDfDc + (tDhDcp^T * tPrevLocalAdjoint)
+            Plato::Scalar tBeta = 0.0;
+            Plato::Scalar tAlpha = 1.0;
+            Plato::ScalarMultiVector tWorkMultiVectorOneWS("Local State Work Workset", tNumCells, mNumLocalDofsPerCell);
+            auto tDhDcp = mLocalResidualEq.gradient_cp(tCurrentGlobalState, tPreviousGlobalState,
+                                                       tCurrentLocalState , tPreviousLocalState,
+                                                       tProjectedPressGrad, aControl, aTimeStep);
+            Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDcp, tLocalPrevAdjointWS, tBeta, tWorkMultiVectorOneWS);
+            Plato::vector_plus_vector_workset(tNumCells, tAlpha, tDfDc, tWorkMultiVectorOneWS);
+
+            // Compute Inv(tDhDc^T) * (tDfDc + tDhDcp^T * tPrevLocalAdjoint)
+            auto tDhDc = mLocalResidualEq.gradient_c(tCurrentGlobalState, tPreviousGlobalState,
+                                                     tCurrentLocalState , tPreviousLocalState,
+                                                     tProjectedPressGrad, aControl, aTimeStep);
+            Plato::ScalarArray3D tInvDhDc("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
+            Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, tInvDhDc);
+            Plato::ScalarMultiVector tWorkMultiVectorTwoWS("Local State Work Workset", tNumCells, mNumLocalDofsPerCell);
+            Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tInvDhDc, tWorkMultiVectorOneWS, tBeta, tWorkMultiVectorTwoWS);
+
+            // Compute tDhDu^T * [ Inv(tDhDc^T) * (tDfDc + tDhDcp^T * tPrevLocalAdjoint) ]
+            auto tDhDu = mLocalResidualEq.gradient_u(tCurrentGlobalState, tPreviousGlobalState,
+                                                     tCurrentLocalState , tPreviousLocalState,
+                                                     tProjectedPressGrad, aControl, aTimeStep);
+            Plato::ScalarMultiVector tWorkMultiVectorThreeWS("Global State Work Workset", tNumCells, mNumGlobalDofsPerCell);
+            Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDu, tWorkMultiVectorTwoWS, tBeta, tWorkMultiVectorThreeWS);
+
+            // Compute tDfDu - { tDhDu^T * [ INV(tDhDc^T) * (tDfDc + tDhDcp^T * tPrevLocalAdjoint) ] }
+            tAlpha = -1.0;
+            Plato::vector_plus_vector_workset(tNumCells, tAlpha, tWorkMultiVectorThreeWS, tDfDu);
         }
 
-        // 6. ASSEMBLE GLOBAL RHS
+        Plato::fill(static_cast<Plato::Scalar>(0), mGlobalResidual);
+        mWorksetBase.assemblePartialDerivatieU(tDfDu, mGlobalResidual);
         Plato::scale(static_cast<Plato::Scalar>(-1), mGlobalResidual)
     }
 
@@ -2579,7 +2752,7 @@ public:
         // Compute cell inverse of the Jacobian of the local residual with respect to the current local state WorkSet (WS)
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::ScalarArray3D tInvDhDc("Inverse DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::inverse_matrix_3DView<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, tInvDhDc);
+        Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, tInvDhDc);
 
         // Compute cell Jacobian of the local residual with respect to the current global state WorkSet (WS)
         auto tDhDu = mLocalResidualEq.gradient_u(aCurrentGlobalState, aPrevGlobalState,
@@ -2590,7 +2763,7 @@ public:
         const Plato::Scalar tBeta = 1.0;
         const Plato::Scalar tAlpha = 1.0;
         Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDu times DhDu", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::matrix_matrix_multiplication_3DView("N", "N", tNumCells, tAlpha, tInvDhDc, tDhDu, tBeta, tInvDhDcTimesDhDu);
+        Plato::matrix_matrix_multiplication_workset("N", "N", tNumCells, tAlpha, tInvDhDc, tDhDu, tBeta, tInvDhDcTimesDhDu);
 
 
         // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
@@ -2601,7 +2774,7 @@ public:
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
         Plato::ScalarArray3D tOutput("Schur Complement", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::matrix_matrix_multiplication_3DView("N", "N", tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tOutput);
+        Plato::matrix_matrix_multiplication_workset("N", "N", tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tOutput);
         return tOutput;
     }
 
@@ -2649,7 +2822,7 @@ public:
         const Plato::Scalar tBeta = 1.0;
         const Plato::Scalar tAlpha = -1.0;
         auto tNumCells = mGlobalResidualEq.numCells();
-        Plato::matrix_update_3DView(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
+        Plato::matrix_update_workset(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
 
         // TODO IMPLEMENT ASSEMBLY ROUTINES THAT LOOPS OVER NON-AD TYPES
         auto tJacobianEntries = mGlobalJacobian->entries();
