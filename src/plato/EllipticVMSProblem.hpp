@@ -210,17 +210,17 @@ public:
     **********************************************************************************/
     Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
-
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
+        if(aState.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
+        }
         if(mObjective == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE VALUE REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
         return mObjective->value(aState, aControl, mTimeStep);
@@ -234,17 +234,17 @@ public:
     **********************************************************************************/
     Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
-
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
+        if(aState.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
+        }
         if(mConstraint == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT VALUE REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
 
         auto tLastStepIndex = mNumSteps - 1;
@@ -259,14 +259,13 @@ public:
     **********************************************************************************/
     Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl)
     {
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
         if(mObjective == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE VALUE REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
         Plato::ScalarMultiVector tStates = solution(aControl);
@@ -280,14 +279,13 @@ public:
     **********************************************************************************/
     Plato::Scalar constraintValue(const Plato::ScalarVector & aControl)
     {
-        if(mObjective == nullptr)
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT VALUE REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
+        if(mConstraint == nullptr)
+        {
+            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
 
         auto tLastStepIndex = mNumSteps - 1;
@@ -303,17 +301,17 @@ public:
     **********************************************************************************/
     Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
-
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
+        if(aState.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
+        }
         if(mObjective == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE GRADIENT REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
         // compute dfdz: partial of objective wrt z
@@ -388,17 +386,17 @@ public:
     **********************************************************************************/
     Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
-
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
+        if(aState.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
+        }
         if(mObjective == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE GRADIENT REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
         // compute dfdx: partial of objective wrt x
@@ -474,14 +472,13 @@ public:
     **********************************************************************************/
     Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl)
     {
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
         if(mConstraint == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT GRADIENT REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
 
         auto tLastStepIndex = mNumSteps - 1;
@@ -497,17 +494,17 @@ public:
     **********************************************************************************/
     Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
-
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
+        if(aState.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
+        }
         if(mConstraint == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT GRADIENT REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
 
         auto tLastStepIndex = mNumSteps - 1;
@@ -522,14 +519,13 @@ public:
     **********************************************************************************/
     Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl)
     {
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
         if(mObjective == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE GRADIENT REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
         return mObjective->gradient_z(mStates, aControl, mTimeStep);
@@ -542,14 +538,13 @@ public:
     **********************************************************************************/
     Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl)
     {
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
         if(mObjective == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE CONFIGURATION GRADIENT REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
         return mObjective->gradient_x(mStates, aControl, mTimeStep);
@@ -562,14 +557,13 @@ public:
     **********************************************************************************/
     Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl)
     {
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
         if(mConstraint == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT CONFIGURATION GRADIENT REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
         auto tLastStepIndex = mNumSteps - 1;
@@ -585,17 +579,17 @@ public:
     **********************************************************************************/
     Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
     {
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
-
+        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+        }
+        if(aState.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
+        }
         if(mConstraint == nullptr)
         {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT CONFIGURATION GRADIENT REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
+            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
         auto tLastStepIndex = mNumSteps - 1;

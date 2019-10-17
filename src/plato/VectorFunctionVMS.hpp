@@ -379,6 +379,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
       return tJacobianMat;
     }
+
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_n(const Plato::ScalarVector & aState,
