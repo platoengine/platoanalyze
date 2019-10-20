@@ -2621,6 +2621,11 @@ public:
         return (tDfDz);
     }
 
+    /******************************************************************************//**
+     * \brief Update state data for time step n, i.e. current time step:
+     * \param [in] aStateData state data manager
+     * \param [in] aZeroEntries flag - zero all entries in current states (default = false)
+    **********************************************************************************/
     void updateStateData(Plato::StateData &aStateData, bool aZeroEntries = false)
     {
         aStateData.mCurrentLocalState = Kokkos::subview(mLocalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
@@ -2642,6 +2647,10 @@ public:
         }
     }
 
+    /******************************************************************************//**
+     * \brief Update adjoint data for time step n, i.e. current time step:
+     * \param [in] aAdjointData adjoint data manager
+    **********************************************************************************/
     void updateAdjointData(Plato::AdjointData& aAdjointData)
     {
         const Plato::OrdinalType tCurrentStepIndex = 1;
@@ -2652,6 +2661,17 @@ public:
         Plato::update(tAlpha, aAdjointData.mCurrentGlobalAdjoint, tBeta, aAdjointData.mPreviousGlobalAdjoint);
     }
 
+    /******************************************************************************//**
+     * \brief Update inverse of local Jacobian wrt local states, i.e.
+     * /f$ \left[ \left( \frac{\partial{H}}{\partial{c}} \right)_{t=n} \right]^{-1}, /f$:
+     *
+     * where H is the local residual and c is the local state vector. The pseudo time is
+     * denoted by t, where n denotes the current step index.
+     *
+     * \param [in] aControl 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+     * \param [in] aInvLocalJacobianT inverse of local Jacobian wrt local states
+    **********************************************************************************/
     void updateInverseLocalJacobian(const Plato::ScalarVector & aControl,
                                     const Plato::StateData& aStateData,
                                     Plato::ScalarArray3D& aInvLocalJacobianT)
@@ -2663,6 +2683,25 @@ public:
         Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, aInvLocalJacobianT);
     }
 
+    /******************************************************************************//**
+     * \brief Update total gradient of performance criterion with respect to controls.
+     * The total gradient is given by:
+     *
+     *  /f$ \left(\frac{df}{dz}\right)_{t=n} = \left(\frac{\partial{f}}{\partial{z}}\right)_{t=n}
+     *         + \left(\frac{\partial{R}}{\partial{z}}\right)_{t=n}^{T}\lambda_{t=n}
+     *         + \left(\frac{\partial{H}}{\partial{z}}\right)_{t=n}^{T}\gamma_{t=n}
+     *         + \left(\frac{\partial{P}}{\partial{z}}\right)_{t=n}^{T}\mu_{t=n} /f$,
+     *
+     * where R is the global residual, H is the local residual, P is the projection residual,
+     * and /f$\lambda/f$ is the global adjoint vector, /f$\gamma/f$ is the local adjoint vector,
+     * and /f$\mu/f$ is the projection adjoint vector. The pseudo time is denoted by t, where n
+     * denotes the current step index.
+     *
+     * \param [in] aControl 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+     * \param [in] aAdjointData adjoint data manager
+     * \param [in/out] aGradient total derivative wrt controls
+    **********************************************************************************/
     void updateGradientControl(const Plato::ScalarVector &aControl,
                                const Plato::StateData &aStateData,
                                const Plato::AdjointData &aAdjointData,
@@ -2691,6 +2730,20 @@ public:
         mWorksetBase.assemblePartialDerivatieZ(tDhDzTimesLocalAdjoint, aGradient);
     }
 
+    /******************************************************************************//**
+     * \brief Update projection adjoint vector using the following equation:
+     *
+     *  /f$ \mu_{n} = -\left( \left(\frac{\partial{P}}{\partial{\pi}}\right)_{t=n}^{T} \right)^{-1}
+     *                \left[ \left(\frac{\partial{R}}{\partial{\pi}}\right)_{t=n}^{T}\lambda_n \right] /f$,
+     *
+     * where R is the global residual, P is the projection residual, and /f$\pi/f$ is
+     * the projection adjoint vector. The pseudo time is denoted by t, where n denotes
+     * the current step index.
+     *
+     * \param [in] aControl 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+     * \param [in] aAdjointData adjoint data manager
+    **********************************************************************************/
     void updateProjectionAdjoint(const Plato::ScalarVector & aControl,
                                  const Plato::StateData& aStateData,
                                  Plato::AdjointData& aAdjointData)
@@ -2703,6 +2756,25 @@ public:
         Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjectionJacobian, mProjectionAdjoint, mProjResidual);
     }
 
+    /******************************************************************************//**
+     * \brief Update local adjoint vector using the following equation:
+     *
+     *  /f$ \gamma_n = -\left( \left(\frac{\partial{H}}{\partial{c}}\right)_{t=n}^{T} \right)^{-1}
+     *                  \left[ \left(\frac{\partial{R}}{\partial{c}}\right)_{t=n}^{T}\lambda_n +
+     *                  \left(\frac{\partial{f}}{\partial{c}} + \frac{\partial{H}}{\partial{v}}
+     *                  \right)_{t=n+1}^{T} \gamma_{n+1} \right] /f$,
+     *
+     * where R is the global residual, H is the local residual, u is the global state,
+     * c is the local state, f is the performance criterion (e.g. objective function),
+     * and /f$\gamma/f$ is the local adjoint vector. The pseudo time is denoted by t,
+     * where n denotes the current step index and n+1 is the previous time step index.
+     *
+     * \param [in] aControl 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
+     * \param [in] aAdjointData adjoint data manager
+     * \param [in] aCriterion performance criterion interface
+    **********************************************************************************/
     void updateLocalAdjoint(const Plato::ScalarVector & aControl,
                             const Plato::StateData& aStateData,
                             const Plato::ScalarArray3D& aInvLocalJacobianT,
@@ -2749,6 +2821,15 @@ public:
         Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tCurrentLocalAdjointWS, aAdjointData.mCurrentLocalAdjoint);
     }
 
+    /******************************************************************************//**
+     * \brief Update global adjoint vector
+     *
+     * \param [in] aControl 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
+     * \param [in] aAdjointData adjoint data manager
+     * \param [in] aCriterion performance criterion interface
+    **********************************************************************************/
     void updateGlobalAdjoint(const Plato::ScalarVector & aControl,
                              const Plato::StateData& aStateData,
                              const Plato::ScalarArray3D& aInvLocalJacobianT,
@@ -2766,6 +2847,25 @@ public:
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointData.mCurrentGlobalAdjoint, mGlobalResidual);
     }
 
+    /******************************************************************************//**
+     * \brief Assemble global adjoint right hand side vector, which is given by:
+     *
+     * /f$ \bm{f} = \frac{\partial{f}}{\partial{u}}\right)_{t=n} - \left(\frac{\partial{H}}{\partial{u}}
+     * \right)_{t=n}^{T} * \left[ \left( \left(\frac{\partial{H}}{\partial{c}}\right)_{t=n}^{T} \right)^{-1} *
+     * \left(\frac{\partial{f}}{\partial{c}} + \frac{\partial{H}}{\partial{v}}\right)_{t=n+1}^{T} \gamma_{n+1}
+     * \right]/f$,
+     *
+     * where R is the global residual, H is the local residual, u is the global state,
+     * c is the local state, f is the performance criterion (e.g. objective function),
+     * and /f$\gamma/f$ is the local adjoint vector. The pseudo time is denoted by t,
+     * where n denotes the current step index and n+1 is the previous time step index.
+     *
+     * \param [in] aControl 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
+     * \param [in] aAdjointData adjoint data manager
+     * \param [in] aCriterion performance criterion interface
+    **********************************************************************************/
     void assembleGlobalAdjointForceVector(const Plato::ScalarVector &aControl,
                                           const Plato::StateData &aStateData,
                                           const Plato::ScalarArray3D& aInvLocalJacobianT,
@@ -2824,6 +2924,23 @@ public:
         Plato::scale(static_cast<Plato::Scalar>(-1), mGlobalResidual)
     }
 
+    /******************************************************************************//**
+     * \brief Assemble global adjoint Jacobian, which is given by:
+     *
+     * /f$ A = \left(\frac{\partial{R}}{\partial{u}}\right)_{t=n}^{T} - \left(\frac{\partial{H}}{\partial{u}}
+     * \right)_{t=n}^{T} * \left[ \left( \left(\frac{\partial{H}}{\partial{c}}\right)_{t=n}^{T} \right)^{-1} *
+     * \left(\frac{\partial{R}}{\partial{v}}\right)_{t=n}^{T} \right] - \left(\frac{\partial{P}}{\partial{u}}
+     * \right)_{t=n}^{T} * \left[ \left( \left(\frac{\partial{P}}{\partial{\pi}}\right)_{t=n}^{T} \right)^{-1}
+     * \left(\frac{\partial{R}}{\partial{\pi}}\right)_{t=n}^{T} \right] /f$,
+     *
+     * where R is the global residual, H is the local residual, P is the projection residual,
+     * u is the global state, and c is the local state, and /f$\pi/f$ is the projected pressure
+     * gradient. The pseudo time is denoted by t, where n denotes the current step index.
+     *
+     * \param [in] aControl 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
+    **********************************************************************************/
     void assembleGlobalAdjointJacobian(const Plato::ScalarVector &aControl,
                                        const Plato::StateData &aStateData,
                                        const Plato::ScalarArray3D& aInvLocalJacobianT)
@@ -2860,15 +2977,10 @@ public:
      * \frac{\partial{H}}{\partial{u}} \right] /f$, where R is the global residual, H
      * is the local residual, u are the global states, and c are the local states.
      *
-     * \param [in] aCurrentGlobalState 1D view of current global states
-     * \param [in] aPrevGlobalState 1D view of previous global states
-     * \param [in] aCurrentLocalState 1D view of current local states
-     * \param [in] aPrevLocalState 1D view of previous local states
-     * \param [in] aProjectedPressGrad 1D view of projected pressure gradient
      * \param [in] aControl 1D view of control variables, i.e. design variables
-     * \param [in/out] aOutput 3D view of cell Schur complements
-     * \param [in] aTimeStep time step (default equals 0.0)
-     * \return Schur complement
+     * \param [in] aStateData state data manager
+     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
+     * \return 3D view with Schur complement per cell
     **********************************************************************************/
     Plato::ScalarArray3D computeSchurComplement(const Plato::ScalarVector & aControl,
                                                 const Plato::StateData& aStateData,
@@ -2908,12 +3020,9 @@ public:
      * \right] /f$, where R is the global residual, H is the local residual, u are
      * the global states, and c are the local states.
      *
-     * \param [in] aCurrentGlobalState 1D view of current global states
-     * \param [in] aPrevGlobalState 1D view of previous global states
-     * \param [in] aCurrentLocalState 1D view of current local states
-     * \param [in] aPrevLocalState 1D view of previous local states
      * \param [in] aControl 1D view of control variables, i.e. design variables
-     * \param [in] aTimeStep time step (default equals 0.0)
+     * \param [in] aStateData state data manager
+     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
     **********************************************************************************/
     void assembleTangentStiffnessMatrix(const Plato::ScalarVector & aControl,
                                         const Plato::StateData& aStateData,
