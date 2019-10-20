@@ -89,11 +89,11 @@ inline void assemble_vector_gradient(const Plato::OrdinalType& aNumCells,
 *
 * \brief Assemble scalar gradient of a scalar function
 *
-* \fn void assemble_scalar_gradient(const Plato::OrdinalType& aNumCells,const EntryOrdinal& aEntryOrdinal,const Gradient& aGradient,ReturnVal& aOutput)
 * \tparam NumNodesPerCell number of nodes per cell
 * \tparam EntryOrdinal entry ordinal view type
 * \tparam Gradient gradient workset view type
 * \tparam ReturnVal output (i.e. assembled gradient) view type
+*
 * \param aNumCells number of cells (i.e. elements)
 * \param aEntryOrdinal global indices to output vector
 * \param aGradien gradient workset - gradient values for each cell
@@ -111,11 +111,43 @@ inline void assemble_scalar_gradient(const Plato::OrdinalType& aNumCells,
       for(Plato::OrdinalType tNodeIndex=0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
       {
           Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(aCellOrdinal, tNodeIndex);
-          Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal).dx(tNodeIndex));
+          Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal, tNodeIndex));
       }
     }, "Assemble - Scalar Gradient Calculation");
 }
 // function assemble_scalar_gradient
+
+/*************************************************************************//**
+*
+* \brief Assemble scalar gradient of a scalar function
+*
+* \tparam NumNodesPerCell number of nodes per cell
+* \tparam EntryOrdinal entry ordinal view type
+* \tparam Gradient gradient workset view type
+* \tparam ReturnVal output (i.e. assembled gradient) view type
+*
+* \param aNumCells number of cells (i.e. elements)
+* \param aEntryOrdinal global indices to output vector
+* \param aGradien gradient workset (AD type) - gradient values for each cell
+* \param aOutput assembled global gradient
+*
+*****************************************************************************/
+template<Plato::OrdinalType NumNodesPerCell, class EntryOrdinal, class Gradient, class ReturnVal>
+inline void assemble_scalar_gradient_fad(const Plato::OrdinalType& aNumCells,
+                                         const EntryOrdinal& aEntryOrdinal,
+                                         const Gradient& aGradient,
+                                         ReturnVal& aOutput)
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+      for(Plato::OrdinalType tNodeIndex=0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
+      {
+          Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(aCellOrdinal, tNodeIndex);
+          Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal).dx(tNodeIndex));
+      }
+    }, "Assemble - Scalar Gradient Calculation");
+}
+// function assemble_scalar_gradient_fad
 
 /******************************************************************************/
 template<Plato::OrdinalType numNodesPerCell, class ControlEntryOrdinal, class Control, class ControlWS>
@@ -365,7 +397,7 @@ inline void assemble_transpose_jacobian(Plato::OrdinalType aNumCells,
 template<typename SimplexPhysics>
 class WorksetBase : public SimplexPhysics
 {
-  protected:
+protected:
     Plato::OrdinalType mNumCells;
     Plato::OrdinalType mNumNodes;
 
@@ -555,6 +587,21 @@ public:
     void assemblePartialDerivatieU(const WorksetType & aWorkset, OutType & aOutput) const
     {
         Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mStateEntryOrdinal, aWorkset, aOutput);
+    }
+
+    /******************************************************************************//**
+     * \brief Assemble partial derivative with respect to controls (Z)
+     *
+     * \tparam WorksetType Input container, as a 2-D Kokkos::View
+     * \tparam OutType Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aResidualWorkset residual cell workset (Automatic Differentiation Type)
+     * \param [in/out] aReturnValue assembled residual
+    **********************************************************************************/
+    template<class WorksetType, class OutType>
+    void assemblePartialDerivatieZ_Fad(const WorksetType & aWorkset, OutType & aOutput) const
+    {
+        Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, aWorkset, aOutput);
     }
 
     /******************************************************************************//**

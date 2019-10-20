@@ -1451,7 +1451,7 @@ public:
 
       // create and assemble to return view
       Plato::ScalarVector tGradientZ("gradient control",m_numNodes);
-      Plato::assemble_scalar_gradient<mNumNodesPerCell>(m_numCells, m_controlEntryOrdinal, tResult, tGradientZ);
+      Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>(m_numCells, m_controlEntryOrdinal, tResult, tGradientZ);
       Plato::Scalar tFunctionValue = Plato::assemble_scalar_func_value<Plato::Scalar>(m_numCells, tResult);
 
       return tGradientZ;

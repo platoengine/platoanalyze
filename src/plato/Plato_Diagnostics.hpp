@@ -73,7 +73,7 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
     constexpr Plato::OrdinalType tNumControlFields = 1;
     Plato::ScalarVector tPartialZ("objective partial control", tNumVerts);
     Plato::VectorEntryOrdinal<tSpaceDim, tNumControlFields> tControlEntryOrdinal(&aMesh);
-    Plato::assemble_scalar_gradient<tNodesPerCell>(tNumCells, tControlEntryOrdinal, tResultWS, tPartialZ);
+    Plato::assemble_scalar_gradient_fad<tNodesPerCell>(tNumCells, tControlEntryOrdinal, tResultWS, tPartialZ);
 
     Plato::ScalarVector tStep("step", tNumVerts);
     auto tHostStep = Kokkos::create_mirror(tStep);
