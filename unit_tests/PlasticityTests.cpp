@@ -7,6 +7,7 @@
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
+#include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
 #include "plato/Plato_Diagnostics.hpp"
 

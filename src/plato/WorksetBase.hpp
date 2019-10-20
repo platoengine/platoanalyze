@@ -295,9 +295,33 @@ template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
 inline void assemble_jacobian(Plato::OrdinalType aNumCells,
                               Plato::OrdinalType aNumRowsPerCell,
                               Plato::OrdinalType aNumColumnsPerCell,
-                              const MatrixEntriesOrdinal & aMatrixEntryOrdinal,
-                              const Jacobian & aJacobianWorkset,
-                              ReturnVal & aReturnValue)
+                              const MatrixEntriesOrdinal &aMatrixEntryOrdinal,
+                              const Jacobian &aJacobianWorkset,
+                              ReturnVal &aReturnValue)
+/******************************************************************************/
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < aNumRowsPerCell; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < aNumColumnsPerCell; tColumnIndex++)
+            {
+                Plato::OrdinalType tEntryOrdinal = aMatrixEntryOrdinal(aCellOrdinal, tRowIndex, tColumnIndex);
+                Kokkos::atomic_add(&aReturnValue(tEntryOrdinal), aJacobianWorkset(aCellOrdinal,tRowIndex, tColumnIndex));
+            }
+        }
+    }, "assemble jacobian");
+}
+// function assemble_jacobian_fad
+
+/******************************************************************************/
+template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
+inline void assemble_jacobian_fad(Plato::OrdinalType aNumCells,
+                                  Plato::OrdinalType aNumRowsPerCell,
+                                  Plato::OrdinalType aNumColumnsPerCell,
+                                  const MatrixEntriesOrdinal &aMatrixEntryOrdinal,
+                                  const Jacobian &aJacobianWorkset,
+                                  ReturnVal &aReturnValue)
 /******************************************************************************/
 {
   Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -308,9 +332,9 @@ inline void assemble_jacobian(Plato::OrdinalType aNumCells,
         Kokkos::atomic_add(&aReturnValue(tEntryOrdinal), aJacobianWorkset(aCellOrdinal,tRowIndex).dx(tColumnIndex));
       }
     }
-  }, "assemble_jacobian");
+  }, "assemble jacobian fad");
 }
-// function assemble_jacobian
+// function assemble_jacobian_fad
 
 /******************************************************************************/
 template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
@@ -359,12 +383,12 @@ class WorksetBase : public SimplexPhysics
     using ConfigFad     = typename Plato::SimplexFadTypes<SimplexPhysics>::ConfigFad;
 
     static constexpr Plato::OrdinalType SpaceDim = SimplexPhysics::mNumSpatialDims;
-    static constexpr Plato::OrdinalType mNumConfigDofsPerCell = SpaceDim*mNumNodesPerCell;
+    static constexpr Plato::OrdinalType mNumConfigDofsPerCell = SpaceDim * mNumNodesPerCell;
 
-    Plato::VectorEntryOrdinal<SpaceDim,mNumDofsPerNode> mStateEntryOrdinal;
-    Plato::VectorEntryOrdinal<SpaceDim,mNumNodeStatePerNode>   mNodeStateEntryOrdinal;
-    Plato::VectorEntryOrdinal<SpaceDim,mNumControl>     mControlEntryOrdinal;
-    Plato::VectorEntryOrdinal<SpaceDim,SpaceDim>        mConfigEntryOrdinal;
+    Plato::VectorEntryOrdinal<SpaceDim,mNumDofsPerNode>      mStateEntryOrdinal;
+    Plato::VectorEntryOrdinal<SpaceDim,mNumNodeStatePerNode> mNodeStateEntryOrdinal;
+    Plato::VectorEntryOrdinal<SpaceDim,mNumControl>          mControlEntryOrdinal;
+    Plato::VectorEntryOrdinal<SpaceDim,SpaceDim>             mConfigEntryOrdinal;
 
     Plato::NodeCoordinate<SpaceDim>     mNodeCoordinate;
 
@@ -553,7 +577,7 @@ public:
                           const JacobianWorksetType & aJacobianWorkset,
                           AssembledJacobianType & aReturnValue) const
     {
-        Plato::assemble_jacobian(mNumCells, aNumRows, aNumColumns, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
+        Plato::assemble_jacobian_fad(mNumCells, aNumRows, aNumColumns, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
     }
 
     /******************************************************************************//**
