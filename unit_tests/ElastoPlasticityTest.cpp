@@ -2221,24 +2221,24 @@ public:
 
 struct StateData
 {
-    Plato::Scalar mTimeStep;
-    Plato::OrdinalType mCurrentStepIndex;
-    Plato::OrdinalType mPreviousStepIndex;
+    Plato::Scalar mTimeStep; /*!< current time step */
+    Plato::OrdinalType mCurrentStepIndex; /*!< current time step index */
+    Plato::OrdinalType mPreviousStepIndex; /*!< previous time step index */
 
-    Plato::ScalarVector mCurrentLocalState;
-    Plato::ScalarVector mPreviousLocalState;
-    Plato::ScalarVector mCurrentGlobalState;
-    Plato::ScalarVector mPreviousGlobalState;
-    Plato::ScalarVector mCurrentProjPressGrad;
+    Plato::ScalarVector mCurrentLocalState;    /*!< current local state */
+    Plato::ScalarVector mPreviousLocalState;   /*!< previous local state */
+    Plato::ScalarVector mCurrentGlobalState;   /*!< current global state */
+    Plato::ScalarVector mPreviousGlobalState;  /*!< previous global state */
+    Plato::ScalarVector mCurrentProjPressGrad; /*!< current projected pressure gradient */
 };
 // struct StateData
 
 struct AdjointData
 {
-    Plato::ScalarVector mCurrentLocalAdjoint;
-    Plato::ScalarVector mPreviousLocalAdjoint;
-    Plato::ScalarVector mCurrentGlobalAdjoint;
-    Plato::ScalarVector mPreviousGlobalAdjoint;
+    Plato::ScalarVector mCurrentLocalAdjoint;   /*!< current local adjoint */
+    Plato::ScalarVector mPreviousLocalAdjoint;  /*!< previous local adjoint */
+    Plato::ScalarVector mCurrentGlobalAdjoint;  /*!< current global adjoint */
+    Plato::ScalarVector mPreviousGlobalAdjoint; /*!< previous global adjoint */
 };
 // struct AdjointData
 
@@ -2253,7 +2253,13 @@ struct AdjointData
 
 
 
-
+/******************************************************************************//**
+ * \brief Plasticity problem manager, which is responsible for performance
+ * criteria evaluations and
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aInputParams input parameters database
+**********************************************************************************/
 template<typename SimplexPhysics>
 class PlasticityProblem : public Plato::AbstractProblem
 {
