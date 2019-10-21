@@ -261,10 +261,10 @@ public:
         // create and assemble to return view
         //
         Plato::ScalarVector tObjGradientX("objective gradient configuration", mNumSpatialDims * mNumNodes);
-        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumSpatialDims>(mNumCells,
-                                                                             mConfigEntryOrdinal,
-                                                                             tResult,
-                                                                             tObjGradientX);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>(mNumCells,
+                                                                               mConfigEntryOrdinal,
+                                                                               tResult,
+                                                                               tObjGradientX);
 
         Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
         mScalarFunctionGradientX->postEvaluate(tObjGradientX, tObjectiveValue);
@@ -314,10 +314,10 @@ public:
         // create and assemble to return view
         //
         Plato::ScalarVector tObjGradientU("objective gradient state", mNumDofsPerNode * mNumNodes);
-        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(mNumCells,
-                                                                             mStateEntryOrdinal,
-                                                                             tResult,
-                                                                             tObjGradientU);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells,
+                                                                               mStateEntryOrdinal,
+                                                                               tResult,
+                                                                               tObjGradientU);
         Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
         mScalarFunctionGradientU->postEvaluate(tObjGradientU, tObjectiveValue);
         return tObjGradientU;

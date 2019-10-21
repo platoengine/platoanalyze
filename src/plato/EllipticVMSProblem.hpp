@@ -563,7 +563,7 @@ public:
         }
         if(mConstraint == nullptr)
         {
-            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
+            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
 
         auto tLastStepIndex = mNumSteps - 1;
@@ -589,7 +589,7 @@ public:
         }
         if(mConstraint == nullptr)
         {
-            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
+            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
 
         auto tLastStepIndex = mNumSteps - 1;

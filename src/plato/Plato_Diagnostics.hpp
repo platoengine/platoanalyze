@@ -179,7 +179,7 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::AbstractScalarFunct
     aCriterion.evaluate(tStateWS, tControlWS, tConfigWS, tResultWS);
     Plato::ScalarVector tPartialU("objective partial state", tTotalNumDofs);
     Plato::VectorEntryOrdinal<tSpaceDim, tDofsPerNode> tStateEntryOrdinal(&aMesh);
-    Plato::assemble_vector_gradient<tNodesPerCell, tDofsPerNode>(tNumCells, tStateEntryOrdinal, tResultWS, tPartialU);
+    Plato::assemble_vector_gradient_fad<tNodesPerCell, tDofsPerNode>(tNumCells, tStateEntryOrdinal, tResultWS, tPartialU);
 
     Plato::ScalarVector tStep("step", tTotalNumDofs);
     auto tHostStep = Kokkos::create_mirror(tStep);

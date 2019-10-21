@@ -1231,7 +1231,7 @@ public:
 
       // create and assemble to return view
       Plato::ScalarVector tObjGradientX("gradient configuration",m_numSpatialDims*m_numNodes);
-      Plato::assemble_vector_gradient<mNumNodesPerCell, m_numSpatialDims>(m_numCells, m_configEntryOrdinal, tResult, tObjGradientX);
+      Plato::assemble_vector_gradient_fad<mNumNodesPerCell, m_numSpatialDims>(m_numCells, m_configEntryOrdinal, tResult, tObjGradientX);
       Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(m_numCells, tResult);
 
       return tObjGradientX;
@@ -1286,7 +1286,7 @@ public:
 
       // create and assemble to return view
       Plato::ScalarVector tGradientDisp("gradient state displacement",mNumDofsPerNode*m_numNodes);
-      Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(m_numCells, m_stateEntryOrdinal, tResult, tGradientDisp);
+      Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(m_numCells, m_stateEntryOrdinal, tResult, tGradientDisp);
       Plato::Scalar tFunctionValue = Plato::assemble_scalar_func_value<Plato::Scalar>(m_numCells, tResult);
 
       return tGradientDisp;
@@ -1341,7 +1341,7 @@ public:
 
       // create and assemble to return view
       Plato::ScalarVector tGradientVel("gradient state velocity",mNumDofsPerNode*m_numNodes);
-      Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(m_numCells, m_stateEntryOrdinal, tResult, tGradientVel);
+      Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(m_numCells, m_stateEntryOrdinal, tResult, tGradientVel);
       Plato::Scalar tFunctionValue = Plato::assemble_scalar_func_value<Plato::Scalar>(m_numCells, tResult);
 
       return tGradientVel;
@@ -1396,7 +1396,7 @@ public:
 
       // create and assemble to return view
       Plato::ScalarVector tGradientAcc("gradient state acceleration",mNumDofsPerNode*m_numNodes);
-      Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(m_numCells, m_stateEntryOrdinal, tResult, tGradientAcc);
+      Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(m_numCells, m_stateEntryOrdinal, tResult, tGradientAcc);
       Plato::Scalar tFunctionValue = Plato::assemble_scalar_func_value<Plato::Scalar>(m_numCells, tResult);
 
       return tGradientAcc;

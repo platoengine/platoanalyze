@@ -53,12 +53,12 @@ inline Scalar assemble_scalar_func_value(const Plato::OrdinalType& aNumCells, co
 *
 * \brief Assemble vector gradient of a scalar function
 *
-* \fn void assemble_vector_gradient(const Plato::OrdinalType& aNumCells,const EntryOrdinal& aEntryOrdinal,const Gradient& aGradient,ReturnVal& aOutput)
 * \tparam NumNodesPerCell number of nodes per cells (i.e. elements)
 * \tparam NumDofsPerNode number of degrees of freedom per node
 * \tparam EntryOrdinal entry ordinal view type
 * \tparam Gradient gradient workset view type
 * \tparam ReturnVal output (i.e. assembled gradient) view type
+*
 * \param aNumCells number of cells
 * \param aEntryOrdinal global indices to output vector
 * \param aGradien gradient workset - gradient values for each cell
@@ -78,12 +78,48 @@ inline void assemble_vector_gradient(const Plato::OrdinalType& aNumCells,
             for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerNode; tDimIndex++)
             {
                 Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(aCellOrdinal, tNodeIndex, tDimIndex);
+                Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal, tNodeIndex * NumDofsPerNode + tDimIndex));
+            }
+        }
+    }, "Assemble - Vector Gradient Calculation");
+}
+// function assemble_vector_gradient_fad
+
+/*************************************************************************//**
+*
+* \brief Assemble vector gradient of a scalar function
+*
+* \tparam NumNodesPerCell number of nodes per cells (i.e. elements)
+* \tparam NumDofsPerNode number of degrees of freedom per node
+* \tparam EntryOrdinal entry ordinal view type
+* \tparam Gradient gradient workset view type
+* \tparam ReturnVal output (i.e. assembled gradient) view type
+*
+* \param aNumCells number of cells
+* \param aEntryOrdinal global indices to output vector
+* \param aGradien gradient workset - gradient values for each cell
+* \param aOutput assembled global gradient
+*
+* *****************************************************************************/
+template<Plato::OrdinalType NumNodesPerCell, Plato::OrdinalType NumDofsPerNode, class EntryOrdinal, class Gradient, class ReturnVal>
+inline void assemble_vector_gradient_fad(const Plato::OrdinalType& aNumCells,
+                                     const EntryOrdinal& aEntryOrdinal,
+                                     const Gradient& aGradient,
+                                     ReturnVal& aOutput)
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tNodeIndex=0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
+        {
+            for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerNode; tDimIndex++)
+            {
+                Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(aCellOrdinal, tNodeIndex, tDimIndex);
                 Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal).dx(tNodeIndex * NumDofsPerNode + tDimIndex));
             }
         }
     }, "Assemble - Vector Gradient Calculation");
 }
-// function assemble_vector_gradient
+// function assemble_vector_gradient_fad
 
 /*************************************************************************//**
 *
@@ -128,7 +164,7 @@ inline void assemble_scalar_gradient(const Plato::OrdinalType& aNumCells,
 *
 * \param aNumCells number of cells (i.e. elements)
 * \param aEntryOrdinal global indices to output vector
-* \param aGradien gradient workset (AD type) - gradient values for each cell
+* \param aGradien gradient workset (automatic differentiation type) - gradient values for each cell
 * \param aOutput assembled global gradient
 *
 *****************************************************************************/
@@ -414,15 +450,15 @@ protected:
     using ControlFad    = typename Plato::SimplexFadTypes<SimplexPhysics>::ControlFad;
     using ConfigFad     = typename Plato::SimplexFadTypes<SimplexPhysics>::ConfigFad;
 
-    static constexpr Plato::OrdinalType SpaceDim = SimplexPhysics::mNumSpatialDims;
-    static constexpr Plato::OrdinalType mNumConfigDofsPerCell = SpaceDim * mNumNodesPerCell;
+    static constexpr Plato::OrdinalType mSpaceDim = SimplexPhysics::mNumSpatialDims;
+    static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mSpaceDim * mNumNodesPerCell;
 
-    Plato::VectorEntryOrdinal<SpaceDim,mNumDofsPerNode>      mStateEntryOrdinal;
-    Plato::VectorEntryOrdinal<SpaceDim,mNumNodeStatePerNode> mNodeStateEntryOrdinal;
-    Plato::VectorEntryOrdinal<SpaceDim,mNumControl>          mControlEntryOrdinal;
-    Plato::VectorEntryOrdinal<SpaceDim,SpaceDim>             mConfigEntryOrdinal;
+    Plato::VectorEntryOrdinal<mSpaceDim,mNumDofsPerNode>      mStateEntryOrdinal;
+    Plato::VectorEntryOrdinal<mSpaceDim,mNumNodeStatePerNode> mNodeStateEntryOrdinal;
+    Plato::VectorEntryOrdinal<mSpaceDim,mNumControl>          mControlEntryOrdinal;
+    Plato::VectorEntryOrdinal<mSpaceDim,mSpaceDim>             mConfigEntryOrdinal;
 
-    Plato::NodeCoordinate<SpaceDim>     mNodeCoordinate;
+    Plato::NodeCoordinate<mSpaceDim>     mNodeCoordinate;
 
 public:
     /******************************************************************************//**
@@ -432,11 +468,11 @@ public:
     WorksetBase(Omega_h::Mesh& aMesh) :
             mNumCells(aMesh.nelems()),
             mNumNodes(aMesh.nverts()),
-            mStateEntryOrdinal(Plato::VectorEntryOrdinal<SpaceDim, mNumDofsPerNode>(&aMesh)),
-            mNodeStateEntryOrdinal(Plato::VectorEntryOrdinal<SpaceDim, mNumNodeStatePerNode>(&aMesh)),
-            mControlEntryOrdinal(Plato::VectorEntryOrdinal<SpaceDim, mNumControl>(&aMesh)),
-            mConfigEntryOrdinal(Plato::VectorEntryOrdinal<SpaceDim, SpaceDim>(&aMesh)),
-            mNodeCoordinate(Plato::NodeCoordinate<SpaceDim>(&aMesh))
+            mStateEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumDofsPerNode>(&aMesh)),
+            mNodeStateEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumNodeStatePerNode>(&aMesh)),
+            mControlEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumControl>(&aMesh)),
+            mConfigEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mSpaceDim>(&aMesh)),
+            mNodeCoordinate(Plato::NodeCoordinate<mSpaceDim>(&aMesh))
     {
     }
 
@@ -544,7 +580,7 @@ public:
     **********************************************************************************/
     void worksetConfig(Plato::ScalarArray3DT<Plato::Scalar> & aConfigWS) const
     {
-      Plato::workset_config_scalar<SpaceDim, mNumNodesPerCell>(
+      Plato::workset_config_scalar<mSpaceDim, mNumNodesPerCell>(
               mNumCells, mNodeCoordinate, aConfigWS);
     }
 
@@ -554,7 +590,7 @@ public:
     **********************************************************************************/
     void worksetConfig(Plato::ScalarArray3DT<ConfigFad> & aFadConfigWS) const
     {
-      Plato::workset_config_fad<SpaceDim, mNumNodesPerCell, mNumConfigDofsPerCell, ConfigFad>(
+      Plato::workset_config_fad<mSpaceDim, mNumNodesPerCell, mNumConfigDofsPerCell, ConfigFad>(
               mNumCells, mNodeCoordinate, aFadConfigWS);
     }
 
@@ -580,13 +616,28 @@ public:
      * \tparam WorksetType Input container, as a 2-D Kokkos::View
      * \tparam OutType Output container, as a 1-D Kokkos::View
      *
-     * \param [in] aResidualWorkset residual cell workset
-     * \param [in/out] aReturnValue assembled residual
+     * \param [in] aResidualWorkset residual cell workset - Scalar type
+     * \param [in/out] aReturnValue assembled residual - Scalar type
     **********************************************************************************/
     template<class WorksetType, class OutType>
-    void assemblePartialDerivatieU(const WorksetType & aWorkset, OutType & aOutput) const
+    void assembleVectorGradientU(const WorksetType & aWorkset, OutType & aOutput) const
     {
         Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mStateEntryOrdinal, aWorkset, aOutput);
+    }
+
+    /******************************************************************************//**
+     * \brief Assemble partial derivative with respect to configuration (X)
+     *
+     * \tparam WorksetType Input container, as a 2-D Kokkos::View
+     * \tparam OutType Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aResidualWorkset residual cell workset - Scalar type
+     * \param [in/out] aReturnValue assembled residual - Scalar type
+    **********************************************************************************/
+    template<class WorksetType, class OutType>
+    void assembleVectorGradientX(const WorksetType & aWorkset, OutType & aOutput) const
+    {
+        Plato::assemble_vector_gradient<mNumNodesPerCell, mSpaceDim>(mNumCells, mConfigEntryOrdinal, aWorkset, aOutput);
     }
 
     /******************************************************************************//**
@@ -595,13 +646,13 @@ public:
      * \tparam WorksetType Input container, as a 2-D Kokkos::View
      * \tparam OutType Output container, as a 1-D Kokkos::View
      *
-     * \param [in] aResidualWorkset residual cell workset (Automatic Differentiation Type)
-     * \param [in/out] aReturnValue assembled residual
+     * \param [in] aResidualWorkset residual cell workset - Scalar type
+     * \param [in/out] aReturnValue assembled residual - Scalar type
     **********************************************************************************/
     template<class WorksetType, class OutType>
-    void assemblePartialDerivatieZ_Fad(const WorksetType & aWorkset, OutType & aOutput) const
+    void assembleScalarGradientZ(const WorksetType & aWorkset, OutType & aOutput) const
     {
-        Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, aWorkset, aOutput);
+        Plato::assemble_scalar_gradient<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, aWorkset, aOutput);
     }
 
     /******************************************************************************//**
