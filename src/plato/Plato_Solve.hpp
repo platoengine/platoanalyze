@@ -1,6 +1,9 @@
 #ifndef PLATO_SOLVE_HPP
 #define PLATO_SOLVE_HPP
 
+#include <Teuchos_RCPDecl.hpp>
+
+#include "plato/PlatoStaticsTypes.hpp"
 #include "plato/PlatoMathFunctors.hpp"
 
 #ifdef HAVE_AMGX

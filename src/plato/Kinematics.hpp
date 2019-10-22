@@ -1,7 +1,7 @@
 #ifndef KINEMATICS_HPP
 #define KINEMATICS_HPP
 
-#include "plato/SimplexMechanics.hpp"
+#include "plato/SimplexStabilizedMechanics.hpp"
 #include "plato/PlatoStaticsTypes.hpp"
 
 namespace Plato

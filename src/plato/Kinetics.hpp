@@ -1,8 +1,10 @@
 #ifndef LGR_PLATO_KINETICS_HPP
 #define LGR_PLATO_KINETICS_HPP
 
-#include "plato/SimplexMechanics.hpp"
+#include <Omega_h_matrix.hpp>
+
 #include "plato/LinearElasticMaterial.hpp"
+#include "plato/SimplexStabilizedMechanics.hpp"
 
 namespace Plato
 {

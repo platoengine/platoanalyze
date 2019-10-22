@@ -1,5 +1,9 @@
 #pragma once
 
+#include <Teuchos_RCPDecl.hpp>
+
+#include "plato/PlatoStaticsTypes.hpp"
+
 namespace Plato
 {
 

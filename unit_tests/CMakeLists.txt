@@ -215,6 +215,33 @@ if (LGR_ENABLE_PLATO)
   add_test(NAME runPlasticityUnitTests COMMAND ${ES_MPI_TEST})
 #end: Plasticity unit test
 
+#begin: ElastoPlasticityTests unit test
+  set(ElastoPlasticityTest_SOURCES
+    ElastoPlasticityTests.cpp
+    PlatoTestHelpers.cpp
+    PlatoUnitTestMain.cpp
+  )
+
+  set(ElastoPlasticityTest_HEADERS
+    PlatoTestHelpers.hpp
+  )
+
+  add_executable(ElastoPlasticityUnitTests
+    ${ElastoPlasticityTest_SOURCES}
+    ${ElastoPlasticityTest_HEADERS}
+  )
+
+  target_link_libraries(ElastoPlasticityUnitTests 
+    lgrtk
+    ${Trilinos_LIBRARIES} 
+    ${Trilinos_TPL_LIBRARIES} 
+    )
+  target_include_directories(ElastoPlasticityUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/ElastoPlasticityUnitTests)
+  add_test(NAME runElastoPlasticityUnitTests COMMAND ${ES_MPI_TEST})
+#end: ElastoPlasticityTests unit test
+
 #begin: PlatoMathHelpers unit test
   set(PlatoMathHelpers_SOURCES
     PlatoMathHelpersTest.cpp

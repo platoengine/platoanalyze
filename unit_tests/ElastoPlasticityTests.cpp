@@ -4,7 +4,12 @@
  *  Created on: Sep 30, 2019
  */
 
+#include "Teuchos_UnitTestHarness.hpp"
+
+#include "PlatoTestHelpers.hpp"
+
 #include <memory>
+#include <ostream>
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
@@ -38,7 +43,7 @@
 #include "plato/ThermoPlasticityUtilities.hpp"
 #include "plato/LinearTetCubRuleDegreeOne.hpp"
 
-#include "ImplicitFunctors.hpp"
+#include "plato/ImplicitFunctors.hpp"
 #include "plato/Plato_Solve.hpp"
 #include "plato/ApplyConstraints.hpp"
 #include "plato/ScalarFunctionBaseFactory.hpp"
@@ -61,49 +66,109 @@
 namespace Plato
 {
 
+/******************************************************************************//**
+ * \brief Flatten vector workset.  Takes 2D view and converts it into a 1D view.
+ *
+ * \tparam NumLocalDofsPerCell number of local degrees of freedom per cell
+ * \tparam AViewType Input workset, as a 2-D Kokkos::View
+ * \tparam BViewType Output workset, as a 1-D Kokkos::View
+ *
+ * \param [in] aNumCells number of cells, i.e. elements
+ * \param [in] aInput input workset (NumCells, LocalNumCellDofs)
+ * \param [in/out] aOutput output vector (NumCells * LocalNumCellDofs)
+**********************************************************************************/
 template<Plato::OrdinalType NumLocalDofsPerCell, class AViewType, class BViewType>
-void flatten_vector_workset(const Plato::OrdinalType& aNumCells,
-                            AViewType& tInput,
-                            BViewType& tOutput)
+inline void flatten_vector_workset(const Plato::OrdinalType& aNumCells,
+                                   AViewType& aInput,
+                                   BViewType& aOutput)
 {
-    if(tInput.size() <= static_cast<Plato::OrdinalType>(0))
+    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
     {
         THROWERR("\nInput Kokkos::View is empty, i.e. size <= 0.\n")
     }
-    if(tOutput.size() <= static_cast<Plato::OrdinalType>(0))
+    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
     {
         THROWERR("\nOutput Kokkos::View is empty, i.e. size <= 0.\n")
     }
-    if(Kokkos::Impl::is_view<AViewType>::value)
-    {
-        THROWERR("\nA is not a Kokkos::View.\n")
-    }
-    if(Kokkos::Impl::is_view<BViewType>::value)
-    {
-        THROWERR("\nB is not a Kokkos::View.\n")
-    }
     if(aNumCells <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nNumber of input cells, i.e. elements, is zero.\n");
+        THROWERR("\nNumber of cells, i.e. elements, argument is <= zero.\n");
     }
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::OrdinalType tDofOrdinal = aCellOrdinal * NumLocalDofsPerCell;
-        for (Plato::OrdinalType tColumn = 0; tColumn < NumLocalDofsPerCell; ++tColumn)
+        const auto tDofOffset = aCellOrdinal * NumLocalDofsPerCell;
+        for (Plato::OrdinalType tDofIndex = 0; tDofIndex < NumLocalDofsPerCell; tDofIndex++)
         {
-          tOutput(tDofOrdinal + tColumn) = tInput(aCellOrdinal, tColumn);
+          aOutput(tDofOffset + tDofIndex) = aInput(aCellOrdinal, tDofIndex);
         }
     }, "flatten residual vector");
 }
 
+/******************************************************************************//**
+ * \brief Set all the entries in a 3-D matrix workset to a single value.
+ *
+ * \tparam NumRowsPerCell matrix number of rows
+ * \tparam NumColumnsPerCell matrix number of columns
+ * \tparam AViewType Output workset, as a 3-D Kokkos::View
+ *
+ * \param [in] aNumCells number of cells, i.e. elements
+ * \param [in] aAlpha scalar multiplier
+ * \param [in/out] aOutput 3-D matrix workset (NumCells, NumRowsPerCell, NumColumnsPerCell)
+**********************************************************************************/
+template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, class AViewType>
+inline void fill_3D_workset(const Plato::OrdinalType& aNumCells,
+                            typename AViewType::const_value_type & aAlpha,
+                            AViewType& aOutput)
+{
+    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nInput 3D array is empty, i.e. size <= 0.\n")
+    }
+    if(aNumCells <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nInvalid number of input cells, i.e. elements. Value is <= 0.\n")
+    }
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < NumRowsPerCell; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < NumColumnsPerCell; tColIndex++)
+            {
+                aOutput(aCellOrdinal, tRowIndex, tColIndex) = aAlpha;
+            }
+        }
+    }, "fill matrix identity 3DView");
+}
+
+/******************************************************************************//**
+ * \brief Add two 3-D matrix workset
+ *
+ * \tparam AViewType Input matrix, as a 3-D Kokkos::View
+ * \tparam BViewType Output matrix, as a 3-D Kokkos::View
+ *
+ * \param [in] aNumCells number of cells, i.e. elements
+ * \param [in] aAlpha    scalar multiplier
+ * \param [in] aA        3-D matrix workset (NumCells, NumRowsPerCell, NumColumnsPerCell)
+ * \param [in] aBeta     scalar multiplier
+ * \param [in/out] aB    3-D matrix workset (NumCells, NumRowsPerCell, NumColumnsPerCell)
+**********************************************************************************/
 template<class AViewType, class BViewType>
-void matrix_update_workset(const Plato::OrdinalType& aNumCells,
+void update_matrix_workset(const Plato::OrdinalType& aNumCells,
                            typename AViewType::const_value_type& aAlpha,
                            const AViewType& aA,
                            typename BViewType::const_value_type& aBeta,
                            const BViewType& aB)
 {
+    if(aA.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nInput 3D array is empty, i.e. size <= 0\n")
+    }
+    if(aB.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nOutput 3D array is empty, i.e. size <= 0\n")
+    }
     if(aA.extent(1) != aB.extent(1))
     {
         THROWERR("\nDimension mismatch, number of rows do not match.\n")
@@ -112,37 +177,40 @@ void matrix_update_workset(const Plato::OrdinalType& aNumCells,
     {
         THROWERR("\nDimension mismatch, number of columns do not match.\n")
     }
-    if(Kokkos::Impl::is_view<AViewType>::value)
-    {
-        THROWERR("\nA is not a Kokkos::View.\n")
-    }
-    if(Kokkos::Impl::is_view<BViewType>::value)
-    {
-        THROWERR("\nB is not a Kokkos::View.\n")
-    }
     if(aNumCells <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nNumber of input cells, i.e. elements, is zero.\n");
+        THROWERR("\nNumber of input cells, i.e. elements, is less or equal to zero.\n");
     }
 
     const auto tNumRows = aA.extent(1);
     const auto tNumCols = aA.extent(2);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        auto tA = Kokkos::subview(aA, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
-        auto tB = Kokkos::subview(aB, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
         for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
         {
             for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
             {
-                tB(tRowIndex, tColIndex) = aAlpha * tA(tRowIndex, tColIndex) + aBeta * tB(tRowIndex, tColIndex);
+                aB(aCellOrdinal, tRowIndex, tColIndex) = aAlpha * aA(aCellOrdinal, tRowIndex, tColIndex) +
+                        aBeta * aB(aCellOrdinal, tRowIndex, tColIndex);
             }
         }
-    }, "matrix update 3DView");
+    }, "update matrix workset");
 }
 
+/******************************************************************************//**
+ * \brief Add two 3-D matrix workset
+ *
+ * \tparam XViewType Input matrix, as a 2-D Kokkos::View
+ * \tparam YViewType Output matrix, as a 2-D Kokkos::View
+ *
+ * \param [in] aNumCells number of cells, i.e. elements
+ * \param [in] aAlpha scalar multiplier
+ * \param [in] aXvec 2-D vector workset (NumCells, NumEntriesPerCell)
+ * \param [in] aBeta scalar multiplier
+ * \param [in/out] aYvec 2-D vector workset (NumCells, NumEntriesPerCell)
+**********************************************************************************/
 template<class XViewType, class YViewType>
-void vector_update_workset(const Plato::OrdinalType& aNumCells,
+void update_vector_workset(const Plato::OrdinalType& aNumCells,
                            typename XViewType::const_value_type& aAlpha,
                            const XViewType& aXvec,
                            typename YViewType::const_value_type& aBeta,
@@ -150,103 +218,114 @@ void vector_update_workset(const Plato::OrdinalType& aNumCells,
 {
     if(aXvec.size() != aYvec.size())
     {
-        THROWERR("\nDimension mismatch.\n")
-    }
-    if(Kokkos::Impl::is_view<XViewType>::value)
-    {
-        THROWERR("\nA is not a Kokkos::View.\n")
-    }
-    if(Kokkos::Impl::is_view<YViewType>::value)
-    {
-        THROWERR("\nB is not a Kokkos::View.\n")
+        std::stringstream tMsg;
+        tMsg << "\nDimension mismatch. Input vector size is " << aXvec.size()
+                << " and output vector size is " << aYvec.size() << ".\n";
+        THROWERR(tMsg.str().c_str())
     }
     if(aNumCells <= static_cast<Plato::OrdinalType>(0))
     {
         THROWERR("\nNumber of input cells, i.e. elements, is less or equal to zero.\n");
     }
 
+    const auto tNumElements = aXvec.extent(1);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        auto tXvec = Kokkos::subview(aXvec, aCellOrdinal, Kokkos::ALL());
-        auto tYvec = Kokkos::subview(aYvec, aCellOrdinal, Kokkos::ALL());
-        const auto tLength = tXvec.size();
-        for(Plato::OrdinalType tIndex = 0; tIndex < tLength; tIndex++)
+        for(Plato::OrdinalType tIndex = 0; tIndex < tNumElements; tIndex++)
         {
-            tYvec(tIndex) = aAlpha * tXvec(tIndex) + aBeta * tYvec(tIndex);
+            aYvec(aCellOrdinal, tIndex) = aAlpha * aXvec(aCellOrdinal, tIndex) +
+                    aBeta * aYvec(aCellOrdinal, tIndex);
         }
-    }, "matrix update 3DView");
+    }, "update vector workset");
 }
 
-/******************************************************************************//**
+/************************************************************************//**
  *
  * \brief Dense matrix-matrix multiplication: C = \f$ \beta*C + \alpha*op(A)*op(B)\f$.
+ *        NOTE: Function does not support transpose operations
  *
  * \tparam AViewType Input matrix, as a 3-D Kokkos::View
  * \tparam BViewType Input matrix, as a 3-D Kokkos::View
  * \tparam CViewType Output matrix, as a nonconst 3-D Kokkos::View
  *
- * \param transA [in] "N" for non-transpose, "T" for transpose, "C"
- *   for conjugate transpose.  All characters after the first are
- *   ignored.  This works just like the BLAS routines.
- * \param transB [in] "N" for non-transpose, "T" for transpose, "C"
- *   for conjugate transpose.  All characters after the first are
- *   ignored.  This works just like the BLAS routines.
- * \param alpha [in] Input coefficient of A*x
- * \param A [in] Input matrix, as a 2-D Kokkos::View
- * \param B [in] Input matrix, as a 2-D Kokkos::View
- * \param beta [in] Input coefficient of C
- * \param C [in/out] Output vector, as a nonconst 2-D Kokkos::View
+ * \param aNumCells [in]     Input number of cells, i.e. elements
+ * \param aAlpha    [in]     Input coefficient of A
+ * \param aA        [in]     Input matrix, as a 3-D Kokkos::View
+ * \param aB        [in]     Input matrix, as a 3-D Kokkos::View
+ * \param aBeta     [in]     Input coefficient of C
+ * \param aC        [in/out] Output matrix, as a nonconst 3-D Kokkos::View
  *
-***********************************************************************************/
+****************************************************************************/
 template<class AViewType, class BViewType, class CViewType>
-void matrix_matrix_multiplication_workset(const char aTransA[],
-                                          const char aTransB[],
-                                          const Plato::OrdinalType& aNumCells,
-                                          typename AViewType::const_value_type& aAlpha,
-                                          const AViewType& aA,
-                                          const BViewType& aB,
-                                          typename CViewType::const_value_type& aBeta,
-                                          const CViewType& aC)
+void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
+                             typename AViewType::const_value_type& aAlpha,
+                             const AViewType& aA,
+                             const BViewType& aB,
+                             typename CViewType::const_value_type& aBeta,
+                             CViewType& aC)
 {
-    if(Kokkos::Impl::is_view<AViewType>::value)
+    if(aA.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nA matrix is not a Kokkos::View.\n")
+        THROWERR("\nInput 3D array A is empty, i.e. size <= 0\n")
     }
-    if(Kokkos::Impl::is_view<BViewType>::value)
+    if(aB.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nB matrix is not a Kokkos::View.\n")
+        THROWERR("\nInput 3D array B is empty, i.e. size <= 0\n")
     }
-    if(Kokkos::Impl::is_view<CViewType>::value)
+    if(aC.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nC matrix is not a Kokkos::View.\n")
+        THROWERR("\nOutput 3D array C is empty, i.e. size <= 0\n")
+    }
+    if(aA.extent(1) != aB.extent(1))
+    {
+        THROWERR("\nDimension mismatch, input A and B matrices row count mismatch.\n")
+    }
+    if(aA.extent(2) != aB.extent(2))
+    {
+        THROWERR("\nDimension mismatch, input A and B matrices column count mismatch.\n")
+    }
+    if(aA.extent(1) != aC.extent(1))
+    {
+        THROWERR("\nDimension mismatch. Mismatch in input and output matrix row count.\n")
+    }
+    if(aA.extent(2) != aC.extent(2))
+    {
+        THROWERR("\nDimension mismatch. Mismatch in input and output matrix column count.\n")
+    }
+    if(aA.extent(0) != aNumCells)
+    {
+        THROWERR("\nDimension mismatch, number of cells of matrix A does not match input number of cells.\n")
+    }
+    if(aB.extent(0) != aNumCells)
+    {
+        THROWERR("\nDimension mismatch, number of cells of matrix B does not match input number of cells.\n")
+    }
+    if(aC.extent(0) != aNumCells)
+    {
+        THROWERR("\nDimension mismatch, number of cells of matrix C does not match input number of cells.\n")
+    }
+    if(aNumCells <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nNumber of input cells, i.e. elements, is less or equal to zero.\n");
     }
 
-    // Check validity of transpose argument
-    bool tValidTransA = (aTransA[0] == 'N') || (aTransA[0] == 'n') ||
-                        (aTransA[0] == 'T') || (aTransA[0] == 't') ||
-                        (aTransA[0] == 'C') || (aTransA[0] == 'c');
-    bool tValidTransB = (aTransB[0] == 'N') || (aTransB[0] == 'n') ||
-                        (aTransB[0] == 'T') || (aTransB[0] == 't') ||
-                        (aTransB[0] == 'C') || (aTransB[0] == 'c');
-    if(!(tValidTransA && tValidTransB))
-    {
-        std::ostringstream tOuputStream;
-        tOuputStream << "\ntransA[0] = '" << aTransA[0] << " transB[0] = '" << aTransB[0] << "'. "
-                     << "Valid values include 'N' or 'n' (No transpose), 'T' or 't' (Transpose), "
-                     "and 'C' or 'c' (Conjugate transpose).\n";
-        THROWERR(tOuputStream.str())
-    }
-
+    const auto tNumRows = aA.extent(1);
+    const auto tNumCols = aA.extent(2);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        auto tA = Kokkos::subview(aA, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
-        auto tB = Kokkos::subview(aB, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
-        auto tC = Kokkos::subview(aC, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
-        KokkosBlas::gemm(aTransA, aTransB, aAlpha, tA, tB, aBeta, tC);
-    }, "matrix matrix multiplication 3DView");
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+            {
+                aC(aCellOrdinal, tRowIndex, tColIndex) = aBeta * aC(aCellOrdinal, tRowIndex, tColIndex) +
+                        aAlpha * aA(aCellOrdinal, tRowIndex, tColIndex) * aB(aCellOrdinal, tRowIndex, tColIndex);
+            }
+        }
+    }, "multiply matrix workset");
 }
 
-/******************************************************************************//**
+ /*
+*****************************************************************************
  *
  * \brief Dense matrix-vector multiply: y = beta*y + alpha*A*x.
  *
@@ -265,7 +344,7 @@ void matrix_matrix_multiplication_workset(const char aTransA[],
  * \param beta [in] Input coefficient of y
  * \param y [in/out] Output vector, as a nonconst 1-D Kokkos::View
  *
-************************************************************************************/
+***********************************************************************************
 template<class AViewType, class XViewType, class YViewType>
 void matrix_times_vector_workset(const char aTransA[],
                                  const Plato::OrdinalType& aNumCells,
@@ -414,12 +493,12 @@ void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, 
     }, "compute matrix inverse 3DView");
 }
 
-/******************************************************************************//**
+*****************************************************************************
  * \brief Abstract vector function interface for Variational Multi-Scale (VMS)
  *   Partial Differential Equations (PDEs) with history dependent states
  * \tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for the vector function (e.g. Residual, Jacobian, GradientZ, GradientU, etc.)
- **********************************************************************************/
+ *********************************************************************************
 template<typename EvaluationType>
 class AbstractVectorFunctionVMSInc
 {
@@ -432,12 +511,12 @@ protected:
 
 // Public access functions
 public:
-    /**************************************************************************//**
+    *************************************************************************
      * \brief Constructor
      * \param [in]  aMesh mesh metadata
      * \param [in]  aMeshSets mesh side-sets metadata
      * \param [in]  aDataMap output data map
-     ******************************************************************************/
+     *****************************************************************************
     explicit AbstractVectorFunctionVMSInc(Omega_h::Mesh &aMesh,
                                                Omega_h::MeshSets &aMeshSets,
                                                Plato::DataMap &aDataMap) :
@@ -447,32 +526,32 @@ public:
     {
     }
 
-    /**************************************************************************//**
+    *************************************************************************
      * \brief Destructor
-     ******************************************************************************/
+     *****************************************************************************
     virtual ~AbstractVectorFunctionVMSInc()
     {
     }
 
-    /****************************************************************************//**
+    ***************************************************************************
      * \brief Return reference to Omega_h mesh data base
      * \return mesh metadata
-     ********************************************************************************/
+     *******************************************************************************
     decltype(mMesh) getMesh() const
     {
         return (mMesh);
     }
 
-    /****************************************************************************//**
+    ***************************************************************************
      * \brief Return reference to Omega_h mesh sets
      * \return mesh side sets metadata
-     ********************************************************************************/
+     *******************************************************************************
     decltype(mMeshSets) getMeshSets() const
     {
         return (mMeshSets);
     }
 
-    /****************************************************************************//**
+    ***************************************************************************
      * \brief Evaluate the stabilized residual equation
      * \param [in] aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
      * \param [in] aGlobalStatePrev previous global state ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
@@ -482,7 +561,7 @@ public:
      * \param [in] aControl design variables
      * \param [in/out] aResult residual evaluation
      * \param [in] aTimeStep current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
-     ********************************************************************************/
+     *******************************************************************************
     virtual void
     evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType> &aGlobalState,
              const Plato::ScalarMultiVectorT<typename EvaluationType::PrevStateScalarType> &aGlobalStatePrev,
@@ -718,7 +797,7 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
 
 
 
-/**************************************************************************//**
+*************************************************************************
  * \brief Evaluate stabilized elasto-plastic residual, defined as
  *
  * \f$   \langle \nabla{v_h}, s_h \rangle + \langle \nabla\cdot{v_h}, p_h \rangle
@@ -732,54 +811,54 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
  * \f$ \langle \nabla{p_h}, \eta_h \rangle - \langle \Pi_h, \eta_h \rangle = 0\
  *     \forall\ \eta_h \in V_h \subset\ H^{1}(\Omega) \f$
  *
- ******************************************************************************/
+ *****************************************************************************
 template<typename EvaluationType, typename PhysicsType>
 class ElastoPlasticityResidual: public Plato::AbstractVectorFunctionVMSInc<EvaluationType>
 {
 // Private member data
 private:
-    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;               /*!< spatial dimensions */
-    static constexpr auto mNumVoigtTerms = PhysicsType::mNumVoigtTerms;         /*!< number of voigt terms */
-    static constexpr auto mNumDofsPerCell = PhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
-    static constexpr auto mNumDofsPerNode = PhysicsType::mNumDofsPerNode;       /*!< number of dofs per node */
-    static constexpr auto mNumNodesPerCell = PhysicsType::mNumNodesPerCell;     /*!< number nodes per cell */
-    static constexpr auto mPressureDofOffset = PhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;               !< spatial dimensions
+    static constexpr auto mNumVoigtTerms = PhysicsType::mNumVoigtTerms;         !< number of voigt terms
+    static constexpr auto mNumDofsPerCell = PhysicsType::mNumDofsPerCell;       !< number of degrees of freedom (dofs) per cell
+    static constexpr auto mNumDofsPerNode = PhysicsType::mNumDofsPerNode;       !< number of dofs per node
+    static constexpr auto mNumNodesPerCell = PhysicsType::mNumNodesPerCell;     !< number nodes per cell
+    static constexpr auto mPressureDofOffset = PhysicsType::mPressureDofOffset; !< number of pressure dofs offset
 
-    static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
-    static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
+    static constexpr auto mNumMechDims = mSpaceDim;         !< number of mechanical degrees of freedom
+    static constexpr Plato::OrdinalType mMechDofOffset = 0; !< mechanical degrees of freedom offset
 
-    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mMesh;     /*!< mesh database */
-    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
-    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mMeshSets; /*!< side-sets metadata */
+    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mMesh;     !< mesh database
+    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mDataMap;  !< PLATO Engine output database
+    using Plato::AbstractVectorFunctionVMSInc<EvaluationType>::mMeshSets; !< side-sets metadata
 
-    using GlobalStateT = typename EvaluationType::StateScalarType;             /*!< global state variables automatic differentiation type */
-    using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
-    using LocalStateT = typename EvaluationType::LocalStateScalarType;         /*!< local state variables automatic differentiation type */
-    using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType; /*!< local state variables automatic differentiation type */
-    using NodeStateT = typename EvaluationType::NodeStateScalarType;           /*!< node State AD type */
-    using ControlT = typename EvaluationType::ControlScalarType;               /*!< control variables automatic differentiation type */
-    using ConfigT = typename EvaluationType::ConfigScalarType;                 /*!< config variables automatic differentiation type */
-    using ResultT = typename EvaluationType::ResultScalarType;                 /*!< result variables automatic differentiation type */
+    using GlobalStateT = typename EvaluationType::StateScalarType;             !< global state variables automatic differentiation type
+    using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     !< global state variables automatic differentiation type
+    using LocalStateT = typename EvaluationType::LocalStateScalarType;         !< local state variables automatic differentiation type
+    using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType; !< local state variables automatic differentiation type
+    using NodeStateT = typename EvaluationType::NodeStateScalarType;           !< node State AD type
+    using ControlT = typename EvaluationType::ControlScalarType;               !< control variables automatic differentiation type
+    using ConfigT = typename EvaluationType::ConfigScalarType;                 !< config variables automatic differentiation type
+    using ResultT = typename EvaluationType::ResultScalarType;                 !< result variables automatic differentiation type
 
-    Plato::Scalar mPoissonsRatio;                  /*!< Poisson's ratio */
-    Plato::Scalar mElasticModulus;                 /*!< elastic modulus */
-    Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
-    Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
-    Plato::Scalar mElasticPropertiesPenaltySIMP;   /*!< SIMP penalty for elastic properties */
-    Plato::Scalar mElasticPropertiesMinErsatzSIMP; /*!< SIMP min ersatz stiffness for elastic properties */
+    Plato::Scalar mPoissonsRatio;                  !< Poisson's ratio
+    Plato::Scalar mElasticModulus;                 !< elastic modulus
+    Plato::Scalar mElasticBulkModulus;             !< elastic bulk modulus
+    Plato::Scalar mElasticShearModulus;            !< elastic shear modulus
+    Plato::Scalar mElasticPropertiesPenaltySIMP;   !< SIMP penalty for elastic properties
+    Plato::Scalar mElasticPropertiesMinErsatzSIMP; !< SIMP min ersatz stiffness for elastic properties
 
-    std::vector<std::string> mPlotTable; /*!< array with output data identifiers */
+    std::vector<std::string> mPlotTable; !< array with output data identifiers
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                                                /*!< body loads interface */
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;                                  /*!< linear cubature rule */
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumMechDims, mNumDofsPerNode, mMechDofOffset>> mBoundaryLoads; /*!< boundary loads interface */
+    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                                                !< body loads interface
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;                                  !< linear cubature rule
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumMechDims, mNumDofsPerNode, mMechDofOffset>> mBoundaryLoads; !< boundary loads interface
 
 // Private access functions
 private:
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief initialize material, loads and output data
      * \param [in] aProblemParams input XML data
-     **********************************************************************************/
+     *********************************************************************************
     void initialize(Teuchos::ParameterList &aProblemParams)
     {
         auto tMaterialParamList = aProblemParams.get<Teuchos::ParameterList>("Material Model");
@@ -793,10 +872,10 @@ private:
         }
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Parse external forces
     * \param [in] aProblemParams Teuchos parameter list
-    ******************************************************************************/
+    *****************************************************************************
     void parseExternalForces(Teuchos::ParameterList &aProblemParams)
     {
         // Parse body loads
@@ -813,10 +892,10 @@ private:
         }
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Parse isotropic material parameters
     * \param [in] aProblemParams Teuchos parameter list
-    ******************************************************************************/
+    *****************************************************************************
     void parseIsotropicElasticMaterialProperties(Teuchos::ParameterList &aMaterialParamList)
     {
         if (aMaterialParamList.isSublist("Isotropic Linear Elastic"))
@@ -834,10 +913,10 @@ private:
         }
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Parse pressure scaling, needed to minimize the linear system's condition number.
     * \param [in] aProblemParams Teuchos parameter list
-    ******************************************************************************/
+    *****************************************************************************
     void parsePressureTermScaling(Teuchos::ParameterList & aMaterialParamList)
     {
         if (paramList.isType<Plato::Scalar>("Pressure Scaling"))
@@ -850,12 +929,12 @@ private:
         }
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Copy data to output data map
     * \tparam DataT data type
     * \param [in] aData output data
     * \param [in] aName output data name
-    ******************************************************************************/
+    *****************************************************************************
     template<typename DataT>
     void outputData(const DataT & aData, const std::string & aName)
     {
@@ -867,14 +946,14 @@ private:
 
 // Public access functions
 public:
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Constructor
      * \param [in] aMesh mesh metadata
      * \param [in] aMeshSets side-sets metadata
      * \param [in] aDataMap output data map
      * \param [in] aProblemParams input XML data
      * \param [in] aPenaltyParams penalty function input XML data
-     **********************************************************************************/
+     *********************************************************************************
     ElastoPlasticityResidual(Omega_h::Mesh &aMesh,
                              Omega_h::MeshSets &aMeshSets,
                              Plato::DataMap &aDataMap,
@@ -893,9 +972,9 @@ public:
         this->initialize(aProblemParams);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Destructor
-     **********************************************************************************/
+     *********************************************************************************
     virtual ~ElastoPlasticityResidual()
     {
     }
@@ -908,12 +987,12 @@ public:
         mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
     }
 
-    /****************************************************************************//**
+    ***************************************************************************
      * \brief Add external forces to residual
      * \param [in] aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
      * \param [in] aControl design variables
      * \param [in/out] aResult residual evaluation
-     ********************************************************************************/
+     *******************************************************************************
     void addExternalForces(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
                            const Plato::ScalarMultiVectorT<ControlT> &aControl,
                            const Plato::ScalarMultiVectorT<ResultT> &aResult)
@@ -925,7 +1004,7 @@ public:
         }
     }
 
-    /****************************************************************************//**
+    ***************************************************************************
      * \brief Evaluate the stabilized residual equation
      * \param [in] aPressureGrad current pressure gradient ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
      * \param [in] aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
@@ -935,7 +1014,7 @@ public:
      * \param [in] aControl design variables
      * \param [in/out] aResult residual evaluation
      * \param [in] aTimeStep current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
-     ********************************************************************************/
+     *******************************************************************************
     void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
                   const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aGlobalStatePrev,
                   const Plato::ScalarMultiVectorT<LocalStateT> &aLocalState,
@@ -958,7 +1037,7 @@ public:
         Plato::ThermoPlasticityUtilities<EvaluationType::SpatialDim, PhysicsType> tPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
-        Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0 /* dof offset */, mSpaceDim> tInterpolatePressGradFromNodal;
+        Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0  dof offset , mSpaceDim> tInterpolatePressGradFromNodal;
 
         // Residual evaulation functors
         Plato::PressureDivergence<mSpaceDim, mNumDofsPerNode> tPressureDivergence;
@@ -1043,10 +1122,10 @@ public:
 namespace ElastoPlasticityFactory
 {
 
-/******************************************************************************/
+****************************************************************************
 struct FunctionFactory
 {
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Create a PLATO local vector function  inc (i.e. local residual equations)
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
@@ -1054,7 +1133,7 @@ struct FunctionFactory
      * \param [in] aInputParams input parameters
      * \param [in] aFunctionName vector function name
      * \return shared pointer to a stabilized vector function integrated in time
-    **********************************************************************************/
+    *********************************************************************************
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<EvaluationType>>
     createVectorFunctionVMSInc(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap, Teuchos::ParameterList& aInputParams, std::string aFunctionName)
@@ -1076,13 +1155,13 @@ struct FunctionFactory
 }
 // namespace ElastoPlasticityFactory
 
-/****************************************************************************//**
+***************************************************************************
  * \brief Concrete class defining the Physics Type template argument for a
  * VectorFunctionVMSInc.  A VectorFunctionVMSInc is defined by a stabilized
  * Partial Differential Equation (PDE) integrated implicitly in time.  The
  * stabilization technique is based on the Variational Multiscale (VMS) method.
  * Here, the (Inc) in VectorFunctionVMSInc denotes increment.
- *******************************************************************************/
+ ******************************************************************************
 template<Plato::OrdinalType NumSpaceDim>
 class ElastoPlasticity: public Plato::SimplexPlasticity<NumSpaceDim>
 {
@@ -1091,7 +1170,7 @@ public:
     typedef Plato::ElastoPlasticityFactory::FunctionFactory FunctionFactory;
 
     using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>;
-    using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset, /* numProjectionDofs=*/ 1>;
+    using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset,  numProjectionDofs= 1>;
 };
 // class ElastoPlasticity
 
@@ -1105,50 +1184,50 @@ class VectorFunctionVMSInc
 {
 // Private access member data
 private:
-    using Residual        = typename Plato::Evaluation<PhysicsT>::Residual;       /*!< automatic differentiation (AD) type for the residual */
-    using GradientX       = typename Plato::Evaluation<PhysicsT>::GradientX;      /*!< AD type for the configuration */
-    using GradientZ       = typename Plato::Evaluation<PhysicsT>::GradientZ;      /*!< AD type for the controls */
-    using JacobianPgrad   = typename Plato::Evaluation<PhysicsT>::JacobianN;      /*!< AD type for the nodal pressure gradient */
-    using LocalJacobian   = typename Plato::Evaluation<PhysicsT>::LocalJacobian;  /*!< AD type for the current local states */
-    using LocalJacobianP  = typename Plato::Evaluation<PhysicsT>::LocalJacobianP; /*!< AD type for the previous local states */
-    using GlobalJacobian  = typename Plato::Evaluation<PhysicsT>::Jacobian;       /*!< AD type for the current global states */
-    using GlobalJacobianP = typename Plato::Evaluation<PhysicsT>::JacobianP;      /*!< AD type for the previous global states */
+    using Residual        = typename Plato::Evaluation<PhysicsT>::Residual;       !< automatic differentiation (AD) type for the residual
+    using GradientX       = typename Plato::Evaluation<PhysicsT>::GradientX;      !< AD type for the configuration
+    using GradientZ       = typename Plato::Evaluation<PhysicsT>::GradientZ;      !< AD type for the controls
+    using JacobianPgrad   = typename Plato::Evaluation<PhysicsT>::JacobianN;      !< AD type for the nodal pressure gradient
+    using LocalJacobian   = typename Plato::Evaluation<PhysicsT>::LocalJacobian;  !< AD type for the current local states
+    using LocalJacobianP  = typename Plato::Evaluation<PhysicsT>::LocalJacobianP; !< AD type for the previous local states
+    using GlobalJacobian  = typename Plato::Evaluation<PhysicsT>::Jacobian;       !< AD type for the current global states
+    using GlobalJacobianP = typename Plato::Evaluation<PhysicsT>::JacobianP;      !< AD type for the previous global states
 
-    static constexpr auto mNumControl = PhysicsT::mNumControl;                        /*!< number of control fields, i.e. vectors, number of materials */
-    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;                /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;              /*!< number of nodes per cell (i.e. element) */
-    static constexpr auto mNumGlobalDofsPerNode = PhysicsT::mNumDofsPerNode;          /*!< number of global degrees of freedom per node */
-    static constexpr auto mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;          /*!< number of global degrees of freedom per cell (i.e. element) */
-    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;      /*!< number of local degrees of freedom per cell (i.e. element) */
-    static constexpr auto mNumNodeStatePerNode = PhysicsT::mNumNodeStatePerNode;      /*!< number of pressure gradient degrees of freedom per node */
-    static constexpr auto mNumNodeStatePerCell = PhysicsT::mNumNodeStatePerCell;      /*!< number of pressure gradient degrees of freedom per cell (i.e. element) */
-    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell; /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
+    static constexpr auto mNumControl = PhysicsT::mNumControl;                        !< number of control fields, i.e. vectors, number of materials
+    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;                !< number of spatial dimensions
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;              !< number of nodes per cell (i.e. element)
+    static constexpr auto mNumGlobalDofsPerNode = PhysicsT::mNumDofsPerNode;          !< number of global degrees of freedom per node
+    static constexpr auto mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;          !< number of global degrees of freedom per cell (i.e. element)
+    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;      !< number of local degrees of freedom per cell (i.e. element)
+    static constexpr auto mNumNodeStatePerNode = PhysicsT::mNumNodeStatePerNode;      !< number of pressure gradient degrees of freedom per node
+    static constexpr auto mNumNodeStatePerCell = PhysicsT::mNumNodeStatePerCell;      !< number of pressure gradient degrees of freedom per cell (i.e. element)
+    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell; !< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element)
 
-    const Plato::OrdinalType mNumNodes; /*!< total number of nodes */
-    const Plato::OrdinalType mNumCells; /*!< total number of cells (i.e. elements) */
+    const Plato::OrdinalType mNumNodes; !< total number of nodes
+    const Plato::OrdinalType mNumCells; !< total number of cells (i.e. elements)
 
-    Plato::DataMap& mDataMap;  /*!< output data map */
-    Plato::WorksetBase<PhysicsT> mWorksetBase; /*!< assembly routine interface */
+    Plato::DataMap& mDataMap;  !< output data map
+    Plato::WorksetBase<PhysicsT> mWorksetBase; !< assembly routine interface
 
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<Residual>>        mGlobalVecFuncResidual;   /*!< global vector function residual */
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientX>>       mGlobalVecFuncJacobianX;  /*!< global vector function Jacobian wrt configuration */
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientZ>>       mGlobalVecFuncJacobianZ;  /*!< global vector function Jacobian wrt controls */
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<JacobianPgrad>>   mGlobalVecFuncJacPgrad;   /*!< global vector function Jacobian wrt projected pressure gradient */
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobian>>   mGlobalVecFuncJacobianC;  /*!< global vector function Jacobian wrt current local states */
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobianP>>  mGlobalVecFuncJacobianCP; /*!< global vector function Jacobian wrt previous local states */
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobian>>  mGlobalVecFuncJacobianU;  /*!< global vector function Jacobian wrt current global states */
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobianP>> mGlobalVecFuncJacobianUP; /*!< global vector function Jacobian wrt previous global states */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<Residual>>        mGlobalVecFuncResidual;   !< global vector function residual
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientX>>       mGlobalVecFuncJacobianX;  !< global vector function Jacobian wrt configuration
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientZ>>       mGlobalVecFuncJacobianZ;  !< global vector function Jacobian wrt controls
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<JacobianPgrad>>   mGlobalVecFuncJacPgrad;   !< global vector function Jacobian wrt projected pressure gradient
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobian>>   mGlobalVecFuncJacobianC;  !< global vector function Jacobian wrt current local states
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobianP>>  mGlobalVecFuncJacobianCP; !< global vector function Jacobian wrt previous local states
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobian>>  mGlobalVecFuncJacobianU;  !< global vector function Jacobian wrt current global states
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobianP>> mGlobalVecFuncJacobianUP; !< global vector function Jacobian wrt previous global states
 
 // Public access functions
 public:
-    /**************************************************************************//**
+    *************************************************************************
      * \brief Constructor
      * \param [in] aMesh mesh data base
      * \param [in] aMeshSets mesh sets data base
      * \param [in] aDataMap problem-specific data map
      * \param [in] aParamList Teuchos parameter list with input data
      * \param [in] aVectorFuncType vector function type string
-     ******************************************************************************/
+     *****************************************************************************
     VectorFunctionVMSInc(Omega_h::Mesh& aMesh,
                          Omega_h::MeshSets& aMeshSets,
                          Plato::DataMap& aDataMap,
@@ -1186,38 +1265,38 @@ public:
                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
     }
 
-    /**************************************************************************//**
+    *************************************************************************
      * \brief Destructor
-    ******************************************************************************/
+    *****************************************************************************
     ~VectorFunctionVMSInc(){ return; }
 
-    /**************************************************************************//**
+    *************************************************************************
      * \brief Return total number of degrees of freedom
-     ******************************************************************************/
+     *****************************************************************************
     Plato::OrdinalType size() const
     {
         return mNumNodes * mNumGlobalDofsPerNode;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
      * \brief Return total number of nodes
      * \return total number of nodes
-     ******************************************************************************/
+     *****************************************************************************
     Plato::OrdinalType numNodes() const
     {
         return mNumNodes;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
      * \brief Return total number of cells
      * \return total number of cells
-     ******************************************************************************/
+     *****************************************************************************
     Plato::OrdinalType numCells() const
     {
         return mNumCells;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute the global residual vector
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1227,7 +1306,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return Global residual vector
-    ******************************************************************************/
+    *****************************************************************************
     Plato::ScalarVectorT<typename Residual::ResultScalarType>
     value(const Plato::ScalarVector & aGlobalState,
           const Plato::ScalarVector & aPrevGlobalState,
@@ -1293,7 +1372,7 @@ public:
         return tAssembledResidual;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute Jacobian with respect to (wrt) control of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1303,7 +1382,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return Jacobian wrt control of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_z(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -1371,7 +1450,7 @@ public:
         return tAssembledJacobian;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute Jacobian wrt configuration of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1381,7 +1460,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return Jacobian wrt configuration of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_x(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -1455,7 +1534,7 @@ public:
         return tAssembledJacobian;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute Jacobian wrt current global states of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1465,7 +1544,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return Jacobian wrt current global states of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Plato::ScalarArray3D
     gradient_u(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -1528,7 +1607,7 @@ public:
         return tOutputJacobian;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute transpose Jacobian wrt current global states of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1538,7 +1617,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return transpose Jacobian wrt current global states of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Plato::ScalarArray3D
     gradient_u_T(const Plato::ScalarVector & aGlobalState,
                  const Plato::ScalarVector & aPrevGlobalState,
@@ -1552,7 +1631,7 @@ public:
         return (this->gradient_u(aGlobalState, aPrevGlobalState, aLocalState, aPrevLocalState, aNodeState, aControl, aTimeStep));
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute Jacobian wrt previous global states of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1562,7 +1641,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return Jacobian wrt previous global states of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Plato::ScalarArray3D
     gradient_up(const Plato::ScalarVector & aGlobalState,
                 const Plato::ScalarVector & aPrevGlobalState,
@@ -1625,7 +1704,7 @@ public:
         return tOutputJacobian;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute transpose Jacobian wrt previous global states of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1635,7 +1714,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return transpose Jacobian wrt previous global states of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Plato::ScalarArray3D
     gradient_up_T(const Plato::ScalarVector & aGlobalState,
                   const Plato::ScalarVector & aPrevGlobalState,
@@ -1649,7 +1728,7 @@ public:
         return (this->gradient_up(aGlobalState, aPrevGlobalState, aLocalState, aPrevLocalState, aNodeState, aControl, aTimeStep));
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute Jacobian wrt current local state of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1659,7 +1738,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return Jacobian wrt current local state of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Plato::ScalarArray3D
     gradient_c(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -1722,7 +1801,7 @@ public:
         return tOutputJacobian;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute transpose Jacobian wrt current local states of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1732,7 +1811,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return transpose Jacobian wrt current local states of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Plato::ScalarArray3D
     gradient_c_T(const Plato::ScalarVector & aGlobalState,
                  const Plato::ScalarVector & aPrevGlobalState,
@@ -1746,7 +1825,7 @@ public:
         return (this->gradient_c(aGlobalState, aPrevGlobalState, aLocalState, aPrevLocalState, aNodeState, aControl, aTimeStep));
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute Jacobian wrt previous local state of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1756,7 +1835,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return Jacobian wrt previous local state of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Plato::ScalarArray3D
     gradient_cp(const Plato::ScalarVector & aGlobalState,
                 const Plato::ScalarVector & aPrevGlobalState,
@@ -1819,7 +1898,7 @@ public:
         return tOutputJacobian;
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute transpose Jacobian wrt previous local states of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1829,7 +1908,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return transpose Jacobian wrt previous local states of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Plato::ScalarArray3D
     gradient_cp_T(const Plato::ScalarVector & aGlobalState,
                   const Plato::ScalarVector & aPrevGlobalState,
@@ -1843,7 +1922,7 @@ public:
         return (this->gradient_cp(aGlobalState, aPrevGlobalState, aLocalState, aPrevLocalState, aNodeState, aControl, aTimeStep));
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute assembled Jacobian wrt pressure gradient of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1853,7 +1932,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return Assembled Jacobian wrt pressure gradient of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_n(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -1914,7 +1993,7 @@ public:
         return (this->assembleJacobianPressGrad(tJacobianWS));
     }
 
-    /**************************************************************************//**
+    *************************************************************************
     * \brief Compute assembled transpose Jacobian wrt pressure gradient of the global residual
     * \param [in] aGlobalState global state at current time step
     * \param [in] aPrevGlobalState global state at previous time step
@@ -1924,7 +2003,7 @@ public:
     * \param [in] aNodeState pressure gradient
     * \param [in] aTimeStep time step
     * \return Assembled transpose Jacobian wrt pressure gradient of the global residual
-    ******************************************************************************/
+    *****************************************************************************
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_n_T(const Plato::ScalarVector & aGlobalState,
                  const Plato::ScalarVector & aPrevGlobalState,
@@ -2029,11 +2108,11 @@ private:
         //
         auto tJacobianMatEntries = tAssembledJacobian->entries();
         mWorksetBase.assembleJacobian(
-          mNumGlobalDofsPerCell,    /* (Nv x Nd) */
-          mNumNodeStatePerCell,     /* (Nv x Nn) */
-          tJacobianMatEntryOrdinal, /* entry ordinal functor */
-          aJacobianWS,              /* source data */
-          tJacobianMatEntries       /* destination */
+          mNumGlobalDofsPerCell,     (Nv x Nd)
+          mNumNodeStatePerCell,      (Nv x Nn)
+          tJacobianMatEntryOrdinal,  entry ordinal functor
+          aJacobianWS,               source data
+          tJacobianMatEntries        destination
         );
 
         return tAssembledJacobian;
@@ -2082,11 +2161,11 @@ private:
         //
         auto tJacobianMatEntries = tAssembledTransposeJacobian->entries();
         mWorksetBase.assembleTransposeJacobian(
-          mNumGlobalDofsPerCell,    /* (Nv x Nd) */
-          mNumNodeStatePerCell,     /* (Nv x Nn) */
-          tJacobianMatEntryOrdinal, /* entry ordinal functor */
-          aJacobianWS,              /* source data */
-          tJacobianMatEntries       /* destination */
+          mNumGlobalDofsPerCell,     (Nv x Nd)
+          mNumNodeStatePerCell,      (Nv x Nn)
+          tJacobianMatEntryOrdinal,  entry ordinal functor
+          aJacobianWS,               source data
+          tJacobianMatEntries        destination
         );
 
         return tAssembledTransposeJacobian;
@@ -2106,14 +2185,14 @@ class ScalarFunctionLocalHistBase
 public:
     virtual ~ScalarFunctionLocalHistBase(){}
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn virtual std::string name() const
      * \brief Return function name
      * \return user defined function name
-     **********************************************************************************/
+     *********************************************************************************
     virtual std::string name() const = 0;
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn virtual Plato::Scalar value(const Plato::ScalarVector & aGlobalStates,
      *                                 const Plato::ScalarVector & aLocalStates,
      *                                 const Plato::ScalarVector & aControl,
@@ -2124,13 +2203,13 @@ public:
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return function value
-     **********************************************************************************/
+     *********************************************************************************
     virtual Plato::Scalar value(const Plato::ScalarVector & aGlobalStates,
                                 const Plato::ScalarVector & aLocalStates,
                                 const Plato::ScalarVector & aControl,
                                 Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn virtual Plato::ScalarVector gradient_z(const Plato::ScalarVector & aGlobalStates,
      *                                            const Plato::ScalarVector & aLocalStates,
      *                                            const Plato::ScalarVector & aControl,
@@ -2141,13 +2220,13 @@ public:
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return assembled partial derivative wrt design variables
-     **********************************************************************************/
+     *********************************************************************************
     virtual Plato::ScalarVector gradient_z(const Plato::ScalarVector & aGlobalStates,
                                            const Plato::ScalarVector & aLocalStates,
                                            const Plato::ScalarVector & aControl,
                                            Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn virtual Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aGlobalStates,
      *                                                 const Plato::ScalarVector & aLocalStates,
      *                                                 const Plato::ScalarVector & aControl,
@@ -2158,13 +2237,13 @@ public:
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return partial derivative wrt global states workset
-     **********************************************************************************/
+     *********************************************************************************
     virtual Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aGlobalStates,
                                                 const Plato::ScalarVector & aLocalStates,
                                                 const Plato::ScalarVector & aControl,
                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn virtual Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aGlobalStates,
      *                                            const Plato::ScalarVector & aLocalStates,
      *                                            const Plato::ScalarVector & aControl,
@@ -2175,13 +2254,13 @@ public:
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return partial derivative wrt local states workset
-     **********************************************************************************/
+     *********************************************************************************
     virtual Plato::ScalarMultiVector gradient_c(const Plato::ScalarVector & aGlobalStates,
                                                 const Plato::ScalarVector & aLocalStates,
                                                 const Plato::ScalarVector & aControl,
                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn virtual Plato::ScalarVector gradient_x(const Plato::ScalarVector & aGlobalStates,
      *                                            const Plato::ScalarVector & aLocalStates,
      *                                            const Plato::ScalarVector & aControl,
@@ -2192,13 +2271,13 @@ public:
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return assembled partial derivative wrt configurtion variables
-     **********************************************************************************/
+     *********************************************************************************
     virtual Plato::ScalarVector gradient_x(const Plato::ScalarVector & aGlobalStates,
                                            const Plato::ScalarVector & aLocalStates,
                                            const Plato::ScalarVector & aControl,
                                            Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn virtual void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
      *                                const Plato::ScalarMultiVector & aLocalStates,
      *                                const Plato::ScalarVector & aControl) const
@@ -2206,7 +2285,7 @@ public:
      * \param [in] aGlobalStates 2D view of global states
      * \param [in] aLocalStates 2D view of local states
      * \param [in] aControl 1D view of controls, i.e. design variables
-     **********************************************************************************/
+     *********************************************************************************
     virtual void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
                                const Plato::ScalarMultiVector & aLocalStates,
                                const Plato::ScalarVector & aControl) const = 0;
@@ -2221,24 +2300,24 @@ public:
 
 struct StateData
 {
-    Plato::Scalar mTimeStep; /*!< current time step */
-    Plato::OrdinalType mCurrentStepIndex; /*!< current time step index */
-    Plato::OrdinalType mPreviousStepIndex; /*!< previous time step index */
+    Plato::Scalar mTimeStep; !< current time step
+    Plato::OrdinalType mCurrentStepIndex; !< current time step index
+    Plato::OrdinalType mPreviousStepIndex; !< previous time step index
 
-    Plato::ScalarVector mCurrentLocalState;    /*!< current local state */
-    Plato::ScalarVector mPreviousLocalState;   /*!< previous local state */
-    Plato::ScalarVector mCurrentGlobalState;   /*!< current global state */
-    Plato::ScalarVector mPreviousGlobalState;  /*!< previous global state */
-    Plato::ScalarVector mCurrentProjPressGrad; /*!< current projected pressure gradient */
+    Plato::ScalarVector mCurrentLocalState;    !< current local state
+    Plato::ScalarVector mPreviousLocalState;   !< previous local state
+    Plato::ScalarVector mCurrentGlobalState;   !< current global state
+    Plato::ScalarVector mPreviousGlobalState;  !< previous global state
+    Plato::ScalarVector mCurrentProjPressGrad; !< current projected pressure gradient
 };
 // struct StateData
 
 struct AdjointData
 {
-    Plato::ScalarVector mCurrentLocalAdjoint;   /*!< current local adjoint */
-    Plato::ScalarVector mPreviousLocalAdjoint;  /*!< previous local adjoint */
-    Plato::ScalarVector mCurrentGlobalAdjoint;  /*!< current global adjoint */
-    Plato::ScalarVector mPreviousGlobalAdjoint; /*!< previous global adjoint */
+    Plato::ScalarVector mCurrentLocalAdjoint;   !< current local adjoint
+    Plato::ScalarVector mPreviousLocalAdjoint;  !< previous local adjoint
+    Plato::ScalarVector mCurrentGlobalAdjoint;  !< current global adjoint
+    Plato::ScalarVector mPreviousGlobalAdjoint; !< previous global adjoint
 };
 // struct AdjointData
 
@@ -2253,71 +2332,71 @@ struct AdjointData
 
 
 
-/******************************************************************************//**
+*****************************************************************************
  * \brief Plasticity problem manager, which is responsible for performance
  * criteria evaluations and
  * \param [in] aMesh mesh database
  * \param [in] aMeshSets side sets database
  * \param [in] aInputParams input parameters database
-**********************************************************************************/
+*********************************************************************************
 template<typename SimplexPhysics>
 class PlasticityProblem : public Plato::AbstractProblem
 {
 // private member data
 private:
-    static constexpr auto mSpatialDim = SimplexPhysics::mNumSpatialDims;               /*!< spatial dimensions */
-    static constexpr auto mNumNodesPerCell = SimplexPhysics::mNumNodesPerCell;         /*!< number of nodes per cell */
-    static constexpr auto mPressureDofOffset = SimplexPhysics::mPressureDofOffset;     /*!< number of pressure dofs offset */
-    static constexpr auto mNumGlobalDofsPerNode = SimplexPhysics::mNumDofsPerNode;     /*!< number of global degrees of freedom per node */
-    static constexpr auto mNumGlobalDofsPerCell = SimplexPhysics::mNumDofsPerCell;     /*!< number of global degrees of freedom per cell (i.e. element) */
-    static constexpr auto mNumLocalDofsPerCell = SimplexPhysics::mNumLocalDofsPerCell; /*!< number of local degrees of freedom per cell (i.e. element) */
+    static constexpr auto mSpatialDim = SimplexPhysics::mNumSpatialDims;               !< spatial dimensions
+    static constexpr auto mNumNodesPerCell = SimplexPhysics::mNumNodesPerCell;         !< number of nodes per cell
+    static constexpr auto mPressureDofOffset = SimplexPhysics::mPressureDofOffset;     !< number of pressure dofs offset
+    static constexpr auto mNumGlobalDofsPerNode = SimplexPhysics::mNumDofsPerNode;     !< number of global degrees of freedom per node
+    static constexpr auto mNumGlobalDofsPerCell = SimplexPhysics::mNumDofsPerCell;     !< number of global degrees of freedom per cell (i.e. element)
+    static constexpr auto mNumLocalDofsPerCell = SimplexPhysics::mNumLocalDofsPerCell; !< number of local degrees of freedom per cell (i.e. element)
 
     // Required
-    Plato::VectorFunctionVMSInc<SimplexPhysics> mGlobalResidualEq;      /*!< global equality constraint interface */
-    Plato::LocalVectorFunctionInc<SimplexPhysics> mLocalResidualEq;     /*!< local equality constraint interface */
-    Plato::VectorFunctionVMS<SimplexPhysics::ProjectorT> mProjectionEq; /*!< global pressure gradient projection interface */
+    Plato::VectorFunctionVMSInc<SimplexPhysics> mGlobalResidualEq;      !< global equality constraint interface
+    Plato::LocalVectorFunctionInc<SimplexPhysics> mLocalResidualEq;     !< local equality constraint interface
+    Plato::VectorFunctionVMS<SimplexPhysics::ProjectorT> mProjectionEq; !< global pressure gradient projection interface
 
     // Optional
-    std::shared_ptr<Plato::ScalarFunctionLocalHistBase> mObjective;  /*!< objective constraint interface */
-    std::shared_ptr<Plato::ScalarFunctionLocalHistBase> mConstraint; /*!< constraint constraint interface */
+    std::shared_ptr<Plato::ScalarFunctionLocalHistBase> mObjective;  !< objective constraint interface
+    std::shared_ptr<Plato::ScalarFunctionLocalHistBase> mConstraint; !< constraint constraint interface
 
-    Plato::Scalar mPseudoTimeStep;             /*!< pseudo time step increment */
-    Plato::Scalar mInitialNormResidual;        /*!< initial norm of global residual */
-    Plato::Scalar mCurrentPseudoTimeStep;      /*!< current pseudo time step */
-    Plato::Scalar mNewtonRaphsonStopTolerance; /*!< Newton-Raphson stopping tolerance */
+    Plato::Scalar mPseudoTimeStep;             !< pseudo time step increment
+    Plato::Scalar mInitialNormResidual;        !< initial norm of global residual
+    Plato::Scalar mCurrentPseudoTimeStep;      !< current pseudo time step
+    Plato::Scalar mNewtonRaphsonStopTolerance; !< Newton-Raphson stopping tolerance
 
-    Plato::OrdinalType mNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps */
-    Plato::OrdinalType mMaxNumNewtonIter;      /*!< maximum number of Newton-Raphson iterations */
+    Plato::OrdinalType mNumPseudoTimeSteps;    !< maximum number of pseudo time steps
+    Plato::OrdinalType mMaxNumNewtonIter;      !< maximum number of Newton-Raphson iterations
 
-    Plato::ScalarVector mGlobalResidual;       /*!< global residual */
-    Plato::ScalarVector mProjResidual;         /*!< projection residual, i.e. projected pressure gradient solve residual */
-    Plato::ScalarVector mProjectedPressure;    /*!< projected pressure */
-    Plato::ScalarVector mProjectionAdjoint;    /*!< projection adjoint variables */
+    Plato::ScalarVector mGlobalResidual;       !< global residual
+    Plato::ScalarVector mProjResidual;         !< projection residual, i.e. projected pressure gradient solve residual
+    Plato::ScalarVector mProjectedPressure;    !< projected pressure
+    Plato::ScalarVector mProjectionAdjoint;    !< projection adjoint variables
 
-    Plato::ScalarMultiVector mLocalStates;        /*!< local state variables */
-    Plato::ScalarMultiVector mLocalAdjoint;       /*!< local adjoint variables */
-    Plato::ScalarMultiVector mGlobalStates;       /*!< global state variables */
-    Plato::ScalarMultiVector mGlobalAdjoint;      /*!< global adjoint variables */
-    Plato::ScalarMultiVector mProjectedPressGrad; /*!< projected pressure gradient (# Time Steps, # Projected Pressure Gradient dofs) */
+    Plato::ScalarMultiVector mLocalStates;        !< local state variables
+    Plato::ScalarMultiVector mLocalAdjoint;       !< local adjoint variables
+    Plato::ScalarMultiVector mGlobalStates;       !< global state variables
+    Plato::ScalarMultiVector mGlobalAdjoint;      !< global adjoint variables
+    Plato::ScalarMultiVector mProjectedPressGrad; !< projected pressure gradient (# Time Steps, # Projected Pressure Gradient dofs)
 
-    Teuchos::RCP<Plato::CrsMatrixType> mProjectionJacobian;   /*!< projection residual Jacobian matrix */
-    Teuchos::RCP<Plato::CrsMatrixType> mGlobalJacobian; /*!< global residual Jacobian matrix */
+    Teuchos::RCP<Plato::CrsMatrixType> mProjectionJacobian;   !< projection residual Jacobian matrix
+    Teuchos::RCP<Plato::CrsMatrixType> mGlobalJacobian; !< global residual Jacobian matrix
 
-    Plato::ScalarVector mDirichletValues; /*!< values associated with the Dirichlet boundary conditions */
-    Plato::ScalarVector mDispControlDirichletValues; /*!< values associated with the Dirichlet boundary conditions at the current pseudo time step */
-    Plato::LocalOrdinalVector mDirichletDofs; /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
+    Plato::ScalarVector mDirichletValues; !< values associated with the Dirichlet boundary conditions
+    Plato::ScalarVector mDispControlDirichletValues; !< values associated with the Dirichlet boundary conditions at the current pseudo time step
+    Plato::LocalOrdinalVector mDirichletDofs; !< list of degrees of freedom associated with the Dirichlet boundary conditions
 
-    Plato::WorksetBase<SimplexPhysics> mWorksetBase; /*!< assembly routine interface */
-    std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal */
+    Plato::WorksetBase<SimplexPhysics> mWorksetBase; !< assembly routine interface
+    std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; !< global Jacobian matrix entry ordinal
 
 // public functions
 public:
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief PLATO Plasticity Problem constructor
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
-    **********************************************************************************/
+    *********************************************************************************
     PlasticityProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams) :
             mGlobalResidualEq(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
             mLocalResidualEq(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("Plasticity Model")),
@@ -2340,24 +2419,24 @@ public:
         this->initialize(aMesh, aMeshSets, aInputParams);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief PLATO Plasticity Problem destructor
-    **********************************************************************************/
+    *********************************************************************************
     virtual ~PlasticityProblem(){}
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Return number of global degrees of freedom in solution.
      * \return Number of global degrees of freedom
-    **********************************************************************************/
+    *********************************************************************************
     Plato::OrdinalType getNumSolutionDofs()
     {
         return (mGlobalResidualEq.size());
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Set global state variables
      * \param [in] aState 2D view of global state variables - (NumTimeSteps, TotalDofs)
-    **********************************************************************************/
+    *********************************************************************************
     void setState(const Plato::ScalarMultiVector & aState)
     {
         assert(aState.extent(0) == mGlobalStates.extent(0));
@@ -2365,29 +2444,29 @@ public:
         Kokkos::deep_copy(mGlobalStates, aState);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Return 2D view of global state variables - (NumTimeSteps, TotalDofs)
      * \return aState 2D view of global state variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarMultiVector getState()
     {
         return mGlobalStates;
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Return 2D view of global adjoint variables - (2, TotalDofs)
      * \return 2D view of global adjoint variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarMultiVector getAdjoint()
     {
         return mGlobalAdjoint;
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Apply Dirichlet constraints
      * \param [in] aMatrix Compressed Row Storage (CRS) matrix
      * \param [in] aVector 1D view of Right-Hand-Side forces
-    **********************************************************************************/
+    *********************************************************************************
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
         // apply displacement control, i.e. continuation
@@ -2403,27 +2482,27 @@ public:
         }
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Fill right-hand-side vector values
-    **********************************************************************************/
+    *********************************************************************************
     void applyBoundaryLoads(const Plato::ScalarVector & aForce) { return; }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aControl 1D container of control variables
      * \param [in] aGlobalState 2D container of global state variables
-    **********************************************************************************/
+    *********************************************************************************
     void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     {
         mObjective->updateProblem(aGlobalState, mLocalStates, aControl);
         mConstraint->updateProblem(aGlobalState, mLocalStates, aControl);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Solve system of equations
      * \param [in] aControl 1D view of control variables
      * \return 2D view of state variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarMultiVector solution(const Plato::ScalarVector & aControl)
     {
         Plato::StateData tStateData;
@@ -2438,7 +2517,7 @@ public:
             tStateData.mTimeStep = 0;
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
             tStateData.mPreviousStepIndex = tCurrentStepIndex - static_cast<Plato::OrdinalType>(1);
-            this->updateStateData(tStateData, true /* set entries to zero */);
+            this->updateStateData(tStateData, true  set entries to zero );
 
             // inner loop for load/time steps
             mCurrentPseudoTimeStep = static_cast<Plato::Scalar>(tCurrentStepIndex) * mPseudoTimeStep;
@@ -2483,14 +2562,14 @@ public:
         return mGlobalStates;
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl,
      *                                  const Plato::ScalarMultiVector & aGlobalState)
      * \brief Evaluate objective function and return its value
      * \param [in] aControl 1D view of control variables
      * \param [in] aGlobalState 2D view of state variables
      * \return objective function value
-    **********************************************************************************/
+    *********************************************************************************
     Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2509,12 +2588,12 @@ public:
         return mObjective->value(aGlobalState, mLocalStates, aControl);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl)
      * \brief Evaluate objective function and return its value
      * \param [in] aControl 1D view of control variables
      * \return objective function value
-    **********************************************************************************/
+    *********************************************************************************
     Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2530,13 +2609,13 @@ public:
         return mObjective->value(tGlobalStates, mLocalStates, aControl);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
      * \brief Evaluate constraint function and return its value
      * \param [in] aControl 1D view of control variables
      * \param [in] aGlobalState 2D view of state variables
      * \return constraint function value
-    **********************************************************************************/
+    *********************************************************************************
     Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2555,12 +2634,12 @@ public:
         return mConstraint->value(aGlobalState, mLocalStates, aControl);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \fn Plato::Scalar constraintValue(const Plato::ScalarVector & aControl)
      * \brief Evaluate constraint function and return its value
      * \param [in] aControl 1D view of control variables
      * \return constraint function value
-    **********************************************************************************/
+    *********************************************************************************
     Plato::Scalar constraintValue(const Plato::ScalarVector & aControl)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2575,11 +2654,11 @@ public:
         return mConstraint->value(mGlobalStates, mLocalStates, aControl);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Evaluate objective partial derivative wrt control variables
      * \param [in] aControl 1D view of control variables
      * \return 1D view - objective partial derivative wrt control variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2594,12 +2673,12 @@ public:
         return mObjective->gradient_z(mGlobalStates, mLocalStates, aControl);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Evaluate objective gradient wrt control variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aGlobalState 2D view of global state variables
      * \return 1D view of the objective gradient wrt control variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2646,11 +2725,11 @@ public:
         return (tDfDz);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Evaluate objective partial derivative wrt configuration variables
      * \param [in] aControl 1D view of control variables
      * \return 1D view - objective partial derivative wrt configuration variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2665,12 +2744,12 @@ public:
         return mObjective->gradient_x(mGlobalStates, mLocalStates, aControl);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Evaluate objective gradient wrt configuration variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aGlobalState 2D view of global state variables
      * \return 1D view of the objective gradient wrt control variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2717,11 +2796,11 @@ public:
         return (tDfDx);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Evaluate constraint partial derivative wrt control variables
      * \param [in] aControl 1D view of control variables
      * \return 1D view - constraint partial derivative wrt control variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2736,12 +2815,12 @@ public:
         return mConstraint->gradient_z(mGlobalStates, mLocalStates, aControl);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Evaluate constraint partial derivative wrt control variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aState 2D view of state variables
      * \return 1D view - constraint partial derivative wrt control variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2788,11 +2867,11 @@ public:
         return (tDgDz);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Evaluate constraint partial derivative wrt configuration variables
      * \param [in] aControl 1D view of control variables
      * \return 1D view - constraint partial derivative wrt configuration variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2807,12 +2886,12 @@ public:
         return mConstraint->gradient_x(mGlobalStates, mLocalStates, aControl);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Evaluate constraint partial derivative wrt configuration variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aState 2D view of state variables
      * \return 1D view - constraint partial derivative wrt configuration variables
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
@@ -2859,11 +2938,11 @@ public:
         return (tDgDx);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Update state data for time step n, i.e. current time step:
      * \param [in] aStateData state data manager
      * \param [in] aZeroEntries flag - zero all entries in current states (default = false)
-    **********************************************************************************/
+    *********************************************************************************
     void updateStateData(Plato::StateData &aStateData, bool aZeroEntries = false)
     {
         aStateData.mCurrentLocalState = Kokkos::subview(mLocalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
@@ -2885,10 +2964,10 @@ public:
         }
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Update adjoint data for time step n, i.e. current time step:
      * \param [in] aAdjointData adjoint data manager
-    **********************************************************************************/
+    *********************************************************************************
     void updateAdjointData(Plato::AdjointData& aAdjointData)
     {
         const Plato::OrdinalType tCurrentStepIndex = 1;
@@ -2899,7 +2978,7 @@ public:
         Plato::update(tAlpha, aAdjointData.mCurrentGlobalAdjoint, tBeta, aAdjointData.mPreviousGlobalAdjoint);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Update inverse of local Jacobian wrt local states, i.e.
      * /f$ \left[ \left( \frac{\partial{H}}{\partial{c}} \right)_{t=n} \right]^{-1}, /f$:
      *
@@ -2909,7 +2988,7 @@ public:
      * \param [in] aControl 1D view of control variables, i.e. design variables
      * \param [in] aStateData state data manager
      * \param [in] aInvLocalJacobianT inverse of local Jacobian wrt local states
-    **********************************************************************************/
+    *********************************************************************************
     void updateInverseLocalJacobian(const Plato::ScalarVector & aControl,
                                     const Plato::StateData& aStateData,
                                     Plato::ScalarArray3D& aInvLocalJacobianT)
@@ -2921,7 +3000,7 @@ public:
         Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, aInvLocalJacobianT);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Update total gradient of performance criterion with respect to controls.
      * The total gradient is given by:
      *
@@ -2939,7 +3018,7 @@ public:
      * \param [in] aStateData state data manager
      * \param [in] aAdjointData adjoint data manager
      * \param [in/out] aGradient total derivative wrt controls
-    **********************************************************************************/
+    *********************************************************************************
     void updateGradientControl(const Plato::ScalarVector &aControl,
                                const Plato::StateData &aStateData,
                                const Plato::AdjointData &aAdjointData,
@@ -2968,7 +3047,7 @@ public:
         mWorksetBase.assembleScalarGradientZ(tDhDzTimesLocalAdjoint, aGradient);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Update total gradient of performance criterion with respect to configuration.
      * The total gradient is given by:
      *
@@ -2986,7 +3065,7 @@ public:
      * \param [in] aStateData state data manager
      * \param [in] aAdjointData adjoint data manager
      * \param [in/out] aGradient total derivative wrt configuration
-    **********************************************************************************/
+    *********************************************************************************
     void updateGradientConfiguration(const Plato::ScalarVector &aControl,
                                      const Plato::StateData &aStateData,
                                      const Plato::AdjointData &aAdjointData,
@@ -3017,7 +3096,7 @@ public:
         mWorksetBase.assembleVectorGradientX(tDhDxTimesLocalAdjoint, aGradient);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Update projection adjoint vector using the following equation:
      *
      *  /f$ \mu_{n} = -\left( \left(\frac{\partial{P}}{\partial{\pi}}\right)_{t=n}^{T} \right)^{-1}
@@ -3030,7 +3109,7 @@ public:
      * \param [in] aControl 1D view of control variables, i.e. design variables
      * \param [in] aStateData state data manager
      * \param [in] aAdjointData adjoint data manager
-    **********************************************************************************/
+    *********************************************************************************
     void updateProjectionAdjoint(const Plato::ScalarVector & aControl,
                                  const Plato::StateData& aStateData,
                                  Plato::AdjointData& aAdjointData)
@@ -3043,7 +3122,7 @@ public:
         Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjectionJacobian, mProjectionAdjoint, mProjResidual);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Update local adjoint vector using the following equation:
      *
      *  /f$ \gamma_n = -\left( \left(\frac{\partial{H}}{\partial{c}}\right)_{t=n}^{T} \right)^{-1}
@@ -3061,7 +3140,7 @@ public:
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
      * \param [in] aAdjointData adjoint data manager
      * \param [in] aCriterion performance criterion interface
-    **********************************************************************************/
+    *********************************************************************************
     void updateLocalAdjoint(const Plato::ScalarVector & aControl,
                             const Plato::StateData& aStateData,
                             const Plato::ScalarArray3D& aInvLocalJacobianT,
@@ -3108,7 +3187,7 @@ public:
         Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tCurrentLocalAdjointWS, aAdjointData.mCurrentLocalAdjoint);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Update global adjoint vector
      *
      * \param [in] aControl 1D view of control variables, i.e. design variables
@@ -3116,7 +3195,7 @@ public:
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
      * \param [in] aAdjointData adjoint data manager
      * \param [in] aCriterion performance criterion interface
-    **********************************************************************************/
+    *********************************************************************************
     void updateGlobalAdjoint(const Plato::ScalarVector & aControl,
                              const Plato::StateData& aStateData,
                              const Plato::ScalarArray3D& aInvLocalJacobianT,
@@ -3134,7 +3213,7 @@ public:
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointData.mCurrentGlobalAdjoint, mGlobalResidual);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Assemble global adjoint right hand side vector, which is given by:
      *
      * /f$ \bm{f} = \frac{\partial{f}}{\partial{u}}\right)_{t=n} - \left(\frac{\partial{H}}{\partial{u}}
@@ -3152,7 +3231,7 @@ public:
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
      * \param [in] aAdjointData adjoint data manager
      * \param [in] aCriterion performance criterion interface
-    **********************************************************************************/
+    *********************************************************************************
     void assembleGlobalAdjointForceVector(const Plato::ScalarVector &aControl,
                                           const Plato::StateData &aStateData,
                                           const Plato::ScalarArray3D& aInvLocalJacobianT,
@@ -3211,7 +3290,7 @@ public:
         Plato::scale(static_cast<Plato::Scalar>(-1), mGlobalResidual)
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Assemble global adjoint Jacobian, which is given by:
      *
      * /f$ A = \left(\frac{\partial{R}}{\partial{u}}\right)_{t=n}^{T} - \left(\frac{\partial{H}}{\partial{u}}
@@ -3227,7 +3306,7 @@ public:
      * \param [in] aControl 1D view of control variables, i.e. design variables
      * \param [in] aStateData state data manager
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
-    **********************************************************************************/
+    *********************************************************************************
     void assembleGlobalAdjointJacobian(const Plato::ScalarVector &aControl,
                                        const Plato::StateData &aStateData,
                                        const Plato::ScalarArray3D& aInvLocalJacobianT)
@@ -3255,10 +3334,10 @@ public:
         // Compute Jacobian for adjoint problem: K_t - dPdn_T * (dPdn)^-1 * dRdn_T, where K_t
         // is the tangent stiffness matrix, P is the projection problem residual, R is the
         // global residual, and n is the pressure gradient
-        Plato::Condense(mGlobalJacobian /* K_t */, tDpDn_T, mProjectionJacobian,  tDrDn_T, mPressureDofOffset /* row offset */);
+        Plato::Condense(mGlobalJacobian  K_t , tDpDn_T, mProjectionJacobian,  tDrDn_T, mPressureDofOffset  row offset );
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Compute Schur complement, which is defined as /f$ A = \frac{\partial{R}}
      * {\partial{c}} * \left[ \left(\frac{\partial{H}}{\partial{c}}\right)^{-1} *
      * \frac{\partial{H}}{\partial{u}} \right] /f$, where R is the global residual, H
@@ -3268,7 +3347,7 @@ public:
      * \param [in] aStateData state data manager
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
      * \return 3D view with Schur complement per cell
-    **********************************************************************************/
+    *********************************************************************************
     Plato::ScalarArray3D computeSchurComplement(const Plato::ScalarVector & aControl,
                                                 const Plato::StateData& aStateData,
                                                 const Plato::ScalarArray3D& aInvLocalJacobianT)
@@ -3285,7 +3364,7 @@ public:
         const Plato::Scalar tAlpha = 1.0;
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDu times DhDu", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::matrix_matrix_multiplication_workset("N", "N", tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
+        Plato::multiply_matrix_workset("N", "N", tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
 
 
         // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
@@ -3296,11 +3375,11 @@ public:
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
         Plato::ScalarArray3D tOutput("Schur Complement", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::matrix_matrix_multiplication_workset("N", "N", tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tOutput);
+        Plato::multiply_matrix_workset("N", "N", tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tOutput);
         return tOutput;
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Assemble tangent stiffness matrix, which is defined as /f$ K_{T} =
      * \frac{\partial{R}}{\partial{u}} - \frac{\partial{R}}{\partial{c}} * \left[
      * \left(\frac{\partial{H}}{\partial{c}}\right)^{-1} * \frac{\partial{H}}{\partial{u}}
@@ -3310,7 +3389,7 @@ public:
      * \param [in] aControl 1D view of control variables, i.e. design variables
      * \param [in] aStateData state data manager
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
-    **********************************************************************************/
+    *********************************************************************************
     void assembleTangentStiffnessMatrix(const Plato::ScalarVector & aControl,
                                         const Plato::StateData& aStateData,
                                         const Plato::ScalarArray3D& aInvLocalJacobianT)
@@ -3328,17 +3407,17 @@ public:
         const Plato::Scalar tBeta = 1.0;
         const Plato::Scalar tAlpha = -1.0;
         auto tNumCells = mGlobalResidualEq.numCells();
-        Plato::matrix_update_workset(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
+        Plato::update_matrix_workset(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
 
         auto tJacobianEntries = mGlobalJacobian->entries();
         Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell,
                                  *mGlobalJacEntryOrdinal, tDrDu, tJacobianEntries);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Set Dirichlet degrees of freedom in global state increment view to zero
      * \param [in] aGlobalStateIncrement 1D view of global state increments, i.e. Newton-Raphson solution
-    **********************************************************************************/
+    *********************************************************************************
     void zeroDirichletDofs(Plato::ScalarVector & aGlobalStateIncrement)
     {
         auto tDirichletDofs = mDirichletDofs;
@@ -3350,11 +3429,11 @@ public:
         },"zero global state increment dirichlet dofs");
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Check Newton-Raphson solver convergence criterion
      * \param [in] aNewtonIteration current Newton-Raphson iteration
      * \return boolean flag, indicates if Newton-Raphson solver converged
-    **********************************************************************************/
+    *********************************************************************************
     bool checkNewtonRaphsonStoppingCriteria(const Plato::OrdinalType & aNewtonIteration)
     {
         bool tStop = false;
@@ -3376,12 +3455,12 @@ public:
 
 // private functions
 private:
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Initialize member data
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
-     **********************************************************************************/
+     *********************************************************************************
     void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
@@ -3396,12 +3475,12 @@ private:
         tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Allocate objective function interface and adjoint containers
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
-     **********************************************************************************/
+     *********************************************************************************
     void allocateObjectiveFunction(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
         if(aInputParams.isType<std::string>("Objective"))
@@ -3417,12 +3496,12 @@ private:
         }
     }
 
-    /******************************************************************************//**
+    *****************************************************************************
      * \brief Allocate constraint function interface and adjoint containers
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
-     **********************************************************************************/
+     *********************************************************************************
     void allocateConstraintFunction(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
         if(aInputParams.isType<std::string>("Constraint"))
@@ -3435,11 +3514,330 @@ private:
 };
 // class PlasticityProblem
 
+*/
+
+
 }
 // namespace Plato
 
 namespace ElastoPlasticityTest
 {
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_FlattenVectorWorkset_Errors)
+{
+    // CALL FUNCTION - TEST tLocalStateWorset IS EMPTY
+    Plato::ScalarVector tAssembledLocalState;
+    Plato::ScalarMultiVector tLocalStateWorset;
+    constexpr Plato::OrdinalType tNumCells = 1;
+    constexpr Plato::OrdinalType tNumLocalDofsPerCell = 14;
+    TEST_THROW(Plato::flatten_vector_workset<tNumLocalDofsPerCell>(tNumCells, tLocalStateWorset, tAssembledLocalState), std::runtime_error);
+
+    // CALL FUNCTION - TEST tAssembledLocalState IS EMPTY
+    tLocalStateWorset = Plato::ScalarMultiVector("local state WS", tNumCells, tNumLocalDofsPerCell);
+    TEST_THROW(Plato::flatten_vector_workset<tNumLocalDofsPerCell>(tNumCells, tLocalStateWorset, tAssembledLocalState), std::runtime_error);
+
+    // CALL FUNCTION - TEST NUMBER OF CELLS IS EMPTY
+    constexpr Plato::OrdinalType tEmptyNumCells = 0;
+    tAssembledLocalState = Plato::ScalarVector("assembled local state", tNumCells * tNumLocalDofsPerCell);
+    TEST_THROW(Plato::flatten_vector_workset<tNumLocalDofsPerCell>(tEmptyNumCells, tLocalStateWorset, tAssembledLocalState), std::runtime_error);
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_FlattenVectorWorkset)
+{
+    // PREPARE DATA
+    constexpr Plato::OrdinalType tNumCells = 3;
+    constexpr Plato::OrdinalType tNumLocalDofsPerCell = 14;
+    Plato::ScalarMultiVector tLocalStateWorset("local state WS", tNumCells, tNumLocalDofsPerCell);
+    auto tHostLocalStateWorset = Kokkos::create_mirror(tLocalStateWorset);
+
+    for (size_t tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (size_t tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; tDofIndex++)
+        {
+            tHostLocalStateWorset(tCellIndex, tDofIndex) = (tNumLocalDofsPerCell * tCellIndex) + (tDofIndex + 1.0);
+            //printf("(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostLocalStateWorset(tCellIndex, tDofIndex));
+        }
+    }
+    Kokkos::deep_copy(tLocalStateWorset, tHostLocalStateWorset);
+
+    Plato::ScalarVector tAssembledLocalState("assembled local state", tNumCells * tNumLocalDofsPerCell);
+
+    // CALL FUNCTION
+    TEST_NOTHROW(Plato::flatten_vector_workset<tNumLocalDofsPerCell>(tNumCells, tLocalStateWorset, tAssembledLocalState));
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostAssembledLocalState = Kokkos::create_mirror(tAssembledLocalState);
+    Kokkos::deep_copy(tHostAssembledLocalState, tAssembledLocalState);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+      {{1,2,3,4,5,6,7,8,9,10,11,12,13,14},
+       {15,16,17,18,19,20,21,22,23,24,25,26,27,28},
+       {29,30,31,32,33,34,35,36,37,38,39,40,41,42}};
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        const auto tDofOffset = tCellIndex * tNumLocalDofsPerCell;
+        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; tDofIndex++)
+        {
+            //printf("(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostAssembledLocalState(tDofOffset + tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostAssembledLocalState(tDofOffset + tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_fill3DView_Error)
+{
+    // PREPARE DATA
+    constexpr Plato::OrdinalType tNumRows = 14;
+    constexpr Plato::OrdinalType tNumCols = 14;
+    constexpr Plato::OrdinalType tNumCells = 2;
+
+    // CALL FUNCTION - TEST tMatrixWorkSet IS EMPTY
+    constexpr Plato::Scalar tAlpha = 2.0;
+    Plato::ScalarArray3D tMatrixWorkSet;
+    TEST_THROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
+
+    // CALL FUNCTION - TEST tNumCells IS ZERO
+    Plato::OrdinalType tBadNumCells = 0;
+    tMatrixWorkSet = Plato::ScalarArray3D("Matrix A WS", tNumCells, tNumRows, tNumCols);
+    TEST_THROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
+
+    // CALL FUNCTION - TEST tNumCells IS NEGATIVE
+    tBadNumCells = -1;
+    TEST_THROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_fill3DView)
+{
+    // PREPARE DATA
+    constexpr Plato::OrdinalType tNumRows = 14;
+    constexpr Plato::OrdinalType tNumCols = 14;
+    constexpr Plato::OrdinalType tNumCells = 2;
+    Plato::ScalarArray3D tA("Matrix A WS", tNumCells, tNumRows, tNumCols);
+
+    // CALL FUNCTION
+    Plato::Scalar tAlpha = 2.0;
+    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tGold = 2.0;
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostA = Kokkos::create_mirror(tA);
+    Kokkos::deep_copy(tHostA, tA);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+            {
+                //printf("(%d,%d,%d) = %f\n", aCellOrdinal, tRowIndex, tColIndex, tHostA(tCellIndex, tRowIndex, tColIndex));
+                TEST_FLOATING_EQUALITY(tHostA(tCellIndex, tRowIndex, tColIndex), tGold, tTolerance);
+            }
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateMatrixWorkset_Error)
+{
+    // CALL FUNCTION - INPUT VIEW IS EMPTY
+    Plato::ScalarArray3D tB;
+    Plato::ScalarArray3D tA;
+    constexpr Plato::OrdinalType tNumCells = 2;
+    Plato::Scalar tAlpha = 1; Plato::Scalar tBeta = 3;
+    TEST_THROW( (Plato::update_matrix_workset(tNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
+
+    // CALL FUNCTION - OUTPUT VIEW IS EMPTY
+    Plato::OrdinalType tNumRows = 4;
+    Plato::OrdinalType tNumCols = 4;
+    tA = Plato::ScalarArray3D("Matrix A WS", tNumCells, tNumRows, tNumCols);
+    TEST_THROW( (Plato::update_matrix_workset(tNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
+
+    // CALL FUNCTION - ROW DIM MISTMATCH
+    tNumRows = 3;
+    Plato::ScalarArray3D tC = Plato::ScalarArray3D("Matrix C WS", tNumCells, tNumRows, tNumCols);
+    tNumRows = 4;
+    Plato::ScalarArray3D tD = Plato::ScalarArray3D("Matrix D WS", tNumCells, tNumRows, tNumCols);
+    TEST_THROW( (Plato::update_matrix_workset(tNumCells, tAlpha, tC, tBeta, tD)), std::runtime_error );
+
+    // CALL FUNCTION - COLUMN DIM MISTMATCH
+    tNumCols = 5;
+    Plato::ScalarArray3D tE = Plato::ScalarArray3D("Matrix E WS", tNumCells, tNumRows, tNumCols);
+    TEST_THROW( (Plato::update_matrix_workset(tNumCells, tAlpha, tD, tBeta, tE)), std::runtime_error );
+
+    // CALL FUNCTION - NEGATIVE NUMBER OF CELLS
+    tNumRows = 4; tNumCols = 4;
+    Plato::OrdinalType tBadNumCells = -1;
+    tB = Plato::ScalarArray3D("Matrix B WS", tNumCells, tNumRows, tNumCols);
+    TEST_THROW( (Plato::update_matrix_workset(tBadNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
+
+    // CALL FUNCTION - ZERO NUMBER OF CELLS
+    tBadNumCells = 0;
+    TEST_THROW( (Plato::update_matrix_workset(tBadNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateMatrixWorkset)
+{
+    // PREPARE DATA
+    constexpr Plato::OrdinalType tNumRows = 14;
+    constexpr Plato::OrdinalType tNumCols = 14;
+    constexpr Plato::OrdinalType tNumCells = 2;
+    Plato::ScalarArray3D tA("Matrix A WS", tNumCells, tNumRows, tNumCols);
+    Plato::Scalar tAlpha = 2;
+    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
+
+    tAlpha = 1;
+    Plato::ScalarArray3D tB("Matrix A WS", tNumCells, tNumRows, tNumCols);
+    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
+
+    // CALL FUNCTION
+    tAlpha = 2;
+    Plato::Scalar tBeta = 3;
+    TEST_NOTHROW( (Plato::update_matrix_workset(tNumCells, tAlpha, tA, tBeta, tB)) );
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tGold = 7.0;
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostB = Kokkos::create_mirror(tB);
+    Kokkos::deep_copy(tHostB, tB);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+            {
+                //printf("(%d,%d,%d) = %f\n", aCellOrdinal, tRowIndex, tColIndex, tHostB(tCellIndex, tRowIndex, tColIndex));
+                TEST_FLOATING_EQUALITY(tHostB(tCellIndex, tRowIndex, tColIndex), tGold, tTolerance);
+            }
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateVectorWorkset_Error)
+{
+    // CALL FUNCTION - DIMENSION MISMATCH
+    Plato::OrdinalType tNumDofsPerCell = 3;
+    constexpr Plato::OrdinalType tNumCells = 2;
+    Plato::ScalarMultiVector tVecX("vector X WS", tNumCells, tNumDofsPerCell);
+    tNumDofsPerCell = 4;
+    Plato::ScalarMultiVector tVecY("vector Y WS", tNumCells, tNumDofsPerCell);
+    Plato::Scalar tAlpha = 1; Plato::Scalar tBeta = 3;
+    TEST_THROW( (Plato::update_vector_workset(tNumCells, tAlpha, tVecX, tBeta, tVecY)), std::runtime_error );
+
+
+    // CALL FUNCTION - NEGATIVE NUMBER OF CELLS
+    Plato::OrdinalType tBadNumCells = -1;
+    Plato::ScalarMultiVector tVecZ("vector Y WS", tNumCells, tNumDofsPerCell);
+    TEST_THROW( (Plato::update_vector_workset(tBadNumCells, tAlpha, tVecY, tBeta, tVecZ)), std::runtime_error );
+
+    // CALL FUNCTION - ZERO NUMBER OF CELLS
+    tBadNumCells = 0;
+    TEST_THROW( (Plato::update_vector_workset(tBadNumCells, tAlpha, tVecY, tBeta, tVecZ)), std::runtime_error );
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateVectorWorkset)
+{
+    // PREPARE DATA
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tNumLocalDofsPerCell = 6;
+    Plato::ScalarMultiVector tVecX("vector X WS", tNumCells, tNumLocalDofsPerCell);
+    Plato::ScalarMultiVector tVecY("vector Y WS", tNumCells, tNumLocalDofsPerCell);
+    auto tHostVecX = Kokkos::create_mirror(tVecX);
+    auto tHostVecY = Kokkos::create_mirror(tVecY);
+
+    for (size_t tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (size_t tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; tDofIndex++)
+        {
+            tHostVecX(tCellIndex, tDofIndex) = (tNumLocalDofsPerCell * tCellIndex) + (tDofIndex + 1.0);
+            tHostVecY(tCellIndex, tDofIndex) = (tNumLocalDofsPerCell * tCellIndex) + (tDofIndex + 1.0);
+            //printf("X(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostVecX(tCellIndex, tDofIndex));
+            //printf("Y(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostVecY(tCellIndex, tDofIndex));
+        }
+    }
+    Kokkos::deep_copy(tVecX, tHostVecX);
+    Kokkos::deep_copy(tVecY, tHostVecY);
+
+    // CALL FUNCTION
+    Plato::Scalar tAlpha = 1; Plato::Scalar tBeta = 2;
+    TEST_NOTHROW( (Plato::update_vector_workset(tNumCells, tAlpha, tVecX, tBeta, tVecY)) );
+
+    // TEST OUTPUT
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    tHostVecY = Kokkos::create_mirror(tVecY);
+    Kokkos::deep_copy(tHostVecY, tVecY);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+      {{3, 6, 9, 12, 15, 18}, {21, 24, 27, 30, 33, 36}};
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; tDofIndex++)
+        {
+            //printf("(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostVecY(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostVecY(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Error)
+{
+    // PREPARE DATA
+    constexpr Plato::OrdinalType tNumRows = 4;
+    constexpr Plato::OrdinalType tNumCols = 4;
+    constexpr Plato::OrdinalType tNumCells = 2;
+    Plato::ScalarArray3D tA;
+    Plato::ScalarArray3D tB;
+    Plato::ScalarArray3D tC;
+
+    // CALL FUNCTION - A IS EMPTY
+    Plato::Scalar tAlpha = 1; Plato::Scalar tBeta = 1;
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
+
+    // CALL FUNCTION - B IS EMPTY
+    tA = Plato::ScalarArray3D("Matrix A", tNumCells, tNumRows, tNumCols);
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
+
+    // CALL FUNCTION - C IS EMPTY
+    tB = Plato::ScalarArray3D("Matrix B", tNumCells, tNumRows + 1, tNumCols);
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
+
+    // CALL FUNCTION - DIMENSION MISMATCH IN A AND
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
+{
+    // PREPARE DATA
+    constexpr Plato::OrdinalType tNumRows = 4;
+    constexpr Plato::OrdinalType tNumCols = 4;
+    constexpr Plato::OrdinalType tNumCells = 2;
+    Plato::ScalarArray3D tA("Matrix A WS", tNumCells, tNumRows, tNumCols);
+    Plato::Scalar tAlpha = 2;
+    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
+    Plato::ScalarArray3D tB("Matrix B WS", tNumCells, tNumRows, tNumCols);
+    tAlpha = 1;
+    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
+    Plato::ScalarArray3D tC("Matrix C WS", tNumCells, tNumRows, tNumCols);
+    tAlpha = 3;
+    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tC)) );
+
+    // CALL FUNCTION - NO TRANSPOSE
+    Plato::Scalar tBeta = 1;
+    TEST_NOTHROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)) );
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tGold = 9.0;
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostC = Kokkos::create_mirror(tC);
+    Kokkos::deep_copy(tHostC, tC);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+            {
+                //printf("(%d,%d,%d) = %f\n", aCellOrdinal, tRowIndex, tColIndex, tHostC(tCellIndex, tRowIndex, tColIndex));
+                TEST_FLOATING_EQUALITY(tHostC(tCellIndex, tRowIndex, tColIndex), tGold, tTolerance);
+            }
+        }
+    }
+}
 
 }
 // ElastoPlasticityTest

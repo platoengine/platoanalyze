@@ -3,12 +3,11 @@
 
 #include <memory>
 
-#include "plato/PlatoTypes.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/SimplexMechanics.hpp"
-#include "plato/Kinematics.hpp"
 #include "plato/Kinetics.hpp"
+#include "plato/PlatoTypes.hpp"
+#include "plato/Kinematics.hpp"
 #include "plato/FluxDivergence.hpp"
+#include "plato/SimplexFadTypes.hpp"
 #include "plato/StressDivergence.hpp"
 #include "plato/PressureDivergence.hpp"
 #include "plato/ProjectToNode.hpp"
@@ -21,6 +20,7 @@
 #include "plato/LinearElasticMaterial.hpp"
 #include "plato/NaturalBCs.hpp"
 #include "plato/BodyLoads.hpp"
+#include "plato/SimplexStabilizedMechanics.hpp"
 
 namespace Plato
 {
