@@ -55,13 +55,13 @@
 #include "KokkosBatched_Trsm_Serial_Impl.hpp"
 
 #include <Kokkos_Concepts.hpp>
-#include <KokkosBlas2_gemv.hpp>
-#include <KokkosBlas3_gemm.hpp>
 #include "KokkosKernels_SparseUtils.hpp"
 #include "KokkosSparse_spgemm.hpp"
 #include "KokkosSparse_spadd.hpp"
 #include "KokkosSparse_CrsMatrix.hpp"
 #include <KokkosKernels_IOUtils.hpp>
+
+#include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
 namespace Plato
 {
@@ -198,7 +198,7 @@ void update_matrix_workset(const Plato::OrdinalType& aNumCells,
 }
 
 /******************************************************************************//**
- * \brief Add two 3-D matrix workset
+ * \brief Add two 2-D vector workset
  *
  * \tparam XViewType Input matrix, as a 2-D Kokkos::View
  * \tparam YViewType Output matrix, as a 2-D Kokkos::View
@@ -439,27 +439,24 @@ void matrix_times_vector_workset(const char aTransA[],
     }
 }
 
- /*
-template<class XViewType, class YViewType>
-void vector_plus_vector_workset(const Plato::OrdinalType & aNumCells,
-                                const Plato::Scalar & aAlpha,
-                                const XViewType & aInput,
-                                const YViewType & aOutput)
-{
-    assert(aInput.size() == aOutput.size());
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        auto tInput = Kokkos::subview(aInput, aCellOrdinal, Kokkos::ALL());
-        auto tOutput = Kokkos::subview(aOutput, aCellOrdinal, Kokkos::ALL());
-        tOutput(aCellOrdinal) += aAlpha * tInput(aCellOrdinal);
-    }, "vector plus vector workset");
-}
-
-template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, typename ScalarType>
-void convert_ad_types_to_scalar_types(const Plato::OrdinalType& aNumCells,
-                                      const Plato::ScalarMultiVectorT<ScalarType>& aInput,
-                                      Plato::ScalarArray3D& aOutput)
+/************************************************************************//**
+ *
+ * \brief Convert 2-D view of automatic differentiation (AD) scalar types into
+ *  3-D view of scalar types
+ *
+ * \tparam NumRowsPerCell number of rows per cell
+ * \tparam NumColsPerCell number of columns per cell
+ * \tparam ADType         AD scalar type
+ *
+ * \param aNumCells [in]     number of cells
+ * \param aInput    [in]     2-D view of AD types
+ * \param aOutput   [in/out] 3-D view of Scalar types
+ *
+********************************************************************************/
+template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColsPerCell, typename ADType>
+void convert_ad_type_to_scalar_type(const Plato::OrdinalType& aNumCells,
+                                    const Plato::ScalarMultiVectorT<ADType>& aInput,
+                                    Plato::ScalarArray3D& aOutput)
 {
     if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -478,14 +475,15 @@ void convert_ad_types_to_scalar_types(const Plato::OrdinalType& aNumCells,
     {
       for(Plato::OrdinalType tRowIndex = 0; tRowIndex < NumRowsPerCell; tRowIndex++)
       {
-          for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColumnsPerCell; tColumnIndex++)
+          for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColsPerCell; tColumnIndex++)
           {
               aOutput(aCellOrdinal, tRowIndex, tColumnIndex) = aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
           }
       }
-    }, "convert AD types to scalar types");
+    }, "convert AD type to Scalar type");
 }
 
+/*
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell>
 void identity_3DView(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& aInput)
 {
@@ -1651,7 +1649,7 @@ public:
                                           tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current State", mNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::convert_ad_types_to_scalar_types<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::convert_ad_type_to_scalar_type<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         return tOutputJacobian;
     }
 
@@ -1748,7 +1746,7 @@ public:
                                           tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Global State", mNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::convert_ad_types_to_scalar_types<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::convert_ad_type_to_scalar_type<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         return tOutputJacobian;
     }
 
@@ -1845,7 +1843,7 @@ public:
                                           tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current Local State", mNumCells, mNumGlobalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::convert_ad_types_to_scalar_types<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::convert_ad_type_to_scalar_type<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         return tOutputJacobian;
     }
 
@@ -1942,7 +1940,7 @@ public:
                                            tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Local State", mNumCells, mNumGlobalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::convert_ad_types_to_scalar_types<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::convert_ad_type_to_scalar_type<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         return tOutputJacobian;
     }
 
@@ -3219,8 +3217,9 @@ public:
             mWorksetBase.worksetLocalState(aAdjointData.mPreviousLocalAdjoint, tPreviousLocalAdjointWS);
 
             // Add tDfDc + (tDhDcp^T * tPrevLocalAdjoint) to tRHS
+            tBeta = 1.0;
             auto tDfDc = aCriterion.gradient_c(aStateData.mCurrentGlobalState, aStateData.mCurrentLocalState, aControl, aStateData.mTimeStep);
-            Plato::vector_plus_vector_workset(tNumCells, tAlpha, tDfDc, tRHS);
+            Plato::update_vector_workset(tNumCells, tAlpha, tDfDc, tBeta, tRHS);
             auto tDhDcp = mLocalResidualEq.gradient_cp(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                        aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
                                                        aStateData.mCurrentProjPressGrad, aControl, aStateData.mTimeStep);
@@ -3314,7 +3313,8 @@ public:
                                                        aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
                                                        aStateData.mCurrentProjPressGrad, aControl, aStateData.mTimeStep);
             Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDcp, tLocalPrevAdjointWS, tBeta, tWorkMultiVectorOneWS);
-            Plato::vector_plus_vector_workset(tNumCells, tAlpha, tDfDc, tWorkMultiVectorOneWS);
+            tBeta = 1.0;
+            Plato::update_vector_workset(tNumCells, tAlpha, tDfDc, tBeta, tWorkMultiVectorOneWS);
 
             // Compute Inv(tDhDc^T) * (tDfDc + tDhDcp^T * tPrevLocalAdjoint)
             Plato::ScalarMultiVector tWorkMultiVectorTwoWS("Local State Work Workset", tNumCells, mNumLocalDofsPerCell);
@@ -3329,8 +3329,8 @@ public:
             Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDu, tWorkMultiVectorTwoWS, tBeta, tRHS);
 
             // Compute tDfDu - { tDhDu^T * [ INV(tDhDc^T) * (tDfDc + tDhDcp^T * tPrevLocalAdjoint) ] }
-            tAlpha = -1.0;
-            Plato::vector_plus_vector_workset(tNumCells, tAlpha, tRHS, tDfDu);
+            tAlpha = -1.0; tBeta = 1.0;
+            Plato::update_vector_workset(tNumCells, tAlpha, tRHS, tBeta, tDfDu);
         }
 
         Plato::fill(static_cast<Plato::Scalar>(0), mGlobalResidual);
