@@ -278,19 +278,19 @@ void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
     }
     if(aA.extent(1) != aB.extent(1))
     {
-        THROWERR("\nDimension mismatch, input A and B matrices row count mismatch.\n")
+        THROWERR("\nDimension mismatch, input A and B matrices have different number of rows.\n")
     }
     if(aA.extent(2) != aB.extent(2))
     {
-        THROWERR("\nDimension mismatch, input A and B matrices column count mismatch.\n")
+        THROWERR("\nDimension mismatch, input A and B matrices have different number of columns.\n")
     }
     if(aA.extent(1) != aC.extent(1))
     {
-        THROWERR("\nDimension mismatch. Mismatch in input and output matrix row count.\n")
+        THROWERR("\nDimension mismatch. Mismatch in input (A) and output (C) matrices row count.\n")
     }
     if(aA.extent(2) != aC.extent(2))
     {
-        THROWERR("\nDimension mismatch. Mismatch in input and output matrix column count.\n")
+        THROWERR("\nDimension mismatch. Mismatch in input (A) and output (C) matrices column count.\n")
     }
     if(aA.extent(0) != aNumCells)
     {
@@ -303,10 +303,6 @@ void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
     if(aC.extent(0) != aNumCells)
     {
         THROWERR("\nDimension mismatch, number of cells of matrix C does not match input number of cells.\n")
-    }
-    if(aNumCells <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nNumber of input cells, i.e. elements, is less or equal to zero.\n");
     }
 
     const auto tNumRows = aA.extent(1);
@@ -3779,18 +3775,18 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateVectorWorkset)
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Error)
 {
     // PREPARE DATA
-    constexpr Plato::OrdinalType tNumRows = 4;
-    constexpr Plato::OrdinalType tNumCols = 4;
-    constexpr Plato::OrdinalType tNumCells = 2;
     Plato::ScalarArray3D tA;
     Plato::ScalarArray3D tB;
     Plato::ScalarArray3D tC;
 
     // CALL FUNCTION - A IS EMPTY
+    constexpr Plato::OrdinalType tNumCells = 2;
     Plato::Scalar tAlpha = 1; Plato::Scalar tBeta = 1;
     TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
 
     // CALL FUNCTION - B IS EMPTY
+    constexpr Plato::OrdinalType tNumRows = 4;
+    constexpr Plato::OrdinalType tNumCols = 4;
     tA = Plato::ScalarArray3D("Matrix A", tNumCells, tNumRows, tNumCols);
     TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
 
@@ -3798,12 +3794,36 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Erro
     tB = Plato::ScalarArray3D("Matrix B", tNumCells, tNumRows + 1, tNumCols);
     TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
 
-    // CALL FUNCTION - DIMENSION MISMATCH IN A AND
+    // CALL FUNCTION - NUM COLUMNS MISMATCH IN INPUT MATRICES
+    tC = Plato::ScalarArray3D("Matrix C", tNumCells, tNumRows, tNumCols + 1);
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tC, tBeta, tB)), std::runtime_error );
+
+    // CALL FUNCTION - NUM ROWS MISMATCH IN INPUT MATRICES
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
+
+    // CALL FUNCTION - NUM ROWS MISMATCH IN INPUT AND OUTPUT MATRICES
+    Plato::ScalarArray3D tD("Matrix D", tNumCells, tNumRows, tNumCols);
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tD, tBeta, tB)), std::runtime_error );
+
+    // CALL FUNCTION - NUM COLUMNS MISMATCH IN INPUT AND OUTPUT MATRICES
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tD, tBeta, tC)), std::runtime_error );
+
+    // CALL FUNCTION - NUM CELLS MISMATCH IN A
+    Plato::ScalarArray3D tE("Matrix E", tNumCells, tNumRows, tNumCols);
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells + 1, tAlpha, tA, tD, tBeta, tE)), std::runtime_error );
+
+    // CALL FUNCTION - NUM CELLS MISMATCH IN F
+    Plato::ScalarArray3D tF("Matrix F", tNumCells + 1, tNumRows, tNumCols);
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tF, tBeta, tE)), std::runtime_error );
+
+    // CALL FUNCTION - NUM CELLS MISMATCH IN E
+    Plato::ScalarArray3D tG("Matrix G", tNumCells + 1, tNumRows, tNumCols);
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tD, tBeta, tG)), std::runtime_error );
 }
 
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
 {
-    // PREPARE DATA
+    // PREPARE DATA FOR TEST ONE
     constexpr Plato::OrdinalType tNumRows = 4;
     constexpr Plato::OrdinalType tNumCols = 4;
     constexpr Plato::OrdinalType tNumCells = 2;
@@ -3817,7 +3837,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
     tAlpha = 3;
     TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tC)) );
 
-    // CALL FUNCTION - NO TRANSPOSE
+    // CALL FUNCTION
     Plato::Scalar tBeta = 1;
     TEST_NOTHROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)) );
 
@@ -3834,6 +3854,55 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
             {
                 //printf("(%d,%d,%d) = %f\n", aCellOrdinal, tRowIndex, tColIndex, tHostC(tCellIndex, tRowIndex, tColIndex));
                 TEST_FLOATING_EQUALITY(tHostC(tCellIndex, tRowIndex, tColIndex), tGold, tTolerance);
+            }
+        }
+    }
+
+    // PREPARE DATA FOR TEST TWO
+    constexpr Plato::OrdinalType tNumRows2 = 3;
+    constexpr Plato::OrdinalType tNumCols2 = 3;
+    Plato::ScalarArray3D tD("Matrix D WS", tNumCells, tNumRows2, tNumCols2);
+    Plato::ScalarArray3D tE("Matrix E WS", tNumCells, tNumRows2, tNumCols2);
+    Plato::ScalarArray3D tF("Matrix F WS", tNumCells, tNumRows2, tNumCols2);
+    std::vector<std::vector<Plato::Scalar>> tData = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+    auto tHostD = Kokkos::create_mirror(tD);
+    auto tHostE = Kokkos::create_mirror(tE);
+    auto tHostF = Kokkos::create_mirror(tF);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows2; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols2; tColIndex++)
+            {
+                tHostD(tCellIndex, tRowIndex, tColIndex) = tData[tRowIndex][tColIndex];
+                tHostE(tCellIndex, tRowIndex, tColIndex) = tData[tRowIndex][tColIndex];
+                tHostF(tCellIndex, tRowIndex, tColIndex) = tData[tRowIndex][tColIndex];
+            }
+        }
+    }
+    Kokkos::deep_copy(tD, tHostD);
+    Kokkos::deep_copy(tE, tHostE);
+    Kokkos::deep_copy(tF, tHostF);
+
+    // CALL FUNCTION - NO TRANSPOSE
+    tAlpha = 1.5; tBeta = 2.5;
+    TEST_NOTHROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tD, tE, tBeta, tF)) );
+
+    // 2. TEST RESULTS
+    std::vector<std::vector<Plato::Scalar>> tGoldOut = { {47.5, 59, 70.5}, {109, 134, 159}, {170.5, 209, 247.5} };
+    tHostD = Kokkos::create_mirror(tD);
+    Kokkos::deep_copy(tHostD, tD);
+    tHostE = Kokkos::create_mirror(tE);
+    Kokkos::deep_copy(tHostE, tE);
+    tHostF = Kokkos::create_mirror(tF);
+    Kokkos::deep_copy(tHostF, tF);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows2; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols2; tColIndex++)
+            {
+                tHostF(tCellIndex, tRowIndex, tColIndex) = tData[tRowIndex][tColIndex];
             }
         }
     }
