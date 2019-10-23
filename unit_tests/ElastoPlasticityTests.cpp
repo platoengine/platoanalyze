@@ -483,17 +483,16 @@ void convert_ad_type_to_scalar_type(const Plato::OrdinalType& aNumCells,
     }, "convert AD type to Scalar type");
 }
 
-/*
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell>
-void identity_3DView(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& aInput)
+void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& aInput)
 {
     if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nInput 3D array size is zero.\n")
+        THROWERR("\nInput 3-D view is empty, i.e. size <= 0.\n")
     }
-    if(aNumCells <= static_cast<Plato::OrdinalType>(0))
+    if(aInput.extent(0) != aNumCells)
     {
-        THROWERR("\nNumber of input cells, i.e. elements, is zero.\n")
+        THROWERR("\nNumber of cell mismatch. Input array has different number of cells than input number of cell argument.\n")
     }
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -505,9 +504,10 @@ void identity_3DView(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& 
                 aInput(aCellOrdinal, tRowIndex, tColumnIndex) = tRowIndex == tColumnIndex ? 1.0 : 0.0;
             }
         }
-    }, "fill matrix identity 3DView");
+    }, "identity workset");
 }
 
+/*
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, class AViewType>
 void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, AViewType& aAinverse)
 {
@@ -524,7 +524,7 @@ void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, 
         THROWERR("\nNumber of input cells, i.e. elements, is zero.\n")
     }
 
-    Plato::identity_3DView<NumRowsPerCell, NumColumnsPerCell>(aNumCells, aAinverse);
+    Plato::identity_workset<NumRowsPerCell, NumColumnsPerCell>(aNumCells, aAinverse);
 
     using namespace KokkosBatched;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -4050,7 +4050,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
     tHostY = Kokkos::create_mirror(tY);
     Kokkos::deep_copy(tHostY, tY);
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGoldOne= { {10, 21.5, 33}, {35, 76, 117}, {75, 163.5, 252} };
+    std::vector<std::vector<Plato::Scalar>> tGoldOne = { {10, 21.5, 33}, {35, 76, 117}, {75, 163.5, 252} };
     for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
@@ -4092,7 +4092,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
     // 2.3 TEST RESULTS
     tHostVecY = Kokkos::create_mirror(tVecY);
     Kokkos::deep_copy(tHostVecY, tVecY);
-    std::vector<std::vector<Plato::Scalar>> tGoldTwo= { {35.5, 47}, {137, 178}, {304.5, 393} };
+    std::vector<std::vector<Plato::Scalar>> tGoldTwo = { {35.5, 47}, {137, 178}, {304.5, 393} };
     for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
@@ -4104,6 +4104,34 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
 
     // 3. TEST VALIDITY OF TRANSPOSE
     TEST_THROW( (Plato::matrix_times_vector_workset("C", tNumCells, tAlpha, tA, tVecX, tBeta, tVecY)), std::runtime_error );
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_IdentityWorkset)
+{
+    // PREPARE DATA FOR TEST ONE
+    constexpr Plato::OrdinalType tNumRows = 4;
+    constexpr Plato::OrdinalType tNumCols = 4;
+    constexpr Plato::OrdinalType tNumCells = 3;
+    Plato::ScalarArray3D tIdentity("tIdentity WS", tNumCells, tNumRows, tNumCols);
+
+    // CALL FUNCTION
+    Plato::identity_workset<tNumRows, tNumCols>(tNumCells, tIdentity);
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = { {1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1} };
+    auto tHostIdentity = Kokkos::create_mirror(tIdentity);
+    Kokkos::deep_copy(tHostIdentity, tIdentity);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+            {
+                TEST_FLOATING_EQUALITY(tHostIdentity(tCellIndex, tRowIndex, tColIndex), tGold[tRowIndex][tColIndex], tTolerance);
+            }
+        }
+    }
 }
 
 }
