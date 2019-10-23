@@ -518,30 +518,43 @@ void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D&
     }, "identity workset");
 }
 
-/*
-template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, class AViewType>
-void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, AViewType& aAinverse)
+/************************************************************************//**
+ *
+ * \brief Compute the inverse of each matrix in workset
+ *
+ * \tparam NumRowsPerCell number of rows per cell
+ * \tparam NumColsPerCell number of columns per cell
+ * \tparam AViewType      Input matrix, as a 3-D Kokkos::View
+ * \tparam BViewType      Output matrix, as a 3-D Kokkos::View
+ *
+ * \param aNumCells [in]     number of cells
+ * \param aA        [in]     3-D view, matrix workset
+ * \param aInverse  [in/out] 3-D view, matrix inverse workset
+ *
+********************************************************************************/
+template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, class AViewType, class BViewType>
+void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, BViewType& aInverse)
 {
     if(aA.size() <= static_cast<Plato::OrdinalType>(0))
     {
         THROWERR("\nInput 3D array, i.e. matrix workset, size is zero.\n")
     }
-    if(aAinverse.size() <= static_cast<Plato::OrdinalType>(0))
+    if(aInverse.size() <= static_cast<Plato::OrdinalType>(0))
     {
         THROWERR("\Output 3D array, i.e. matrix workset, size is zero.\n")
     }
-    if(aNumCells <= static_cast<Plato::OrdinalType>(0))
+    if(aA.size() != aInverse.size())
     {
-        THROWERR("\nNumber of input cells, i.e. elements, is zero.\n")
+        THROWERR("\nInput and output views dimensions are different, i.e. Input.size != Output.size.\n")
     }
 
-    Plato::identity_workset<NumRowsPerCell, NumColumnsPerCell>(aNumCells, aAinverse);
+    Plato::identity_workset<NumRowsPerCell, NumColumnsPerCell>(aNumCells, aInverse);
 
     using namespace KokkosBatched;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         auto tA = Kokkos::subview(aA, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
-        auto tAinv = Kokkos::subview(aAinverse, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
+        auto tAinv = Kokkos::subview(aInverse, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
 
         const Plato::Scalar tAlpha = 1.0;
         SerialLU<Algo::LU::Blocked>::invoke(tA);
@@ -550,12 +563,14 @@ void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, 
     }, "compute matrix inverse 3DView");
 }
 
-*****************************************************************************
+/***************************************************************************//**
+ *
  * \brief Abstract vector function interface for Variational Multi-Scale (VMS)
  *   Partial Differential Equations (PDEs) with history dependent states
  * \tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for the vector function (e.g. Residual, Jacobian, GradientZ, GradientU, etc.)
- *********************************************************************************
+ *
+*******************************************************************************/
 template<typename EvaluationType>
 class AbstractVectorFunctionVMSInc
 {
@@ -568,12 +583,12 @@ protected:
 
 // Public access functions
 public:
-    *************************************************************************
+    /***************************************************************************//**
      * \brief Constructor
      * \param [in]  aMesh mesh metadata
      * \param [in]  aMeshSets mesh side-sets metadata
      * \param [in]  aDataMap output data map
-     *****************************************************************************
+    *******************************************************************************/
     explicit AbstractVectorFunctionVMSInc(Omega_h::Mesh &aMesh,
                                                Omega_h::MeshSets &aMeshSets,
                                                Plato::DataMap &aDataMap) :
@@ -583,33 +598,35 @@ public:
     {
     }
 
-    *************************************************************************
+    /***************************************************************************//**
      * \brief Destructor
-     *****************************************************************************
+    *******************************************************************************/
     virtual ~AbstractVectorFunctionVMSInc()
     {
     }
 
-    ***************************************************************************
+    /***************************************************************************//**
      * \brief Return reference to Omega_h mesh data base
      * \return mesh metadata
-     *******************************************************************************
+    *******************************************************************************/
     decltype(mMesh) getMesh() const
     {
         return (mMesh);
     }
 
-    ***************************************************************************
+    /***************************************************************************//**
      * \brief Return reference to Omega_h mesh sets
      * \return mesh side sets metadata
-     *******************************************************************************
+    *******************************************************************************/
     decltype(mMeshSets) getMeshSets() const
     {
         return (mMeshSets);
     }
 
-    ***************************************************************************
+    /***************************************************************************//**
+     *
      * \brief Evaluate the stabilized residual equation
+     *
      * \param [in] aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
      * \param [in] aGlobalStatePrev previous global state ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
      * \param [in] aLocalState current local state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
@@ -618,7 +635,8 @@ public:
      * \param [in] aControl design variables
      * \param [in/out] aResult residual evaluation
      * \param [in] aTimeStep current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
-     *******************************************************************************
+     *
+    *******************************************************************************/
     virtual void
     evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType> &aGlobalState,
              const Plato::ScalarMultiVectorT<typename EvaluationType::PrevStateScalarType> &aGlobalStatePrev,
@@ -631,6 +649,7 @@ public:
              Plato::Scalar aTimeStep = 0.0) const = 0;
 };
 // class AbstractVectorFunctionVMSInc
+
 
 
 
@@ -668,36 +687,8 @@ inline ScalarType compute_bulk_modulus(const ScalarType & aElasticModulus, const
 
 
 
-Plato::OrdinalType parse_num_newton_iterations(Teuchos::ParameterList & aParamList)
-{
-    Plato::OrdinalType tOutput = 2;
-    if(aParamList.isSublist("Newton Iteration") == true)
-    {
-        tOutput = aParamList.sublist("Newton Iteration").get<int>("Number Iterations");
-    }
-    return (tOutput);
-}
 
-Plato::OrdinalType parse_num_time_steps(Teuchos::ParameterList & aParamList)
-{
-    Plato::OrdinalType tOutput = 1;
-    if(aParamList.isSublist("Time Stepping") == true)
-    {
-        tOutput = aParamList.sublist("Time Stepping").get<Plato::OrdinalType>("Number Time Steps");
-    }
-    return (tOutput);
-}
-
-Plato::Scalar parse_time_step(Teuchos::ParameterList & aParamList)
-{
-    Plato::Scalar tOutput = 1.0;
-    if(aParamList.isSublist("Time Stepping") == true)
-    {
-        tOutput = aParamList.sublist("Time Stepping").get<Plato::Scalar>("Time Step");
-    }
-    return (tOutput);
-}
-
+/*
 Plato::Scalar parse_elastic_modulus(Teuchos::ParameterList & aParamList)
 {
     if(aParamList.isParameter("Youngs Modulus"))
@@ -4119,7 +4110,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
 
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_IdentityWorkset)
 {
-    // PREPARE DATA FOR TEST ONE
+    // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumRows = 4;
     constexpr Plato::OrdinalType tNumCols = 4;
     constexpr Plato::OrdinalType tNumCells = 3;
@@ -4140,6 +4131,46 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_IdentityWorkset)
             for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
             {
                 TEST_FLOATING_EQUALITY(tHostIdentity(tCellIndex, tRowIndex, tColIndex), tGold[tRowIndex][tColIndex], tTolerance);
+            }
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_InverseMatrixWorkset)
+{
+    // PREPARE DATA FOR TEST
+    constexpr Plato::OrdinalType tNumRows = 2;
+    constexpr Plato::OrdinalType tNumCols = 2;
+    constexpr Plato::OrdinalType tNumCells = 3; // Number of matrices to invert
+    Plato::ScalarArray3D tMatrix("Matrix A", tNumCells, 2, 2);
+    auto tHostMatrix = Kokkos::create_mirror(tMatrix);
+    for (Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; ++tCellIndex)
+    {
+        const Plato::Scalar tScaleFactor = 1.0 / (1.0 + tCellIndex);
+        tHostMatrix(tCellIndex, 0, 0) = -2.0 * tScaleFactor;
+        tHostMatrix(tCellIndex, 1, 0) = 1.0 * tScaleFactor;
+        tHostMatrix(tCellIndex, 0, 1) = 1.5 * tScaleFactor;
+        tHostMatrix(tCellIndex, 1, 1) = -0.5 * tScaleFactor;
+    }
+    Kokkos::deep_copy(tMatrix, tHostMatrix);
+
+    // CALL FUNCTION
+    Plato::ScalarArray3D tAInverse("A Inverse", tNumCells, 2, 2);
+    Plato::inverse_matrix_workset<tNumRows, tNumCols>(tNumCells, tMatrix, tAInverse);
+
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    std::vector<std::vector<Plato::Scalar> > tGoldMatrixInverse = { { 1.0, 3.0 }, { 2.0, 4.0 } };
+    auto tHostAInverse = Kokkos::create_mirror(tAInverse);
+    Kokkos::deep_copy(tHostAInverse, tAInverse);
+    for (Plato::OrdinalType tMatrixIndex = 0; tMatrixIndex < tNumCells; tMatrixIndex++)
+    {
+        for (Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            for (Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+            {
+                //printf("Matrix %d Inverse (%d,%d) = %f\n", n, i, j, tHostAInverse(n, i, j));
+                const Plato::Scalar tScaleFactor = (1.0 + tMatrixIndex);
+                TEST_FLOATING_EQUALITY(tHostAInverse(tMatrixIndex, tRowIndex, tColIndex), tScaleFactor * tGoldMatrixInverse[tRowIndex][tColIndex], tTolerance);
             }
         }
     }
