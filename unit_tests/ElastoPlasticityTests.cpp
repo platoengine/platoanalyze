@@ -379,11 +379,11 @@ void matrix_times_vector_workset(const char aTransA[],
     }
     if(aXvec.extent(0) != aNumCells)
     {
-        THROWERR("\nDimension mismatch, number of cells of vector X does not match input number of cells.\n")
+        THROWERR("\nDimension mismatch, number of cells of input vector X does not match input number of cells.\n")
     }
     if(aYvec.extent(0) != aNumCells)
     {
-        THROWERR("\nDimension mismatch, number of cells of vector Y does not match input number of cells.\n")
+        THROWERR("\nDimension mismatch, number of cells of output vector Y does not match input number of cells.\n")
     }
 
     // Check validity of transpose argument
@@ -3955,6 +3955,41 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
             }
         }
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset_Error)
+{
+    // PREPARE DATA
+    Plato::ScalarArray3D tA;
+    Plato::ScalarMultiVector tX;
+    Plato::ScalarMultiVector tY;
+
+    // CALL FUNCTION - MATRIX A IS EMPTY
+    constexpr Plato::OrdinalType tNumCells = 3;
+    Plato::Scalar tAlpha = 1.5; Plato::Scalar tBeta = 2.5;
+    TEST_THROW( (Plato::matrix_times_vector_workset("N", tNumCells, tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
+
+    // CALL FUNCTION - VECTOR X IS EMPTY
+    constexpr Plato::OrdinalType tNumCols = 2;
+    constexpr Plato::OrdinalType tNumRows = 3;
+    tA = Plato::ScalarArray3D("A Matrix WS", tNumCells, tNumRows, tNumCols);
+    TEST_THROW( (Plato::matrix_times_vector_workset("N", tNumCells, tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
+
+    // CALL FUNCTION - VECTOR Y IS EMPTY
+    tX = Plato::ScalarMultiVector("X Vector WS", tNumCells, tNumCols);
+    TEST_THROW( (Plato::matrix_times_vector_workset("N", tNumCells, tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
+
+    // CALL FUNCTION - NUM CELL MISMATCH IN INPUT MATRIX
+    tY = Plato::ScalarMultiVector("Y Vector WS", tNumCells, tNumRows);
+    TEST_THROW( (Plato::matrix_times_vector_workset("N", tNumCells + 1, tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
+
+    // CALL FUNCTION - NUM CELL MISMATCH IN INPUT VECTOR X
+    Plato::ScalarMultiVector tVecX("X Vector WS", tNumCells + 1, tNumRows);
+    TEST_THROW( (Plato::matrix_times_vector_workset("N", tNumCells, tAlpha, tA, tVecX, tBeta, tY)), std::runtime_error );
+
+    // CALL FUNCTION - NUM CELL MISMATCH IN INPUT VECTOR Y
+    Plato::ScalarMultiVector tVecY("Y Vector WS", tNumCells + 1, tNumRows);
+    TEST_THROW( (Plato::matrix_times_vector_workset("N", tNumCells, tAlpha, tA, tX, tBeta, tVecY)), std::runtime_error );
 }
 
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
