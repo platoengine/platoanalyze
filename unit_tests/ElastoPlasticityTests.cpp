@@ -468,7 +468,7 @@ void convert_ad_type_to_scalar_type(const Plato::OrdinalType& aNumCells,
     }
     if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\Output 3D array size is zero.\n");
+        THROWERR("\nOutput 3D array size is zero.\n");
     }
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
