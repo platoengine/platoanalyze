@@ -483,14 +483,25 @@ void convert_ad_type_to_scalar_type(const Plato::OrdinalType& aNumCells,
     }, "convert AD type to Scalar type");
 }
 
+/************************************************************************//**
+ *
+ * \brief Build a workset of identity matrices
+ *
+ * \tparam NumRowsPerCell number of rows per cell
+ * \tparam NumColsPerCell number of columns per cell
+ *
+ * \param aNumCells [in]     number of cells
+ * \param aIdentity [in/out] 3-D view, workset of identity matrices
+ *
+********************************************************************************/
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell>
-void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& aInput)
+void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& aIdentity)
 {
-    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    if(aIdentity.size() <= static_cast<Plato::OrdinalType>(0))
     {
         THROWERR("\nInput 3-D view is empty, i.e. size <= 0.\n")
     }
-    if(aInput.extent(0) != aNumCells)
+    if(aIdentity.extent(0) != aNumCells)
     {
         THROWERR("\nNumber of cell mismatch. Input array has different number of cells than input number of cell argument.\n")
     }
@@ -501,7 +512,7 @@ void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D&
         {
             for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColumnsPerCell; tColumnIndex++)
             {
-                aInput(aCellOrdinal, tRowIndex, tColumnIndex) = tRowIndex == tColumnIndex ? 1.0 : 0.0;
+                aIdentity(aCellOrdinal, tRowIndex, tColumnIndex) = tRowIndex == tColumnIndex ? 1.0 : 0.0;
             }
         }
     }, "identity workset");
