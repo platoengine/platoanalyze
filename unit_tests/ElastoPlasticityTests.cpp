@@ -541,7 +541,7 @@ void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, 
     }
     if(aInverse.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\Output 3D array, i.e. matrix workset, size is zero.\n")
+        THROWERR("\nOutput 3D array, i.e. matrix workset, size is zero.\n")
     }
     if(aA.size() != aInverse.size())
     {
@@ -550,7 +550,7 @@ void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, 
 
     Plato::identity_workset<NumRowsPerCell, NumColumnsPerCell>(aNumCells, aInverse);
 
-    using namespace KokkosBatched;
+    using namespace KokkosBatched::Experimental;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         auto tA = Kokkos::subview(aA, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
