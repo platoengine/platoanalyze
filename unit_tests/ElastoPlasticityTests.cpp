@@ -313,15 +313,25 @@ void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
         {
             for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
             {
-                aC(aCellOrdinal, tRowIndex, tColIndex) = aBeta * aC(aCellOrdinal, tRowIndex, tColIndex) +
-                        aAlpha * aA(aCellOrdinal, tRowIndex, tColIndex) * aB(aCellOrdinal, tRowIndex, tColIndex);
+                aC(aCellOrdinal, tRowIndex, tColIndex) = aBeta * aC(aCellOrdinal, tRowIndex, tColIndex);
+            }
+        }
+
+        for(Plato::OrdinalType tOutRowIndex = 0; tOutRowIndex < tNumRows; tOutRowIndex++)
+        {
+            for(Plato::OrdinalType tCommonIndex = 0; tCommonIndex < tNumCols; tCommonIndex++)
+            {
+                for(Plato::OrdinalType tOutColIndex = 0; tOutColIndex < tNumCols; tOutColIndex++)
+                {
+                    aC(aCellOrdinal, tOutRowIndex, tOutColIndex) = aC(aCellOrdinal, tOutRowIndex, tOutColIndex) +
+                            aAlpha * aA(aCellOrdinal, tOutRowIndex, tCommonIndex) * aB(aCellOrdinal, tCommonIndex, tOutColIndex);
+                }
             }
         }
     }, "multiply matrix workset");
 }
 
- /*
-*****************************************************************************
+/************************************************************************//**
  *
  * \brief Dense matrix-vector multiply: y = beta*y + alpha*A*x.
  *
@@ -331,16 +341,16 @@ void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
  * \tparam AlphaCoeffType Type of input coefficient alpha
  * \tparam BetaCoeffType Type of input coefficient beta
  *
- * \param trans [in] "N" for non-transpose, "T" for transpose, "C"
- *   for conjugate transpose.  All characters after the first are
- *   ignored.  This works just like the BLAS routines.
- * \param alpha [in] Input coefficient of A*x
- * \param A [in] Input matrix, as a 2-D Kokkos::View
- * \param x [in] Input vector, as a 1-D Kokkos::View
- * \param beta [in] Input coefficient of y
- * \param y [in/out] Output vector, as a nonconst 1-D Kokkos::View
+ * \param trans [in] "N" for non-transpose, "T" for transpose.  All
+ *   characters after the first are ignored.  This works just like
+ *   the BLAS routines.
+ * \param aAlpha [in]     Input coefficient of A*x
+ * \param aAmat  [in]     Input matrix, as a 2-D Kokkos::View
+ * \param aXvec  [in]     Input vector, as a 1-D Kokkos::View
+ * \param aBeta  [in]     Input coefficient of y
+ * \param aYvec  [in/out] Output vector, as a nonconst 1-D Kokkos::View
  *
-***********************************************************************************
+********************************************************************************/
 template<class AViewType, class XViewType, class YViewType>
 void matrix_times_vector_workset(const char aTransA[],
                                  const Plato::OrdinalType& aNumCells,
@@ -348,46 +358,88 @@ void matrix_times_vector_workset(const char aTransA[],
                                  const AViewType& aAmat,
                                  const XViewType& aXvec,
                                  typename YViewType::const_value_type& aBeta,
-                                 const YViewType& aYvec)
+                                 YViewType& aYvec)
 {
-    if(Kokkos::Impl::is_view<AViewType>::value)
+    // check validity of inputs' dimensions
+    if(aAmat.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nA matrix is not a Kokkos::View.\n")
+        THROWERR("\nInput matrix A is empty, i.e. size <= 0\n")
     }
-    if(Kokkos::Impl::is_view<XViewType>::value)
+    if(aXvec.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nX vector is not a Kokkos::View.\n")
+        THROWERR("\nInput vector X is empty, i.e. size <= 0\n")
     }
-    if(Kokkos::Impl::is_view<YViewType>::value)
+    if(aYvec.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nY vector is not a Kokkos::View.\n")
+        THROWERR("\nOutput vector Y is empty, i.e. size <= 0\n")
+    }
+    if(aAmat.extent(0) != aNumCells)
+    {
+        THROWERR("\nDimension mismatch, number of cells of matrix A does not match input number of cells.\n")
+    }
+    if(aXvec.extent(0) != aNumCells)
+    {
+        THROWERR("\nDimension mismatch, number of cells of vector X does not match input number of cells.\n")
+    }
+    if(aYvec.extent(0) != aNumCells)
+    {
+        THROWERR("\nDimension mismatch, number of cells of vector Y does not match input number of cells.\n")
     }
 
     // Check validity of transpose argument
     bool tValidTransA = (aTransA[0] == 'N') || (aTransA[0] == 'n') ||
-                        (aTransA[0] == 'T') || (aTransA[0] == 't') ||
-                        (aTransA[0] == 'C') || (aTransA[0] == 'c');
+                        (aTransA[0] == 'T') || (aTransA[0] == 't');
 
     if(!tValidTransA)
     {
-        std::ostringstream tOuputStream;
-        tOuputStream << "\ntransA[0] = '" << aTransA[0] "'. "
-                     << "Valid values include 'N' or 'n' (No transpose), 'T' or 't' (Transpose), "
-                     "and 'C' or 'c' (Conjugate transpose).\n";
-        THROWERR(tOuputStream.str())
+        std::stringstream tMsg;
+        tMsg << "\ntransA[0] = '" << aTransA[0] << "'. Valid values include 'N' or 'n' (No transpose) and 'T' or 't' (Transpose).\n";
+        THROWERR(tMsg.str())
     }
 
-    // KOKKOS CHECKS DIMENSIONS INSIDE GEMV
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    auto tNumRows = aAmat.extent(1);
+    auto tNumCols = aAmat.extent(2);
+    if((aTransA[0] == 'N') || (aTransA[0] == 'n'))
     {
-        auto tXvec = Kokkos::subview(aXvec, aCellOrdinal, Kokkos::ALL());
-        auto tYvec = Kokkos::subview(aYvec, aCellOrdinal, Kokkos::ALL());
-        auto tAmat = Kokkos::subview(aAmat, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
-        KokkosBlas::gemv(aTransA, aAlpha, tAmat, tXvec, aBeta, tYvec);
-    }, "matrix vector multiplication 3DView");
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+            {
+                aYvec(aCellOrdinal, tRowIndex) = aBeta * aYvec(aCellOrdinal, tRowIndex);
+            }
+
+            for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+            {
+                for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+                {
+                    aYvec(aCellOrdinal, tRowIndex) = aYvec(aCellOrdinal, tRowIndex) +
+                            aAlpha * aAmat(aCellOrdinal, tRowIndex, tColIndex) * aXvec(aCellOrdinal, tColIndex);
+                }
+            }
+        }, "matrix vector multiplication - no transpose");
+    }
+    else
+    {
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+            {
+                aYvec(aCellOrdinal, tColIndex) = aBeta * aYvec(aCellOrdinal, tColIndex);
+            }
+
+            for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+            {
+                for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+                {
+                    aYvec(aCellOrdinal, tColIndex) = aYvec(aCellOrdinal, tColIndex) +
+                            aAlpha * aAmat(aCellOrdinal, tRowIndex, tColIndex) * aXvec(aCellOrdinal, tRowIndex);
+                }
+            }
+        }, "matrix vector multiplication - transpose");
+    }
 }
 
+ /*
 template<class XViewType, class YViewType>
 void vector_plus_vector_workset(const Plato::OrdinalType & aNumCells,
                                 const Plato::Scalar & aAlpha,
@@ -3826,7 +3878,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
     // PREPARE DATA FOR TEST ONE
     constexpr Plato::OrdinalType tNumRows = 4;
     constexpr Plato::OrdinalType tNumCols = 4;
-    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tNumCells = 3;
     Plato::ScalarArray3D tA("Matrix A WS", tNumCells, tNumRows, tNumCols);
     Plato::Scalar tAlpha = 2;
     TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
@@ -3842,7 +3894,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
     TEST_NOTHROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)) );
 
     // TEST RESULTS
-    constexpr Plato::Scalar tGold = 9.0;
+    constexpr Plato::Scalar tGold = 27.0;
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tHostC = Kokkos::create_mirror(tC);
     Kokkos::deep_copy(tHostC, tC);
@@ -3852,7 +3904,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
         {
             for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
             {
-                //printf("(%d,%d,%d) = %f\n", aCellOrdinal, tRowIndex, tColIndex, tHostC(tCellIndex, tRowIndex, tColIndex));
+                //printf("(%d,%d,%d) = %f\n", tCellIndex, tRowIndex, tColIndex, tHostC(tCellIndex, tRowIndex, tColIndex));
                 TEST_FLOATING_EQUALITY(tHostC(tCellIndex, tRowIndex, tColIndex), tGold, tTolerance);
             }
         }
@@ -3890,10 +3942,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
 
     // 2. TEST RESULTS
     std::vector<std::vector<Plato::Scalar>> tGoldOut = { {47.5, 59, 70.5}, {109, 134, 159}, {170.5, 209, 247.5} };
-    tHostD = Kokkos::create_mirror(tD);
-    Kokkos::deep_copy(tHostD, tD);
-    tHostE = Kokkos::create_mirror(tE);
-    Kokkos::deep_copy(tHostE, tE);
     tHostF = Kokkos::create_mirror(tF);
     Kokkos::deep_copy(tHostF, tF);
     for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
@@ -3902,10 +3950,125 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
         {
             for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols2; tColIndex++)
             {
-                tHostF(tCellIndex, tRowIndex, tColIndex) = tData[tRowIndex][tColIndex];
+                //printf("Result(%d,%d,%d) = %f\n", tCellIndex, tRowIndex, tColIndex, tHostF(tCellIndex, tRowIndex, tColIndex));
+                TEST_FLOATING_EQUALITY(tHostF(tCellIndex, tRowIndex, tColIndex), tGoldOut[tRowIndex][tColIndex], tTolerance);
             }
         }
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
+{
+    // 1. PREPARE DATA FOR TEST ONE
+    constexpr Plato::OrdinalType tNumRows = 3;
+    constexpr Plato::OrdinalType tNumCols = 2;
+    constexpr Plato::OrdinalType tNumCells = 3;
+
+    // 1.1 PREPARE MATRIX DATA
+    Plato::ScalarArray3D tA("A Matrix WS", tNumCells, tNumRows, tNumCols);
+    std::vector<std::vector<Plato::Scalar>> tMatrixData = {{1, 2}, {3, 4}, {5, 6}};
+    auto tHostA = Kokkos::create_mirror(tA);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+            {
+                tHostA(tCellIndex, tRowIndex, tColIndex) =
+                        static_cast<Plato::Scalar>(tCellIndex + 1) * tMatrixData[tRowIndex][tColIndex];
+            }
+        }
+    }
+    Kokkos::deep_copy(tA, tHostA);
+
+    // 1.2 PREPARE X VECTOR DATA
+    Plato::ScalarMultiVector tX("X Vector WS", tNumCells, tNumCols);
+    std::vector<Plato::Scalar> tXdata = {1, 2};
+    auto tHostX = Kokkos::create_mirror(tX);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+        {
+            tHostX(tCellIndex, tColIndex) = static_cast<Plato::Scalar>(tCellIndex + 1) * tXdata[tColIndex];
+        }
+    }
+    Kokkos::deep_copy(tX, tHostX);
+
+    // 1.3 PREPARE Y VECTOR DATA
+    Plato::ScalarMultiVector tY("Y Vector WS", tNumCells, tNumRows);
+    std::vector<Plato::Scalar> tYdata = {1, 2, 3};
+    auto tHostY = Kokkos::create_mirror(tY);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            tHostY(tCellIndex, tRowIndex) = static_cast<Plato::Scalar>(tCellIndex + 1) * tYdata[tRowIndex];
+        }
+    }
+    Kokkos::deep_copy(tY, tHostY);
+
+    // 1.4 CALL FUNCTION - NO TRANSPOSE
+    Plato::Scalar tAlpha = 1.5; Plato::Scalar tBeta = 2.5;
+    TEST_NOTHROW( (Plato::matrix_times_vector_workset("N", tNumCells, tAlpha, tA, tX, tBeta, tY)) );
+
+    // 1.5 TEST RESULTS
+    tHostY = Kokkos::create_mirror(tY);
+    Kokkos::deep_copy(tHostY, tY);
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGoldOne= { {10, 21.5, 33}, {35, 76, 117}, {75, 163.5, 252} };
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            //printf("(%d,%d) = %f\n", tCellIndex, tRowIndex, tHostY(tCellIndex, tRowIndex));
+            TEST_FLOATING_EQUALITY(tHostY(tCellIndex, tRowIndex), tGoldOne[tCellIndex][tRowIndex], tTolerance);
+        }
+    }
+
+    // 2.1 PREPARE DATA FOR X VECTOR - TEST TWO
+    Plato::ScalarMultiVector tVecX("X Vector WS", tNumCells, tNumRows);
+    std::vector<Plato::Scalar> tVecXdata = {1, 2, 3};
+    auto tHostVecX = Kokkos::create_mirror(tVecX);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+        {
+            tHostVecX(tCellIndex, tRowIndex) = static_cast<Plato::Scalar>(tCellIndex + 1) * tVecXdata[tRowIndex];
+        }
+    }
+    Kokkos::deep_copy(tVecX, tHostVecX);
+
+    // 2.2 PREPARE Y VECTOR DATA
+    Plato::ScalarMultiVector tVecY("Y Vector WS", tNumCells, tNumCols);
+    std::vector<Plato::Scalar> tVecYdata = {1, 2};
+    auto tHostVecY = Kokkos::create_mirror(tVecY);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+        {
+            tHostVecY(tCellIndex, tColIndex) = static_cast<Plato::Scalar>(tCellIndex + 1) * tVecYdata[tColIndex];
+        }
+    }
+    Kokkos::deep_copy(tVecY, tHostVecY);
+
+    // 2.2 CALL FUNCTION - TRANSPOSE
+    TEST_NOTHROW( (Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tA, tVecX, tBeta, tVecY)) );
+
+    // 2.3 TEST RESULTS
+    tHostVecY = Kokkos::create_mirror(tVecY);
+    Kokkos::deep_copy(tHostVecY, tVecY);
+    std::vector<std::vector<Plato::Scalar>> tGoldTwo= { {35.5, 47}, {137, 178}, {304.5, 393} };
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+        {
+            //printf("(%d,%d) = %f\n", tCellIndex, tColIndex, tHostVecY(tCellIndex, tColIndex));
+            TEST_FLOATING_EQUALITY(tHostVecY(tCellIndex, tColIndex), tGoldTwo[tCellIndex][tColIndex], tTolerance);
+        }
+    }
+
+    // 3. TEST VALIDITY OF TRANSPOSE
+    TEST_THROW( (Plato::matrix_times_vector_workset("C", tNumCells, tAlpha, tA, tVecX, tBeta, tVecY)), std::runtime_error );
 }
 
 }
