@@ -576,10 +576,9 @@ class AbstractVectorFunctionVMSInc
 {
 // Protected member data
 protected:
-    Omega_h::Mesh &mMesh;
-    Plato::DataMap &mDataMap;
-    Omega_h::MeshSets &mMeshSets;
-    std::vector<std::string> mDofNames;
+    Omega_h::Mesh &mMesh; /*!< mesh database */
+    Plato::DataMap &mDataMap; /*!< output database */
+    Omega_h::MeshSets &mMeshSets; /*!< sideset database */
 
 // Public access functions
 public:
@@ -4172,6 +4171,45 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_InverseMatrixWorkset)
                 const Plato::Scalar tScaleFactor = (1.0 + tMatrixIndex);
                 TEST_FLOATING_EQUALITY(tHostAInverse(tMatrixIndex, tRowIndex, tColIndex), tScaleFactor * tGoldMatrixInverse[tRowIndex][tColIndex], tTolerance);
             }
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ApplyPenalty)
+{
+    // PREPARE DATA FOR TEST
+    constexpr Plato::OrdinalType tNumRows = 3;
+    constexpr Plato::OrdinalType tNumCols = 3;
+    Plato::ScalarMultiVector tA("A: 2-D View", tNumRows, tNumCols);
+    std::vector<std::vector<Plato::Scalar>> tData = { {10, 20, 30}, {35, 76, 117}, {75, 163, 252} };
+
+    auto tHostA = Kokkos::create_mirror(tA);
+    for (Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; ++tRowIndex)
+    {
+        for (Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; ++tColIndex)
+        {
+            tHostA(tRowIndex, tColIndex) = tData[tRowIndex][tColIndex];
+        }
+    }
+    Kokkos::deep_copy(tA, tHostA);
+
+    // CALL FUNCTION
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & aRowIndex)
+    {
+        Plato::apply_penalty<tNumCols>(aRowIndex, 0.5, tA);
+    }, "identity workset");
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    tHostA = Kokkos::create_mirror(tA);
+    Kokkos::deep_copy(tHostA, tA);
+    std::vector<std::vector<Plato::Scalar>> tGold = { {5, 10, 15}, {17.5, 38, 58.5}, {37.5, 81.5, 126} };
+    for (Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+    {
+        for (Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+        {
+            //printf("Matrix %d Inverse (%d,%d) = %f\n", n, i, j, tHostAInverse(n, i, j));
+            TEST_FLOATING_EQUALITY(tHostA(tRowIndex, tColIndex), tGold[tRowIndex][tColIndex], tTolerance);
         }
     }
 }
