@@ -4208,10 +4208,20 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ApplyPenalty)
     {
         for (Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
         {
-            //printf("Matrix %d Inverse (%d,%d) = %f\n", n, i, j, tHostAInverse(n, i, j));
             TEST_FLOATING_EQUALITY(tHostA(tRowIndex, tColIndex), tGold[tRowIndex][tColIndex], tTolerance);
         }
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeShearAndBulkModulus)
+{
+    const Plato::Scalar tPoisson = 0.3;
+    const Plato::Scalar tElasticModulus = 1;
+    auto tBulk = Plato::compute_bulk_modulus(tElasticModulus, tPoisson);
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    TEST_FLOATING_EQUALITY(tBulk, 0.833333333333333, tTolerance);
+    auto tShear = Plato::compute_shear_modulus(tElasticModulus, tPoisson);
+    TEST_FLOATING_EQUALITY(tShear, 0.384615384615385, tTolerance);
 }
 
 }
