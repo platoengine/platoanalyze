@@ -955,13 +955,13 @@ ComputeStabilization<3>::operator()(const Plato::OrdinalType & aCellOrdinal,
 {
     ConfigT tTau = pow(aCellVolume(aCellOrdinal), mTwoOverThree) / (static_cast<Plato::Scalar>(2.0) * mElasticShearModulus);
     aStabilization(aCellOrdinal, 0) = mPressureScaling * tTau
-        * (mPressureScaling * aPressureGrad(aCellOrdinal, 0) - aProjectedPressureGrad(aCellOrdinal, 0));
+        * ((mPressureScaling * aPressureGrad(aCellOrdinal, 0)) - aProjectedPressureGrad(aCellOrdinal, 0));
 
     aStabilization(aCellOrdinal, 1) = mPressureScaling * tTau
-        * (mPressureScaling * aPressureGrad(aCellOrdinal, 1) - aProjectedPressureGrad(aCellOrdinal, 1));
+        * ((mPressureScaling * aPressureGrad(aCellOrdinal, 1)) - aProjectedPressureGrad(aCellOrdinal, 1));
 
     aStabilization(aCellOrdinal, 2) = mPressureScaling * tTau
-        * (mPressureScaling * aPressureGrad(aCellOrdinal, 2) - aProjectedPressureGrad(aCellOrdinal, 2));
+        * ((mPressureScaling * aPressureGrad(aCellOrdinal, 2)) - aProjectedPressureGrad(aCellOrdinal, 2));
 }
 
 /***************************************************************************//**
@@ -4525,7 +4525,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization3D)
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 3;
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tNumVoigtTerms = 1;
 
     Plato::ScalarVector tCellVolume("volume", tNumCells);
     auto tHostCellVolume = Kokkos::create_mirror(tCellVolume);
@@ -4553,7 +4552,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization3D)
         tHostProjectedPressureGrad(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 2;
         tHostProjectedPressureGrad(tCellIndex, 2) = static_cast<Plato::Scalar>(1+tCellIndex) * 3;
     }
-    Kokkos::deep_copy(tProjectedPressureGrad, tHostPressureGrad);
+    Kokkos::deep_copy(tProjectedPressureGrad, tHostProjectedPressureGrad);
 
     // CALL FUNCTION
     constexpr Plato::Scalar tScaling = 0.5;
@@ -4569,9 +4568,9 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization3D)
     constexpr Plato::Scalar tTolerance = 1e-6;
     auto tHostStabilization = Kokkos::create_mirror(tStabilization);
     Kokkos::deep_copy(tHostStabilization, tStabilization);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0242373902628587, -0.0484747805257174, -0.0727121707885761},
-                                                     {-0.0769489176004514, -0.153897835200903, -0.230846752801354},
-                                                     {-0.151247410196304, -0.302494820392609, -0.453742230588913}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0255839119441290, -0.0511678238882572, -0.0767517358323859},
+                                                     {-0.0812238574671431, -0.1624477149342860, -0.2436715724014290},
+                                                     {-0.1596500440960990, -0.3193000881921980, -0.4789501322882970}};
     for (Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; tDimIndex++)
@@ -4586,7 +4585,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization2D)
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 3;
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tNumVoigtTerms = 1;
 
     Plato::ScalarVector tCellVolume("volume", tNumCells);
     auto tHostCellVolume = Kokkos::create_mirror(tCellVolume);
@@ -4612,7 +4610,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization2D)
         tHostProjectedPressureGrad(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 1;
         tHostProjectedPressureGrad(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 2;
     }
-    Kokkos::deep_copy(tProjectedPressureGrad, tHostPressureGrad);
+    Kokkos::deep_copy(tProjectedPressureGrad, tHostProjectedPressureGrad);
 
     // CALL FUNCTION
     constexpr Plato::Scalar tScaling = 0.5;
@@ -4628,9 +4626,9 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization2D)
     constexpr Plato::Scalar tTolerance = 1e-6;
     auto tHostStabilization = Kokkos::create_mirror(tStabilization);
     Kokkos::deep_copy(tHostStabilization, tStabilization);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0242373902628587, -0.0484747805257174},
-                                                     {-0.0769489176004514, -0.1538978352009030},
-                                                     {-0.1512474101963040, -0.3024948203926090}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0255839119441290, -0.0511678238882572},
+                                                     {-0.0812238574671431, -0.1624477149342860},
+                                                     {-0.1596500440960990, -0.3193000881921980}};
     for (Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; tDimIndex++)
@@ -4645,7 +4643,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization1D)
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 3;
     constexpr Plato::OrdinalType tSpaceDim = 1;
-    constexpr Plato::OrdinalType tNumVoigtTerms = 1;
 
     Plato::ScalarVector tCellVolume("volume", tNumCells);
     auto tHostCellVolume = Kokkos::create_mirror(tCellVolume);
@@ -4669,7 +4666,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization1D)
     {
         tHostProjectedPressureGrad(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 1;
     }
-    Kokkos::deep_copy(tProjectedPressureGrad, tHostPressureGrad);
+    Kokkos::deep_copy(tProjectedPressureGrad, tHostProjectedPressureGrad);
 
     // CALL FUNCTION
     constexpr Plato::Scalar tScaling = 0.5;
@@ -4685,9 +4682,9 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization1D)
     constexpr Plato::Scalar tTolerance = 1e-6;
     auto tHostStabilization = Kokkos::create_mirror(tStabilization);
     Kokkos::deep_copy(tHostStabilization, tStabilization);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0242373902628587},
-                                                     {-0.0769489176004514},
-                                                     {-0.1512474101963040}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0255839119441290},
+                                                     {-0.0812238574671431},
+                                                     {-0.1596500440960990}};
     for (Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; tDimIndex++)
