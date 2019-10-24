@@ -1087,8 +1087,8 @@ private:
 
     std::vector<std::string> mPlotTable; /*!< array with output data identifiers*/
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                                                /*!< body loads interface */
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;                                  /*!< linear cubature rule */
+    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;               /*!< body loads interface */
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule; /*!< linear cubature rule */
 
 // Private access functions
 private:
