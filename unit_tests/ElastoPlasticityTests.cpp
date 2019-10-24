@@ -1089,7 +1089,6 @@ private:
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                                                /*!< body loads interface */
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;                                  /*!< linear cubature rule */
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumMechDims, mNumDofsPerNode, mMechDofOffset>> mBoundaryLoads; /*!< boundary loads interface */
 
 // Private access functions
 private:
@@ -1120,13 +1119,6 @@ private:
         if (aProblemParams.isSublist("Body Loads"))
         {
             mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
-        }
-
-        // Parse Neumann conditions
-        if (aProblemParams.isSublist("Mechanical Natural Boundary Conditions"))
-        {
-            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumMechDims, mNumDofsPerNode, mMechDofOffset>>
-                (aProblemParams.sublist("Mechanical Natural Boundary Conditions"));
         }
     }
 
@@ -1205,7 +1197,6 @@ public:
         mElasticPropertiesPenaltySIMP(3),
         mElasticPropertiesMinErsatzSIMP(1e-9),
         mBodyLoads(nullptr),
-        mBoundaryLoads(nullptr),
         mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>())
     {
         this->initialize(aProblemParams);
