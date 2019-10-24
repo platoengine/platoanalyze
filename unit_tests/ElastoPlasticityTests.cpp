@@ -654,7 +654,19 @@ public:
 
 
 
-
+/***************************************************************************//**
+ *
+ * \brief Apply penalty, i.e. density penalty, to 2-D view
+ *
+ * \tparam Length      number of data entries for a given cell
+ * \tparam ControlType penalty, as a Scalar
+ * \tparam ResultType  multi-vector, as a 3-D Kokkos::View
+ *
+ * \param [in] aCellOrdinal cell ordinal, i.e. index
+ * \param [in] aPenalty     material penalty
+ * \param [in] aOutput      physical quantity to be penalized
+ *
+*******************************************************************************/
 template<Plato::OrdinalType Length, typename ControlType, typename ResultType>
 DEVICE_TYPE inline void
 apply_penalty(const Plato::OrdinalType aCellOrdinal, const ControlType & aPenalty, const Plato::ScalarMultiVectorT<ResultType> & aOutput)
@@ -665,6 +677,17 @@ apply_penalty(const Plato::OrdinalType aCellOrdinal, const ControlType & aPenalt
     }
 }
 
+/***************************************************************************//**
+ *
+ * \brief Compute shear modulus
+ *
+ * \tparam ScalarType POD type
+ *
+ * \param [in] aElasticModulus elastic modulus
+ * \param [in] aPoissonRatio   poisson's ratio
+ * \return shear modulus
+ *
+*******************************************************************************/
 template<typename ScalarType>
 inline ScalarType compute_shear_modulus(const ScalarType & aElasticModulus, const ScalarType & aPoissonRatio)
 {
@@ -673,6 +696,17 @@ inline ScalarType compute_shear_modulus(const ScalarType & aElasticModulus, cons
     return (tShearModulus);
 }
 
+/***************************************************************************//**
+ *
+ * \brief Compute bulk modulus
+ *
+ * \tparam ScalarType POD type
+ *
+ * \param [in] aElasticModulus elastic modulus
+ * \param [in] aPoissonRatio   poisson's ratio
+ * \return bulk modulus
+ *
+*******************************************************************************/
 template<typename ScalarType>
 inline ScalarType compute_bulk_modulus(const ScalarType & aElasticModulus, const ScalarType & aPoissonRatio)
 {
