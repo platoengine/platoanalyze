@@ -768,6 +768,7 @@ public:
     DEVICE_TYPE inline ResultType
     operator()(const Plato::OrdinalType & aCellOrdinal, const Plato::ScalarMultiVectorT<StrainType> & aStrain);
 };
+// class StrainDivergence
 
 /***************************************************************************//**
  *
@@ -835,14 +836,14 @@ StrainDivergence <1>::operator()(const Plato::OrdinalType & aCellOrdinal, const 
 
 
 
-/*
+
 template<Plato::OrdinalType SpaceDim>
 class ComputeStabilization
 {
 private:
-    Plato::Scalar mTwoOverThree;
-    Plato::Scalar mPressureScaling;
-    Plato::Scalar mElasticShearModulus;
+    Plato::Scalar mTwoOverThree;         /*!< 2/3 constant - avoids repeated calculation */
+    Plato::Scalar mPressureScaling;      /*!< pressure scaling term */
+    Plato::Scalar mElasticShearModulus;  /*!< elastic shear modulus */
 
 public:
     explicit ComputeStabilization(const Plato::Scalar & aStabilization, const Plato::Scalar & aShearModulus) :
@@ -863,6 +864,7 @@ public:
                                        const Plato::ScalarMultiVectorT<ProjPressGradT> &aProjectedPressureGrad,
                                        const Plato::ScalarMultiVectorT<ResultT> &aStabilization);
 };
+// class ComputeStabilization
 
 template<>
 template<typename ConfigT, typename PressGradT, typename ProjPressGradT, typename ResultT>
@@ -921,7 +923,7 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
 
 
 
-
+/*
 *************************************************************************
  * \brief Evaluate stabilized elasto-plastic residual, defined as
  *
