@@ -1079,6 +1079,7 @@ private:
 
     Plato::Scalar mPoissonsRatio;                  /*!< Poisson's ratio */
     Plato::Scalar mElasticModulus;                 /*!< elastic modulus */
+    Plato::Scalar mPressureScaling;                /*!< Pressure scaling term */
     Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
     Plato::Scalar mElasticPropertiesPenaltySIMP;   /*!< SIMP penalty for elastic properties */
@@ -1140,9 +1141,9 @@ private:
             auto tElasticSubList = aMaterialParamList.sublist("Isotropic Linear Elastic");
             mPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
             mElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
-            mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, tPoissonsRatio);
-            mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, tPoissonsRatio);
-            this->parsePressureTermScaling(aMaterialParamList)
+            mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
+            mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
+            this->parsePressureTermScaling(aMaterialParamList);
         }
         else
         {
@@ -1151,14 +1152,14 @@ private:
     }
 
     /**********************************************************************//**
-     * \brief Parse pressure scaling, needed to minimize the linear system's condition number.
-     * \param [in] aProblemParams Teuchos parameter list
+     * \brief Parse pressure scaling, needed to improve the condition number.
+     * \param [in] aMatParamList Teuchos parameter list with material model information
     **************************************************************************/
-    void parsePressureTermScaling(Teuchos::ParameterList & aMaterialParamList)
+    void parsePressureTermScaling(Teuchos::ParameterList & aMatParamList)
     {
-        if (paramList.isType<Plato::Scalar>("Pressure Scaling"))
+        if (aMatParamList.isType<Plato::Scalar>("Pressure Scaling"))
         {
-            mPressureScaling = aMaterialParamList.get<Plato::Scalar>("Pressure Scaling");
+            mPressureScaling = aMatParamList.get<Plato::Scalar>("Pressure Scaling");
         }
         else
         {
@@ -1198,6 +1199,7 @@ public:
         Plato::AbstractVectorFunctionVMSInc<EvaluationType>(aMesh, aMeshSets, aDataMap),
         mPoissonsRatio(-1.0),
         mElasticModulus(-1.0),
+        mPressureScaling(1.0),
         mElasticBulkModulus(-1.0),
         mElasticShearModulus(-1.0),
         mElasticPropertiesPenaltySIMP(3),
