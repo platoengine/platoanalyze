@@ -864,6 +864,19 @@ StrainDivergence <1>::operator()(const Plato::OrdinalType & aCellOrdinal,
 
 
 
+
+/***************************************************************************//**
+ *
+ * \brief Compute stabilization term, which is given by:
+ *
+ *   /f$ \tau\nabla{p} - \nabla{\Pi} /f$, where /f$\tau/f$ is the stabilization
+ *   multiplier, /f$ \nabla{p} /f$ is the pressure gradient, and /f$ \nabla{\Pi} /f$
+ *   is the projected pressure gradient.  The stabilization parameter, /f$ \tau /f$
+ *   is defined as /f$ \frac{\Omega_{e}^{2/3}}{2G} /f$, where G is the shear modulus
+ *
+ * \tparam SpaceDim spatial dimensions
+ *
+*******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 class ComputeStabilization
 {
@@ -873,26 +886,64 @@ private:
     Plato::Scalar mElasticShearModulus;  /*!< elastic shear modulus */
 
 public:
-    explicit ComputeStabilization(const Plato::Scalar & aStabilization, const Plato::Scalar & aShearModulus) :
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aScaling       multiplier used to improve the system of equations condition number
+     * \param [in] aShearModulus  elastic shear modulus
+    *******************************************************************************/
+    explicit ComputeStabilization(const Plato::Scalar & aScaling, const Plato::Scalar & aShearModulus) :
         mTwoOverThree(2.0/3.0),
-        mPressureScaling(aStabilization),
+        mPressureScaling(aScaling),
         mElasticShearModulus(aShearModulus)
     {
     }
 
-    ~ComputeStabilization()
-    {
-    }
+    /***************************************************************************//**
+     * \brief Destructor
+    *******************************************************************************/
+    ~ComputeStabilization(){}
 
+    /***************************************************************************//**
+     * \brief Compute stabilization term
+     *
+     * \tparam ConfigT        POD type for 1-D Kokkos::View
+     * \tparam PressGradT     POD type for 2-D Kokkos::View
+     * \tparam ProjPressGradT POD type for 2-D Kokkos::View
+     * \tparam ResultT        POD type for 2-D Kokkos::View
+     *
+     * \param [in] aCellOrdinal           cell ordinal, i.e index
+     * \param [in] aCellVolume            cell volume
+     * \param [in] aPressureGrad          pressure gradient
+     * \param [in] aProjectedPressureGrad projected pressure gradient
+     * \param [in/out] aStabilization     stabilization term
+     *
+    *******************************************************************************/
     template<typename ConfigT, typename PressGradT, typename ProjPressGradT, typename ResultT>
-    DEVICE_TYPE inline void operator()(const Plato::OrdinalType &aCellOrdinal,
-                                       const Plato::ScalarVectorT<ConfigT> & aCellVolume,
-                                       const Plato::ScalarMultiVectorT<PressGradT> &aPressureGrad,
-                                       const Plato::ScalarMultiVectorT<ProjPressGradT> &aProjectedPressureGrad,
-                                       const Plato::ScalarMultiVectorT<ResultT> &aStabilization);
+    DEVICE_TYPE inline void
+    operator()(const Plato::OrdinalType &aCellOrdinal,
+               const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+               const Plato::ScalarMultiVectorT<PressGradT> &aPressureGrad,
+               const Plato::ScalarMultiVectorT<ProjPressGradT> &aProjectedPressureGrad,
+               const Plato::ScalarMultiVectorT<ResultT> &aStabilization) const;
 };
 // class ComputeStabilization
 
+/***************************************************************************//**
+ *
+ * \brief Specialization for 3-D applications
+ *
+ * \tparam ConfigT        POD type for 1-D Kokkos::View
+ * \tparam PressGradT     POD type for 2-D Kokkos::View
+ * \tparam ProjPressGradT POD type for 2-D Kokkos::View
+ * \tparam ResultT        POD type for 2-D Kokkos::View
+ *
+ * \param [in] aCellOrdinal           cell ordinal, i.e index
+ * \param [in] aCellVolume            cell volume
+ * \param [in] aPressureGrad          pressure gradient
+ * \param [in] aProjectedPressureGrad projected pressure gradient
+ * \param [in/out] aStabilization     stabilization term
+ *
+*******************************************************************************/
 template<>
 template<typename ConfigT, typename PressGradT, typename ProjPressGradT, typename ResultT>
 DEVICE_TYPE inline void
@@ -900,7 +951,7 @@ ComputeStabilization<3>::operator()(const Plato::OrdinalType & aCellOrdinal,
                                     const Plato::ScalarVectorT<ConfigT> & aCellVolume,
                                     const Plato::ScalarMultiVectorT<PressGradT> & aPressureGrad,
                                     const Plato::ScalarMultiVectorT<ProjPressGradT> & aProjectedPressureGrad,
-                                    const Plato::ScalarMultiVectorT<ResultT> & aStabilization)
+                                    const Plato::ScalarMultiVectorT<ResultT> & aStabilization) const
 {
     ConfigT tTau = pow(aCellVolume(aCellOrdinal), mTwoOverThree) / (static_cast<Plato::Scalar>(2.0) * mElasticShearModulus);
     aStabilization(aCellOrdinal, 0) = mPressureScaling * tTau
@@ -913,6 +964,22 @@ ComputeStabilization<3>::operator()(const Plato::OrdinalType & aCellOrdinal,
         * (mPressureScaling * aPressureGrad(aCellOrdinal, 2) - aProjectedPressureGrad(aCellOrdinal, 2));
 }
 
+/***************************************************************************//**
+ *
+ * \brief Specialization for 2-D applications
+ *
+ * \tparam ConfigT        POD type for 1-D Kokkos::View
+ * \tparam PressGradT     POD type for 2-D Kokkos::View
+ * \tparam ProjPressGradT POD type for 2-D Kokkos::View
+ * \tparam ResultT        POD type for 2-D Kokkos::View
+ *
+ * \param [in] aCellOrdinal           cell ordinal, i.e index
+ * \param [in] aCellVolume            cell volume
+ * \param [in] aPressureGrad          pressure gradient
+ * \param [in] aProjectedPressureGrad projected pressure gradient
+ * \param [in/out] aStabilization     stabilization term
+ *
+*******************************************************************************/
 template<>
 template<typename ConfigT, typename PressGradT, typename ProjPressGradT, typename ResultT>
 DEVICE_TYPE inline void
@@ -920,7 +987,7 @@ ComputeStabilization<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
                                     const Plato::ScalarVectorT<ConfigT> & aCellVolume,
                                     const Plato::ScalarMultiVectorT<PressGradT> & aPressureGrad,
                                     const Plato::ScalarMultiVectorT<ProjPressGradT> & aProjectedPressureGrad,
-                                    const Plato::ScalarMultiVectorT<ResultT> & aStabilization)
+                                    const Plato::ScalarMultiVectorT<ResultT> & aStabilization) const
 {
     ConfigT tTau = pow(aCellVolume(aCellOrdinal), mTwoOverThree) / (static_cast<Plato::Scalar>(2.0) * mElasticShearModulus);
     aStabilization(aCellOrdinal, 0) = mPressureScaling * tTau
@@ -930,6 +997,22 @@ ComputeStabilization<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
         * (mPressureScaling * aPressureGrad(aCellOrdinal, 1) - aProjectedPressureGrad(aCellOrdinal, 1));
 }
 
+/***************************************************************************//**
+ *
+ * \brief Specialization for 1-D applications
+ *
+ * \tparam ConfigT        POD type for 1-D Kokkos::View
+ * \tparam PressGradT     POD type for 2-D Kokkos::View
+ * \tparam ProjPressGradT POD type for 2-D Kokkos::View
+ * \tparam ResultT        POD type for 2-D Kokkos::View
+ *
+ * \param [in] aCellOrdinal           cell ordinal, i.e index
+ * \param [in] aCellVolume            cell volume
+ * \param [in] aPressureGrad          pressure gradient
+ * \param [in] aProjectedPressureGrad projected pressure gradient
+ * \param [in/out] aStabilization     stabilization term
+ *
+*******************************************************************************/
 template<>
 template<typename ConfigT, typename PressGradT, typename ProjPressGradT, typename ResultT>
 DEVICE_TYPE inline void
@@ -937,7 +1020,7 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
                                     const Plato::ScalarVectorT<ConfigT> & aCellVolume,
                                     const Plato::ScalarMultiVectorT<PressGradT> & aPressureGrad,
                                     const Plato::ScalarMultiVectorT<ProjPressGradT> & aProjectedPressureGrad,
-                                    const Plato::ScalarMultiVectorT<ResultT> & aStabilization)
+                                    const Plato::ScalarMultiVectorT<ResultT> & aStabilization) const
 {
     ConfigT tTau = pow(aCellVolume(aCellOrdinal), mTwoOverThree) / (static_cast<Plato::Scalar>(2.0) * mElasticShearModulus);
     aStabilization(aCellOrdinal, 0) = mPressureScaling * tTau
@@ -4434,6 +4517,183 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence1D)
     for (Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         TEST_FLOATING_EQUALITY(tHostOutput(tCellIndex), tGold[tCellIndex], tTolerance);
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization3D)
+{
+    // PREPARE DATA FOR TEST
+    constexpr Plato::OrdinalType tNumCells = 3;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tNumVoigtTerms = 1;
+
+    Plato::ScalarVector tCellVolume("volume", tNumCells);
+    auto tHostCellVolume = Kokkos::create_mirror(tCellVolume);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostCellVolume(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+    }
+    Kokkos::deep_copy(tCellVolume, tHostCellVolume);
+
+    Plato::ScalarMultiVector tPressureGrad("pressure gradient", tNumCells, tSpaceDim);
+    auto tHostPressureGrad = Kokkos::create_mirror(tPressureGrad);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostPressureGrad(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostPressureGrad(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.2;
+        tHostPressureGrad(tCellIndex, 2) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.3;
+    }
+    Kokkos::deep_copy(tPressureGrad, tHostPressureGrad);
+
+    Plato::ScalarMultiVector tProjectedPressureGrad("projected pressure gradient - gauss pt", tNumCells, tSpaceDim);
+    auto tHostProjectedPressureGrad = Kokkos::create_mirror(tProjectedPressureGrad);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostProjectedPressureGrad(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 1;
+        tHostProjectedPressureGrad(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 2;
+        tHostProjectedPressureGrad(tCellIndex, 2) = static_cast<Plato::Scalar>(1+tCellIndex) * 3;
+    }
+    Kokkos::deep_copy(tProjectedPressureGrad, tHostPressureGrad);
+
+    // CALL FUNCTION
+    constexpr Plato::Scalar tScaling = 0.5;
+    constexpr Plato::Scalar tShearModulus = 2;
+    Plato::ScalarMultiVector tStabilization("cell stabilization", tNumCells, tSpaceDim);
+    Plato::ComputeStabilization<tSpaceDim> tComputeStabilization(tScaling, tShearModulus);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        tComputeStabilization(aCellIndex, tCellVolume, tPressureGrad, tProjectedPressureGrad, tStabilization);
+    }, "test compute stabilization functor");
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    auto tHostStabilization = Kokkos::create_mirror(tStabilization);
+    Kokkos::deep_copy(tHostStabilization, tStabilization);
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0242373902628587, -0.0484747805257174, -0.0727121707885761},
+                                                     {-0.0769489176004514, -0.153897835200903, -0.230846752801354},
+                                                     {-0.151247410196304, -0.302494820392609, -0.453742230588913}};
+    for (Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; tDimIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tHostStabilization(tCellIndex, tDimIndex), tGold[tCellIndex][tDimIndex], tTolerance);
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization2D)
+{
+    // PREPARE DATA FOR TEST
+    constexpr Plato::OrdinalType tNumCells = 3;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tNumVoigtTerms = 1;
+
+    Plato::ScalarVector tCellVolume("volume", tNumCells);
+    auto tHostCellVolume = Kokkos::create_mirror(tCellVolume);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostCellVolume(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+    }
+    Kokkos::deep_copy(tCellVolume, tHostCellVolume);
+
+    Plato::ScalarMultiVector tPressureGrad("pressure gradient", tNumCells, tSpaceDim);
+    auto tHostPressureGrad = Kokkos::create_mirror(tPressureGrad);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostPressureGrad(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostPressureGrad(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.2;
+    }
+    Kokkos::deep_copy(tPressureGrad, tHostPressureGrad);
+
+    Plato::ScalarMultiVector tProjectedPressureGrad("projected pressure gradient - gauss pt", tNumCells, tSpaceDim);
+    auto tHostProjectedPressureGrad = Kokkos::create_mirror(tProjectedPressureGrad);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostProjectedPressureGrad(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 1;
+        tHostProjectedPressureGrad(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 2;
+    }
+    Kokkos::deep_copy(tProjectedPressureGrad, tHostPressureGrad);
+
+    // CALL FUNCTION
+    constexpr Plato::Scalar tScaling = 0.5;
+    constexpr Plato::Scalar tShearModulus = 2;
+    Plato::ScalarMultiVector tStabilization("cell stabilization", tNumCells, tSpaceDim);
+    Plato::ComputeStabilization<tSpaceDim> tComputeStabilization(tScaling, tShearModulus);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        tComputeStabilization(aCellIndex, tCellVolume, tPressureGrad, tProjectedPressureGrad, tStabilization);
+    }, "test compute stabilization functor");
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    auto tHostStabilization = Kokkos::create_mirror(tStabilization);
+    Kokkos::deep_copy(tHostStabilization, tStabilization);
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0242373902628587, -0.0484747805257174},
+                                                     {-0.0769489176004514, -0.1538978352009030},
+                                                     {-0.1512474101963040, -0.3024948203926090}};
+    for (Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; tDimIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tHostStabilization(tCellIndex, tDimIndex), tGold[tCellIndex][tDimIndex], tTolerance);
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization1D)
+{
+    // PREPARE DATA FOR TEST
+    constexpr Plato::OrdinalType tNumCells = 3;
+    constexpr Plato::OrdinalType tSpaceDim = 1;
+    constexpr Plato::OrdinalType tNumVoigtTerms = 1;
+
+    Plato::ScalarVector tCellVolume("volume", tNumCells);
+    auto tHostCellVolume = Kokkos::create_mirror(tCellVolume);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostCellVolume(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+    }
+    Kokkos::deep_copy(tCellVolume, tHostCellVolume);
+
+    Plato::ScalarMultiVector tPressureGrad("pressure gradient", tNumCells, tSpaceDim);
+    auto tHostPressureGrad = Kokkos::create_mirror(tPressureGrad);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostPressureGrad(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+    }
+    Kokkos::deep_copy(tPressureGrad, tHostPressureGrad);
+
+    Plato::ScalarMultiVector tProjectedPressureGrad("projected pressure gradient - gauss pt", tNumCells, tSpaceDim);
+    auto tHostProjectedPressureGrad = Kokkos::create_mirror(tProjectedPressureGrad);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostProjectedPressureGrad(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 1;
+    }
+    Kokkos::deep_copy(tProjectedPressureGrad, tHostPressureGrad);
+
+    // CALL FUNCTION
+    constexpr Plato::Scalar tScaling = 0.5;
+    constexpr Plato::Scalar tShearModulus = 2;
+    Plato::ScalarMultiVector tStabilization("cell stabilization", tNumCells, tSpaceDim);
+    Plato::ComputeStabilization<tSpaceDim> tComputeStabilization(tScaling, tShearModulus);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        tComputeStabilization(aCellIndex, tCellVolume, tPressureGrad, tProjectedPressureGrad, tStabilization);
+    }, "test compute stabilization functor");
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    auto tHostStabilization = Kokkos::create_mirror(tStabilization);
+    Kokkos::deep_copy(tHostStabilization, tStabilization);
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0242373902628587},
+                                                     {-0.0769489176004514},
+                                                     {-0.1512474101963040}};
+    for (Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; tDimIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tHostStabilization(tCellIndex, tDimIndex), tGold[tCellIndex][tDimIndex], tTolerance);
+        }
     }
 }
 
