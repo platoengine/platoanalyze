@@ -721,7 +721,7 @@ inline ScalarType compute_bulk_modulus(const ScalarType & aElasticModulus, const
 
 
 
-/*
+
 Plato::Scalar parse_elastic_modulus(Teuchos::ParameterList & aParamList)
 {
     if(aParamList.isParameter("Youngs Modulus"))
@@ -752,8 +752,16 @@ Plato::Scalar parse_poissons_ratio(Teuchos::ParameterList & aParamList)
 
 
 
+/***************************************************************************//**
+ *
+ * \brief Apply the divergence operator to the strain tensor, i.e.
+ *   /f$ \div\cdot\epsilon /f$, where /f$ \epsilon /f$ denotes the strain tensor.
+ *
+ * \tparam SpaceDim spatial dimensions
+ *
+*******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
-class DisplacementDivergence
+class StrainDivergence
 {
 public:
     template<typename ResultType, typename StrainType>
@@ -761,28 +769,64 @@ public:
     operator()(const Plato::OrdinalType & aCellOrdinal, const Plato::ScalarMultiVectorT<StrainType> & aStrain);
 };
 
+/***************************************************************************//**
+ *
+ * \brief Apply the divergence operator to the strain tensor, specialized for
+ *  3-D applications.
+ *
+ * \tparam ResultType POD type, as Scalar
+ * \tparam StrainType POD type, as a 2-D Kokkos::View
+ *
+ * \param [in] aCellOrdinal cell ordinal, i.e. index
+ * \param [in] aStrain      strain tensor
+ *
+*******************************************************************************/
 template<>
 template<typename ResultType, typename StrainType>
 DEVICE_TYPE inline ResultType
-DisplacementDivergence<3>::operator()(const Plato::OrdinalType & aCellOrdinal, const Plato::ScalarMultiVectorT<StrainType> & aStrain)
+StrainDivergence <3>::operator()(const Plato::OrdinalType & aCellOrdinal, const Plato::ScalarMultiVectorT<StrainType> & aStrain)
 {
     ResultType tOutput = aStrain(aCellOrdinal, 0) + aStrain(aCellOrdinal, 1) + aStrain(aCellOrdinal, 2);
     return (tOutput);
 }
 
+/***************************************************************************//**
+ *
+ * \brief Apply the divergence operator to the strain tensor, specialized for
+ *  2-D applications.
+ *
+ * \tparam ResultType POD type, as Scalar
+ * \tparam StrainType POD type, as a 2-D Kokkos::View
+ *
+ * \param [in] aCellOrdinal cell ordinal, i.e. index
+ * \param [in] aStrain      strain tensor
+ *
+*******************************************************************************/
 template<>
 template<typename ResultType, typename StrainType>
 DEVICE_TYPE inline ResultType
-DisplacementDivergence<2>::operator()(const Plato::OrdinalType & aCellOrdinal, const Plato::ScalarMultiVectorT<StrainType> & aStrain)
+StrainDivergence <2>::operator()(const Plato::OrdinalType & aCellOrdinal, const Plato::ScalarMultiVectorT<StrainType> & aStrain)
 {
     ResultType tOutput = aStrain(aCellOrdinal, 0) + aStrain(aCellOrdinal, 1);
     return (tOutput);
 }
 
+/***************************************************************************//**
+ *
+ * \brief Apply the divergence operator to the strain tensor, specialized for
+ *  1-D applications.
+ *
+ * \tparam ResultType POD type, as Scalar
+ * \tparam StrainType POD type, as a 2-D Kokkos::View
+ *
+ * \param [in] aCellOrdinal cell ordinal, i.e. index
+ * \param [in] aStrain      strain tensor
+ *
+*******************************************************************************/
 template<>
 template<typename ResultType, typename StrainType>
 DEVICE_TYPE inline ResultType
-DisplacementDivergence<1>::operator()(const Plato::OrdinalType & aCellOrdinal, const Plato::ScalarMultiVectorT<StrainType> & aStrain)
+StrainDivergence <1>::operator()(const Plato::OrdinalType & aCellOrdinal, const Plato::ScalarMultiVectorT<StrainType> & aStrain)
 {
     ResultType tOutput = aStrain(aCellOrdinal, 0);
     return (tOutput);
@@ -791,7 +835,7 @@ DisplacementDivergence<1>::operator()(const Plato::OrdinalType & aCellOrdinal, c
 
 
 
-
+/*
 template<Plato::OrdinalType SpaceDim>
 class ComputeStabilization
 {
@@ -1114,7 +1158,7 @@ public:
         // Functors used to compute residual-related quantities
         Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::DisplacementDivergence<mSpaceDim> tComputeDispDivergence;
+        Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence ;
         Plato::ThermoPlasticityUtilities<EvaluationType::SpatialDim, PhysicsType> tPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
@@ -1169,11 +1213,11 @@ public:
             // compute deviatoric stress and displacement divergence
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
             tPlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
-            ResultT tDispDivergence = tComputeDispDivergence(aCellOrdinal, tElasticStrain);
+            ResultT tStrainDivergence = tComputeStrainDivergence (aCellOrdinal, tElasticStrain);
 
             // compute volume difference
             tVolumeStrain(aCellOrdinal) = tPressureScaling * tElasticPropertiesPenalty
-                * (tDispDivergence - tPressure(aCellOrdinal) / tElasticBulkModulus);
+                * (tStrainDivergence - tPressure(aCellOrdinal) / tElasticBulkModulus);
             tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
 
             // compute cell stabilization term
@@ -4256,6 +4300,91 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeShearAndBulkModulus
     TEST_FLOATING_EQUALITY(tBulk, 0.833333333333333, tTolerance);
     auto tShear = Plato::compute_shear_modulus(tElasticModulus, tPoisson);
     TEST_FLOATING_EQUALITY(tShear, 0.384615384615385, tTolerance);
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence3D)
+{
+    // PREPARE DATA FOR TEST
+    constexpr Plato::OrdinalType tNumCells = 3;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tNumVoigtTerms = 6;
+    Plato::ScalarVector tOutput("strain tensor divergence", tNumCells);
+    Plato::ScalarMultiVector tStrainTensor("strain tensor", tNumCells, tNumVoigtTerms);
+    auto tHostStrainTensor = Kokkos::create_mirror(tStrainTensor);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostStrainTensor(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostStrainTensor(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.2;
+        tHostStrainTensor(tCellIndex, 2) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.3;
+        tHostStrainTensor(tCellIndex, 3) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.4;
+        tHostStrainTensor(tCellIndex, 4) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.5;
+        tHostStrainTensor(tCellIndex, 5) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.6;
+    }
+    Kokkos::deep_copy(tStrainTensor, tHostStrainTensor);
+
+    // CALL FUNCTION
+    Plato::StrainDivergence<tSpaceDim> tComputeStrainDivergence;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        tOutput(aCellIndex) = tComputeStrainDivergence(aCellIndex, tStrainTensor);
+    }, "test strain divergence functor");
+
+    // TEST RESULTS
+    std::vector<Plato::Scalar> tGold = {0.6, 1.2, 1.8};
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence2D)
+{
+    // PREPARE DATA FOR TEST
+    constexpr Plato::OrdinalType tNumCells = 3;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tNumVoigtTerms = 3;
+    Plato::ScalarVector tOutput("strain tensor divergence", tNumCells);
+    Plato::ScalarMultiVector tStrainTensor("strain tensor", tNumCells, tNumVoigtTerms);
+    auto tHostStrainTensor = Kokkos::create_mirror(tStrainTensor);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostStrainTensor(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostStrainTensor(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.2;
+        tHostStrainTensor(tCellIndex, 2) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.3;
+    }
+    Kokkos::deep_copy(tStrainTensor, tHostStrainTensor);
+
+    // CALL FUNCTION
+    Plato::StrainDivergence<tSpaceDim> tComputeStrainDivergence;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        tOutput(aCellIndex) = tComputeStrainDivergence(aCellIndex, tStrainTensor);
+    }, "test strain divergence functor");
+
+    // TEST RESULTS
+    std::vector<Plato::Scalar> tGold = {0.3, 0.6, 0.9};
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence1D)
+{
+    // PREPARE DATA FOR TEST
+    constexpr Plato::OrdinalType tNumCells = 3;
+    constexpr Plato::OrdinalType tSpaceDim = 1;
+    constexpr Plato::OrdinalType tNumVoigtTerms = 1;
+    Plato::ScalarVector tOutput("strain tensor divergence", tNumCells);
+    Plato::ScalarMultiVector tStrainTensor("strain tensor", tNumCells, tNumVoigtTerms);
+    auto tHostStrainTensor = Kokkos::create_mirror(tStrainTensor);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostStrainTensor(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+    }
+    Kokkos::deep_copy(tStrainTensor, tHostStrainTensor);
+
+    // CALL FUNCTION
+    Plato::StrainDivergence<tSpaceDim> tComputeStrainDivergence;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        tOutput(aCellIndex) = tComputeStrainDivergence(aCellIndex, tStrainTensor);
+    }, "test strain divergence functor");
+
+    // TEST RESULTS
+    std::vector<Plato::Scalar> tGold = {0.1, 0.2, 0.3};
 }
 
 }
