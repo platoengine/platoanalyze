@@ -100,6 +100,9 @@ public:
         {
             aDevStress(aCellOrdinal, tDimIndex) -= tTraceStress / static_cast<Plato::Scalar>(3.0);
         }
+        //printf("DevStress(%d,1) = %.10f\n", aCellOrdinal, aDevStress(aCellOrdinal,0));
+        //printf("DevStress(%d,2) = %.10f\n", aCellOrdinal, aDevStress(aCellOrdinal,1));
+        //printf("DevStress(%d,3) = %.10f\n", aCellOrdinal, aDevStress(aCellOrdinal,2));
 
         // compute volume strain, i.e. \div(u)
         //

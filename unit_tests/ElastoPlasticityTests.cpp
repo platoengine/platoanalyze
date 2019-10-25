@@ -1364,6 +1364,9 @@ public:
             // compute deviatoric stress and displacement divergence
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
             tJ2PlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
+            //printf("DevStress(%d,1) = %.10f\n", aCellOrdinal, tDeviatoricStress(aCellOrdinal,0));
+            //printf("DevStress(%d,2) = %.10f\n", aCellOrdinal, tDeviatoricStress(aCellOrdinal,1));
+            //printf("DevStress(%d,3) = %.10f\n", aCellOrdinal, tDeviatoricStress(aCellOrdinal,2));
             tComputeStrainDivergence(aCellOrdinal, tElasticStrain, tStrainDivergence);
 
             // compute volume difference
@@ -4933,11 +4936,15 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual2D
     Kokkos::deep_copy(tHostGold, tStabilizedMechResidual);
     auto tHostElastoPlasticityResidual = Kokkos::create_mirror(tElastoPlasticityResidual);
     Kokkos::deep_copy(tHostElastoPlasticityResidual, tElastoPlasticityResidual);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{-0.3108974359, -0.0961538462, 0.2003656347 , 0.2147435897, -0.0224358974, -0.3967844462,  0.0961538462, 0.1185897436, 0.0297521448},
+         {0.125,          0.0576923077, -0.0853066085, -0.0673076923, 0.1057692308, 5.45966e-07,  -0.0576923077, -0.1634615385, 0.0853060625}};
     for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
     {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
         {
-            TEST_FLOATING_EQUALITY(tHostElastoPlasticityResidual(tCellIndex, tDofIndex), tHostGold(tCellIndex, tDofIndex), tTolerance);
+            //printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostElastoPlasticityResidual(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostElastoPlasticityResidual(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
         }
     }
 }
