@@ -1367,9 +1367,9 @@ public:
             tComputeStrainDivergence(aCellOrdinal, tElasticStrain, tStrainDivergence);
 
             // compute volume difference
+            tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
             tVolumeStrain(aCellOrdinal) = tPressureScaling * tElasticPropertiesPenalty
                 * (tStrainDivergence(aCellOrdinal) - tPressure(aCellOrdinal) / tElasticBulkModulus);
-            tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
 
             // compute cell stabilization term
             tComputeStabilization(aCellOrdinal, tCellVolume, tPressureGrad, tProjectedPressureGradGP, tStabilization);
