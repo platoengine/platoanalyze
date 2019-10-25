@@ -39,6 +39,7 @@
 #include "plato/InterpolateFromNodal.hpp"
 #include "plato/LinearElasticMaterial.hpp"
 #include "plato/ScalarFunctionIncBase.hpp"
+#include "plato/J2PlasticityUtilities.hpp"
 #include "plato/LocalVectorFunctionInc.hpp"
 #include "plato/ThermoPlasticityUtilities.hpp"
 #include "plato/LinearTetCubRuleDegreeOne.hpp"
@@ -645,7 +646,7 @@ public:
              const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType> &aControl,
              const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType> &aConfig,
              const Plato::ScalarMultiVectorT<typename EvaluationType::ResultScalarType> &aResult,
-             Plato::Scalar aTimeStep = 0.0) const = 0;
+             Plato::Scalar aTimeStep = 0.0) = 0;
 };
 // class AbstractVectorFunctionVMSInc
 
@@ -1054,7 +1055,7 @@ class ElastoPlasticityResidual: public Plato::AbstractVectorFunctionVMSInc<Evalu
 {
 // Private member data
 private:
-    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;               /*!< spatial dimensions */
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;               /*!< number of spatial dimensions */
     static constexpr auto mNumVoigtTerms = PhysicsType::mNumVoigtTerms;         /*!< number of voigt terms */
     static constexpr auto mNumDofsPerCell = PhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
     static constexpr auto mNumDofsPerNode = PhysicsType::mNumDofsPerNode;       /*!< number of dofs per node */
@@ -1129,8 +1130,12 @@ private:
         if(aProblemParams.isSublist("Elliptic"))
         {
             auto tResidualParams = aProblemParams.sublist("Elliptic");
-            mElasticPropertiesPenaltySIMP = aProblemParams.get<Plato::Scalar>("Exponent", 3.0);
-            mElasticPropertiesMinErsatzSIMP = aProblemParams.get<Plato::Scalar>("Minimum Value", 1e-9);
+            if(tResidualParams.isSublist("Penalty Function"))
+            {
+                auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
+                mElasticPropertiesPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Exponent", 3.0);
+                mElasticPropertiesMinErsatzSIMP = tPenaltyParams.get<Plato::Scalar>("Minimum Value", 1e-9);
+            }
         }
     }
 
@@ -1290,7 +1295,7 @@ public:
                   const Plato::ScalarMultiVectorT<ControlT> &aControl,
                   const Plato::ScalarArray3DT<ConfigT> &aConfig,
                   const Plato::ScalarMultiVectorT<ResultT> &aResult,
-                  Plato::Scalar aTimeStep = 0.0)
+                  Plato::Scalar aTimeStep = 0.0) override
     {
         auto tNumCells = mMesh.nelems();
 
@@ -1300,8 +1305,9 @@ public:
         // Functors used to compute residual-related quantities
         Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+        Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence ;
-        Plato::ThermoPlasticityUtilities<EvaluationType::SpatialDim, PhysicsType> tPlasticityUtils;
+        Plato::ThermoPlasticityUtilities<mSpaceDim, PhysicsType> tThermoPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
         Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0 /*dof offset*/, mSpaceDim> tInterpolatePressGradFromNodal;
@@ -1316,6 +1322,7 @@ public:
         Plato::ScalarVectorT<ResultT> tPressure("L2 pressure", tNumCells);
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
         Plato::ScalarVectorT<ResultT> tVolumeStrain("volume strain", tNumCells);
+        Plato::ScalarVectorT<ResultT> tStrainDivergence("strain divergence", tNumCells);
         Plato::ScalarMultiVectorT<ResultT> tStabilization("cell stabilization", tNumCells, mSpaceDim);
         Plato::ScalarMultiVectorT<GradScalarT> tPressureGrad("pressure gradient", tNumCells, mSpaceDim);
         Plato::ScalarMultiVectorT<ResultT> tDeviatoricStress("deviatoric stress", tNumCells, mNumVoigtTerms);
@@ -1324,7 +1331,9 @@ public:
         Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
 
         // Transfer elasticity parameters to device
+        auto tNumDofsPerNode = mNumDofsPerNode;
         auto tPressureScaling = mPressureScaling;
+        auto tPressureDofOffset = mPressureDofOffset;
         auto tElasticBulkModulus = mElasticBulkModulus;
         auto tElasticShearModulus = mElasticShearModulus;
 
@@ -1337,11 +1346,11 @@ public:
             tCellVolume(aCellOrdinal) *= tQuadratureWeight;
 
             // compute elastic strain, i.e. e_elastic = e_total - e_plastic
-            tPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
-                                                  tBasisFunctions, tConfigurationGradient, tElasticStrain);
+            tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
+                                                        tBasisFunctions, tConfigurationGradient, tElasticStrain);
 
             // compute pressure gradient
-            tComputeScalarGrad(aCellOrdinal, mNumDofsPerNode, mPressureDofOffset,
+            tComputeScalarGrad(aCellOrdinal, tNumDofsPerNode, tPressureDofOffset,
                                aCurrentGlobalState, tConfigurationGradient, tPressureGrad);
 
             // interpolate projected pressure grad, pressure, and temperature to gauss point
@@ -1354,12 +1363,12 @@ public:
 
             // compute deviatoric stress and displacement divergence
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
-            tPlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
-            ResultT tStrainDivergence = tComputeStrainDivergence (aCellOrdinal, tElasticStrain);
+            tJ2PlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
+            tComputeStrainDivergence(aCellOrdinal, tElasticStrain, tStrainDivergence);
 
             // compute volume difference
             tVolumeStrain(aCellOrdinal) = tPressureScaling * tElasticPropertiesPenalty
-                * (tStrainDivergence - tPressure(aCellOrdinal) / tElasticBulkModulus);
+                * (tStrainDivergence(aCellOrdinal) - tPressure(aCellOrdinal) / tElasticBulkModulus);
             tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
 
             // compute cell stabilization term
@@ -4753,14 +4762,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D
       );
 
     // 2. PREPARE FUNCTION INPUTS FOR TEST
-    constexpr auto tNumNodes = tMesh->nverts();
-    constexpr auto tNumCells = tMesh->nelems();
-    using PhysicsT = Plato::Plasticity<tSpaceDim>;
-    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
+    const Plato::OrdinalType tNumNodes = tMesh->nverts();
+    const Plato::OrdinalType tNumCells = tMesh->nelems();
+    using PhysicsT = Plato::SimplexPlasticity<tSpaceDim>;
     using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
+    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
 
     // 2.1 SET CONFIGURATION
-    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfiguration("configuration", tNumCells, PhysicsT::mNumNodesPerCell, PhysicsT::SpaceDim);
+    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfiguration("configuration", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
     tWorksetBase.worksetConfig(tConfiguration);
 
     // 2.2 SET DESIGN VARIABLES
@@ -4768,27 +4777,29 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D
     Kokkos::deep_copy(tDesignVariables, 1.0);
 
     // 2.3 SET GLOBAL STATE
-    Plato::ScalarVector tGlobalState("global state", PhysicsT::SpaceDim * tNumNodes);
+    auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tGlobalState("global state", tSpaceDim * tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
-        tGlobalState(aNodeOrdinal*PhysicsT::mNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
-        tGlobalState(aNodeOrdinal*PhysicsT::mNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
-        tGlobalState(aNodeOrdinal*PhysicsT::mNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
-        tGlobalState(aNodeOrdinal*PhysicsT::mNumDofsPerNode+3) = (5e-7)*aNodeOrdinal; // press
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+3) = (5e-7)*aNodeOrdinal; // press
     }, "set global state");
     Plato::ScalarMultiVectorT<EvalType::StateScalarType> tCurrentGlobalState("current global state", tNumCells, PhysicsT::mNumDofsPerCell);
     tWorksetBase.worksetState(tGlobalState, tCurrentGlobalState);
     Plato::ScalarMultiVectorT<EvalType::PrevStateScalarType> tPrevGlobalState("previous global state", tNumCells, PhysicsT::mNumDofsPerCell);
 
     // 2.4 SET PROJECTED PRESSURE GRADIENT
+    auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
     Plato::ScalarMultiVectorT<EvalType::NodeStateScalarType> tProjectedPressureGrad("projected pressure grad", tNumCells, PhysicsT::mNumNodeStatePerCell);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(Plato::OrdinalType tNodeIndex=0; tNodeIndex< PhysicsT::mNumNodesPerCell; tNodeIndex++)
+        for(Plato::OrdinalType tNodeIndex=0; tNodeIndex< tNumNodesPerCell; tNodeIndex++)
         {
-            for(Plato::OrdinalType tDimIndex=0; tDimIndex< PhysicsT::SpaceDim; tDimIndex++)
+            for(Plato::OrdinalType tDimIndex=0; tDimIndex< tSpaceDim; tDimIndex++)
             {
-                tProjectedPressureGrad(aCellOrdinal, tNodeIndex*PhysicsT::SpaceDim+tDimIndex) = (4e-7)*(tNodeIndex+1)*(tDimIndex+1)*(aCellOrdinal+1);
+                tProjectedPressureGrad(aCellOrdinal, tNodeIndex*tSpaceDim+tDimIndex) = (4e-7)*(tNodeIndex+1)*(tDimIndex+1)*(aCellOrdinal+1);
             }
         }
     }, "set projected pressure grad");
@@ -4798,7 +4809,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D
     Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
     // 3. CALL FUNCTION
-    Plato::ElastoPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(tMesh, tMeshSets, tDataMap, tElastoPlasticityInputs);
+    Plato::ElastoPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
     Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tElastoPlasticityResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
     tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
                                       tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
@@ -4806,7 +4817,9 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D
     // 4. GET GOLD VALUES - COMPARE AGAINST STABILIZED MECHANICS, NO PLASTICITY
     using GoldPhysicsT = Plato::SimplexStabilizedMechanics<tSpaceDim>;
     using GoldEvalType = typename Plato::Evaluation<GoldPhysicsT>::Residual;
-    Plato::StabilizedElastostaticResidual<GoldEvalType, GoldPhysicsT> tComputeStabilizedMech(tMesh, tMeshSets, tDataMap, tElastoPlasticityInputs);
+    auto tResidualParams = tElastoPlasticityInputs->sublist("Elliptic");
+    auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
+    Plato::StabilizedElastostaticResidual<GoldEvalType, Plato::MSIMP> tComputeStabilizedMech(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs, tPenaltyParams);
     Plato::ScalarMultiVectorT<GoldEvalType::ResultScalarType> tStabilizedMechResidual("residual", tNumCells, GoldPhysicsT::mNumDofsPerCell);
     tComputeStabilizedMech.evaluate(tCurrentGlobalState, tProjectedPressureGrad, tDesignVariables, tConfiguration, tStabilizedMechResidual);
 
