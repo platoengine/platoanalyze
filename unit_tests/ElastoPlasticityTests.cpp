@@ -1094,24 +1094,49 @@ private:
 private:
     /***************************************************************************//**
      * \brief initialize material, loads and output data
-     * \param [in] aProblemParams input XML data
+     * \param [in] aProblemParams input XML data, i.e. parameter list
     *******************************************************************************/
     void initialize(Teuchos::ParameterList &aProblemParams)
     {
-        auto tMaterialParamList = aProblemParams.get<Teuchos::ParameterList>("Material Model");
-        this->parseIsotropicElasticMaterialProperties(tMaterialParamList);
         this->parseExternalForces(aProblemParams);
+        this->parseOutputDataNames(aProblemParams);
+        this->parseMaterialProperties(aProblemParams);
+        this->parseMaterialPenaltyInputs(aProblemParams);
+    }
 
-        auto tResidualParams = aProblemParams.sublist("Elliptic");
-        if (tResidualParams.isType < Teuchos::Array < std::string >> ("Plottable"))
+    /***************************************************************************//**
+     * \brief Parse output data names
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    *******************************************************************************/
+    void parseOutputDataNames(Teuchos::ParameterList &aProblemParams)
+    {
+        if(aProblemParams.isSublist("Elliptic"))
         {
-            mPlotTable = tResidualParams.get < Teuchos::Array < std::string >> ("Plottable").toVector();
+            auto tResidualParams = aProblemParams.sublist("Elliptic");
+            if (tResidualParams.isType < Teuchos::Array < std::string >> ("Plottable"))
+            {
+                mPlotTable = tResidualParams.get < Teuchos::Array < std::string >> ("Plottable").toVector();
+            }
+        }
+    }
+
+    /***************************************************************************//**
+     * \brief Parse material penalty inputs
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    *******************************************************************************/
+    void parseMaterialPenaltyInputs(Teuchos::ParameterList &aProblemParams)
+    {
+        if(aProblemParams.isSublist("Elliptic"))
+        {
+            auto tResidualParams = aProblemParams.sublist("Elliptic");
+            mElasticPropertiesPenaltySIMP = aProblemParams.get<Plato::Scalar>("Exponent", 3.0);
+            mElasticPropertiesMinErsatzSIMP = aProblemParams.get<Plato::Scalar>("Minimum Value", 1e-9);
         }
     }
 
     /***********************************************************************//**
      * \brief Parse external forces
-     * \param [in] aProblemParams Teuchos parameter list
+     * \param [in] aProblemParams input XML data, i.e. parameter list
     ***************************************************************************/
     void parseExternalForces(Teuchos::ParameterList &aProblemParams)
     {
@@ -1123,29 +1148,46 @@ private:
     }
 
     /**********************************************************************//**
-     * \brief Parse isotropic material parameters
-     * \param [in] aProblemParams Teuchos parameter list
+     * \brief Parse elastic material properties
+     * \param [in] aProblemParams input XML data, i.e. parameter list
     **************************************************************************/
-    void parseIsotropicElasticMaterialProperties(Teuchos::ParameterList &aMaterialParamList)
+    void parseMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
-        if (aMaterialParamList.isSublist("Isotropic Linear Elastic"))
+        if(aProblemParams.isSublist("Material Model"))
         {
-            auto tElasticSubList = aMaterialParamList.sublist("Isotropic Linear Elastic");
+            this->parseIsotropicMaterialProperties(aProblemParams);
+        }
+        else
+        {
+            THROWERR("'Material Model' sublist is not defined.")
+        }
+    }
+
+    /**********************************************************************//**
+     * \brief Parse isotropic material parameters
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    **************************************************************************/
+    void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
+    {
+        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
+        if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
+        {
+            auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
             mPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
             mElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
             mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
             mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
-            this->parsePressureTermScaling(aMaterialParamList);
+            this->parsePressureTermScaling(tMaterialInputs);
         }
         else
         {
-            THROWERR("'Isotropic Linear Elastic' sublist of 'Material Model' is not define.")
+            THROWERR("'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
         }
     }
 
     /**********************************************************************//**
      * \brief Parse pressure scaling, needed to improve the condition number.
-     * \param [in] aMatParamList Teuchos parameter list with material model information
+     * \param [in] aMatParamList material model inputs, i.e. parameter list
     **************************************************************************/
     void parsePressureTermScaling(Teuchos::ParameterList & aMatParamList)
     {
@@ -1171,6 +1213,23 @@ private:
         if(std::count(mPlotTable.begin(), mPlotTable.end(), aName))
         {
             toMap(mDataMap, aData, aName);
+        }
+    }
+
+    /************************************************************************//**
+     * \brief Add external forces to residual
+     * \param [in]     aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aControl     design variables
+     * \param [in/out] aResult      residual evaluation
+    ****************************************************************************/
+    void addExternalForces(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
+                           const Plato::ScalarMultiVectorT<ControlT> &aControl,
+                           const Plato::ScalarMultiVectorT<ResultT> &aResult)
+    {
+        if (mBodyLoads != nullptr)
+        {
+            Plato::Scalar tMultiplier = -1.0;
+            mBodyLoads->get(mMesh, aGlobalState, aControl, aResult, tMultiplier);
         }
     }
 
@@ -1209,51 +1268,24 @@ public:
     {
     }
 
-    /***************************************************************************//**
-     * \brief Set Isotropic material properties
-     * \param [in] aElasticModulus elastic modulus, i.e. Young's modulus
-     * \param [in] aPoissonsRatio  Poisson's ratio
-    *******************************************************************************/
-    void setIsotropicLinearElasticProperties(const Plato::Scalar & aElasticModulus, const Plato::Scalar & aPoissonsRatio)
-    {
-        mPoissonsRatio = aPoissonsRatio;
-        mElasticModulus = aElasticModulus;
-        mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
-        mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
-    }
-
-    /************************************************************************//**
-     * \brief Add external forces to residual
-     * \param [in]     aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
-     * \param [in]     aControl     design variables
-     * \param [in/out] aResult      residual evaluation
-    ****************************************************************************/
-    void addExternalForces(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
-                           const Plato::ScalarMultiVectorT<ControlT> &aControl,
-                           const Plato::ScalarMultiVectorT<ResultT> &aResult)
-    {
-        if (mBodyLoads != nullptr)
-        {
-            Plato::Scalar tScale = -1.0;
-            mBodyLoads->get(mMesh, aGlobalState, aControl, aResult, tScale);
-        }
-    }
-
     /************************************************************************//**
      * \brief Evaluate the stabilized residual equation
-     * \param [in]     aPressureGrad    current pressure gradient ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
-     * \param [in]     aGlobalState     current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
-     * \param [in]     aGlobalStatePrev previous global state ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
-     * \param [in]     aLocalState      current local state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
-     * \param [in]     aLocalStatePrev  previous local state ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
-     * \param [in]     aControl         design variables
-     * \param [in/out] aResult          residual evaluation
-     * \param [in]     aTimeStep        current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
+     *
+     * \param [in]     aCurrentGlobalState    current global state workset ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aPrevGlobalState       previous global state workset ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
+     * \param [in]     aCurrentLocalState     current local state workset ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aPrevLocalState        previous local state workset ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
+     * \param [in]     aProjectedPressureGrad current pressure gradient workset ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aControl               design variables workset
+     * \param [in]     aConfig                configuration workset
+     * \param [in/out] aResult                residual workset
+     * \param [in]     aTimeStep              current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
+     *
     ****************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
-                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aGlobalStatePrev,
-                  const Plato::ScalarMultiVectorT<LocalStateT> &aLocalState,
-                  const Plato::ScalarMultiVectorT<PrevLocalStateT> &aLocalStatePrev,
+    void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
+                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPrevGlobalState,
+                  const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
+                  const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPrevLocalState,
                   const Plato::ScalarMultiVectorT<NodeStateT> &aProjectedPressureGrad,
                   const Plato::ScalarMultiVectorT<ControlT> &aControl,
                   const Plato::ScalarArray3DT<ConfigT> &aConfig,
@@ -1289,7 +1321,7 @@ public:
         Plato::ScalarMultiVectorT<ResultT> tDeviatoricStress("deviatoric stress", tNumCells, mNumVoigtTerms);
         Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumVoigtTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
-        Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient - gauss pt", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
 
         // Transfer elasticity parameters to device
         auto tPressureScaling = mPressureScaling;
@@ -1305,15 +1337,15 @@ public:
             tCellVolume(aCellOrdinal) *= tQuadratureWeight;
 
             // compute elastic strain, i.e. e_elastic = e_total - e_plastic
-            tPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState,
+            tPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
                                                   tBasisFunctions, tConfigurationGradient, tElasticStrain);
 
             // compute pressure gradient
             tComputeScalarGrad(aCellOrdinal, mNumDofsPerNode, mPressureDofOffset,
-                               aGlobalState, tConfigurationGradient, tPressureGrad);
+                               aCurrentGlobalState, tConfigurationGradient, tPressureGrad);
 
             // interpolate projected pressure grad, pressure, and temperature to gauss point
-            tInterpolatePressureFromNodal(aCellOrdinal, tBasisFunctions, aGlobalState, tPressure);
+            tInterpolatePressureFromNodal(aCellOrdinal, tBasisFunctions, aCurrentGlobalState, tPressure);
             tInterpolatePressGradFromNodal(aCellOrdinal, tBasisFunctions, aProjectedPressureGrad, tProjectedPressureGradGP);
 
             // compute cell penalty
@@ -1341,7 +1373,7 @@ public:
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
         }, "stabilized elasto-plastic residual");
 
-        this->addExternalForces(aGlobalState, aControl, aResult);
+        this->addExternalForces(aCurrentGlobalState, aControl, aResult);
         this->outputData(tDeviatoricStress, "deviatoric stress");
         this->outputData(tPressure, "pressure");
     }
@@ -4688,6 +4720,107 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization1D)
         for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; tDimIndex++)
         {
             TEST_FLOATING_EQUALITY(tHostStabilization(tCellIndex, tDimIndex), tGold[tCellIndex][tDimIndex], tTolerance);
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D)
+{
+    // 1. PREPARE PROBLEM INPUS FOR TEST
+    Plato::DataMap tDataMap;
+    Omega_h::MeshSets tMeshSets;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    Teuchos::RCP<Teuchos::ParameterList> tElastoPlasticityInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                   \n"
+        "  <ParameterList name='Material Model'>                                \n"
+        "    <ParameterList name='Isotropic Linear Elastic'>                    \n"
+        "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>    \n"
+        "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>  \n"
+        "    </ParameterList>                                                   \n"
+        "    <ParameterList name='Elliptic'>                                    \n"
+        "      <ParameterList name='Penalty Function'>                          \n"
+        "        <Parameter name='Type' type='string' value='SIMP'/>            \n"
+        "        <Parameter name='Exponent' type='double' value='3.0'/>         \n"
+        "        <Parameter name='Minimum Value' type='double' value='1.0e-6'/> \n"
+        "      </ParameterList>                                                 \n"
+        "    </ParameterList>                                                   \n"
+        "  </ParameterList>                                                     \n"
+        "</ParameterList>                                                       \n"
+      );
+
+    // 2. PREPARE FUNCTION INPUTS FOR TEST
+    constexpr auto tNumNodes = tMesh->nverts();
+    constexpr auto tNumCells = tMesh->nelems();
+    using PhysicsT = Plato::Plasticity<tSpaceDim>;
+    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
+    using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
+
+    // 2.1 SET CONFIGURATION
+    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfiguration("configuration", tNumCells, PhysicsT::mNumNodesPerCell, PhysicsT::SpaceDim);
+    tWorksetBase.worksetConfig(tConfiguration);
+
+    // 2.2 SET DESIGN VARIABLES
+    Plato::ScalarMultiVectorT<EvalType::ControlScalarType> tDesignVariables("design variables", tNumCells, PhysicsT::mNumNodesPerCell);
+    Kokkos::deep_copy(tDesignVariables, 1.0);
+
+    // 2.3 SET GLOBAL STATE
+    Plato::ScalarVector tGlobalState("global state", PhysicsT::SpaceDim * tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        tGlobalState(aNodeOrdinal*PhysicsT::mNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
+        tGlobalState(aNodeOrdinal*PhysicsT::mNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
+        tGlobalState(aNodeOrdinal*PhysicsT::mNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
+        tGlobalState(aNodeOrdinal*PhysicsT::mNumDofsPerNode+3) = (5e-7)*aNodeOrdinal; // press
+    }, "set global state");
+    Plato::ScalarMultiVectorT<EvalType::StateScalarType> tCurrentGlobalState("current global state", tNumCells, PhysicsT::mNumDofsPerCell);
+    tWorksetBase.worksetState(tGlobalState, tCurrentGlobalState);
+    Plato::ScalarMultiVectorT<EvalType::PrevStateScalarType> tPrevGlobalState("previous global state", tNumCells, PhysicsT::mNumDofsPerCell);
+
+    // 2.4 SET PROJECTED PRESSURE GRADIENT
+    Plato::ScalarMultiVectorT<EvalType::NodeStateScalarType> tProjectedPressureGrad("projected pressure grad", tNumCells, PhysicsT::mNumNodeStatePerCell);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tNodeIndex=0; tNodeIndex< PhysicsT::mNumNodesPerCell; tNodeIndex++)
+        {
+            for(Plato::OrdinalType tDimIndex=0; tDimIndex< PhysicsT::SpaceDim; tDimIndex++)
+            {
+                tProjectedPressureGrad(aCellOrdinal, tNodeIndex*PhysicsT::SpaceDim+tDimIndex) = (4e-7)*(tNodeIndex+1)*(tDimIndex+1)*(aCellOrdinal+1);
+            }
+        }
+    }, "set projected pressure grad");
+
+    // 2.3 SET LOCAL STATE
+    Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tCurrentLocalState("current local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+    Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+
+    // 3. CALL FUNCTION
+    Plato::ElastoPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(tMesh, tMeshSets, tDataMap, tElastoPlasticityInputs);
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tElastoPlasticityResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
+    tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
+                                      tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
+
+    // 4. GET GOLD VALUES - COMPARE AGAINST STABILIZED MECHANICS, NO PLASTICITY
+    using GoldPhysicsT = Plato::SimplexStabilizedMechanics<tSpaceDim>;
+    using GoldEvalType = typename Plato::Evaluation<GoldPhysicsT>::Residual;
+    Plato::StabilizedElastostaticResidual<GoldEvalType, GoldPhysicsT> tComputeStabilizedMech(tMesh, tMeshSets, tDataMap, tElastoPlasticityInputs);
+    Plato::ScalarMultiVectorT<GoldEvalType::ResultScalarType> tStabilizedMechResidual("residual", tNumCells, GoldPhysicsT::mNumDofsPerCell);
+    tComputeStabilizedMech.evaluate(tCurrentGlobalState, tProjectedPressureGrad, tDesignVariables, tConfiguration, tStabilizedMechResidual);
+
+    // 5. TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    auto tHostGold = Kokkos::create_mirror(tStabilizedMechResidual);
+    Kokkos::deep_copy(tHostGold, tStabilizedMechResidual);
+    auto tHostElastoPlasticityResidual = Kokkos::create_mirror(tElastoPlasticityResidual);
+    Kokkos::deep_copy(tHostElastoPlasticityResidual, tElastoPlasticityResidual);
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tHostElastoPlasticityResidual(tCellIndex, tDofIndex), tHostGold(tCellIndex, tDofIndex), tTolerance);
         }
     }
 }
