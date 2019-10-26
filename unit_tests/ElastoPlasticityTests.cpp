@@ -2345,11 +2345,21 @@ public:
         mGlobalVecFuncJacPgrad->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
                                          tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
-        return (this->assembleTransposeJacobianPressGrad(tJacobianWS));
+        auto tOutput = this->assembleTransposeJacobianPressGrad(tJacobianWS);
+
+        return (tOutput);
     }
 
 // Private access functions
 private:
+    /***********************************************************************//**
+     * \brief Assemble Jacobian for the projected pressure gradient problem
+     *
+     * \tparam AViewType POD type for 2-D Kokkos::View
+     *
+     * \param [in] aJacobianWS Jacobian worset
+     * \return Assembled Jacobian
+    ***************************************************************************/
     template<typename AViewType>
     Teuchos::RCP<Plato::CrsMatrixType>
     assembleJacobianPressGrad(const Plato::ScalarMultiVectorT<AViewType>& aJacobianWS)
@@ -2403,6 +2413,14 @@ private:
         return tAssembledJacobian;
     }
 
+    /***********************************************************************//**
+     * \brief Assemble transpose Jacobian for the projected pressure gradient problem
+     *
+     * \tparam AViewType POD type for 2-D Kokkos::View
+     *
+     * \param [in] aJacobianWS Jacobian worset
+     * \return Assembled transpose Jacobian
+    ***************************************************************************/
     template<typename AViewType>
     Teuchos::RCP<Plato::CrsMatrixType>
     assembleTransposeJacobianPressGrad(const Plato::ScalarMultiVectorT<AViewType>& aJacobianWS)
