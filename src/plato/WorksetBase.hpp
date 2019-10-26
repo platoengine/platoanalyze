@@ -5,8 +5,9 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "ImplicitFunctors.hpp"
+#include "plato/AnalyzeMacros.hpp"
 #include "plato/SimplexFadTypes.hpp"
+#include "plato/ImplicitFunctors.hpp"
 
 namespace Plato
 {
