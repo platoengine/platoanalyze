@@ -4736,7 +4736,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization1D)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D)
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D_NoPlasticity)
 {
     // 1. PREPARE PROBLEM INPUS FOR TEST
     Plato::DataMap tDataMap;
@@ -4807,7 +4807,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D
         }
     }, "set projected pressure grad");
 
-    // 2.3 SET LOCAL STATE
+    // 2.5 SET LOCAL STATE
     Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tCurrentLocalState("current local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
     Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
@@ -4837,6 +4837,229 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
         {
             TEST_FLOATING_EQUALITY(tHostElastoPlasticityResidual(tCellIndex, tDofIndex), tHostGold(tCellIndex, tDofIndex), tTolerance);
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual2D_NoPlasticity)
+{
+    // 1. PREPARE PROBLEM INPUS FOR TEST
+    Plato::DataMap tDataMap;
+    Omega_h::MeshSets tMeshSets;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    Teuchos::RCP<Teuchos::ParameterList> tElastoPlasticityInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                   \n"
+        "  <ParameterList name='Material Model'>                                \n"
+        "    <ParameterList name='Isotropic Linear Elastic'>                    \n"
+        "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>    \n"
+        "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>  \n"
+        "    </ParameterList>                                                   \n"
+        "    <ParameterList name='Elliptic'>                                    \n"
+        "      <ParameterList name='Penalty Function'>                          \n"
+        "        <Parameter name='Type' type='string' value='SIMP'/>            \n"
+        "        <Parameter name='Exponent' type='double' value='3.0'/>         \n"
+        "        <Parameter name='Minimum Value' type='double' value='1.0e-6'/> \n"
+        "      </ParameterList>                                                 \n"
+        "    </ParameterList>                                                   \n"
+        "  </ParameterList>                                                     \n"
+        "</ParameterList>                                                       \n"
+      );
+
+    // 2. PREPARE FUNCTION INPUTS FOR TEST
+    const Plato::OrdinalType tNumNodes = tMesh->nverts();
+    const Plato::OrdinalType tNumCells = tMesh->nelems();
+    using PhysicsT = Plato::SimplexPlasticity<tSpaceDim>;
+    using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
+    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
+
+    // 2.1 SET CONFIGURATION
+    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfiguration("configuration", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
+    tWorksetBase.worksetConfig(tConfiguration);
+
+    // 2.2 SET DESIGN VARIABLES
+    Plato::ScalarMultiVectorT<EvalType::ControlScalarType> tDesignVariables("design variables", tNumCells, PhysicsT::mNumNodesPerCell);
+    Kokkos::deep_copy(tDesignVariables, 1.0);
+
+    // 2.3 SET GLOBAL STATE
+    auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tGlobalState("global state", tSpaceDim * tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // press
+    }, "set global state");
+    Plato::ScalarMultiVectorT<EvalType::StateScalarType> tCurrentGlobalState("current global state", tNumCells, PhysicsT::mNumDofsPerCell);
+    tWorksetBase.worksetState(tGlobalState, tCurrentGlobalState);
+    Plato::ScalarMultiVectorT<EvalType::PrevStateScalarType> tPrevGlobalState("previous global state", tNumCells, PhysicsT::mNumDofsPerCell);
+
+    // 2.4 SET PROJECTED PRESSURE GRADIENT
+    auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    Plato::ScalarMultiVectorT<EvalType::NodeStateScalarType> tProjectedPressureGrad("projected pressure grad", tNumCells, PhysicsT::mNumNodeStatePerCell);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tNodeIndex=0; tNodeIndex< tNumNodesPerCell; tNodeIndex++)
+        {
+            for(Plato::OrdinalType tDimIndex=0; tDimIndex< tSpaceDim; tDimIndex++)
+            {
+                tProjectedPressureGrad(aCellOrdinal, tNodeIndex*tSpaceDim+tDimIndex) = (4e-7)*(tNodeIndex+1)*(tDimIndex+1)*(aCellOrdinal+1);
+            }
+        }
+    }, "set projected pressure grad");
+
+    // 2.5 SET LOCAL STATE
+    Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tCurrentLocalState("current local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+    Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+
+    // 3. CALL FUNCTION
+    Plato::ElastoPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tElastoPlasticityResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
+    tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
+                                      tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
+
+    // 4. GET GOLD VALUES - COMPARE AGAINST STABILIZED MECHANICS, NO PLASTICITY
+    using GoldPhysicsT = Plato::SimplexStabilizedMechanics<tSpaceDim>;
+    using GoldEvalType = typename Plato::Evaluation<GoldPhysicsT>::Residual;
+    auto tResidualParams = tElastoPlasticityInputs->sublist("Elliptic");
+    auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
+    Plato::StabilizedElastostaticResidual<GoldEvalType, Plato::MSIMP> tComputeStabilizedMech(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs, tPenaltyParams);
+    Plato::ScalarMultiVectorT<GoldEvalType::ResultScalarType> tStabilizedMechResidual("residual", tNumCells, GoldPhysicsT::mNumDofsPerCell);
+    tComputeStabilizedMech.evaluate(tCurrentGlobalState, tProjectedPressureGrad, tDesignVariables, tConfiguration, tStabilizedMechResidual);
+
+    // 5. TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    auto tHostGold = Kokkos::create_mirror(tStabilizedMechResidual);
+    Kokkos::deep_copy(tHostGold, tStabilizedMechResidual);
+    auto tHostElastoPlasticityResidual = Kokkos::create_mirror(tElastoPlasticityResidual);
+    Kokkos::deep_copy(tHostElastoPlasticityResidual, tElastoPlasticityResidual);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{-0.3108974359, -0.0961538462, 0.2003656347 , 0.2147435897, -0.0224358974, -0.3967844462,  0.0961538462, 0.1185897436, 0.0297521448},
+         {0.125,          0.0576923077, -0.0853066085, -0.0673076923, 0.1057692308, 5.45966e-07,  -0.0576923077, -0.1634615385, 0.0853060625}};
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
+        {
+            //printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostElastoPlasticityResidual(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostElastoPlasticityResidual(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual3D)
+{
+    // 1. PREPARE PROBLEM INPUS FOR TEST
+    Plato::DataMap tDataMap;
+    Omega_h::MeshSets tMeshSets;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    Teuchos::RCP<Teuchos::ParameterList> tElastoPlasticityInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                   \n"
+        "  <ParameterList name='Material Model'>                                \n"
+        "    <ParameterList name='Isotropic Linear Elastic'>                    \n"
+        "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>    \n"
+        "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>  \n"
+        "    </ParameterList>                                                   \n"
+        "    <ParameterList name='Elliptic'>                                    \n"
+        "      <ParameterList name='Penalty Function'>                          \n"
+        "        <Parameter name='Type' type='string' value='SIMP'/>            \n"
+        "        <Parameter name='Exponent' type='double' value='3.0'/>         \n"
+        "        <Parameter name='Minimum Value' type='double' value='1.0e-6'/> \n"
+        "      </ParameterList>                                                 \n"
+        "    </ParameterList>                                                   \n"
+        "  </ParameterList>                                                     \n"
+        "</ParameterList>                                                       \n"
+      );
+
+    // 2. PREPARE FUNCTION INPUTS FOR TEST
+    const Plato::OrdinalType tNumNodes = tMesh->nverts();
+    const Plato::OrdinalType tNumCells = tMesh->nelems();
+    using PhysicsT = Plato::SimplexPlasticity<tSpaceDim>;
+    using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
+    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
+
+    // 2.1 SET CONFIGURATION
+    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfiguration("configuration", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
+    tWorksetBase.worksetConfig(tConfiguration);
+
+    // 2.2 SET DESIGN VARIABLES
+    Plato::ScalarMultiVectorT<EvalType::ControlScalarType> tDesignVariables("design variables", tNumCells, PhysicsT::mNumNodesPerCell);
+    Kokkos::deep_copy(tDesignVariables, 1.0);
+
+    // 2.3 SET GLOBAL STATES
+    auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tGlobalState("global state", tSpaceDim * tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+3) = (5e-7)*aNodeOrdinal; // press
+
+
+    }, "set global state");
+    Plato::ScalarMultiVectorT<EvalType::StateScalarType> tCurrentGlobalState("current global state", tNumCells, PhysicsT::mNumDofsPerCell);
+    tWorksetBase.worksetState(tGlobalState, tCurrentGlobalState);
+    Plato::ScalarMultiVectorT<EvalType::PrevStateScalarType> tPrevGlobalState("previous global state", tNumCells, PhysicsT::mNumDofsPerCell);
+
+    // 2.4 SET PROJECTED PRESSURE GRADIENT
+    auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    Plato::ScalarMultiVectorT<EvalType::NodeStateScalarType> tProjectedPressureGrad("projected pressure grad", tNumCells, PhysicsT::mNumNodeStatePerCell);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tNodeIndex=0; tNodeIndex< tNumNodesPerCell; tNodeIndex++)
+        {
+            for(Plato::OrdinalType tDimIndex=0; tDimIndex< tSpaceDim; tDimIndex++)
+            {
+                tProjectedPressureGrad(aCellOrdinal, tNodeIndex*tSpaceDim+tDimIndex) = (4e-7)*(tNodeIndex+1)*(tDimIndex+1)*(aCellOrdinal+1);
+            }
+        }
+    }, "set projected pressure grad");
+
+    // 2.5 SET LOCAL STATE
+    Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tCurrentLocalState("current local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tCurrentLocalState(aCellOrdinal, 0)  = (1e-7)*aCellOrdinal; // accumulated plastic strain
+        tCurrentLocalState(aCellOrdinal, 1)  = (2e-7)*aCellOrdinal; // plastic multiplier increment
+        tCurrentLocalState(aCellOrdinal, 2)  = (3e-7)*aCellOrdinal; // plastic strain tensor XX
+        tCurrentLocalState(aCellOrdinal, 3)  = (4e-7)*aCellOrdinal; // plastic strain tensor YY
+        tCurrentLocalState(aCellOrdinal, 4)  = (5e-7)*aCellOrdinal; // plastic strain tensor ZZ
+        tCurrentLocalState(aCellOrdinal, 5)  = (6e-7)*aCellOrdinal; // plastic strain tensor YZ
+        tCurrentLocalState(aCellOrdinal, 6)  = (7e-7)*aCellOrdinal; // plastic strain tensor XZ
+        tCurrentLocalState(aCellOrdinal, 7)  = (8e-7)*aCellOrdinal; // plastic strain tensor XY
+        tCurrentLocalState(aCellOrdinal, 8)  = (9e-7)*aCellOrdinal; // backstress tensor XX
+        tCurrentLocalState(aCellOrdinal, 9)  = (1e-6)*aCellOrdinal; // backstress tensor YY
+        tCurrentLocalState(aCellOrdinal, 10) = (2e-6)*aCellOrdinal; // backstress tensor ZZ
+        tCurrentLocalState(aCellOrdinal, 11) = (3e-6)*aCellOrdinal; // backstress tensor YZ
+        tCurrentLocalState(aCellOrdinal, 12) = (4e-6)*aCellOrdinal; // backstress tensor XZ
+        tCurrentLocalState(aCellOrdinal, 13) = (5e-6)*aCellOrdinal; // backstress tensor XY
+
+
+    }, "set global state");
+    Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+
+    // 3. CALL FUNCTION
+    Plato::ElastoPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tElastoPlasticityResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
+    tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
+                                      tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
+
+    // 4. TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    auto tHostElastoPlasticityResidual = Kokkos::create_mirror(tElastoPlasticityResidual);
+    Kokkos::deep_copy(tHostElastoPlasticityResidual, tElastoPlasticityResidual);
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tHostElastoPlasticityResidual(tCellIndex, tDofIndex), 0, tTolerance);
         }
     }
 }
@@ -4911,8 +5134,19 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual2D
         }
     }, "set projected pressure grad");
 
-    // 2.3 SET LOCAL STATE
+    // 2.5 SET LOCAL STATE
     Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tCurrentLocalState("current local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tCurrentLocalState(aCellOrdinal, 0)  = (1e-7)*aCellOrdinal; // accumulated plastic strain
+        tCurrentLocalState(aCellOrdinal, 1)  = (2e-7)*aCellOrdinal; // plastic multiplier increment
+        tCurrentLocalState(aCellOrdinal, 2)  = (3e-7)*aCellOrdinal; // plastic strain tensor XX
+        tCurrentLocalState(aCellOrdinal, 3)  = (4e-7)*aCellOrdinal; // plastic strain tensor YY
+        tCurrentLocalState(aCellOrdinal, 4)  = (5e-7)*aCellOrdinal; // plastic strain tensor XY
+        tCurrentLocalState(aCellOrdinal, 5)  = (6e-7)*aCellOrdinal; // backstress tensor XX
+        tCurrentLocalState(aCellOrdinal, 6)  = (7e-7)*aCellOrdinal; // backstress tensor YY
+        tCurrentLocalState(aCellOrdinal, 7) =  (8e-7)*aCellOrdinal; // backstress tensor XY
+    }, "set global state");
     Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
     // 3. CALL FUNCTION
@@ -4921,30 +5155,16 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ElastoPlasticityResidual2D
     tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
                                       tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
 
-    // 4. GET GOLD VALUES - COMPARE AGAINST STABILIZED MECHANICS, NO PLASTICITY
-    using GoldPhysicsT = Plato::SimplexStabilizedMechanics<tSpaceDim>;
-    using GoldEvalType = typename Plato::Evaluation<GoldPhysicsT>::Residual;
-    auto tResidualParams = tElastoPlasticityInputs->sublist("Elliptic");
-    auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
-    Plato::StabilizedElastostaticResidual<GoldEvalType, Plato::MSIMP> tComputeStabilizedMech(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs, tPenaltyParams);
-    Plato::ScalarMultiVectorT<GoldEvalType::ResultScalarType> tStabilizedMechResidual("residual", tNumCells, GoldPhysicsT::mNumDofsPerCell);
-    tComputeStabilizedMech.evaluate(tCurrentGlobalState, tProjectedPressureGrad, tDesignVariables, tConfiguration, tStabilizedMechResidual);
-
     // 5. TEST RESULTS
     constexpr Plato::Scalar tTolerance = 1e-6;
-    auto tHostGold = Kokkos::create_mirror(tStabilizedMechResidual);
-    Kokkos::deep_copy(tHostGold, tStabilizedMechResidual);
     auto tHostElastoPlasticityResidual = Kokkos::create_mirror(tElastoPlasticityResidual);
     Kokkos::deep_copy(tHostElastoPlasticityResidual, tElastoPlasticityResidual);
-    std::vector<std::vector<Plato::Scalar>> tGold =
-        {{-0.3108974359, -0.0961538462, 0.2003656347 , 0.2147435897, -0.0224358974, -0.3967844462,  0.0961538462, 0.1185897436, 0.0297521448},
-         {0.125,          0.0576923077, -0.0853066085, -0.0673076923, 0.1057692308, 5.45966e-07,  -0.0576923077, -0.1634615385, 0.0853060625}};
     for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
     {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
         {
             //printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostElastoPlasticityResidual(tCellIndex, tDofIndex));
-            TEST_FLOATING_EQUALITY(tHostElastoPlasticityResidual(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            TEST_FLOATING_EQUALITY(tHostElastoPlasticityResidual(tCellIndex, tDofIndex), 0, tTolerance);
         }
     }
 }
