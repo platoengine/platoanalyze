@@ -442,50 +442,6 @@ void matrix_times_vector_workset(const char aTransA[],
 
 /************************************************************************//**
  *
- * \brief Convert 2-D view of automatic differentiation (AD) scalar types into
- *  3-D view of scalar types
- *
- * \tparam NumRowsPerCell number of rows per cell
- * \tparam NumColsPerCell number of columns per cell
- * \tparam ADType         AD scalar type
- *
- * \param aNumCells [in]     number of cells
- * \param aInput    [in]     2-D view of AD types
- * \param aOutput   [in/out] 3-D view of Scalar types
- *
-********************************************************************************/
-template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColsPerCell, typename ADType>
-void convert_ad_type_to_scalar_type(const Plato::OrdinalType& aNumCells,
-                                    const Plato::ScalarMultiVectorT<ADType>& aInput,
-                                    Plato::ScalarArray3D& aOutput)
-{
-    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nInput 2D array size is zero.\n");
-    }
-    if(aNumCells <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nNumber of input cells, i.e. elements, is zero.\n");
-    }
-    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nOutput 3D array size is zero.\n");
-    }
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-      for(Plato::OrdinalType tRowIndex = 0; tRowIndex < NumRowsPerCell; tRowIndex++)
-      {
-          for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColsPerCell; tColumnIndex++)
-          {
-              aOutput(aCellOrdinal, tRowIndex, tColumnIndex) = aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
-          }
-      }
-    }, "convert AD type to Scalar type");
-}
-
-/************************************************************************//**
- *
  * \brief Build a workset of identity matrices
  *
  * \tparam NumRowsPerCell number of rows per cell
@@ -1885,7 +1841,7 @@ public:
                                           tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current State", mNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::convert_ad_type_to_scalar_type<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::convert_ad_jacobian_to_scalar_jacobian<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         return tOutputJacobian;
     }
 
@@ -1982,7 +1938,7 @@ public:
                                           tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Global State", mNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::convert_ad_type_to_scalar_type<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::convert_ad_jacobian_to_scalar_jacobian<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         return tOutputJacobian;
     }
 
@@ -2079,7 +2035,7 @@ public:
                                           tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current Local State", mNumCells, mNumGlobalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::convert_ad_type_to_scalar_type<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::convert_ad_jacobian_to_scalar_jacobian<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         return tOutputJacobian;
     }
 
@@ -2176,7 +2132,7 @@ public:
                                            tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Local State", mNumCells, mNumGlobalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::convert_ad_type_to_scalar_type<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::convert_ad_jacobian_to_scalar_jacobian<mNumGlobalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         return tOutputJacobian;
     }
 

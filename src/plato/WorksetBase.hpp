@@ -23,6 +23,50 @@ inline Scalar local_result_sum(const Plato::OrdinalType& aNumCells, const Result
 }
 // function local_result_sum
 
+/************************************************************************//**
+ *
+ * \brief Convert an automatic differentiated (AD) Jacobian into scalar Jacobian.
+ *
+ * \tparam NumRowsPerCell number of rows per cell
+ * \tparam NumColsPerCell number of columns per cell
+ * \tparam ADType         AD scalar type
+ *
+ * \param aNumCells [in]     number of cells
+ * \param aInput    [in]     AD Jacobian
+ * \param aOutput   [in/out] Scalar Jacobian
+ *
+********************************************************************************/
+template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColsPerCell, typename ADType>
+inline void convert_ad_jacobian_to_scalar_jacobian(const Plato::OrdinalType& aNumCells,
+                                                   const Plato::ScalarMultiVectorT<ADType>& aInput,
+                                                   Plato::ScalarArray3D& aOutput)
+{
+    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nInput 2D array size is zero.\n");
+    }
+    if(aNumCells <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nNumber of input cells, i.e. elements, is zero.\n");
+    }
+    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nOutput 3D array size is zero.\n");
+    }
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+      for(Plato::OrdinalType tRowIndex = 0; tRowIndex < NumRowsPerCell; tRowIndex++)
+      {
+          for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColsPerCell; tColumnIndex++)
+          {
+              aOutput(aCellOrdinal, tRowIndex, tColumnIndex) = aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
+          }
+      }
+    }, "convert AD type to Scalar type");
+}
+// function convert_ad_jacobian_to_scalar_jacobian
+
 /*************************************************************************//**
 *
 * \brief Assemble scalar function global value
