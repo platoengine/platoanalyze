@@ -1401,10 +1401,12 @@ public:
 namespace ElastoPlasticityFactory
 {
 
-****************************************************************************
+/***************************************************************************//**
+ * \brief Factory for elasto-plasticity vector and scalar functions
+*******************************************************************************/
 struct FunctionFactory
 {
-    *****************************************************************************
+    /***************************************************************************//**
      * \brief Create a PLATO local vector function  inc (i.e. local residual equations)
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
@@ -1412,7 +1414,7 @@ struct FunctionFactory
      * \param [in] aInputParams input parameters
      * \param [in] aFunctionName vector function name
      * \return shared pointer to a stabilized vector function integrated in time
-    *********************************************************************************
+    *******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<EvaluationType>>
     createVectorFunctionVMSInc(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap, Teuchos::ParameterList& aInputParams, std::string aFunctionName)
@@ -1450,7 +1452,7 @@ public:
 
     using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>; /*!< define short name for simplex plasticity physics */
     /*!< define short name for projected pressure gradient physics */
-    using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset,  numProjectionDofs= 1>;
+    using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset>;
 };
 // class ElastoPlasticity
 
@@ -2270,7 +2272,9 @@ public:
         mGlobalVecFuncJacPgrad->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
                                          tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
-        return (this->assembleJacobianPressGrad(tJacobianWS));
+        auto tOutput = this->assembleJacobianPressGrad(tJacobianWS);
+
+        return (tOutput);
     }
 
     /***********************************************************************//**
@@ -2346,8 +2350,9 @@ public:
 
 // Private access functions
 private:
+    template<typename AViewType>
     Teuchos::RCP<Plato::CrsMatrixType>
-    assembleJacobianPressGrad(const Plato::ScalarMultiVectorT<typename JacobianPgrad::ResultScalarType>& aJacobianWS)
+    assembleJacobianPressGrad(const Plato::ScalarMultiVectorT<AViewType>& aJacobianWS)
     {
         // tJacobian has shape (Nc, (Nv x Nd), (Nv x Nn))
         //   Nc: number of cells
@@ -2398,8 +2403,9 @@ private:
         return tAssembledJacobian;
     }
 
+    template<typename AViewType>
     Teuchos::RCP<Plato::CrsMatrixType>
-    assembleTransposeJacobianPressGrad(const Plato::ScalarMultiVectorT<typename JacobianPgrad::ResultScalarType>& aJacobianWS)
+    assembleTransposeJacobianPressGrad(const Plato::ScalarMultiVectorT<AViewType>& aJacobianWS)
     {
         // tJacobian has shape (Nc, (Nv x Nd), (Nv x Nn))
         //   Nc: number of cells
