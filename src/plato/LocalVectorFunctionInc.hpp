@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
@@ -30,7 +32,7 @@ template<typename PhysicsT>
 class LocalVectorFunctionInc
 {
   private:
-    static constexpr Plato::OrdinalType mNumDofsPerCell = PhysicsT::mNumDofsPerCell;
+    static constexpr Plato::OrdinalType mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;
     static constexpr Plato::OrdinalType mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
     static constexpr Plato::OrdinalType mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
     static constexpr Plato::OrdinalType mNumDofsPerNode = PhysicsT::mNumDofsPerNode;
@@ -277,12 +279,12 @@ class LocalVectorFunctionInc
 
       // Workset global state
       //
-      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("Global State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("Global State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
       // Workset prev global state
       //
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev Global State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev Global State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
       // Workset local state
@@ -324,7 +326,6 @@ class LocalVectorFunctionInc
         }, "fill local state with updated local state");
     }
 
-
     /**************************************************************************//**
     * \brief Compute the local residual vector
     * \param [in]  aGlobalState global state at current time step
@@ -359,12 +360,12 @@ class LocalVectorFunctionInc
 
         // Workset global state
         //
-        Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumGlobalDofsPerCell);
         mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
         // Workset prev global state
         //
-        Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumGlobalDofsPerCell);
         mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
         // Workset local state
@@ -411,7 +412,6 @@ class LocalVectorFunctionInc
         return tResidualVector;
     }
 
-
     /**************************************************************************//**
     * \brief Compute the gradient wrt configuration of the local residual vector
     * \param [in]  aGlobalState global state at current time step
@@ -422,7 +422,7 @@ class LocalVectorFunctionInc
     * \param [in]  aTimeStep time step
     * \return gradient wrt configuration of the local residual vector
     ******************************************************************************/
-    Plato::ScalarMultiVectorT<typename GradientX::ResultScalarType>
+    Plato::ScalarArray3D
     gradient_x(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
                const Plato::ScalarVector & aLocalState,
@@ -446,12 +446,12 @@ class LocalVectorFunctionInc
 
         // Workset global state
         //
-        Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumGlobalDofsPerCell);
         mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
         // Workset prev global state
         //
-        Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumGlobalDofsPerCell);
         mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
         // Workset local state
@@ -473,15 +473,19 @@ class LocalVectorFunctionInc
 
         // create return view
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianConfiguration", mNumCells, mNumLocalDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tJacobianWS("Jacobian Configuration Workset", mNumCells, mNumLocalDofsPerCell);
 
         // evaluate function
         //
         mLocalVectorFunctionJacobianX->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                                 tLocalStateWS,  tPrevLocalStateWS, 
-                                                tControlWS, tConfigWS, tJacobian, aTimeStep);
+                                                tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
-        return tJacobian;
+        constexpr auto tNumConfigDofsPerCell = mNumNodesPerCell * mNumSpatialDims;
+        Plato::ScalarArray3D tOutputJacobian("Output Jacobian Configuration", mNumCells, mNumLocalDofsPerCell, tNumConfigDofsPerCell);
+        Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, tNumConfigDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+
+        return tOutputJacobian;
     }
 
     /**************************************************************************//**
@@ -494,7 +498,7 @@ class LocalVectorFunctionInc
     * \param [in]  aTimeStep time step
     * \return gradient wrt global state of the local residual vector
     ******************************************************************************/
-    Plato::ScalarMultiVectorT<typename GlobalJacobian::ResultScalarType>
+    ScalarArray3D
     gradient_u(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
                const Plato::ScalarVector & aLocalState,
@@ -518,12 +522,12 @@ class LocalVectorFunctionInc
 
       // Workset global state
       //
-      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
       // Workset prev global state
       //
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
       // Workset local state
@@ -545,15 +549,18 @@ class LocalVectorFunctionInc
 
       // create return view
       //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState",mNumCells,mNumLocalDofsPerCell);
+      Plato::ScalarMultiVectorT<ResultScalar> tJacobianWS("Jacobian Current Global State Workset",mNumCells,mNumLocalDofsPerCell);
 
       // evaluate function
       //
       mLocalVectorFunctionJacobianU->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                               tLocalStateWS,  tPrevLocalStateWS, 
-                                              tControlWS, tConfigWS, tJacobian, aTimeStep);
+                                              tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
-      return tJacobian;
+      Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current Global State", mNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
+      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+
+      return tOutputJacobian;
     }
 
     /**************************************************************************//**
@@ -566,7 +573,7 @@ class LocalVectorFunctionInc
     * \param [in]  aTimeStep time step
     * \return gradient wrt previous global state of the local residual vector
     ******************************************************************************/
-    Plato::ScalarMultiVectorT<typename GlobalJacobianP::ResultScalarType>
+    Plato::ScalarArray3D
     gradient_up(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
                const Plato::ScalarVector & aLocalState,
@@ -590,12 +597,12 @@ class LocalVectorFunctionInc
 
       // Workset global state
       //
-      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
       // Workset prev global state
       //
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
       // Workset local state
@@ -617,15 +624,18 @@ class LocalVectorFunctionInc
 
       // create return view
       //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState",mNumCells,mNumLocalDofsPerCell);
+      Plato::ScalarMultiVectorT<ResultScalar> tJacobianWS("Jacobian Previous Global State Workset",mNumCells,mNumLocalDofsPerCell);
 
       // evaluate function
       //
       mLocalVectorFunctionJacobianUP->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                               tLocalStateWS,  tPrevLocalStateWS, 
-                                              tControlWS, tConfigWS, tJacobian, aTimeStep);
+                                              tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
-      return tJacobian;
+      Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Global State", mNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
+      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+
+      return tOutputJacobian;
     }
 
     /**************************************************************************//**
@@ -638,7 +648,7 @@ class LocalVectorFunctionInc
     * \param [in]  aTimeStep time step
     * \return gradient wrt local state of the local residual vector
     ******************************************************************************/
-    Plato::ScalarMultiVectorT<typename LocalJacobian::ResultScalarType>
+    Plato::ScalarArray3D
     gradient_c(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
                const Plato::ScalarVector & aLocalState,
@@ -662,12 +672,12 @@ class LocalVectorFunctionInc
 
       // Workset global state
       //
-      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
       // Workset prev global state
       //
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
       // Workset local state
@@ -689,15 +699,18 @@ class LocalVectorFunctionInc
 
       // create return view
       //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianLocalState",mNumCells,mNumLocalDofsPerCell);
+      Plato::ScalarMultiVectorT<ResultScalar> tJacobianWS("Jacobian Current Local State Workset",mNumCells,mNumLocalDofsPerCell);
 
       // evaluate function
       //
       mLocalVectorFunctionJacobianC->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                               tLocalStateWS,  tPrevLocalStateWS, 
-                                              tControlWS, tConfigWS, tJacobian, aTimeStep);
+                                              tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
-      return tJacobian;
+      Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current Local State", mNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
+      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+
+      return tOutputJacobian;
     }
 
     /**************************************************************************//**
@@ -710,7 +723,7 @@ class LocalVectorFunctionInc
     * \param [in]  aTimeStep time step
     * \return gradient wrt previous local state of the local residual vector
     ******************************************************************************/
-    Plato::ScalarMultiVectorT<typename LocalJacobianP::ResultScalarType>
+    Plato::ScalarArray3D
     gradient_cp(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
                const Plato::ScalarVector & aLocalState,
@@ -734,12 +747,12 @@ class LocalVectorFunctionInc
 
       // Workset global state
       //
-      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
       // Workset prev global state
       //
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
       // Workset local state
@@ -761,15 +774,18 @@ class LocalVectorFunctionInc
 
       // create return view
       //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianLocalState",mNumCells,mNumLocalDofsPerCell);
+      Plato::ScalarMultiVectorT<ResultScalar> tJacobianWS("Jacobian Previous Local State Workset",mNumCells,mNumLocalDofsPerCell);
 
       // evaluate function
       //
       mLocalVectorFunctionJacobianCP->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
-                                              tLocalStateWS,  tPrevLocalStateWS, 
-                                              tControlWS, tConfigWS, tJacobian, aTimeStep);
+                                               tLocalStateWS,  tPrevLocalStateWS,
+                                               tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
-      return tJacobian;
+      Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Local State", mNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
+      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+
+      return tOutputJacobian;
     }
 
     /**************************************************************************//**
@@ -782,7 +798,7 @@ class LocalVectorFunctionInc
     * \param [in]  aTimeStep time step
     * \return gradient wrt control of the local residual vector
     ******************************************************************************/
-    Plato::ScalarMultiVectorT<typename GradientZ::ResultScalarType>
+    Plato::ScalarArray3D
     gradient_z(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
                const Plato::ScalarVector & aLocalState,
@@ -806,12 +822,12 @@ class LocalVectorFunctionInc
 
       // Workset global state
       //
-      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<StateScalar> tGlobalStateWS("State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
       // Workset prev global state
       //
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevGlobalStateWS("Prev State Workset", mNumCells, mNumGlobalDofsPerCell);
       mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
       // Workset local state
@@ -833,15 +849,18 @@ class LocalVectorFunctionInc
 
       // create result 
       //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianControl",mNumCells,mNumLocalDofsPerCell);
+      Plato::ScalarMultiVectorT<ResultScalar> tJacobianWS("Jacobian Control Workset",mNumCells,mNumLocalDofsPerCell);
 
       // evaluate function 
       //
       mLocalVectorFunctionJacobianZ->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                               tLocalStateWS,  tPrevLocalStateWS, 
-                                              tControlWS, tConfigWS, tJacobian, aTimeStep);
+                                              tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
-      return tJacobian;
+      Plato::ScalarArray3D tOutputJacobian("Output Jacobian Control", mNumCells, mNumLocalDofsPerCell, mNumNodesPerCell);
+      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumNodesPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+
+      return tOutputJacobian;
     }
 };
 // class LocalVectorFunctionInc

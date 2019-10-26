@@ -68,45 +68,6 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * \brief Flatten vector workset.  Takes 2D view and converts it into a 1D view.
- *
- * \tparam NumLocalDofsPerCell number of local degrees of freedom per cell
- * \tparam AViewType Input workset, as a 2-D Kokkos::View
- * \tparam BViewType Output workset, as a 1-D Kokkos::View
- *
- * \param [in] aNumCells number of cells, i.e. elements
- * \param [in] aInput input workset (NumCells, LocalNumCellDofs)
- * \param [in/out] aOutput output vector (NumCells * LocalNumCellDofs)
-**********************************************************************************/
-template<Plato::OrdinalType NumLocalDofsPerCell, class AViewType, class BViewType>
-inline void flatten_vector_workset(const Plato::OrdinalType& aNumCells,
-                                   AViewType& aInput,
-                                   BViewType& aOutput)
-{
-    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nInput Kokkos::View is empty, i.e. size <= 0.\n")
-    }
-    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nOutput Kokkos::View is empty, i.e. size <= 0.\n")
-    }
-    if(aNumCells <= static_cast<Plato::OrdinalType>(0))
-    {
-        THROWERR("\nNumber of cells, i.e. elements, argument is <= zero.\n");
-    }
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        const auto tDofOffset = aCellOrdinal * NumLocalDofsPerCell;
-        for (Plato::OrdinalType tDofIndex = 0; tDofIndex < NumLocalDofsPerCell; tDofIndex++)
-        {
-          aOutput(tDofOffset + tDofIndex) = aInput(aCellOrdinal, tDofIndex);
-        }
-    }, "flatten residual vector");
-}
-
-/******************************************************************************//**
  * \brief Set all the entries in a 3-D matrix workset to a single value.
  *
  * \tparam NumRowsPerCell matrix number of rows

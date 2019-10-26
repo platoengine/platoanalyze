@@ -391,13 +391,12 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::ScalarFunctionBase 
 }
 // function test_partial_state
 
-template<typename MatrixScalarType>
-inline Plato::ScalarVector local_workset_matrix_vector_multiply(
-                                        const Plato::ScalarMultiVectorT<MatrixScalarType> & aMatrix,
-                                        const Plato::ScalarVector & aVector)
+inline Plato::ScalarVector
+local_workset_matrix_vector_multiply(const Plato::ScalarArray3D & aWorkset,
+                                     const Plato::ScalarVector & aVector)
 {
-    const Plato::OrdinalType tNumCells            = aMatrix.extent(0);
-    const Plato::OrdinalType tNumLocalDofsPerCell = aMatrix.extent(1);
+    const Plato::OrdinalType tNumCells            = aWorkset.extent(0);
+    const Plato::OrdinalType tNumLocalDofsPerCell = aWorkset.extent(1);
     const Plato::OrdinalType tVectorSize          = aVector.extent(0);
 
     Plato::ScalarVector tResult("result", tVectorSize);
@@ -412,7 +411,7 @@ inline Plato::ScalarVector local_workset_matrix_vector_multiply(
             for (Plato::OrdinalType tColumn = 0; tColumn < tNumLocalDofsPerCell; ++tColumn)
             {
                 Plato::Scalar tValue = 
-                             aMatrix(aCellOrdinal, tRow).dx(tColumn) * aVector(tStartingRowIndex + tColumn);
+                             aWorkset(aCellOrdinal, tRow, tColumn) * aVector(tStartingRowIndex + tColumn);
                 tResult(tStartingRowIndex + tRow) += tValue;
             }
         }
@@ -420,22 +419,21 @@ inline Plato::ScalarVector local_workset_matrix_vector_multiply(
     return tResult;
 }
 
-template<typename MatrixScalarType, Plato::OrdinalType SpaceDim, Plato::OrdinalType DofsPerNode>
-inline Plato::ScalarVector global_workset_matrix_vector_multiply(
-                                        const Plato::ScalarMultiVectorT<MatrixScalarType> & aMatrix,
-                                        const Plato::ScalarVector & aVector,
-                                        const Plato::VectorEntryOrdinal<SpaceDim,DofsPerNode> & aEntryOrdinal,
-                                        const Plato::OrdinalType & aNumNodesPerCell,
-                                        const Plato::OrdinalType & aNumMatrixRows)
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType DofsPerNode>
+inline Plato::ScalarVector
+global_workset_matrix_vector_multiply(const Plato::ScalarArray3D & aWorkset,
+                                      const Plato::ScalarVector & aVector,
+                                      const Plato::VectorEntryOrdinal<SpaceDim,DofsPerNode> & aEntryOrdinal,
+                                      const Plato::OrdinalType & aNumNodesPerCell,
+                                      const Plato::OrdinalType & aNumMatrixRows)
 {
-    const Plato::OrdinalType tNumWorksetRows = aMatrix.extent(0);
-    const Plato::OrdinalType tNumWorksetCols = aMatrix.extent(1);
+    const Plato::OrdinalType tNumWorksetRows = aWorkset.extent(0);
+    const Plato::OrdinalType tNumWorksetCols = aWorkset.extent(1);
     const Plato::OrdinalType tVectorSize     = aVector.extent(0);
 
     Plato::ScalarVector tResult("result", aNumMatrixRows);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumWorksetRows), 
-                         LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumWorksetRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         for (Plato::OrdinalType tWorksetCol = 0; tWorksetCol < tNumWorksetCols; ++tWorksetCol)
         {
@@ -449,7 +447,7 @@ inline Plato::ScalarVector global_workset_matrix_vector_multiply(
                 {
                     Plato::OrdinalType tMatrixCol = aEntryOrdinal(aCellOrdinal, tNode, tDof);
                     Plato::Scalar tValue = 
-                        aMatrix(aCellOrdinal, tWorksetCol).dx(tADVarIndex) * aVector(tMatrixCol);
+                        aWorkset(aCellOrdinal, tWorksetCol, tADVarIndex) * aVector(tMatrixCol);
                     tResult(tMatrixRow) += tValue;
                     ++tADVarIndex;
                 }
@@ -459,32 +457,30 @@ inline Plato::ScalarVector global_workset_matrix_vector_multiply(
     return tResult;
 }
 
-template<typename MatrixScalarType, Plato::OrdinalType D1, Plato::OrdinalType D2>
-inline Plato::ScalarVector control_workset_matrix_vector_multiply(
-                                        const Plato::ScalarMultiVectorT<MatrixScalarType> & aMatrix,
-                                        const Plato::ScalarVector & aVector,
-                                        const Plato::VectorEntryOrdinal<D1,D2> & aEntryOrdinal,
-                                        const Plato::OrdinalType & aNumADvarsPerCell,
-                                        const Plato::OrdinalType & aNumMatrixRows)
+template<Plato::OrdinalType D1, Plato::OrdinalType D2>
+inline Plato::ScalarVector
+control_workset_matrix_vector_multiply(const Plato::ScalarArray3D & aWorkset,
+                                       const Plato::ScalarVector & aVector,
+                                       const Plato::VectorEntryOrdinal<D1,D2> & aEntryOrdinal,
+                                       const Plato::OrdinalType & aNumMatrixRows)
 {
-    const Plato::OrdinalType tNumWorksetRows = aMatrix.extent(0);
-    const Plato::OrdinalType tNumWorksetCols = aMatrix.extent(1);
+    const Plato::OrdinalType tNumWorksetRows = aWorkset.extent(0);
+    const Plato::OrdinalType tNumWorksetCols = aWorkset.extent(1);
+    const Plato::OrdinalType tNumADvarsPerCell = aWorkset.extent(2);
     const Plato::OrdinalType tVectorSize     = aVector.extent(0);
 
     Plato::ScalarVector tResult("result", aNumMatrixRows);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumWorksetRows), 
-                         LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumWorksetRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         for (Plato::OrdinalType tWorksetCol = 0; tWorksetCol < tNumWorksetCols; ++tWorksetCol)
         {
             Plato::OrdinalType tMatrixRow = aCellOrdinal * tNumWorksetCols + tWorksetCol;
             tResult(tMatrixRow) = 0.0;
-            for (Plato::OrdinalType tADVariableIndex = 0; tADVariableIndex < aNumADvarsPerCell; ++tADVariableIndex)
+            for (Plato::OrdinalType tADVariableIndex = 0; tADVariableIndex < tNumADvarsPerCell; ++tADVariableIndex)
             {
                 Plato::OrdinalType tMatrixCol = aEntryOrdinal(aCellOrdinal, tADVariableIndex);
-                Plato::Scalar tValue = 
-                             aMatrix(aCellOrdinal, tWorksetCol).dx(tADVariableIndex) * aVector(tMatrixCol);
+                Plato::Scalar tValue = aWorkset(aCellOrdinal, tWorksetCol, tADVariableIndex) * aVector(tMatrixCol);
                 tResult(tMatrixRow) += tValue;
             }
         }
@@ -498,8 +494,8 @@ inline Plato::ScalarVector control_workset_matrix_vector_multiply(
  * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
-inline void test_partial_global_state(Omega_h::Mesh & aMesh, 
-                                     Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
+inline void
+test_partial_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
 {
     using StateT   = typename EvaluationType::StateScalarType;
     using LocalStateT   = typename EvaluationType::LocalStateScalarType;
@@ -545,10 +541,10 @@ inline void test_partial_global_state(Omega_h::Mesh & aMesh,
     Plato::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
-    Plato::ScalarMultiVectorT<StateT> tPartialU = 
-                aLocalVectorFuncInc.gradient_u(tGlobalState, tPrevGlobalState,
-                                                tLocalState, tPrevLocalState,
-                                                   tControl, 0.0);
+    Plato::ScalarArray3D tPartialU =
+            aLocalVectorFuncInc.gradient_u(tGlobalState, tPrevGlobalState,
+                                           tLocalState, tPrevLocalState,
+                                           tControl, 0.0);
 
     constexpr Plato::OrdinalType tSpaceDim = EvaluationType::SpatialDim;
     Plato::VectorEntryOrdinal<tSpaceDim, tDofsPerNode> tEntryOrdinal(&aMesh);
@@ -557,8 +553,8 @@ inline void test_partial_global_state(Omega_h::Mesh & aMesh,
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    Plato::ScalarVector tGradientDotStep = global_workset_matrix_vector_multiply(tPartialU, 
-        tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumDofs);
+    Plato::ScalarVector tGradientDotStep =
+            Plato::global_workset_matrix_vector_multiply(tPartialU, tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumDofs);
 
     std::cout << std::right << std::setw(14) << "\nStep Size" 
               << std::setw(20) << "abs(Error)" << std::endl;
@@ -595,8 +591,7 @@ inline void test_partial_global_state(Omega_h::Mesh & aMesh,
                                                                          tLocalState, tPrevLocalState,
                                                                          tControl, 0.0);
 
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tTotalNumDofs), 
-                                 LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tTotalNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
         {
             Plato::Scalar tValuePlus1Eps  = tVectorValueOne(aDofOrdinal);
             Plato::Scalar tValueMinus1Eps = tVectorValueTwo(aDofOrdinal);
@@ -631,8 +626,8 @@ inline void test_partial_global_state(Omega_h::Mesh & aMesh,
  * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
-inline void test_partial_prev_global_state(Omega_h::Mesh & aMesh, 
-                                     Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
+inline void
+test_partial_prev_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
 {
     using StateT   = typename EvaluationType::StateScalarType;
     using LocalStateT = typename EvaluationType::LocalStateScalarType;
@@ -678,10 +673,10 @@ inline void test_partial_prev_global_state(Omega_h::Mesh & aMesh,
     Plato::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
-    Plato::ScalarMultiVectorT<ResultT> tPartialUP = 
-                aLocalVectorFuncInc.gradient_up(tGlobalState, tPrevGlobalState,
-                                                tLocalState, tPrevLocalState,
-                                                   tControl, 0.0);
+    Plato::ScalarArray3D tPartialUP =
+            aLocalVectorFuncInc.gradient_up(tGlobalState, tPrevGlobalState,
+                                            tLocalState, tPrevLocalState,
+                                            tControl, 0.0);
 
     constexpr Plato::OrdinalType tSpaceDim = EvaluationType::SpatialDim;
     Plato::VectorEntryOrdinal<tSpaceDim, tDofsPerNode> tEntryOrdinal(&aMesh);
@@ -690,8 +685,8 @@ inline void test_partial_prev_global_state(Omega_h::Mesh & aMesh,
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    Plato::ScalarVector tGradientDotStep = global_workset_matrix_vector_multiply(tPartialUP, 
-        tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumDofs);
+    Plato::ScalarVector tGradientDotStep =
+            Plato::global_workset_matrix_vector_multiply(tPartialUP, tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumDofs);
 
     std::cout << std::right << std::setw(14) << "\nStep Size" 
               << std::setw(20) << "abs(Error)" << std::endl;
@@ -764,8 +759,8 @@ inline void test_partial_prev_global_state(Omega_h::Mesh & aMesh,
  * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
-inline void test_partial_local_state(Omega_h::Mesh & aMesh, 
-                                     Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
+inline void
+test_partial_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
 {
     using StateT   = typename EvaluationType::StateScalarType;
     using LocalStateT   = typename EvaluationType::LocalStateScalarType;
@@ -810,16 +805,16 @@ inline void test_partial_local_state(Omega_h::Mesh & aMesh,
     Plato::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
-    Plato::ScalarMultiVectorT<LocalStateT> tPartialC = 
-                aLocalVectorFuncInc.gradient_c(tGlobalState, tPrevGlobalState,
-                                                tLocalState, tPrevLocalState,
-                                                   tControl, 0.0);
+    Plato::ScalarArray3D tPartialC =
+            aLocalVectorFuncInc.gradient_c(tGlobalState, tPrevGlobalState,
+                                           tLocalState, tPrevLocalState,
+                                           tControl, 0.0);
 
     Plato::ScalarVector tStep("local state step", tTotalNumLocalDofs); 
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    Plato::ScalarVector tGradientDotStep = local_workset_matrix_vector_multiply(tPartialC, tStep);
+    Plato::ScalarVector tGradientDotStep = Plato::local_workset_matrix_vector_multiply(tPartialC, tStep);
 
     std::cout << std::right << std::setw(14) << "\nStep Size" 
               << std::setw(20) << "abs(Error)" << std::endl;
@@ -892,8 +887,8 @@ inline void test_partial_local_state(Omega_h::Mesh & aMesh,
  * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
-inline void test_partial_prev_local_state(Omega_h::Mesh & aMesh, 
-                                     Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
+inline void
+test_partial_prev_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
 {
     using StateT   = typename EvaluationType::StateScalarType;
     using LocalStateT   = typename EvaluationType::LocalStateScalarType;
@@ -938,16 +933,16 @@ inline void test_partial_prev_local_state(Omega_h::Mesh & aMesh,
     Plato::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
-    Plato::ScalarMultiVectorT<ResultT> tPartialCP = 
-                aLocalVectorFuncInc.gradient_cp(tGlobalState, tPrevGlobalState,
-                                                tLocalState,  tPrevLocalState,
-                                                   tControl, 0.0);
+    Plato::ScalarArray3D tPartialCP =
+            aLocalVectorFuncInc.gradient_cp(tGlobalState, tPrevGlobalState,
+                                            tLocalState,  tPrevLocalState,
+                                            tControl, 0.0 /*time step*/);
 
     Plato::ScalarVector tStep("previous local state step", tTotalNumLocalDofs); 
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    Plato::ScalarVector tGradientDotStep = local_workset_matrix_vector_multiply(tPartialCP, tStep);
+    Plato::ScalarVector tGradientDotStep = Plato::local_workset_matrix_vector_multiply(tPartialCP, tStep);
 
     std::cout << std::right << std::setw(14) << "\nStep Size" 
               << std::setw(20) << "abs(Error)" << std::endl;
@@ -1020,8 +1015,8 @@ inline void test_partial_prev_local_state(Omega_h::Mesh & aMesh,
  * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
-inline void test_partial_local_vect_func_inc_wrt_control(Omega_h::Mesh & aMesh, 
-                                     Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
+inline void
+test_partial_local_vect_func_inc_wrt_control(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<SimplexPhysics> & aLocalVectorFuncInc)
 {
     using StateT   = typename EvaluationType::StateScalarType;
     using LocalStateT   = typename EvaluationType::LocalStateScalarType;
@@ -1066,10 +1061,10 @@ inline void test_partial_local_vect_func_inc_wrt_control(Omega_h::Mesh & aMesh,
     Plato::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
-    Plato::ScalarMultiVectorT<ControlT> tPartialZ = 
-                aLocalVectorFuncInc.gradient_z(tGlobalState, tPrevGlobalState,
-                                                tLocalState, tPrevLocalState,
-                                                   tControl, 0.0);
+    Plato::ScalarArray3D tPartialZ =
+            aLocalVectorFuncInc.gradient_z(tGlobalState, tPrevGlobalState,
+                                           tLocalState, tPrevLocalState,
+                                           tControl, 0.0 /*time step*/);
 
     constexpr Plato::OrdinalType tSpaceDim   = EvaluationType::SpatialDim;
     constexpr Plato::OrdinalType tNumControl = EvaluationType::NumControls;;
@@ -1079,9 +1074,8 @@ inline void test_partial_local_vect_func_inc_wrt_control(Omega_h::Mesh & aMesh,
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    const Plato::OrdinalType tNumADvarsPerCell = SimplexPhysics::mNumNodesPerCell;
-    Plato::ScalarVector tGradientDotStep = control_workset_matrix_vector_multiply(tPartialZ, 
-        tStep, tEntryOrdinal, tNumADvarsPerCell, tTotalNumLocalDofs);
+    Plato::ScalarVector tGradientDotStep =
+        Plato::control_workset_matrix_vector_multiply(tPartialZ, tStep, tEntryOrdinal, tTotalNumLocalDofs);
 
     std::cout << std::right << std::setw(14) << "\nStep Size" 
               << std::setw(20) << "abs(Error)" << std::endl;

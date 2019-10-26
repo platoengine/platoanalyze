@@ -18,8 +18,8 @@ public:
 
     // degree-of-freedom attributes
     static constexpr auto mNumControl = NumControls;                            /*!< number of controls */
-    static constexpr auto mNumDofsPerNode = mNumSpatialDims + 1;                       /*!< number of degrees of freedom per node { disp_x, disp_y, disp_z, pressure} */
-    static constexpr auto mPressureDofOffset = mNumSpatialDims;                        /*!< number of pressure degrees of freedom offset */
+    static constexpr auto mNumDofsPerNode = mNumSpatialDims + 1;                /*!< number of degrees of freedom per node { disp_x, disp_y, disp_z, pressure} */
+    static constexpr auto mPressureDofOffset = mNumSpatialDims;                 /*!< number of pressure degrees of freedom offset */
     static constexpr auto mNumDofsPerCell = mNumDofsPerNode * mNumNodesPerCell; /*!< number of degrees of freedom per cell */
     static constexpr Plato::OrdinalType mNumLocalDofsPerCell =
             (SpaceDim == 3) ? 14 : ((SpaceDim == 2) ? 8 : (((SpaceDim == 1) ? 4 : 0))); /*!< number of local degrees of freedom per cell for J2-plasticity*/
