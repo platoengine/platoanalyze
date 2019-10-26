@@ -1397,7 +1397,7 @@ public:
 
 
 
-/*
+
 namespace ElastoPlasticityFactory
 {
 
@@ -1434,21 +1434,22 @@ struct FunctionFactory
 }
 // namespace ElastoPlasticityFactory
 
-***************************************************************************
+/*************************************************************************//**
  * \brief Concrete class defining the Physics Type template argument for a
  * VectorFunctionVMSInc.  A VectorFunctionVMSInc is defined by a stabilized
  * Partial Differential Equation (PDE) integrated implicitly in time.  The
  * stabilization technique is based on the Variational Multiscale (VMS) method.
  * Here, the (Inc) in VectorFunctionVMSInc denotes increment.
- ******************************************************************************
+*****************************************************************************/
 template<Plato::OrdinalType NumSpaceDim>
 class ElastoPlasticity: public Plato::SimplexPlasticity<NumSpaceDim>
 {
 public:
-    static constexpr auto mSpaceDim = NumSpaceDim;
-    typedef Plato::ElastoPlasticityFactory::FunctionFactory FunctionFactory;
+    static constexpr auto mSpaceDim = NumSpaceDim;                           /*!< number of spatial dimensitons */
+    typedef Plato::ElastoPlasticityFactory::FunctionFactory FunctionFactory; /*!< define short name for elastoplasticity factory */
 
-    using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>;
+    using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>; /*!< define short name for simplex plasticity physics */
+    /*!< define short name for projected pressure gradient physics */
     using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset,  numProjectionDofs= 1>;
 };
 // class ElastoPlasticity
@@ -1463,50 +1464,50 @@ class VectorFunctionVMSInc
 {
 // Private access member data
 private:
-    using Residual        = typename Plato::Evaluation<PhysicsT>::Residual;       !< automatic differentiation (AD) type for the residual
-    using GradientX       = typename Plato::Evaluation<PhysicsT>::GradientX;      !< AD type for the configuration
-    using GradientZ       = typename Plato::Evaluation<PhysicsT>::GradientZ;      !< AD type for the controls
-    using JacobianPgrad   = typename Plato::Evaluation<PhysicsT>::JacobianN;      !< AD type for the nodal pressure gradient
-    using LocalJacobian   = typename Plato::Evaluation<PhysicsT>::LocalJacobian;  !< AD type for the current local states
-    using LocalJacobianP  = typename Plato::Evaluation<PhysicsT>::LocalJacobianP; !< AD type for the previous local states
-    using GlobalJacobian  = typename Plato::Evaluation<PhysicsT>::Jacobian;       !< AD type for the current global states
-    using GlobalJacobianP = typename Plato::Evaluation<PhysicsT>::JacobianP;      !< AD type for the previous global states
+    using Residual        = typename Plato::Evaluation<PhysicsT>::Residual;       /*!< automatic differentiation (AD) type for the residual */
+    using GradientX       = typename Plato::Evaluation<PhysicsT>::GradientX;      /*!< AD type for the configuration */
+    using GradientZ       = typename Plato::Evaluation<PhysicsT>::GradientZ;      /*!< AD type for the controls */
+    using JacobianPgrad   = typename Plato::Evaluation<PhysicsT>::JacobianN;      /*!< AD type for the nodal pressure gradient */
+    using LocalJacobian   = typename Plato::Evaluation<PhysicsT>::LocalJacobian;  /*!< AD type for the current local states */
+    using LocalJacobianP  = typename Plato::Evaluation<PhysicsT>::LocalJacobianP; /*!< AD type for the previous local states */
+    using GlobalJacobian  = typename Plato::Evaluation<PhysicsT>::Jacobian;       /*!< AD type for the current global states */
+    using GlobalJacobianP = typename Plato::Evaluation<PhysicsT>::JacobianP;      /*!< AD type for the previous global states */
 
-    static constexpr auto mNumControl = PhysicsT::mNumControl;                        !< number of control fields, i.e. vectors, number of materials
-    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;                !< number of spatial dimensions
-    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;              !< number of nodes per cell (i.e. element)
-    static constexpr auto mNumGlobalDofsPerNode = PhysicsT::mNumDofsPerNode;          !< number of global degrees of freedom per node
-    static constexpr auto mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;          !< number of global degrees of freedom per cell (i.e. element)
-    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;      !< number of local degrees of freedom per cell (i.e. element)
-    static constexpr auto mNumNodeStatePerNode = PhysicsT::mNumNodeStatePerNode;      !< number of pressure gradient degrees of freedom per node
-    static constexpr auto mNumNodeStatePerCell = PhysicsT::mNumNodeStatePerCell;      !< number of pressure gradient degrees of freedom per cell (i.e. element)
-    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell; !< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element)
+    static constexpr auto mNumControl = PhysicsT::mNumControl;                        /*!< number of control fields, i.e. vectors, number of materials */
+    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;                /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;              /*!< number of nodes per cell (i.e. element) */
+    static constexpr auto mNumGlobalDofsPerNode = PhysicsT::mNumDofsPerNode;          /*!< number of global degrees of freedom per node */
+    static constexpr auto mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;          /*!< number of global degrees of freedom per cell (i.e. element) */
+    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;      /*!< number of local degrees of freedom per cell (i.e. element) */
+    static constexpr auto mNumNodeStatePerNode = PhysicsT::mNumNodeStatePerNode;      /*!< number of pressure gradient degrees of freedom per node */
+    static constexpr auto mNumNodeStatePerCell = PhysicsT::mNumNodeStatePerCell;      /*!< number of pressure gradient degrees of freedom per cell (i.e. element) */
+    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell; /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
 
-    const Plato::OrdinalType mNumNodes; !< total number of nodes
-    const Plato::OrdinalType mNumCells; !< total number of cells (i.e. elements)
+    const Plato::OrdinalType mNumNodes; /*!< total number of nodes */
+    const Plato::OrdinalType mNumCells; /*!< total number of cells (i.e. elements)*/
 
-    Plato::DataMap& mDataMap;  !< output data map
-    Plato::WorksetBase<PhysicsT> mWorksetBase; !< assembly routine interface
+    Plato::DataMap& mDataMap;                  /*!< output data map */
+    Plato::WorksetBase<PhysicsT> mWorksetBase; /*!< assembly routine interface */
 
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<Residual>>        mGlobalVecFuncResidual;   !< global vector function residual
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientX>>       mGlobalVecFuncJacobianX;  !< global vector function Jacobian wrt configuration
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientZ>>       mGlobalVecFuncJacobianZ;  !< global vector function Jacobian wrt controls
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<JacobianPgrad>>   mGlobalVecFuncJacPgrad;   !< global vector function Jacobian wrt projected pressure gradient
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobian>>   mGlobalVecFuncJacobianC;  !< global vector function Jacobian wrt current local states
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobianP>>  mGlobalVecFuncJacobianCP; !< global vector function Jacobian wrt previous local states
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobian>>  mGlobalVecFuncJacobianU;  !< global vector function Jacobian wrt current global states
-    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobianP>> mGlobalVecFuncJacobianUP; !< global vector function Jacobian wrt previous global states
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<Residual>>        mGlobalVecFuncResidual;   /*!< global vector function residual */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientX>>       mGlobalVecFuncJacobianX;  /*!< global vector function Jacobian wrt configuration */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GradientZ>>       mGlobalVecFuncJacobianZ;  /*!< global vector function Jacobian wrt controls */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<JacobianPgrad>>   mGlobalVecFuncJacPgrad;   /*!< global vector function Jacobian wrt projected pressure gradient */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobian>>   mGlobalVecFuncJacobianC;  /*!< global vector function Jacobian wrt current local states */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<LocalJacobianP>>  mGlobalVecFuncJacobianCP; /*!< global vector function Jacobian wrt previous local states */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobian>>  mGlobalVecFuncJacobianU;  /*!< global vector function Jacobian wrt current global states */
+    std::shared_ptr<Plato::AbstractVectorFunctionVMSInc<GlobalJacobianP>> mGlobalVecFuncJacobianUP; /*!< global vector function Jacobian wrt previous global states */
 
 // Public access functions
 public:
-    *************************************************************************
+    /***********************************************************************//**
      * \brief Constructor
      * \param [in] aMesh mesh data base
      * \param [in] aMeshSets mesh sets data base
      * \param [in] aDataMap problem-specific data map
      * \param [in] aParamList Teuchos parameter list with input data
      * \param [in] aVectorFuncType vector function type string
-     *****************************************************************************
+    ***************************************************************************/
     VectorFunctionVMSInc(Omega_h::Mesh& aMesh,
                          Omega_h::MeshSets& aMeshSets,
                          Plato::DataMap& aDataMap,
@@ -1544,49 +1545,49 @@ public:
                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
     }
 
-    *************************************************************************
+    /***********************************************************************//**
      * \brief Destructor
-    *****************************************************************************
+    ***************************************************************************/
     ~VectorFunctionVMSInc(){ return; }
 
-    *************************************************************************
+    /***********************************************************************//**
      * \brief Return total number of degrees of freedom
-     *****************************************************************************
+    ***************************************************************************/
     Plato::OrdinalType size() const
     {
         return mNumNodes * mNumGlobalDofsPerNode;
     }
 
-    *************************************************************************
+    /***********************************************************************//**
      * \brief Return total number of nodes
      * \return total number of nodes
-     *****************************************************************************
+    ***************************************************************************/
     Plato::OrdinalType numNodes() const
     {
         return mNumNodes;
     }
 
-    *************************************************************************
+    /***********************************************************************//**
      * \brief Return total number of cells
      * \return total number of cells
-     *****************************************************************************
+    ***************************************************************************/
     Plato::OrdinalType numCells() const
     {
         return mNumCells;
     }
 
-    *************************************************************************
-    * \brief Compute the global residual vector
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return Global residual vector
-    *****************************************************************************
-    Plato::ScalarVectorT<typename Residual::ResultScalarType>
+    /***********************************************************************//**
+     * \brief Compute the global residual vector
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Assembled global residual vector
+    ***************************************************************************/
+    Plato::ScalarVector
     value(const Plato::ScalarVector & aGlobalState,
           const Plato::ScalarVector & aPrevGlobalState,
           const Plato::ScalarVector & aLocalState,
@@ -1651,17 +1652,17 @@ public:
         return tAssembledResidual;
     }
 
-    *************************************************************************
-    * \brief Compute Jacobian with respect to (wrt) control of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return Jacobian wrt control of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute Jacobian with respect to (wrt) control of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Jacobian wrt control of the global residual
+    ***************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_z(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -1729,17 +1730,17 @@ public:
         return tAssembledJacobian;
     }
 
-    *************************************************************************
-    * \brief Compute Jacobian wrt configuration of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return Jacobian wrt configuration of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute Jacobian wrt configuration of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Jacobian wrt configuration of the global residual
+    ***************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_x(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -1813,17 +1814,17 @@ public:
         return tAssembledJacobian;
     }
 
-    *************************************************************************
-    * \brief Compute Jacobian wrt current global states of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return Jacobian wrt current global states of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute Jacobian wrt current global states of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Jacobian wrt current global states of the global residual
+    ***************************************************************************/
     Plato::ScalarArray3D
     gradient_u(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -1886,17 +1887,17 @@ public:
         return tOutputJacobian;
     }
 
-    *************************************************************************
-    * \brief Compute transpose Jacobian wrt current global states of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return transpose Jacobian wrt current global states of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute transpose Jacobian wrt current global states of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return transpose Jacobian wrt current global states of the global residual
+    ***************************************************************************/
     Plato::ScalarArray3D
     gradient_u_T(const Plato::ScalarVector & aGlobalState,
                  const Plato::ScalarVector & aPrevGlobalState,
@@ -1910,17 +1911,17 @@ public:
         return (this->gradient_u(aGlobalState, aPrevGlobalState, aLocalState, aPrevLocalState, aNodeState, aControl, aTimeStep));
     }
 
-    *************************************************************************
-    * \brief Compute Jacobian wrt previous global states of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return Jacobian wrt previous global states of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute Jacobian wrt previous global states of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Jacobian wrt previous global states of the global residual
+    ***************************************************************************/
     Plato::ScalarArray3D
     gradient_up(const Plato::ScalarVector & aGlobalState,
                 const Plato::ScalarVector & aPrevGlobalState,
@@ -1983,17 +1984,17 @@ public:
         return tOutputJacobian;
     }
 
-    *************************************************************************
-    * \brief Compute transpose Jacobian wrt previous global states of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return transpose Jacobian wrt previous global states of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute transpose Jacobian wrt previous global states of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return transpose Jacobian wrt previous global states of the global residual
+    ***************************************************************************/
     Plato::ScalarArray3D
     gradient_up_T(const Plato::ScalarVector & aGlobalState,
                   const Plato::ScalarVector & aPrevGlobalState,
@@ -2007,17 +2008,17 @@ public:
         return (this->gradient_up(aGlobalState, aPrevGlobalState, aLocalState, aPrevLocalState, aNodeState, aControl, aTimeStep));
     }
 
-    *************************************************************************
-    * \brief Compute Jacobian wrt current local state of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return Jacobian wrt current local state of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute Jacobian wrt current local state of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Jacobian wrt current local state of the global residual
+    ***************************************************************************/
     Plato::ScalarArray3D
     gradient_c(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -2080,17 +2081,17 @@ public:
         return tOutputJacobian;
     }
 
-    *************************************************************************
-    * \brief Compute transpose Jacobian wrt current local states of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return transpose Jacobian wrt current local states of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute transpose Jacobian wrt current local states of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return transpose Jacobian wrt current local states of the global residual
+    ***************************************************************************/
     Plato::ScalarArray3D
     gradient_c_T(const Plato::ScalarVector & aGlobalState,
                  const Plato::ScalarVector & aPrevGlobalState,
@@ -2104,17 +2105,17 @@ public:
         return (this->gradient_c(aGlobalState, aPrevGlobalState, aLocalState, aPrevLocalState, aNodeState, aControl, aTimeStep));
     }
 
-    *************************************************************************
-    * \brief Compute Jacobian wrt previous local state of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return Jacobian wrt previous local state of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute Jacobian wrt previous local state of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Jacobian wrt previous local state of the global residual
+    ***************************************************************************/
     Plato::ScalarArray3D
     gradient_cp(const Plato::ScalarVector & aGlobalState,
                 const Plato::ScalarVector & aPrevGlobalState,
@@ -2177,17 +2178,17 @@ public:
         return tOutputJacobian;
     }
 
-    *************************************************************************
-    * \brief Compute transpose Jacobian wrt previous local states of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return transpose Jacobian wrt previous local states of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute transpose Jacobian wrt previous local states of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return transpose Jacobian wrt previous local states of the global residual
+    ***************************************************************************/
     Plato::ScalarArray3D
     gradient_cp_T(const Plato::ScalarVector & aGlobalState,
                   const Plato::ScalarVector & aPrevGlobalState,
@@ -2201,17 +2202,17 @@ public:
         return (this->gradient_cp(aGlobalState, aPrevGlobalState, aLocalState, aPrevLocalState, aNodeState, aControl, aTimeStep));
     }
 
-    *************************************************************************
-    * \brief Compute assembled Jacobian wrt pressure gradient of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return Assembled Jacobian wrt pressure gradient of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute assembled Jacobian wrt pressure gradient of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Assembled Jacobian wrt pressure gradient of the global residual
+    ***************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_n(const Plato::ScalarVector & aGlobalState,
                const Plato::ScalarVector & aPrevGlobalState,
@@ -2272,17 +2273,17 @@ public:
         return (this->assembleJacobianPressGrad(tJacobianWS));
     }
 
-    *************************************************************************
-    * \brief Compute assembled transpose Jacobian wrt pressure gradient of the global residual
-    * \param [in] aGlobalState global state at current time step
-    * \param [in] aPrevGlobalState global state at previous time step
-    * \param [in] aLocalState local state at current time step
-    * \param [in] aPrevLocalState local state at previous time step
-    * \param [in] aControl control parameters
-    * \param [in] aNodeState pressure gradient
-    * \param [in] aTimeStep time step
-    * \return Assembled transpose Jacobian wrt pressure gradient of the global residual
-    *****************************************************************************
+    /***********************************************************************//**
+     * \brief Compute assembled transpose Jacobian wrt pressure gradient of the global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControl control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Assembled transpose Jacobian wrt pressure gradient of the global residual
+    ***************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_n_T(const Plato::ScalarVector & aGlobalState,
                  const Plato::ScalarVector & aPrevGlobalState,
@@ -2387,11 +2388,11 @@ private:
         //
         auto tJacobianMatEntries = tAssembledJacobian->entries();
         mWorksetBase.assembleJacobian(
-          mNumGlobalDofsPerCell,     (Nv x Nd)
-          mNumNodeStatePerCell,      (Nv x Nn)
-          tJacobianMatEntryOrdinal,  entry ordinal functor
-          aJacobianWS,               source data
-          tJacobianMatEntries        destination
+           mNumGlobalDofsPerCell,     // (Nv x Nd)
+           mNumNodeStatePerCell,      // (Nv x Nn)
+           tJacobianMatEntryOrdinal,  // entry ordinal functor
+           aJacobianWS,               // source data
+           tJacobianMatEntries        // destination
         );
 
         return tAssembledJacobian;
@@ -2440,11 +2441,11 @@ private:
         //
         auto tJacobianMatEntries = tAssembledTransposeJacobian->entries();
         mWorksetBase.assembleTransposeJacobian(
-          mNumGlobalDofsPerCell,     (Nv x Nd)
-          mNumNodeStatePerCell,      (Nv x Nn)
-          tJacobianMatEntryOrdinal,  entry ordinal functor
-          aJacobianWS,               source data
-          tJacobianMatEntries        destination
+           mNumGlobalDofsPerCell,     // (Nv x Nd)
+           mNumNodeStatePerCell,      // (Nv x Nn)
+           tJacobianMatEntryOrdinal,  // entry ordinal functor
+           aJacobianWS,               // source data
+           tJacobianMatEntries        // destination
         );
 
         return tAssembledTransposeJacobian;
@@ -2459,112 +2460,94 @@ private:
 
 
 
+/***************************************************************************//**
+ * \brief Abstract interface for scalar function with local history variables
+*******************************************************************************/
 class ScalarFunctionLocalHistBase
 {
 public:
+    /***************************************************************************//**
+     * \brief Destructor
+    *******************************************************************************/
     virtual ~ScalarFunctionLocalHistBase(){}
 
-    *****************************************************************************
-     * \fn virtual std::string name() const
+    /***************************************************************************//**
      * \brief Return function name
      * \return user defined function name
-     *********************************************************************************
+    *******************************************************************************/
     virtual std::string name() const = 0;
 
-    *****************************************************************************
-     * \fn virtual Plato::Scalar value(const Plato::ScalarVector & aGlobalStates,
-     *                                 const Plato::ScalarVector & aLocalStates,
-     *                                 const Plato::ScalarVector & aControl,
-     *                                 Plato::Scalar aTimeStep = 0.0) const
+    /***************************************************************************//**
      * \brief Return function value
      * \param [in] aGlobalStates 2D view of global states
      * \param [in] aLocalStates 2D view of local states
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return function value
-     *********************************************************************************
+    *******************************************************************************/
     virtual Plato::Scalar value(const Plato::ScalarVector & aGlobalStates,
                                 const Plato::ScalarVector & aLocalStates,
                                 const Plato::ScalarVector & aControl,
                                 Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    *****************************************************************************
-     * \fn virtual Plato::ScalarVector gradient_z(const Plato::ScalarVector & aGlobalStates,
-     *                                            const Plato::ScalarVector & aLocalStates,
-     *                                            const Plato::ScalarVector & aControl,
-     *                                            Plato::Scalar aTimeStep = 0.0) const
+    /***************************************************************************//**
      * \brief Return partial derivative wrt design variables
      * \param [in] aGlobalStates 2D view of global states
      * \param [in] aLocalStates 2D view of local states
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return assembled partial derivative wrt design variables
-     *********************************************************************************
+    *******************************************************************************/
     virtual Plato::ScalarVector gradient_z(const Plato::ScalarVector & aGlobalStates,
                                            const Plato::ScalarVector & aLocalStates,
                                            const Plato::ScalarVector & aControl,
                                            Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    *****************************************************************************
-     * \fn virtual Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aGlobalStates,
-     *                                                 const Plato::ScalarVector & aLocalStates,
-     *                                                 const Plato::ScalarVector & aControl,
-     *                                                 Plato::Scalar aTimeStep = 0.0) const
+    /***************************************************************************//**
      * \brief Return partial derivative wrt global states workset
      * \param [in] aGlobalStates 2D view of global states
      * \param [in] aLocalStates 2D view of local states
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return partial derivative wrt global states workset
-     *********************************************************************************
+    *******************************************************************************/
     virtual Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aGlobalStates,
                                                 const Plato::ScalarVector & aLocalStates,
                                                 const Plato::ScalarVector & aControl,
                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    *****************************************************************************
-     * \fn virtual Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aGlobalStates,
-     *                                            const Plato::ScalarVector & aLocalStates,
-     *                                            const Plato::ScalarVector & aControl,
-     *                                            Plato::Scalar aTimeStep = 0.0) const
+    /***************************************************************************//**
      * \brief Return partial derivative wrt local states workset
      * \param [in] aGlobalStates 2D view of global states
      * \param [in] aLocalStates 2D view of local states
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return partial derivative wrt local states workset
-     *********************************************************************************
+    *******************************************************************************/
     virtual Plato::ScalarMultiVector gradient_c(const Plato::ScalarVector & aGlobalStates,
                                                 const Plato::ScalarVector & aLocalStates,
                                                 const Plato::ScalarVector & aControl,
                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    *****************************************************************************
-     * \fn virtual Plato::ScalarVector gradient_x(const Plato::ScalarVector & aGlobalStates,
-     *                                            const Plato::ScalarVector & aLocalStates,
-     *                                            const Plato::ScalarVector & aControl,
-     *                                            Plato::Scalar aTimeStep = 0.0) const
+    /***************************************************************************//**
      * \brief Return assembled partial derivative wrt configurtion variables
      * \param [in] aGlobalStates 2D view of global states
      * \param [in] aLocalStates 2D view of local states
      * \param [in] aControl 1D view of controls, i.e. design variables
      * \param [in] aTimeStep current time step increment
      * \return assembled partial derivative wrt configurtion variables
-     *********************************************************************************
+    *******************************************************************************/
     virtual Plato::ScalarVector gradient_x(const Plato::ScalarVector & aGlobalStates,
                                            const Plato::ScalarVector & aLocalStates,
                                            const Plato::ScalarVector & aControl,
                                            Plato::Scalar aTimeStep = 0.0) const = 0;
 
-    *****************************************************************************
-     * \fn virtual void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
-     *                                const Plato::ScalarMultiVector & aLocalStates,
-     *                                const Plato::ScalarVector & aControl) const
+    /***************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aGlobalStates 2D view of global states
      * \param [in] aLocalStates 2D view of local states
      * \param [in] aControl 1D view of controls, i.e. design variables
-     *********************************************************************************
+    *******************************************************************************/
     virtual void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
                                const Plato::ScalarMultiVector & aLocalStates,
                                const Plato::ScalarVector & aControl) const = 0;
@@ -2576,27 +2559,32 @@ public:
 
 
 
-
+/***************************************************************************//**
+ * \brief Data structure used in Plasticity Problem.  The Plasticity Problem
+ * interface is responsible of evaluating the system of forward and adjoint
+ * equations as well as assembling the total gradient with respect to the
+ * variables of interest, e.g. design variables, configurations, etc.
+*******************************************************************************/
 struct StateData
 {
-    Plato::Scalar mTimeStep; !< current time step
-    Plato::OrdinalType mCurrentStepIndex; !< current time step index
-    Plato::OrdinalType mPreviousStepIndex; !< previous time step index
+    Plato::Scalar mTimeStep;               /*!< current time step */
+    Plato::OrdinalType mCurrentStepIndex;  /*!< current time step index */
+    Plato::OrdinalType mPreviousStepIndex; /*!< previous time step index */
 
-    Plato::ScalarVector mCurrentLocalState;    !< current local state
-    Plato::ScalarVector mPreviousLocalState;   !< previous local state
-    Plato::ScalarVector mCurrentGlobalState;   !< current global state
-    Plato::ScalarVector mPreviousGlobalState;  !< previous global state
-    Plato::ScalarVector mCurrentProjPressGrad; !< current projected pressure gradient
+    Plato::ScalarVector mCurrentLocalState;    /*!< current local state */
+    Plato::ScalarVector mPreviousLocalState;   /*!< previous local state */
+    Plato::ScalarVector mCurrentGlobalState;   /*!< current global state */
+    Plato::ScalarVector mPreviousGlobalState;  /*!< previous global state */
+    Plato::ScalarVector mCurrentProjPressGrad; /*!< current projected pressure gradient */
 };
 // struct StateData
 
 struct AdjointData
 {
-    Plato::ScalarVector mCurrentLocalAdjoint;   !< current local adjoint
-    Plato::ScalarVector mPreviousLocalAdjoint;  !< previous local adjoint
-    Plato::ScalarVector mCurrentGlobalAdjoint;  !< current global adjoint
-    Plato::ScalarVector mPreviousGlobalAdjoint; !< previous global adjoint
+    Plato::ScalarVector mCurrentLocalAdjoint;   /*!< current local adjoint */
+    Plato::ScalarVector mPreviousLocalAdjoint;  /*!< previous local adjoint */
+    Plato::ScalarVector mCurrentGlobalAdjoint;  /*!< current global adjoint */
+    Plato::ScalarVector mPreviousGlobalAdjoint; /*!< previous global adjoint */
 };
 // struct AdjointData
 
@@ -2610,7 +2598,7 @@ struct AdjointData
 
 
 
-
+/*
 *****************************************************************************
  * \brief Plasticity problem manager, which is responsible for performance
  * criteria evaluations and
