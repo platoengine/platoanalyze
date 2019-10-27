@@ -2720,8 +2720,7 @@ public:
 
         // outer loop for load/time steps
         Plato::ScalarVector tGlobalStateIncrement("Global State increment", mGlobalResidualEq.size());
-        // todo: make sure i go over all the time steps. right now, i only go up to n-1, where n is the total number of time steps
-        for(Plato::OrdinalType tCurrentStepIndex = 1; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
+        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
         {
             tStateData.mTimeStep = 0;
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
@@ -3181,10 +3180,15 @@ private:
             Plato::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressure);
         }
 
-        if (aStateData.mPreviousStepIndex != mNumPseudoTimeSteps)
+        if (aStateData.mPreviousStepIndex != static_cast<Plato::OrdinalType>(-1))
         {
             aStateData.mPreviousLocalState = Kokkos::subview(mLocalStates, aStateData.mPreviousStepIndex, Kokkos::ALL());
             aStateData.mPreviousGlobalState = Kokkos::subview(mGlobalStates, aStateData.mPreviousStepIndex, Kokkos::ALL());
+        }
+        else
+        {
+            aStateData.mPreviousLocalState = Plato::ScalarVector("previous local state at t=0", mLocalResidualEq.size());
+            aStateData.mPreviousGlobalState = Plato::ScalarVector("previous local state at t=0", mGlobalResidualEq.size());
         }
     }
 
