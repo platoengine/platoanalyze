@@ -2591,10 +2591,11 @@ private:
     Plato::OrdinalType mNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps*/
     Plato::OrdinalType mMaxNumNewtonIter;      /*!< maximum number of Newton-Raphson iterations*/
 
-    Plato::Scalar mPseudoTimeStep;             /*!< pseudo time step increment*/
-    Plato::Scalar mInitialNormResidual;        /*!< initial norm of global residual*/
-    Plato::Scalar mCurrentPseudoTimeStep;      /*!< current pseudo time step*/
-    Plato::Scalar mNewtonRaphsonStopTolerance; /*!< Newton-Raphson stopping tolerance*/
+    Plato::Scalar mPseudoTimeStep;              /*!< pseudo time step increment*/
+    Plato::Scalar mInitialNormResidual;         /*!< initial norm of global residual*/
+    Plato::Scalar mCurrentPseudoTimeStep;       /*!< current pseudo time step*/
+    Plato::Scalar mNewtonRaphsonStopTolerance;  /*!< Newton-Raphson stopping tolerance*/
+    Plato::Scalar mNumPseudoTimeStepMultiplier; /*!< number of pseudo time step multiplier */
 
     Plato::ScalarVector mGlobalResidual;       /*!< global residual*/
     Plato::ScalarVector mProjResidual;         /*!< projection residual, i.e. projected pressure gradient solve residual*/
@@ -2637,6 +2638,7 @@ public:
             mCurrentPseudoTimeStep(0.0),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
+            mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Num Time Step Multiplier", 1.5)),
             mGlobalResidual("Global Residual", mGlobalResidualEq.size()),
             mProjResidual("Projected Residual", mProjectionEq.size()),
             mProjectedPressure("Project Pressure", aMesh.nverts()),
@@ -3146,7 +3148,7 @@ private:
     *******************************************************************************/
     void resizeStateContainers()
     {
-        mNumPseudoTimeSteps *= static_cast<Plato::OrdinalType>(1.5);
+        mNumPseudoTimeSteps = mNumPseudoTimeStepMultiplier * static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
         mPseudoTimeStep = 1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps));
         mLocalStates = Plato::ScalarMultiVector("Local States", mNumPseudoTimeSteps, mLocalResidualEq.size());
         mGlobalStates = Plato::ScalarMultiVector("Global States", mNumPseudoTimeSteps, mGlobalResidualEq.size());
