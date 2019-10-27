@@ -5053,7 +5053,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_GradGlobalState3D)
       );
 
     std::string tVecFuncType = "ElastoPlasticity";
-    using PhysicsT = Plato::SimplexPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::ElastoPlasticity<tSpaceDim>;
     using EvalType = typename Plato::Evaluation<PhysicsT>::Jacobian;
     Plato::VectorFunctionVMSInc<PhysicsT> tVectorFunctionVMSInc(*tMesh, tMeshSets, tDataMap, *tInputs, tVecFuncType);
     Plato::test_stabilized_vec_func_partial_global_state<EvalType, PhysicsT>(*tMesh, tVectorFunctionVMSInc);
