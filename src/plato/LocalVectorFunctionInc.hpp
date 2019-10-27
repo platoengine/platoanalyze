@@ -315,15 +315,7 @@ class LocalVectorFunctionInc
                                                       aTimeStep );
 
       auto tNumCells = mNumCells;
-      auto tNumLocalDofsPerCell = mNumLocalDofsPerCell;
-      Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-        {
-            Plato::OrdinalType tDofOrdinal = aCellOrdinal * tNumLocalDofsPerCell;
-            for (Plato::OrdinalType tColumn = 0; tColumn < tNumLocalDofsPerCell; ++tColumn)
-            {
-              aLocalState(tDofOrdinal + tColumn) = tLocalStateWS(aCellOrdinal, tColumn);
-            }
-        }, "fill local state with updated local state");
+      Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tLocalStateWS, aLocalState);
     }
 
     /**************************************************************************//**
@@ -387,27 +379,18 @@ class LocalVectorFunctionInc
 
         // create return view
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tResidual("Residual", mNumCells, mNumLocalDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tResidualWS("Residual", mNumCells, mNumLocalDofsPerCell);
 
         // evaluate function
         //
         mLocalVectorFunctionResidual->evaluate(tGlobalStateWS, tPrevGlobalStateWS, 
                                                tLocalStateWS,  tPrevLocalStateWS, 
-                                               tControlWS, tConfigWS, tResidual, aTimeStep);
-        Plato::OrdinalType tTotalNumLocalDofs = mNumCells * mNumLocalDofsPerCell;
+                                               tControlWS, tConfigWS, tResidualWS, aTimeStep);
 
-        auto tNumLocalDofsPerCell = mNumLocalDofsPerCell;
-        auto tNumCells = mNumCells;
-
+        const auto tNumCells = this->numCells();
+        const auto tTotalNumLocalDofs = mNumCells * mNumLocalDofsPerCell;
         Plato::ScalarVector tResidualVector("Residual Vector", tTotalNumLocalDofs);
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-        {
-            Plato::OrdinalType tDofOrdinal = aCellOrdinal * tNumLocalDofsPerCell;
-            for (Plato::OrdinalType tColumn = 0; tColumn < tNumLocalDofsPerCell; ++tColumn)
-            {
-              tResidualVector(tDofOrdinal + tColumn) = tResidual(aCellOrdinal, tColumn);
-            }
-        }, "flatten residual vector");
+        Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tResidualWS, tResidualVector);
 
         return tResidualVector;
     }
