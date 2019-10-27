@@ -3586,7 +3586,7 @@ private:
         const Plato::Scalar tAlpha = 1.0;
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDu times DhDu", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::multiply_matrix_workset("N", "N", tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
+        Plato::multiply_matrix_workset(tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
 
 
         // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
@@ -3597,7 +3597,7 @@ private:
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
         Plato::ScalarArray3D tOutput("Schur Complement", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::multiply_matrix_workset("N", "N", tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tOutput);
+        Plato::multiply_matrix_workset(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tOutput);
         return tOutput;
     }
 
