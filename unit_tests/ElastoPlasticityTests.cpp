@@ -3145,6 +3145,24 @@ public:
     }
 
     /***************************************************************************//**
+     * \brief Set Dirichlet degrees of freedom in global state increment view to zero
+     * \param [in] aGlobalStateIncrement 1D view of global state increments, i.e. Newton-Raphson solution
+    *******************************************************************************/
+    void zeroDirichletDofs(Plato::ScalarVector & aGlobalStateIncrement)
+    {
+        auto tDirichletDofs = mDirichletDofs;
+        auto tNumDirichletDofs = mDirichletDofs.size();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
+        {
+            auto tLocalDofIndex = tDirichletDofs[aDofOrdinal];
+            aGlobalStateIncrement(tLocalDofIndex) = 0.0;
+        },"zero global state increment dirichlet dofs");
+    }
+
+// private functions
+private:
+
+    /***************************************************************************//**
      * \brief Update state data for time step n, i.e. current time step:
      * \param [in] aStateData state data manager
      * \param [in] aZeroEntries flag - zero all entries in current states (default = false)
@@ -3623,21 +3641,6 @@ public:
     }
 
     /***************************************************************************//**
-     * \brief Set Dirichlet degrees of freedom in global state increment view to zero
-     * \param [in] aGlobalStateIncrement 1D view of global state increments, i.e. Newton-Raphson solution
-    *******************************************************************************/
-    void zeroDirichletDofs(Plato::ScalarVector & aGlobalStateIncrement)
-    {
-        auto tDirichletDofs = mDirichletDofs;
-        auto tNumDirichletDofs = mDirichletDofs.size();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
-        {
-            auto tLocalDofIndex = tDirichletDofs[aDofOrdinal];
-            aGlobalStateIncrement(tLocalDofIndex) = 0.0;
-        },"zero global state increment dirichlet dofs");
-    }
-
-    /***************************************************************************//**
      * \brief Check Newton-Raphson solver convergence criterion
      * \param [in] aNewtonIteration current Newton-Raphson iteration
      * \return boolean flag, indicates if Newton-Raphson solver converged
@@ -3661,8 +3664,6 @@ public:
         return (tStop);
     }
 
-// private functions
-private:
     /***************************************************************************//**
      * \brief Initialize member data
      * \param [in] aMesh mesh database
