@@ -3463,8 +3463,6 @@ private:
                                           const Plato::AdjointData aAdjointData,
                                           Plato::ScalarFunctionLocalHistBase& aCriterion)
     {
-        // TODO: MODIFY OUTPUT FROM LOCAL VECTOR FUNCTION, I WANT TO RETURN SCALAR_ARRAY_3D NOT THE AD TYPE MULTIVECTOR
-
         // Compute partial derivative of objective with respect to current global states
         auto tDfDu = aCriterion.gradient_u(aStateData.mCurrentGlobalState,
                                            aStateData.mCurrentLocalState,
@@ -3578,8 +3576,6 @@ private:
                                                 const Plato::StateData& aStateData,
                                                 const Plato::ScalarArray3D& aInvLocalJacobianT)
     {
-        // TODO: MODIFY OUTPUT FROM LOCAL VECTOR FUNCTION, I WANT TO RETURN SCALAR_ARRAY_3D NOT THE AD TYPE MULTIVECTOR
-
         // Compute cell Jacobian of the local residual with respect to the current global state WorkSet (WS)
         auto tDhDu = mLocalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
