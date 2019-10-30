@@ -66,7 +66,44 @@ inline void flatten_vector_workset(const Plato::OrdinalType& aNumCells,
 
 /************************************************************************//**
  *
- * \brief Convert an automatic differentiated (AD) Jacobian into scalar Jacobian.
+ * \brief Convert an automatic differentiated (AD) partial derivative of a
+ * scalar function to POD type.
+ *
+ * \tparam NumNodesPerCell number of nodes per cell
+ * \tparam ADType          AD scalar type
+ *
+ * \param aNumCells [in]     number of cells
+ * \param aInput    [in]     AD partial derivative
+ * \param aOutput   [in/out] Scalar partial derivative
+ *
+ ********************************************************************************/
+template<Plato::OrdinalType NumDofsPerCell, typename ADType>
+inline void convert_ad_partial_scalar_func_to_pod(const Plato::ScalarVectorT<ADType>& aInput,
+                                                  Plato::ScalarMultiVector& aOutput)
+{
+    if(aInput.extent(0) != aOutput.extent(0))
+    {
+        THROWERR("\nDimension mismatch, input and output containers have different number of rows.\n");
+    }
+    if(NumDofsPerCell != aOutput.extent(1))
+    {
+        THROWERR("\nInput number of degrees of freedom do not match the number of columns in output container.\n");
+    }
+
+    Plato::OrdinalType tNumCells = aOutput.extent(0);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerCell; tDimIndex++)
+        {
+            aOutput(aCellOrdinal, tDimIndex) = aInput(aCellOrdinal).dx(tDimIndex);
+        }
+    }, "Convert AD Partial to POD type");
+}
+// function convert_ad_partial_scalar_func_to_pod
+
+/************************************************************************//**
+ *
+ * \brief Convert an automatic differentiated (AD) Jacobian to POD type.
  *
  * \tparam NumRowsPerCell number of rows per cell
  * \tparam NumColsPerCell number of columns per cell
