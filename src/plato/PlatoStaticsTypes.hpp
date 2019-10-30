@@ -32,9 +32,10 @@ using ScalarArray3D  = ScalarArray3DT<Plato::Scalar>;
 
 struct DataMap
 {
-  std::map<std::string, Plato::ScalarVector> scalarVectors;
-  std::map<std::string, Plato::ScalarMultiVector> scalarMultiVectors;
-  std::map<std::string, Plato::ScalarArray3D> scalarArray3Ds;
+    std::map<std::string, Plato::Scalar> mScalarValues;
+    std::map<std::string, Plato::ScalarVector> scalarVectors;
+    std::map<std::string, Plato::ScalarMultiVector> scalarMultiVectors;
+    std::map<std::string, Plato::ScalarArray3D> scalarArray3Ds;
 };
 // struct DataMap
 

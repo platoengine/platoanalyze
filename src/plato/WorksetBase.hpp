@@ -168,7 +168,7 @@ inline void assemble_vector_gradient(const Plato::OrdinalType& aNumCells,
         }
     }, "Assemble - Vector Gradient Calculation");
 }
-// function assemble_vector_gradient_fad
+// function assemble_vector_gradient
 
 /*************************************************************************//**
 *
@@ -547,6 +547,24 @@ protected:
 
 public:
     /******************************************************************************//**
+     * \brief Return number of cells
+     * \return number of cells
+    **********************************************************************************/
+    decltype(mNumCells) numCells() const
+    {
+        return (mNumCells);
+    }
+
+    /******************************************************************************//**
+     * \brief Return number of nodes
+     * \return number of nodes
+    **********************************************************************************/
+    decltype(mNumNodes) numNodes() const
+    {
+        return (mNumNodes);
+    }
+
+    /******************************************************************************//**
      * \brief Constructor
      * \param [in] aMesh mesh metadata
     **********************************************************************************/
@@ -711,6 +729,22 @@ public:
     }
 
     /******************************************************************************//**
+     * \brief Assemble partial derivative with respect to global states (U) - specialized
+     * for automatic differentiation types
+     *
+     * \tparam WorksetType Input container, as a 2-D Kokkos::View
+     * \tparam OutType     Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aResidualWorkset residual cell workset - Scalar type
+     * \param [in/out] aReturnValue assembled residual - Scalar type
+    **********************************************************************************/
+    template<class WorksetType, class OutType>
+    void assembleVectorGradientFadU(const WorksetType & aWorkset, OutType & aOutput) const
+    {
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mStateEntryOrdinal, aWorkset, aOutput);
+    }
+
+    /******************************************************************************//**
      * \brief Assemble partial derivative with respect to configuration (X)
      *
      * \tparam WorksetType Input container, as a 2-D Kokkos::View
@@ -726,6 +760,22 @@ public:
     }
 
     /******************************************************************************//**
+     * \brief Assemble partial derivative with respect to configuration (X) - specialized
+     * for automatic differentiation types
+     *
+     * \tparam WorksetType Input container, as a 2-D Kokkos::View
+     * \tparam OutType     Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aResidualWorkset residual cell workset - Scalar type
+     * \param [in/out] aReturnValue assembled residual - Scalar type
+    **********************************************************************************/
+    template<class WorksetType, class OutType>
+    void assembleVectorGradientFadX(const WorksetType & aWorkset, OutType & aOutput) const
+    {
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mSpaceDim>(mNumCells, mConfigEntryOrdinal, aWorkset, aOutput);
+    }
+
+    /******************************************************************************//**
      * \brief Assemble partial derivative with respect to controls (Z)
      *
      * \tparam WorksetType Input container, as a 2-D Kokkos::View
@@ -738,6 +788,22 @@ public:
     void assembleScalarGradientZ(const WorksetType & aWorkset, OutType & aOutput) const
     {
         Plato::assemble_scalar_gradient<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, aWorkset, aOutput);
+    }
+
+    /******************************************************************************//**
+     * \brief Assemble partial derivative with respect to controls (Z) - specialized
+     * for automatic differentiation types
+     *
+     * \tparam WorksetType Input container, as a 2-D Kokkos::View
+     * \tparam OutType     Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aResidualWorkset residual cell workset - Scalar type
+     * \param [in/out] aReturnValue assembled residual - Scalar type
+    **********************************************************************************/
+    template<class WorksetType, class OutType>
+    void assembleScalarGradientFadZ(const WorksetType & aWorkset, OutType & aOutput) const
+    {
+        Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, aWorkset, aOutput);
     }
 
     /******************************************************************************//**
