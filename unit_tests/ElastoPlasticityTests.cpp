@@ -80,9 +80,9 @@ namespace Plato
  * \param [in/out] aOutput 3-D matrix workset (NumCells, NumRowsPerCell, NumColumnsPerCell)
 **********************************************************************************/
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, class AViewType>
-inline void fill_3D_workset(const Plato::OrdinalType& aNumCells,
-                            typename AViewType::const_value_type & aAlpha,
-                            AViewType& aOutput)
+inline void fill_matrix_workset(const Plato::OrdinalType& aNumCells,
+                                typename AViewType::const_value_type & aAlpha,
+                                AViewType& aOutput)
 {
     if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -4117,16 +4117,16 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_fill3DView_Error)
     // CALL FUNCTION - TEST tMatrixWorkSet IS EMPTY
     constexpr Plato::Scalar tAlpha = 2.0;
     Plato::ScalarArray3D tMatrixWorkSet;
-    TEST_THROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
+    TEST_THROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
 
     // CALL FUNCTION - TEST tNumCells IS ZERO
     Plato::OrdinalType tBadNumCells = 0;
     tMatrixWorkSet = Plato::ScalarArray3D("Matrix A WS", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
+    TEST_THROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
 
     // CALL FUNCTION - TEST tNumCells IS NEGATIVE
     tBadNumCells = -1;
-    TEST_THROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
+    TEST_THROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
 }
 
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_fill3DView)
@@ -4139,7 +4139,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_fill3DView)
 
     // CALL FUNCTION
     Plato::Scalar tAlpha = 2.0;
-    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
 
     // TEST RESULTS
     constexpr Plato::Scalar tGold = 2.0;
@@ -4205,11 +4205,11 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateMatrixWorkset)
     constexpr Plato::OrdinalType tNumCells = 2;
     Plato::ScalarArray3D tA("Matrix A WS", tNumCells, tNumRows, tNumCols);
     Plato::Scalar tAlpha = 2;
-    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
 
     tAlpha = 1;
     Plato::ScalarArray3D tB("Matrix A WS", tNumCells, tNumRows, tNumCols);
-    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
+    TEST_NOTHROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
 
     // CALL FUNCTION
     tAlpha = 2;
@@ -4356,13 +4356,13 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset)
     constexpr Plato::OrdinalType tNumCells = 3;
     Plato::ScalarArray3D tA("Matrix A WS", tNumCells, tNumRows, tNumCols);
     Plato::Scalar tAlpha = 2;
-    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
     Plato::ScalarArray3D tB("Matrix B WS", tNumCells, tNumRows, tNumCols);
     tAlpha = 1;
-    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
+    TEST_NOTHROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
     Plato::ScalarArray3D tC("Matrix C WS", tNumCells, tNumRows, tNumCols);
     tAlpha = 3;
-    TEST_NOTHROW( (Plato::fill_3D_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tC)) );
+    TEST_NOTHROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tNumCells, tAlpha, tC)) );
 
     // CALL FUNCTION
     Plato::Scalar tBeta = 1;
