@@ -1099,6 +1099,13 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
 
 
 
+
+
+
+
+
+
+
 /***********************************************************************//**
  * \brief Evaluate stabilized elasto-plastic residual, defined as
  *
@@ -1494,7 +1501,7 @@ public:
                const Plato::Scalar& aAlpha,
                const Plato::ScalarMultiVectorT<AViewType> & aInput,
                const Plato::Scalar& aBeta,
-               const Plato::ScalarMultiVectorT<BViewType> & aOutput);
+               const Plato::ScalarMultiVectorT<BViewType> & aOutput) const;
 };
 // class UpdateTensorBLAS
 
@@ -1518,14 +1525,14 @@ Update2ndOrderTensor<3>::operator()(const Plato::OrdinalType& aCellOrdinal,
                                     const Plato::Scalar& aAlpha,
                                     const Plato::ScalarMultiVectorT<AViewType> & aInput,
                                     const Plato::Scalar& aBeta,
-                                    const Plato::ScalarMultiVectorT<BViewType> & aOutput)
+                                    const Plato::ScalarMultiVectorT<BViewType> & aOutput)  const
 {
-    aOutput(aCellOrdinal, 0) = aBeta + aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
-    aOutput(aCellOrdinal, 1) = aBeta + aOutput(aCellOrdinal, 1) + aAlpha * aInput(aCellOrdinal, 1);
-    aOutput(aCellOrdinal, 2) = aBeta + aOutput(aCellOrdinal, 2) + aAlpha * aInput(aCellOrdinal, 2);
-    aOutput(aCellOrdinal, 3) = aBeta + aOutput(aCellOrdinal, 3) + aAlpha * aInput(aCellOrdinal, 3);
-    aOutput(aCellOrdinal, 4) = aBeta + aOutput(aCellOrdinal, 4) + aAlpha * aInput(aCellOrdinal, 4);
-    aOutput(aCellOrdinal, 5) = aBeta + aOutput(aCellOrdinal, 5) + aAlpha * aInput(aCellOrdinal, 5);
+    aOutput(aCellOrdinal, 0) = aBeta * aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
+    aOutput(aCellOrdinal, 1) = aBeta * aOutput(aCellOrdinal, 1) + aAlpha * aInput(aCellOrdinal, 1);
+    aOutput(aCellOrdinal, 2) = aBeta * aOutput(aCellOrdinal, 2) + aAlpha * aInput(aCellOrdinal, 2);
+    aOutput(aCellOrdinal, 3) = aBeta * aOutput(aCellOrdinal, 3) + aAlpha * aInput(aCellOrdinal, 3);
+    aOutput(aCellOrdinal, 4) = aBeta * aOutput(aCellOrdinal, 4) + aAlpha * aInput(aCellOrdinal, 4);
+    aOutput(aCellOrdinal, 5) = aBeta * aOutput(aCellOrdinal, 5) + aAlpha * aInput(aCellOrdinal, 5);
 }
 
 /***************************************************************************//**
@@ -1548,11 +1555,11 @@ Update2ndOrderTensor<2>::operator()(const Plato::OrdinalType& aCellOrdinal,
                                     const Plato::Scalar& aAlpha,
                                     const Plato::ScalarMultiVectorT<AViewType> & aInput,
                                     const Plato::Scalar& aBeta,
-                                    const Plato::ScalarMultiVectorT<BViewType> & aOutput)
+                                    const Plato::ScalarMultiVectorT<BViewType> & aOutput) const
 {
-    aOutput(aCellOrdinal, 0) = aBeta + aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
-    aOutput(aCellOrdinal, 1) = aBeta + aOutput(aCellOrdinal, 1) + aAlpha * aInput(aCellOrdinal, 1);
-    aOutput(aCellOrdinal, 2) = aBeta + aOutput(aCellOrdinal, 2) + aAlpha * aInput(aCellOrdinal, 2);
+    aOutput(aCellOrdinal, 0) = aBeta * aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
+    aOutput(aCellOrdinal, 1) = aBeta * aOutput(aCellOrdinal, 1) + aAlpha * aInput(aCellOrdinal, 1);
+    aOutput(aCellOrdinal, 2) = aBeta * aOutput(aCellOrdinal, 2) + aAlpha * aInput(aCellOrdinal, 2);
 }
 
 /***************************************************************************//**
@@ -1575,9 +1582,9 @@ Update2ndOrderTensor<1>::operator()(const Plato::OrdinalType& aCellOrdinal,
                                     const Plato::Scalar& aAlpha,
                                     const Plato::ScalarMultiVectorT<AViewType> & aInput,
                                     const Plato::Scalar& aBeta,
-                                    const Plato::ScalarMultiVectorT<BViewType> & aOutput)
+                                    const Plato::ScalarMultiVectorT<BViewType> & aOutput) const
 {
-    aOutput(aCellOrdinal, 0) = aBeta + aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
+    aOutput(aCellOrdinal, 0) = aBeta * aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
 }
 
 
@@ -1746,8 +1753,14 @@ private:
     using ResultT = typename EvaluationType::ResultScalarType;                     /*!< result variables automatic differentiation type */
 
     Plato::OrdinalType mMaxNumPseudoTimeSteps;                                     /*!< maximum number of pseudo time steps */
+
+    Plato::Scalar mElasticBulkModulus;                                             /*!< elastic bulk modulus */
+    Plato::Scalar mElasticShearModulus;                                            /*!< elastic shear modulus */
+    Plato::Scalar mElasticPropertiesPenaltySIMP;                                   /*!< SIMP penalty for elastic properties */
+    Plato::Scalar mElasticPropertiesMinErsatzSIMP;                                 /*!< SIMP min ersatz stiffness for elastic properties */
     Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule;                     /*!< simplex linear cubature rule */
 
+    using Plato::AbstractScalarFunctionWithHistory<EvaluationType>::mDataMap;      /*!< PLATO Analyze output database */
 // public access functions
 public:
     /***************************************************************************//**
@@ -1765,8 +1778,13 @@ public:
                       Teuchos::ParameterList& aInputParams,
                       std::string& aName) :
             mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 40)),
+            mElasticBulkModulus(-1.0),
+            mElasticShearModulus(-1.0),
+            mElasticPropertiesPenaltySIMP(3),
+            mElasticPropertiesMinErsatzSIMP(1e-9),
             mCubatureRule()
     {
+        this->parseMaterialProperties(aInputParams);
     }
 
     /***************************************************************************//**
@@ -1842,6 +1860,7 @@ public:
         Plato::Update2ndOrderTensor<mSpaceDim> tUpdate2ndOrderTensor;
         Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
+        Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
 
         // allocate local containers used to evaluate criterion
         auto tNumCells = this->getMesh().nelems();
@@ -1922,6 +1941,7 @@ public:
         Plato::Update2ndOrderTensor<mSpaceDim> tUpdate2ndOrderTensor;
         Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
+        Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
 
         // allocate local containers used to evaluate criterion
         auto tNumCells = this->getMesh().nelems();
@@ -1982,6 +2002,44 @@ private:
     {
         auto tSearch = mDataMap.mScalarValues.find("MaxNumPseudoTimeSteps");
         mMaxNumPseudoTimeSteps = tSearch != mDataMap.mScalarValues.end() ? tSearch->second : mMaxNumPseudoTimeSteps;
+    }
+
+
+    /**********************************************************************//**
+     * \brief Parse elastic material properties
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    **************************************************************************/
+    void parseMaterialProperties(Teuchos::ParameterList &aProblemParams)
+    {
+        if(aProblemParams.isSublist("Material Model"))
+        {
+            this->parseIsotropicMaterialProperties(aProblemParams);
+        }
+        else
+        {
+            THROWERR("'Material Model' sublist is not defined.")
+        }
+    }
+
+    /**********************************************************************//**
+     * \brief Parse isotropic material properties
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    **************************************************************************/
+    void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
+    {
+        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
+        if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
+        {
+            auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
+            auto tPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
+            auto tElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
+            mElasticBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
+            mElasticShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
+        }
+        else
+        {
+            THROWERR("'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
+        }
     }
 };
 
@@ -6575,8 +6633,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Update2ndOrderTensor)
     Kokkos::deep_copy(tB, tHostB);
 
     // 1.2. CALL FUNCTION FOR 3D TEST
-    Plato::Scalar tAlpha = 3.0; Plato::Scalar tBeta = 2.0;
     Plato::Update2ndOrderTensor<tSpaceDim3D> tUpdate2ndOrderTensor3D;
+    constexpr Plato::Scalar tAlpha = 3.0; constexpr Plato::Scalar tBeta = 2.0;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         tUpdate2ndOrderTensor3D(aCellOrdinal, tAlpha, tA, tBeta, tB);
@@ -6636,7 +6694,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Update2ndOrderTensor)
             {{1.1, 1.6, 2.1}, {2.2, 3.2, 4.2}, {3.3, 4.8, 6.3}};
     for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
     {
-        for(Plato::OrdinalType tDofIndex=0; tDofIndex< tNumVoigtTerms3D; tDofIndex++)
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< tNumVoigtTerms2D; tDofIndex++)
         {
             //printf("output(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostD(tCellIndex, tDofIndex));
             TEST_FLOATING_EQUALITY(tHostD(tCellIndex, tDofIndex), tGold2D[tCellIndex][tDofIndex], tTolerance);
@@ -6674,7 +6732,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Update2ndOrderTensor)
     std::vector<std::vector<Plato::Scalar>> tGold1D = {{1.1}, {2.2}, {3.3}};
     for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
     {
-        for(Plato::OrdinalType tDofIndex=0; tDofIndex< tNumVoigtTerms3D; tDofIndex++)
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< tNumVoigtTerms1D; tDofIndex++)
         {
             //printf("output(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostF(tCellIndex, tDofIndex));
             TEST_FLOATING_EQUALITY(tHostF(tCellIndex, tDofIndex), tGold1D[tCellIndex][tDofIndex], tTolerance);
