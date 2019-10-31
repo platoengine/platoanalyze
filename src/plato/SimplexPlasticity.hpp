@@ -13,6 +13,10 @@ public:
     using Plato::Simplex<SpaceDim>::mNumSpatialDims;  /*!< number of spatial dimensions */
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
 
+    /*!< number of rows and columns for second order stress and strain tensors */
+    static constexpr Plato::OrdinalType mStressTensorDim =
+            (SpaceDim == 3) ? 6 : ((SpaceDim == 2) ? 4 : (((SpaceDim == 1) ? 1: 0)));
+
     static constexpr Plato::OrdinalType mNumVoigtTerms =
             (SpaceDim == 3) ? 6 : ((SpaceDim == 2) ? 3 : (((SpaceDim == 1) ? 1 : 0))); /*!< number of Voigt terms */
 

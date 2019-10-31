@@ -78,6 +78,26 @@ class J2PlasticityUtilities
                 const Plato::ScalarVectorT< StressT >              & aDevStressMinusBackstressNorm) const;
 
     /******************************************************************************//**
+     * \brief Compute the misfit between two distinct plastic strain tensors, i.e.
+     *   aLocalStateOne - aLocalStateTwo.
+     *
+     * \tparam AViewType  input one POD type
+     * \tparam BViewType  input two POD type
+     * \tparam ResultType output POD type
+     *
+     * \param [in]  aCellOrdinal cell/element index
+     * \param [in]  aLocalStateOne local states
+     * \param [in]  aLocalStateTwo local states
+     * \param [out] aOutput        output tensor
+    **********************************************************************************/
+    template<typename AViewType, typename BViewType, typename ResultType>
+    DEVICE_TYPE inline void
+    computePlasticStrainMisfit(const Plato::OrdinalType & aCellOrdinal,
+                               const Plato::ScalarMultiVectorT< AViewType > & aLocalStateOne,
+                               const Plato::ScalarMultiVectorT< BViewType > & aLocalStateTwo,
+                               const Plato::ScalarMultiVectorT< ResultType > & aOutput) const;
+
+    /******************************************************************************//**
      * \brief Compute the Cauchy stress tensor
      * \param [in]  aCellOrdinal cell/element index
      * \param [in]  aElasticStrain elastic strain tensor
@@ -397,7 +417,7 @@ class J2PlasticityUtilities
   }
 
   /******************************************************************************//**
-   * \brief Compute the Cauchy stress for 2D - Plane stress
+   * \brief Compute the Cauchy stress for 2D - Plane strain
   **********************************************************************************/
   template<>
   template<typename ElasticStrainT, typename ControlT, typename StressT>
@@ -413,14 +433,20 @@ class J2PlasticityUtilities
                                       / static_cast<Plato::Scalar>(3.0);
 
       // compute normal stress components
-      aCauchyStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3);
-      aCauchyStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3);
+      aCauchyStress(aCellOrdinal, 0) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+              * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3); // sigma_11
+      aCauchyStress(aCellOrdinal, 1) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+              * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3); // sigma_22
+      aCauchyStress(aCellOrdinal, 2) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+              * (static_cast<Plato::Scalar>(-1.0) * tTraceOver3); // sigma_33, epsilon_33 = 0 in plane strain
+
       // add hydrostatic stress to normal components
       aCauchyStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTraceOver3;
       aCauchyStress(aCellOrdinal, 1) += aPenalizedBulkModulus * tTraceOver3;
+      aCauchyStress(aCellOrdinal, 2) += aPenalizedBulkModulus * tTraceOver3;
 
       // compute shear components
-      aCauchyStress(aCellOrdinal, 2) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 2);
+      aCauchyStress(aCellOrdinal, 3) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 2);
   }
 
   /******************************************************************************//**
@@ -443,6 +469,64 @@ class J2PlasticityUtilities
       aCauchyStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTraceOver3;
   }
 
+
+  /*******************************************************************************************/
+  /*******************************************************************************************/
+
+  /******************************************************************************//**
+   * \brief Compute the misfit between two distinct plastic strain tensors, i.e.
+   *   aLocalStateOne - aLocalStateTwo. Specialized for 3-D applications.
+   *
+   * \tparam AViewType  input one POD type
+   * \tparam BViewType  input two POD type
+   * \tparam ResultType output POD type
+   *
+   * \param [in]  aCellOrdinal   cell, i.e. element, index
+   * \param [in]  aLocalStateOne local states
+   * \param [in]  aLocalStateTwo local states
+   * \param [out] aOutput        output tensor
+  **********************************************************************************/
+  template<typename AViewType, typename BViewType, typename ResultType>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<3>::computePlasticStrainMisfit(const Plato::OrdinalType & aCellOrdinal,
+                                                       const Plato::ScalarMultiVectorT< AViewType > & aLocalStateOne,
+                                                       const Plato::ScalarMultiVectorT< BViewType > & aLocalStateTwo,
+                                                       const Plato::ScalarMultiVectorT< ResultType > & aOutput) const
+  {
+      aOutput(aCellOrdinal, 0) = aLocalStateOne(aCellOrdinal, 2) - aLocalStateTwo(aCellOrdinal, 2);
+      aOutput(aCellOrdinal, 1) = aLocalStateOne(aCellOrdinal, 3) - aLocalStateTwo(aCellOrdinal, 3);
+      aOutput(aCellOrdinal, 2) = aLocalStateOne(aCellOrdinal, 4) - aLocalStateTwo(aCellOrdinal, 4);
+      aOutput(aCellOrdinal, 3) = aLocalStateOne(aCellOrdinal, 5) - aLocalStateTwo(aCellOrdinal, 5);
+      aOutput(aCellOrdinal, 4) = aLocalStateOne(aCellOrdinal, 6) - aLocalStateTwo(aCellOrdinal, 6);
+      aOutput(aCellOrdinal, 5) = aLocalStateOne(aCellOrdinal, 7) - aLocalStateTwo(aCellOrdinal, 7);
+  }
+
+  /******************************************************************************//**
+   * \brief Compute the misfit between two distinct plastic strain tensors, i.e.
+   *   aLocalStateOne - aLocalStateTwo. Specialized for 2-D applications. The plane
+   *   strain assumption is used.
+   *
+   * \tparam AViewType  input one POD type
+   * \tparam BViewType  input two POD type
+   * \tparam ResultType output POD type
+   *
+   * \param [in]  aCellOrdinal   cell, i.e. element, index
+   * \param [in]  aLocalStateOne local states
+   * \param [in]  aLocalStateTwo local states
+   * \param [out] aOutput        output tensor
+  **********************************************************************************/
+  template<typename AViewType, typename BViewType, typename ResultType>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<2>::computePlasticStrainMisfit(const Plato::OrdinalType & aCellOrdinal,
+                                                       const Plato::ScalarMultiVectorT< AViewType > & aLocalStateOne,
+                                                       const Plato::ScalarMultiVectorT< BViewType > & aLocalStateTwo,
+                                                       const Plato::ScalarMultiVectorT< ResultType > & aOutput) const
+  {
+      aOutput(aCellOrdinal, 0) = aLocalStateOne(aCellOrdinal, 2) - aLocalStateTwo(aCellOrdinal, 2);
+      aOutput(aCellOrdinal, 1) = aLocalStateOne(aCellOrdinal, 3) - aLocalStateTwo(aCellOrdinal, 3);
+      aOutput(aCellOrdinal, 2) = aLocalStateOne(aCellOrdinal, 4) - aLocalStateTwo(aCellOrdinal, 4);
+      aOutput(aCellOrdinal, 3) = aLocalStateOne(aCellOrdinal, 5) - aLocalStateTwo(aCellOrdinal, 5);
+  }
 
   /*******************************************************************************************/
   /*******************************************************************************************/
