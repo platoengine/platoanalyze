@@ -1567,7 +1567,7 @@ Update2ndOrderTensor<2>::operator()(const Plato::OrdinalType& aCellOrdinal,
     aOutput(aCellOrdinal, 0) = aBeta * aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
     aOutput(aCellOrdinal, 1) = aBeta * aOutput(aCellOrdinal, 1) + aAlpha * aInput(aCellOrdinal, 1);
     aOutput(aCellOrdinal, 2) = aBeta * aOutput(aCellOrdinal, 2) + aAlpha * aInput(aCellOrdinal, 2);
-    aOutput(aCellOrdinal, 2) = aBeta * aOutput(aCellOrdinal, 3) + aAlpha * aInput(aCellOrdinal, 3);
+    aOutput(aCellOrdinal, 3) = aBeta * aOutput(aCellOrdinal, 3) + aAlpha * aInput(aCellOrdinal, 3);
 }
 
 /***************************************************************************//**
@@ -1816,7 +1816,7 @@ public:
      * \param [in] aTimeStep            pseudo time setp index
     *******************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
-                  const Plato::ScalarMultiVectorT<LocalStateT> &aPreviousGlobalState,
+                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
                   const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
                   const Plato::ScalarMultiVectorT<Plato::Scalar> &aFutureLocalState,
                   const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPreviousLocalState,
@@ -1835,9 +1835,7 @@ public:
         }
         else
         {
-            this->evaluateFinalStep(aCurrentGlobalState, aCurrentLocalState,
-                                    aPreviousLocalState, aControls,
-                                    aConfig, aResult);
+            this->evaluateFinalStep(aCurrentGlobalState, aCurrentLocalState, aPreviousLocalState, aControls, aConfig, aResult);
         }
     }
 
@@ -1854,7 +1852,7 @@ public:
     *******************************************************************************/
     void evaluateFinalStep(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
                            const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
-                           const Plato::ScalarMultiVectorT<LocalStateT> &aPreviousLocalState,
+                           const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPreviousLocalState,
                            const Plato::ScalarMultiVectorT<ControlT> &aControls,
                            const Plato::ScalarArray3DT<ConfigT> &aConfig,
                            const Plato::ScalarMultiVectorT<ResultT> &aResult)
@@ -6651,8 +6649,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Update2ndOrderTensor)
     Kokkos::deep_copy(tHostD, tD);
     std::vector<std::vector<Plato::Scalar>> tGold2D =
             {{1.1, 1.6, 2.1, 2.6}, {2.2, 3.2, 4.2, 5.2}, {3.3, 4.8, 6.3, 7.8}};
-    for(Plato::OrdinalType tC5.2ellIndex=0; tCellIndex < tNumCells; tCellIndex++)
-    {                        7.8
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< tNumVoigtTerms2D; tDofIndex++)
         {
             //printf("output(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostD(tCellIndex, tDofIndex));

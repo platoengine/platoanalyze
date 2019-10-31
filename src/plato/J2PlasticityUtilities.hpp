@@ -486,6 +486,7 @@ class J2PlasticityUtilities
    * \param [in]  aLocalStateTwo local states
    * \param [out] aOutput        output tensor
   **********************************************************************************/
+  template<>
   template<typename AViewType, typename BViewType, typename ResultType>
   DEVICE_TYPE inline void
   J2PlasticityUtilities<3>::computePlasticStrainMisfit(const Plato::OrdinalType & aCellOrdinal,
@@ -515,6 +516,7 @@ class J2PlasticityUtilities
    * \param [in]  aLocalStateTwo local states
    * \param [out] aOutput        output tensor
   **********************************************************************************/
+  template<>
   template<typename AViewType, typename BViewType, typename ResultType>
   DEVICE_TYPE inline void
   J2PlasticityUtilities<2>::computePlasticStrainMisfit(const Plato::OrdinalType & aCellOrdinal,
