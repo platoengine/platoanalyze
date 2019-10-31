@@ -519,8 +519,8 @@ public:
      * \param [in]  aDataMap output data map
     *******************************************************************************/
     explicit AbstractVectorFunctionWithHistory(Omega_h::Mesh &aMesh,
-                                           Omega_h::MeshSets &aMeshSets,
-                                           Plato::DataMap &aDataMap) :
+                                               Omega_h::MeshSets &aMeshSets,
+                                               Plato::DataMap &aDataMap) :
         mMesh(aMesh),
         mDataMap(aDataMap),
         mMeshSets(aMeshSets)
@@ -1102,6 +1102,11 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
 /***********************************************************************//**
  * \brief Evaluate stabilized elasto-plastic residual, defined as
  *
+ * \tparam EvaluationType denotes evaluation type for vector function, possible
+ *   options are Residual, Jacobian, PartialControl, etc.
+ * \tparam SimplexPhysicsType simplex physics type, e.g. SimplexPlasticity. gives
+ *   access to static data related to the physics problem.
+ *
  * \f$   \langle \nabla{v_h}, s_h \rangle + \langle \nabla\cdot{v_h}, p_h \rangle
  *     - \langle v_h, f \rangle - \langle v_h, b \rangle = 0\ \forall\ \v_h \in V_{h,0}
  *       = \{v_h \in V_h | v = 0\ \mbox{in}\ \partial\Omega_{u} \} \f$
@@ -1114,17 +1119,17 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
  *     \forall\ \eta_h \in V_h \subset\ H^{1}(\Omega) \f$
  *
 ***************************************************************************/
-template<typename EvaluationType, typename PhysicsType>
+template<typename EvaluationType, typename SimplexPhysicsType>
 class ElastoPlasticityResidual: public Plato::AbstractVectorFunctionWithHistory<EvaluationType>
 {
 // Private member data
 private:
-    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;               /*!< number of spatial dimensions */
-    static constexpr auto mNumVoigtTerms = PhysicsType::mNumVoigtTerms;         /*!< number of voigt terms */
-    static constexpr auto mNumDofsPerCell = PhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
-    static constexpr auto mNumDofsPerNode = PhysicsType::mNumDofsPerNode;       /*!< number of dofs per node */
-    static constexpr auto mNumNodesPerCell = PhysicsType::mNumNodesPerCell;     /*!< number nodes per cell */
-    static constexpr auto mPressureDofOffset = PhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;                      /*!< number of spatial dimensions */
+    static constexpr auto mNumVoigtTerms = SimplexPhysicsType::mNumVoigtTerms;         /*!< number of voigt terms */
+    static constexpr auto mNumDofsPerCell = SimplexPhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
+    static constexpr auto mNumDofsPerNode = SimplexPhysicsType::mNumDofsPerNode;       /*!< number of dofs per node */
+    static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell;     /*!< number nodes per cell */
+    static constexpr auto mPressureDofOffset = SimplexPhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
 
     static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
     static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
@@ -1363,15 +1368,15 @@ public:
     {
         auto tNumCells = mMesh.nelems();
 
-        using GradScalarT = typename Plato::fad_type_t<PhysicsType, GlobalStateT, ConfigT>;
-        using ElasticStrainT = typename Plato::fad_type_t<PhysicsType, LocalStateT, ConfigT, GlobalStateT>;
+        using GradScalarT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
+        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
 
         // Functors used to compute residual-related quantities
         Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence ;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, PhysicsType> tThermoPlasticityUtils;
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
         Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0 /*dof offset*/, mSpaceDim> tInterpolatePressGradFromNodal;
@@ -1428,9 +1433,6 @@ public:
             // compute deviatoric stress and displacement divergence
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
             tJ2PlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
-            //printf("DevStress(%d,1) = %.10f\n", aCellOrdinal, tDeviatoricStress(aCellOrdinal,0));
-            //printf("DevStress(%d,2) = %.10f\n", aCellOrdinal, tDeviatoricStress(aCellOrdinal,1));
-            //printf("DevStress(%d,3) = %.10f\n", aCellOrdinal, tDeviatoricStress(aCellOrdinal,2));
             tComputeStrainDivergence(aCellOrdinal, tElasticStrain, tStrainDivergence);
 
             // compute volume difference
@@ -1463,6 +1465,537 @@ public:
 
 
 
+/***************************************************************************//**
+ * \brief Sum two 2nd order tensors, e.g. strain tensor, using Voigt notation
+ *    Operation is defined as: \f$ B(i,j) = \beta*B(i,j) + \alpha*A(i,j) \f$
+ *
+ * \tparam SpaceDim spatial dimensions
+*******************************************************************************/
+template<Plato::OrdinalType SpaceDim>
+class Update2ndOrderTensor
+{
+public:
+    /***************************************************************************//**
+     * \brief Sum two 2nd order tensors, e.g. strain tensor, using Voigt notation.
+     *    Operation is defined as: \f$ B(i,j) = \beta*B(i,j) + \alpha*A(i,j) \f$
+     *
+     * \tparam AViewType POD type for Kokkos::View
+     * \tparam BViewType POD type for Kokkos::View
+     *
+     * \param [in]     aCellOrdinal cell, i.e. element, index
+     * \param [in]     aAlpha       multiplier for input container
+     * \param [in]     aInput       input container
+     * \param [in]     aBeta        multiplier for output container
+     * \param [in/out] aOutput      output container
+    *******************************************************************************/
+    template<typename AViewType, typename BViewType>
+    DEVICE_TYPE inline void
+    operator()(const Plato::OrdinalType& aCellOrdinal,
+               const Plato::Scalar& aAlpha,
+               const Plato::ScalarMultiVectorT<AViewType> & aInput,
+               const Plato::Scalar& aBeta,
+               const Plato::ScalarMultiVectorT<BViewType> & aOutput);
+};
+// class UpdateTensorBLAS
+
+/***************************************************************************//**
+ * \brief Sum two 2nd order tensors, e.g. strain tensor, using Voigt notation -
+ *   Specialized for 3-D problems
+ *
+ * \tparam AViewType POD type for Kokkos::View
+ * \tparam BViewType POD type for Kokkos::View
+ *
+ * \param [in]     aCellOrdinal cell, i.e. element, index
+ * \param [in]     aAlpha       multiplier for input container
+ * \param [in]     aInput       input container
+ * \param [in]     aBeta        multiplier for output container
+ * \param [in/out] aOutput      output container
+*******************************************************************************/
+template<>
+template<typename AViewType, typename BViewType>
+DEVICE_TYPE inline void
+Update2ndOrderTensor<3>::operator()(const Plato::OrdinalType& aCellOrdinal,
+                                    const Plato::Scalar& aAlpha,
+                                    const Plato::ScalarMultiVectorT<AViewType> & aInput,
+                                    const Plato::Scalar& aBeta,
+                                    const Plato::ScalarMultiVectorT<BViewType> & aOutput)
+{
+    aOutput(aCellOrdinal, 0) = aBeta + aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
+    aOutput(aCellOrdinal, 1) = aBeta + aOutput(aCellOrdinal, 1) + aAlpha * aInput(aCellOrdinal, 1);
+    aOutput(aCellOrdinal, 2) = aBeta + aOutput(aCellOrdinal, 2) + aAlpha * aInput(aCellOrdinal, 2);
+    aOutput(aCellOrdinal, 3) = aBeta + aOutput(aCellOrdinal, 3) + aAlpha * aInput(aCellOrdinal, 3);
+    aOutput(aCellOrdinal, 4) = aBeta + aOutput(aCellOrdinal, 4) + aAlpha * aInput(aCellOrdinal, 4);
+    aOutput(aCellOrdinal, 5) = aBeta + aOutput(aCellOrdinal, 5) + aAlpha * aInput(aCellOrdinal, 5);
+}
+
+/***************************************************************************//**
+ * \brief Sum two 2nd order tensors, e.g. strain tensor, using Voigt notation -
+ *   Specialized for 2-D problems
+ *
+ * \tparam AViewType POD type for Kokkos::View
+ * \tparam BViewType POD type for Kokkos::View
+ *
+ * \param [in]     aCellOrdinal cell, i.e. element, index
+ * \param [in]     aAlpha       multiplier for input container
+ * \param [in]     aInput       input container
+ * \param [in]     aBeta        multiplier for output container
+ * \param [in/out] aOutput      output container
+*******************************************************************************/
+template<>
+template<typename AViewType, typename BViewType>
+DEVICE_TYPE inline void
+Update2ndOrderTensor<2>::operator()(const Plato::OrdinalType& aCellOrdinal,
+                                    const Plato::Scalar& aAlpha,
+                                    const Plato::ScalarMultiVectorT<AViewType> & aInput,
+                                    const Plato::Scalar& aBeta,
+                                    const Plato::ScalarMultiVectorT<BViewType> & aOutput)
+{
+    aOutput(aCellOrdinal, 0) = aBeta + aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
+    aOutput(aCellOrdinal, 1) = aBeta + aOutput(aCellOrdinal, 1) + aAlpha * aInput(aCellOrdinal, 1);
+    aOutput(aCellOrdinal, 2) = aBeta + aOutput(aCellOrdinal, 2) + aAlpha * aInput(aCellOrdinal, 2);
+}
+
+/***************************************************************************//**
+ * \brief Sum two 2nd order tensors, e.g. strain tensor, using Voigt notation -
+ *   Specialized for 1-D problems
+ *
+ * \tparam AViewType POD type for Kokkos::View
+ * \tparam BViewType POD type for Kokkos::View
+ *
+ * \param [in]     aCellOrdinal cell, i.e. element, index
+ * \param [in]     aAlpha       multiplier for input container
+ * \param [in]     aInput       input container
+ * \param [in]     aBeta        multiplier for output container
+ * \param [in/out] aOutput      output container
+*******************************************************************************/
+template<>
+template<typename AViewType, typename BViewType>
+DEVICE_TYPE inline void
+Update2ndOrderTensor<1>::operator()(const Plato::OrdinalType& aCellOrdinal,
+                                    const Plato::Scalar& aAlpha,
+                                    const Plato::ScalarMultiVectorT<AViewType> & aInput,
+                                    const Plato::Scalar& aBeta,
+                                    const Plato::ScalarMultiVectorT<BViewType> & aOutput)
+{
+    aOutput(aCellOrdinal, 0) = aBeta + aOutput(aCellOrdinal, 0) + aAlpha * aInput(aCellOrdinal, 0);
+}
+
+
+
+
+
+
+
+
+
+/***************************************************************************//**
+ * \brief Double dot product for 2nd order tensors, e.g. strain tensor, using
+ *   Voigt notation.  Operation is defined as: \f$ \alpha = A(i,j)B(i,j) \f$
+ *
+ * \tparam SpaceDim spatial dimensions
+*******************************************************************************/
+template<Plato::OrdinalType SpaceDim>
+class DoubleDotProduct2ndOrderTensor
+{
+public:
+    /***************************************************************************//**
+     * \brief Double dot product for 2nd order tensors, e.g. strain tensor, using
+     *   Voigt notation.
+     *
+     * \tparam OutType   POD type for output scalar
+     * \tparam AViewType POD type for Kokkos::View
+     * \tparam BViewType POD type for Kokkos::View
+     *
+     * \param [in] aCellOrdinal cell, i.e. element, index
+     * \param [in] aAlpha       multiplier for input containers
+     * \param [in] aA           input container A
+     * \param [in] aB           input container B
+     * \return double dot product outcome
+    *******************************************************************************/
+    template<typename OutType, typename AViewType, typename BViewType>
+    DEVICE_TYPE inline OutType
+    operator()(const Plato::OrdinalType& aCellOrdinal,
+               const Plato::Scalar& aAlpha,
+               const Plato::ScalarMultiVectorT<AViewType> & aA,
+               const Plato::ScalarMultiVectorT<BViewType> & aB);
+};
+// class DoubleDotProduct2ndOrderTensor
+
+/***************************************************************************//**
+ * \brief Double dot product for 2nd order tensors, e.g. strain tensor, using
+ *   Voigt notation. Specialized for 3-D problems
+ *
+ * \tparam OutType   POD type for output scalar
+ * \tparam AViewType POD type for Kokkos::View
+ * \tparam BViewType POD type for Kokkos::View
+ *
+ * \param [in] aCellOrdinal cell, i.e. element, index
+ * \param [in] aAlpha       multiplier for input containers
+ * \param [in] aA           input container A
+ * \param [in] aB           input container B
+ * \return double dot product outcome
+*******************************************************************************/
+template<>
+template<typename OutType, typename AViewType, typename BViewType>
+DEVICE_TYPE inline OutType
+DoubleDotProduct2ndOrderTensor<3>::operator()(const Plato::OrdinalType& aCellOrdinal,
+                                              const Plato::Scalar& aAlpha,
+                                              const Plato::ScalarMultiVectorT<AViewType> & aA,
+                                              const Plato::ScalarMultiVectorT<BViewType> & aB)
+{
+    OutType tOutput = aAlpha * ( aA(aCellOrdinal, 0) * aB(aCellOrdinal, 0)
+                               + aA(aCellOrdinal, 1) * aB(aCellOrdinal, 1)
+                               + aA(aCellOrdinal, 2) * aB(aCellOrdinal, 2)
+                               + aA(aCellOrdinal, 3) * aB(aCellOrdinal, 3)
+                               + aA(aCellOrdinal, 4) * aB(aCellOrdinal, 4)
+                               + aA(aCellOrdinal, 5) * aB(aCellOrdinal, 5) ) ;
+    return (tOutput);
+}
+
+/***************************************************************************//**
+ * \brief Double dot product for 2nd order tensors, e.g. strain tensor, using
+ *   Voigt notation. Specialized for 2-D problems
+ *
+ * \tparam OutType   POD type for output scalar
+ * \tparam AViewType POD type for Kokkos::View
+ * \tparam BViewType POD type for Kokkos::View
+ *
+ * \param [in] aCellOrdinal cell, i.e. element, index
+ * \param [in] aAlpha       multiplier for input containers
+ * \param [in] aA           input container A
+ * \param [in] aB           input container B
+ * \return double dot product outcome
+*******************************************************************************/
+template<>
+template<typename OutType, typename AViewType, typename BViewType>
+DEVICE_TYPE inline OutType
+DoubleDotProduct2ndOrderTensor<2>::operator()(const Plato::OrdinalType& aCellOrdinal,
+                                              const Plato::Scalar& aAlpha,
+                                              const Plato::ScalarMultiVectorT<AViewType> & aA,
+                                              const Plato::ScalarMultiVectorT<BViewType> & aB)
+{
+    OutType tOutput = aAlpha * ( aA(aCellOrdinal, 0) * aB(aCellOrdinal, 0)
+                               + aA(aCellOrdinal, 1) * aB(aCellOrdinal, 1)
+                               + aA(aCellOrdinal, 2) * aB(aCellOrdinal, 2) );
+    return (tOutput);
+}
+/***************************************************************************//**
+ * \brief Double dot product for 2nd order tensors, e.g. strain tensor, using
+ *   Voigt notation. Specialized for 1-D problems
+ *
+ * \tparam OutType   POD type for output scalar
+ * \tparam AViewType POD type for Kokkos::View
+ * \tparam BViewType POD type for Kokkos::View
+ *
+ * \param [in] aCellOrdinal cell, i.e. element, index
+ * \param [in] aAlpha       multiplier for input containers
+ * \param [in] aA           input container A
+ * \param [in] aB           input container B
+ * \return double dot product outcome
+*******************************************************************************/
+template<>
+template<typename OutType, typename AViewType, typename BViewType>
+DEVICE_TYPE inline OutType
+DoubleDotProduct2ndOrderTensor<1>::operator()(const Plato::OrdinalType& aCellOrdinal,
+                                              const Plato::Scalar& aAlpha,
+                                              const Plato::ScalarMultiVectorT<AViewType> & aA,
+                                              const Plato::ScalarMultiVectorT<BViewType> & aB)
+{
+    OutType tOutput = aAlpha * aA(aCellOrdinal, 0) * aB(aCellOrdinal, 0);
+    return (tOutput);
+}
+
+
+
+
+
+
+
+
+
+
+/***************************************************************************//**
+ * \brief Approximate maximize total work criterion using trapezoid rule. The
+ *   criterion is defined as:
+ *
+ *  /f$ f(u,c,z) =
+ *    \frac{1}{2}\int_{\Omega}\sigma_{N}:(\epsilon_N - \epsilon_{N-1} d\Omega
+ *      + \sum_{i=1}^{N-1}\frac{1}{2}\int_{\Omega}\sigma_{i} : (\epsilon_{i+1} -
+ *      \epsilon_{i-1} d\Omega /f$
+ *
+ * \tparam EvaluationType     evaluation type for scalar function, determines
+ *                            which AD type is active
+ * \tparam SimplexPhysicsType simplex physics type, determines values of
+ *                            physics-based static parameters
+*******************************************************************************/
+template<typename EvaluationType, typename SimplexPhysicsType>
+class MaximizeTotalWork : public Plato::AbstractScalarFunctionWithHistory<EvaluationType>
+{
+// private member data
+private:
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;                  /*!< spatial dimensions */
+    static constexpr auto mNumVoigtTerms = SimplexPhysicsType::mNumVoigtTerms;     /*!< number of voigt terms */
+    static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
+
+    using GlobalStateT = typename EvaluationType::StateScalarType;                 /*!< global state variables automatic differentiation type */
+    using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;         /*!< global state variables automatic differentiation type */
+    using LocalStateT = typename EvaluationType::LocalStateScalarType;             /*!< local state variables automatic differentiation type */
+    using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType;     /*!< local state variables automatic differentiation type */
+    using ControlT = typename EvaluationType::ControlScalarType;                   /*!< control variables automatic differentiation type */
+    using ConfigT = typename EvaluationType::ConfigScalarType;                     /*!< config variables automatic differentiation type */
+    using ResultT = typename EvaluationType::ResultScalarType;                     /*!< result variables automatic differentiation type */
+
+    Plato::OrdinalType mMaxNumPseudoTimeSteps;                                     /*!< maximum number of pseudo time steps */
+    Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule;                     /*!< simplex linear cubature rule */
+
+// public access functions
+public:
+    /***************************************************************************//**
+     * \brief Constructor of maximize total work criterion
+     *
+     * \param [in] aMesh        mesh database
+     * \param [in] aMeshSets    side sets database
+     * \param [in] aDataMap     PLATO Analyze output data map side sets database
+     * \param [in] aInputParams input parameters from XML file
+     * \param [in] aName        scalar function name
+    *******************************************************************************/
+    MaximizeTotalWork(Omega_h::Mesh& aMesh,
+                      Omega_h::MeshSets& aMeshSets,
+                      Plato::DataMap & aDataMap,
+                      Teuchos::ParameterList& aInputParams,
+                      std::string& aName) :
+            mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 40)),
+            mCubatureRule()
+    {
+    }
+
+    /***************************************************************************//**
+     * \brief Destructor of maximize total work criterion
+    *******************************************************************************/
+    virtual ~MaximizeTotalWork(){}
+
+    /***************************************************************************//**
+     * \brief Evaluates maximize total work criterion.  AD evaluation type determines
+     * output/result value.
+     *
+     * \param [in] aCurrentGlobalState  current global states
+     * \param [in] aFutureGlobalState   future global states
+     * \param [in] aPreviousGlobalState previous global states
+     * \param [in] aCurrentLocalState   current local states
+     * \param [in] aFutureLocalState    future global states
+     * \param [in] aPreviousLocalState  previous global states
+     * \param [in] aControls            control variables
+     * \param [in] aConfig              configuration variables
+     * \param [in] aResult              output container
+     * \param [in] aTimeStep            pseudo time setp index
+    *******************************************************************************/
+    void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
+                  const Plato::ScalarMultiVectorT<Plato::Scalar> &aFutureGlobalState,
+                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
+                  const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
+                  const Plato::ScalarMultiVectorT<Plato::Scalar> &aFutureLocalState,
+                  const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPreviousLocalState,
+                  const Plato::ScalarMultiVectorT<ControlT> &aControls,
+                  const Plato::ScalarArray3DT<ConfigT> &aConfig,
+                  const Plato::ScalarMultiVectorT<ResultT> &aResult,
+                  Plato::Scalar aTimeStep = 0.0)
+    {
+        this->updateMaxNumPseudoTimeSteps();
+        auto tFinalPseudoTimeStep = mMaxNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
+        if(static_cast<Plato::OrdinalType>(aTimeStep) != tFinalPseudoTimeStep)
+        {
+            this->evaluateIntermediateStep(aCurrentGlobalState, aFutureGlobalState, aPreviousGlobalState,
+                                           aCurrentLocalState, aControls, aConfig, aResult);
+        }
+        else
+        {
+            this->evaluateFinalStep(aCurrentGlobalState, aPreviousGlobalState,
+                                    aCurrentLocalState, aControls, aConfig, aResult);
+        }
+    }
+
+    /***************************************************************************//**
+     * \brief Evaluates maximize total work criterion at final time step
+     *
+     * \param [in] aCurrentGlobalState  current global states
+     * \param [in] aPreviousGlobalState previous global states
+     * \param [in] aCurrentLocalState   current local states
+     * \param [in] aControls            control variables
+     * \param [in] aConfig              configuration variables
+     * \param [in] aResult              output container
+     *
+    *******************************************************************************/
+    void evaluateFinalStep(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
+                           const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
+                           const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
+                           const Plato::ScalarMultiVectorT<ControlT> &aControls,
+                           const Plato::ScalarArray3DT<ConfigT> &aConfig,
+                           const Plato::ScalarMultiVectorT<ResultT> &aResult)
+    {
+        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
+
+        // allocate functors used to evaluate criterion
+        Plato::Strain<mSpaceDim> tComputeCauchyStrain;
+        Plato::LinearStress<mSpaceDim> tComputeCauchyStress;
+        Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+        Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
+        Plato::Update2ndOrderTensor<mSpaceDim> tUpdate2ndOrderTensor;
+        Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
+
+        // allocate local containers used to evaluate criterion
+        auto tNumCells = this->getMesh().nelems();
+        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
+        Plato::ScalarMultiVectorT<ResultT> tCurrentTotalStrain("current total strain", tNumCells, mNumVoigtTerms);
+        Plato::ScalarMultiVectorT<ResultT> tPreviousTotalStrain("previous total strain", tNumCells, mNumVoigtTerms);
+        Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mNumVoigtTerms);
+        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mNumVoigtTerms);
+        Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
+
+        // transfer member data to device
+        auto tElasticBulkModulus = mElasticBulkModulus;
+        auto tElasticShearModulus = mElasticShearModulus;
+
+        auto tQuadratureWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
+        {
+            // compute configuration gradients
+            tComputeGradient(aCellOrdinal, tConfigurationGradient, aConfig, tCellVolume);
+            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
+
+            // compute total strain
+            tComputeCauchyStrain(aCellOrdinal, tCurrentTotalStrain, aCurrentGlobalState, tConfigurationGradient);
+            tComputeCauchyStrain(aCellOrdinal, tPreviousTotalStrain, aPreviousGlobalState, tConfigurationGradient);
+
+            // compute current elastic strain
+            tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
+                                                        tBasisFunctions, tConfigurationGradient, tCurrentElasticStrain);
+
+            // compute cell penalty and penalized elastic properties
+            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
+            ControlT tElasticPropertiesPenalty = tPenaltyFunction(tDensity);
+            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
+            ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
+
+            // compute current Cauchy stress
+            tJ2PlasticityUtils.computeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus,
+                                                   tCurrentElasticStrain, tCurrentCauchyStress);
+
+            // compute total strain misfit
+            Plato::Scalar tAlpha = -1.0; Plato::Scalar tBeta = 1.0;
+            tUpdate2ndOrderTensor(aCellOrdinal, tAlpha, tPreviousTotalStrain, tBeta, tCurrentTotalStrain);
+
+            // compute double dot product
+            aResult(aCellOrdinal) = tComputeDoubleDotProduct(aCellOrdinal, tBeta, tCurrentCauchyStress, tCurrentTotalStrain);
+            aResult(aCellOrdinal) *= static_cast<Plato::Scalar>(-0.5) * tCellVolume(aCellOrdinal);
+        }, "maximize total work criterion - intermediate step");
+    }
+
+    /***************************************************************************//**
+     * \brief Evaluates maximize total work criterion at intermediate time steps, i.e.
+     *   time steps not associated with the final time step.
+     *
+     * \param [in] aCurrentGlobalState  current global states
+     * \param [in] aFutureGlobalState   future global states
+     * \param [in] aPreviousGlobalState previous global states
+     * \param [in] aCurrentLocalState   current local states
+     * \param [in] aControls            current control variables
+     * \param [in] aConfig              configuration variables
+     * \param [in] aResult              output container
+    *******************************************************************************/
+    void evaluateIntermediateStep(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
+                                  const Plato::ScalarMultiVectorT<Plato::Scalar> &aFutureGlobalState,
+                                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
+                                  const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
+                                  const Plato::ScalarMultiVectorT<ControlT> &aControls,
+                                  const Plato::ScalarArray3DT<ConfigT> &aConfig,
+                                  const Plato::ScalarMultiVectorT<ResultT> &aResult)
+    {
+        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
+
+        // allocate functors used to evaluate criterion
+        Plato::Strain<mSpaceDim> tComputeCauchyStrain;
+        Plato::LinearStress<mSpaceDim> tComputeCauchyStress;
+        Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+        Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
+        Plato::Update2ndOrderTensor<mSpaceDim> tUpdate2ndOrderTensor;
+        Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
+
+        // allocate local containers used to evaluate criterion
+        auto tNumCells = this->getMesh().nelems();
+        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
+        Plato::ScalarMultiVectorT<ResultT> tFutureTotalStrain("future total strain", tNumCells, mNumVoigtTerms);
+        Plato::ScalarMultiVectorT<ResultT> tPreviousTotalStrain("previous total strain", tNumCells, mNumVoigtTerms);
+        Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mNumVoigtTerms);
+        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mNumVoigtTerms);
+        Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
+
+        // transfer member data to device
+        auto tElasticBulkModulus = mElasticBulkModulus;
+        auto tElasticShearModulus = mElasticShearModulus;
+
+        auto tQuadratureWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
+        {
+            // compute configuration gradients
+            tComputeGradient(aCellOrdinal, tConfigurationGradient, aConfig, tCellVolume);
+            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
+
+            // compute total strain
+            tComputeCauchyStrain(aCellOrdinal, tFutureTotalStrain, aFutureGlobalState, tConfigurationGradient);
+            tComputeCauchyStrain(aCellOrdinal, tPreviousTotalStrain, aPreviousGlobalState, tConfigurationGradient);
+
+            // compute current elastic strain
+            tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
+                                                        tBasisFunctions, tConfigurationGradient, tCurrentElasticStrain);
+
+            // compute cell penalty and penalized elastic properties
+            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
+            ControlT tElasticPropertiesPenalty = tPenaltyFunction(tDensity);
+            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
+            ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
+
+            // compute current Cauchy stress
+            tJ2PlasticityUtils.computeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus,
+                                                   tCurrentElasticStrain, tCurrentCauchyStress);
+
+            // compute total strain misfit
+            Plato::Scalar tAlpha = -1.0; Plato::Scalar tBeta = 1.0;
+            tUpdate2ndOrderTensor(aCellOrdinal, tAlpha, tPreviousTotalStrain, tBeta, tFutureTotalStrain);
+
+            // compute double dot product
+            aResult(aCellOrdinal) = tComputeDoubleDotProduct(aCellOrdinal, tBeta, tCurrentCauchyStress, tFutureTotalStrain);
+            aResult(aCellOrdinal) *= static_cast<Plato::Scalar>(-0.5) * tCellVolume(aCellOrdinal);
+        }, "maximize total work criterion - final step");
+    }
+
+private:
+    /***************************************************************************//**
+     * \brief Update maximum number of pseudo time steps. Keep default value if
+     * Newton-Raphson solver converges, else, store new value since Newton-Raphson
+     * solver did not converge. The new value is updated in PlasticityProblem.
+    *******************************************************************************/
+    void updateMaxNumPseudoTimeSteps()
+    {
+        auto tSearch = mDataMap.mScalarValues.find("MaxNumPseudoTimeSteps");
+        mMaxNumPseudoTimeSteps = tSearch != mDataMap.mScalarValues.end() ? tSearch->second : mMaxNumPseudoTimeSteps;
+    }
+};
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 namespace ElastoPlasticityFactory
@@ -1483,6 +2016,7 @@ struct FunctionFactory
      * \param [in] aDataMap output data database
      * \param [in] aInputParams input parameters
      * \param [in] aFunctionName vector function name
+     *
      * \return shared pointer to stabilized vector function with local history-dependent states
     *******************************************************************************/
     template<typename EvaluationType>
@@ -1501,12 +2035,26 @@ struct FunctionFactory
         }
         else
         {
-            const std::string tError = std::string("Unknown Vector Function with local history-dependent states. '")
+            const auto tError = std::string("Unknown Vector Function with local history-dependent states. '")
                     + "User specified '" + aFunctionName + "'.  This Vector Function is not supported.";
             THROWERR(tError)
         }
     }
 
+    /***************************************************************************//**
+     * \brief Create a scalar function with local history-dependent states (e.g. plasticity)
+     *
+     * \tparam automatic differentiation evaluation type, e.g. JacobianU, JacobianZ, etc.
+     *
+     * \param [in] aMesh        mesh database
+     * \param [in] aMeshSets    side sets database
+     * \param [in] aDataMap     output data database
+     * \param [in] aInputParams input parameters
+     * \param [in] aFuncType    function type, used to identify requested function
+     * \param [in] aFuncName    user defined name for requested function
+     *
+     * \return shared pointer to scalar function with local history-dependent states
+    *******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractScalarFunctionWithHistory<EvaluationType>>
     createScalarFunctionWithHistory(Omega_h::Mesh& aMesh,
@@ -1516,7 +2064,18 @@ struct FunctionFactory
                                     std::string aFuncType,
                                     std::string aFuncName)
     {
-
+        if(aFuncType == "MaximizeTotalWork")
+        {
+            constexpr auto tSpaceDim = EvaluationType::SpatialDim;
+            return ( std::make_shared<Plato::MaximizeTotalWork<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
+        }
+        else
+        {
+            const auto tError = std::string("Unknown Scalar Function with local history-dependent states. '")
+                    + "User specified '" + aFuncType + "'.  This Scalar Function is not supported.";
+            THROWERR(tError)
+        }
     }
 };
 // struct FunctionFactory
@@ -3441,19 +4000,19 @@ private:
     std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> mObjective;  /*!< objective constraint interface*/
     std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> mConstraint; /*!< constraint constraint interface*/
 
-    Plato::OrdinalType mNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps*/
-    Plato::OrdinalType mMaxNumNewtonIter;      /*!< maximum number of Newton-Raphson iterations*/
+    Plato::OrdinalType mMaxNumNewtonIter;         /*!< maximum number of Newton-Raphson iterations*/
+    Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps*/
 
-    Plato::Scalar mPseudoTimeStep;              /*!< pseudo time step increment*/
-    Plato::Scalar mInitialNormResidual;         /*!< initial norm of global residual*/
-    Plato::Scalar mCurrentPseudoTimeStep;       /*!< current pseudo time step*/
-    Plato::Scalar mNewtonRaphsonStopTolerance;  /*!< Newton-Raphson stopping tolerance*/
-    Plato::Scalar mNumPseudoTimeStepMultiplier; /*!< number of pseudo time step multiplier */
+    Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step increment*/
+    Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual*/
+    Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step*/
+    Plato::Scalar mNewtonRaphsonStopTolerance;    /*!< Newton-Raphson stopping tolerance*/
+    Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
 
-    Plato::ScalarVector mGlobalResidual;       /*!< global residual*/
-    Plato::ScalarVector mProjResidual;         /*!< projection residual, i.e. projected pressure gradient solve residual*/
-    Plato::ScalarVector mProjectedPressure;    /*!< projected pressure*/
-    Plato::ScalarVector mProjectionAdjoint;    /*!< projection adjoint variables*/
+    Plato::ScalarVector mGlobalResidual;          /*!< global residual*/
+    Plato::ScalarVector mProjResidual;            /*!< projection residual, i.e. projected pressure gradient solve residual*/
+    Plato::ScalarVector mProjectedPressure;       /*!< projected pressure*/
+    Plato::ScalarVector mProjectionAdjoint;       /*!< projection adjoint variables*/
 
     Plato::ScalarMultiVector mLocalStates;        /*!< local state variables*/
     Plato::ScalarMultiVector mLocalAdjoint;       /*!< local adjoint variables*/
@@ -3485,9 +4044,9 @@ public:
             mProjectionEq(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
             mObjective(nullptr),
             mConstraint(nullptr),
-            mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 40)),
+            mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 40)),
             mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Number Iterations", 10)),
-            mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
+            mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mMaxNumPseudoTimeSteps))),
             mCurrentPseudoTimeStep(0.0),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
@@ -3495,9 +4054,9 @@ public:
             mGlobalResidual("Global Residual", mGlobalResidualEq.size()),
             mProjResidual("Projected Residual", mProjectionEq.size()),
             mProjectedPressure("Project Pressure", aMesh.nverts()),
-            mLocalStates("Local States", mNumPseudoTimeSteps, mLocalResidualEq.size()),
-            mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalResidualEq.size()),
-            mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEq.size())
+            mLocalStates("Local States", mMaxNumPseudoTimeSteps, mLocalResidualEq.size()),
+            mGlobalStates("Global States", mMaxNumPseudoTimeSteps, mGlobalResidualEq.size()),
+            mProjectedPressGrad("Projected Pressure Gradient", mMaxNumPseudoTimeSteps, mProjectionEq.size())
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
     }
@@ -3919,17 +4478,18 @@ public:
 
 // private functions
 private:
-
     /***************************************************************************//**
      * \brief Resize global state, local state and projected pressure gradient containers
+     * \param [in] aControls current set of controls, i.e. design variables
     *******************************************************************************/
     void resizeStateContainers()
     {
-        mNumPseudoTimeSteps = mNumPseudoTimeStepMultiplier * static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
-        mPseudoTimeStep = 1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps));
-        mLocalStates = Plato::ScalarMultiVector("Local States", mNumPseudoTimeSteps, mLocalResidualEq.size());
-        mGlobalStates = Plato::ScalarMultiVector("Global States", mNumPseudoTimeSteps, mGlobalResidualEq.size());
-        mProjectedPressGrad = Plato::ScalarMultiVector("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEq.size());
+        mMaxNumPseudoTimeSteps = mNumPseudoTimeStepMultiplier * static_cast<Plato::Scalar>(mMaxNumPseudoTimeSteps);
+        mDataMap.mScalarValues["MaxNumPseudoTimeSteps"] = mMaxNumPseudoTimeSteps;
+        mPseudoTimeStep = 1.0/(static_cast<Plato::Scalar>(mMaxNumPseudoTimeSteps));
+        mLocalStates = Plato::ScalarMultiVector("Local States", mMaxNumPseudoTimeSteps, mLocalResidualEq.size());
+        mGlobalStates = Plato::ScalarMultiVector("Global States", mMaxNumPseudoTimeSteps, mGlobalResidualEq.size());
+        mProjectedPressGrad = Plato::ScalarMultiVector("Projected Pressure Gradient", mMaxNumPseudoTimeSteps, mProjectionEq.size());
     }
 
     /***************************************************************************//**
@@ -3945,7 +4505,7 @@ private:
         Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
         bool tForwardProblemSolved = false;
-        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
+        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mMaxNumPseudoTimeSteps; tCurrentStepIndex++)
         {
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
             this->updateStateData(tStateData);
@@ -4032,7 +4592,7 @@ private:
     {
         Plato::ScalarVector tOutput;
         auto tFutureStepIndex = aCurrentStepIndex + static_cast<Plato::OrdinalType>(1);
-        if(tFutureStepIndex != mNumPseudoTimeSteps)
+        if(tFutureStepIndex != mMaxNumPseudoTimeSteps)
         {
             aOutput = Kokkos::subview(aStates, tFutureStepIndex, Kokkos::ALL());
         }
@@ -4084,7 +4644,7 @@ private:
         Plato::ScalarVector tLocalStateIP1; Plato::ScalarVector tGlobalStateIP1;
 
         Plato::Scalar tOutput = 0;
-        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
+        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mMaxNumPseudoTimeSteps; tCurrentStepIndex++)
         {
             // SET CURRENT STATES
             auto tLocalState = Kokkos::subview(aLocalState, tCurrentStepIndex, Kokkos::ALL());
@@ -4119,7 +4679,7 @@ private:
         Plato::ScalarVector tLocalStateIM1; Plato::ScalarVector tLocalStateIP1;
         Plato::ScalarVector tGlobalStateIM1; Plato::ScalarVector tGlobalStateIP1;
 
-        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
+        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mMaxNumPseudoTimeSteps; tCurrentStepIndex++)
         {
             auto tCurrentLocalState = Kokkos::subview(mLocalStates, tCurrentStepIndex, Kokkos::ALL());
             auto tCurrentGlobalState = Kokkos::subview(mGlobalStates, tCurrentStepIndex, Kokkos::ALL());
@@ -4157,7 +4717,7 @@ private:
         Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
         // outer loop for pseudo time steps
-        auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
+        auto tLastStepIndex = mMaxNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         for(Plato::OrdinalType tCurrentStepIndex = tLastStepIndex; tCurrentStepIndex > 0; tCurrentStepIndex--)
         {
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
@@ -4187,7 +4747,7 @@ private:
         Plato::ScalarVector tLocalStateIM1; Plato::ScalarVector tLocalStateIP1;
         Plato::ScalarVector tGlobalStateIM1; Plato::ScalarVector tGlobalStateIP1;
 
-        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
+        for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mMaxNumPseudoTimeSteps; tCurrentStepIndex++)
         {
             auto tCurrentLocalState = Kokkos::subview(mLocalStates, tCurrentStepIndex, Kokkos::ALL());
             auto tCurrentGlobalState = Kokkos::subview(mGlobalStates, tCurrentStepIndex, Kokkos::ALL());
@@ -4225,7 +4785,7 @@ private:
         Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
         // outer loop for pseudo time steps
-        auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
+        auto tLastStepIndex = mMaxNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         for(Plato::OrdinalType tCurrentStepIndex = tLastStepIndex; tCurrentStepIndex > 0; tCurrentStepIndex--)
         {
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
@@ -4464,7 +5024,7 @@ private:
         Plato::ScalarMultiVector tRHS("Local Adjoint RHS", tNumCells, mNumLocalDofsPerCell);
         Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDrDc, tCurrentGlobalAdjointWS, tBeta, tRHS);
 
-        auto tFinalStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
+        auto tFinalStepIndex = mMaxNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aStateData.mCurrentStepIndex != tFinalStepIndex)
         {
 
@@ -4552,7 +5112,7 @@ private:
                                            aStateData.mFutureLocalState, aStateData.mPreviousLocalState,
                                            aControls, aStateData.mCurrentStepIndex);
 
-        auto tFinalStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
+        auto tFinalStepIndex = mMaxNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aStateData.mCurrentStepIndex != tFinalStepIndex)
         {
             // Compute partial derivative of objective with respect to current local states
@@ -5977,6 +6537,147 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual2D_Elastic)
         {
             //printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostElastoPlasticityResidual(tCellIndex, tDofIndex));
             TEST_FLOATING_EQUALITY(tHostElastoPlasticityResidual(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+        }
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Update2ndOrderTensor)
+{
+    //****************************** 3-D TEST ******************************
+
+    // 1.1. PREPARE DATA FOR 3D TEST
+    constexpr Plato::OrdinalType tNumCells = 3;
+    constexpr Plato::OrdinalType tSpaceDim3D = 3;
+    constexpr Plato::OrdinalType tNumVoigtTerms3D = 6;
+    Plato::ScalarMultiVector tA("View A", tNumCells, tNumVoigtTerms3D);
+    Plato::ScalarMultiVector tB("View B", tNumCells, tNumVoigtTerms3D);
+
+    auto tHostA = Kokkos::create_mirror(tA);
+    auto tHostB = Kokkos::create_mirror(tB);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostA(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostA(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.2;
+        tHostA(tCellIndex, 2) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.3;
+        tHostA(tCellIndex, 3) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.4;
+        tHostA(tCellIndex, 4) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.5;
+        tHostA(tCellIndex, 5) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.6;
+
+        tHostB(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.4;
+        tHostB(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.5;
+        tHostB(tCellIndex, 2) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.6;
+        tHostB(tCellIndex, 3) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.7;
+        tHostB(tCellIndex, 4) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.8;
+        tHostB(tCellIndex, 5) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.9;
+    }
+    Kokkos::deep_copy(tA, tHostA);
+    Kokkos::deep_copy(tB, tHostB);
+
+    // 1.2. CALL FUNCTION FOR 3D TEST
+    Plato::Scalar tAlpha = 3.0; Plato::Scalar tBeta = 2.0;
+    Plato::Update2ndOrderTensor<tSpaceDim3D> tUpdate2ndOrderTensor3D;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tUpdate2ndOrderTensor3D(aCellOrdinal, tAlpha, tA, tBeta, tB);
+    }, "test update function for 2nd order tensors");
+
+    // 1.3. TEST 3D RESULTS
+    tHostB = Kokkos::create_mirror(tB);
+    Kokkos::deep_copy(tHostB, tB);
+    std::vector<std::vector<Plato::Scalar>> tGold3D =
+            {{1.1, 1.6, 2.1, 2.6, 3.1, 3.6},
+             {2.2, 3.2, 4.2, 5.2, 6.2, 7.2},
+             {3.3, 4.8, 6.3, 7.8, 9.3, 10.8}};
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< tNumVoigtTerms3D; tDofIndex++)
+        {
+            //printf("output(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostB(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostB(tCellIndex, tDofIndex), tGold3D[tCellIndex][tDofIndex], tTolerance);
+        }
+    }
+
+    //****************************** 2-D TEST ******************************
+
+    // 2.1. PREPARE DATA FOR 2D TEST
+    constexpr Plato::OrdinalType tSpaceDim2D = 2;
+    constexpr Plato::OrdinalType tNumVoigtTerms2D = 3;
+    Plato::ScalarMultiVector tC("View C", tNumCells, tNumVoigtTerms2D);
+    Plato::ScalarMultiVector tD("View D", tNumCells, tNumVoigtTerms2D);
+
+    auto tHostC = Kokkos::create_mirror(tC);
+    auto tHostD = Kokkos::create_mirror(tD);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostC(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostC(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.2;
+        tHostC(tCellIndex, 2) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.3;
+
+        tHostD(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.4;
+        tHostD(tCellIndex, 1) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.5;
+        tHostD(tCellIndex, 2) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.6;
+    }
+    Kokkos::deep_copy(tC, tHostC);
+    Kokkos::deep_copy(tD, tHostD);
+
+    // 2.2. CALL FUNCTION FOR 2D TEST
+    Plato::Update2ndOrderTensor<tSpaceDim2D> tUpdate2ndOrderTensor2D;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tUpdate2ndOrderTensor2D(aCellOrdinal, tAlpha, tC, tBeta, tD);
+    }, "test update function for 2nd order tensors");
+
+    // 2.3. TEST 2D RESULTS
+    tHostD = Kokkos::create_mirror(tD);
+    Kokkos::deep_copy(tHostD, tD);
+    std::vector<std::vector<Plato::Scalar>> tGold2D =
+            {{1.1, 1.6, 2.1}, {2.2, 3.2, 4.2}, {3.3, 4.8, 6.3}};
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< tNumVoigtTerms3D; tDofIndex++)
+        {
+            //printf("output(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostD(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostD(tCellIndex, tDofIndex), tGold2D[tCellIndex][tDofIndex], tTolerance);
+        }
+    }
+
+    //****************************** 1-D TEST ******************************
+
+    // 3.1. PREPARE DATA FOR 1D TEST
+    constexpr Plato::OrdinalType tSpaceDim1D = 1;
+    constexpr Plato::OrdinalType tNumVoigtTerms1D = 1;
+    Plato::ScalarMultiVector tE("View E", tNumCells, tNumVoigtTerms1D);
+    Plato::ScalarMultiVector tF("View F", tNumCells, tNumVoigtTerms1D);
+
+    auto tHostE = Kokkos::create_mirror(tE);
+    auto tHostF = Kokkos::create_mirror(tF);
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        tHostE(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostF(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.4;
+    }
+    Kokkos::deep_copy(tE, tHostE);
+    Kokkos::deep_copy(tF, tHostF);
+
+    // 3.2. CALL FUNCTION FOR 1D TEST
+    Plato::Update2ndOrderTensor<tSpaceDim1D> tUpdate2ndOrderTensor1D;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tUpdate2ndOrderTensor1D(aCellOrdinal, tAlpha, tE, tBeta, tF);
+    }, "test update function for 2nd order tensors");
+
+    // 3.3. TEST 1D RESULTS
+    tHostF = Kokkos::create_mirror(tF);
+    Kokkos::deep_copy(tHostF, tF);
+    std::vector<std::vector<Plato::Scalar>> tGold1D = {{1.1}, {2.2}, {3.3}};
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< tNumVoigtTerms3D; tDofIndex++)
+        {
+            //printf("output(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostF(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostF(tCellIndex, tDofIndex), tGold1D[tCellIndex][tDofIndex], tTolerance);
         }
     }
 }

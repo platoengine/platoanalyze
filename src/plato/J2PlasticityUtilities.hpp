@@ -10,7 +10,7 @@
 namespace Plato
 {
 /**************************************************************************//**
-* \brief J2 Plasticity Utilities Class
+* \brief Plane Stress J2 Plasticity Utilities Class
 ******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 class J2PlasticityUtilities
@@ -76,6 +76,23 @@ class J2PlasticityUtilities
                 const Plato::ScalarMultiVectorT< LocalStateT >     & aLocalState,
                 const Plato::ScalarMultiVectorT< StressT >         & aYieldSurfaceNormal,
                 const Plato::ScalarVectorT< StressT >              & aDevStressMinusBackstressNorm) const;
+
+    /******************************************************************************//**
+     * \brief Compute the Cauchy stress tensor
+     * \param [in]  aCellOrdinal cell/element index
+     * \param [in]  aElasticStrain elastic strain tensor
+     * \param [in]  aPenalizedBulkModulus  penalized elastic bulk modulus
+     * \param [in]  aPenalizedShearModulus penalized elastic shear modulus
+     * \param [out] aCauchyStress          Cauchy stress tensor
+    **********************************************************************************/
+    template<typename ElasticStrainT, typename ControlT, typename StressT>
+    DEVICE_TYPE inline void
+    computeCauchyStress(
+                const Plato::OrdinalType                           & aCellOrdinal,
+                const ControlT                                     & aPenalizedBulkModulus,
+                const ControlT                                     & aPenalizedShearModulus,
+                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain,
+                const Plato::ScalarMultiVectorT< StressT >         & aaCauchyStress) const;
 
     /******************************************************************************//**
      * \brief Compute the deviatoric stress
@@ -349,6 +366,88 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
+   * \brief Compute the Cauchy stress for 3D
+  **********************************************************************************/
+  template<>
+  template<typename ElasticStrainT, typename ControlT, typename StressT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<3>::computeCauchyStress(const Plato::OrdinalType & aCellOrdinal,
+                                                const ControlT & aPenalizedBulkModulus,
+                                                const ControlT & aPenalizedShearModulus,
+                                                const Plato::ScalarMultiVectorT<ElasticStrainT> & aElasticStrain,
+                                                const Plato::ScalarMultiVectorT<StressT> & aCauchyStress) const
+  {
+      // compute hydrostatic strain
+      ElasticStrainT tTraceOver3 = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
+                                    + aElasticStrain(aCellOrdinal, 2) ) / static_cast<Plato::Scalar>(3.0);
+
+      // compute normal stress components
+      aCauchyStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3);
+      aCauchyStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3);
+      aCauchyStress(aCellOrdinal, 2) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 2) - tTraceOver3);
+      // add hydrostatic stress to normal components
+      aCauchyStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTraceOver3;
+      aCauchyStress(aCellOrdinal, 1) += aPenalizedBulkModulus * tTraceOver3;
+      aCauchyStress(aCellOrdinal, 2) += aPenalizedBulkModulus * tTraceOver3;
+
+      // compute shear components
+      aCauchyStress(aCellOrdinal, 3) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 3);
+      aCauchyStress(aCellOrdinal, 4) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 4);
+      aCauchyStress(aCellOrdinal, 5) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 5);
+  }
+
+  /******************************************************************************//**
+   * \brief Compute the Cauchy stress for 2D - Plane stress
+  **********************************************************************************/
+  template<>
+  template<typename ElasticStrainT, typename ControlT, typename StressT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<2>::computeCauchyStress(const Plato::OrdinalType & aCellOrdinal,
+                                                const ControlT & aPenalizedBulkModulus,
+                                                const ControlT & aPenalizedShearModulus,
+                                                const Plato::ScalarMultiVectorT<ElasticStrainT> & aElasticStrain,
+                                                const Plato::ScalarMultiVectorT<StressT> & aCauchyStress) const
+  {
+      // compute hydrostatic strain
+      ElasticStrainT tTraceOver3 = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1) )
+                                      / static_cast<Plato::Scalar>(3.0);
+
+      // compute normal stress components
+      aCauchyStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3);
+      aCauchyStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3);
+      // add hydrostatic stress to normal components
+      aCauchyStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTraceOver3;
+      aCauchyStress(aCellOrdinal, 1) += aPenalizedBulkModulus * tTraceOver3;
+
+      // compute shear components
+      aCauchyStress(aCellOrdinal, 2) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 2);
+  }
+
+  /******************************************************************************//**
+   * \brief Compute the Cauchy stress for 1D
+  **********************************************************************************/
+  template<>
+  template<typename ElasticStrainT, typename ControlT, typename StressT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<1>::computeCauchyStress(const Plato::OrdinalType & aCellOrdinal,
+                                                const ControlT & aPenalizedBulkModulus,
+                                                const ControlT & aPenalizedShearModulus,
+                                                const Plato::ScalarMultiVectorT<ElasticStrainT> & aElasticStrain,
+                                                const Plato::ScalarMultiVectorT<StressT> & aCauchyStress) const
+  {
+      // compute hydrostatic strain
+      ElasticStrainT tTraceOver3 = aElasticStrain(aCellOrdinal, 0) / static_cast<Plato::Scalar>(3.0);
+      // compute normal stress components
+      aCauchyStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3);
+      // add hydrostatic stress to normal components
+      aCauchyStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTraceOver3;
+  }
+
+
+  /*******************************************************************************************/
+  /*******************************************************************************************/
+
+  /******************************************************************************//**
    * \brief Compute the deviatoric stress for 2D
   **********************************************************************************/
   template<>
@@ -360,7 +459,8 @@ class J2PlasticityUtilities
               const ControlT                                     & aPenalizedShearModulus,
               const Plato::ScalarMultiVectorT< StressT >         & aDeviatoricStress) const
   {
-    ElasticStrainT tTraceOver3 = (aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)) / 3.0;
+    ElasticStrainT tTraceOver3 = (aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1))
+            / static_cast<Plato::Scalar>(3.0);
     aDeviatoricStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) -
                                                                            tTraceOver3);
     aDeviatoricStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 1) -
@@ -381,7 +481,7 @@ class J2PlasticityUtilities
               const Plato::ScalarMultiVectorT< StressT >         & aDeviatoricStress) const
   {
     ElasticStrainT tTraceOver3 = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
-                                  + aElasticStrain(aCellOrdinal, 2) ) / 3.0;
+                                  + aElasticStrain(aCellOrdinal, 2) ) / static_cast<Plato::Scalar>(3.0);
     aDeviatoricStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) -
                                                                            tTraceOver3);
     aDeviatoricStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 1) -
