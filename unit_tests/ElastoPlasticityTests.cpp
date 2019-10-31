@@ -1751,7 +1751,7 @@ class MaximizePlasticWork : public Plato::AbstractScalarFunctionWithHistory<Eval
 private:
     static constexpr auto mSpaceDim = EvaluationType::SpatialDim;                  /*!< spatial dimensions */
     static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
-    static constexpr auto mStressTensorDim = SimplexPhysicsType::mStressTensorDim; /*!< number of stress/strain tensor non-zero components */
+    static constexpr auto mStressComponents = SimplexPhysicsType::mStressComponents; /*!< number of stress/strain components */
 
     using GlobalStateT = typename EvaluationType::StateScalarType;                 /*!< global state variables automatic differentiation type */
     using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;         /*!< global state variables automatic differentiation type */
@@ -1871,9 +1871,9 @@ public:
         // allocate local containers used to evaluate criterion
         auto tNumCells = this->getMesh().nelems();
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
-        Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mStressTensorDim);
-        Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mStressTensorDim);
-        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mStressTensorDim);
+        Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mStressComponents);
+        Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mStressComponents);
+        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mStressComponents);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
 
         // transfer member data to device
@@ -1944,9 +1944,9 @@ public:
         // allocate local containers used to evaluate criterion
         auto tNumCells = this->getMesh().nelems();
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
-        Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mStressTensorDim);
-        Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mStressTensorDim);
-        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mStressTensorDim);
+        Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mStressComponents);
+        Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mStressComponents);
+        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mStressComponents);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
 
         // transfer member data to device
