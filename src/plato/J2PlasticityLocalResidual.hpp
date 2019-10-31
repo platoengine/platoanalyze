@@ -58,7 +58,7 @@ class J2PlasticityLocalResidual :
     Plato::Scalar mPlasticPropertiesPenaltySIMP;   /*!< SIMP penalty for plastic properties */
     Plato::Scalar mPlasticPropertiesMinErsatzSIMP; /*!< SIMP min ersatz stiffness for plastic properties */
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule; /*!< linear tet cubature rule */
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule; /*!< linear tet cubature rule */
 
     const Plato::Scalar mSqrt3Over2 = std::sqrt(3.0/2.0);
 
@@ -228,13 +228,13 @@ class J2PlasticityLocalResidual :
       using StressT = typename Plato::fad_type_t<PhysicsType, ControlT, LocalStateT, ConfigT, GlobalStateT>;
 
       // Functors
-      Plato::ComputeGradientWorkset<EvaluationType::SpatialDim> tComputeGradient;
+      Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
 
       // J2 Utility Functions Object
-      Plato::J2PlasticityUtilities<EvaluationType::SpatialDim>  tJ2PlasticityUtils;
+      Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
-      Plato::ThermoPlasticityUtilities<EvaluationType::SpatialDim, PhysicsType> 
+      Plato::ThermoPlasticityUtilities<mSpaceDim, PhysicsType>
             tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
 
       // Many views
@@ -347,13 +347,13 @@ class J2PlasticityLocalResidual :
       auto tNumCells = mMesh.nelems();
 
       // Functors
-      Plato::ComputeGradientWorkset<EvaluationType::SpatialDim> tComputeGradient;
+      Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
 
       // J2 Utility Functions Object
-      Plato::J2PlasticityUtilities<EvaluationType::SpatialDim>  tJ2PlasticityUtils;
+      Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
-      Plato::ThermoPlasticityUtilities<EvaluationType::SpatialDim, PhysicsType> 
+      Plato::ThermoPlasticityUtilities<mSpaceDim, PhysicsType>
             tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
 
       // Many views

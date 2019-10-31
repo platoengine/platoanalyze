@@ -1835,7 +1835,9 @@ public:
         }
         else
         {
-            this->evaluateFinalStep(aCurrentGlobalState, aCurrentLocalState, aPreviousLocalState, aControls, aConfig, aResult);
+            this->evaluateFinalStep(aCurrentGlobalState, aCurrentLocalState,
+                                    aPreviousLocalState, aControls,
+                                    aConfig, aResult);
         }
     }
 
