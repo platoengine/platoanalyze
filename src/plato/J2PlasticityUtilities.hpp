@@ -67,6 +67,11 @@ class J2PlasticityUtilities
      * \param [in] aLocalState 2D container of local state variables to update
      * \param [out] aYieldSurfaceNormal 2D container of yield surface normal tensor components
      * \param [out] aDevStressMinusBackstressNorm norm(deviatoric_stress - backstress)
+     *
+     * Deviatoric stress \f$ \bf{s} \f$
+     * Relative stress (\f$ \eta \f$)   = \f$ \bf{s} - \beta \f$
+     * Yield surface normal (\f$ N \f$) = \f$ \frac{\eta}{\Vert \eta \Vert} \f$
+     *
     **********************************************************************************/
     template<typename LocalStateT, typename StressT>
     DEVICE_TYPE inline void
@@ -203,7 +208,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * \brief Update the plastic strain and backstress for a plastic step in 2D
+   * \brief Update the plastic strain and backstress for a plastic step in 2D (Plane Strain)
   **********************************************************************************/
   template<>
   DEVICE_TYPE inline void
@@ -215,16 +220,18 @@ class J2PlasticityUtilities
               const Plato::ScalarMultiVector & aLocalState) const
   {
     Plato::Scalar tMultiplier1 = aLocalState(aCellOrdinal, 1) * mSqrt3Over2;
-    // Plastic Strain Tensor
+    // Plastic Strain Tensor = {e_11, e_22, 2e_12, e_33}
     aLocalState(aCellOrdinal, 2) = aPrevLocalState(aCellOrdinal, 2) + tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 0);
     aLocalState(aCellOrdinal, 3) = aPrevLocalState(aCellOrdinal, 3) + tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 1);
     aLocalState(aCellOrdinal, 4) = aPrevLocalState(aCellOrdinal, 4) + 2.0 * tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 2);
+    aLocalState(aCellOrdinal, 5) = aPrevLocalState(aCellOrdinal, 5) + tMultiplier1 * aYieldSurfaceNormal(aCellOrdinal, 3);
 
     Plato::Scalar tMultiplier2 = aLocalState(aCellOrdinal, 1) * mSqrt2Over3 * aHardeningModulusKinematic;
-    // Backstress Tensor
-    aLocalState(aCellOrdinal, 5) = aPrevLocalState(aCellOrdinal, 5) + tMultiplier2 * aYieldSurfaceNormal(aCellOrdinal, 0);
-    aLocalState(aCellOrdinal, 6) = aPrevLocalState(aCellOrdinal, 6) + tMultiplier2 * aYieldSurfaceNormal(aCellOrdinal, 1);
-    aLocalState(aCellOrdinal, 7) = aPrevLocalState(aCellOrdinal, 7) + tMultiplier2 * aYieldSurfaceNormal(aCellOrdinal, 2);
+    // Backstress Tensor = {B_11, B_22, B_12, B_33}
+    aLocalState(aCellOrdinal, 6) = aPrevLocalState(aCellOrdinal, 6) + tMultiplier2 * aYieldSurfaceNormal(aCellOrdinal, 0);
+    aLocalState(aCellOrdinal, 7) = aPrevLocalState(aCellOrdinal, 7) + tMultiplier2 * aYieldSurfaceNormal(aCellOrdinal, 1);
+    aLocalState(aCellOrdinal, 8) = aPrevLocalState(aCellOrdinal, 8) + tMultiplier2 * aYieldSurfaceNormal(aCellOrdinal, 2);
+    aLocalState(aCellOrdinal, 9) = aPrevLocalState(aCellOrdinal, 9) + tMultiplier2 * aYieldSurfaceNormal(aCellOrdinal, 3);
   }
 
   /******************************************************************************//**
@@ -276,11 +283,13 @@ class J2PlasticityUtilities
     aLocalState(aCellOrdinal, 2) = aPrevLocalState(aCellOrdinal, 2);
     aLocalState(aCellOrdinal, 3) = aPrevLocalState(aCellOrdinal, 3);
     aLocalState(aCellOrdinal, 4) = aPrevLocalState(aCellOrdinal, 4);
+    aLocalState(aCellOrdinal, 5) = aPrevLocalState(aCellOrdinal, 5);
 
     // Backstress Tensor
-    aLocalState(aCellOrdinal, 5) = aPrevLocalState(aCellOrdinal, 5);
     aLocalState(aCellOrdinal, 6) = aPrevLocalState(aCellOrdinal, 6);
     aLocalState(aCellOrdinal, 7) = aPrevLocalState(aCellOrdinal, 7);
+    aLocalState(aCellOrdinal, 8) = aPrevLocalState(aCellOrdinal, 8);
+    aLocalState(aCellOrdinal, 9) = aPrevLocalState(aCellOrdinal, 9);
   }
 
   /******************************************************************************//**
@@ -315,7 +324,13 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * \brief Compute the yield surface normal and the norm of the deviatoric stress minus the backstress for 2D
+   * \brief Compute the yield surface normal and the norm of the deviatoric stress
+   * minus the backstress for 2D (Plane Strain)
+   *
+   * Deviatoric stress \f$ \bf{s} \f$
+   * Relative stress (\f$ \eta \f$)   = \f$ \bf{s} - \beta \f$
+   * Yield surface normal (\f$ N \f$) = \f$ \frac{\eta}{\Vert \eta \Vert} \f$
+   *
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename StressT>
@@ -327,20 +342,23 @@ class J2PlasticityUtilities
               const Plato::ScalarMultiVectorT< StressT >         & aYieldSurfaceNormal,
               const Plato::ScalarVectorT< StressT >              & aDevStressMinusBackstressNorm) const
   {
-    // Subtract the backstress from the deviatoric stress
-    aYieldSurfaceNormal(aCellOrdinal, 0) = aDeviatoricStress(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 5);
-    aYieldSurfaceNormal(aCellOrdinal, 1) = aDeviatoricStress(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 6);
-    aYieldSurfaceNormal(aCellOrdinal, 2) = aDeviatoricStress(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 7);
+    // Subtract the backstress from the deviatoric stress, i.e. compute relative stress
+    aYieldSurfaceNormal(aCellOrdinal, 0) = aDeviatoricStress(aCellOrdinal, 0) - aLocalState(aCellOrdinal, 6); // sigma_11
+    aYieldSurfaceNormal(aCellOrdinal, 1) = aDeviatoricStress(aCellOrdinal, 1) - aLocalState(aCellOrdinal, 7); // sigma_22
+    aYieldSurfaceNormal(aCellOrdinal, 2) = aDeviatoricStress(aCellOrdinal, 2) - aLocalState(aCellOrdinal, 8); // sigma_12
+    aYieldSurfaceNormal(aCellOrdinal, 3) = aDeviatoricStress(aCellOrdinal, 3) - aLocalState(aCellOrdinal, 9); // sigma_33
 
     // Compute the norm || stress_deviator - backstress ||
     aDevStressMinusBackstressNorm(aCellOrdinal) = sqrt(pow(aYieldSurfaceNormal(aCellOrdinal, 0), 2) +
                                                        pow(aYieldSurfaceNormal(aCellOrdinal, 1), 2) +
+                                                       pow(aYieldSurfaceNormal(aCellOrdinal, 3), 2) +
                                                  2.0 * pow(aYieldSurfaceNormal(aCellOrdinal, 2), 2));
 
     // Normalize the yield surface normal
     aYieldSurfaceNormal(aCellOrdinal, 0) /= aDevStressMinusBackstressNorm(aCellOrdinal);
     aYieldSurfaceNormal(aCellOrdinal, 1) /= aDevStressMinusBackstressNorm(aCellOrdinal);
     aYieldSurfaceNormal(aCellOrdinal, 2) /= aDevStressMinusBackstressNorm(aCellOrdinal);
+    aYieldSurfaceNormal(aCellOrdinal, 3) /= aDevStressMinusBackstressNorm(aCellOrdinal);
   }
 
   /******************************************************************************//**
@@ -429,24 +447,24 @@ class J2PlasticityUtilities
                                                 const Plato::ScalarMultiVectorT<StressT> & aCauchyStress) const
   {
       // compute hydrostatic strain
-      ElasticStrainT tTraceOver3 = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1) )
-                                      / static_cast<Plato::Scalar>(3.0);
+      ElasticStrainT tTraceOver3 = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
+              + aElasticStrain(aCellOrdinal, 3) ) / static_cast<Plato::Scalar>(3.0);
 
       // compute normal stress components
       aCauchyStress(aCellOrdinal, 0) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
               * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3); // sigma_11
       aCauchyStress(aCellOrdinal, 1) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
               * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3); // sigma_22
-      aCauchyStress(aCellOrdinal, 2) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
-              * (static_cast<Plato::Scalar>(-1.0) * tTraceOver3); // sigma_33, epsilon_33 = 0 in plane strain
+      aCauchyStress(aCellOrdinal, 3) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+              * (aElasticStrain(aCellOrdinal, 3) * tTraceOver3); // sigma_33, out-of-plane stress
 
       // add hydrostatic stress to normal components
       aCauchyStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTraceOver3;
       aCauchyStress(aCellOrdinal, 1) += aPenalizedBulkModulus * tTraceOver3;
-      aCauchyStress(aCellOrdinal, 2) += aPenalizedBulkModulus * tTraceOver3;
+      aCauchyStress(aCellOrdinal, 3) += aPenalizedBulkModulus * tTraceOver3;
 
       // compute shear components
-      aCauchyStress(aCellOrdinal, 3) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 2);
+      aCauchyStress(aCellOrdinal, 2) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 2);
   }
 
   /******************************************************************************//**
@@ -534,7 +552,7 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * \brief Compute the deviatoric stress for 2D
+   * \brief Compute the deviatoric stress for 2D - plane strain
   **********************************************************************************/
   template<>
   template<typename ElasticStrainT, typename ControlT, typename StressT>
@@ -545,13 +563,23 @@ class J2PlasticityUtilities
               const ControlT                                     & aPenalizedShearModulus,
               const Plato::ScalarMultiVectorT< StressT >         & aDeviatoricStress) const
   {
-    ElasticStrainT tTraceOver3 = (aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1))
-            / static_cast<Plato::Scalar>(3.0);
-    aDeviatoricStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) -
-                                                                           tTraceOver3);
-    aDeviatoricStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 1) -
-                                                                           tTraceOver3);
+    ElasticStrainT tTraceOver3 = (aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
+            + aElasticStrain(aCellOrdinal, 3)) / static_cast<Plato::Scalar>(3.0);
+
+    // sigma_11
+    aDeviatoricStress(aCellOrdinal, 0) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+                                          * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3);
+
+    // sigma_22
+    aDeviatoricStress(aCellOrdinal, 1) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+                                          * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3);
+
+    // sigma_12
     aDeviatoricStress(aCellOrdinal, 2) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 2);
+
+    // sigma_33 - out-of-plane stress
+    aDeviatoricStress(aCellOrdinal, 3) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+                                          * (aElasticStrain(aCellOrdinal, 3) - tTraceOver3);
   }
 
   /******************************************************************************//**
@@ -584,7 +612,8 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
   
   /******************************************************************************//**
-   * \brief Fill the local residual vector with the plastic strain residual equation for plastic step in 2D
+   * \brief Fill the local residual vector with the plastic strain residual equation
+   *   for plastic step in 2D (Plane Strain)
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename PrevLocalStateT, typename YieldSurfNormalT, typename ResultT>
@@ -596,12 +625,21 @@ class J2PlasticityUtilities
               const Plato::ScalarMultiVectorT< YieldSurfNormalT > & aYieldSurfaceNormal,
               const Plato::ScalarMultiVectorT< ResultT >          & aResult ) const
   {
-    aResult(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 2) - aPrevLocalState(aCellOrdinal, 2)
+      // epsilon^{p}_{11}
+      aResult(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 2) - aPrevLocalState(aCellOrdinal, 2)
                              - mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 0);
-    aResult(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 3) - aPrevLocalState(aCellOrdinal, 3)
+
+      // epsilon^{p}_{22}
+      aResult(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 3) - aPrevLocalState(aCellOrdinal, 3)
                              - mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 1);
-    aResult(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4) - aPrevLocalState(aCellOrdinal, 4)
+
+      // epsilon^{p}_{12}
+      aResult(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4) - aPrevLocalState(aCellOrdinal, 4)
                              - mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 2);
+
+      // epsilon^{p}_{33}
+      aResult(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5) - aPrevLocalState(aCellOrdinal, 5)
+                             - mSqrt3Over2 * aLocalState(aCellOrdinal, 1) * aYieldSurfaceNormal(aCellOrdinal, 3);
   }
 
   /******************************************************************************//**
@@ -649,15 +687,25 @@ class J2PlasticityUtilities
               const Plato::ScalarMultiVectorT< YieldSurfNormalT > & aYieldSurfaceNormal,
               const Plato::ScalarMultiVectorT< ResultT >          & aResult ) const
   {
-    aResult(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5) - aPrevLocalState(aCellOrdinal, 5)
+      // backstress_{11}
+      aResult(aCellOrdinal, 6) = aLocalState(aCellOrdinal, 6) - aPrevLocalState(aCellOrdinal, 6)
                                - mSqrt2Over3 * aLocalState(aCellOrdinal, 1) 
                                * aHardeningModulusKinematic * aYieldSurfaceNormal(aCellOrdinal, 0);
-    aResult(aCellOrdinal, 6) = aLocalState(aCellOrdinal, 6) - aPrevLocalState(aCellOrdinal, 6)
+
+      // backstress_{22}
+      aResult(aCellOrdinal, 7) = aLocalState(aCellOrdinal, 7) - aPrevLocalState(aCellOrdinal, 7)
                                - mSqrt2Over3 * aLocalState(aCellOrdinal, 1) 
                                * aHardeningModulusKinematic * aYieldSurfaceNormal(aCellOrdinal, 1);
-    aResult(aCellOrdinal, 7) = aLocalState(aCellOrdinal, 7) - aPrevLocalState(aCellOrdinal, 7)
+
+      // backstress_{12}
+      aResult(aCellOrdinal, 8) = aLocalState(aCellOrdinal, 8) - aPrevLocalState(aCellOrdinal, 8)
                                - mSqrt2Over3 * aLocalState(aCellOrdinal, 1) 
                                * aHardeningModulusKinematic * aYieldSurfaceNormal(aCellOrdinal, 2);
+
+      // backstress_{33}
+      aResult(aCellOrdinal, 9) = aLocalState(aCellOrdinal, 9) - aPrevLocalState(aCellOrdinal, 9)
+                               - mSqrt2Over3 * aLocalState(aCellOrdinal, 1)
+                               * aHardeningModulusKinematic * aYieldSurfaceNormal(aCellOrdinal, 3);
   }
 
   /******************************************************************************//**
@@ -699,7 +747,8 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * \brief Fill the local residual vector with the plastic strain residual equation for elastic step in 2D
+   * \brief Fill the local residual vector with the plastic strain residual equation
+   * for elastic step in 2D (Plane Strain)
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
@@ -710,9 +759,10 @@ class J2PlasticityUtilities
               const Plato::ScalarMultiVectorT< PrevLocalStateT >    & aPrevLocalState,
               const Plato::ScalarMultiVectorT< ResultT >            & aResult ) const
   {
-    aResult(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 2) - aPrevLocalState(aCellOrdinal, 2);
-    aResult(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 3) - aPrevLocalState(aCellOrdinal, 3);
-    aResult(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4) - aPrevLocalState(aCellOrdinal, 4);
+    aResult(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 2) - aPrevLocalState(aCellOrdinal, 2); // epsilon_11
+    aResult(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 3) - aPrevLocalState(aCellOrdinal, 3); // epsilon_22
+    aResult(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4) - aPrevLocalState(aCellOrdinal, 4); // epsilon_12
+    aResult(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5) - aPrevLocalState(aCellOrdinal, 5); // epsilon_33
   }
 
   /******************************************************************************//**
@@ -739,7 +789,8 @@ class J2PlasticityUtilities
   /*******************************************************************************************/
 
   /******************************************************************************//**
-   * \brief Fill the local residual vector with the backstress residual equation for elastic step in 2D
+   * \brief Fill the local residual vector with the backstress residual equation for
+   *   elastic step in 2D (Plane Strain)
   **********************************************************************************/
   template<>
   template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
@@ -750,9 +801,10 @@ class J2PlasticityUtilities
               const Plato::ScalarMultiVectorT< PrevLocalStateT >  & aPrevLocalState,
               const Plato::ScalarMultiVectorT< ResultT >          & aResult ) const
   {
-    aResult(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5) - aPrevLocalState(aCellOrdinal, 5);
-    aResult(aCellOrdinal, 6) = aLocalState(aCellOrdinal, 6) - aPrevLocalState(aCellOrdinal, 6);
-    aResult(aCellOrdinal, 7) = aLocalState(aCellOrdinal, 7) - aPrevLocalState(aCellOrdinal, 7);
+    aResult(aCellOrdinal, 6) = aLocalState(aCellOrdinal, 6) - aPrevLocalState(aCellOrdinal, 6); // sigma_11
+    aResult(aCellOrdinal, 7) = aLocalState(aCellOrdinal, 7) - aPrevLocalState(aCellOrdinal, 7); // sigma_22
+    aResult(aCellOrdinal, 8) = aLocalState(aCellOrdinal, 8) - aPrevLocalState(aCellOrdinal, 8); // sigma_12
+    aResult(aCellOrdinal, 9) = aLocalState(aCellOrdinal, 9) - aPrevLocalState(aCellOrdinal, 9); // sigma_33
   }
 
   /******************************************************************************//**

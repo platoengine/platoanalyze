@@ -26,7 +26,7 @@ public:
     static constexpr auto mPressureDofOffset = mNumSpatialDims;                 /*!< number of pressure degrees of freedom offset */
     static constexpr auto mNumDofsPerCell = mNumDofsPerNode * mNumNodesPerCell; /*!< number of degrees of freedom per cell */
     static constexpr Plato::OrdinalType mNumLocalDofsPerCell =
-            (SpaceDim == 3) ? 14 : ((SpaceDim == 2) ? 8 : (((SpaceDim == 1) ? 4 : 0))); /*!< number of local degrees of freedom per cell for J2-plasticity*/
+            (SpaceDim == 3) ? 14 : ((SpaceDim == 2) ? 10 : (((SpaceDim == 1) ? 4 : 0))); /*!< number of local degrees of freedom per cell for J2-plasticity*/
 
     // This physics can be used with Variational Multi-scale (VMS) functionality
     // in PA. The following defines the nodal state attributes required by VMS.

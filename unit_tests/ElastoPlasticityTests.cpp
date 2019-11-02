@@ -1891,7 +1891,7 @@ public:
             // compute plastic strain misfit
             tJ2PlasticityUtils.computePlasticStrainMisfit(aCellOrdinal, aCurrentLocalState, aPreviousLocalState, tPlasticStrainMisfit);
 
-            // compute current elastic strain // TODO: fix 2D calculation
+            // compute current elastic strain
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
                                                         tBasisFunctions, tConfigurationGradient, tCurrentElasticStrain);
 
@@ -1964,7 +1964,7 @@ public:
             // compute plastic strain misfit
             tJ2PlasticityUtils.computePlasticStrainMisfit(aCellOrdinal, aFutureLocalState, aPreviousLocalState, tPlasticStrainMisfit);
 
-            // compute current elastic strain // TODO: fix 2D calculation
+            // compute current elastic strain
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
                                                         tBasisFunctions, tConfigurationGradient, tCurrentElasticStrain);
 

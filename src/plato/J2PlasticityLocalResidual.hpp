@@ -22,15 +22,16 @@ namespace Plato
 /**************************************************************************//**
 * \brief J2 Plasticity Local Residual class
 ******************************************************************************/
-template<typename EvaluationType, typename PhysicsType>
+template<typename EvaluationType, typename SimplexPhysicsType>
 class J2PlasticityLocalResidual : 
   public Plato::AbstractLocalVectorFunctionInc<EvaluationType>
 {
   private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
 
-    static constexpr Plato::OrdinalType mNumNodesPerCell = PhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
-    static constexpr Plato::OrdinalType mNumVoigtTerms   = PhysicsType::mNumVoigtTerms;   /*!< number of voigt terms */
+    static constexpr Plato::OrdinalType mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
+    static constexpr Plato::OrdinalType mNumStressTerms  = SimplexPhysicsType::mNumStressTerms;  /*!< number of stress/strain terms */
+    static constexpr Plato::OrdinalType mNumLocalDofsPerCell = SimplexPhysicsType::mNumLocalDofsPerCell;  /*!< number of local degrees of freedom */
 
     using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mMesh;    /*!< mesh database */
     using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mDataMap; /*!< PLATO Engine output database */
@@ -70,7 +71,7 @@ class J2PlasticityLocalResidual :
     {
       if (mSpaceDim == 3)
       {
-        std::vector<std::string> tDofNames(14);
+        std::vector<std::string> tDofNames(mNumLocalDofsPerCell);
         tDofNames[0]  = "Accumulated Plastic Strain";
         tDofNames[1]  = "Plastic Multiplier Increment";
         tDofNames[2]  = "Plastic Strain Tensor XX";
@@ -89,15 +90,17 @@ class J2PlasticityLocalResidual :
       }
       else if (mSpaceDim == 2)
       {
-        std::vector<std::string> tDofNames(8);
+        std::vector<std::string> tDofNames(mNumLocalDofsPerCell);
         tDofNames[0] = "Accumulated Plastic Strain";
         tDofNames[1] = "Plastic Multiplier Increment";
         tDofNames[2] = "Plastic Strain Tensor XX";
         tDofNames[3] = "Plastic Strain Tensor YY";
         tDofNames[4] = "Plastic Strain Tensor XY";
-        tDofNames[5] = "Backstress Tensor XX";
-        tDofNames[6] = "Backstress Tensor YY";
-        tDofNames[7] = "Backstress Tensor XY";
+        tDofNames[5] = "Plastic Strain Tensor ZZ";
+        tDofNames[6] = "Backstress Tensor XX";
+        tDofNames[7] = "Backstress Tensor YY";
+        tDofNames[8] = "Backstress Tensor XY";
+        tDofNames[9] = "Backstress Tensor ZZ";
         return tDofNames;
       }
       else
@@ -186,7 +189,7 @@ class J2PlasticityLocalResidual :
     * \param [in] aDataMap problem-specific data map
     * \param [in] aProblemParams Teuchos parameter list
     ******************************************************************************/
-    J2PlasticityLocalResidual( Omega_h::Mesh& aMesh,
+    J2PlasticityLocalResidual(Omega_h::Mesh& aMesh,
                               Omega_h::MeshSets& aMeshSets,
                               Plato::DataMap& aDataMap,
                               Teuchos::ParameterList& aProblemParams) :
@@ -223,9 +226,9 @@ class J2PlasticityLocalResidual :
     {
       auto tNumCells = mMesh.nelems();
 
-      using ElasticStrainT = typename Plato::fad_type_t<PhysicsType, LocalStateT, ConfigT, GlobalStateT>;
+      using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
 
-      using StressT = typename Plato::fad_type_t<PhysicsType, ControlT, LocalStateT, ConfigT, GlobalStateT>;
+      using StressT = typename Plato::fad_type_t<SimplexPhysicsType, ControlT, LocalStateT, ConfigT, GlobalStateT>;
 
       // Functors
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
@@ -234,15 +237,15 @@ class J2PlasticityLocalResidual :
       Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
-      Plato::ThermoPlasticityUtilities<mSpaceDim, PhysicsType>
+      Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType>
             tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
 
       // Many views
       Plato::ScalarVectorT<ConfigT>             tCellVolume("cell volume unused", tNumCells);
       Plato::ScalarVectorT<StressT>             tDevStressMinusBackstressNorm("norm(deviatoric_stress - backstress)",tNumCells);
-      Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells,mNumVoigtTerms);
-      Plato::ScalarMultiVectorT<StressT>        tDeviatoricStress("deviatoric stress", tNumCells,mNumVoigtTerms);
-      Plato::ScalarMultiVectorT<StressT>        tYieldSurfaceNormal("yield surface normal",tNumCells,mNumVoigtTerms);
+      Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells,mNumStressTerms);
+      Plato::ScalarMultiVectorT<StressT>        tDeviatoricStress("deviatoric stress", tNumCells,mNumStressTerms);
+      Plato::ScalarMultiVectorT<StressT>        tYieldSurfaceNormal("yield surface normal",tNumCells,mNumStressTerms);
       Plato::ScalarArray3DT<ConfigT>            tGradient("gradient", tNumCells,mNumNodesPerCell,mSpaceDim);
 
       // Transfer elasticity parameters to device
@@ -353,15 +356,15 @@ class J2PlasticityLocalResidual :
       Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
-      Plato::ThermoPlasticityUtilities<mSpaceDim, PhysicsType>
+      Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType>
             tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
 
       // Many views
       Plato::ScalarVector      tCellVolume("cell volume unused",tNumCells);
-      Plato::ScalarMultiVector tElasticStrain("elastic strain",tNumCells,mNumVoigtTerms);
+      Plato::ScalarMultiVector tElasticStrain("elastic strain",tNumCells,mNumStressTerms);
       Plato::ScalarArray3D     tGradient("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
-      Plato::ScalarMultiVector tDeviatoricStress("deviatoric stress",tNumCells,mNumVoigtTerms);
-      Plato::ScalarMultiVector tYieldSurfaceNormal("yield surface normal",tNumCells,mNumVoigtTerms);
+      Plato::ScalarMultiVector tDeviatoricStress("deviatoric stress",tNumCells,mNumStressTerms);
+      Plato::ScalarMultiVector tYieldSurfaceNormal("yield surface normal",tNumCells,mNumStressTerms);
       Plato::ScalarVector      tDevStressMinusBackstressNorm("||(deviatoric stress - backstress)||",tNumCells);
 
       // Transfer elasticity parameters to device
