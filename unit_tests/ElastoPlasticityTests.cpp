@@ -4638,7 +4638,7 @@ private:
         else
         {
             auto tLength = aStates.extent(1);
-            aOutput = Plato::ScalarVector("State \ t=i+1", tLength);
+            aOutput = Plato::ScalarVector("State t=i+1", tLength);
             Plato::fill(0.0, aOutput);
         }
     }
@@ -4661,7 +4661,7 @@ private:
         else
         {
             auto tLength = aStates.extent(1);
-            aOutput = Plato::ScalarVector("Local State \ t=i-1", tLength);
+            aOutput = Plato::ScalarVector("Local State t=i-1", tLength);
             Plato::fill(0.0, aOutput);
         }
     }
