@@ -103,7 +103,15 @@ class J2PlasticityUtilities
                                const Plato::ScalarMultiVectorT< ResultType > & aOutput) const;
 
     /******************************************************************************//**
-     * \brief Compute the Cauchy stress tensor
+     * \brief Compute the Cauchy stress tensor:
+     *
+     * \f$ \sigma_{ij} = \mu(\epsilon_{ij} + \epsilon_{ji}) + \lambda\delta{ij}\epsilon_{kk} \f$,
+     * where
+     * \f$ \lambda = K-\frac{2\mu}{3} \f$
+     *
+     * Here, \f$ \epsilon_{ij} \f$ is the strain tensor, \f$ \mu \f$ is the shear modulus,
+     * \f$ \epsilon_{kk} \f$ is the trace of the strain tensor, and K is the bulk modulus.
+     *
      * \param [in]  aCellOrdinal cell/element index
      * \param [in]  aElasticStrain elastic strain tensor
      * \param [in]  aPenalizedBulkModulus  penalized elastic bulk modulus
@@ -416,19 +424,22 @@ class J2PlasticityUtilities
                                                 const Plato::ScalarMultiVectorT<StressT> & aCauchyStress) const
   {
       // compute hydrostatic strain
-      ElasticStrainT tTraceOver3 = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
-                                    + aElasticStrain(aCellOrdinal, 2) ) / static_cast<Plato::Scalar>(3.0);
+      ElasticStrainT tTrace = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
+                               + aElasticStrain(aCellOrdinal, 3) );
+      ElasticStrainT tTraceOver3 = tTrace / static_cast<Plato::Scalar>(3.0);
 
       // compute normal stress components
       aCauchyStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3);
       aCauchyStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3);
       aCauchyStress(aCellOrdinal, 2) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 2) - tTraceOver3);
       // add hydrostatic stress to normal components
-      aCauchyStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTraceOver3;
-      aCauchyStress(aCellOrdinal, 1) += aPenalizedBulkModulus * tTraceOver3;
-      aCauchyStress(aCellOrdinal, 2) += aPenalizedBulkModulus * tTraceOver3;
+      Plato::Scalar tLambda = aPenalizedBulkModulus -
+              (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus / static_cast<Plato::Scalar>(3.0));
+      aCauchyStress(aCellOrdinal, 0) += tLambda * tTrace;
+      aCauchyStress(aCellOrdinal, 1) += tLambda * tTrace;
+      aCauchyStress(aCellOrdinal, 2) += tLambda * tTrace;
 
-      // compute shear components
+      // compute shear components - elastic strain already has 2 multiplier, see equation in function declaration
       aCauchyStress(aCellOrdinal, 3) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 3);
       aCauchyStress(aCellOrdinal, 4) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 4);
       aCauchyStress(aCellOrdinal, 5) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 5);
@@ -446,25 +457,23 @@ class J2PlasticityUtilities
                                                 const Plato::ScalarMultiVectorT<ElasticStrainT> & aElasticStrain,
                                                 const Plato::ScalarMultiVectorT<StressT> & aCauchyStress) const
   {
-      // compute hydrostatic strain
-      ElasticStrainT tTraceOver3 = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
-              + aElasticStrain(aCellOrdinal, 3) ) / static_cast<Plato::Scalar>(3.0);
+      ElasticStrainT tTrace = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
+                               + aElasticStrain(aCellOrdinal, 3) );
+      ElasticStrainT tTraceOver3 = tTrace / static_cast<Plato::Scalar>(3.0);
 
       // compute normal stress components
-      aCauchyStress(aCellOrdinal, 0) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
-              * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3); // sigma_11
-      aCauchyStress(aCellOrdinal, 1) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
-              * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3); // sigma_22
-      aCauchyStress(aCellOrdinal, 3) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
-              * (aElasticStrain(aCellOrdinal, 3) * tTraceOver3); // sigma_33, out-of-plane stress
-
+      aCauchyStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3);
+      aCauchyStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3);
+      aCauchyStress(aCellOrdinal, 3) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 3) - tTraceOver3);
       // add hydrostatic stress to normal components
-      aCauchyStress(aCellOrdinal, 0) += aPenalizedBulkModulus * tTraceOver3;
-      aCauchyStress(aCellOrdinal, 1) += aPenalizedBulkModulus * tTraceOver3;
-      aCauchyStress(aCellOrdinal, 3) += aPenalizedBulkModulus * tTraceOver3;
+      Plato::Scalar tLambda = aPenalizedBulkModulus -
+              (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus / static_cast<Plato::Scalar>(3.0));
+      aCauchyStress(aCellOrdinal, 0) += tLambda * tTrace; // sigma_11
+      aCauchyStress(aCellOrdinal, 1) += tLambda * tTrace; // sigma_22
+      aCauchyStress(aCellOrdinal, 3) += tLambda * tTrace; // sigma_33
 
-      // compute shear components
-      aCauchyStress(aCellOrdinal, 2) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 2);
+      // compute shear components - elastic strain already has 2 multiplier, see equation in function declaration
+      aCauchyStress(aCellOrdinal, 2) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 2); // sigma_12
   }
 
   /******************************************************************************//**

@@ -43,15 +43,15 @@ public:
 
     /******************************************************************************//**
      * @brief Return 2D view of state variables
-     * @return aState 2D view of state variables
+     * @return aGlobalState 2D view of state variables
     **********************************************************************************/
-    virtual Plato::ScalarMultiVector getState()=0;
+    virtual Plato::ScalarMultiVector getGlobalState()=0;
 
     /******************************************************************************//**
      * @brief Set state variables
-     * @param [in] aState 2D view of state variables
+     * @param [in] aGlobalState 2D view of state variables
     **********************************************************************************/
-    virtual void setState(const Plato::ScalarMultiVector & aState)=0;
+    virtual void setGlobalState(const Plato::ScalarMultiVector & aGlobalState)=0;
 
     /******************************************************************************//**
      * @brief Apply Dirichlet constraints
@@ -70,11 +70,11 @@ public:
 
     /******************************************************************************//**
      * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aState 2D container of state variables
+     * @param [in] aGlobalState 2D container of state variables
      * @param [in] aControl 1D container of control variables
     **********************************************************************************/
     virtual void
-    updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)=0;
+    updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)=0;
 
     /******************************************************************************//**
      * @brief Solve system of equations
@@ -95,11 +95,11 @@ public:
     /******************************************************************************//**
      * @brief Evaluate constraint function
      * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
+     * @param [in] aGlobalState 2D view of state variables
      * @return constraint function value
     **********************************************************************************/
     virtual Plato::Scalar
-    constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)=0;
+    constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)=0;
 
     /******************************************************************************//**
      * @brief Evaluate constraint partial derivative wrt control variables
@@ -112,11 +112,11 @@ public:
     /******************************************************************************//**
      * @brief Evaluate constraint partial derivative wrt control variables
      * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
+     * @param [in] aGlobalState 2D view of state variables
      * @return 1D view - constraint partial derivative wrt control variables
     **********************************************************************************/
     virtual Plato::ScalarVector
-    constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)=0;
+    constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)=0;
 
     /******************************************************************************//**
      * @brief Evaluate constraint partial derivative wrt configuration variables
@@ -129,11 +129,11 @@ public:
     /******************************************************************************//**
      * @brief Evaluate constraint partial derivative wrt configuration variables
      * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
+     * @param [in] aGlobalState 2D view of state variables
      * @return 1D view - constraint partial derivative wrt configuration variables
     **********************************************************************************/
     virtual Plato::ScalarVector
-    constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)=0;
+    constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)=0;
 
     /******************************************************************************//**
      * @brief Evaluate objective function
@@ -146,11 +146,11 @@ public:
     /******************************************************************************//**
      * @brief Evaluate objective function
      * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
+     * @param [in] aGlobalState 2D view of state variables
      * @return objective function value
     **********************************************************************************/
     virtual Plato::Scalar
-    objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)=0;
+    objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)=0;
 
     /******************************************************************************//**
      * @brief Evaluate objective partial derivative wrt control variables
@@ -163,11 +163,11 @@ public:
     /******************************************************************************//**
      * @brief Evaluate objective gradient wrt control variables
      * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
+     * @param [in] aGlobalState 2D view of state variables
      * @return 1D view - objective gradient wrt control variables
     **********************************************************************************/
     virtual Plato::ScalarVector
-    objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)=0;
+    objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)=0;
 
     /******************************************************************************//**
      * @brief Evaluate objective partial derivative wrt configuration variables
@@ -180,11 +180,11 @@ public:
     /******************************************************************************//**
      * @brief Evaluate objective gradient wrt configuration variables
      * @param [in] aControl 1D view of control variables
-     * @param [in] aState 2D view of state variables
+     * @param [in] aGlobalState 2D view of state variables
      * @return 1D view - objective gradient wrt configuration variables
     **********************************************************************************/
     virtual Plato::ScalarVector
-    objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)=0;
+    objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)=0;
 
     /******************************************************************************//**
      * @brief Return PLATO Analyze data map that enables import/export rights to PLATO Engine

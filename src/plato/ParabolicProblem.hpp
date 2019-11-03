@@ -53,7 +53,7 @@ private:
     Plato::ScalarMultiVector mAdjoints;
     Plato::ScalarVector mResidual;
 
-    Plato::ScalarMultiVector mStates;
+    Plato::ScalarMultiVector mGlobalState;
 
     Teuchos::RCP<Plato::CrsMatrixType> mJacobian;
     Teuchos::RCP<Plato::CrsMatrixType> mJacobianP;
@@ -74,7 +74,7 @@ public:
             mConstraint(nullptr),
             mObjective(nullptr),
             mResidual("MyResidual", mEqualityConstraint.size()),
-            mStates("States", mNumSteps, mEqualityConstraint.size()),
+            mGlobalState("States", mNumSteps, mEqualityConstraint.size()),
             mJacobian(Teuchos::null),
             mJacobianP(Teuchos::null),
             mComputedFields(Teuchos::null),
@@ -94,19 +94,19 @@ public:
     }
 
     /******************************************************************************/
-    void setState(const Plato::ScalarMultiVector & aStates)
+    void setGlobalState(const Plato::ScalarMultiVector & aStates)
     /******************************************************************************/
     {
-        assert(aStates.extent(0) == mStates.extent(0));
-        assert(aStates.extent(1) == mStates.extent(1));
-        Kokkos::deep_copy(mStates, aStates);
+        assert(aStates.extent(0) == mGlobalState.extent(0));
+        assert(aStates.extent(1) == mGlobalState.extent(1));
+        Kokkos::deep_copy(mGlobalState, aStates);
     }
 
     /******************************************************************************/
-    Plato::ScalarMultiVector getState()
+    Plato::ScalarMultiVector getGlobalState()
     /******************************************************************************/
     {
-        return mStates;
+        return mGlobalState;
     }
 
     /******************************************************************************/
@@ -134,10 +134,10 @@ public:
 
     /******************************************************************************//**
      * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aState 2D container of state variables
+     * @param [in] aGlobalState 2D container of state variables
      * @param [in] aControl 1D container of control variables
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     { return; }
 
     /******************************************************************************/
@@ -145,8 +145,8 @@ public:
     /******************************************************************************/
     {
         for(Plato::OrdinalType tStepIndex = 1; tStepIndex < mNumSteps; tStepIndex++) {
-          Plato::ScalarVector tState = Kokkos::subview(mStates, tStepIndex, Kokkos::ALL());
-          Plato::ScalarVector tPrevState = Kokkos::subview(mStates, tStepIndex-1, Kokkos::ALL());
+          Plato::ScalarVector tState = Kokkos::subview(mGlobalState, tStepIndex, Kokkos::ALL());
+          Plato::ScalarVector tPrevState = Kokkos::subview(mGlobalState, tStepIndex-1, Kokkos::ALL());
           Plato::fill(static_cast<Plato::Scalar>(0.0), tState);
 
           mResidual = mEqualityConstraint.value(tState, tPrevState, aControl, mTimeStep);
@@ -166,15 +166,15 @@ public:
 #endif
 
         }
-        return mStates;
+        return mGlobalState;
     }
 
     /******************************************************************************/
     Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
     /******************************************************************************/
     {
-        assert(aStates.extent(0) == mStates.extent(0));
-        assert(aStates.extent(1) == mStates.extent(1));
+        assert(aStates.extent(0) == mGlobalState.extent(0));
+        assert(aStates.extent(1) == mGlobalState.extent(1));
 
         if(mObjective == nullptr)
         {
@@ -193,8 +193,8 @@ public:
     Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
     /******************************************************************************/
     {
-        assert(aStates.extent(0) == mStates.extent(0));
-        assert(aStates.extent(1) == mStates.extent(1));
+        assert(aStates.extent(0) == mGlobalState.extent(0));
+        assert(aStates.extent(1) == mGlobalState.extent(1));
 
         if(mConstraint == nullptr)
         {
@@ -207,7 +207,7 @@ public:
         }
 
         auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mStates, tLastStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
         return mConstraint->value(tState, aControl);
     }
 
@@ -244,7 +244,7 @@ public:
         }
 
         auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mStates, tLastStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
         return mConstraint->value(tState, aControl);
     }
 
@@ -252,8 +252,8 @@ public:
     Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
     /******************************************************************************/
     {
-        assert(aStates.extent(0) == mStates.extent(0));
-        assert(aStates.extent(1) == mStates.extent(1));
+        assert(aStates.extent(0) == mGlobalState.extent(0));
+        assert(aStates.extent(1) == mGlobalState.extent(1));
 
         if(mObjective == nullptr)
         {
@@ -323,8 +323,8 @@ public:
     Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
     /******************************************************************************/
     {
-        assert(aStates.extent(0) == mStates.extent(0));
-        assert(aStates.extent(1) == mStates.extent(1));
+        assert(aStates.extent(0) == mGlobalState.extent(0));
+        assert(aStates.extent(1) == mGlobalState.extent(1));
 
         if(mObjective == nullptr)
         {
@@ -400,7 +400,7 @@ public:
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
         auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mStates, tLastStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
         return mConstraint->gradient_z(tState, aControl);
     }
 
@@ -408,8 +408,8 @@ public:
     Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
     /******************************************************************************/
     {
-        assert(aStates.extent(0) == mStates.extent(0));
-        assert(aStates.extent(1) == mStates.extent(1));
+        assert(aStates.extent(0) == mGlobalState.extent(0));
+        assert(aStates.extent(1) == mGlobalState.extent(1));
 
         if(mConstraint == nullptr)
         {
@@ -438,7 +438,7 @@ public:
                     << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
-        return mObjective->gradient_z(mStates, aControl, mTimeStep);
+        return mObjective->gradient_z(mGlobalState, aControl, mTimeStep);
     }
 
     /******************************************************************************/
@@ -454,7 +454,7 @@ public:
                     << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
-        return mObjective->gradient_x(mStates, aControl, mTimeStep);
+        return mObjective->gradient_x(mGlobalState, aControl, mTimeStep);
     }
 
 
@@ -472,7 +472,7 @@ public:
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
         auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mStates, tLastStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
         return mConstraint->gradient_x(tState, aControl, mTimeStep);
     }
 
@@ -480,8 +480,8 @@ public:
     Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
     /******************************************************************************/
     {
-        assert(aStates.extent(0) == mStates.extent(0));
-        assert(aStates.extent(1) == mStates.extent(1));
+        assert(aStates.extent(0) == mGlobalState.extent(0));
+        assert(aStates.extent(1) == mGlobalState.extent(1));
 
         if(mConstraint == nullptr)
         {
@@ -509,7 +509,7 @@ private:
 
         if(aParamList.isSublist("Initial State"))
         {
-            Plato::ScalarVector tInitialState = Kokkos::subview(mStates, 0, Kokkos::ALL());
+            Plato::ScalarVector tInitialState = Kokkos::subview(mGlobalState, 0, Kokkos::ALL());
             if(mComputedFields == Teuchos::null) {
               throw std::runtime_error("No 'Computed Fields' have been defined");
             }

@@ -112,7 +112,7 @@ createProblem(ProblemDefinition& aDefinition){
   }
 
   mAdjoint         = mProblem->getAdjoint();
-  mState           = mProblem->getState();
+  mGlobalState     = mProblem->getGlobalState();
   mNumSolutionDofs = mProblem->getNumSolutionDofs();
 
   aDefinition.modified = false;
@@ -347,10 +347,10 @@ ComputeObjective(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Probl
 void MPMD_App::ComputeObjective::operator()()
 /******************************************************************************/
 {
-  mMyApp->mState = mMyApp->mProblem->solution(mMyApp->mControl);
+  mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
 
-  mMyApp->mObjectiveValue      = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mState);
-  mMyApp->mObjectiveGradientZ = mMyApp->mProblem->objectiveGradient(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mObjectiveValue      = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mGlobalState);
+  mMyApp->mObjectiveGradientZ = mMyApp->mProblem->objectiveGradient(mMyApp->mControl, mMyApp->mGlobalState);
 }
 
 /******************************************************************************/
@@ -365,10 +365,10 @@ ComputeObjectiveX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
 void MPMD_App::ComputeObjectiveX::operator()()
 /******************************************************************************/
 {
-  mMyApp->mState = mMyApp->mProblem->solution(mMyApp->mControl);
+  mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
 
-  mMyApp->mObjectiveValue      = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mState);
-  mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mObjectiveValue      = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mGlobalState);
+  mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
 }
 
 
@@ -384,8 +384,8 @@ ComputeObjectiveValue(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<
 void MPMD_App::ComputeObjectiveValue::operator()()
 /******************************************************************************/
 {
-  mMyApp->mState = mMyApp->mProblem->solution(mMyApp->mControl);
-  mMyApp->mObjectiveValue = mMyApp->mProblem->objectiveValue(mMyApp->mControl,mMyApp->mState);
+  mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
+  mMyApp->mObjectiveValue = mMyApp->mProblem->objectiveValue(mMyApp->mControl,mMyApp->mGlobalState);
 }
 
 /******************************************************************************/
@@ -401,7 +401,7 @@ ComputeObjectiveGradient(MPMD_App* aMyApp, Plato::InputData& aOpNode,  Teuchos::
 void MPMD_App::ComputeObjectiveGradient::operator()()
 /******************************************************************************/
 {
-  mMyApp->mObjectiveGradientZ = mMyApp->mProblem->objectiveGradient(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mObjectiveGradientZ = mMyApp->mProblem->objectiveGradient(mMyApp->mControl, mMyApp->mGlobalState);
 }
 
 /******************************************************************************/
@@ -416,7 +416,7 @@ ComputeObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
 void MPMD_App::ComputeObjectiveGradientX::operator()()
 /******************************************************************************/
 {
-  mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
 }
 
 /******************************************************************************/
@@ -431,8 +431,8 @@ ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
 void MPMD_App::ComputeConstraint::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintValue      = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
-  mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mConstraintValue      = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
+  mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mGlobalState);
 
   std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
 }
@@ -447,8 +447,8 @@ ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aOpNode,
 void MPMD_App::ComputeConstraintX::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintValue      = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
-  mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mConstraintValue      = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
+  mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalState);
 
   std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
 }
@@ -466,7 +466,7 @@ ComputeConstraintValue(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP
 void MPMD_App::ComputeConstraintValue::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl,mMyApp->mState);
+  mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl,mMyApp->mGlobalState);
 
   std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
 }
@@ -483,7 +483,7 @@ ComputeConstraintGradient(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
 void MPMD_App::ComputeConstraintGradient::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mGlobalState);
 }
 
 /******************************************************************************/
@@ -498,7 +498,7 @@ ComputeConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos:
 void MPMD_App::ComputeConstraintGradientX::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalState);
 }
 
 /******************************************************************************/
@@ -513,7 +513,7 @@ ComputeSolution(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Proble
 void MPMD_App::ComputeSolution::operator()()
 /******************************************************************************/
 {
-  mMyApp->mState = mMyApp->mProblem->solution(mMyApp->mControl);
+  mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
 }
 
 /******************************************************************************/
@@ -546,7 +546,7 @@ UpdateProblem(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemD
 void MPMD_App::UpdateProblem::operator()()
 /******************************************************************************/
 {
-    mMyApp->mProblem->updateProblem(mMyApp->mControl, mMyApp->mState);
+    mMyApp->mProblem->updateProblem(mMyApp->mControl, mMyApp->mGlobalState);
 }
 
 /******************************************************************************/

@@ -815,10 +815,23 @@ Plato::Scalar parse_poissons_ratio(Teuchos::ParameterList & aParamList)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 /***************************************************************************//**
  *
  * \brief Apply the divergence operator to the strain tensor, i.e.
  *   /f$ \div\cdot\epsilon /f$, where /f$ \epsilon /f$ denotes the strain tensor.
+ * Used in Stabilized elasto- and thermo-plasticity problems
  *
  * \tparam SpaceDim spatial dimensions
  *
@@ -898,7 +911,8 @@ StrainDivergence <2>::operator()(const Plato::OrdinalType & aCellOrdinal,
                                  const Plato::ScalarMultiVectorT<StrainType> & aStrain,
                                  const Plato::ScalarVectorT<ResultType> & aOutput) const
 {
-    aOutput(aCellOrdinal) = aStrain(aCellOrdinal, 0) + aStrain(aCellOrdinal, 1);
+    aOutput(aCellOrdinal) = aStrain(aCellOrdinal, 0)  // e^{elastic}_{11}
+                          + aStrain(aCellOrdinal, 1); // e^{elastic}_{22}
 }
 
 /***************************************************************************//**
@@ -1640,6 +1654,8 @@ public:
  * \brief Double dot product for 2nd order tensors, e.g. strain tensor, using
  *   Voigt notation. Specialized for 3-D problems
  *
+ *   tensor = {tensor_11,tensor_22,tensor_33,tensor_23,tensor_13,tensor_23}
+ *
  * \tparam OutType   POD type for output scalar
  * \tparam AViewType POD type for Kokkos::View
  * \tparam BViewType POD type for Kokkos::View
@@ -1661,15 +1677,22 @@ DoubleDotProduct2ndOrderTensor<3>::operator()(const Plato::OrdinalType& aCellOrd
     OutType tOutput = aAlpha * ( aA(aCellOrdinal, 0) * aB(aCellOrdinal, 0)
                                + aA(aCellOrdinal, 1) * aB(aCellOrdinal, 1)
                                + aA(aCellOrdinal, 2) * aB(aCellOrdinal, 2)
-                               + aA(aCellOrdinal, 3) * aB(aCellOrdinal, 3)
-                               + aA(aCellOrdinal, 4) * aB(aCellOrdinal, 4)
-                               + aA(aCellOrdinal, 5) * aB(aCellOrdinal, 5) ) ;
+                               + static_cast<Plato::Scalar>(2) * aA(aCellOrdinal, 3) * aB(aCellOrdinal, 3)
+                               + static_cast<Plato::Scalar>(2) * aA(aCellOrdinal, 4) * aB(aCellOrdinal, 4)
+                               + static_cast<Plato::Scalar>(2) * aA(aCellOrdinal, 5) * aB(aCellOrdinal, 5) ) ;
     return (tOutput);
 }
 
 /***************************************************************************//**
- * \brief Double dot product for 2nd order tensors, e.g. strain tensor, using
- *   Voigt notation. Specialized for 2-D problems
+ * \brief Double dot product for 2nd order tensors, e.g. strain and stress
+ *   tensors.  Recall that a plane strain assumption is used in 2-D problems.
+ *   Hence, a general stress/strain tensor is given by:
+ *
+ *   epsilon = {epsilon_11,epsilon_22,2*epsilon_12,epsilon_33} (Voigt Notation)
+ *
+ *   The out-of-plane tensor value, i.e. epsilon, is placed in the last entry
+ *   for convenience since the Strain functor assumes that the shear component,
+ *   i.e. epsilon_12, is the third entry.
  *
  * \tparam OutType   POD type for output scalar
  * \tparam AViewType POD type for Kokkos::View
@@ -1689,10 +1712,10 @@ DoubleDotProduct2ndOrderTensor<2>::operator()(const Plato::OrdinalType& aCellOrd
                                               const Plato::ScalarMultiVectorT<AViewType> & aA,
                                               const Plato::ScalarMultiVectorT<BViewType> & aB)
 {
-    OutType tOutput = aAlpha * ( aA(aCellOrdinal, 0) * aB(aCellOrdinal, 0)
-                               + aA(aCellOrdinal, 1) * aB(aCellOrdinal, 1)
-                               + aA(aCellOrdinal, 2) * aB(aCellOrdinal, 2)
-                               + aA(aCellOrdinal, 3) * aB(aCellOrdinal, 3) );
+    OutType tOutput = aAlpha * ( aA(aCellOrdinal, 0) * aB(aCellOrdinal, 0) // e_11
+                               + aA(aCellOrdinal, 1) * aB(aCellOrdinal, 1) // e_22
+                               + static_cast<Plato::Scalar>(2) * aA(aCellOrdinal, 2) * aB(aCellOrdinal, 2) // e_12
+                               + aA(aCellOrdinal, 3) * aB(aCellOrdinal, 3) ); // e_33
     return (tOutput);
 }
 /***************************************************************************//**
@@ -1906,8 +1929,9 @@ public:
                                                    tCurrentElasticStrain, tCurrentCauchyStress);
 
             // compute double dot product
-            Plato::Scalar tAlpha = 1.0;
-            aResult(aCellOrdinal) = tComputeDoubleDotProduct(aCellOrdinal, tAlpha, tCurrentCauchyStress, tPlasticStrainMisfit);
+            Plato::Scalar tMultiplier = 1.0;
+            aResult(aCellOrdinal) =
+                    tComputeDoubleDotProduct(aCellOrdinal, tMultiplier, tCurrentCauchyStress, tPlasticStrainMisfit);
             aResult(aCellOrdinal) *= static_cast<Plato::Scalar>(-0.5) * tCellVolume(aCellOrdinal);
         }, "maximize total work criterion - intermediate step");
     }
@@ -4092,20 +4116,20 @@ public:
 
     /***************************************************************************//**
      * \brief Set global state variables
-     * \param [in] aState 2D view of global state variables - (NumTimeSteps, TotalDofs)
+     * \param [in] aGlobalState 2D view of global state variables - (NumTimeSteps, TotalDofs)
     *******************************************************************************/
-    void setState(const Plato::ScalarMultiVector & aState)
+    void setGlobalState(const Plato::ScalarMultiVector & aGlobalState)
     {
-        assert(aState.extent(0) == mGlobalStates.extent(0));
-        assert(aState.extent(1) == mGlobalStates.extent(1));
-        Kokkos::deep_copy(mGlobalStates, aState);
+        assert(aGlobalState.extent(0) == mGlobalStates.extent(0));
+        assert(aGlobalState.extent(1) == mGlobalStates.extent(1));
+        Kokkos::deep_copy(mGlobalStates, aGlobalState);
     }
 
     /***************************************************************************//**
      * \brief Return 2D view of global state variables - (NumTimeSteps, TotalDofs)
-     * \return aState 2D view of global state variables
+     * \return aGlobalState 2D view of global state variables
     *******************************************************************************/
-    Plato::ScalarMultiVector getState()
+    Plato::ScalarMultiVector getGlobalState()
     {
         return mGlobalStates;
     }
@@ -4399,7 +4423,7 @@ public:
     /***************************************************************************//**
      * \brief Evaluate constraint partial derivative wrt control variables
      * \param [in] aControls 1D view of control variables
-     * \param [in] aState 2D view of state variables
+     * \param [in] aGlobalState 2D view of state variables
      * \return 1D view - constraint partial derivative wrt control variables
     *******************************************************************************/
     Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControls, const Plato::ScalarMultiVector & aGlobalState)
@@ -4449,7 +4473,7 @@ public:
     /***************************************************************************//**
      * \brief Evaluate constraint partial derivative wrt configuration variables
      * \param [in] aControls 1D view of control variables
-     * \param [in] aState 2D view of state variables
+     * \param [in] aGlobalState 2D view of state variables
      * \return 1D view - constraint partial derivative wrt configuration variables
     *******************************************************************************/
     Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControls, const Plato::ScalarMultiVector & aGlobalState)
@@ -6528,24 +6552,13 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual2D_Elastic)
     tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
                                       tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
 
-    // 4. GET GOLD VALUES - COMPARE AGAINST STABILIZED MECHANICS, NO PLASTICITY
-    using GoldPhysicsT = Plato::SimplexStabilizedMechanics<tSpaceDim>;
-    using GoldEvalType = typename Plato::Evaluation<GoldPhysicsT>::Residual;
-    auto tResidualParams = tElastoPlasticityInputs->sublist("Elliptic");
-    auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
-    Plato::StabilizedElastostaticResidual<GoldEvalType, Plato::MSIMP> tComputeStabilizedMech(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs, tPenaltyParams);
-    Plato::ScalarMultiVectorT<GoldEvalType::ResultScalarType> tStabilizedMechResidual("residual", tNumCells, GoldPhysicsT::mNumDofsPerCell);
-    tComputeStabilizedMech.evaluate(tCurrentGlobalState, tProjectedPressureGrad, tDesignVariables, tConfiguration, tStabilizedMechResidual);
-
     // 5. TEST RESULTS
     constexpr Plato::Scalar tTolerance = 1e-6;
-    auto tHostGold = Kokkos::create_mirror(tStabilizedMechResidual);
-    Kokkos::deep_copy(tHostGold, tStabilizedMechResidual);
     auto tHostElastoPlasticityResidual = Kokkos::create_mirror(tElastoPlasticityResidual);
     Kokkos::deep_copy(tHostElastoPlasticityResidual, tElastoPlasticityResidual);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{-0.3108974359, -0.0961538462, 0.2003656347 , 0.2147435897, -0.0224358974, -0.3967844462,  0.0961538462, 0.1185897436, 0.0297521448},
-         {0.125,          0.0576923077, -0.0853066085, -0.0673076923, 0.1057692308, 5.45966e-07,  -0.0576923077, -0.1634615385, 0.0853060625}};
+        {{-0.298077, -0.0961538462, 0.2003656347, 0.201923, -0.00961538, -0.3967844462,  0.0961538462, 0.105769, 0.0297521448},
+         {0.137821, 0.0576923077, -0.0853066085, -0.0801282, 0.1057692308, 5.45966e-07,  -0.0576923077, -0.1634615385, 0.0853060625}};
     for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
     {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)

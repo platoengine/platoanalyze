@@ -198,6 +198,163 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_UpdateElasticStep3D)
 }
 
 
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_computePlasticStrainMisfit2D)
+{
+    //1. SET DATA FOR TEST
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tNumStressTerms = 4;
+    constexpr Plato::OrdinalType tNumLocalDofsPerCell = 10;
+
+    Plato::ScalarMultiVector tLocalStateOne("local state", tNumCells, tNumLocalDofsPerCell);
+    auto tHostLocalStateOne = Kokkos::create_mirror(tLocalStateOne);
+    for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (unsigned int tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; tDofIndex++)
+        {
+            tHostLocalStateOne(tCellIndex, tDofIndex) = (tCellIndex + 1.0) * (tDofIndex + 1.0);
+            //printf("LocalStateOne(%d,%d) = %f\n", tCellIndex,tDofIndex,tHostLocalStateOne(tCellIndex, tDofIndex));
+        }
+    }
+    Kokkos::deep_copy(tLocalStateOne, tHostLocalStateOne);
+
+    Plato::ScalarMultiVector tLocalStateTwo("local state", tNumCells, tNumLocalDofsPerCell);
+    auto tHostLocalStateTwo = Kokkos::create_mirror(tLocalStateTwo);
+    for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (unsigned int tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; tDofIndex++)
+        {
+            tHostLocalStateTwo(tCellIndex, tDofIndex) = (tCellIndex + 1.0) * (tDofIndex + 3.0);
+            //printf("LocalStateTwo(%d,%d) = %f\n", tCellIndex,tDofIndex,tHostLocalStateTwo(tCellIndex, tDofIndex));
+        }
+    }
+    Kokkos::deep_copy(tLocalStateTwo, tHostLocalStateTwo);
+
+    // 2. CALL FUNCTION
+    Plato::J2PlasticityUtilities<tSpaceDim> tJ2PlasticityUtils;
+    Plato::ScalarMultiVector tMisfit("misfit", tNumCells, tNumStressTerms);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    {
+        tJ2PlasticityUtils.computePlasticStrainMisfit(tCellOrdinal, tLocalStateOne, tLocalStateTwo, tMisfit);
+    }, "Unit Test");
+
+    // 3. TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-2,-2,-2,-2}, {-4,-4,-4,-4}};
+    auto tHostMisfit = Kokkos::create_mirror(tMisfit);
+    Kokkos::deep_copy(tHostMisfit, tMisfit);
+    for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (unsigned int tDofIndex = 0; tDofIndex < tNumStressTerms; tDofIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tHostMisfit(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            //printf("HostMisfit(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostMisfit(tCellIndex, tDofIndex+2));
+        }
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_computePlasticStrainMisfit3D)
+{
+    //1. SET DATA FOR TEST
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tNumStressTerms = 6;
+    constexpr Plato::OrdinalType tNumLocalDofsPerCell = 14;
+
+    Plato::ScalarMultiVector tLocalStateOne("local state", tNumCells, tNumLocalDofsPerCell);
+    auto tHostLocalStateOne = Kokkos::create_mirror(tLocalStateOne);
+    for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (unsigned int tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; tDofIndex++)
+        {
+            tHostLocalStateOne(tCellIndex, tDofIndex) = (tCellIndex + 1.0) * (tDofIndex + 1.0);
+            //printf("LocalStateOne(%d,%d) = %f\n", tCellIndex,tDofIndex,tHostLocalStateOne(tCellIndex, tDofIndex));
+        }
+    }
+    Kokkos::deep_copy(tLocalStateOne, tHostLocalStateOne);
+
+    Plato::ScalarMultiVector tLocalStateTwo("local state", tNumCells, tNumLocalDofsPerCell);
+    auto tHostLocalStateTwo = Kokkos::create_mirror(tLocalStateTwo);
+    for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (unsigned int tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; tDofIndex++)
+        {
+            tHostLocalStateTwo(tCellIndex, tDofIndex) = (tCellIndex + 1.0) * (tDofIndex + 3.0);
+            //printf("LocalStateTwo(%d,%d) = %f\n", tCellIndex,tDofIndex,tHostLocalStateTwo(tCellIndex, tDofIndex));
+        }
+    }
+    Kokkos::deep_copy(tLocalStateTwo, tHostLocalStateTwo);
+
+    // 2. CALL FUNCTION
+    Plato::J2PlasticityUtilities<tSpaceDim> tJ2PlasticityUtils;
+    Plato::ScalarMultiVector tMisfit("misfit", tNumCells, tNumStressTerms);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    {
+        tJ2PlasticityUtils.computePlasticStrainMisfit(tCellOrdinal, tLocalStateOne, tLocalStateTwo, tMisfit);
+    }, "Unit Test");
+
+    // 3. TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-2,-2,-2,-2,-2,-2}, {-4,-4,-4,-4,-4,-4}};
+    auto tHostMisfit = Kokkos::create_mirror(tMisfit);
+    Kokkos::deep_copy(tHostMisfit, tMisfit);
+    for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (unsigned int tDofIndex = 0; tDofIndex < tNumStressTerms; tDofIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tHostMisfit(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            //printf("HostMisfit(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostMisfit(tCellIndex, tDofIndex+2));
+        }
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_computeCauchyStress2D)
+{
+    //1. SET DATA FOR TEST
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tNumStressTerms = 4;
+
+    Plato::ScalarMultiVector tElasticStrain("elastic strain", tNumCells, tNumStressTerms);
+    auto tHostElasticStrain = Kokkos::create_mirror(tElasticStrain);
+    for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (unsigned int tDofIndex = 0; tDofIndex < tNumStressTerms; tDofIndex++)
+        {
+            tHostElasticStrain(tCellIndex, tDofIndex) = (tCellIndex + 1.0) * (tDofIndex + 1.0);
+            //printf("ElasticStrain(%d,%d) = %f\n", tCellIndex,tDofIndex, tHostElasticStrain(tCellIndex, tDofIndex));
+        }
+    }
+    Kokkos::deep_copy(tElasticStrain, tHostElasticStrain);
+
+    // 2. CALL FUNCTION
+    constexpr Plato::Scalar tBulkModulus = 25;
+    constexpr Plato::Scalar tShearModulus = 3;
+    Plato::J2PlasticityUtilities<tSpaceDim> tJ2PlasticityUtils;
+    Plato::ScalarMultiVector tCauchyStress("cauchy stress", tNumCells, tNumStressTerms);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    {
+        tJ2PlasticityUtils.computeCauchyStress(tCellOrdinal, tBulkModulus, tShearModulus, tElasticStrain, tCauchyStress);
+    }, "Unit Test");
+
+    // 3. TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{153,159,9,171}, {306,318,18,342}};
+    auto tHostCauchyStress = Kokkos::create_mirror(tCauchyStress);
+    Kokkos::deep_copy(tHostCauchyStress, tCauchyStress);
+    for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for (unsigned int tDofIndex = 0; tDofIndex < tNumStressTerms; tDofIndex++)
+        {
+            TEST_FLOATING_EQUALITY(tHostCauchyStress(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            //printf("HostCauchyStress(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostCauchyStress(tCellIndex, tDofIndex));
+        }
+    }
+}
+
+
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_YieldSurfaceNormal2D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;

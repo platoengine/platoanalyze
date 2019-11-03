@@ -56,7 +56,7 @@ private:
     Plato::ScalarVector mGradControl;
     Plato::ScalarVector mExternalForce;
 
-    Plato::ScalarMultiVector mStates;
+    Plato::ScalarMultiVector mGlobalState;
 
     std::vector<Plato::Scalar> mFreqArray;
     Teuchos::RCP<Plato::CrsMatrixType> mJacobian;
@@ -156,7 +156,7 @@ public:
     {
         assert(aInput.size() > static_cast<size_t>(0));
         mFreqArray = aInput;
-        mStates = Plato::ScalarMultiVector("States", mFreqArray.size(), mNumStates);
+        mGlobalState = Plato::ScalarMultiVector("States", mFreqArray.size(), mNumStates);
     }
 
     /******************************************************************************//**
@@ -205,10 +205,10 @@ public:
 
     /******************************************************************************//**
      * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aState 2D container of state variables
+     * @param [in] aGlobalState 2D container of state variables
      * @param [in] aControl 1D container of control variables
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     { return; }
 
     /******************************************************************************//**
@@ -218,10 +218,10 @@ public:
      * @param[in] aInput state vector
      *
     **********************************************************************************/
-    void setState(const Plato::ScalarMultiVector & aInput)
+    void setGlobalState(const Plato::ScalarMultiVector & aInput)
     {
-        assert(aInput.size() == mStates.size());
-        Kokkos::deep_copy(mStates, aInput);
+        assert(aInput.size() == mGlobalState.size());
+        Kokkos::deep_copy(mGlobalState, aInput);
     }
 
     /******************************************************************************//**
@@ -229,9 +229,9 @@ public:
      * @brief Get state vector
      *
     **********************************************************************************/
-    Plato::ScalarMultiVector getState()
+    Plato::ScalarMultiVector getGlobalState()
     {
-        return mStates;
+        return mGlobalState;
     }
 
     /******************************************************************************//**
@@ -279,7 +279,7 @@ public:
         for(Plato::OrdinalType tFreqIndex = 0; tFreqIndex < tNumFreqs; tFreqIndex++)
         {
             assert(mResidual.size() == mNumStates);
-            auto tMyStatesSubView = Kokkos::subview(mStates, tFreqIndex, Kokkos::ALL());
+            auto tMyStatesSubView = Kokkos::subview(mGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
             Plato::fill(static_cast<Plato::Scalar>(0.0), tMyStatesSubView);
             auto tMyFrequency = mFreqArray[tFreqIndex];
@@ -297,7 +297,7 @@ public:
 #endif
         }
 
-        return mStates;
+        return mGlobalState;
     }
 
     /******************************************************************************/
@@ -318,7 +318,7 @@ public:
 
         // LINEAR OBJECTIVE FUNCTION AND HENCE IT DOES NOT DEPEND ON THE STATES. THE OBJECTIVE ONLY DEPENDS ON THE CONTROLS.
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tMyStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tMyStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         assert(tMyStatesSubView.size() == mNumStates);
         Plato::Scalar tValue = mObjective->value(tMyStatesSubView, aControl);
 
@@ -343,7 +343,7 @@ public:
 
         // LINEAR CONSTRAINT FUNCTION AND HENCE IT DOES NOT DEPEND ON THE STATES. THE CONSTRAINT ONLY DEPENDS ON THE CONTROLS.
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tMyStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tMyStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         assert(tMyStatesSubView.size() == mNumStates);
         Plato::Scalar tValue = mConstraint->value(tMyStatesSubView, aControl);
 
@@ -351,12 +351,12 @@ public:
     }
 
     /******************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     /******************************************************************************/
     {
         assert(aControl.size() == mNumControls);
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
+        assert(aGlobalState.extent(0) == mGlobalState.extent(0));
+        assert(aGlobalState.extent(1) == mGlobalState.extent(1));
 
         if(mObjective == nullptr)
         {
@@ -373,7 +373,7 @@ public:
         for(Plato::OrdinalType tFreqIndex = 0; tFreqIndex < tNumFreqs; tFreqIndex++)
         {
             auto tMyFrequency = mFreqArray[tFreqIndex];
-            auto tMyStatesSubView = Kokkos::subview(aState, tFreqIndex, Kokkos::ALL());
+            auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
             tValue += mObjective->value(tMyStatesSubView, aControl, tMyFrequency);
         }
@@ -382,12 +382,12 @@ public:
     }
 
     /******************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+    Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     /******************************************************************************/
     {
         assert(aControl.size() == mNumControls);
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
+        assert(aGlobalState.extent(0) == mGlobalState.extent(0));
+        assert(aGlobalState.extent(1) == mGlobalState.extent(1));
 
         if(mConstraint == nullptr)
         {
@@ -404,7 +404,7 @@ public:
         for(Plato::OrdinalType tFreqIndex = 0; tFreqIndex < tNumFreqs; tFreqIndex++)
         {
             auto tMyFrequency = mFreqArray[tFreqIndex];
-            auto tMyStatesSubView = Kokkos::subview(aState, tFreqIndex, Kokkos::ALL());
+            auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
             tValue += mConstraint->value(tMyStatesSubView, aControl, tMyFrequency);
         }
@@ -430,18 +430,18 @@ public:
 
         // LINEAR OBJECTIVE FUNCTION AND HENCE IT DOES NOT DEPEND ON THE STATES. THE OBJECTIVE ONLY DEPENDS ON THE CONTROLS.
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tMyStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tMyStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         assert(tMyStatesSubView.size() == mNumStates);
         return mObjective->gradient_z(tMyStatesSubView, aControl);
     }
 
     /******************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     /******************************************************************************/
     {
         assert(aControl.size() == mNumControls);
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
+        assert(aGlobalState.extent(0) == mGlobalState.extent(0));
+        assert(aGlobalState.extent(1) == mGlobalState.extent(1));
 
         if(mObjective == nullptr)
         {
@@ -460,7 +460,7 @@ public:
         for(Plato::OrdinalType tFreqIndex = 0; tFreqIndex < tNumFreqs; tFreqIndex++)
         {
             auto tMyFrequency = mFreqArray[tFreqIndex];
-            auto tMyStatesSubView = Kokkos::subview(aState, tFreqIndex, Kokkos::ALL());
+            auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
 
             auto tPartialObjectiveWrtState = mObjective->gradient_u(tMyStatesSubView, aControl, tMyFrequency);
@@ -471,7 +471,7 @@ public:
         }
 
         Plato::scale(static_cast<Plato::Scalar>(-1), mGradState);
-        this->addResidualContribution(Plato::partial::CONTROL, aControl, aState, mGradControl);
+        this->addResidualContribution(Plato::partial::CONTROL, aControl, aGlobalState, mGradControl);
 
         return mGradControl;
     }
@@ -493,18 +493,18 @@ public:
         }
 
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tMyStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tMyStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         assert(tMyStatesSubView.size() == mNumStates);
         return mObjective->gradient_x(tMyStatesSubView, aControl);
     }
 
     /******************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     /******************************************************************************/
     {
         assert(aControl.size() == mNumControls);
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
+        assert(aGlobalState.extent(0) == mGlobalState.extent(0));
+        assert(aGlobalState.extent(1) == mGlobalState.extent(1));
 
         if(mObjective == nullptr)
         {
@@ -524,7 +524,7 @@ public:
             auto tMyFrequency = mFreqArray[tFreqIndex];
 
             // Compute partial derivative of objective function wrt configuration for this time step
-            auto tMyStatesSubView = Kokkos::subview(aState, tFreqIndex, Kokkos::ALL());
+            auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
             auto tPartialObjectiveWrtConfig = mObjective->gradient_x(tMyStatesSubView, aControl, tMyFrequency);
             Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtConfig, static_cast<Plato::Scalar>(1.0), mGradConfig);
@@ -535,7 +535,7 @@ public:
         }
 
         Plato::scale(static_cast<Plato::Scalar>(-1), mGradState);
-        this->addResidualContribution(Plato::partial::CONFIGURATION, aControl, aState, mGradConfig);
+        this->addResidualContribution(Plato::partial::CONFIGURATION, aControl, aGlobalState, mGradConfig);
 
         return mGradConfig;
     }
@@ -558,18 +558,18 @@ public:
 
         // LINEAR CONSTRAINT AND HENCE IT DOES NOT DEPEND ON THE STATES. THE CONSTRAINT ONLY DEPENDS ON THE CONTROLS.
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tMyStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tMyStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         assert(tMyStatesSubView.size() == mNumStates);
         return mConstraint->gradient_z(tMyStatesSubView, aControl);
     }
 
     /******************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     /******************************************************************************/
     {
         assert(aControl.size() == mNumControls);
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
+        assert(aGlobalState.extent(0) == mGlobalState.extent(0));
+        assert(aGlobalState.extent(1) == mGlobalState.extent(1));
 
         if(mConstraint == nullptr)
         {
@@ -588,7 +588,7 @@ public:
         {
             auto tMyFrequency = mFreqArray[tFreqIndex];
 
-            auto tMyStatesSubView = Kokkos::subview(aState, tFreqIndex, Kokkos::ALL());
+            auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
             auto tPartialObjectiveWrtState = mConstraint->gradient_u(tMyStatesSubView, aControl, tMyFrequency);
             Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
@@ -598,7 +598,7 @@ public:
         }
 
         Plato::scale(static_cast<Plato::Scalar>(-1), mGradState);
-        this->addResidualContribution(Plato::partial::CONTROL, aControl, aState, mGradControl);
+        this->addResidualContribution(Plato::partial::CONTROL, aControl, aGlobalState, mGradControl);
 
         return mGradControl;
     }
@@ -620,18 +620,18 @@ public:
         }
 
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tMyStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tMyStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         assert(tMyStatesSubView.size() == mNumStates);
         return mConstraint->gradient_x(tMyStatesSubView, aControl);
     }
 
     /******************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
     /******************************************************************************/
     {
         assert(aControl.size() == mNumControls);
-        assert(aState.extent(0) == mStates.extent(0));
-        assert(aState.extent(1) == mStates.extent(1));
+        assert(aGlobalState.extent(0) == mGlobalState.extent(0));
+        assert(aGlobalState.extent(1) == mGlobalState.extent(1));
 
         if(mConstraint == nullptr)
         {
@@ -651,7 +651,7 @@ public:
             auto tMyFrequency = mFreqArray[tFreqIndex];
 
             // Compute partial derivative of objective function wrt configuration for this time step
-            auto tMyStatesSubView = Kokkos::subview(aState, tFreqIndex, Kokkos::ALL());
+            auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
             auto tPartialObjectiveWrtConfig = mConstraint->gradient_x(tMyStatesSubView, aControl, tMyFrequency);
             Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtConfig, static_cast<Plato::Scalar>(1.0), mGradConfig);
@@ -662,7 +662,7 @@ public:
         }
 
         Plato::scale(static_cast<Plato::Scalar>(-1), mGradState);
-        this->addResidualContribution(Plato::partial::CONFIGURATION, aControl, aState, mGradConfig);
+        this->addResidualContribution(Plato::partial::CONFIGURATION, aControl, aGlobalState, mGradConfig);
 
         return mGradConfig;
     }
@@ -715,7 +715,7 @@ private:
             assert(mFreqArray.size() == static_cast<size_t>(tFreqValues.size()));
 
             assert(mEquality->size() == mNumStates);
-            mStates = Plato::ScalarMultiVector("States", tNumFrequencies, mNumStates);
+            mGlobalState = Plato::ScalarMultiVector("States", tNumFrequencies, mNumStates);
 
             for(Plato::OrdinalType tIndex = 0; tIndex < tNumFrequencies; tIndex++)
             {
@@ -734,7 +734,7 @@ private:
 
     /******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType> computePartialResidualWrtDesignVar(const Plato::partial::derivative_t & aWhichType,
-                                                                          const Plato::ScalarVector & aState,
+                                                                          const Plato::ScalarVector & aGlobalState,
                                                                           const Plato::ScalarVector & aControl,
                                                                           const Plato::Scalar & aTimeStep)
     /******************************************************************************/
@@ -743,15 +743,15 @@ private:
         {
             case Plato::partial::STATE:
             {
-                return mEquality->gradient_u(aState, aControl, aTimeStep);
+                return mEquality->gradient_u(aGlobalState, aControl, aTimeStep);
             }
             case Plato::partial::CONTROL:
             {
-                return mEquality->gradient_z(aState, aControl, aTimeStep);
+                return mEquality->gradient_z(aGlobalState, aControl, aTimeStep);
             }
             case Plato::partial::CONFIGURATION:
             {
-                return mEquality->gradient_x(aState, aControl, aTimeStep);
+                return mEquality->gradient_x(aGlobalState, aControl, aTimeStep);
             }
         }
         return (Teuchos::null);
@@ -760,7 +760,7 @@ private:
     /******************************************************************************/
     void addResidualContribution(const Plato::partial::derivative_t & aWhichPartial,
                                  const Plato::ScalarVector & aControl,
-                                 const Plato::ScalarMultiVector & aState,
+                                 const Plato::ScalarMultiVector & aGlobalState,
                                  Plato::ScalarVector & aOutput)
     /******************************************************************************/
     {
@@ -769,7 +769,7 @@ private:
         {
             // compute dgdu: partial of PDE wrt state
             auto tMyFrequency = mFreqArray[tFreqIndex];
-            auto tMyStatesSubView = Kokkos::subview(aState, tFreqIndex, Kokkos::ALL());
+            auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             mJacobian = mAdjointProb->gradient_u(tMyStatesSubView, aControl, tMyFrequency);
             this->applyConstraints(mJacobian, mGradState);
 
