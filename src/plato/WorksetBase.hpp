@@ -83,11 +83,11 @@ inline void convert_ad_partial_scalar_func_to_pod(const Plato::ScalarVectorT<ADT
 {
     if(aInput.extent(0) != aOutput.extent(0))
     {
-        THROWERR("\nDimension mismatch, input and output containers have different number of rows.\n");
+        THROWERR("Dimension mismatch, input and output containers have different number of rows.")
     }
     if(NumDofsPerCell != aOutput.extent(1))
     {
-        THROWERR("\nInput number of degrees of freedom do not match the number of columns in output container.\n");
+        THROWERR("Input number of degrees of freedom does not match the number of columns in output container.")
     }
 
     Plato::OrdinalType tNumCells = aOutput.extent(0);
