@@ -20,10 +20,10 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Test partial derivative with respect to the control variables
- * @param [in] aMesh mesh database
- * @param [in] aCriterion scalar function (i.e. scalar criterion) interface
- * @param [in] aSuperscriptLowerBound lower bound on the superscript used to compute the step (e.g. \f$10^{lb}/$f
+ * \brief Test partial derivative with respect to the control variables
+ * \param [in] aMesh mesh database
+ * \param [in] aCriterion scalar function (i.e. scalar criterion) interface
+ * \param [in] aSuperscriptLowerBound lower bound on the superscript used to compute the step (e.g. \f$10^{lb}/$f
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
 inline void test_partial_control(Omega_h::Mesh & aMesh,
@@ -131,9 +131,9 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
 // function test_partial_control
 
 /******************************************************************************//**
- * @brief Test partial derivative with respect to the state variables
- * @param [in] aMesh mesh database
- * @param [in] aCriterion scalar function (i.e. scalar criterion) interface
+ * \brief Test partial derivative with respect to the state variables
+ * \param [in] aMesh mesh database
+ * \param [in] aCriterion scalar function (i.e. scalar criterion) interface
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
 inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::AbstractScalarFunction<EvaluationType> & aCriterion)
@@ -315,9 +315,9 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
 // function test_partial_control
 
 /******************************************************************************//**
- * @brief Test partial derivative with respect to the state variables
- * @param [in] aMesh mesh database
- * @param [in] aCriterion scalar function (i.e. scalar criterion) interface
+ * \brief Test partial derivative with respect to the state variables
+ * \param [in] aMesh mesh database
+ * \param [in] aCriterion scalar function (i.e. scalar criterion) interface
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
 inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::ScalarFunctionBase & aScalarFuncBase)
@@ -489,9 +489,9 @@ control_workset_matrix_vector_multiply(const Plato::ScalarArray3D & aWorkset,
 }
 
 /******************************************************************************//**
- * @brief Test partial derivative with respect to the global state variables
- * @param [in] aMesh mesh database
- * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
+ * \brief Test partial derivative with respect to the global state variables
+ * \param [in] aMesh mesh database
+ * \param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
 inline void
@@ -621,9 +621,9 @@ test_partial_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<S
 
 
 /******************************************************************************//**
- * @brief Test partial derivative with respect to the previous global state variables
- * @param [in] aMesh mesh database
- * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
+ * \brief Test partial derivative with respect to the previous global state variables
+ * \param [in] aMesh mesh database
+ * \param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
 inline void
@@ -754,9 +754,9 @@ test_partial_prev_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunction
 
 
 /******************************************************************************//**
- * @brief Test partial derivative with respect to the local state variables
- * @param [in] aMesh mesh database
- * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
+ * \brief Test partial derivative with respect to the local state variables
+ * \param [in] aMesh mesh database
+ * \param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
 inline void
@@ -882,9 +882,9 @@ test_partial_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<Si
 
 
 /******************************************************************************//**
- * @brief Test partial derivative with respect to the previous local state variables
- * @param [in] aMesh mesh database
- * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
+ * \brief Test partial derivative with respect to the previous local state variables
+ * \param [in] aMesh mesh database
+ * \param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
 inline void
@@ -1010,9 +1010,9 @@ test_partial_prev_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionI
 
 
 /******************************************************************************//**
- * @brief Test partial derivative of local vector func inc with respect to the control variables
- * @param [in] aMesh mesh database
- * @param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
+ * \brief Test partial derivative of local vector func inc with respect to the control variables
+ * \param [in] aMesh mesh database
+ * \param [in] aLocalVectorFuncInc local vector function inc to evaluate derivative of
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
 inline void
