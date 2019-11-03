@@ -5436,6 +5436,43 @@ private:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+template<Plato::OrdinalType D1, Plato::OrdinalType D2>
+inline Plato::ScalarVector
+control_workset_multivec_vector_multiply(const Plato::ScalarMultiVector & aWorkset,
+                                         const Plato::ScalarVector & aVector,
+                                         const Plato::VectorEntryOrdinal<D1,D2> & aEntryOrdinal)
+{
+    const Plato::OrdinalType tVectorSize = aVector.extent(0);
+    const Plato::OrdinalType tTotalNumCells = aWorkset.extent(0);
+    const Plato::OrdinalType tNumADvarsPerCell = aWorkset.extent(1);
+    Plato::ScalarVector tResult("result", tTotalNumCells);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tTotalNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tResult(aCellOrdinal) = 0.0;
+        for (Plato::OrdinalType tADVariableIndex = 0; tADVariableIndex < tNumADvarsPerCell; ++tADVariableIndex)
+        {
+            Plato::OrdinalType tMatrixCol = aEntryOrdinal(aCellOrdinal, tADVariableIndex);
+            Plato::Scalar tValue = aWorkset(aCellOrdinal, tADVariableIndex) * aVector(tMatrixCol);
+            tResult(aCellOrdinal) += tValue;
+        }
+    }, "multivec vector multiply");
+
+    return tResult;
+}
+
 /******************************************************************************//**
  * \brief Test partial derivative of scalar function with history-dependent variables
  *        with respect to the control variables.
@@ -5492,7 +5529,7 @@ test_partial_scalar_func_with_history_wrt_control(Plato::ScalarFunctionWithHisto
     Plato::random(0.2, 0.6, tHostFutureLocalState);
     Kokkos::deep_copy(tFutureLocalState, tHostFutureLocalState);
 
-    Plato::ScalarArray3D tPartialZ =
+    Plato::ScalarMultiVector tPartialZ =
             aScalarFunction.gradient_z(tCurrentGlobalState, tPrevGlobalState,
                                        tCurrentLocalState, tFutureLocalState,
                                        tPrevLocalState, tControl, aTimeStep);
@@ -5505,16 +5542,15 @@ test_partial_scalar_func_with_history_wrt_control(Plato::ScalarFunctionWithHisto
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    Plato::ScalarVector tGradientDotStep =
-        Plato::control_workset_matrix_vector_multiply(tPartialZ, tStep, tEntryOrdinal, tTotalNumLocalDofs);
+    Plato::ScalarVector tGradientDotStep = Plato::control_workset_multivec_vector_multiply(tPartialZ, tStep, tEntryOrdinal);
+    Plato::Scalar tGradientDotStepValue = 0;
+    Plato::local_sum(tGradientDotStep, tGradientDotStepValue);
 
     std::cout << std::right << std::setw(14) << "\nStep Size" << std::setw(20) << "abs(Error)" << std::endl;
 
     constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
     constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
     Plato::ScalarVector tTrialControl("trial control", tNumVerts);
-
-    Plato::ScalarVector tErrorVector("error vector", tTotalNumLocalDofs);
 
     for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
     {
@@ -5523,49 +5559,35 @@ test_partial_scalar_func_with_history_wrt_control(Plato::ScalarFunctionWithHisto
         // four point finite difference approximation
         Plato::update(1.0, tControl, 0.0, tTrialControl);
         Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
-        Plato::ScalarVector tVectorValueOne = aScalarFunction.value(tCurrentGlobalState, tPrevGlobalState,
-                                                                    tCurrentLocalState, tFutureLocalState,
-                                                                    tPrevLocalState, tTrialControl, aTimeStep);
+        Plato::Scalar tValuePlus1Eps = aScalarFunction.value(tCurrentGlobalState, tPrevGlobalState,
+                                                              tCurrentLocalState, tFutureLocalState,
+                                                              tPrevLocalState, tTrialControl, aTimeStep);
         Plato::update(1.0, tControl, 0.0, tTrialControl);
         Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
-        Plato::ScalarVector tVectorValueTwo = aScalarFunction.value(tCurrentGlobalState, tPrevGlobalState,
-                                                                    tCurrentLocalState, tFutureLocalState,
-                                                                    tPrevLocalState, tTrialControl, aTimeStep);
+        Plato::Scalar tValueMinus1Eps = aScalarFunction.value(tCurrentGlobalState, tPrevGlobalState,
+                                                              tCurrentLocalState, tFutureLocalState,
+                                                              tPrevLocalState, tTrialControl, aTimeStep);
         Plato::update(1.0, tControl, 0.0, tTrialControl);
         Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
-        Plato::ScalarVector tVectorValueThree = aScalarFunction.value(tCurrentGlobalState, tPrevGlobalState,
-                                                                      tCurrentLocalState, tFutureLocalState,
-                                                                      tPrevLocalState, tTrialControl, aTimeStep);
+        Plato::Scalar tValuePlus2Eps = aScalarFunction.value(tCurrentGlobalState, tPrevGlobalState,
+                                                                tCurrentLocalState, tFutureLocalState,
+                                                                tPrevLocalState, tTrialControl, aTimeStep);
         Plato::update(1.0, tControl, 0.0, tTrialControl);
         Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
-        Plato::ScalarVector tVectorValueFour = aScalarFunction.value(tCurrentGlobalState, tPrevGlobalState,
-                                                                     tCurrentLocalState, tFutureLocalState,
-                                                                     tPrevLocalState, tTrialControl, aTimeStep);
+        Plato::Scalar tValueMinus2Eps = aScalarFunction.value(tCurrentGlobalState, tPrevGlobalState,
+                                                               tCurrentLocalState, tFutureLocalState,
+                                                               tPrevLocalState, tTrialControl, aTimeStep);
 
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tTotalNumLocalDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
-        {
-            Plato::Scalar tValuePlus1Eps  = tVectorValueOne(aDofOrdinal);
-            Plato::Scalar tValueMinus1Eps = tVectorValueTwo(aDofOrdinal);
-            Plato::Scalar tValuePlus2Eps  = tVectorValueThree(aDofOrdinal);
-            Plato::Scalar tValueMinus2Eps = tVectorValueFour(aDofOrdinal);
-
-            Plato::Scalar tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
-                                       - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
-            Plato::Scalar tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
-            Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
-
-            Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
-
-            tErrorVector(aDofOrdinal) = tAppxError;
-
-        }, "compute error");
-
-        Plato::Scalar tL1Error = 0.0;
-        Plato::local_sum(tErrorVector, tL1Error);
+        Plato::Scalar tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
+                - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
+        Plato::Scalar tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
+        Plato::Scalar tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
+        Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
+        Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStepValue);
 
         std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14)
                   << tEpsilon << std::setw(19)
-                  << tL1Error << std::endl;
+                  << tAppxError << std::endl;
     }
 }
 // function test_partial_scalar_func_with_history_wrt_control
