@@ -166,7 +166,7 @@ void NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>::get(Omega_h::Mesh* 
     {
         std::ostringstream tMsg;
         tMsg << "Could not find Side Set with name = '" << mSideSetName.c_str()
-                << "'. Side Set is not define in input geometry/mesh file.\n";
+                << "'. Side Set is not defined in input geometry/mesh file.\n";
         THROWERR(tMsg.str())
     }
     auto tFaceLids = (tSideSetIter->second);
