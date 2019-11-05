@@ -9,10 +9,10 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Null operation for Sacado Types
- * @param [in/out] aDataMap output data storage
- * @param [in] aInput Sacado-type container
- * @param [in] aEntryName output data name
+ * \brief Null operation for Sacado Types
+ * \param [in/out] aDataMap output data storage
+ * \param [in] aInput Sacado-type container
+ * \param [in] aEntryName output data name
  **********************************************************************************/
 template<typename InputType>
 inline void toMap(Plato::DataMap& aDataMap, const InputType aInput, const std::string & aEntryName)
@@ -22,10 +22,10 @@ inline void toMap(Plato::DataMap& aDataMap, const InputType aInput, const std::s
 // function toMap
 
 /******************************************************************************//**
- * @brief Store 1D container in data map. The data map is used for output purposes
- * @param [in/out] aDataMap output data storage
- * @param [in] aInput 1D container
- * @param [in] aEntryName output data name
+ * \brief Store 1D container in data map. The data map is used for output purposes
+ * \param [in/out] aDataMap output data storage
+ * \param [in] aInput 1D container
+ * \param [in] aEntryName output data name
  **********************************************************************************/
 template<>
 inline void toMap(Plato::DataMap& aDataMap, const Plato::ScalarVector aInput, const std::string & aEntryName)
@@ -35,10 +35,10 @@ inline void toMap(Plato::DataMap& aDataMap, const Plato::ScalarVector aInput, co
 // function toMap
 
 /******************************************************************************//**
- * @brief Store 2D container in data map. The data map is used for output purposes
- * @param [in/out] aDataMap output data storage
- * @param [in] aInput 2D container
- * @param [in] aEntryName output data name
+ * \brief Store 2D container in data map. The data map is used for output purposes
+ * \param [in/out] aDataMap output data storage
+ * \param [in] aInput 2D container
+ * \param [in] aEntryName output data name
  **********************************************************************************/
 template<>
 inline void toMap(Plato::DataMap& aDataMap, const Plato::ScalarMultiVector aInput, const std::string & aEntryName)
@@ -48,10 +48,10 @@ inline void toMap(Plato::DataMap& aDataMap, const Plato::ScalarMultiVector aInpu
 // function toMap
 
 /******************************************************************************//**
- * @brief Store 3D container in data map. The data map is used for output purposes
- * @param [in/out] aDataMap output data storage
- * @param [in] aInput 3D container
- * @param [in] aEntryName output data name
+ * \brief Store 3D container in data map. The data map is used for output purposes
+ * \param [in/out] aDataMap output data storage
+ * \param [in] aInput 3D container
+ * \param [in] aEntryName output data name
  **********************************************************************************/
 template<>
 inline void toMap(Plato::DataMap& aDataMap, const Plato::ScalarArray3D aInput, const std::string & aEntryName)

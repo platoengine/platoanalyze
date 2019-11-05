@@ -20,8 +20,8 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Augmented Lagrangian local constraint criterion tailored for general problems
- * @tparam EvaluationType evaluation type use to determine automatic differentiation
+ * \brief Augmented Lagrangian local constraint criterion tailored for general problems
+ * \tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsT>
@@ -58,8 +58,8 @@ private:
 
 private:
     /******************************************************************************//**
-     * @brief Allocate member data
-     * @param [in] aInputParams input parameters database
+     * \brief Allocate member data
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void initialize(Teuchos::ParameterList & aInputParams)
     {
@@ -69,8 +69,8 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Read user inputs
-     * @param [in] aInputParams input parameters database
+     * \brief Read user inputs
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void readInputs(Teuchos::ParameterList & aInputParams)
     {
@@ -85,7 +85,7 @@ private:
     }
 
     /******************************************************************************//**
-     * @brief Update Augmented Lagrangian penalty
+     * \brief Update Augmented Lagrangian penalty
     **********************************************************************************/
     void updateAugLagPenaltyMultipliers()
     {
@@ -95,12 +95,12 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Primary constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
-     * @param [in] aFuncName user defined function name
+     * \brief Primary constructor
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Engine and Analyze data map
+     * \param [in] aInputParams input parameters database
+     * \param [in] aFuncName user defined function name
      **********************************************************************************/
     AugLagStressCriterionQuadratic(Omega_h::Mesh & aMesh,
                                    Omega_h::MeshSets & aMeshSets,
@@ -121,10 +121,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Constructor tailored for unit testing
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
+     * \brief Constructor tailored for unit testing
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Engine and Analyze data map
      **********************************************************************************/
     AugLagStressCriterionQuadratic(Omega_h::Mesh & aMesh, Omega_h::MeshSets & aMeshSets, Plato::DataMap & aDataMap) :
             Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Local Constraint Quadratic"),
@@ -143,15 +143,15 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
      **********************************************************************************/
     virtual ~AugLagStressCriterionQuadratic()
     {
     }
 
     /******************************************************************************//**
-     * @brief Return augmented Lagrangian penalty multiplier
-     * @return augmented Lagrangian penalty multiplier
+     * \brief Return augmented Lagrangian penalty multiplier
+     * \return augmented Lagrangian penalty multiplier
     **********************************************************************************/
     Plato::Scalar getAugLagPenalty() const
     {
@@ -159,8 +159,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return Lagrange multipliers
-     * @return 1D view of Lagrange multipliers
+     * \brief Return Lagrange multipliers
+     * \return 1D view of Lagrange multipliers
     **********************************************************************************/
     Plato::ScalarVector getLagrangeMultipliers() const
     {
@@ -168,9 +168,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set local measure function
-     * @param [in] aInputEvaluationType evaluation type local measure
-     * @param [in] aInputPODType pod type local measure
+     * \brief Set local measure function
+     * \param [in] aInputEvaluationType evaluation type local measure
+     * \param [in] aInputPODType pod type local measure
     **********************************************************************************/
     void setLocalMeasure(const std::shared_ptr<AbstractLocalMeasure<EvaluationType,SimplexPhysicsT>> & aInputEvaluationType,
                          const std::shared_ptr<AbstractLocalMeasure<Residual,SimplexPhysicsT>> & aInputPODType)
@@ -180,8 +180,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set local constraint limit/upper bound
-     * @param [in] aInput local constraint limit
+     * \brief Set local constraint limit/upper bound
+     * \param [in] aInput local constraint limit
     **********************************************************************************/
     void setLocalMeasureValueLimit(const Plato::Scalar & aInput)
     {
@@ -189,8 +189,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set augmented Lagrangian function penalty multiplier
-     * @param [in] aInput penalty multiplier
+     * \brief Set augmented Lagrangian function penalty multiplier
+     * \param [in] aInput penalty multiplier
      **********************************************************************************/
     void setAugLagPenalty(const Plato::Scalar & aInput)
     {
@@ -198,8 +198,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set Lagrange multipliers
-     * @param [in] aInput Lagrange multipliers
+     * \brief Set Lagrange multipliers
+     * \param [in] aInput Lagrange multipliers
      **********************************************************************************/
     void setLagrangeMultipliers(const Plato::ScalarVector & aInput)
     {
@@ -208,10 +208,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
+     * \brief Update physics-based parameters within optimization iterations
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
     **********************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aStateWS,
                        const Plato::ScalarMultiVector & aControlWS,
@@ -222,12 +222,12 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate augmented Lagrangian local constraint criterion
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [out] aResult 1D container of cell criterion values
-     * @param [in] aTimeStep time step (default = 0)
+     * \brief Evaluate augmented Lagrangian local constraint criterion
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [out] aResult 1D container of cell criterion values
+     * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<StateT> & aStateWS,
                   const Plato::ScalarMultiVectorT<ControlT> & aControlWS,
@@ -242,7 +242,7 @@ public:
         // ****** COMPUTE LOCAL MEASURE VALUES AND STORE ON DEVICE ******
         const Plato::OrdinalType tNumCells = mMesh.nelems();
         Plato::ScalarVectorT<ResultT> tLocalMeasureValue("local measure value", tNumCells);
-        (*mLocalMeasureEvaluationType)(aStateWS, aConfigWS, mDataMap, tLocalMeasureValue);
+        (*mLocalMeasureEvaluationType)(aStateWS, aConfigWS, tLocalMeasureValue);
         
         // ****** ALLOCATE TEMPORARY ARRAYS ON DEVICE ******
         Plato::ScalarVectorT<ResultT> tConstraintValue("constraint", tNumCells);
@@ -286,10 +286,10 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update Lagrange multipliers
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
+     * \brief Update Lagrange multipliers
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
     **********************************************************************************/
     void updateLagrangeMultipliers(const Plato::ScalarMultiVector & aStateWS,
                                    const Plato::ScalarMultiVector & aControlWS,
@@ -300,7 +300,7 @@ public:
         // ****** COMPUTE LOCAL MEASURE VALUES AND STORE ON DEVICE ******
         const Plato::OrdinalType tNumCells = mMesh.nelems();
         Plato::ScalarVector tLocalMeasureValue("local measure value", tNumCells);
-        (*mLocalMeasurePODType)(aStateWS, aConfigWS, mDataMap, tLocalMeasureValue);
+        (*mLocalMeasurePODType)(aStateWS, aConfigWS, tLocalMeasureValue);
         
         // ****** ALLOCATE TEMPORARY ARRAYS ON DEVICE ******
         Plato::ScalarVector tConstraintValue("constraint residual", tNumCells);

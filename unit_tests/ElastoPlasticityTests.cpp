@@ -1172,7 +1172,7 @@ private:
     Plato::Scalar mElasticPropertiesPenaltySIMP;   /*!< SIMP penalty for elastic properties */
     Plato::Scalar mElasticPropertiesMinErsatzSIMP; /*!< SIMP min ersatz stiffness for elastic properties */
 
-    std::vector<std::string> mPlotTable; /*!< array with output data identifiers*/
+    std::vector<std::string> mPlotTable;           /*!< array with output data identifiers*/
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;               /*!< body loads interface */
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule; /*!< linear cubature rule */
@@ -1303,7 +1303,7 @@ private:
     {
         if(std::count(mPlotTable.begin(), mPlotTable.end(), aName))
         {
-            toMap(mDataMap, aData, aName);
+            Plato::toMap(mDataMap, aData, aName);
         }
     }
 

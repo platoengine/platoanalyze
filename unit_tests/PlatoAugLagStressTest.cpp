@@ -423,7 +423,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AugLagQuadratic_CheckThermalVonMises3D)
                          tLocalMeasure(tMaterialModel, tName);
 
     Plato::ScalarVector tResult("ThermalVonMises", tNumCells);
-    tLocalMeasure(tStateWS, tConfigWS, tDataMap, tResult);
+    tLocalMeasure(tStateWS, tConfigWS, tResult);
 
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);

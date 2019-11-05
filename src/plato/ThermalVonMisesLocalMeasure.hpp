@@ -16,8 +16,8 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief VonMises local measure class for use in Augmented Lagrange constraint formulation
- * @tparam EvaluationType evaluation type use to determine automatic differentiation
+ * \brief VonMises local measure class for use in Augmented Lagrange constraint formulation
+ * \tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
@@ -43,9 +43,9 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Primary constructor
-     * @param [in] aInputParams input parameters database
-     * @param [in] aName local measure name
+     * \brief Primary constructor
+     * \param [in] aInputParams input parameters database
+     * \param [in] aName local measure name
      **********************************************************************************/
     ThermalVonMisesLocalMeasure(Teuchos::ParameterList & aInputParams,
                          const std::string & aName) : 
@@ -57,9 +57,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Constructor tailored for unit testing
-     * @param [in] aMaterialModel thermoelastic material model
-     * @param [in] aName local measure name
+     * \brief Constructor tailored for unit testing
+     * \param [in] aMaterialModel thermoelastic material model
+     * \param [in] aName local measure name
      **********************************************************************************/
     ThermalVonMisesLocalMeasure(Teuchos::RCP<Plato::LinearThermoelasticMaterial<mSpaceDim>> &aMaterialModel,
                          const std::string aName) :
@@ -70,22 +70,21 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
      **********************************************************************************/
     virtual ~ThermalVonMisesLocalMeasure()
     {
     }
 
     /******************************************************************************//**
-     * @brief Evaluate vonmises local measure
-     * @param [in] aState 2D container of state variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [in] aDataMap map to stored data
-     * @param [out] aResult 1D container of cell local measure values
+     * \brief Evaluate vonmises local measure
+     * \param [in] aState 2D container of state variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [in] aDataMap map to stored data
+     * \param [out] aResult 1D container of cell local measure values
     **********************************************************************************/
     virtual void operator()(const Plato::ScalarMultiVectorT<StateT> & aStateWS,
                             const Plato::ScalarArray3DT<ConfigT> & aConfigWS,
-                            Plato::DataMap & aDataMap,
                             Plato::ScalarVectorT<ResultT> & aResultWS)
     {
         const Plato::OrdinalType tNumCells = aResultWS.size();
