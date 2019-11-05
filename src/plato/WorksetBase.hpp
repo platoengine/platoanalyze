@@ -556,31 +556,32 @@ template<typename SimplexPhysics>
 class WorksetBase : public SimplexPhysics
 {
 protected:
-    Plato::OrdinalType mNumCells;
-    Plato::OrdinalType mNumNodes;
+    Plato::OrdinalType mNumCells; /*!< local number of elements */
+    Plato::OrdinalType mNumNodes; /*!< local number of nodes */
 
-    using SimplexPhysics::mNumDofsPerNode;
-    using SimplexPhysics::mNumControl;
-    using SimplexPhysics::mNumNodesPerCell;
-    using SimplexPhysics::mNumDofsPerCell;
-    using SimplexPhysics::mNumLocalDofsPerCell;
-    using SimplexPhysics::mNumNodeStatePerNode;
+    using SimplexPhysics::mNumDofsPerNode;      /*!< number of degrees of freedom per node */
+    using SimplexPhysics::mNumControl;          /*!< number of control vectors, i.e. materials */
+    using SimplexPhysics::mNumNodesPerCell;     /*!< number of nodes per element */
+    using SimplexPhysics::mNumDofsPerCell;      /*!< number of global degrees of freedom, e.g. displacements, per element  */
+    using SimplexPhysics::mNumLocalDofsPerCell; /*!< number of local degrees of freedom, e.g. plasticity variables, per element  */
+    using SimplexPhysics::mNumNodeStatePerNode; /*!< number of pressure states per node  */
 
-    using StateFad      = typename Plato::SimplexFadTypes<SimplexPhysics>::StateFad;
-    using LocalStateFad = typename Plato::SimplexFadTypes<SimplexPhysics>::LocalStateFad;
-    using NodeStateFad  = typename Plato::SimplexFadTypes<SimplexPhysics>::NodeStateFad;
-    using ControlFad    = typename Plato::SimplexFadTypes<SimplexPhysics>::ControlFad;
-    using ConfigFad     = typename Plato::SimplexFadTypes<SimplexPhysics>::ConfigFad;
+    using StateFad      = typename Plato::SimplexFadTypes<SimplexPhysics>::StateFad;          /*!< global state AD type */
+    using LocalStateFad = typename Plato::SimplexFadTypes<SimplexPhysics>::LocalStateFad;     /*!< local state AD type */
+    using NodeStateFad  = typename Plato::SimplexFadTypes<SimplexPhysics>::NodeStateFad;      /*!< node state AD type */
+    using ControlFad    = typename Plato::SimplexFadTypes<SimplexPhysics>::ControlFad;        /*!< control AD type */
+    using ConfigFad     = typename Plato::SimplexFadTypes<SimplexPhysics>::ConfigFad;         /*!< configuration AD type */
 
-    static constexpr Plato::OrdinalType mSpaceDim = SimplexPhysics::mNumSpatialDims;
-    static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mSpaceDim * mNumNodesPerCell;
+    static constexpr Plato::OrdinalType mSpaceDim = SimplexPhysics::mNumSpatialDims;          /*!< number of spatial dimensions */
+    static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mSpaceDim * mNumNodesPerCell; /*!< number of configuration degrees of freedom per element  */
 
-    Plato::VectorEntryOrdinal<mSpaceDim,mNumDofsPerNode>      mStateEntryOrdinal;
-    Plato::VectorEntryOrdinal<mSpaceDim,mNumNodeStatePerNode> mNodeStateEntryOrdinal;
-    Plato::VectorEntryOrdinal<mSpaceDim,mNumControl>          mControlEntryOrdinal;
-    Plato::VectorEntryOrdinal<mSpaceDim,mSpaceDim>             mConfigEntryOrdinal;
+    Plato::VectorEntryOrdinal<mSpaceDim,mNumDofsPerNode>      mGlobalStateEntryOrdinal; /*!< local-to-global ID map for global state */
+    Plato::VectorEntryOrdinal<mSpaceDim,mNumDofsPerNode>      mLocalStateEntryOrdinal;  /*!< local-to-global ID map for local state */
+    Plato::VectorEntryOrdinal<mSpaceDim,mNumNodeStatePerNode> mNodeStateEntryOrdinal;   /*!< local-to-global ID map for node state */
+    Plato::VectorEntryOrdinal<mSpaceDim,mNumControl>          mControlEntryOrdinal;     /*!< local-to-global ID map for control */
+    Plato::VectorEntryOrdinal<mSpaceDim,mSpaceDim>            mConfigEntryOrdinal;      /*!< local-to-global ID map for configuration */
 
-    Plato::NodeCoordinate<mSpaceDim>     mNodeCoordinate;
+    Plato::NodeCoordinate<mSpaceDim> mNodeCoordinate; /*!< node coordinates database */
 
 public:
     /******************************************************************************//**
@@ -608,7 +609,8 @@ public:
     WorksetBase(Omega_h::Mesh& aMesh) :
             mNumCells(aMesh.nelems()),
             mNumNodes(aMesh.nverts()),
-            mStateEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumDofsPerNode>(&aMesh)),
+            mGlobalStateEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumDofsPerNode>(&aMesh)),
+            mLocalStateEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumLocalDofsPerCell>(&aMesh)),
             mNodeStateEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumNodeStatePerNode>(&aMesh)),
             mControlEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumControl>(&aMesh)),
             mConfigEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mSpaceDim>(&aMesh)),
@@ -649,7 +651,7 @@ public:
                        Kokkos::View<Plato::Scalar**, Kokkos::LayoutRight, Plato::MemSpace> & aStateWS ) const
     {
       Plato::workset_state_scalar_scalar<mNumDofsPerNode, mNumNodesPerCell>(
-              mNumCells, mStateEntryOrdinal, aState, aStateWS);
+              mNumCells, mGlobalStateEntryOrdinal, aState, aStateWS);
     }
 
     /******************************************************************************//**
@@ -661,7 +663,7 @@ public:
                        Kokkos::View<StateFad**, Kokkos::LayoutRight, Plato::MemSpace> & aFadStateWS ) const
     {
       Plato::workset_state_scalar_fad<mNumDofsPerNode, mNumNodesPerCell, StateFad>(
-              mNumCells, mStateEntryOrdinal, aState, aFadStateWS);
+              mNumCells, mGlobalStateEntryOrdinal, aState, aFadStateWS);
     }
 
     /******************************************************************************//**
@@ -747,7 +749,7 @@ public:
     void assembleResidual(const ResidualWorksetType & aResidualWorkset, AssembledResidualType & aReturnValue) const
     {
         Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>(
-                mNumCells, WorksetBase<SimplexPhysics>::mStateEntryOrdinal, aResidualWorkset, aReturnValue);
+                mNumCells, WorksetBase<SimplexPhysics>::mGlobalStateEntryOrdinal, aResidualWorkset, aReturnValue);
     }
 
     /******************************************************************************//**
@@ -762,7 +764,7 @@ public:
     template<class WorksetType, class OutType>
     void assembleVectorGradientU(const WorksetType & aWorkset, OutType & aOutput) const
     {
-        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mStateEntryOrdinal, aWorkset, aOutput);
+        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, aWorkset, aOutput);
     }
 
     /******************************************************************************//**
@@ -778,7 +780,40 @@ public:
     template<class WorksetType, class OutType>
     void assembleVectorGradientFadU(const WorksetType & aWorkset, OutType & aOutput) const
     {
-        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mStateEntryOrdinal, aWorkset, aOutput);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, aWorkset, aOutput);
+    }
+
+    /******************************************************************************//**
+     * \brief Assemble partial derivative with respect to local states (C)
+     *
+     * \tparam WorksetType Input container, as a 2-D Kokkos::View
+     * \tparam OutType Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aResidualWorkset residual cell workset - Scalar type
+     * \param [in/out] aReturnValue assembled residual - Scalar type
+    **********************************************************************************/
+    template<class WorksetType, class OutType>
+    void assembleVectorGradientC(const WorksetType & aWorkset, OutType & aOutput) const
+    {
+        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumLocalDofsPerCell>
+            (mNumCells, mLocalStateEntryOrdinal, aWorkset, aOutput);
+    }
+
+    /******************************************************************************//**
+     * \brief Assemble partial derivative with respect to local states (C) - specialized
+     * for automatic differentiation types
+     *
+     * \tparam WorksetType Input container, as a 2-D Kokkos::View
+     * \tparam OutType     Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aResidualWorkset residual cell workset - Scalar type
+     * \param [in/out] aReturnValue assembled residual - Scalar type
+    **********************************************************************************/
+    template<class WorksetType, class OutType>
+    void assembleVectorGradientFadC(const WorksetType & aWorkset, OutType & aOutput) const
+    {
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumLocalDofsPerCell>
+            (mNumCells, mLocalStateEntryOrdinal, aWorkset, aOutput);
     }
 
     /******************************************************************************//**

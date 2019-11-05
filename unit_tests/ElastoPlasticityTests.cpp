@@ -3510,10 +3510,10 @@ public:
                                    tResultWS, aTimeStep);
 
         // sum across elements
-        auto tReturnVal = Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
-        mDataMap.mScalarValues[mScalarFuncValue->getName()] = tReturnVal;
+        auto tCriterionValue = Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
+        mDataMap.mScalarValues[mScalarFuncValue->getName()] = tCriterionValue;
 
-        return (tReturnVal);
+        return (tCriterionValue);
     }
 
     /***************************************************************************//**
@@ -3582,10 +3582,10 @@ public:
                                       tResultWS, aTimeStep);
 
         // convert AD types to POD types
-        Plato::ScalarMultiVector tScalarFuncPartialZ("criterion partial wrt control", tNumCells, mNumNodesPerCell);
-        Plato::convert_ad_partial_scalar_func_to_pod<mNumNodesPerCell>(tResultWS, tScalarFuncPartialZ);
+        Plato::ScalarMultiVector tCriterionPartialWrtControl("criterion partial wrt control", tNumCells, mNumNodesPerCell);
+        Plato::convert_ad_partial_scalar_func_to_pod<mNumNodesPerCell>(tResultWS, tCriterionPartialWrtControl);
 
-        return tScalarFuncPartialZ;
+        return tCriterionPartialWrtControl;
     }
 
     /***************************************************************************//**
@@ -3654,10 +3654,10 @@ public:
                                       tResultWS, aTimeStep);
 
         // convert AD types to POD types
-        Plato::ScalarMultiVector tScalarFuncPartialU("criterion partial wrt global states", tNumCells, mNumGlobalDofsPerCell);
-        Plato::convert_ad_partial_scalar_func_to_pod<mNumGlobalDofsPerCell>(tResultWS, tScalarFuncPartialU);
+        Plato::ScalarMultiVector tCriterionPartialWrtGlobalStates("criterion partial wrt global states", tNumCells, mNumGlobalDofsPerCell);
+        Plato::convert_ad_partial_scalar_func_to_pod<mNumGlobalDofsPerCell>(tResultWS, tCriterionPartialWrtGlobalStates);
 
-        return (tScalarFuncPartialU);
+        return (tCriterionPartialWrtGlobalStates);
     }
 
     /***************************************************************************//**
@@ -3681,7 +3681,6 @@ public:
     {
         auto tNumCells = mScalarFuncValue->getMesh().nelems();
 
-        /*
         // set workset of current global states
         using CurrentGlobalStateScalar = typename LocalJacobian::StateScalarType;
         Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
@@ -3726,12 +3725,11 @@ public:
                                       tPreviousLocalStateWS, tControlWS, tConfigWS,
                                       tResultWS, aTimeStep);
 
-*/
-        // convert AD types to POD types         */
-        Plato::ScalarMultiVector tScalarFuncPartialC("criterion partial wrt local states", tNumCells, mNumLocalDofsPerCell);
-        //Plato::convert_ad_partial_scalar_func_to_pod<mNumLocalDofsPerCell>(tResultWS, tScalarFuncPartialC);
+        // convert AD types to POD types
+        Plato::ScalarMultiVector tCriterionPartialWrtLocalStates("criterion partial wrt local states", tNumCells, mNumLocalDofsPerCell);
+        Plato::convert_ad_partial_scalar_func_to_pod<mNumLocalDofsPerCell>(tResultWS, tCriterionPartialWrtLocalStates);
 
-        return tScalarFuncPartialC;
+        return tCriterionPartialWrtLocalStates;
     }
 
     /***************************************************************************//**
@@ -5660,6 +5658,124 @@ test_partial_scalar_func_with_history_wrt_current_global_state
 }
 // function test_partial_scalar_func_with_history_wrt_current_global_state
 
+/******************************************************************************//**
+ * \brief Test partial derivative of scalar function with history-dependent variables
+ *        with respect to the current local state variables.
+ * \param [in] aMesh           mesh database
+ * \param [in] aScalarFunction scalar function to evaluate derivative of
+ * \param [in] aTimeStep       time step index
+**********************************************************************************/
+template<typename SimplexPhysics>
+inline void
+test_partial_scalar_func_with_history_wrt_current_local_state
+(std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+{
+    const Plato::OrdinalType tNumCells = aMesh.nelems();
+    constexpr auto tGlobalDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+    constexpr auto tLocalDofsPerCell = SimplexPhysics::mNumLocalDofsPerCell;
+
+    // Create control workset
+    const Plato::OrdinalType tNumVerts = aMesh.nverts();
+    Plato::ScalarVector tControl("Control", tNumVerts);
+    auto tHostControl = Kokkos::create_mirror(tControl);
+    Plato::random(0.5, 0.75, tHostControl);
+    Kokkos::deep_copy(tControl, tHostControl);
+
+    // Create global state workset
+    const auto tTotalNumGlobalDofs = tNumVerts * tGlobalDofsPerNode;
+    Plato::ScalarVector tCurrentGlobalState("Current Global State", tTotalNumGlobalDofs);
+    auto tHostGlobalState = Kokkos::create_mirror(tCurrentGlobalState);
+    Plato::random(1, 5, tHostGlobalState);
+    Kokkos::deep_copy(tCurrentGlobalState, tHostGlobalState);
+
+    // Create previous global state workset
+    Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumGlobalDofs);
+    auto tHostPrevGlobalState = Kokkos::create_mirror(tPrevGlobalState);
+    Plato::random(1, 5, tHostPrevGlobalState);
+    Kokkos::deep_copy(tPrevGlobalState, tHostPrevGlobalState);
+
+    // Create local state workset
+    const auto tTotalNumLocalDofs = tNumCells * tLocalDofsPerCell;
+    Plato::ScalarVector tCurrentLocalState("Current Local State", tTotalNumLocalDofs);
+    auto tHostLocalState = Kokkos::create_mirror(tCurrentLocalState);
+    Plato::random(1.0, 2.0, tHostLocalState);
+    Kokkos::deep_copy(tCurrentLocalState, tHostLocalState);
+
+    // Create previous local state workset
+    Plato::ScalarVector tPrevLocalState("Previous Local State", tTotalNumLocalDofs);
+    auto tHostPrevLocalState = Kokkos::create_mirror(tPrevLocalState);
+    Plato::random(0.1, 0.9, tHostPrevLocalState);
+    Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
+
+    // Create future local state workset
+    Plato::ScalarVector tFutureLocalState("Future Local State", tTotalNumLocalDofs);
+    auto tHostFutureLocalState = Kokkos::create_mirror(tFutureLocalState);
+    Plato::random(0.2, 0.6, tHostFutureLocalState);
+    Kokkos::deep_copy(tFutureLocalState, tHostFutureLocalState);
+
+    auto tPartialC = aScalarFunc->gradient_c(tCurrentGlobalState, tPrevGlobalState,
+                                             tCurrentLocalState, tFutureLocalState,
+                                             tPrevLocalState, tControl, aTimeStep);
+
+    Plato::WorksetBase<SimplexPhysics> tWorksetBase(aMesh);
+    Plato::ScalarVector tAssembledPartialC("assembled partial current local state", tTotalNumLocalDofs);
+    tWorksetBase.assembleVectorGradientC(tPartialC, tAssembledPartialC);
+
+    Plato::ScalarVector tStep("current global state step", tTotalNumLocalDofs);
+    auto tHostStep = Kokkos::create_mirror(tStep);
+    Plato::random(0.05, 0.1, tHostStep);
+    Kokkos::deep_copy(tStep, tHostStep);
+    const auto tGradientDotStep = Plato::dot(tAssembledPartialC, tStep);
+
+    std::cout << std::right << std::setw(14) << "\nStep Size" << std::setw(20) << "abs(Error)" << std::endl;
+
+    constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
+    constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
+    Plato::ScalarVector tTrialCurrentLocalState("trial current local state", tTotalNumLocalDofs);
+
+    for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
+    {
+        auto tEpsilon = static_cast<Plato::Scalar>(1) /
+                std::pow(static_cast<Plato::Scalar>(10), tIndex);
+
+        // four point finite difference approximation
+        Plato::update(1.0, tCurrentLocalState, 0.0, tTrialCurrentLocalState);
+        Plato::update(tEpsilon, tStep, 1.0, tTrialCurrentLocalState);
+        auto tValuePlus1Eps = aScalarFunc->value(tCurrentGlobalState, tPrevGlobalState,
+                                                 tTrialCurrentLocalState, tFutureLocalState,
+                                                 tPrevLocalState, tControl, aTimeStep);
+
+        Plato::update(1.0, tCurrentLocalState, 0.0, tTrialCurrentLocalState);
+        Plato::update(-tEpsilon, tStep, 1.0, tTrialCurrentLocalState);
+        auto tValueMinus1Eps = aScalarFunc->value(tCurrentGlobalState, tPrevGlobalState,
+                                                  tTrialCurrentLocalState, tFutureLocalState,
+                                                  tPrevLocalState, tControl, aTimeStep);
+
+        Plato::update(1.0, tCurrentLocalState, 0.0, tTrialCurrentLocalState);
+        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialCurrentLocalState);
+        auto tValuePlus2Eps = aScalarFunc->value(tCurrentGlobalState, tPrevGlobalState,
+                                                 tTrialCurrentLocalState, tFutureLocalState,
+                                                 tPrevLocalState, tControl, aTimeStep);
+
+        Plato::update(1.0, tCurrentLocalState, 0.0, tTrialCurrentLocalState);
+        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialCurrentLocalState);
+        auto tValueMinus2Eps = aScalarFunc->value(tCurrentGlobalState, tPrevGlobalState,
+                                                  tTrialCurrentLocalState, tFutureLocalState,
+                                                  tPrevLocalState, tControl, aTimeStep);
+
+        auto tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
+                - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
+        auto tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
+        auto tFiniteDiffAppx = tNumerator / tDenominator;
+        auto tAppxError = abs(tFiniteDiffAppx - tGradientDotStep);
+
+        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14)
+                  << tEpsilon << std::setw(19)
+                  << tAppxError << std::endl;
+    }
+}
+// function test_partial_scalar_func_with_history_wrt_current_local_state
+
 
 
 
@@ -7003,7 +7119,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
-    const Plato::Scalar tTimeStepIndex = 39;
+    const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
     Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
@@ -7058,7 +7174,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
-    const Plato::Scalar tTimeStepIndex = 39;
+    const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
     Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
@@ -7113,7 +7229,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
-    const Plato::Scalar tTimeStepIndex = 39;
+    const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
     Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
@@ -7168,8 +7284,118 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
-    const Plato::Scalar tTimeStepIndex = 39;
+    const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
     Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentLocalStates_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::ElastoPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='My Maximize Plastic Work'>                                       \n"
+    "    <Parameter name='Type' type='string' value='Scalar Function'/>                      \n"
+    "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/>\n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-3'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    // TEST INTERMEDIATE TIME STEP GRADIENT
+    printf("\nINTERMEDIATE TIME STEP");
+    std::string tFuncName = "My Maximize Plastic Work";
+    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
+        std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_scalar_func_with_history_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+
+    // TEST FINAL TIME STEP GRADIENT
+    printf("\nFINAL TIME STEP");
+    const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
+    Plato::test_partial_scalar_func_with_history_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentLocalStates_2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::ElastoPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='My Maximize Plastic Work'>                                       \n"
+    "    <Parameter name='Type' type='string' value='Scalar Function'/>                      \n"
+    "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/>\n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-3'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    // TEST INTERMEDIATE TIME STEP GRADIENT
+    printf("\nINTERMEDIATE TIME STEP");
+    std::string tFuncName = "My Maximize Plastic Work";
+    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
+        std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_scalar_func_with_history_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+
+    // TEST FINAL TIME STEP GRADIENT
+    printf("\nFINAL TIME STEP");
+    const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
+    Plato::test_partial_scalar_func_with_history_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
 
