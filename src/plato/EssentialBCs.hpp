@@ -110,7 +110,7 @@ OrdinalType EssentialBC<SimplexPhysicsType>::get_length(const Omega_h::MeshSets&
     {
         std::ostringstream tMsg;
         tMsg << "Could not find Node Set with name = '" << ns_name.c_str()
-                << "'. Node Set is not define in input geometry/mesh file.\n";
+                << "'. Node Set is not defined in input geometry/mesh file.\n";
         THROWERR(tMsg.str())
     }
     auto tNodeLids = (tNodeSetsIter->second);
@@ -134,7 +134,7 @@ void EssentialBC<SimplexPhysicsType>::get(const Omega_h::MeshSets& aMeshSets,
     {
         std::ostringstream tMsg;
         tMsg << "Could not find Node Set with name = '" << ns_name.c_str()
-                << "'. Node Set is not define in input geometry/mesh file.\n";
+                << "'. Node Set is not defined in input geometry/mesh file.\n";
         THROWERR(tMsg.str())
     }
     auto tNodeLids = (tNodeSetsIter->second);
