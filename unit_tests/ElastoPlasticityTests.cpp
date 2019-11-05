@@ -5486,16 +5486,13 @@ test_partial_scalar_func_with_history_wrt_control
     Plato::random(0.2, 0.6, tHostFutureLocalState);
     Kokkos::deep_copy(tFutureLocalState, tHostFutureLocalState);
 
-    Plato::ScalarMultiVector tPartialZ =
-            aScalarFunc->gradient_z(tCurrentGlobalState, tPrevGlobalState,
-                                    tCurrentLocalState, tFutureLocalState,
-                                    tPrevLocalState, tControl, aTimeStep);
+    auto tPartialZ = aScalarFunc->gradient_z(tCurrentGlobalState, tPrevGlobalState,
+                                             tCurrentLocalState, tFutureLocalState,
+                                             tPrevLocalState, tControl, aTimeStep);
 
-    constexpr Plato::OrdinalType tNumControl = SimplexPhysics::mNumControl;;
-    constexpr Plato::OrdinalType tSpaceDim   = SimplexPhysics::mNumSpatialDims;
-    Plato::VectorEntryOrdinal<tSpaceDim, tNumControl> tEntryOrdinal(&aMesh);
+    Plato::WorksetBase<SimplexPhysics> tWorksetBase(aMesh);
     Plato::ScalarVector tAssembledPartialZ("assembled partial control", tNumVerts);
-    Plato::assemble_scalar_gradient<SimplexPhysics::mNumNodesPerCell>(tNumCells, tEntryOrdinal, tPartialZ, tAssembledPartialZ);
+    tWorksetBase.assembleScalarGradientZ(tPartialZ, tAssembledPartialZ);
 
     Plato::ScalarVector tStep("control step", tNumVerts);
     auto tHostStep = Kokkos::create_mirror(tStep);
@@ -6998,14 +6995,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
   );
 
     // TEST INTERMEDIATE TIME STEP GRADIENT
-    printf("\nINTERMEDIATE TIME STEP\n");
+    printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
     std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
         std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
-    printf("\nFINAL TIME STEP\n");
+    printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39;
     Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
@@ -7053,14 +7050,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
   );
 
     // TEST INTERMEDIATE TIME STEP GRADIENT
-    printf("\nINTERMEDIATE TIME STEP\n");
+    printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
     std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
         std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
-    printf("\nFINAL TIME STEP\n");
+    printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39;
     Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
@@ -7108,14 +7105,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
   );
 
     // TEST INTERMEDIATE TIME STEP GRADIENT
-    printf("\nINTERMEDIATE TIME STEP\n");
+    printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
     std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
         std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
-    printf("\nFINAL TIME STEP\n");
+    printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39;
     Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
@@ -7163,14 +7160,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
   );
 
     // TEST INTERMEDIATE TIME STEP GRADIENT
-    printf("\nINTERMEDIATE TIME STEP\n");
+    printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
     std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
         std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
-    printf("\nFINAL TIME STEP\n");
+    printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39;
     Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
