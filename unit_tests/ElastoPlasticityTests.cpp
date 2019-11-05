@@ -3607,7 +3607,6 @@ public:
                                         const Plato::ScalarVector & aControls,
                                         Plato::Scalar aTimeStep = 0.0) const override
     {
-        /*
         auto tNumCells = mScalarFuncValue->getMesh().nelems();
 
         // set workset of current global states
@@ -3653,10 +3652,10 @@ public:
                                       tCurrentLocalStateWS, tFutureLocalStateWS,
                                       tPreviousLocalStateWS, tControlWS, tConfigWS,
                                       tResultWS, aTimeStep);
-*/
+
         // convert AD types to POD types
-        Plato::ScalarMultiVector tScalarFuncPartialU("criterion partial wrt global states", mNumGlobalDofsPerCell);
-        //Plato::convert_ad_partial_scalar_func_to_pod<mNumGlobalDofsPerCell>(tResultWS, tScalarFuncPartialU);
+        Plato::ScalarMultiVector tScalarFuncPartialU("criterion partial wrt global states", tNumCells, mNumGlobalDofsPerCell);
+        Plato::convert_ad_partial_scalar_func_to_pod<mNumGlobalDofsPerCell>(tResultWS, tScalarFuncPartialU);
 
         return (tScalarFuncPartialU);
     }
@@ -3680,9 +3679,9 @@ public:
                                         const Plato::ScalarVector & aControls,
                                         Plato::Scalar aTimeStep = 0.0) const override
     {
-        /*
         auto tNumCells = mScalarFuncValue->getMesh().nelems();
 
+        /*
         // set workset of current global states
         using CurrentGlobalStateScalar = typename LocalJacobian::StateScalarType;
         Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
@@ -3729,7 +3728,7 @@ public:
 
 */
         // convert AD types to POD types         */
-        Plato::ScalarMultiVector tScalarFuncPartialC("criterion partial wrt local states", mNumLocalDofsPerCell);
+        Plato::ScalarMultiVector tScalarFuncPartialC("criterion partial wrt local states", tNumCells, mNumLocalDofsPerCell);
         //Plato::convert_ad_partial_scalar_func_to_pod<mNumLocalDofsPerCell>(tResultWS, tScalarFuncPartialC);
 
         return tScalarFuncPartialC;
@@ -3754,9 +3753,9 @@ public:
                                         const Plato::ScalarVector & aControls,
                                         Plato::Scalar aTimeStep = 0.0) const override
     {
-        /*
         auto tNumCells = mScalarFuncValue->getMesh().nelems();
 
+        /*
         // set workset of current global states
         using CurrentGlobalStateScalar = typename GradientX::StateScalarType;
         Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
@@ -3803,7 +3802,7 @@ public:
 
 */
         // convert AD types to POD types
-        Plato::ScalarMultiVector tScalarFuncPartialX("criterion partial wrt configuration",mNumSpatialDims);
+        Plato::ScalarMultiVector tScalarFuncPartialX("criterion partial wrt configuration", tNumCells, mNumSpatialDims);
         //Plato::convert_ad_partial_scalar_func_to_pod<mNumSpatialDims>(tResultWS, tScalarFuncPartialX);
 
         return tScalarFuncPartialX;
@@ -5605,24 +5604,19 @@ test_partial_scalar_func_with_history_wrt_current_global_state
     Plato::random(0.2, 0.6, tHostFutureLocalState);
     Kokkos::deep_copy(tFutureLocalState, tHostFutureLocalState);
 
-    Plato::ScalarMultiVector tPartialU =
-            aScalarFunc->gradient_u(tCurrentGlobalState, tPrevGlobalState,
-                                    tCurrentLocalState, tFutureLocalState,
-                                    tPrevLocalState, tControl, aTimeStep);
+    auto tPartialU = aScalarFunc->gradient_u(tCurrentGlobalState, tPrevGlobalState,
+                                             tCurrentLocalState, tFutureLocalState,
+                                             tPrevLocalState, tControl, aTimeStep);
 
-    constexpr auto tSpaceDim = SimplexPhysics::mNumSpatialDims;
-    constexpr auto tNumNodesPerCell = SimplexPhysics::mNumNodesPerCell;
-    Plato::VectorEntryOrdinal<tSpaceDim, tGlobalDofsPerNode> tStateEntryOrdinal(&aMesh);
+    Plato::WorksetBase<SimplexPhysics> tWorksetBase(aMesh);
     Plato::ScalarVector tAssembledPartialU("assembled partial current global state", tTotalNumGlobalDofs);
-    Plato::assemble_vector_gradient<tNumNodesPerCell, tGlobalDofsPerNode>
-           (tNumCells, tStateEntryOrdinal, tPartialU, tAssembledPartialU);
+    tWorksetBase.assembleVectorGradientU(tPartialU, tAssembledPartialU);
 
     Plato::ScalarVector tStep("current global state step", tTotalNumGlobalDofs);
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
     const auto tGradientDotStep = Plato::dot(tAssembledPartialU, tStep);
-
 
     std::cout << std::right << std::setw(14) << "\nStep Size" << std::setw(20) << "abs(Error)" << std::endl;
 
@@ -7071,7 +7065,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
-/*
+
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentGlobalStates_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -7180,7 +7174,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     const Plato::Scalar tTimeStepIndex = 39;
     Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
-*/
+
 
 }
 // ElastoPlasticityTest
