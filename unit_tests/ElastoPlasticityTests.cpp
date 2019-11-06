@@ -3753,7 +3753,6 @@ public:
     {
         auto tNumCells = mScalarFuncValue->getMesh().nelems();
 
-        /*
         // set workset of current global states
         using CurrentGlobalStateScalar = typename GradientX::StateScalarType;
         Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
@@ -3798,12 +3797,11 @@ public:
                                       tPreviousLocalStateWS, tControlWS, tConfigWS,
                                       tResultWS, aTimeStep);
 
-*/
         // convert AD types to POD types
-        Plato::ScalarMultiVector tScalarFuncPartialX("criterion partial wrt configuration", tNumCells, mNumSpatialDims);
-        //Plato::convert_ad_partial_scalar_func_to_pod<mNumSpatialDims>(tResultWS, tScalarFuncPartialX);
+        Plato::ScalarMultiVector tCriterionPartialWrtConfiguration("criterion partial wrt configuration", tNumCells, mNumSpatialDims);
+        Plato::convert_ad_partial_scalar_func_to_pod<mNumSpatialDims>(tResultWS, tCriterionPartialWrtConfiguration);
 
-        return tScalarFuncPartialX;
+        return tCriterionPartialWrtConfiguration;
     }
 
     /***************************************************************************//**
@@ -5721,7 +5719,7 @@ test_partial_scalar_func_with_history_wrt_current_local_state
     Plato::ScalarVector tAssembledPartialC("assembled partial current local state", tTotalNumLocalDofs);
     tWorksetBase.assembleVectorGradientC(tPartialC, tAssembledPartialC);
 
-    Plato::ScalarVector tStep("current global state step", tTotalNumLocalDofs);
+    Plato::ScalarVector tStep("current local state step", tTotalNumLocalDofs);
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
@@ -5775,6 +5773,8 @@ test_partial_scalar_func_with_history_wrt_current_local_state
     }
 }
 // function test_partial_scalar_func_with_history_wrt_current_local_state
+
+
 
 
 
