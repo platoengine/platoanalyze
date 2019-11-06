@@ -35,7 +35,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     using Plato::WorksetBase<PhysicsT>::mNumNodes;
     using Plato::WorksetBase<PhysicsT>::mNumCells;
 
-    using Plato::WorksetBase<PhysicsT>::mStateEntryOrdinal;
+    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal;
     using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
 
     using Residual  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual;

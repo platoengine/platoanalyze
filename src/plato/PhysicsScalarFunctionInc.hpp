@@ -30,7 +30,7 @@ private:
     using Plato::WorksetBase<PhysicsT>::mNumNodes; /*!< total number of nodes in the mesh */
     using Plato::WorksetBase<PhysicsT>::mNumCells; /*!< total number of cells/elements in the mesh */
 
-    using Plato::WorksetBase<PhysicsT>::mStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
+    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
     using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal; /*!< number of degree of freedom per cell/element */
     using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal; /*!< number of degree of freedom per cell/element */
 
@@ -380,7 +380,7 @@ public:
         // create and assemble to return view
         //
         Plato::ScalarVector tObjGradientU("objective gradient state",mNumDofsPerNode*mNumNodes);
-        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mStateEntryOrdinal, tResult, tObjGradientU);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, tResult, tObjGradientU);
         Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
 
         if( aStepIndex+1 < tNumSteps ) {
@@ -398,7 +398,7 @@ public:
 
         // create and assemble to return view
         //
-        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mStateEntryOrdinal, tResult, tObjGradientU);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, tResult, tObjGradientU);
         tObjectiveValue += Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
         }
 

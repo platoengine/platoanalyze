@@ -38,7 +38,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
     using Plato::WorksetBase<PhysicsT>::mNumNodeStatePerNode;
     using Plato::WorksetBase<PhysicsT>::mNumNodeStatePerCell;
 
-    using Plato::WorksetBase<PhysicsT>::mStateEntryOrdinal;
+    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal;
     using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
 
     using Residual  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual;
