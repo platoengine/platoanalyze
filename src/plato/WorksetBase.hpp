@@ -610,12 +610,16 @@ public:
             mNumCells(aMesh.nelems()),
             mNumNodes(aMesh.nverts()),
             mGlobalStateEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumDofsPerNode>(&aMesh)),
-            mLocalStateEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumLocalDofsPerCell>(&aMesh)),
+            mLocalStateEntryOrdinal(),
             mNodeStateEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumNodeStatePerNode>(&aMesh)),
             mControlEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mNumControl>(&aMesh)),
             mConfigEntryOrdinal(Plato::VectorEntryOrdinal<mSpaceDim, mSpaceDim>(&aMesh)),
             mNodeCoordinate(Plato::NodeCoordinate<mSpaceDim>(&aMesh))
     {
+        if(mNumLocalDofsPerCell != static_cast<Plato::OrdinalType>(0))
+        {
+            mLocalStateEntryOrdinal = Plato::VectorEntryOrdinal<mSpaceDim, mNumLocalDofsPerCell>(&aMesh);
+        }
     }
 
     /******************************************************************************//**
@@ -795,6 +799,10 @@ public:
     template<class WorksetType, class OutType>
     void assembleVectorGradientC(const WorksetType & aWorkset, OutType & aOutput) const
     {
+        if(mNumLocalDofsPerCell <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("Number of local degrees of freedom is set to zero. Local state variables are not defined for this application.");
+        }
         Plato::assemble_vector_gradient<mNumNodesPerCell, mNumLocalDofsPerCell>
             (mNumCells, mLocalStateEntryOrdinal, aWorkset, aOutput);
     }
@@ -812,6 +820,10 @@ public:
     template<class WorksetType, class OutType>
     void assembleVectorGradientFadC(const WorksetType & aWorkset, OutType & aOutput) const
     {
+        if(mNumLocalDofsPerCell <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("Number of local degrees of freedom is set to zero. Local state variables are not defined for this application.");
+        }
         Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumLocalDofsPerCell>
             (mNumCells, mLocalStateEntryOrdinal, aWorkset, aOutput);
     }
