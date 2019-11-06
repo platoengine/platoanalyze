@@ -3478,16 +3478,16 @@ public:
         // set workset of current local states
         using CurrentLocalStateScalar = typename Residual::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentLocalState, tCurrentLocalStateWS);
+        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
 
-        // set workset of future global states
+        // set workset of future local states
         Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aFutureLocalState, tFutureLocalStateWS);
+        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
-        // set workset of previous global states
+        // set workset of previous local states
         using PreviousLocalStateScalar = typename Residual::PrevLocalStateScalarType;
         Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousLocalState, tPreviousLocalStateWS);
+        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
 
         // workset control
         using ControlScalar = typename Residual::ControlScalarType;
@@ -3550,16 +3550,16 @@ public:
         // set workset of current local states
         using CurrentLocalStateScalar = typename GradientZ::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentLocalState, tCurrentLocalStateWS);
+        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
 
-        // set workset of future global states
+        // set workset of future local states
         Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aFutureLocalState, tFutureLocalStateWS);
+        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
-        // set workset of previous global states
+        // set workset of previous local states
         using PreviousLocalStateScalar = typename GradientZ::PrevLocalStateScalarType;
         Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousLocalState, tPreviousLocalStateWS);
+        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
 
         // workset control
         using ControlScalar = typename GradientZ::ControlScalarType;
@@ -3622,16 +3622,16 @@ public:
         // set workset of current local states
         using CurrentLocalStateScalar = typename GlobalJacobian::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentLocalState, tCurrentLocalStateWS);
+        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
 
-        // set workset of future global states
+        // set workset of future local states
         Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aFutureLocalState, tFutureLocalStateWS);
+        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
-        // set workset of previous global states
+        // set workset of previous local states
         using PreviousLocalStateScalar = typename GlobalJacobian::PrevLocalStateScalarType;
         Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousLocalState, tPreviousLocalStateWS);
+        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
 
         // workset control
         using ControlScalar = typename GlobalJacobian::ControlScalarType;
@@ -3694,16 +3694,16 @@ public:
         // set workset of current local states
         using CurrentLocalStateScalar = typename LocalJacobian::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentLocalState, tCurrentLocalStateWS);
+        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
 
-        // set workset of future global states
+        // set workset of future local states
         Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aFutureLocalState, tFutureLocalStateWS);
+        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
-        // set workset of previous global states
+        // set workset of previous local states
         using PreviousLocalStateScalar = typename LocalJacobian::PrevLocalStateScalarType;
         Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousLocalState, tPreviousLocalStateWS);
+        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
 
         // workset control
         using ControlScalar = typename LocalJacobian::ControlScalarType;
@@ -3766,16 +3766,16 @@ public:
         // set workset of current local states
         using CurrentLocalStateScalar = typename GradientX::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentLocalState, tCurrentLocalStateWS);
+        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
 
-        // set workset of future global states
+        // set workset of future local states
         Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aFutureLocalState, tFutureLocalStateWS);
+        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
-        // set workset of previous global states
+        // set workset of previous local states
         using PreviousLocalStateScalar = typename GradientX::PrevLocalStateScalarType;
         Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousLocalState, tPreviousLocalStateWS);
+        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
 
         // workset control
         using ControlScalar = typename GradientX::ControlScalarType;
