@@ -4095,7 +4095,7 @@ public:
      * \brief Return number of global degrees of freedom in solution.
      * \return Number of global degrees of freedom
     *******************************************************************************/
-    Plato::OrdinalType getNumSolutionDofs()
+    Plato::OrdinalType getNumSolutionDofs() override
     {
         return (mGlobalResidualEq.size());
     }
@@ -4104,7 +4104,7 @@ public:
      * \brief Set global state variables
      * \param [in] aGlobalState 2D view of global state variables - (NumTimeSteps, TotalDofs)
     *******************************************************************************/
-    void setGlobalState(const Plato::ScalarMultiVector & aGlobalState)
+    void setGlobalState(const Plato::ScalarMultiVector & aGlobalState) override
     {
         assert(aGlobalState.extent(0) == mGlobalStates.extent(0));
         assert(aGlobalState.extent(1) == mGlobalStates.extent(1));
@@ -4115,7 +4115,7 @@ public:
      * \brief Return 2D view of global state variables - (NumTimeSteps, TotalDofs)
      * \return aGlobalState 2D view of global state variables
     *******************************************************************************/
-    Plato::ScalarMultiVector getGlobalState()
+    Plato::ScalarMultiVector getGlobalState() override
     {
         return mGlobalStates;
     }
@@ -4124,7 +4124,7 @@ public:
      * \brief Return 2D view of global adjoint variables - (2, TotalDofs)
      * \return 2D view of global adjoint variables
     *******************************************************************************/
-    Plato::ScalarMultiVector getAdjoint()
+    Plato::ScalarMultiVector getAdjoint() override
     {
         return mGlobalAdjoint;
     }
@@ -4152,14 +4152,15 @@ public:
     /***************************************************************************//**
      * \brief Fill right-hand-side vector values
     *******************************************************************************/
-    void applyBoundaryLoads(const Plato::ScalarVector & aForce) { return; }
+    void applyBoundaryLoads(const Plato::ScalarVector & aForce) override { return; }
 
     /***************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aControls 1D container of control variables
      * \param [in] aGlobalState 2D container of global state variables
     *******************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControls, const Plato::ScalarMultiVector & aGlobalState)
+    void updateProblem(const Plato::ScalarVector & aControls,
+                       const Plato::ScalarMultiVector & aGlobalState) override
     {
         mObjective->updateProblem(aGlobalState, mLocalStates, aControls);
         mConstraint->updateProblem(aGlobalState, mLocalStates, aControls);
@@ -4170,7 +4171,7 @@ public:
      * \param [in] aControls 1D view of control variables
      * \return 2D view of state variables
     *******************************************************************************/
-    Plato::ScalarMultiVector solution(const Plato::ScalarVector &aControls)
+    Plato::ScalarMultiVector solution(const Plato::ScalarVector &aControls) override
     {
         bool tGlobalStateComputed = false;
         while (tGlobalStateComputed == false)
@@ -4197,7 +4198,8 @@ public:
      * \param [in] aGlobalState 2D view of state variables
      * \return objective function value
     *******************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControls, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControls,
+                                 const Plato::ScalarMultiVector & aGlobalState) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4222,7 +4224,7 @@ public:
      * \param [in] aControls 1D view of control variables
      * \return objective function value
     *******************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControls)
+    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControls) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4244,7 +4246,8 @@ public:
      * \param [in] aGlobalState 2D view of state variables
      * \return constraint function value
     *******************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControls, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::Scalar constraintValue(const Plato::ScalarVector & aControls,
+                                  const Plato::ScalarMultiVector & aGlobalState) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4269,7 +4272,7 @@ public:
      * \param [in] aControls 1D view of control variables
      * \return constraint function value
     *******************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControls)
+    Plato::Scalar constraintValue(const Plato::ScalarVector & aControls) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4290,7 +4293,7 @@ public:
      * \param [in] aControls 1D view of control variables
      * \return 1D view - objective partial derivative wrt control variables
     *******************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControls)
+    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControls) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4312,7 +4315,8 @@ public:
      * \param [in] aGlobalState 2D view of global state variables
      * \return 1D view of the objective gradient wrt control variables
     *******************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControls, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControls,
+                                          const Plato::ScalarMultiVector & aGlobalState) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4340,7 +4344,7 @@ public:
      * \param [in] aControls 1D view of control variables
      * \return 1D view - objective partial derivative wrt configuration variables
     *******************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControls)
+    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControls) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4362,7 +4366,8 @@ public:
      * \param [in] aGlobalState 2D view of global state variables
      * \return 1D view of the objective gradient wrt control variables
     *******************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControls, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControls,
+                                           const Plato::ScalarMultiVector & aGlobalState) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4390,7 +4395,7 @@ public:
      * \param [in] aControls 1D view of control variables
      * \return 1D view - constraint partial derivative wrt control variables
     *******************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControls)
+    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControls) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4412,7 +4417,8 @@ public:
      * \param [in] aGlobalState 2D view of state variables
      * \return 1D view - constraint partial derivative wrt control variables
     *******************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControls, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControls,
+                                           const Plato::ScalarMultiVector & aGlobalState) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4440,7 +4446,7 @@ public:
      * \param [in] aControls 1D view of control variables
      * \return 1D view - constraint partial derivative wrt configuration variables
     *******************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControls)
+    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControls) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -4462,7 +4468,8 @@ public:
      * \param [in] aGlobalState 2D view of state variables
      * \return 1D view - constraint partial derivative wrt configuration variables
     *******************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControls, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControls,
+                                            const Plato::ScalarMultiVector & aGlobalState) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
