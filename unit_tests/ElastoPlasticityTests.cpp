@@ -5503,8 +5503,8 @@ test_partial_scalar_func_with_history_wrt_control
     Kokkos::deep_copy(tStep, tHostStep);
     const Plato::Scalar tGradientDotStep = Plato::dot(tAssembledPartialZ, tStep);
 
-
-    std::cout << std::right << std::setw(14) << "\nStep Size" << std::setw(20) << "abs(Error)" << std::endl;
+    std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
+              << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
 
     constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
     constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
@@ -5542,9 +5542,8 @@ test_partial_scalar_func_with_history_wrt_control
         Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
         Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStep);
 
-        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14)
-                  << tEpsilon << std::setw(19)
-                  << tAppxError << std::endl;
+        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+              << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
     }
 }
 // function test_partial_scalar_func_with_history_wrt_control
@@ -5618,7 +5617,8 @@ test_partial_scalar_func_with_history_wrt_current_global_state
     Kokkos::deep_copy(tStep, tHostStep);
     const auto tGradientDotStep = Plato::dot(tAssembledPartialU, tStep);
 
-    std::cout << std::right << std::setw(14) << "\nStep Size" << std::setw(20) << "abs(Error)" << std::endl;
+    std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
+              << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
 
     constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
     constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
@@ -5656,9 +5656,8 @@ test_partial_scalar_func_with_history_wrt_current_global_state
         auto tFiniteDiffAppx = tNumerator / tDenominator;
         auto tAppxError = abs(tFiniteDiffAppx - tGradientDotStep);
 
-        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14)
-                  << tEpsilon << std::setw(19)
-                  << tAppxError << std::endl;
+        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+              << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
     }
 }
 // function test_partial_scalar_func_with_history_wrt_current_global_state
@@ -5732,7 +5731,8 @@ test_partial_scalar_func_with_history_wrt_current_local_state
     Kokkos::deep_copy(tStep, tHostStep);
     const auto tGradientDotStep = Plato::dot(tAssembledPartialC, tStep);
 
-    std::cout << std::right << std::setw(14) << "\nStep Size" << std::setw(20) << "abs(Error)" << std::endl;
+    std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
+              << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
 
     constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
     constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
@@ -5774,9 +5774,8 @@ test_partial_scalar_func_with_history_wrt_current_local_state
         auto tFiniteDiffAppx = tNumerator / tDenominator;
         auto tAppxError = abs(tFiniteDiffAppx - tGradientDotStep);
 
-        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14)
-                  << tEpsilon << std::setw(19)
-                  << tAppxError << std::endl;
+        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+              << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
     }
 }
 // function test_partial_scalar_func_with_history_wrt_current_local_state
