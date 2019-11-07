@@ -799,29 +799,7 @@ public:
         {
             THROWERR("Number of local degrees of freedom is set to zero. Local state variables are not defined for this application.");
         }
-        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumLocalDofsPerCell>
-            (mNumCells, mLocalStateEntryOrdinal, aWorkset, aOutput);
-    }
-
-    /******************************************************************************//**
-     * \brief Assemble partial derivative with respect to local states (C) - specialized
-     * for automatic differentiation types
-     *
-     * \tparam WorksetType Input container, as a 2-D Kokkos::View
-     * \tparam OutType     Output container, as a 1-D Kokkos::View
-     *
-     * \param [in] aResidualWorkset residual cell workset - Scalar type
-     * \param [in/out] aReturnValue assembled residual - Scalar type
-    **********************************************************************************/
-    template<class WorksetType, class OutType>
-    void assembleVectorGradientFadC(const WorksetType & aWorkset, OutType & aOutput) const
-    {
-        if(mNumLocalDofsPerCell <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("Number of local degrees of freedom is set to zero. Local state variables are not defined for this application.");
-        }
-        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumLocalDofsPerCell>
-            (mNumCells, mLocalStateEntryOrdinal, aWorkset, aOutput);
+        Plato::flatten_vector_workset<mNumLocalDofsPerCell>(mNumCells, aWorkset, aOutput);
     }
 
     /******************************************************************************//**
