@@ -5427,6 +5427,63 @@ private:
 
 
 
+template<typename SimplexPhysics>
+struct DiagnosticDataWithHistory
+{
+public:
+    Plato::ScalarVector mControl;
+    Plato::ScalarVector mPrevLocalState;
+    Plato::ScalarVector mPrevGlobalState;
+    Plato::ScalarVector mFutureLocalState;
+    Plato::ScalarVector mCurrentLocalState;
+    Plato::ScalarVector mCurrentGlobalState;
+
+    DiagnosticDataWithHistory(const Plato::OrdinalType & aNumVerts, const Plato::OrdinalType & aNumCells) :
+            mControl(Plato::ScalarVector("Control", aNumVerts)),
+            mPrevLocalState(Plato::ScalarVector("Previous Local State", aNumCells * SimplexPhysics::mNumLocalDofsPerCell)),
+            mPrevGlobalState(Plato::ScalarVector("Previous Global State", aNumVerts * SimplexPhysics::mNumDofsPerNode)),
+            mFutureLocalState(Plato::ScalarVector("Future Local State", aNumCells * SimplexPhysics::mNumLocalDofsPerCell)),
+            mCurrentLocalState(Plato::ScalarVector("Current Local State", aNumCells * SimplexPhysics::mNumLocalDofsPerCell)),
+            mCurrentGlobalState(Plato::ScalarVector("Current Global State", aNumVerts * SimplexPhysics::mNumDofsPerNode))
+    {
+        this->initialize();
+    }
+
+    ~DiagnosticDataWithHistory()
+    {
+    }
+
+private:
+    void initialize()
+    {
+        auto tHostControl = Kokkos::create_mirror(mControl);
+        Plato::random(0.5, 0.75, tHostControl);
+        Kokkos::deep_copy(mControl, tHostControl);
+
+        auto tHostPrevLocalState = Kokkos::create_mirror(mPrevLocalState);
+        Plato::random(0.1, 0.9, tHostPrevLocalState);
+        Kokkos::deep_copy(mPrevLocalState, tHostPrevLocalState);
+
+        auto tHostPrevGlobalState = Kokkos::create_mirror(mPrevGlobalState);
+        Plato::random(1, 5, tHostPrevGlobalState);
+        Kokkos::deep_copy(mPrevGlobalState, tHostPrevGlobalState);
+
+        // Create future local state workset
+        auto tHostFutureLocalState = Kokkos::create_mirror(mFutureLocalState);
+        Plato::random(0.2, 0.6, tHostFutureLocalState);
+        Kokkos::deep_copy(mFutureLocalState, tHostFutureLocalState);
+
+        auto tHostCurrentLocalState = Kokkos::create_mirror(mCurrentLocalState);
+        Plato::random(1.0, 2.0, tHostCurrentLocalState);
+        Kokkos::deep_copy(mCurrentLocalState, tHostCurrentLocalState);
+
+        auto tHostCurrentGlobalState = Kokkos::create_mirror(mCurrentGlobalState);
+        Plato::random(1, 5, tHostCurrentGlobalState);
+        Kokkos::deep_copy(mCurrentGlobalState, tHostCurrentGlobalState);
+    }
+};
+
+
 
 
 
@@ -5447,11 +5504,13 @@ test_partial_scalar_func_with_history_wrt_control
 (std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
 {
     const Plato::OrdinalType tNumCells = aMesh.nelems();
+    const Plato::OrdinalType tNumVerts = aMesh.nverts();
+    Plato::DiagnosticDataWithHistory<SimplexPhysics> tData(tNumVerts, tNumCells);
+
     constexpr Plato::OrdinalType tLocalDofsPerCell = SimplexPhysics::mNumLocalDofsPerCell;
     constexpr Plato::OrdinalType tGlobalDofsPerNode = SimplexPhysics::mNumDofsPerNode;
 
     // Create control workset
-    const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
     Plato::random(0.5, 0.75, tHostControl);
@@ -5779,6 +5838,29 @@ test_partial_scalar_func_with_history_wrt_current_local_state
     }
 }
 // function test_partial_scalar_func_with_history_wrt_current_local_state
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+template<typename SimplexPhysics>
+inline void
+test_partial_vector_func_with_history_wrt_control
+(std::shared_ptr<Plato::VectorFunctionWithHistory> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+{
+
+}
+
+
 
 
 
