@@ -7,6 +7,7 @@
 #ifndef PLATOMATHHELPERS_HPP_
 #define PLATOMATHHELPERS_HPP_
 
+#include <sstream>
 #include <cassert>
 
 #include <Kokkos_Macros.hpp>
@@ -217,6 +218,23 @@ void MatrixTimesVectorPlusVector(const Teuchos::RCP<Plato::CrsMatrixType> & aMat
                                  const Plato::ScalarVectorT<ScalarT> & aInput,
                                  const Plato::ScalarVectorT<ScalarT> & aOutput)
 {
+    if(aMatrix->numCols() != aInput.size())
+    {
+        std::ostringstream tMsg;
+        tMsg << "Dimension mismatch, input vector size does not match the number of columns. "
+             << "Input vector size = '" <<  aInput.size() << "' and the number of columns = '"
+             << aMatrix->numCols() << "'.";
+        THROWERR(tMsg.str());
+    }
+    if(aMatrix->numRows() != aOutput.size())
+    {
+        std::ostringstream tMsg;
+        tMsg << "Dimension mismatch, output vector size does not match the number of rows. "
+             << "Input vector size = '" <<  aInput.size() << "' and the number of rows = '"
+             << aMatrix->numRows() << "'.";
+        THROWERR(tMsg.str());
+    }
+
     if(aMatrix->isBlockMatrix())
     {
         auto tNodeRowMap = aMatrix->rowMap();

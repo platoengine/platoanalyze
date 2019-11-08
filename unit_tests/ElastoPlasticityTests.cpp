@@ -9,6 +9,7 @@
 #include "PlatoTestHelpers.hpp"
 
 #include <memory>
+#include <limits>
 #include <ostream>
 
 #include <Omega_h_mesh.hpp>
@@ -502,7 +503,7 @@ void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, 
  *
 *******************************************************************************/
 template<typename EvaluationType>
-class AbstractVectorFunctionWithHistory
+class AbstractGlobalVectorFunctionInc
 {
 // Protected member data
 protected:
@@ -518,7 +519,7 @@ public:
      * \param [in]  aMeshSets mesh side-sets metadata
      * \param [in]  aDataMap output data map
     *******************************************************************************/
-    explicit AbstractVectorFunctionWithHistory(Omega_h::Mesh &aMesh,
+    explicit AbstractGlobalVectorFunctionInc(Omega_h::Mesh &aMesh,
                                                Omega_h::MeshSets &aMeshSets,
                                                Plato::DataMap &aDataMap) :
         mMesh(aMesh),
@@ -530,7 +531,7 @@ public:
     /***************************************************************************//**
      * \brief Destructor
     *******************************************************************************/
-    virtual ~AbstractVectorFunctionWithHistory()
+    virtual ~AbstractGlobalVectorFunctionInc()
     {
     }
 
@@ -577,7 +578,7 @@ public:
              const Plato::ScalarMultiVectorT<typename EvaluationType::ResultScalarType> &aResult,
              Plato::Scalar aTimeStep = 0.0) = 0;
 };
-// class AbstractVectorFunctionWithHistory
+// class AbstractGlobalVectorFunctionInc
 
 
 
@@ -599,7 +600,7 @@ public:
  *
 *******************************************************************************/
 template<typename EvaluationType>
-class AbstractScalarFunctionWithHistory
+class AbstractLocalScalarFunctionInc
 {
 // Protected member data
 protected:
@@ -617,10 +618,10 @@ public:
      * \param [in] aDataMap  output data map
      * \param [in] aName     scalar function name, e.g. type
     *******************************************************************************/
-    explicit AbstractScalarFunctionWithHistory(Omega_h::Mesh &aMesh,
-                                               Omega_h::MeshSets &aMeshSets,
-                                               Plato::DataMap &aDataMap,
-                                               const std::string & aName) :
+    explicit AbstractLocalScalarFunctionInc(Omega_h::Mesh &aMesh,
+                                            Omega_h::MeshSets &aMeshSets,
+                                            Plato::DataMap &aDataMap,
+                                            const std::string & aName) :
         mMesh(aMesh),
         mDataMap(aDataMap),
         mMeshSets(aMeshSets),
@@ -630,7 +631,7 @@ public:
     /***************************************************************************//**
      * \brief Destructor
     *******************************************************************************/
-    virtual ~AbstractScalarFunctionWithHistory() { return; }
+    virtual ~AbstractLocalScalarFunctionInc() { return; }
 
     /***************************************************************************//**
      * \brief Return reference to Omega_h mesh data base
@@ -696,7 +697,7 @@ public:
                                const Plato::ScalarVector & aControl)
     { return; }
 };
-// class AbstractScalarFunctionWithHistory
+// class AbstractLocalScalarFunctionInc
 
 
 
@@ -1117,7 +1118,7 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
 
 
 /***********************************************************************//**
- * \brief Evaluate stabilized elasto-plastic residual, defined as
+ * \brief Evaluate stabilized small strains plastic residual, defined as
  *
  * \tparam EvaluationType denotes evaluation type for vector function, possible
  *   options are Residual, Jacobian, PartialControl, etc.
@@ -1137,7 +1138,7 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
  *
 ***************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>
-class ElastoPlasticityResidual: public Plato::AbstractVectorFunctionWithHistory<EvaluationType>
+class SmallStrainsPlasticityResidual: public Plato::AbstractGlobalVectorFunctionInc<EvaluationType>
 {
 // Private member data
 private:
@@ -1151,9 +1152,9 @@ private:
     static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
     static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
 
-    using Plato::AbstractVectorFunctionWithHistory<EvaluationType>::mMesh;     /*!< mesh database */
-    using Plato::AbstractVectorFunctionWithHistory<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
-    using Plato::AbstractVectorFunctionWithHistory<EvaluationType>::mMeshSets; /*!< side-sets metadata */
+    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mMesh;     /*!< mesh database */
+    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
+    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mMeshSets; /*!< side-sets metadata */
 
     using GlobalStateT = typename EvaluationType::StateScalarType;             /*!< global state variables automatic differentiation type */
     using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
@@ -1197,13 +1198,17 @@ private:
     *******************************************************************************/
     void parseOutputDataNames(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Elliptic"))
+        if(aProblemParams.isSublist("Small Strains Plasticity"))
         {
-            auto tResidualParams = aProblemParams.sublist("Elliptic");
+            auto tResidualParams = aProblemParams.sublist("Small Strains Plasticity");
             if (tResidualParams.isType < Teuchos::Array < std::string >> ("Plottable"))
             {
                 mPlotTable = tResidualParams.get < Teuchos::Array < std::string >> ("Plottable").toVector();
             }
+        }
+        else
+        {
+            THROWERR("'Small Strains Plasticity' sublist is not defined in XML input file.")
         }
     }
 
@@ -1213,15 +1218,19 @@ private:
     *******************************************************************************/
     void parseMaterialPenaltyInputs(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Elliptic"))
+        if(aProblemParams.isSublist("Small Strains Plasticity"))
         {
-            auto tResidualParams = aProblemParams.sublist("Elliptic");
+            auto tResidualParams = aProblemParams.sublist("Small Strains Plasticity");
             if(tResidualParams.isSublist("Penalty Function"))
             {
                 auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
                 mElasticPropertiesPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Exponent", 3.0);
                 mElasticPropertiesMinErsatzSIMP = tPenaltyParams.get<Plato::Scalar>("Minimum Value", 1e-9);
             }
+        }
+        else
+        {
+            THROWERR("'Small Strains Plasticity' sublist is not defined in XML input file.")
         }
     }
 
@@ -1334,11 +1343,11 @@ public:
      * \param [in] aProblemParams input XML data
      * \param [in] aPenaltyParams penalty function input XML data
     *******************************************************************************/
-    ElastoPlasticityResidual(Omega_h::Mesh &aMesh,
-                             Omega_h::MeshSets &aMeshSets,
-                             Plato::DataMap &aDataMap,
-                             Teuchos::ParameterList &aProblemParams) :
-        Plato::AbstractVectorFunctionWithHistory<EvaluationType>(aMesh, aMeshSets, aDataMap),
+    SmallStrainsPlasticityResidual(Omega_h::Mesh &aMesh,
+                                   Omega_h::MeshSets &aMeshSets,
+                                   Plato::DataMap &aDataMap,
+                                   Teuchos::ParameterList &aProblemParams) :
+        Plato::AbstractGlobalVectorFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap),
         mPoissonsRatio(-1.0),
         mElasticModulus(-1.0),
         mPressureScaling(1.0),
@@ -1355,7 +1364,7 @@ public:
     /***************************************************************************//**
      * \brief Destructor
     *******************************************************************************/
-    virtual ~ElastoPlasticityResidual()
+    virtual ~SmallStrainsPlasticityResidual()
     {
     }
 
@@ -1466,14 +1475,14 @@ public:
             tPressureDivergence (aCellOrdinal, aResult, tPressure, tConfigurationGradient, tCellVolume);
             tStabilizedDivergence (aCellOrdinal, aResult, tStabilization, tConfigurationGradient, tCellVolume, -1.0);
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
-        }, "stabilized elasto-plastic residual");
+        }, "stabilized small strains plasticity residual");
 
         this->addExternalForces(aCurrentGlobalState, aControls, aResult);
         this->outputData(tDeviatoricStress, "deviatoric stress");
         this->outputData(tPressure, "pressure");
     }
 };
-// class StabilizedElastoPlasticResidual
+// class SmallStrainsPlasticityResidual
 
 
 
@@ -1769,7 +1778,7 @@ DoubleDotProduct2ndOrderTensor<1>::operator()(const Plato::OrdinalType& aCellOrd
  *                            physics-based static parameters
 *******************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>
-class MaximizePlasticWork : public Plato::AbstractScalarFunctionWithHistory<EvaluationType>
+class MaximizePlasticWork : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
 {
 // private member data
 private:
@@ -1793,7 +1802,7 @@ private:
     Plato::Scalar mElasticPropertiesMinErsatzSIMP;                                 /*!< SIMP min ersatz stiffness for elastic properties */
     Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule;                     /*!< simplex linear cubature rule */
 
-    using Plato::AbstractScalarFunctionWithHistory<EvaluationType>::mDataMap;      /*!< PLATO Analyze output database */
+    using Plato::AbstractLocalScalarFunctionInc<EvaluationType>::mDataMap;      /*!< PLATO Analyze output database */
 // public access functions
 public:
     /***************************************************************************//**
@@ -1810,7 +1819,7 @@ public:
                       Plato::DataMap & aDataMap,
                       Teuchos::ParameterList& aInputParams,
                       std::string& aName) :
-            Plato::AbstractScalarFunctionWithHistory<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
+            Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
             mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 40)),
             mElasticBulkModulus(-1.0),
             mElasticShearModulus(-1.0),
@@ -2074,11 +2083,11 @@ private:
 
 
 
-namespace ElastoPlasticityFactory
+namespace SmallStrainsPlasticityFactory
 {
 
 /***************************************************************************//**
- * \brief Factory for stabilized vector function with local history-dependent states
+ * \brief Factory for stabilized small strains plasticity vector function.
 *******************************************************************************/
 struct FunctionFactory
 {
@@ -2096,23 +2105,23 @@ struct FunctionFactory
      * \return shared pointer to stabilized vector function with local history-dependent states
     *******************************************************************************/
     template<typename EvaluationType>
-    std::shared_ptr<Plato::AbstractVectorFunctionWithHistory<EvaluationType>>
-    createVectorFunctionWithHistory(Omega_h::Mesh& aMesh,
-                                    Omega_h::MeshSets& aMeshSets,
-                                    Plato::DataMap& aDataMap,
-                                    Teuchos::ParameterList& aInputParams,
-                                    std::string aFunctionName)
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<EvaluationType>>
+    createGlobalVectorFunctionInc(Omega_h::Mesh& aMesh,
+                                  Omega_h::MeshSets& aMeshSets,
+                                  Plato::DataMap& aDataMap,
+                                  Teuchos::ParameterList& aInputParams,
+                                  std::string aFunctionName)
     {
-        if(aFunctionName == "ElastoPlasticity")
+        if(aFunctionName == "Small Strains Plasticity")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
-            return ( std::make_shared<Plato::ElastoPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+            return ( std::make_shared<Plato::SmallStrainsPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
                     (aMesh, aMeshSets, aDataMap, aInputParams) );
         }
         else
         {
             const auto tError = std::string("Unknown Vector Function with local history-dependent states. '")
-                    + "User specified '" + aFunctionName + "'.  This Vector Function is not supported.";
+                    + "User specified '" + aFunctionName + "'.  This Vector Function is not supported in PLATO.";
             THROWERR(tError)
         }
     }
@@ -2132,13 +2141,13 @@ struct FunctionFactory
      * \return shared pointer to scalar function with local history-dependent states
     *******************************************************************************/
     template<typename EvaluationType>
-    std::shared_ptr<Plato::AbstractScalarFunctionWithHistory<EvaluationType>>
-    createScalarFunctionWithHistory(Omega_h::Mesh& aMesh,
-                                    Omega_h::MeshSets& aMeshSets,
-                                    Plato::DataMap& aDataMap,
-                                    Teuchos::ParameterList & aInputParams,
-                                    std::string aFuncType,
-                                    std::string aFuncName)
+    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<EvaluationType>>
+    createLocalScalarFunctionInc(Omega_h::Mesh& aMesh,
+                                 Omega_h::MeshSets& aMeshSets,
+                                 Plato::DataMap& aDataMap,
+                                 Teuchos::ParameterList & aInputParams,
+                                 std::string aFuncType,
+                                 std::string aFuncName)
     {
         if(aFuncType == "Maximize Plastic Work")
         {
@@ -2149,7 +2158,7 @@ struct FunctionFactory
         else
         {
             const auto tError = std::string("Unknown Scalar Function with local history-dependent states. '")
-                    + "User specified '" + aFuncType + "'.  This Scalar Function is not supported.";
+                    + "User specified '" + aFuncType + "'.  This Scalar Function is not supported in PLATO.";
             THROWERR(tError)
         }
     }
@@ -2166,27 +2175,27 @@ struct FunctionFactory
 
 
 }
-// namespace ElastoPlasticityFactory
+// namespace SmallStrainsPlasticityFactory
 
 /*************************************************************************//**
  * \brief Concrete class defining the Physics Type template argument for a
- * VectorFunctionWithHistory.  A VectorFunctionWithHistory is defined by a stabilized
+ * GlobalVectorFunctionInc.  A GlobalVectorFunctionInc is defined by a stabilized
  * Partial Differential Equation (PDE) integrated implicitly in time.  The
  * stabilization technique is based on the Variational Multiscale (VMS) method.
- * Here, the (Inc) in VectorFunctionWithHistory denotes increment.
+ * Here, the (Inc) in GlobalVectorFunctionInc denotes increment.
 *****************************************************************************/
 template<Plato::OrdinalType NumSpaceDim>
-class ElastoPlasticity: public Plato::SimplexPlasticity<NumSpaceDim>
+class SmallStrainsPlasticity: public Plato::SimplexPlasticity<NumSpaceDim>
 {
 public:
     static constexpr auto mSpaceDim = NumSpaceDim;                           /*!< number of spatial dimensitons */
-    typedef Plato::ElastoPlasticityFactory::FunctionFactory FunctionFactory; /*!< define short name for elastoplasticity factory */
+    typedef Plato::SmallStrainsPlasticityFactory::FunctionFactory FunctionFactory; /*!< define short name for elastoplasticity factory */
 
     using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>; /*!< define short name for simplex plasticity physics */
     /*!< define short name for projected pressure gradient physics */
     using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset>;
 };
-// class ElastoPlasticity
+// class SmallStrainsPlasticity
 
 
 
@@ -2203,7 +2212,7 @@ public:
 
 
 template<typename PhysicsT>
-class VectorFunctionWithHistory
+class GlobalVectorFunctionInc
 {
 // Private access member data
 private:
@@ -2232,30 +2241,30 @@ private:
     Plato::DataMap& mDataMap;                  /*!< output data map */
     Plato::WorksetBase<PhysicsT> mWorksetBase; /*!< assembly routine interface */
 
-    std::shared_ptr<Plato::AbstractVectorFunctionWithHistory<Residual>>        mGlobalVecFuncResidual;   /*!< global vector function residual */
-    std::shared_ptr<Plato::AbstractVectorFunctionWithHistory<GradientX>>       mGlobalVecFuncJacobianX;  /*!< global vector function Jacobian wrt configuration */
-    std::shared_ptr<Plato::AbstractVectorFunctionWithHistory<GradientZ>>       mGlobalVecFuncJacobianZ;  /*!< global vector function Jacobian wrt controls */
-    std::shared_ptr<Plato::AbstractVectorFunctionWithHistory<JacobianPgrad>>   mGlobalVecFuncJacPgrad;   /*!< global vector function Jacobian wrt projected pressure gradient */
-    std::shared_ptr<Plato::AbstractVectorFunctionWithHistory<LocalJacobian>>   mGlobalVecFuncJacobianC;  /*!< global vector function Jacobian wrt current local states */
-    std::shared_ptr<Plato::AbstractVectorFunctionWithHistory<LocalJacobianP>>  mGlobalVecFuncJacobianCP; /*!< global vector function Jacobian wrt previous local states */
-    std::shared_ptr<Plato::AbstractVectorFunctionWithHistory<GlobalJacobian>>  mGlobalVecFuncJacobianU;  /*!< global vector function Jacobian wrt current global states */
-    std::shared_ptr<Plato::AbstractVectorFunctionWithHistory<GlobalJacobianP>> mGlobalVecFuncJacobianUP; /*!< global vector function Jacobian wrt previous global states */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<Residual>>        mGlobalVecFuncResidual;   /*!< global vector function residual */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<GradientX>>       mGlobalVecFuncJacobianX;  /*!< global vector function Jacobian wrt configuration */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<GradientZ>>       mGlobalVecFuncJacobianZ;  /*!< global vector function Jacobian wrt controls */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<JacobianPgrad>>   mGlobalVecFuncJacPgrad;   /*!< global vector function Jacobian wrt projected pressure gradient */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<LocalJacobian>>   mGlobalVecFuncJacobianC;  /*!< global vector function Jacobian wrt current local states */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<LocalJacobianP>>  mGlobalVecFuncJacobianCP; /*!< global vector function Jacobian wrt previous local states */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<GlobalJacobian>>  mGlobalVecFuncJacobianU;  /*!< global vector function Jacobian wrt current global states */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<GlobalJacobianP>> mGlobalVecFuncJacobianUP; /*!< global vector function Jacobian wrt previous global states */
 
 // Public access functions
 public:
     /***********************************************************************//**
      * \brief Constructor
-     * \param [in] aMesh mesh data base
-     * \param [in] aMeshSets mesh sets data base
-     * \param [in] aDataMap problem-specific data map
+     * \param [in] aMesh      mesh data base
+     * \param [in] aMeshSets  mesh sets data base
+     * \param [in] aDataMap   problem-specific data map
      * \param [in] aParamList Teuchos parameter list with input data
-     * \param [in] aVectorFuncType vector function type string
+     * \param [in] aFuncType  string of global vector function type
     ***************************************************************************/
-    VectorFunctionWithHistory(Omega_h::Mesh& aMesh,
-                          Omega_h::MeshSets& aMeshSets,
-                          Plato::DataMap& aDataMap,
-                          Teuchos::ParameterList& aParamList,
-                          std::string& aVectorFuncType) :
+    GlobalVectorFunctionInc(Omega_h::Mesh& aMesh,
+                            Omega_h::MeshSets& aMeshSets,
+                            Plato::DataMap& aDataMap,
+                            Teuchos::ParameterList& aParamList,
+                            std::string& aFuncType) :
             mNumNodes(aMesh.nverts()),
             mNumCells(aMesh.nelems()),
             mDataMap(aDataMap),
@@ -2263,35 +2272,35 @@ public:
     {
         typename PhysicsT::FunctionFactory tFunctionFactory;
 
-        mGlobalVecFuncResidual = tFunctionFactory.template createVectorFunctionWithHistory<Residual>
-                                                           (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+        mGlobalVecFuncResidual = tFunctionFactory.template createGlobalVectorFunctionInc<Residual>
+                                                           (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
-        mGlobalVecFuncJacobianU = tFunctionFactory.template createVectorFunctionWithHistory<GlobalJacobian>
-                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+        mGlobalVecFuncJacobianU = tFunctionFactory.template createGlobalVectorFunctionInc<GlobalJacobian>
+                                                            (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
-        mGlobalVecFuncJacobianUP = tFunctionFactory.template createVectorFunctionWithHistory<GlobalJacobianP>
-                                                             (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+        mGlobalVecFuncJacobianUP = tFunctionFactory.template createGlobalVectorFunctionInc<GlobalJacobianP>
+                                                             (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
-        mGlobalVecFuncJacobianC = tFunctionFactory.template createVectorFunctionWithHistory<LocalJacobian>
-                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+        mGlobalVecFuncJacobianC = tFunctionFactory.template createGlobalVectorFunctionInc<LocalJacobian>
+                                                            (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
-        mGlobalVecFuncJacobianCP = tFunctionFactory.template createVectorFunctionWithHistory<LocalJacobianP>
-                                                             (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+        mGlobalVecFuncJacobianCP = tFunctionFactory.template createGlobalVectorFunctionInc<LocalJacobianP>
+                                                             (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
-        mGlobalVecFuncJacobianZ = tFunctionFactory.template createVectorFunctionWithHistory<GradientZ>
-                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+        mGlobalVecFuncJacobianZ = tFunctionFactory.template createGlobalVectorFunctionInc<GradientZ>
+                                                            (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
-        mGlobalVecFuncJacobianX = tFunctionFactory.template createVectorFunctionWithHistory<GradientX>
-                                                            (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+        mGlobalVecFuncJacobianX = tFunctionFactory.template createGlobalVectorFunctionInc<GradientX>
+                                                            (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
-        mGlobalVecFuncJacPgrad = tFunctionFactory.template createVectorFunctionWithHistory<JacobianPgrad>
-                                                           (aMesh, aMeshSets, aDataMap, aParamList, aVectorFuncType);
+        mGlobalVecFuncJacPgrad = tFunctionFactory.template createGlobalVectorFunctionInc<JacobianPgrad>
+                                                           (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
     }
 
     /***********************************************************************//**
      * \brief Destructor
     ***************************************************************************/
-    ~VectorFunctionWithHistory(){ return; }
+    ~GlobalVectorFunctionInc(){ return; }
 
     /***********************************************************************//**
      * \brief Return total number of degrees of freedom
@@ -3216,7 +3225,7 @@ private:
         return tAssembledTransposeJacobian;
     }
 };
-// class VectorFunctionWithHistory
+// class GlobalVectorFunctionInc
 
 
 
@@ -3232,13 +3241,13 @@ private:
 /***************************************************************************//**
  * \brief Abstract interface for scalar function with local history-dependent variables
 *******************************************************************************/
-class ScalarFunctionWithHistoryBase
+class LocalScalarFunctionInc
 {
 public:
     /***************************************************************************//**
      * \brief Destructor
     *******************************************************************************/
-    virtual ~ScalarFunctionWithHistoryBase(){}
+    virtual ~LocalScalarFunctionInc(){}
 
     /***************************************************************************//**
      * \brief Return function name
@@ -3353,7 +3362,7 @@ public:
                                const Plato::ScalarVector & aControls,
                                Plato::Scalar aTimeStep = 0.0) const = 0;
 };
-// class ScalarFunctionWithHistoryBase
+// class LocalScalarFunctionInc
 
 
 
@@ -3376,7 +3385,7 @@ public:
  * as quantities of interests.
 *******************************************************************************/
 template<typename PhysicsT>
-class BasicScalarFunctionWithHistory : public Plato::ScalarFunctionWithHistoryBase
+class BasicLocalScalarFunctionInc : public Plato::LocalScalarFunctionInc
 {
 // private member data
 private:
@@ -3402,11 +3411,11 @@ private:
     std::string mFunctionName;                 /*!< User defined function name */
     Plato::WorksetBase<PhysicsT> mWorksetBase; /*!< assembly routine interface */
 
-    std::shared_ptr<Plato::AbstractScalarFunctionWithHistory<Residual>>       mScalarFuncValue;    /*!< scalar function value */
-    std::shared_ptr<Plato::AbstractScalarFunctionWithHistory<GradientX>>      mScalarFuncPartialX; /*!< scalar function partial derivative wrt configuration */
-    std::shared_ptr<Plato::AbstractScalarFunctionWithHistory<GradientZ>>      mScalarFuncPartialZ; /*!< scalar function partial derivative wrt controls */
-    std::shared_ptr<Plato::AbstractScalarFunctionWithHistory<LocalJacobian>>  mScalarFuncPartialC; /*!< scalar function partial derivative wrt current local states */
-    std::shared_ptr<Plato::AbstractScalarFunctionWithHistory<GlobalJacobian>> mScalarFuncPartialU; /*!< scalar function partial derivative wrt current global states */
+    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<Residual>>       mScalarFuncValue;    /*!< scalar function value */
+    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GradientX>>      mScalarFuncPartialX; /*!< scalar function partial derivative wrt configuration */
+    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GradientZ>>      mScalarFuncPartialZ; /*!< scalar function partial derivative wrt controls */
+    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<LocalJacobian>>  mScalarFuncPartialC; /*!< scalar function partial derivative wrt current local states */
+    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GlobalJacobian>> mScalarFuncPartialU; /*!< scalar function partial derivative wrt current global states */
 
 // public access functions
 public:
@@ -3418,7 +3427,7 @@ public:
      * /param [in] aInputParams input parameters database
      * /param [in] aName user defined function name
     **********************************************************************************/
-    BasicScalarFunctionWithHistory(Omega_h::Mesh& aMesh,
+    BasicLocalScalarFunctionInc(Omega_h::Mesh& aMesh,
                                    Omega_h::MeshSets& aMeshSets,
                                    Plato::DataMap & aDataMap,
                                    Teuchos::ParameterList& aInputParams,
@@ -3433,7 +3442,7 @@ public:
     /***************************************************************************//**
      * \brief Destructor
     *******************************************************************************/
-    virtual ~BasicScalarFunctionWithHistory(){}
+    virtual ~BasicLocalScalarFunctionInc(){}
 
     /***************************************************************************//**
      * \brief Return scalar function name
@@ -3838,23 +3847,23 @@ private:
         auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
 
         mScalarFuncValue =
-            tFactory.template createScalarFunctionWithHistory<Residual>(
+            tFactory.template createLocalScalarFunctionInc<Residual>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFuncPartialX =
-            tFactory.template createScalarFunctionWithHistory<GradientX>(
+            tFactory.template createLocalScalarFunctionInc<GradientX>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFuncPartialZ =
-            tFactory.template createScalarFunctionWithHistory<GradientZ>(
+            tFactory.template createLocalScalarFunctionInc<GradientZ>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFuncPartialC =
-            tFactory.template createScalarFunctionWithHistory<LocalJacobian>(
+            tFactory.template createLocalScalarFunctionInc<LocalJacobian>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFuncPartialU =
-            tFactory.template createScalarFunctionWithHistory<GlobalJacobian>(
+            tFactory.template createLocalScalarFunctionInc<GlobalJacobian>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
     }
 };
-// class BasicScalarFunctionWithHistory
+// class BasicLocalScalarFunctionInc
 
 
 
@@ -3890,7 +3899,7 @@ public:
      * \param [in] aFunctionName scalar function name, i.e. type
      * \return shared pointer to the interface of a scalar function with local history-dependent states
      **********************************************************************************/
-    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase>
+    std::shared_ptr<Plato::LocalScalarFunctionInc>
     create(Omega_h::Mesh& aMesh,
            Omega_h::MeshSets& aMeshSets,
            Plato::DataMap & aDataMap,
@@ -3901,7 +3910,7 @@ public:
         auto tFunctionType = tProblemFunction.get < std::string > ("Type", "Not Defined");
         if(tFunctionType == "Scalar Function")
         {
-            return ( std::make_shared <Plato::BasicScalarFunctionWithHistory<PhysicsT>>
+            return ( std::make_shared <Plato::BasicLocalScalarFunctionInc<PhysicsT>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName) );
         }
         else
@@ -3997,7 +4006,7 @@ struct AdjointData
  * \brief Plasticity problem manager, which is responsible for performance
  * criteria evaluations and
  *
- * \tparam PhysicsT physics type, e.g. Plato::ElastoPlasticity
+ * \tparam PhysicsT physics type, e.g. Plato::SmallStrainsPlasticity
  *
  * \param [in] aMesh mesh database
  * \param [in] aMeshSets side sets database
@@ -4017,13 +4026,13 @@ private:
 
     // Required
     Plato::LocalVectorFunctionInc<PhysicsT> mLocalResidualEq;     /*!< local equality constraint interface*/
-    Plato::VectorFunctionWithHistory<PhysicsT> mGlobalResidualEq; /*!< global equality constraint interface*/
+    Plato::GlobalVectorFunctionInc<PhysicsT> mGlobalResidualEq; /*!< global equality constraint interface*/
     using ProjectorT = typename Plato::Projection<mSpatialDim, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
     Plato::VectorFunctionVMS<ProjectorT> mProjectionEq; /*!< global pressure gradient projection interface*/
 
     // Optional
-    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> mObjective;  /*!< objective constraint interface*/
-    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> mConstraint; /*!< constraint constraint interface*/
+    std::shared_ptr<Plato::LocalScalarFunctionInc> mObjective;  /*!< objective constraint interface*/
+    std::shared_ptr<Plato::LocalScalarFunctionInc> mConstraint; /*!< constraint constraint interface*/
 
     Plato::OrdinalType mMaxNumNewtonIter;         /*!< maximum number of Newton-Raphson iterations*/
     Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps*/
@@ -4667,7 +4676,7 @@ private:
      * \param [in] aControls    current controls, e.g. design variables
      * \return new criterion value
     *******************************************************************************/
-    Plato::Scalar evaluateCriterion(Plato::ScalarFunctionWithHistoryBase & aCriterion,
+    Plato::Scalar evaluateCriterion(Plato::LocalScalarFunctionInc & aCriterion,
                                     const Plato::ScalarMultiVector & aGlobalState,
                                     const Plato::ScalarMultiVector & aLocalState,
                                     const Plato::ScalarVector & aControls)
@@ -4705,7 +4714,7 @@ private:
      * \param [in]     aControls  current controls, e.g. design variables
      * \param [in/out] aOutput    total derivative of criterion with respect to controls
     *******************************************************************************/
-    void addPartialCriterionControl(Plato::ScalarFunctionWithHistoryBase & aCriterion,
+    void addPartialCriterionControl(Plato::LocalScalarFunctionInc & aCriterion,
                                     const Plato::ScalarVector & aControls,
                                     Plato::ScalarVector & aOutput)
     {
@@ -4739,7 +4748,7 @@ private:
      * \param [in]     aControls current controls, e.g. design variables
      * \param [in/out] aOutput   total derivative of criterion with respect to controls
     *******************************************************************************/
-    void backwardTimeIntegrationControl(Plato::ScalarFunctionWithHistoryBase & aCriterion,
+    void backwardTimeIntegrationControl(Plato::LocalScalarFunctionInc & aCriterion,
                                         const Plato::ScalarVector & aControls,
                                         Plato::ScalarVector aOutput)
     {
@@ -4773,7 +4782,7 @@ private:
      * \param [in]     aControls  current controls, e.g. design variables
      * \param [in/out] aOutput    total derivative of criterion with respect to configuration
     *******************************************************************************/
-    void addPartialCriterionConfiguration(Plato::ScalarFunctionWithHistoryBase & aCriterion,
+    void addPartialCriterionConfiguration(Plato::LocalScalarFunctionInc & aCriterion,
                                           const Plato::ScalarVector & aControls,
                                           Plato::ScalarVector & aOutput)
     {
@@ -4807,7 +4816,7 @@ private:
      * \param [in]     aControls current controls, e.g. design variables
      * \param [in/out] aOutput   total derivative of criterion with respect to configuration
     *******************************************************************************/
-    void backwardTimeIntegrationConfiguration(Plato::ScalarFunctionWithHistoryBase & aCriterion,
+    void backwardTimeIntegrationConfiguration(Plato::LocalScalarFunctionInc & aCriterion,
                                               const Plato::ScalarVector & aControls,
                                               Plato::ScalarVector aOutput)
     {
@@ -5036,7 +5045,7 @@ private:
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
      * \param [in] aAdjointData adjoint data manager
     *******************************************************************************/
-    void updateLocalAdjoint(Plato::ScalarFunctionWithHistoryBase& aCriterion,
+    void updateLocalAdjoint(Plato::LocalScalarFunctionInc& aCriterion,
                             const Plato::ScalarVector & aControls,
                             const Plato::AdjointProblemStateData& aStateData,
                             const Plato::ScalarArray3D& aInvLocalJacobianT,
@@ -5096,7 +5105,7 @@ private:
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
      * \param [in] aAdjointData adjoint data manager
     *******************************************************************************/
-    void updateGlobalAdjoint(Plato::ScalarFunctionWithHistoryBase& aCriterion,
+    void updateGlobalAdjoint(Plato::LocalScalarFunctionInc& aCriterion,
                              const Plato::ScalarVector & aControls,
                              const Plato::AdjointProblemStateData& aStateData,
                              const Plato::ScalarArray3D& aInvLocalJacobianT,
@@ -5132,7 +5141,7 @@ private:
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
      * \param [in] aAdjointData adjoint data manager
     *******************************************************************************/
-    void assembleGlobalAdjointForceVector(Plato::ScalarFunctionWithHistoryBase& aCriterion,
+    void assembleGlobalAdjointForceVector(Plato::LocalScalarFunctionInc& aCriterion,
                                           const Plato::ScalarVector &aControls,
                                           const Plato::AdjointProblemStateData &aStateData,
                                           const Plato::ScalarArray3D& aInvLocalJacobianT,
@@ -5447,6 +5456,7 @@ struct DiagnosticDataWithHistory
 {
 public:
     Plato::ScalarVector mControl;
+    Plato::ScalarVector mPresssure;
     Plato::ScalarVector mPrevLocalState;
     Plato::ScalarVector mPrevGlobalState;
     Plato::ScalarVector mFutureLocalState;
@@ -5455,6 +5465,7 @@ public:
 
     DiagnosticDataWithHistory(const Plato::OrdinalType & aNumVerts, const Plato::OrdinalType & aNumCells) :
             mControl(Plato::ScalarVector("Control", aNumVerts)),
+            mPresssure(Plato::ScalarVector("Pressure", aNumVerts * SimplexPhysics::mNumNodeStatePerNode)),
             mPrevLocalState(Plato::ScalarVector("Previous Local State", aNumCells * SimplexPhysics::mNumLocalDofsPerCell)),
             mPrevGlobalState(Plato::ScalarVector("Previous Global State", aNumVerts * SimplexPhysics::mNumDofsPerNode)),
             mFutureLocalState(Plato::ScalarVector("Future Local State", aNumCells * SimplexPhysics::mNumLocalDofsPerCell)),
@@ -5474,6 +5485,10 @@ private:
         auto tHostControl = Kokkos::create_mirror(mControl);
         Plato::random(0.5, 0.75, tHostControl);
         Kokkos::deep_copy(mControl, tHostControl);
+
+        auto tHostPresssure = Kokkos::create_mirror(mPresssure);
+        Plato::random(0.1, 0.5, tHostPresssure);
+        Kokkos::deep_copy(mPresssure, tHostPresssure);
 
         auto tHostPrevLocalState = Kokkos::create_mirror(mPrevLocalState);
         Plato::random(0.1, 0.9, tHostPrevLocalState);
@@ -5519,8 +5534,8 @@ private:
 **********************************************************************************/
 template<typename SimplexPhysics>
 inline void
-test_partial_scalar_func_with_history_wrt_control
-(std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+test_partial_local_scalar_func_wrt_control
+(std::shared_ptr<Plato::LocalScalarFunctionInc> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
 {
     const Plato::OrdinalType tNumCells = aMesh.nelems();
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
@@ -5582,7 +5597,7 @@ test_partial_scalar_func_with_history_wrt_control
               << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
     }
 }
-// function test_partial_scalar_func_with_history_wrt_control
+// function test_partial_local_scalar_func_wrt_control
 
 /******************************************************************************//**
  * \brief Test partial derivative of scalar function with history-dependent variables
@@ -5593,8 +5608,8 @@ test_partial_scalar_func_with_history_wrt_control
 **********************************************************************************/
 template<typename SimplexPhysics>
 inline void
-test_partial_scalar_func_with_history_wrt_current_global_state
-(std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+test_partial_local_scalar_func_wrt_current_global_state
+(std::shared_ptr<Plato::LocalScalarFunctionInc> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
 {
     const Plato::OrdinalType tNumCells = aMesh.nelems();
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
@@ -5660,7 +5675,7 @@ test_partial_scalar_func_with_history_wrt_current_global_state
               << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
     }
 }
-// function test_partial_scalar_func_with_history_wrt_current_global_state
+// function test_partial_local_scalar_func_wrt_current_global_state
 
 /******************************************************************************//**
  * \brief Test partial derivative of scalar function with history-dependent variables
@@ -5671,8 +5686,8 @@ test_partial_scalar_func_with_history_wrt_current_global_state
 **********************************************************************************/
 template<typename SimplexPhysics>
 inline void
-test_partial_scalar_func_with_history_wrt_current_local_state
-(std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+test_partial_local_scalar_func_wrt_current_local_state
+(std::shared_ptr<Plato::LocalScalarFunctionInc> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
 {
     const Plato::OrdinalType tNumCells = aMesh.nelems();
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
@@ -5701,8 +5716,7 @@ test_partial_scalar_func_with_history_wrt_current_local_state
 
     for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
     {
-        auto tEpsilon = static_cast<Plato::Scalar>(1) /
-                std::pow(static_cast<Plato::Scalar>(10), tIndex);
+        auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
 
         // four point finite difference approximation
         Plato::update(1.0, tData.mCurrentLocalState, 0.0, tTrialCurrentLocalState);
@@ -5739,29 +5753,86 @@ test_partial_scalar_func_with_history_wrt_current_local_state
               << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
     }
 }
-// function test_partial_scalar_func_with_history_wrt_current_local_state
+// function test_partial_local_scalar_func_wrt_current_local_state
 
 
-
-
-
-
-
-
-
-
-
-
-
-/*
-template<typename SimplexPhysics>
+template<typename SimplexPhysicsT, typename PhysicsT>
 inline void
 test_partial_vector_func_with_history_wrt_control
-(std::shared_ptr<Plato::VectorFunctionWithHistory> & aScalarFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+(std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> & aVectorFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
 {
+    // Compute workset Jacobians
+    const Plato::OrdinalType tNumCells = aMesh.nelems();
+    const Plato::OrdinalType tNumVerts = aMesh.nverts();
+    Plato::DiagnosticDataWithHistory<SimplexPhysicsT> tData(tNumVerts, tNumCells);
+    auto tJacobianZ = aVectorFunc->gradient_z(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                              tData.mCurrentLocalState, tData.mPrevLocalState,
+                                              tData.mPresssure, tData.mControl, aTimeStep);
 
+    Plato::ScalarVector tStep("Step", tNumVerts);
+    auto tHostStep = Kokkos::create_mirror(tStep);
+    Plato::random(0.05, 0.1, tHostStep);
+    Kokkos::deep_copy(tStep, tHostStep);
+    const auto tTotalNumGlobalDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tJacZtimesStep("JacZtimesVec", tTotalNumGlobalDofs);
+    Plato::MatrixTimesVectorPlusVector(tJacobianZ, tStep, tJacZtimesStep);
+    auto tNormTrueDerivative = Plato::norm(tJacZtimesStep);
+
+    std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
+              << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
+
+    constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
+    constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
+    Plato::ScalarVector tTrialControl("Trial Control", tNumVerts);
+    Plato::ScalarVector tFiniteDiffResidualAppx("Finite Diff Appx", tTotalNumGlobalDofs);
+    for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
+    {
+        auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
+
+        // four point finite difference approximation
+        Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
+        Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
+        auto tResidualPlus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                    tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                    tData.mPresssure, tTrialControl, aTimeStep);
+
+        Plato::update(8.0, tResidualPlus1Eps, 0.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
+        Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
+        auto tResidualMinus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                     tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                     tData.mPresssure, tTrialControl, aTimeStep);
+
+        Plato::update(-8.0, tResidualMinus1Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
+        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        auto tResidualPlus2Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                    tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                    tData.mPresssure, tTrialControl, aTimeStep);
+        Plato::update(-1.0, tResidualPlus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
+        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        auto tResidualMinus2Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                     tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                     tData.mPresssure, tTrialControl, aTimeStep);
+        Plato::update(1.0, tResidualMinus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        auto tAlpha = static_cast<Plato::Scalar>(1) / (static_cast<Plato::Scalar>(12) * tEpsilon);
+        Plato::scale(tAlpha, tFiniteDiffResidualAppx);
+        auto tNormFiniteDiffResidualApprox = Plato::norm(tFiniteDiffResidualAppx);
+
+        Plato::update(-1, tJacZtimesStep, 1., tFiniteDiffResidualAppx);
+        auto tNumerator = Plato::norm(tFiniteDiffResidualAppx);
+        auto tDenominator = std::numeric_limits<Plato::Scalar>::epsilon() + tNormTrueDerivative;
+        auto tRelativeError = tNumerator / tDenominator;
+
+        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+              << tNormTrueDerivative << std::setw(19) << tNormFiniteDiffResidualApprox << std::setw(19) << tRelativeError << "\n";
+    }
 }
-*/
 
 
 
@@ -6730,12 +6801,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual3D_Elastic)
         "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>    \n"
         "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>  \n"
         "    </ParameterList>                                                   \n"
-        "    <ParameterList name='Elliptic'>                                    \n"
-        "      <ParameterList name='Penalty Function'>                          \n"
-        "        <Parameter name='Type' type='string' value='SIMP'/>            \n"
-        "        <Parameter name='Exponent' type='double' value='3.0'/>         \n"
-        "        <Parameter name='Minimum Value' type='double' value='1.0e-6'/> \n"
-        "      </ParameterList>                                                 \n"
+        "  </ParameterList>                                                     \n"
+        "  <ParameterList name='Small Strains Plasticity'>                      \n"
+        "    <ParameterList name='Penalty Function'>                            \n"
+        "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
+        "      <Parameter name='Exponent' type='double' value='3.0'/>           \n"
+        "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>   \n"
         "    </ParameterList>                                                   \n"
         "  </ParameterList>                                                     \n"
         "</ParameterList>                                                       \n"
@@ -6789,7 +6860,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual3D_Elastic)
     Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
     // 3. CALL FUNCTION
-    Plato::ElastoPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
+    Plato::SmallStrainsPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
     Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tElastoPlasticityResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
     tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
                                       tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
@@ -6835,12 +6906,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual2D_Elastic)
         "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>    \n"
         "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>  \n"
         "    </ParameterList>                                                   \n"
-        "    <ParameterList name='Elliptic'>                                    \n"
-        "      <ParameterList name='Penalty Function'>                          \n"
-        "        <Parameter name='Type' type='string' value='SIMP'/>            \n"
-        "        <Parameter name='Exponent' type='double' value='3.0'/>         \n"
-        "        <Parameter name='Minimum Value' type='double' value='1.0e-6'/> \n"
-        "      </ParameterList>                                                 \n"
+        "  </ParameterList>                                                     \n"
+        "  <ParameterList name='Small Strains Plasticity'>                      \n"
+        "    <ParameterList name='Penalty Function'>                            \n"
+        "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
+        "      <Parameter name='Exponent' type='double' value='3.0'/>           \n"
+        "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>   \n"
         "    </ParameterList>                                                   \n"
         "  </ParameterList>                                                     \n"
         "</ParameterList>                                                       \n"
@@ -6893,7 +6964,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual2D_Elastic)
     Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
     // 3. CALL FUNCTION
-    Plato::ElastoPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
+    Plato::SmallStrainsPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
     Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tElastoPlasticityResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
     tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
                                       tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
@@ -7068,7 +7139,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::ElastoPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -7103,14 +7174,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     // TEST INTERMEDIATE TIME STEP GRADIENT
     printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
-    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
-        std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+    std::shared_ptr<Plato::LocalScalarFunctionInc> tScalarFunc =
+        std::make_shared<Plato::BasicLocalScalarFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_local_scalar_func_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
-    Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
+    Plato::test_partial_local_scalar_func_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
 
@@ -7123,7 +7194,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::ElastoPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -7158,14 +7229,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     // TEST INTERMEDIATE TIME STEP GRADIENT
     printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
-    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
-        std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+    std::shared_ptr<Plato::LocalScalarFunctionInc> tScalarFunc =
+        std::make_shared<Plato::BasicLocalScalarFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_local_scalar_func_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
-    Plato::test_partial_scalar_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
+    Plato::test_partial_local_scalar_func_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
 
@@ -7178,7 +7249,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::ElastoPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -7213,14 +7284,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     // TEST INTERMEDIATE TIME STEP GRADIENT
     printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
-    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
-        std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+    std::shared_ptr<Plato::LocalScalarFunctionInc> tScalarFunc =
+        std::make_shared<Plato::BasicLocalScalarFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_local_scalar_func_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
-    Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
+    Plato::test_partial_local_scalar_func_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
 
@@ -7233,7 +7304,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::ElastoPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -7268,14 +7339,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     // TEST INTERMEDIATE TIME STEP GRADIENT
     printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
-    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
-        std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+    std::shared_ptr<Plato::LocalScalarFunctionInc> tScalarFunc =
+        std::make_shared<Plato::BasicLocalScalarFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_local_scalar_func_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
-    Plato::test_partial_scalar_func_with_history_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
+    Plato::test_partial_local_scalar_func_wrt_current_global_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
 
@@ -7288,7 +7359,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::ElastoPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -7323,14 +7394,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     // TEST INTERMEDIATE TIME STEP GRADIENT
     printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
-    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
-        std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_scalar_func_with_history_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+    std::shared_ptr<Plato::LocalScalarFunctionInc> tScalarFunc =
+        std::make_shared<Plato::BasicLocalScalarFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_local_scalar_func_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
-    Plato::test_partial_scalar_func_with_history_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
+    Plato::test_partial_local_scalar_func_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
 
@@ -7343,7 +7414,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::ElastoPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -7378,14 +7449,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     // TEST INTERMEDIATE TIME STEP GRADIENT
     printf("\nINTERMEDIATE TIME STEP");
     std::string tFuncName = "My Maximize Plastic Work";
-    std::shared_ptr<Plato::ScalarFunctionWithHistoryBase> tScalarFunc =
-        std::make_shared<Plato::BasicScalarFunctionWithHistory<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_scalar_func_with_history_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+    std::shared_ptr<Plato::LocalScalarFunctionInc> tScalarFunc =
+        std::make_shared<Plato::BasicLocalScalarFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_local_scalar_func_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 
     // TEST FINAL TIME STEP GRADIENT
     printf("\nFINAL TIME STEP");
     const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
-    Plato::test_partial_scalar_func_with_history_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
+    Plato::test_partial_local_scalar_func_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
 
