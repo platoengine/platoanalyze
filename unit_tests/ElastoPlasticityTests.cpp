@@ -2470,6 +2470,85 @@ public:
         // Create return Jacobain
         auto tMesh = mGlobalVecFuncJacobianZ->getMesh();
         Teuchos::RCP<Plato::CrsMatrixType> tAssembledJacobian =
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumControl>(&tMesh);
+
+        // Assemble Jacobian
+        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode, mNumControl>
+                tJacobianMatEntryOrdinal(tAssembledJacobian, &tMesh);
+        auto tJacobianMatEntries = tAssembledJacobian->entries();
+        mWorksetBase.assembleJacobian(mNumGlobalDofsPerCell, mNumNodesPerCell,
+                                      tJacobianMatEntryOrdinal, tJacobianWS, tJacobianMatEntries);
+
+        return tAssembledJacobian;
+    }
+
+    /***********************************************************************//**
+     * \brief Compute transpose Jacobian with respect to (wrt) control of the
+     *   global residual
+     * \param [in] aGlobalState global state at current time step
+     * \param [in] aPrevGlobalState global state at previous time step
+     * \param [in] aLocalState local state at current time step
+     * \param [in] aPrevLocalState local state at previous time step
+     * \param [in] aControls control parameters
+     * \param [in] aNodeState pressure gradient
+     * \param [in] aTimeStep time step
+     * \return Jacobian wrt control of the global residual
+    ***************************************************************************/
+    Teuchos::RCP<Plato::CrsMatrixType>
+    gradient_z_T(const Plato::ScalarVector & aGlobalState,
+                 const Plato::ScalarVector & aPrevGlobalState,
+                 const Plato::ScalarVector & aLocalState,
+                 const Plato::ScalarVector & aPrevLocalState,
+                 const Plato::ScalarVector & aNodeState,
+                 const Plato::ScalarVector & aControls,
+                 Plato::Scalar aTimeStep = 0.0) const
+    {
+        // Workset config
+        using ConfigScalar = typename GradientZ::ConfigScalarType;
+        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
+        mWorksetBase.worksetConfig(tConfigWS);
+
+        // Workset current global state
+        using GlobalStateScalar = typename GradientZ::StateScalarType;
+        Plato::ScalarMultiVectorT<GlobalStateScalar> tGlobalStateWS("Current Global State Workset", mNumCells, mNumGlobalDofsPerCell);
+        mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
+
+        // Workset previous global state
+        using PrevGlobalStateScalar = typename GradientZ::PrevStateScalarType;
+        Plato::ScalarMultiVectorT<PrevGlobalStateScalar> tPrevGlobalStateWS("Previous Global State Workset", mNumCells, mNumGlobalDofsPerCell);
+        mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
+
+        // Workset local state
+        using LocalStateScalar = typename GradientZ::LocalStateScalarType;
+        Plato::ScalarMultiVectorT<LocalStateScalar> tLocalStateWS("Local Current State Workset", mNumCells, mNumLocalDofsPerCell);
+        mWorksetBase.worksetLocalState(aLocalState, tLocalStateWS);
+
+        // Workset previous local state
+        using PrevLocalStateScalar = typename GradientZ::PrevLocalStateScalarType;
+        Plato::ScalarMultiVectorT<PrevLocalStateScalar> tPrevLocalStateWS("Previous Local State Workset", mNumCells, mNumLocalDofsPerCell);
+        mWorksetBase.worksetLocalState(aPrevLocalState, tPrevLocalStateWS);
+
+        // Workset node state, i.e. projected pressure gradient
+        using NodeStateScalar = typename GradientZ::NodeStateScalarType;
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
+        mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
+
+        // Workset control
+        using ControlScalar = typename GradientZ::ControlScalarType;
+        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
+        mWorksetBase.worksetControl(aControls, tControlWS);
+
+        // Create Jacobian workset
+        using JacobianScalar = typename GradientZ::ResultScalarType;
+        Plato::ScalarMultiVectorT<JacobianScalar> tJacobianWS("Jacobian Control Workset", mNumCells, mNumGlobalDofsPerCell);
+
+        // Call evaluate function - compute Jacobian wrt controls
+        mGlobalVecFuncJacobianZ->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
+                                          tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
+
+        // Create return Jacobain
+        auto tMesh = mGlobalVecFuncJacobianZ->getMesh();
+        Teuchos::RCP<Plato::CrsMatrixType> tAssembledJacobian =
                 Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumControl, mNumGlobalDofsPerNode>(&tMesh);
 
         // Assemble Jacobian
@@ -2494,13 +2573,13 @@ public:
      * \return Jacobian wrt configuration of the global residual
     ***************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_x(const Plato::ScalarVector & aGlobalState,
-               const Plato::ScalarVector & aPrevGlobalState,
-               const Plato::ScalarVector & aLocalState,
-               const Plato::ScalarVector & aPrevLocalState,
-               const Plato::ScalarVector & aNodeState,
-               const Plato::ScalarVector & aControls,
-               Plato::Scalar aTimeStep = 0.0) const
+    gradient_x_T(const Plato::ScalarVector & aGlobalState,
+                 const Plato::ScalarVector & aPrevGlobalState,
+                 const Plato::ScalarVector & aLocalState,
+                 const Plato::ScalarVector & aPrevLocalState,
+                 const Plato::ScalarVector & aNodeState,
+                 const Plato::ScalarVector & aControls,
+                 Plato::Scalar aTimeStep = 0.0) const
     {
         // Workset config
         using ConfigScalar = typename GradientX::ConfigScalarType;
@@ -4927,9 +5006,9 @@ private:
                                Plato::ScalarVector &aGradient)
     {
         // add global adjoint contribution to gradient, i.e. DfDz += (DrDz)^T * lambda
-        auto tDrDz_T = mGlobalResidualEq.gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                    aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                    aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+        auto tDrDz_T = mGlobalResidualEq.gradient_z_T(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                                      aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                                      aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
         Plato::MatrixTimesVectorPlusVector(tDrDz_T, aAdjointData.mCurrentGlobalAdjoint, aGradient);
 
         // add projection adjoint contribution to gradient, i.e. DfDz += (DpDz)^T * mu
@@ -4976,9 +5055,9 @@ private:
     {
 
         // add global adjoint contribution to gradient, i.e. DfDx += (DrDx)^T * lambda
-        auto tDrDx_T = mGlobalResidualEq.gradient_x(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                    aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                    aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+        auto tDrDx_T = mGlobalResidualEq.gradient_x_T(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                                      aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                                      aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
         Plato::MatrixTimesVectorPlusVector(tDrDx_T, aAdjointData.mCurrentGlobalAdjoint, aGradient);
 
         // add projection adjoint contribution to gradient, i.e. DfDx += (DpDx)^T * mu
@@ -7459,6 +7538,98 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Plato::test_partial_local_scalar_func_wrt_current_local_state<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
 }
 
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtControls_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tScalarFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_vector_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+}
+
+/*
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtControls_2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tScalarFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_vector_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+}
+*/
 
 }
 // ElastoPlasticityTest
