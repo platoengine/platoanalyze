@@ -288,7 +288,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
           tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
       auto tJacobianMatEntries = tJacobianMat->entries();
-      Plato::WorksetBase<PhysicsT>::assembleJacobian(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
 
       return tJacobianMat;
     }
@@ -339,7 +339,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
           tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
       auto tJacobianMatEntries = tJacobianMat->entries();
-      Plato::WorksetBase<PhysicsT>::assembleJacobian(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
 
       return tJacobianMat;
     }

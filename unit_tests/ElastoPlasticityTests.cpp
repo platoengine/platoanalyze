@@ -3197,11 +3197,11 @@ public:
      * \param [in]     aJacobianWorkset   Jacobian workset
      * \param [in/out] aAssembledJacobian assembled Jacobian
     ***************************************************************************/
-    void assembleJacobianGlobalStates(const Plato::ScalarArray3D & aJacobianWorkset, Plato::CrsMatrixType & aAssembledJacobian)
+    void assembleJacobianGlobalStates(const Plato::ScalarArray3D & aJacobianWorkset, Teuchos::RCP<Plato::CrsMatrixType> & aAssembledJacobian)
     {
         auto tMesh = mGlobalVecFuncJacobianUP->getMesh();
         Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode> tJacobianMatEntryOrdinal(aAssembledJacobian, &tMesh);
-        auto tJacobianMatEntries = aAssembledJacobian.entries();
+        auto tJacobianMatEntries = aAssembledJacobian->entries();
         mWorksetBase.assembleJacobian(mNumGlobalDofsPerCell, mNumGlobalDofsPerCell, tJacobianMatEntryOrdinal, aJacobianWorkset, tJacobianMatEntries);
     }
 
@@ -5969,7 +5969,7 @@ test_partial_global_vector_func_wrt_current_global_states
     // Create Assembled Jacobain
     Teuchos::RCP<Plato::CrsMatrixType> tAssembledJacobianCurrentU =
             Plato::CreateBlockMatrix<Plato::CrsMatrixType, SimplexPhysicsT::mNumDofsPerNode, SimplexPhysicsT::mNumDofsPerNode>(&aMesh);
-    aVectorFunc->assembleJacobianGlobalStates(tJacobianCurrentU, *tAssembledJacobianCurrentU);
+    aVectorFunc->assembleJacobianGlobalStates(tJacobianCurrentU, tAssembledJacobianCurrentU);
 
     auto const tNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
     Plato::ScalarVector tStep("Step", tNumGlobalStateDofs);
@@ -6059,7 +6059,7 @@ test_partial_global_vector_func_wrt_previous_global_states
     // Create Assembled Jacobain
     Teuchos::RCP<Plato::CrsMatrixType> tAssembledJacobianPreviousU =
             Plato::CreateBlockMatrix<Plato::CrsMatrixType, SimplexPhysicsT::mNumDofsPerNode, SimplexPhysicsT::mNumDofsPerNode>(&aMesh);
-    aVectorFunc->assembleJacobianGlobalStates(tJacobianPreviousU, *tAssembledJacobianPreviousU);
+    aVectorFunc->assembleJacobianGlobalStates(tJacobianPreviousU, tAssembledJacobianPreviousU);
 
     // Apply descent direction to Jacobian
     auto const tNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;

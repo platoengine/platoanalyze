@@ -481,12 +481,12 @@ inline void assemble_residual(Plato::OrdinalType aNumCells,
 // function assemble_residual
 
 /******************************************************************************/
-template<class MatrixEntriesOrdinal, class Jacobian, class ReturnVal>
+template<class MatrixEntriesOrdinal, class ReturnVal>
 inline void assemble_jacobian(Plato::OrdinalType aNumCells,
                               Plato::OrdinalType aNumRowsPerCell,
                               Plato::OrdinalType aNumColumnsPerCell,
                               const MatrixEntriesOrdinal &aMatrixEntryOrdinal,
-                              const Jacobian &aJacobianWorkset,
+                              const Plato::ScalarArray3D &aJacobianWorkset,
                               ReturnVal &aReturnValue)
 /******************************************************************************/
 {
@@ -876,13 +876,35 @@ public:
      * \param [in/out] aReturnValue assembled Jacobian
     **********************************************************************************/
     template<class MatrixEntriesOrdinalType, class JacobianWorksetType, class AssembledJacobianType>
+    void assembleJacobianFad(Plato::OrdinalType aNumRows,
+                             Plato::OrdinalType aNumColumns,
+                             const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
+                             const JacobianWorksetType & aJacobianWorkset,
+                             AssembledJacobianType & aReturnValue) const
+    {
+        Plato::assemble_jacobian_fad(mNumCells, aNumRows, aNumColumns, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
+    }
+
+    /******************************************************************************//**
+     * \brief Assemble Jacobian
+     *
+     * \tparam MatrixEntriesOrdinalType Input container of matrix ordinal
+     * \tparam AssembledJacobianType Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aNumRows number of rows
+     * \param [in] aNumColumns number of columns
+     * \param [in] aMatrixEntryOrdinal container of Jacobian entry ordinal (local-to-global ID map)
+     * \param [in] aJacobianWorkset Jacobian cell workset
+     * \param [in/out] aReturnValue assembled Jacobian
+    **********************************************************************************/
+    template<class MatrixEntriesOrdinalType, class AssembledJacobianType>
     void assembleJacobian(Plato::OrdinalType aNumRows,
                           Plato::OrdinalType aNumColumns,
                           const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
-                          const JacobianWorksetType & aJacobianWorkset,
+                          const Plato::ScalarArray3D & aJacobianWorkset,
                           AssembledJacobianType & aReturnValue) const
     {
-        Plato::assemble_jacobian_fad(mNumCells, aNumRows, aNumColumns, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
+        Plato::assemble_jacobian(mNumCells, aNumRows, aNumColumns, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
     }
 
     /******************************************************************************//**
