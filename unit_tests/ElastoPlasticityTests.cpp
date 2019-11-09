@@ -3192,6 +3192,19 @@ public:
         return (tOutput);
     }
 
+    /***********************************************************************//**
+     * \brief Assembled Jacobian wrt global states
+     * \param [in]     aJacobianWorkset   Jacobian workset
+     * \param [in/out] aAssembledJacobian assembled Jacobian
+    ***************************************************************************/
+    void assembleJacobianGlobalStates(const Plato::ScalarArray3D & aJacobianWorkset, Plato::CrsMatrixType & aAssembledJacobian)
+    {
+        auto tMesh = mGlobalVecFuncJacobianUP->getMesh();
+        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode> tJacobianMatEntryOrdinal(aAssembledJacobian, &tMesh);
+        auto tJacobianMatEntries = aAssembledJacobian.entries();
+        mWorksetBase.assembleJacobian(mNumGlobalDofsPerCell, mNumGlobalDofsPerCell, tJacobianMatEntryOrdinal, aJacobianWorkset, tJacobianMatEntries);
+    }
+
 // Private access functions
 private:
     /***********************************************************************//**
@@ -5544,7 +5557,7 @@ private:
 
 
 template<typename SimplexPhysics>
-struct DiagnosticDataWithHistory
+struct DiagnosticDataPlasticity
 {
 public:
     Plato::ScalarVector mControl;
@@ -5555,7 +5568,7 @@ public:
     Plato::ScalarVector mCurrentLocalState;
     Plato::ScalarVector mCurrentGlobalState;
 
-    DiagnosticDataWithHistory(const Plato::OrdinalType & aNumVerts, const Plato::OrdinalType & aNumCells) :
+    DiagnosticDataPlasticity(const Plato::OrdinalType & aNumVerts, const Plato::OrdinalType & aNumCells) :
             mControl(Plato::ScalarVector("Control", aNumVerts)),
             mPresssure(Plato::ScalarVector("Pressure", aNumVerts * SimplexPhysics::mNumNodeStatePerNode)),
             mPrevLocalState(Plato::ScalarVector("Previous Local State", aNumCells * SimplexPhysics::mNumLocalDofsPerCell)),
@@ -5567,7 +5580,7 @@ public:
         this->initialize();
     }
 
-    ~DiagnosticDataWithHistory()
+    ~DiagnosticDataPlasticity()
     {
     }
 
@@ -5631,7 +5644,7 @@ test_partial_local_scalar_func_wrt_control
 {
     const Plato::OrdinalType tNumCells = aMesh.nelems();
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
-    Plato::DiagnosticDataWithHistory<SimplexPhysics> tData(tNumVerts, tNumCells);
+    Plato::DiagnosticDataPlasticity<SimplexPhysics> tData(tNumVerts, tNumCells);
     auto tPartialZ = aScalarFunc->gradient_z(tData.mCurrentGlobalState, tData.mPrevGlobalState,
                                              tData.mCurrentLocalState, tData.mFutureLocalState,
                                              tData.mPrevLocalState, tData.mControl, aTimeStep);
@@ -5705,7 +5718,7 @@ test_partial_local_scalar_func_wrt_current_global_state
 {
     const Plato::OrdinalType tNumCells = aMesh.nelems();
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
-    Plato::DiagnosticDataWithHistory<SimplexPhysics> tData(tNumVerts, tNumCells);
+    Plato::DiagnosticDataPlasticity<SimplexPhysics> tData(tNumVerts, tNumCells);
     auto tPartialU = aScalarFunc->gradient_u(tData.mCurrentGlobalState, tData.mPrevGlobalState,
                                              tData.mCurrentLocalState, tData.mFutureLocalState,
                                              tData.mPrevLocalState, tData.mControl, aTimeStep);
@@ -5783,7 +5796,7 @@ test_partial_local_scalar_func_wrt_current_local_state
 {
     const Plato::OrdinalType tNumCells = aMesh.nelems();
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
-    Plato::DiagnosticDataWithHistory<SimplexPhysics> tData(tNumVerts, tNumCells);
+    Plato::DiagnosticDataPlasticity<SimplexPhysics> tData(tNumVerts, tNumCells);
     auto tPartialC = aScalarFunc->gradient_c(tData.mCurrentGlobalState, tData.mPrevGlobalState,
                                              tData.mCurrentLocalState, tData.mFutureLocalState,
                                              tData.mPrevLocalState, tData.mControl, aTimeStep);
@@ -5848,15 +5861,22 @@ test_partial_local_scalar_func_wrt_current_local_state
 // function test_partial_local_scalar_func_wrt_current_local_state
 
 
+/******************************************************************************//**
+ * \brief Test partial derivative of vector function with history-dependent variables
+ *        with respect to the control variables.
+ * \param [in] aMesh           mesh database
+ * \param [in] aScalarFunction scalar function to evaluate derivative of
+ * \param [in] aTimeStep       time step index
+**********************************************************************************/
 template<typename SimplexPhysicsT, typename PhysicsT>
 inline void
-test_partial_vector_func_with_history_wrt_control
+test_partial_global_vector_func_wrt_control
 (std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> & aVectorFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
 {
     // Compute workset Jacobians
     const Plato::OrdinalType tNumCells = aMesh.nelems();
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
-    Plato::DiagnosticDataWithHistory<SimplexPhysicsT> tData(tNumVerts, tNumCells);
+    Plato::DiagnosticDataPlasticity<SimplexPhysicsT> tData(tNumVerts, tNumCells);
     auto tJacobianZ = aVectorFunc->gradient_z(tData.mCurrentGlobalState, tData.mPrevGlobalState,
                                               tData.mCurrentLocalState, tData.mPrevLocalState,
                                               tData.mPresssure, tData.mControl, aTimeStep);
@@ -5887,7 +5907,6 @@ test_partial_vector_func_with_history_wrt_control
         auto tResidualPlus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
                                                     tData.mCurrentLocalState, tData.mPrevLocalState,
                                                     tData.mPresssure, tTrialControl, aTimeStep);
-
         Plato::update(8.0, tResidualPlus1Eps, 0.0, tFiniteDiffResidualAppx);
 
         Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
@@ -5895,7 +5914,6 @@ test_partial_vector_func_with_history_wrt_control
         auto tResidualMinus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
                                                      tData.mCurrentLocalState, tData.mPrevLocalState,
                                                      tData.mPresssure, tTrialControl, aTimeStep);
-
         Plato::update(-8.0, tResidualMinus1Eps, 1.0, tFiniteDiffResidualAppx);
 
         Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
@@ -5925,6 +5943,361 @@ test_partial_vector_func_with_history_wrt_control
               << tNormTrueDerivative << std::setw(19) << tNormFiniteDiffResidualApprox << std::setw(19) << tRelativeError << "\n";
     }
 }
+// function test_partial_global_vector_func_wrt_control
+
+
+/******************************************************************************//**
+ * \brief Test partial derivative of vector function with history-dependent variables
+ *        with respect to the current global state variables.
+ * \param [in] aMesh           mesh database
+ * \param [in] aScalarFunction scalar function to evaluate derivative of
+ * \param [in] aTimeStep       time step index
+**********************************************************************************/
+template<typename SimplexPhysicsT, typename PhysicsT>
+inline void
+test_partial_global_vector_func_wrt_current_global_states
+(std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> & aVectorFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+{
+    // Compute workset Jacobians
+    const Plato::OrdinalType tNumCells = aMesh.nelems();
+    const Plato::OrdinalType tNumVerts = aMesh.nverts();
+    Plato::DiagnosticDataPlasticity<SimplexPhysicsT> tData(tNumVerts, tNumCells);
+    auto tJacobianCurrentU = aVectorFunc->gradient_u(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                     tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+
+    // Create Assembled Jacobain
+    Teuchos::RCP<Plato::CrsMatrixType> tAssembledJacobianCurrentU =
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, SimplexPhysicsT::mNumDofsPerNode, SimplexPhysicsT::mNumDofsPerNode>(&aMesh);
+    aVectorFunc->assembleJacobianGlobalStates(tJacobianCurrentU, *tAssembledJacobianCurrentU);
+
+    auto const tNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tStep("Step", tNumGlobalStateDofs);
+    auto tHostStep = Kokkos::create_mirror(tStep);
+    Plato::random(0.05, 0.1, tHostStep);
+    Kokkos::deep_copy(tStep, tHostStep);
+    Plato::ScalarVector tJacUtimesStep("JacUtimesVec", tNumGlobalStateDofs);
+    Plato::MatrixTimesVectorPlusVector(tAssembledJacobianCurrentU, tStep, tJacUtimesStep);
+    auto tNormTrueDerivative = Plato::norm(tJacUtimesStep);
+
+    std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
+              << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
+
+    constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
+    constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
+    Plato::ScalarVector tFiniteDiffResidualAppx("Finite Diff Appx", tNumGlobalStateDofs);
+    Plato::ScalarVector tTrialCurrentGlobalStates("Trial Current Global States", tNumGlobalStateDofs);
+    for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
+    {
+        auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
+
+        // four point finite difference approximation
+        Plato::update(1.0, tData.mCurrentGlobalState, 0.0, tTrialCurrentGlobalStates);
+        Plato::update(tEpsilon, tStep, 1.0, tTrialCurrentGlobalStates);
+        auto tResidualPlus1Eps = aVectorFunc->value(tTrialCurrentGlobalStates, tData.mPrevGlobalState,
+                                                    tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                    tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(8.0, tResidualPlus1Eps, 0.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mCurrentGlobalState, 0.0, tTrialCurrentGlobalStates);
+        Plato::update(-tEpsilon, tStep, 1.0, tTrialCurrentGlobalStates);
+        auto tResidualMinus1Eps = aVectorFunc->value(tTrialCurrentGlobalStates, tData.mPrevGlobalState,
+                                                     tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(-8.0, tResidualMinus1Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mCurrentGlobalState, 0.0, tTrialCurrentGlobalStates);
+        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialCurrentGlobalStates);
+        auto tResidualPlus2Eps = aVectorFunc->value(tTrialCurrentGlobalStates, tData.mPrevGlobalState,
+                                                    tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                    tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(-1.0, tResidualPlus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mCurrentGlobalState, 0.0, tTrialCurrentGlobalStates);
+        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialCurrentGlobalStates);
+        auto tResidualMinus2Eps = aVectorFunc->value(tTrialCurrentGlobalStates, tData.mPrevGlobalState,
+                                                     tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(1.0, tResidualMinus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        auto tAlpha = static_cast<Plato::Scalar>(1) / (static_cast<Plato::Scalar>(12) * tEpsilon);
+        Plato::scale(tAlpha, tFiniteDiffResidualAppx);
+        auto tNormFiniteDiffResidualApprox = Plato::norm(tFiniteDiffResidualAppx);
+
+        Plato::update(-1, tJacUtimesStep, 1., tFiniteDiffResidualAppx);
+        auto tNumerator = Plato::norm(tFiniteDiffResidualAppx);
+        auto tDenominator = std::numeric_limits<Plato::Scalar>::epsilon() + tNormTrueDerivative;
+        auto tRelativeError = tNumerator / tDenominator;
+
+        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+              << tNormTrueDerivative << std::setw(19) << tNormFiniteDiffResidualApprox << std::setw(19) << tRelativeError << "\n";
+    }
+}
+// function test_partial_global_vector_func_wrt_current_global_states
+
+
+/******************************************************************************//**
+ * \brief Test partial derivative of vector function with history-dependent variables
+ *        with respect to the previous global state variables.
+ * \param [in] aMesh           mesh database
+ * \param [in] aScalarFunction scalar function to evaluate derivative of
+ * \param [in] aTimeStep       time step index
+**********************************************************************************/
+template<typename SimplexPhysicsT, typename PhysicsT>
+inline void
+test_partial_global_vector_func_wrt_previous_global_states
+(std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> & aVectorFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+{
+    // Compute workset Jacobians
+    const Plato::OrdinalType tNumCells = aMesh.nelems();
+    const Plato::OrdinalType tNumVerts = aMesh.nverts();
+    Plato::DiagnosticDataPlasticity<SimplexPhysicsT> tData(tNumVerts, tNumCells);
+    auto tJacobianPreviousU = aVectorFunc->gradient_up(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                      tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                      tData.mPresssure, tData.mControl, aTimeStep);
+
+    // Create Assembled Jacobain
+    Teuchos::RCP<Plato::CrsMatrixType> tAssembledJacobianPreviousU =
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, SimplexPhysicsT::mNumDofsPerNode, SimplexPhysicsT::mNumDofsPerNode>(&aMesh);
+    aVectorFunc->assembleJacobianGlobalStates(tJacobianPreviousU, *tAssembledJacobianPreviousU);
+
+    // Apply descent direction to Jacobian
+    auto const tNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tStep("Step", tNumGlobalStateDofs);
+    auto tHostStep = Kokkos::create_mirror(tStep);
+    Plato::random(0.05, 0.1, tHostStep);
+    Kokkos::deep_copy(tStep, tHostStep);
+    Plato::ScalarVector tJacPrevUtimesStep("JacPrevUtimesVec", tNumGlobalStateDofs);
+    Plato::MatrixTimesVectorPlusVector(tAssembledJacobianPreviousU, tStep, tJacPrevUtimesStep);
+    auto tNormTrueDerivative = Plato::norm(tJacPrevUtimesStep);
+
+    std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
+              << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
+
+    constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
+    constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
+    Plato::ScalarVector tFiniteDiffResidualAppx("Finite Diff Appx", tNumGlobalStateDofs);
+    Plato::ScalarVector tTrialPreviousGlobalStates("Trial Previous Global States", tNumGlobalStateDofs);
+    for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
+    {
+        auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
+
+        // four point finite difference approximation
+        Plato::update(1.0, tData.mPrevGlobalState, 0.0, tTrialPreviousGlobalStates);
+        Plato::update(tEpsilon, tStep, 1.0, tTrialPreviousGlobalStates);
+        auto tResidualPlus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tTrialPreviousGlobalStates,
+                                                    tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                    tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(8.0, tResidualPlus1Eps, 0.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mPrevGlobalState, 0.0, tTrialPreviousGlobalStates);
+        Plato::update(-tEpsilon, tStep, 1.0, tTrialPreviousGlobalStates);
+        auto tResidualMinus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tTrialPreviousGlobalStates,
+                                                     tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(-8.0, tResidualMinus1Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mPrevGlobalState, 0.0, tTrialPreviousGlobalStates);
+        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialPreviousGlobalStates);
+        auto tResidualPlus2Eps = aVectorFunc->value(tData.mCurrentGlobalState, tTrialPreviousGlobalStates,
+                                                    tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                    tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(-1.0, tResidualPlus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mPrevGlobalState, 0.0, tTrialPreviousGlobalStates);
+        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialPreviousGlobalStates);
+        auto tResidualMinus2Eps = aVectorFunc->value(tData.mCurrentGlobalState, tTrialPreviousGlobalStates,
+                                                     tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(1.0, tResidualMinus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        auto tAlpha = static_cast<Plato::Scalar>(1) / (static_cast<Plato::Scalar>(12) * tEpsilon);
+        Plato::scale(tAlpha, tFiniteDiffResidualAppx);
+        auto tNormFiniteDiffResidualApprox = Plato::norm(tFiniteDiffResidualAppx);
+
+        Plato::update(-1, tJacPrevUtimesStep, 1., tFiniteDiffResidualAppx);
+        auto tNumerator = Plato::norm(tFiniteDiffResidualAppx);
+        auto tDenominator = std::numeric_limits<Plato::Scalar>::epsilon() + tNormTrueDerivative;
+        auto tRelativeError = tNumerator / tDenominator;
+
+        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+              << tNormTrueDerivative << std::setw(19) << tNormFiniteDiffResidualApprox << std::setw(19) << tRelativeError << "\n";
+    }
+}
+// function test_partial_global_vector_func_wrt_previous_global_states
+
+
+/******************************************************************************//**
+ * \brief Test partial derivative of vector function with history-dependent variables
+ *        with respect to the current local state variables.
+ * \param [in] aMesh           mesh database
+ * \param [in] aScalarFunction scalar function to evaluate derivative of
+ * \param [in] aTimeStep       time step index
+**********************************************************************************/
+template<typename SimplexPhysicsT, typename PhysicsT>
+inline void
+test_partial_global_vector_func_wrt_current_local_states
+(std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> & aVectorFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+{
+    // Compute workset Jacobians
+    const Plato::OrdinalType tNumCells = aMesh.nelems();
+    const Plato::OrdinalType tNumVerts = aMesh.nverts();
+    Plato::DiagnosticDataPlasticity<SimplexPhysicsT> tData(tNumVerts, tNumCells);
+    auto tJacobianCurrentC = aVectorFunc->gradient_c(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                     tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+
+    auto const tNumLocalStateDofs = tNumVerts * SimplexPhysicsT::mNumLocalDofsPerNode;
+    Plato::ScalarVector tStep("Step", tNumLocalStateDofs);
+    auto tHostStep = Kokkos::create_mirror(tStep);
+    Plato::random(0.05, 0.1, tHostStep);
+    Kokkos::deep_copy(tStep, tHostStep);
+    auto const tNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tJacCtimesStep("JacCtimesVec", tNumGlobalStateDofs);
+    Plato::MatrixTimesVectorPlusVector(tJacobianCurrentC, tStep, tJacCtimesStep);
+    auto tNormTrueDerivative = Plato::norm(tJacCtimesStep);
+
+    std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
+              << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
+
+    constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
+    constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
+    Plato::ScalarVector tFiniteDiffResidualAppx("Finite Diff Appx", tNumGlobalStateDofs);
+    Plato::ScalarVector tTrialCurrentLocalStates("Trial Current Local States", tNumLocalStateDofs);
+    for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
+    {
+        auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
+
+        // four point finite difference approximation
+        Plato::update(1.0, tData.mCurrentLocalState, 0.0, tTrialCurrentLocalStates);
+        Plato::update(tEpsilon, tStep, 1.0, tTrialCurrentLocalStates);
+        auto tResidualPlus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                    tTrialCurrentLocalStates, tData.mPrevLocalState,
+                                                    tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(8.0, tResidualPlus1Eps, 0.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mCurrentLocalState, 0.0, tTrialCurrentLocalStates);
+        Plato::update(-tEpsilon, tStep, 1.0, tTrialCurrentLocalStates);
+        auto tResidualMinus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                     tTrialCurrentLocalStates, tData.mPrevLocalState,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(-8.0, tResidualMinus1Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mCurrentLocalState, 0.0, tTrialCurrentLocalStates);
+        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialCurrentLocalStates);
+        auto tResidualPlus2Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                    tTrialCurrentLocalStates, tData.mPrevLocalState,
+                                                    tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(-1.0, tResidualPlus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mCurrentLocalState, 0.0, tTrialCurrentLocalStates);
+        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialCurrentLocalStates);
+        auto tResidualMinus2Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                     tTrialCurrentLocalStates, tData.mPrevLocalState,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(1.0, tResidualMinus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        auto tAlpha = static_cast<Plato::Scalar>(1) / (static_cast<Plato::Scalar>(12) * tEpsilon);
+        Plato::scale(tAlpha, tFiniteDiffResidualAppx);
+        auto tNormFiniteDiffResidualApprox = Plato::norm(tFiniteDiffResidualAppx);
+
+        Plato::update(-1, tJacCtimesStep, 1., tFiniteDiffResidualAppx);
+        auto tNumerator = Plato::norm(tFiniteDiffResidualAppx);
+        auto tDenominator = std::numeric_limits<Plato::Scalar>::epsilon() + tNormTrueDerivative;
+        auto tRelativeError = tNumerator / tDenominator;
+
+        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+              << tNormTrueDerivative << std::setw(19) << tNormFiniteDiffResidualApprox << std::setw(19) << tRelativeError << "\n";
+    }
+}
+// function test_partial_global_vector_func_wrt_current_local_states
+
+
+
+/******************************************************************************//**
+ * \brief Test partial derivative of vector function with history-dependent variables
+ *        with respect to the previous local state variables.
+ * \param [in] aMesh           mesh database
+ * \param [in] aScalarFunction scalar function to evaluate derivative of
+ * \param [in] aTimeStep       time step index
+**********************************************************************************/
+template<typename SimplexPhysicsT, typename PhysicsT>
+inline void
+test_partial_global_vector_func_wrt_previous_local_states
+(std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> & aVectorFunc, Omega_h::Mesh & aMesh, Plato::Scalar aTimeStep = 0.0)
+{
+    // Compute workset Jacobians
+    const Plato::OrdinalType tNumCells = aMesh.nelems();
+    const Plato::OrdinalType tNumVerts = aMesh.nverts();
+    Plato::DiagnosticDataPlasticity<SimplexPhysicsT> tData(tNumVerts, tNumCells);
+    auto tJacobianPreviousC = aVectorFunc->gradient_cp(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                      tData.mCurrentLocalState, tData.mPrevLocalState,
+                                                      tData.mPresssure, tData.mControl, aTimeStep);
+
+    auto const tNumLocalStateDofs = tNumVerts * SimplexPhysicsT::mNumLocalDofsPerNode;
+    Plato::ScalarVector tStep("Step", tNumLocalStateDofs);
+    auto tHostStep = Kokkos::create_mirror(tStep);
+    Plato::random(0.05, 0.1, tHostStep);
+    Kokkos::deep_copy(tStep, tHostStep);
+    auto const tNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tJacPrevCtimesStep("JacPrevCtimesVec", tNumGlobalStateDofs);
+    Plato::MatrixTimesVectorPlusVector(tJacobianPreviousC, tStep, tJacPrevCtimesStep);
+    auto tNormTrueDerivative = Plato::norm(tJacPrevCtimesStep);
+
+    std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
+              << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
+
+    constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
+    constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
+    Plato::ScalarVector tFiniteDiffResidualAppx("Finite Diff Appx", tNumGlobalStateDofs);
+    Plato::ScalarVector tTrialPreviousLocalStates("Trial Previous Local States", tNumLocalStateDofs);
+    for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
+    {
+        auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
+
+        // four point finite difference approximation
+        Plato::update(1.0, tData.mPrevLocalState, 0.0, tTrialPreviousLocalStates);
+        Plato::update(tEpsilon, tStep, 1.0, tTrialPreviousLocalStates);
+        auto tResidualPlus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                    tData.mCurrentLocalState, tTrialPreviousLocalStates,
+                                                    tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(8.0, tResidualPlus1Eps, 0.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mPrevLocalState, 0.0, tTrialPreviousLocalStates);
+        Plato::update(-tEpsilon, tStep, 1.0, tTrialPreviousLocalStates);
+        auto tResidualMinus1Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                     tData.mCurrentLocalState, tTrialPreviousLocalStates,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(-8.0, tResidualMinus1Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mPrevLocalState, 0.0, tTrialPreviousLocalStates);
+        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialPreviousLocalStates);
+        auto tResidualPlus2Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                    tData.mCurrentLocalState, tTrialPreviousLocalStates,
+                                                    tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(-1.0, tResidualPlus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        Plato::update(1.0, tData.mPrevLocalState, 0.0, tTrialPreviousLocalStates);
+        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialPreviousLocalStates);
+        auto tResidualMinus2Eps = aVectorFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
+                                                     tData.mCurrentLocalState, tTrialPreviousLocalStates,
+                                                     tData.mPresssure, tData.mControl, aTimeStep);
+        Plato::update(1.0, tResidualMinus2Eps, 1.0, tFiniteDiffResidualAppx);
+
+        auto tAlpha = static_cast<Plato::Scalar>(1) / (static_cast<Plato::Scalar>(12) * tEpsilon);
+        Plato::scale(tAlpha, tFiniteDiffResidualAppx);
+        auto tNormFiniteDiffResidualApprox = Plato::norm(tFiniteDiffResidualAppx);
+
+        Plato::update(-1, tJacPrevCtimesStep, 1., tFiniteDiffResidualAppx);
+        auto tNumerator = Plato::norm(tFiniteDiffResidualAppx);
+        auto tDenominator = std::numeric_limits<Plato::Scalar>::epsilon() + tNormTrueDerivative;
+        auto tRelativeError = tNumerator / tDenominator;
+
+        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+              << tNormTrueDerivative << std::setw(19) << tNormFiniteDiffResidualApprox << std::setw(19) << tRelativeError << "\n";
+    }
+}
+// function test_partial_global_vector_func_wrt_previous_local_states
 
 
 
@@ -7592,9 +7965,9 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
   );
 
     std::string tFuncName = "Small Strains Plasticity";
-    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tScalarFunc =
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_vector_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+    Plato::test_partial_global_vector_func_wrt_control<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
 }
 
 
@@ -7638,10 +8011,195 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
   );
 
     std::string tFuncName = "Small Strains Plasticity";
-    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tScalarFunc =
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_vector_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
+    Plato::test_partial_global_vector_func_wrt_control<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
 }
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentGlobalStates_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_global_vector_func_wrt_current_global_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentGlobalStates_2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_global_vector_func_wrt_current_global_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+}
+
+/*
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentLocalStates_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_global_vector_func_wrt_current_local_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentLocalStates_2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_global_vector_func_wrt_current_local_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+}
+*/
 
 
 }
