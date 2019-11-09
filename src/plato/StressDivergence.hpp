@@ -6,60 +6,85 @@
 namespace Plato
 {
 
-/******************************************************************************/
-/*! Stress Divergence functor.
-
- Given a stress, compute the stress divergence.
- */
-/******************************************************************************/
-template<int SpaceDim, int NumDofsPerNode = SpaceDim, int DofOffset = 0>
+/***************************************************************************//**
+ * \brief Stress Divergence functor. Given the stress tensor, apply the divergence
+ *  operator to the stress tensor.
+ *
+ * \tparam SpaceDim       spatial dimensions
+ * \tparam NumDofsPerNode number of degrees of freedom per node
+ * \tparam DofOffset      offset apply to degree of freedom indexing
+*******************************************************************************/
+template<Plato::OrdinalType SpaceDim,
+         Plato::OrdinalType NumDofsPerNode = SpaceDim,
+         Plato::OrdinalType DofOffset = 0>
 class StressDivergence : public Plato::SimplexMechanics<SpaceDim>
 {
 private:
+    using Plato::SimplexMechanics<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell, i.e. element */
 
-    using Plato::SimplexMechanics<SpaceDim>::mNumNodesPerCell;
-
-    Plato::OrdinalType mVoigt[SpaceDim][SpaceDim];
+    // 2-D Example: mVoigt[0][0] = 0, mVoigt[0][1] = 2, mVoigt[1][0] = 2, mVoigt[1][1] = 1,
+    // where the stress tensor in Voigt notation is given s = {s_11, s_22, s_12, s_33} (plane strain)
+    Plato::OrdinalType mVoigt[SpaceDim][SpaceDim]; /*!< matrix with indices to stress tensor entries in Voigt notation */
 
 public:
-
+    /***************************************************************************//**
+     * \brief Constructor
+    *******************************************************************************/
     StressDivergence()
     {
-        Plato::OrdinalType voigtTerm = 0;
-        for(Plato::OrdinalType iDof = 0; iDof < SpaceDim; iDof++)
+        Plato::OrdinalType tVoigtTerm = 0;
+        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < SpaceDim; tDofIndex++)
         {
-            mVoigt[iDof][iDof] = voigtTerm++;
+            mVoigt[tDofIndex][tDofIndex] = tVoigtTerm++;
         }
-        for(Plato::OrdinalType jDof = SpaceDim - 1; jDof >= 1; jDof--)
+        for(Plato::OrdinalType tDofIndexJ = SpaceDim - 1; tDofIndexJ >= 1; tDofIndexJ--)
         {
-            for(Plato::OrdinalType iDof = jDof - 1; iDof >= 0; iDof--)
+            for(Plato::OrdinalType tDofIndexI = tDofIndexJ - 1; tDofIndexI >= 0; tDofIndexI--)
             {
-                mVoigt[iDof][jDof] = voigtTerm;
-                mVoigt[jDof][iDof] = voigtTerm++;
+                mVoigt[tDofIndexI][tDofIndexJ] = tVoigtTerm;
+                mVoigt[tDofIndexJ][tDofIndexI] = tVoigtTerm++;
             }
         }
     }
 
-    template<typename ForcingScalarType, typename StressScalarType, typename GradientScalarType,
-            typename VolumeScalarType>
-    DEVICE_TYPE inline void operator()(Plato::OrdinalType cellOrdinal,
-                                       Plato::ScalarMultiVectorT<ForcingScalarType> forcing,
-                                       Plato::ScalarMultiVectorT<StressScalarType> stress,
-                                       Plato::ScalarArray3DT<GradientScalarType> gradient,
-                                       Plato::ScalarVectorT<VolumeScalarType> cellVolume,
-                                       Plato::Scalar scale = 1.0) const
+    /***************************************************************************//**
+     * \brief Apply stress divergence operator to stress tensor
+     *
+     * \tparam ForcingScalarType   Kokkos::View POD type
+     * \tparam StressScalarType    Kokkos::View POD type
+     * \tparam GradientScalarType  Kokkos::View POD type
+     * \tparam VolumeScalarType    Kokkos::View POD type
+     *
+     * \param aCellOrdinal cell index
+     * \param aOutput      stress divergence
+     * \param aStress      stress tensor
+     * \param aGradient    spatial gradient tensor
+     * \param aCellVolume  cell volume
+     * \param aScale       multiplier (default = 1.0)
+     *
+    *******************************************************************************/
+    template<typename ForcingScalarType,
+             typename StressScalarType,
+             typename GradientScalarType,
+             typename VolumeScalarType>
+    DEVICE_TYPE inline void operator()(const Plato::OrdinalType & aCellOrdinal,
+                                       const Plato::ScalarMultiVectorT<ForcingScalarType> & aOutput,
+                                       const Plato::ScalarMultiVectorT<StressScalarType> & aStress,
+                                       const Plato::ScalarArray3DT<GradientScalarType> & aGradient,
+                                       const Plato::ScalarVectorT<VolumeScalarType> & aCellVolume,
+                                       const Plato::Scalar aScale = 1.0) const
     {
 
-        for(Plato::OrdinalType iDim = 0; iDim < SpaceDim; iDim++)
+        for(Plato::OrdinalType tDimIndexI = 0; tDimIndexI < SpaceDim; tDimIndexI++)
         {
-            for(Plato::OrdinalType iNode = 0; iNode < mNumNodesPerCell; iNode++)
+            for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < mNumNodesPerCell; tNodeIndex++)
             {
-                Plato::OrdinalType localOrdinal = iNode * NumDofsPerNode + iDim + DofOffset;
-                for(Plato::OrdinalType jDim = 0; jDim < SpaceDim; jDim++)
+                Plato::OrdinalType localOrdinal = tNodeIndex * NumDofsPerNode + tDimIndexI + DofOffset;
+                for(Plato::OrdinalType tDimIndexJ = 0; tDimIndexJ < SpaceDim; tDimIndexJ++)
                 {
-                    forcing(cellOrdinal, localOrdinal) += scale * cellVolume(cellOrdinal)
-                                                          * stress(cellOrdinal, mVoigt[iDim][jDim])
-                                                          * gradient(cellOrdinal, iNode, jDim);
+                    aOutput(aCellOrdinal, localOrdinal) += aScale * aCellVolume(aCellOrdinal)
+                                                           * aStress(aCellOrdinal, mVoigt[tDimIndexI][tDimIndexJ])
+                                                           * aGradient(aCellOrdinal, tNodeIndex, tDimIndexJ);
                 }
             }
         }

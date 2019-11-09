@@ -893,7 +893,8 @@ StrainDivergence <3>::operator()(const Plato::OrdinalType & aCellOrdinal,
 
 /***************************************************************************//**
  *
- * \brief Specialization for 2-D applications.
+ * \brief Specialization for 2-D applications. Plane Strain formulation, i.e.
+ *   out-of-plane strain (e_33) is zero.
  *
  * \tparam StrainType POD type for 2-D Kokkos::View
  * \tparam ResultType POD type for 1-D Kokkos::View
@@ -1117,6 +1118,18 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 /***********************************************************************//**
  * \brief Evaluate stabilized small strains plastic residual, defined as
  *
@@ -1143,11 +1156,11 @@ class SmallStrainsPlasticityResidual: public Plato::AbstractGlobalVectorFunction
 // Private member data
 private:
     static constexpr auto mSpaceDim = EvaluationType::SpatialDim;                      /*!< number of spatial dimensions */
-    static constexpr auto mNumVoigtTerms = SimplexPhysicsType::mNumVoigtTerms;         /*!< number of voigt terms */
+    static constexpr auto mNumStressTerms = SimplexPhysicsType::mNumStressTerms;       /*!< number of stress/strain components */
     static constexpr auto mNumDofsPerCell = SimplexPhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
-    static constexpr auto mNumDofsPerNode = SimplexPhysicsType::mNumDofsPerNode;       /*!< number of dofs per node */
     static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell;     /*!< number nodes per cell */
     static constexpr auto mPressureDofOffset = SimplexPhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
+    static constexpr auto mNumGlobalDofsPerNode = SimplexPhysicsType::mNumDofsPerNode; /*!< number of global dofs per node */
 
     static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
     static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
@@ -1404,14 +1417,14 @@ public:
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence ;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
-        Plato::InterpolateFromNodal<mSpaceDim, mNumDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
+        Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
         Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0 /*dof offset*/, mSpaceDim> tInterpolatePressGradFromNodal;
 
         // Residual evaulation functors
-        Plato::PressureDivergence<mSpaceDim, mNumDofsPerNode> tPressureDivergence;
-        Plato::StressDivergence<mSpaceDim, mNumDofsPerNode, mMechDofOffset> tStressDivergence;
-        Plato::ProjectToNode<mSpaceDim, mNumDofsPerNode, mPressureDofOffset> tProjectVolumeStrain;
-        Plato::FluxDivergence<mSpaceDim, mNumDofsPerNode, mPressureDofOffset> tStabilizedDivergence;
+        Plato::PressureDivergence<mSpaceDim, mNumGlobalDofsPerNode> tPressureDivergence;
+        Plato::StressDivergence<mSpaceDim, mNumGlobalDofsPerNode, mMechDofOffset> tStressDivergence;
+        Plato::ProjectToNode<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tProjectVolumeStrain;
+        Plato::FluxDivergence<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tStabilizedDivergence;
         Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
 
         Plato::ScalarVectorT<ResultT> tPressure("L2 pressure", tNumCells);
@@ -1420,13 +1433,13 @@ public:
         Plato::ScalarVectorT<ResultT> tStrainDivergence("strain divergence", tNumCells);
         Plato::ScalarMultiVectorT<ResultT> tStabilization("cell stabilization", tNumCells, mSpaceDim);
         Plato::ScalarMultiVectorT<GradScalarT> tPressureGrad("pressure gradient", tNumCells, mSpaceDim);
-        Plato::ScalarMultiVectorT<ResultT> tDeviatoricStress("deviatoric stress", tNumCells, mNumVoigtTerms);
-        Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumVoigtTerms);
+        Plato::ScalarMultiVectorT<ResultT> tDeviatoricStress("deviatoric stress", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
         Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
 
         // Transfer elasticity parameters to device
-        auto tNumDofsPerNode = mNumDofsPerNode;
+        auto tNumDofsPerNode = mNumGlobalDofsPerNode;
         auto tPressureScaling = mPressureScaling;
         auto tPressureDofOffset = mPressureDofOffset;
         auto tElasticBulkModulus = mElasticBulkModulus;
@@ -7053,8 +7066,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual2D_Elastic)
     auto tHostElastoPlasticityResidual = Kokkos::create_mirror(tElastoPlasticityResidual);
     Kokkos::deep_copy(tHostElastoPlasticityResidual, tElastoPlasticityResidual);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{-0.298077, -0.0961538462, 0.2003656347, 0.201923, -0.00961538, -0.3967844462,  0.0961538462, 0.105769, 0.0297521448},
-         {0.137821, 0.0576923077, -0.0853066085, -0.0801282, 0.1057692308, 5.45966e-07,  -0.0576923077, -0.1634615385, 0.0853060625}};
+        {{-0.310897, -0.0961538462, 0.2003656347, 0.214744, -0.0224359, -0.3967844462,  0.0961538462, 0.11859, 0.0297521448},
+         {0.125, 0.0576923077, -0.0853066085, -0.0673077, 0.1057692308, 5.45966e-07,  -0.0576923077, -0.1634615385, 0.0853060625}};
     for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
     {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
@@ -7584,7 +7597,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
     Plato::test_partial_vector_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 }
 
-/*
+
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtControls_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -7629,7 +7642,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_vector_func_with_history_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
 }
-*/
+
 
 }
 // ElastoPlasticityTest
