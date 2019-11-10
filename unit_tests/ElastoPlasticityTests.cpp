@@ -4302,6 +4302,8 @@ private:
     Plato::WorksetBase<PhysicsT> mWorksetBase; /*!< assembly routine interface*/
     std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal*/
 
+    bool mReadDirichletConditionsFromFile; /*!< flag used to ignore mesh sets - only used for unit testing */
+
 // public functions
 public:
     /***************************************************************************//**
@@ -4328,15 +4330,57 @@ public:
             mProjectedPressure("Project Pressure", aMesh.nverts()),
             mLocalStates("Local States", mMaxNumPseudoTimeSteps, mLocalResidualEq.size()),
             mGlobalStates("Global States", mMaxNumPseudoTimeSteps, mGlobalResidualEq.size()),
-            mProjectedPressGrad("Projected Pressure Gradient", mMaxNumPseudoTimeSteps, mProjectionEq.size())
+            mProjectedPressGrad("Projected Pressure Gradient", mMaxNumPseudoTimeSteps, mProjectionEq.size()),
+            mReadDirichletConditionsFromFile(true)
     {
-        this->initialize(aMesh, aMeshSets, aInputParams);
     }
 
     /***************************************************************************//**
      * \brief PLATO Plasticity Problem destructor
     *******************************************************************************/
     virtual ~PlasticityProblem(){}
+
+    /***************************************************************************//**
+     * \brief Omega_h::MeshSets are ignored.
+    *******************************************************************************/
+    void ignoreMeshSets()
+    {
+        mReadDirichletConditionsFromFile = false;
+    }
+
+    /***************************************************************************//**
+     * \brief Initialize member data
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aInputParams input parameters database
+    *******************************************************************************/
+    void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    {
+        this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
+        this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
+
+        // Allocate Jacobian Matrix
+        mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mSpatialDim, mNumGlobalDofsPerNode>(&aMesh);
+        mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
+
+        if(mReadDirichletConditionsFromFile == true)
+        {
+            // Parse Dirichlet boundary conditions
+            Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputParams.sublist("Essential Boundary Conditions", false));
+            tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);
+        }
+    }
+
+    /***************************************************************************//**
+     * \brief Set Dirichlet boundary conditions
+     * \param [in] aDirichletDofs   degrees of freedom associated with Dirichlet boundary conditions
+     * \param [in] aDirichletValues values associated with Dirichlet degrees of freedom
+    *******************************************************************************/
+    void setDirichletBCs(const Plato::LocalOrdinalVector & aDirichletDofs, const Plato::ScalarVector & aDirichletValues)
+    {
+        Plato::copy(aDirichletDofs, mDirichletDofs);
+        Plato::copy(aDirichletValues, mDirichletValues);
+    }
 
     /***************************************************************************//**
      * \brief Return number of global degrees of freedom in solution.
@@ -5607,26 +5651,6 @@ private:
             }
         }
         return (tStop);
-    }
-
-    /***************************************************************************//**
-     * \brief Initialize member data
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
-     * \param [in] aInputParams input parameters database
-    *******************************************************************************/
-    void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
-    {
-        this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
-        this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
-
-        // Allocate Jacobian Matrix
-        mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mSpatialDim, mNumGlobalDofsPerNode>(&aMesh);
-        mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
-
-        // Parse Dirichlet boundary conditions
-        Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputParams.sublist("Essential Boundary Conditions", false));
-        tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);
     }
 
     /***************************************************************************//**
