@@ -3199,7 +3199,7 @@ public:
     ***************************************************************************/
     void assembleJacobianGlobalStates(const Plato::ScalarArray3D & aJacobianWorkset, Teuchos::RCP<Plato::CrsMatrixType> & aAssembledJacobian)
     {
-        auto tMesh = mGlobalVecFuncJacobianUP->getMesh();
+        auto tMesh = mGlobalVecFuncJacobianU->getMesh();
         Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode> tJacobianMatEntryOrdinal(aAssembledJacobian, &tMesh);
         auto tJacobianMatEntries = aAssembledJacobian->entries();
         mWorksetBase.assembleJacobian(mNumGlobalDofsPerCell, mNumGlobalDofsPerCell, tJacobianMatEntryOrdinal, aJacobianWorkset, tJacobianMatEntries);
@@ -6127,6 +6127,43 @@ test_partial_global_vector_func_wrt_previous_global_states
 // function test_partial_global_vector_func_wrt_previous_global_states
 
 
+
+
+
+
+template<typename SimplexPhysicsT>
+inline void assemble_global_vector_jacobian_times_step
+(const Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumDofsPerNode> & aEntryOrdinal,
+ const Plato::ScalarArray3D & aWorkset,
+ const Plato::ScalarVector & aVector,
+ const Plato::ScalarVector & aOutput)
+{
+    const auto tNumCells = aWorkset.extent(0);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for (Plato::OrdinalType tNodeIndex = 0; tNodeIndex < SimplexPhysicsT::mNumNodesPerCell; tNodeIndex++)
+        {
+            for (Plato::OrdinalType tGlobalDofIndex = 0; tGlobalDofIndex < SimplexPhysicsT::mNumDofsPerNode; tGlobalDofIndex++)
+            {
+                auto tColIndex = aCellOrdinal * SimplexPhysicsT::mNumLocalDofsPerCell;
+                const auto tRowIndex = aEntryOrdinal(aCellOrdinal, tNodeIndex, tGlobalDofIndex);
+                for (Plato::OrdinalType tLocalDofIndex = 0; tLocalDofIndex < SimplexPhysicsT::mNumLocalDofsPerCell; tLocalDofIndex++)
+                {
+                    tColIndex += tLocalDofIndex;
+                    auto tValue = aWorkset(aCellOrdinal, tGlobalDofIndex, tLocalDofIndex) * aVector(tColIndex);
+                    aOutput(tRowIndex) += tValue;
+                }
+            }
+        }
+    }, "assemble global vector Jacobian times vector");
+}
+
+
+
+
+
+
+
 /******************************************************************************//**
  * \brief Test partial derivative of vector function with history-dependent variables
  *        with respect to the current local state variables.
@@ -6147,6 +6184,7 @@ test_partial_global_vector_func_wrt_current_local_states
                                                      tData.mCurrentLocalState, tData.mPrevLocalState,
                                                      tData.mPresssure, tData.mControl, aTimeStep);
 
+    // Assemble Jacobian and apply descent direction to assembled Jacobian
     auto const tNumLocalStateDofs = tNumVerts * SimplexPhysicsT::mNumLocalDofsPerNode;
     Plato::ScalarVector tStep("Step", tNumLocalStateDofs);
     auto tHostStep = Kokkos::create_mirror(tStep);
@@ -6154,7 +6192,9 @@ test_partial_global_vector_func_wrt_current_local_states
     Kokkos::deep_copy(tStep, tHostStep);
     auto const tNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
     Plato::ScalarVector tJacCtimesStep("JacCtimesVec", tNumGlobalStateDofs);
-    Plato::MatrixTimesVectorPlusVector(tJacobianCurrentC, tStep, tJacCtimesStep);
+    Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumDofsPerNode> tGlobalVectorEntryOrdinal;
+    Plato::assemble_global_vector_jacobian_times_step<SimplexPhysicsT>
+            (tGlobalVectorEntryOrdinal, tJacobianCurrentC, tStep, tJacCtimesStep);
     auto tNormTrueDerivative = Plato::norm(tJacCtimesStep);
 
     std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
