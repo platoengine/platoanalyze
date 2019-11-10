@@ -119,11 +119,11 @@ inline void fill_matrix_workset(const Plato::OrdinalType& aNumCells,
  * \param [in/out] aB    3-D matrix workset (NumCells, NumRowsPerCell, NumColumnsPerCell)
 **********************************************************************************/
 template<class AViewType, class BViewType>
-void update_matrix_workset(const Plato::OrdinalType& aNumCells,
-                           typename AViewType::const_value_type& aAlpha,
-                           const AViewType& aA,
-                           typename BViewType::const_value_type& aBeta,
-                           const BViewType& aB)
+inline void update_matrix_workset(const Plato::OrdinalType& aNumCells,
+                                  typename AViewType::const_value_type& aAlpha,
+                                  const AViewType& aA,
+                                  typename BViewType::const_value_type& aBeta,
+                                  const BViewType& aB)
 {
     if(aA.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -174,11 +174,11 @@ void update_matrix_workset(const Plato::OrdinalType& aNumCells,
  * \param [in/out] aYvec 2-D vector workset (NumCells, NumEntriesPerCell)
 **********************************************************************************/
 template<class XViewType, class YViewType>
-void update_vector_workset(const Plato::OrdinalType& aNumCells,
-                           typename XViewType::const_value_type& aAlpha,
-                           const XViewType& aXvec,
-                           typename YViewType::const_value_type& aBeta,
-                           const YViewType& aYvec)
+inline void update_vector_workset(const Plato::OrdinalType& aNumCells,
+                                  typename XViewType::const_value_type& aAlpha,
+                                  const XViewType& aXvec,
+                                  typename YViewType::const_value_type& aBeta,
+                                  const YViewType& aYvec)
 {
     if(aXvec.size() != aYvec.size())
     {
@@ -203,6 +203,74 @@ void update_vector_workset(const Plato::OrdinalType& aNumCells,
     }, "update vector workset");
 }
 
+/******************************************************************************//**
+ * \brief Scale 2-D vector workset
+ *
+ * \tparam XViewType Input matrix, as a 2-D Kokkos::View
+ *
+ * \param [in]     aAlpha scalar multiplier
+ * \param [in\out] aXvec 2-D vector workset (NumCells, NumEntriesPerCell)
+**********************************************************************************/
+template<class XViewType>
+inline void scale_vector_workset(typename XViewType::const_value_type& aAlpha,
+                                 const XViewType& aXvec)
+{
+    if(aXvec.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        std::stringstream tMsg;
+        tMsg << "\nInput vector workset is empty.\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
+    const auto tNumCells = aXvec.extent(0);
+    const auto tNumElements = aXvec.extent(1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tIndex = 0; tIndex < tNumElements; tIndex++)
+        {
+            aXvec(aCellOrdinal, tIndex) = aAlpha * aXvec(aCellOrdinal, tIndex);
+        }
+    }, "scale vector workset");
+}
+
+/******************************************************************************//**
+ * \brief Norm 2-D vector workset
+ *
+ * \tparam XViewType Input matrix, as a 2-D Kokkos::View
+ * \tparam YViewType Input matrix, as a 1-D Kokkos::View
+ *
+ * \param [in]     aAlpha scalar multiplier
+ * \param [in\out] aXvec 2-D vector workset (NumCells, NumEntriesPerCell)
+**********************************************************************************/
+template<class XViewType, class YViewType>
+inline void norm_vector_workset(const XViewType& aXvec, const YViewType& aYvec)
+{
+    if(aXvec.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        std::stringstream tMsg;
+        tMsg << "\nInput vector workset is empty.\n";
+        THROWERR(tMsg.str().c_str())
+    }
+    if(aYvec.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        std::stringstream tMsg;
+        tMsg << "\nOutput workset is empty.\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
+    const auto tNumCells = aXvec.extent(0);
+    const auto tNumElements = aXvec.extent(1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Scalar tValue = 0.0;
+        for(Plato::OrdinalType tIndex = 0; tIndex < tNumElements; tIndex++)
+        {
+            tValue += aXvec(aCellOrdinal, tIndex) * aXvec(aCellOrdinal, tIndex);
+        }
+        aYvec(aCellOrdinal) = sqrt(tValue);
+    }, "norm vector workset");
+}
+
 /************************************************************************//**
  *
  * \brief Dense matrix-matrix multiplication: C = \f$ \beta*C + \alpha*op(A)*op(B)\f$.
@@ -221,12 +289,12 @@ void update_vector_workset(const Plato::OrdinalType& aNumCells,
  *
 ****************************************************************************/
 template<class AViewType, class BViewType, class CViewType>
-void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
-                             typename AViewType::const_value_type& aAlpha,
-                             const AViewType& aA,
-                             const BViewType& aB,
-                             typename CViewType::const_value_type& aBeta,
-                             CViewType& aC)
+inline void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
+                                    typename AViewType::const_value_type& aAlpha,
+                                    const AViewType& aA,
+                                    const BViewType& aB,
+                                    typename CViewType::const_value_type& aBeta,
+                                    CViewType& aC)
 {
     if(aA.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -316,13 +384,13 @@ void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
  *
 ********************************************************************************/
 template<class AViewType, class XViewType, class YViewType>
-void matrix_times_vector_workset(const char aTransA[],
-                                 const Plato::OrdinalType& aNumCells,
-                                 typename AViewType::const_value_type& aAlpha,
-                                 const AViewType& aAmat,
-                                 const XViewType& aXvec,
-                                 typename YViewType::const_value_type& aBeta,
-                                 YViewType& aYvec)
+inline void matrix_times_vector_workset(const char aTransA[],
+                                        const Plato::OrdinalType& aNumCells,
+                                        typename AViewType::const_value_type& aAlpha,
+                                        const AViewType& aAmat,
+                                        const XViewType& aXvec,
+                                        typename YViewType::const_value_type& aBeta,
+                                        YViewType& aYvec)
 {
     // check validity of inputs' dimensions
     if(aAmat.size() <= static_cast<Plato::OrdinalType>(0))
@@ -415,7 +483,7 @@ void matrix_times_vector_workset(const char aTransA[],
  *
 ********************************************************************************/
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell>
-void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& aIdentity)
+inline void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& aIdentity)
 {
     if(aIdentity.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -453,7 +521,7 @@ void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D&
  *
 ********************************************************************************/
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, class AViewType, class BViewType>
-void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, BViewType& aInverse)
+inline void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, BViewType& aInverse)
 {
     if(aA.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -2820,8 +2888,8 @@ public:
         Plato::ScalarMultiVectorT<JacobianScalar> tJacobianWS("Jacobian Previous Global State", mNumCells, mNumGlobalDofsPerCell);
 
         // Call evaluate function - compute Jacobian wrt the previous global states
-        mGlobalVecFuncJacobianU->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
-                                          tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
+        mGlobalVecFuncJacobianUP->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
+                                           tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Global State", mNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
         Plato::convert_ad_jacobian_to_scalar_jacobian<mNumGlobalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
@@ -3203,6 +3271,71 @@ public:
         Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode> tJacobianMatEntryOrdinal(aAssembledJacobian, &tMesh);
         auto tJacobianMatEntries = aAssembledJacobian->entries();
         mWorksetBase.assembleJacobian(mNumGlobalDofsPerCell, mNumGlobalDofsPerCell, tJacobianMatEntryOrdinal, aJacobianWorkset, tJacobianMatEntries);
+    }
+
+
+    /***********************************************************************//**
+     * \brief Assembled Jacobian wrt global states
+     * \param [in]     aJacobianWorkset   Jacobian workset
+     * \param [in/out] aAssembledJacobian assembled Jacobian
+    ***************************************************************************/
+    Plato::ScalarMultiVector residual(const Plato::ScalarVector & aGlobalState,
+                                      const Plato::ScalarVector & aPrevGlobalState,
+                                      const Plato::ScalarVector & aLocalState,
+                                      const Plato::ScalarVector & aPrevLocalState,
+                                      const Plato::ScalarVector & aNodeState,
+                                      const Plato::ScalarVector & aControls,
+                                      Plato::Scalar aTimeStep = 0.0)
+    {
+        // Workset config
+        using ConfigScalar = typename Residual::ConfigScalarType;
+        Plato::ScalarArray3DT<ConfigScalar>
+            tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
+        mWorksetBase.worksetConfig(tConfigWS);
+
+        // Workset current global state
+        using GlobalStateScalar = typename Residual::StateScalarType;
+        Plato::ScalarMultiVectorT<GlobalStateScalar>
+            tGlobalStateWS("Current Global State Workset", mNumCells, mNumGlobalDofsPerCell);
+        mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
+
+        // Workset previous global state
+        using PrevGlobalStateScalar = typename Residual::PrevStateScalarType;
+        Plato::ScalarMultiVectorT<PrevGlobalStateScalar>
+            tPrevGlobalStateWS("Previous Global State Workset", mNumCells, mNumGlobalDofsPerCell);
+        mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
+
+        // Workset local state
+        using LocalStateScalar = typename Residual::LocalStateScalarType;
+        Plato::ScalarMultiVectorT<LocalStateScalar>
+            tLocalStateWS("Local Current State Workset", mNumCells, mNumLocalDofsPerCell);
+        mWorksetBase.worksetLocalState(aLocalState, tLocalStateWS);
+
+        // Workset previous local state
+        using PrevLocalStateScalar = typename Residual::PrevLocalStateScalarType;
+        Plato::ScalarMultiVectorT<PrevLocalStateScalar>
+            tPrevLocalStateWS("Previous Local State Workset", mNumCells, mNumLocalDofsPerCell);
+        mWorksetBase.worksetLocalState(aPrevLocalState, tPrevLocalStateWS);
+
+        // Workset node state, i.e. projected pressure gradient
+        using NodeStateScalar = typename Residual::NodeStateScalarType;
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
+        mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
+
+        // Workset control
+        using ControlScalar = typename Residual::ControlScalarType;
+        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
+        mWorksetBase.worksetControl(aControls, tControlWS);
+
+        // Workset residual
+        using ResultScalar = typename Residual::ResultScalarType;
+        Plato::ScalarMultiVectorT<ResultScalar> tResidualWS("Residual Workset", mNumCells, mNumGlobalDofsPerCell);
+
+        // Evaluate global residual
+        mGlobalVecFuncResidual->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
+                                         tNodeStateWS, tControlWS, tConfigWS, tResidualWS, aTimeStep);
+
+        return (tResidualWS);
     }
 
 // Private access functions
@@ -6145,14 +6278,16 @@ inline void assemble_global_vector_jacobian_times_step
         {
             for (Plato::OrdinalType tGlobalDofIndex = 0; tGlobalDofIndex < SimplexPhysicsT::mNumDofsPerNode; tGlobalDofIndex++)
             {
+                Plato::Scalar tValue = 0.0;
                 auto tColIndex = aCellOrdinal * SimplexPhysicsT::mNumLocalDofsPerCell;
-                const auto tRowIndex = aEntryOrdinal(aCellOrdinal, tNodeIndex, tGlobalDofIndex);
                 for (Plato::OrdinalType tLocalDofIndex = 0; tLocalDofIndex < SimplexPhysicsT::mNumLocalDofsPerCell; tLocalDofIndex++)
                 {
                     tColIndex += tLocalDofIndex;
-                    auto tValue = aWorkset(aCellOrdinal, tGlobalDofIndex, tLocalDofIndex) * aVector(tColIndex);
-                    aOutput(tRowIndex) += tValue;
+                    tValue += aWorkset(aCellOrdinal, tGlobalDofIndex, tLocalDofIndex) * aVector(tColIndex);
                 }
+                const auto tRowIndex = aEntryOrdinal(aCellOrdinal, tNodeIndex, tGlobalDofIndex);
+                //printf("CellIndex = %d, NodeIndex = %d, GlobalDofIndex = %d, RowIndex = %d\n", aCellOrdinal, tNodeIndex, tGlobalDofIndex, tRowIndex);
+                Kokkos::atomic_add(&aOutput(tRowIndex), tValue);
             }
         }
     }, "assemble global vector Jacobian times vector");
@@ -6185,14 +6320,15 @@ test_partial_global_vector_func_wrt_current_local_states
                                                      tData.mPresssure, tData.mControl, aTimeStep);
 
     // Assemble Jacobian and apply descent direction to assembled Jacobian
-    auto const tNumLocalStateDofs = tNumVerts * SimplexPhysicsT::mNumLocalDofsPerNode;
-    Plato::ScalarVector tStep("Step", tNumLocalStateDofs);
+    auto const tTotalNumLocalStateDofs = tNumCells * SimplexPhysicsT::mNumLocalDofsPerCell;
+    Plato::ScalarVector tStep("Step", tTotalNumLocalStateDofs);
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    auto const tNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
-    Plato::ScalarVector tJacCtimesStep("JacCtimesVec", tNumGlobalStateDofs);
-    Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumDofsPerNode> tGlobalVectorEntryOrdinal;
+    auto const tTotalNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tJacCtimesStep("JacCtimesVec", tTotalNumGlobalStateDofs);
+    Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumDofsPerNode>
+            tGlobalVectorEntryOrdinal(&aMesh);
     Plato::assemble_global_vector_jacobian_times_step<SimplexPhysicsT>
             (tGlobalVectorEntryOrdinal, tJacobianCurrentC, tStep, tJacCtimesStep);
     auto tNormTrueDerivative = Plato::norm(tJacCtimesStep);
@@ -6202,8 +6338,8 @@ test_partial_global_vector_func_wrt_current_local_states
 
     constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
     constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
-    Plato::ScalarVector tFiniteDiffResidualAppx("Finite Diff Appx", tNumGlobalStateDofs);
-    Plato::ScalarVector tTrialCurrentLocalStates("Trial Current Local States", tNumLocalStateDofs);
+    Plato::ScalarVector tFiniteDiffResidualAppx("Finite Diff Appx", tTotalNumGlobalStateDofs);
+    Plato::ScalarVector tTrialCurrentLocalStates("Trial Current Local States", tTotalNumLocalStateDofs);
     for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
     {
         auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
@@ -6253,7 +6389,6 @@ test_partial_global_vector_func_wrt_current_local_states
 // function test_partial_global_vector_func_wrt_current_local_states
 
 
-
 /******************************************************************************//**
  * \brief Test partial derivative of vector function with history-dependent variables
  *        with respect to the previous local state variables.
@@ -6274,14 +6409,18 @@ test_partial_global_vector_func_wrt_previous_local_states
                                                       tData.mCurrentLocalState, tData.mPrevLocalState,
                                                       tData.mPresssure, tData.mControl, aTimeStep);
 
-    auto const tNumLocalStateDofs = tNumVerts * SimplexPhysicsT::mNumLocalDofsPerNode;
-    Plato::ScalarVector tStep("Step", tNumLocalStateDofs);
+    // Assemble Jacobian and apply descent direction to assembled Jacobian
+    auto const tTotalNumLocalStateDofs = tNumCells * SimplexPhysicsT::mNumLocalDofsPerCell;
+    Plato::ScalarVector tStep("Step", tTotalNumLocalStateDofs);
     auto tHostStep = Kokkos::create_mirror(tStep);
     Plato::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    auto const tNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
-    Plato::ScalarVector tJacPrevCtimesStep("JacPrevCtimesVec", tNumGlobalStateDofs);
-    Plato::MatrixTimesVectorPlusVector(tJacobianPreviousC, tStep, tJacPrevCtimesStep);
+    auto const tTotalNumGlobalStateDofs = tNumVerts * SimplexPhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tJacPrevCtimesStep("JacPrevCtimesVec", tTotalNumGlobalStateDofs);
+    Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumDofsPerNode>
+            tGlobalVectorEntryOrdinal(&aMesh);
+    Plato::assemble_global_vector_jacobian_times_step<SimplexPhysicsT>
+            (tGlobalVectorEntryOrdinal, tJacobianPreviousC, tStep, tJacPrevCtimesStep);
     auto tNormTrueDerivative = Plato::norm(tJacPrevCtimesStep);
 
     std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
@@ -6289,8 +6428,8 @@ test_partial_global_vector_func_wrt_previous_local_states
 
     constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
     constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
-    Plato::ScalarVector tFiniteDiffResidualAppx("Finite Diff Appx", tNumGlobalStateDofs);
-    Plato::ScalarVector tTrialPreviousLocalStates("Trial Previous Local States", tNumLocalStateDofs);
+    Plato::ScalarVector tFiniteDiffResidualAppx("Finite Diff Appx", tTotalNumGlobalStateDofs);
+    Plato::ScalarVector tTrialPreviousLocalStates("Trial Previous Local States", tTotalNumLocalStateDofs);
     for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
     {
         auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
@@ -6356,6 +6495,7 @@ test_partial_global_vector_func_wrt_previous_local_states
 
 namespace ElastoPlasticityTest
 {
+
 
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_FlattenVectorWorkset_Errors)
 {
@@ -8148,10 +8288,195 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     Plato::test_partial_global_vector_func_wrt_current_global_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
 }
 
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousLocalStates_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_global_vector_func_wrt_previous_local_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousLocalStates_2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_global_vector_func_wrt_previous_local_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousGlobalStates_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_global_vector_func_wrt_previous_global_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousGlobalStates_2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    std::string tFuncName = "Small Strains Plasticity";
+    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
+        std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
+    Plato::test_partial_global_vector_func_wrt_previous_global_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+}
+
+
 /*
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentLocalStates_3D)
 {
-    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
@@ -8197,7 +8522,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
 
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentLocalStates_2D)
 {
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
