@@ -32,6 +32,13 @@
 #include "Plato_MLS.hpp"
 #endif
 
+#ifdef PLATO_ESP
+#include "Plato_ESP.hpp"
+typedef Plato::Geometry::ESP<double, Plato::ScalarVectorT<double>::HostMirror> ESPType;
+#else
+typedef int ESPType;
+#endif
+
 Plato::ScalarVector
 getVectorComponent(Plato::ScalarVector aFrom, int aComponent, int aStride);
 
@@ -99,6 +106,14 @@ public:
         void updateParameters(std::string name, Plato::Scalar value);
     };
     LocalOp* getOperation(const std::string & opName);
+
+    class ESP_Op
+    {
+        public:
+            ESP_Op(MPMD_App* aMyApp, Plato::InputData& aNode);
+        protected:
+            std::shared_ptr<ESPType> m_ESP;
+    };
 
     /******************************************************************************//**
      * @brief Multiple Program, Multiple Data (MPMD) application destructor
@@ -330,6 +345,14 @@ public:
         {
             this->copyFieldFromlgr(mConstraintGradientZ, aSharedField);
         }
+        else if(aName == "Objective GradientP")
+        {
+            this->copyFieldFromlgr(mObjectiveGradientP, aSharedField);
+        }
+        else if(aName == "Constraint GradientP")
+        {
+            this->copyFieldFromlgr(mConstraintGradientP, aSharedField);
+        }
         else if(aName == "Adjoint")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
@@ -506,13 +529,18 @@ private:
     Plato::Scalar mObjectiveValue;
     Plato::ScalarVector mObjectiveGradientZ;
     Plato::ScalarVector mObjectiveGradientX;
+    Plato::ScalarVector mObjectiveGradientP;
 
     Plato::Scalar mConstraintValue;
     Plato::ScalarVector mConstraintGradientZ;
     Plato::ScalarVector mConstraintGradientX;
+    Plato::ScalarVector mConstraintGradientP;
 
     Plato::OrdinalType mNumSpatialDims;
     Plato::OrdinalType mNumSolutionDofs;
+
+    std::map<std::string,std::shared_ptr<ESPType>> mESP;
+    void mapToParameters(std::shared_ptr<ESPType> aESP, Plato::ScalarVector mGradientP, Plato::ScalarVector mGradientX);
 
 #ifdef PLATO_GEOMETRY
     struct MLSstruct
@@ -546,6 +574,23 @@ private:
         void operator()();
     };
     friend class Reinitialize;
+    /******************************************************************************/
+
+    // Reinitialize ESP sub-class
+    //
+    /******************************************************************************/
+    class ReinitializeESP : public LocalOp, public ESP_Op
+    {
+    public:
+        ReinitializeESP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        bool update();
+        std::vector<Plato::Scalar> mLocalState;
+        std::string mStrParameters;
+        bool mConditional;
+    };
+    friend class ReinitializeESP;
     /******************************************************************************/
 
     // UpdateProblem sub-class
@@ -583,6 +628,16 @@ private:
     /******************************************************************************/
 
     /******************************************************************************/
+    class ComputeObjectiveP : public LocalOp, public ESP_Op
+    {
+    public:
+        ComputeObjectiveP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    };
+    friend class ComputeObjectiveP;
+    /******************************************************************************/
+
+    /******************************************************************************/
     class ComputeObjectiveValue : public LocalOp
     {
     public:
@@ -612,6 +667,16 @@ private:
     friend class ComputeObjectiveGradientX;
     /******************************************************************************/
 
+    /******************************************************************************/
+    class ComputeObjectiveGradientP : public LocalOp, public ESP_Op
+    {
+    public:
+        ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    };
+    friend class ComputeObjectiveGradientP;
+    /******************************************************************************/
+
     // Constraint sub-classes
     //
     class ComputeConstraint : public LocalOp
@@ -631,6 +696,16 @@ private:
         void operator()();
     };
     friend class ComputeConstraintX;
+    /******************************************************************************/
+
+    /******************************************************************************/
+    class ComputeConstraintP : public LocalOp, public ESP_Op
+    {
+    public:
+        ComputeConstraintP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    };
+    friend class ComputeConstraintP;
     /******************************************************************************/
 
     /******************************************************************************/
@@ -661,6 +736,16 @@ private:
         void operator()();
     };
     friend class ComputeConstraintGradientX;
+    /******************************************************************************/
+
+    /******************************************************************************/
+    class ComputeConstraintGradientP : public LocalOp, public ESP_Op
+    {
+    public:
+        ComputeConstraintGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    };
+    friend class ComputeConstraintGradientP;
     /******************************************************************************/
 
     // Output sub-classes

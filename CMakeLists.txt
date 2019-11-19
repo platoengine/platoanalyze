@@ -253,6 +253,7 @@ if (LGR_ENABLE_PLATO_MPMD)
   find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
   find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
   find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
+  find_library(PLATO_CONSOLE_LIB NAMES PlatoConsole PATHS ${PLATO_PREFIX}/lib)
   find_package(Epetra REQUIRED)
   find_package(AztecOO REQUIRED)
   find_package(SEACASExodus REQUIRED)
@@ -281,6 +282,7 @@ if (LGR_ENABLE_PLATO_MPMD)
       ${PLATO_ANALYZE_LIB}
       ${PLATO_PARSER_LIB}
       ${PLATO_EXCEPTIONS_LIB}
+      ${PLATO_CONSOLE_LIB}
       aztecoo
       epetra
       intrepid
@@ -291,6 +293,7 @@ if (LGR_ENABLE_PLATO_MPMD)
       exodus
      )
 
+  option(LGR_ENABLE_PLATO_GEOMETRY "Enable Plato Geometry" OFF)
   if (LGR_ENABLE_PLATO_GEOMETRY)
     find_library(PLATO_GEOMETRY_MLS_LIB NAMES PlatoGeometryMLS PATHS ${PLATO_PREFIX}/lib)
     find_library(PLATO_GEOMETRY_COGENT_LIB NAMES PlatoGeometryCogent PATHS ${PLATO_PREFIX}/lib)
@@ -298,6 +301,18 @@ if (LGR_ENABLE_PLATO_MPMD)
     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_MLS_LIB} ${PLATO_GEOMETRY_COGENT_LIB} pamgen)
   endif()
 
+  option(LGR_ENABLE_PLATO_ESP "Enable ESP" OFF)
+  if (LGR_ENABLE_PLATO_ESP)
+    find_library(PLATO_GEOMETRY_ESP_LIB NAMES PlatoGeometryESP PATHS ${PLATO_PREFIX}/lib)
+    find_library(ESP_LIB NAMES egads PATHS ${ESP_LIB_DIR})
+    find_library(OCSM_LIB NAMES ocsm PATHS ${ESP_LIB_DIR})
+    message("adding define: -DPLATO_ESP")
+    add_definitions(-DPLATO_ESP)
+    include_directories( ${ESP_INC_DIR} )
+    set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_ESP_LIB} ${OCSM_LIB} ${ESP_LIB} ${OCSM_LIB})
+  endif()
+
+  target_link_libraries(LGR_App ${PLATO_LIBS} ${PLATO_LIBS})
   target_link_libraries(LGR_MPMD LGR_App ${PLATO_LIBS} ${PLATO_LIBS} lgrtk)
 
   option(LGR_ENABLE_PLATO_PYTHON "Enable the Plato Python interface" OFF)
@@ -314,10 +329,11 @@ if (LGR_ENABLE_PLATO_MPMD)
         install( TARGETS Plato DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
       endif()
   endif()
-  option(LGR_ENABLE_PLATO_GEOMETRY "Enable Plato Geometry" OFF)
   if (LGR_ENABLE_PLATO_GEOMETRY)
     add_definitions(-DPLATO_GEOMETRY)
   endif()
+
+  option(LGR_ENABLE_PLATO_GEOMETRY "Enable Plato Geometry" OFF)
 
 endif()
 
@@ -330,6 +346,7 @@ if (LGR_ENABLE_PLATO_MPMD)
   find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
   find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
   find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
+  find_library(PLATO_CONSOLE_LIB NAMES PlatoConsole PATHS ${PLATO_PREFIX}/lib)
   find_package(Epetra REQUIRED)
   find_package(AztecOO REQUIRED)
   find_package(SEACASExodus REQUIRED)
@@ -353,6 +370,7 @@ if (LGR_ENABLE_PLATO_MPMD)
       ${PLATO_ANALYZE_LIB}
       ${PLATO_PARSER_LIB}
       ${PLATO_EXCEPTIONS_LIB}
+      ${PLATO_CONSOLE_LIB}
       aztecoo
       epetra
       intrepid
@@ -384,6 +402,7 @@ if (LGR_ENABLE_PLATO_MPMD)
   find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
   find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
   find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
+  find_library(PLATO_CONSOLE_LIB NAMES PlatoConsole PATHS ${PLATO_PREFIX}/lib)
   find_package(Epetra REQUIRED)
   find_package(AztecOO REQUIRED)
   find_package(SEACASExodus REQUIRED)
@@ -406,6 +425,7 @@ if (LGR_ENABLE_PLATO_MPMD)
       ${PLATO_ANALYZE_LIB}
       ${PLATO_PARSER_LIB}
       ${PLATO_EXCEPTIONS_LIB}
+      ${PLATO_CONSOLE_LIB}
       aztecoo
       epetra
       intrepid
