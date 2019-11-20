@@ -345,14 +345,6 @@ public:
         {
             this->copyFieldFromlgr(mConstraintGradientZ, aSharedField);
         }
-        else if(aName == "Objective GradientP")
-        {
-            this->copyFieldFromlgr(mObjectiveGradientP, aSharedField);
-        }
-        else if(aName == "Constraint GradientP")
-        {
-            this->copyFieldFromlgr(mConstraintGradientP, aSharedField);
-        }
         else if(aName == "Adjoint")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
@@ -529,18 +521,16 @@ private:
     Plato::Scalar mObjectiveValue;
     Plato::ScalarVector mObjectiveGradientZ;
     Plato::ScalarVector mObjectiveGradientX;
-    Plato::ScalarVector mObjectiveGradientP;
 
     Plato::Scalar mConstraintValue;
     Plato::ScalarVector mConstraintGradientZ;
     Plato::ScalarVector mConstraintGradientX;
-    Plato::ScalarVector mConstraintGradientP;
 
     Plato::OrdinalType mNumSpatialDims;
     Plato::OrdinalType mNumSolutionDofs;
 
     std::map<std::string,std::shared_ptr<ESPType>> mESP;
-    void mapToParameters(std::shared_ptr<ESPType> aESP, Plato::ScalarVector mGradientP, Plato::ScalarVector mGradientX);
+    void mapToParameters(std::shared_ptr<ESPType> aESP, std::vector<Plato::Scalar>& mGradientP, Plato::ScalarVector mGradientX);
 
 #ifdef PLATO_GEOMETRY
     struct MLSstruct
@@ -633,6 +623,8 @@ private:
     public:
         ComputeObjectiveP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        std::string mStrGradientP;
     };
     friend class ComputeObjectiveP;
     /******************************************************************************/
@@ -673,6 +665,8 @@ private:
     public:
         ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        std::string mStrGradientP;
     };
     friend class ComputeObjectiveGradientP;
     /******************************************************************************/
@@ -684,6 +678,8 @@ private:
     public:
         ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        Plato::Scalar mTarget;
     };
     friend class ComputeConstraint;
     /******************************************************************************/
@@ -694,6 +690,8 @@ private:
     public:
         ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        Plato::Scalar mTarget;
     };
     friend class ComputeConstraintX;
     /******************************************************************************/
@@ -704,6 +702,9 @@ private:
     public:
         ComputeConstraintP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        std::string mStrGradientP;
+        Plato::Scalar mTarget;
     };
     friend class ComputeConstraintP;
     /******************************************************************************/
@@ -714,6 +715,8 @@ private:
     public:
         ComputeConstraintValue(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        Plato::Scalar mTarget;
     };
     friend class ComputeConstraintValue;
     /******************************************************************************/
@@ -744,6 +747,8 @@ private:
     public:
         ComputeConstraintGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        std::string mStrGradientP;
     };
     friend class ComputeConstraintGradientP;
     /******************************************************************************/
