@@ -1219,7 +1219,7 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
  *
 ***************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>
-class SmallStrainsPlasticityResidual: public Plato::AbstractGlobalVectorFunctionInc<EvaluationType>
+class InfinitesimalStrainPlasticityResidual: public Plato::AbstractGlobalVectorFunctionInc<EvaluationType>
 {
 // Private member data
 private:
@@ -1424,7 +1424,7 @@ public:
      * \param [in] aProblemParams input XML data
      * \param [in] aPenaltyParams penalty function input XML data
     *******************************************************************************/
-    SmallStrainsPlasticityResidual(Omega_h::Mesh &aMesh,
+    InfinitesimalStrainPlasticityResidual(Omega_h::Mesh &aMesh,
                                    Omega_h::MeshSets &aMeshSets,
                                    Plato::DataMap &aDataMap,
                                    Teuchos::ParameterList &aProblemParams) :
@@ -1445,7 +1445,7 @@ public:
     /***************************************************************************//**
      * \brief Destructor
     *******************************************************************************/
-    virtual ~SmallStrainsPlasticityResidual()
+    virtual ~InfinitesimalStrainPlasticityResidual()
     {
     }
 
@@ -1563,7 +1563,7 @@ public:
         this->outputData(tPressure, "pressure");
     }
 };
-// class SmallStrainsPlasticityResidual
+// class InfinitesimalStrainPlasticityResidual
 
 
 
@@ -2164,7 +2164,7 @@ private:
 
 
 
-namespace SmallStrainsPlasticityFactory
+namespace InfinitesimalStrainPlasticityFactory
 {
 
 /***************************************************************************//**
@@ -2196,7 +2196,7 @@ struct FunctionFactory
         if(aFunctionName == "Small Strains Plasticity")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
-            return ( std::make_shared<Plato::SmallStrainsPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+            return ( std::make_shared<Plato::InfinitesimalStrainPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
                     (aMesh, aMeshSets, aDataMap, aInputParams) );
         }
         else
@@ -2256,7 +2256,7 @@ struct FunctionFactory
 
 
 }
-// namespace SmallStrainsPlasticityFactory
+// namespace InfinitesimalStrainPlasticityFactory
 
 /*************************************************************************//**
  * \brief Concrete class defining the Physics Type template argument for a
@@ -2266,17 +2266,17 @@ struct FunctionFactory
  * Here, the (Inc) in GlobalVectorFunctionInc denotes increment.
 *****************************************************************************/
 template<Plato::OrdinalType NumSpaceDim>
-class SmallStrainsPlasticity: public Plato::SimplexPlasticity<NumSpaceDim>
+class InfinitesimalStrainPlasticity: public Plato::SimplexPlasticity<NumSpaceDim>
 {
 public:
     static constexpr auto mSpaceDim = NumSpaceDim;                           /*!< number of spatial dimensitons */
-    typedef Plato::SmallStrainsPlasticityFactory::FunctionFactory FunctionFactory; /*!< define short name for elastoplasticity factory */
+    typedef Plato::InfinitesimalStrainPlasticityFactory::FunctionFactory FunctionFactory; /*!< define short name for elastoplasticity factory */
 
     using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>; /*!< define short name for simplex plasticity physics */
     /*!< define short name for projected pressure gradient physics */
     using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset>;
 };
-// class SmallStrainsPlasticity
+// class InfinitesimalStrainPlasticity
 
 
 
@@ -4244,7 +4244,7 @@ struct AdjointData
  * \brief Plasticity problem manager, which is responsible for performance
  * criteria evaluations and
  *
- * \tparam PhysicsT physics type, e.g. Plato::SmallStrainsPlasticity
+ * \tparam PhysicsT physics type, e.g. Plato::InfinitesimalStrainPlasticity
  *
  * \param [in] aMesh mesh database
  * \param [in] aMeshSets side sets database
@@ -7529,7 +7529,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual3D_Elastic)
     Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
     // 3. CALL FUNCTION
-    Plato::SmallStrainsPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
+    Plato::InfinitesimalStrainPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
     Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tElastoPlasticityResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
     tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
                                       tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
@@ -7633,7 +7633,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual2D_Elastic)
     Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
     // 3. CALL FUNCTION
-    Plato::SmallStrainsPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
+    Plato::InfinitesimalStrainPlasticityResidual<EvalType, PhysicsT> tComputeElastoPlasticity(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
     Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tElastoPlasticityResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
     tComputeElastoPlasticity.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
                                       tProjectedPressureGrad, tDesignVariables, tConfiguration, tElastoPlasticityResidual);
@@ -7808,7 +7808,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -7863,7 +7863,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -7918,7 +7918,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -7973,7 +7973,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8028,7 +8028,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8083,7 +8083,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8138,7 +8138,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8184,7 +8184,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8230,7 +8230,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8276,7 +8276,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8322,7 +8322,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8368,7 +8368,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8414,7 +8414,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8460,7 +8460,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8507,7 +8507,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -8553,7 +8553,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     Omega_h::MeshSets tMeshSets;
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::SmallStrainsPlasticity<tSpaceDim>;
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
