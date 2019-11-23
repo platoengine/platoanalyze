@@ -26,24 +26,22 @@ namespace PlatoUtestHelpers
 {
 
 void finalizeOmegaH();
-void initializeOmegaH(int *argc , char ***argv);
+void initializeOmegaH(int *argc, char ***argv);
 Teuchos::RCP<Omega_h::Library> getLibraryOmegaH();
 
 /******************************************************************************/
 //! returns all nodes matching x=0 on the boundary of the provided mesh
-inline 
-Omega_h::LOs getBoundaryNodes_x0(Teuchos::RCP<Omega_h::Mesh> & aMesh)
+inline Omega_h::LOs getBoundaryNodes_x0(Teuchos::RCP<Omega_h::Mesh> & aMesh)
 /******************************************************************************/
 {
     Omega_h::Int tSpaceDim = aMesh->dim();
     try
     {
-        if (tSpaceDim != static_cast<Omega_h::Int>(3))
+        if(tSpaceDim != static_cast<Omega_h::Int>(3))
         {
             std::ostringstream tErrorMsg;
-            tErrorMsg << "\n\n ************* ERROR IN FILE: " << __FILE__<< ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__ << ", MESSAGE: " << "THIS METHOD IS ONLY IMPLEMENTED FOR 3D USE CASES."
-                    << " *************\n\n";
+            tErrorMsg << "\n\n ************* ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__ << ", LINE: "
+                      << __LINE__ << ", MESSAGE: " << "THIS METHOD IS ONLY IMPLEMENTED FOR 3D USE CASES." << " *************\n\n";
             throw std::invalid_argument(tErrorMsg.str().c_str());
         }
     }
@@ -66,18 +64,16 @@ Omega_h::LOs getBoundaryNodes_x0(Teuchos::RCP<Omega_h::Mesh> & aMesh)
 /******************************************************************************/
 // This one Tpetra likes; will have to check whether this works with Magma
 // Sparse and AmgX or if we need to do something to factor this out
-
 /*! Return a box (cube) mesh.
 
- @param spaceDim Spatial dimensions of the mesh to be created.
- @param meshWidth Number of mesh intervals through the thickness.
+ \param spaceDim Spatial dimensions of the mesh to be created.
+ \param meshWidth Number of mesh intervals through the thickness.
  */
-inline
-Teuchos::RCP<Omega_h::Mesh> getBoxMesh(Omega_h::Int aSpaceDim,
-                                       Omega_h::Int aMeshWidth,
-                                       Plato::Scalar aX_scaling = 1.0,
-                                       Plato::Scalar aY_scaling = -1.0,
-                                       Plato::Scalar aZ_scaling = -1.0)
+inline Teuchos::RCP<Omega_h::Mesh> getBoxMesh(Omega_h::Int aSpaceDim,
+                                              Omega_h::Int aMeshWidth,
+                                              Plato::Scalar aX_scaling = 1.0,
+                                              Plato::Scalar aY_scaling = -1.0,
+                                              Plato::Scalar aZ_scaling = -1.0)
 /******************************************************************************/
 {
     if(aY_scaling == -1.0)
@@ -121,11 +117,10 @@ Teuchos::RCP<Omega_h::Mesh> getBoxMesh(Omega_h::Int aSpaceDim,
 /******************************************************************************/
 /*! Create an lgr::FEMesh from a Omega_h::Mesh
 
- @param meshOmegaH Input Omega_h mesh.
+ \param meshOmegaH Input Omega_h mesh.
  */
 template<int SpaceDim>
-inline
-lgr::FEMesh<SpaceDim> createFEMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH)
+inline lgr::FEMesh<SpaceDim> createFEMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH)
 /******************************************************************************/
 {
     using DefaultFields = lgr::Fields<SpaceDim>;
@@ -154,8 +149,8 @@ lgr::FEMesh<SpaceDim> createFEMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmeg
         if(tElemCount)
         {
             tMesh.elem_node_ids = typename DefaultFields::elem_node_ids_type("elem_node_ids", tElemCount);
-	    tMesh.elem_face_ids = typename DefaultFields::elem_face_ids_type("elem_face_ids", tElemCount );
-	    tMesh.elem_face_orientations = typename DefaultFields::elem_face_orient_type("elem_face_orientations", tElemCount );
+            tMesh.elem_face_ids = typename DefaultFields::elem_face_ids_type("elem_face_ids", tElemCount);
+            tMesh.elem_face_orientations = typename DefaultFields::elem_face_orient_type("elem_face_orientations", tElemCount);
         }
         if(tFaceCount)
         {
@@ -169,9 +164,7 @@ lgr::FEMesh<SpaceDim> createFEMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmeg
 
 /******************************************************************************/
 inline
-void writeConnectivity(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH,
-                       const std::string & aName,
-                       const Omega_h::Int & aSpaceDim)
+void writeConnectivity(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH, const std::string & aName, const Omega_h::Int & aSpaceDim)
 /******************************************************************************/
 {
 #ifndef KOKKOS_ENABLE_CUDA
@@ -199,14 +192,12 @@ void writeConnectivity(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH,
 
 /******************************************************************************/
 inline
-void writeMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH,
-               const std::string & aName,
-               const Omega_h::Int & aSpaceDim)
+void writeMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH, const std::string & aName, const Omega_h::Int & aSpaceDim)
 /******************************************************************************/
 {
 #ifndef KOKKOS_ENABLE_CUDA
     Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aName, aMeshOmegaH.get(), aSpaceDim);
-    auto tTags = Omega_h::vtk::get_all_vtk_tags(aMeshOmegaH.get(),aSpaceDim);
+    auto tTags = Omega_h::vtk::get_all_vtk_tags(aMeshOmegaH.get(), aSpaceDim);
     tWriter.write(static_cast<Omega_h::Real>(1.0), tTags);
 #else
     (void)aMeshOmegaH;
@@ -217,50 +208,50 @@ void writeMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH,
 
 /******************************************************************************//**
  *
- * @brief Build 1D box mesh
+ * \brief Build 1D box mesh
  *
- * @param[in] aX x-dimension length
- * @param[in] aNx number of space in x-dimension
+ * \param[in] aX x-dimension length
+ * \param[in] aNx number of space in x-dimension
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline std::shared_ptr<Omega_h::Mesh> build_1d_box_mesh(Omega_h::Real aX, Omega_h::LO aNx)
 {
     Teuchos::RCP<Omega_h::Library> tLibrary = getLibraryOmegaH();
-    std::shared_ptr<Omega_h::Mesh> tMesh =
-        std::make_shared<Omega_h::Mesh>(Omega_h::build_box(tLibrary->world(), Omega_h_Family::OMEGA_H_SIMPLEX, aX, 0., 0., aNx, 0, 0));
+    std::shared_ptr<Omega_h::Mesh> tMesh = std::make_shared<Omega_h::Mesh>(
+            Omega_h::build_box(tLibrary->world(), Omega_h_Family::OMEGA_H_SIMPLEX, aX, 0., 0., aNx, 0, 0));
     return (tMesh);
 }
 
 /******************************************************************************//**
  *
- * @brief Build 2D box mesh
+ * \brief Build 2D box mesh
  *
- * @param[in] aX x-dimension length
- * @param[in] aY y-dimension length
- * @param[in] aNx number of space in x-dimension
- * @param[in] aNy number of space in y-dimension
+ * \param[in] aX x-dimension length
+ * \param[in] aY y-dimension length
+ * \param[in] aNx number of space in x-dimension
+ * \param[in] aNy number of space in y-dimension
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline std::shared_ptr<Omega_h::Mesh> build_2d_box_mesh(Omega_h::Real aX, Omega_h::Real aY, Omega_h::LO aNx, Omega_h::LO aNy)
 {
     Teuchos::RCP<Omega_h::Library> tLibrary = getLibraryOmegaH();
-    std::shared_ptr<Omega_h::Mesh> tMesh =
-        std::make_shared<Omega_h::Mesh>(Omega_h::build_box(tLibrary->world(), Omega_h_Family::OMEGA_H_SIMPLEX, aX, aY, 0., aNx, aNy, 0));
+    std::shared_ptr<Omega_h::Mesh> tMesh = std::make_shared<Omega_h::Mesh>(
+            Omega_h::build_box(tLibrary->world(), Omega_h_Family::OMEGA_H_SIMPLEX, aX, aY, 0., aNx, aNy, 0) );
     return (tMesh);
 }
 
 /******************************************************************************//**
  *
- * @brief Build 3D box mesh
+ * \brief Build 3D box mesh
  *
- * @param[in] aX x-dimension length
- * @param[in] aY y-dimension length
- * @param[in] aZ z-dimension length
- * @param[in] aNx number of space in x-dimension
- * @param[in] aNy number of space in y-dimension
- * @param[in] aNz number of space in z-dimension
+ * \param[in] aX x-dimension length
+ * \param[in] aY y-dimension length
+ * \param[in] aZ z-dimension length
+ * \param[in] aNx number of space in x-dimension
+ * \param[in] aNy number of space in y-dimension
+ * \param[in] aNz number of space in z-dimension
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline std::shared_ptr<Omega_h::Mesh> build_3d_box_mesh(Omega_h::Real aX,
                                                         Omega_h::Real aY,
                                                         Omega_h::Real aZ,
@@ -269,20 +260,20 @@ inline std::shared_ptr<Omega_h::Mesh> build_3d_box_mesh(Omega_h::Real aX,
                                                         Omega_h::LO aNz)
 {
     Teuchos::RCP<Omega_h::Library> tLibrary = getLibraryOmegaH();
-    std::shared_ptr<Omega_h::Mesh> tMesh =
-        std::make_shared<Omega_h::Mesh>(Omega_h::build_box(tLibrary->world(), Omega_h_Family::OMEGA_H_SIMPLEX, aX, aY, aZ, aNx, aNy, aNz));
+    std::shared_ptr<Omega_h::Mesh> tMesh = std::make_shared<Omega_h::Mesh>(
+            Omega_h::build_box(tLibrary->world(), Omega_h_Family::OMEGA_H_SIMPLEX, aX, aY, aZ, aNx, aNy, aNz) );
     return (tMesh);
 }
 
 /******************************************************************************//**
  *
- * @brief Get node ordinals associated with the boundary
- * @param[in] aMesh mesh data base
+ * \brief Get node ordinals associated with the boundary
+ * \param[in] aMesh mesh data base
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline Omega_h::LOs get_boundary_nodes(Omega_h::Mesh & aMesh)
 {
-    auto tSpaceDim  = aMesh.dim();
+    auto tSpaceDim = aMesh.dim();
 
     Omega_h::Read<Omega_h::I8> tInteriorMarks = Omega_h::mark_by_class_dim(&aMesh, Omega_h::VERT, tSpaceDim);
     Omega_h::Read<Omega_h::I8> tBoundaryMarks = Omega_h::invert_marks(tInteriorMarks);
@@ -293,69 +284,69 @@ inline Omega_h::LOs get_boundary_nodes(Omega_h::Mesh & aMesh)
 
 /******************************************************************************//**
  *
- * @brief Get node ordinals associated with boundary edge y=0
- * @param[in] aMesh mesh data base
+ * \brief Get node ordinals associated with boundary edge y=0
+ * \param[in] aMesh mesh data base
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline Omega_h::LOs get_2D_boundary_nodes_y0(Omega_h::Mesh& aMesh)
 {
-  // the y=0 nodes end up on a face which has label (1,1);
-  Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::VERT, Omega_h::EDGE, 1);
-  Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
-  return tLocalOrdinals;
+    // the y=0 nodes end up on a face which has label (1,1);
+    Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::VERT, Omega_h::EDGE, 1);
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    return tLocalOrdinals;
 }
 
 /******************************************************************************//**
  *
- * @brief Get node ordinals associated with boundary edge x=0
- * @param[in] aMesh mesh data base
+ * \brief Get node ordinals associated with boundary edge x=0
+ * \param[in] aMesh mesh data base
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline Omega_h::LOs get_2D_boundary_nodes_x0(Omega_h::Mesh& aMesh)
 {
-  // the x=0 nodes end up on an edge which has label (1,3);
-  Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::VERT, Omega_h::EDGE, 3);
-  Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
-  return tLocalOrdinals;
+    // the x=0 nodes end up on an edge which has label (1,3);
+    Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::VERT, Omega_h::EDGE, 3);
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    return tLocalOrdinals;
 }
 
 /******************************************************************************//**
  *
- * @brief Get node ordinals associated with boundary edge x=1
- * @param[in] aMesh mesh data base
+ * \brief Get node ordinals associated with boundary edge x=1
+ * \param[in] aMesh mesh data base
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline Omega_h::LOs get_2D_boundary_nodes_x1(Omega_h::Mesh& aMesh)
 {
-  // the x=1 nodes end up on an edge which has label (1,5),
-  Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::VERT, Omega_h::EDGE, 5);
-  Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
-  return tLocalOrdinals;
+    // the x=1 nodes end up on an edge which has label (1,5),
+    Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::VERT, Omega_h::EDGE, 5);
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    return tLocalOrdinals;
 }
 
 /******************************************************************************//**
  *
- * @brief Get node ordinals associated with boundary edge y=1
- * @param[in] aMesh mesh data base
+ * \brief Get node ordinals associated with boundary edge y=1
+ * \param[in] aMesh mesh data base
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline Omega_h::LOs get_2D_boundary_nodes_y1(Omega_h::Mesh& aMesh)
 {
-  // the x=1 nodes end up on an edge which has label (1,7).
-  Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::VERT, Omega_h::EDGE, 7);
-  Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
-  return tLocalOrdinals;
+    // the x=1 nodes end up on an edge which has label (1,7).
+    Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::VERT, Omega_h::EDGE, 7);
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    return tLocalOrdinals;
 }
 
 /******************************************************************************//**
  *
- * @brief Set point load
- * @param[in] aNodeOrdinal node ordinal associated with point load
- * @param[in] aNodeOrdinals collection of node ordinals associated with the entity (point, edge or surface) were point load is applied
- * @param[in] aValues values associated with point load
- * @param[in,out] aOutput global point load
+ * \brief Set point load
+ * \param[in] aNodeOrdinal node ordinal associated with point load
+ * \param[in] aNodeOrdinals collection of node ordinals associated with the entity (point, edge or surface) were point load is applied
+ * \param[in] aValues values associated with point load
+ * \param[in,out] aOutput global point load
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline void set_point_load(const Omega_h::LO& aNodeOrdinal,
                            const Omega_h::LOs& aNodeOrdinals,
                            const Plato::ScalarMultiVector& aValues,
@@ -366,7 +357,7 @@ inline void set_point_load(const Omega_h::LO& aNodeOrdinal,
         auto tOffset = aIndex * aValues.extent(1);
         auto tNumDofsPerNode = aValues.extent(0) * aValues.extent(1);
         auto tMyNodeDof = tNumDofsPerNode * aNodeOrdinals[aNodeOrdinal];
-        for(Plato::OrdinalType tDim = 0; tDim <  Plato::OrdinalType(aValues.extent(1)); tDim++)
+        for(Plato::OrdinalType tDim = 0; tDim < Plato::OrdinalType(aValues.extent(1)); tDim++)
         {
             auto tOutputIndex = tMyNodeDof + tOffset + tDim;
             aOutput(tOutputIndex) = aValues(aIndex, tDim);
@@ -376,14 +367,14 @@ inline void set_point_load(const Omega_h::LO& aNodeOrdinal,
 
 /******************************************************************************//**
  *
- * @brief Set Dirichlet boundary conditions.
+ * \brief Set Dirichlet boundary conditions.
  *
- * @param[in] aNumDofsPerNode number of degrees of freedom per node
- * @param[in] aValue constant value associated with Dirichlet boundary conditions (only constant values are supported)
- * @param[in] aCoords coordinates associated with Dirichlet boundary conditions
- * @param[in,out] aDirichletValues values associated with Dirichlet boundary conditions
+ * \param[in] aNumDofsPerNode number of degrees of freedom per node
+ * \param[in] aValue constant value associated with Dirichlet boundary conditions (only constant values are supported)
+ * \param[in] aCoords coordinates associated with Dirichlet boundary conditions
+ * \param[in,out] aDirichletValues values associated with Dirichlet boundary conditions
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline void set_dirichlet_boundary_conditions(const Plato::OrdinalType& aNumDofsPerNode,
                                               const Plato::Scalar& aValue,
                                               const Omega_h::LOs& aCoords,
@@ -398,15 +389,15 @@ inline void set_dirichlet_boundary_conditions(const Plato::OrdinalType& aNumDofs
             aDirichletDofs[tOffset + tDof] = aNumDofsPerNode*aCoords[aIndex] + tDof;
             aDirichletValues[tOffset + tDof] = aValue;
         }
-    },"Dirichlet BC");
+    }, "Dirichlet BC");
 }
 
 /******************************************************************************//**
  *
- * @brief Print ordinals' values
- * @param[in] aInput array of ordinals
+ * \brief Print ordinals' values
+ * \param[in] aInput array of ordinals
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline void print_ordinals(const Omega_h::LOs& aInput)
 {
     auto tRange = aInput.size();
@@ -418,11 +409,11 @@ inline void print_ordinals(const Omega_h::LOs& aInput)
 
 /******************************************************************************//**
  *
- * @brief Print 1D coordinates associated with node ordinals
- * @param[in] aMesh mesg data base
- * @param[in] aNodeOrdinals array of node ordinals
+ * \brief Print 1D coordinates associated with node ordinals
+ * \param[in] aMesh mesg data base
+ * \param[in] aNodeOrdinals array of node ordinals
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline void print_1d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNodeOrdinals)
 {
     auto tSpaceDim = aMesh.dim();
@@ -442,11 +433,11 @@ inline void print_1d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNod
 
 /******************************************************************************//**
  *
- * @brief Print 2D coordinates associated with node ordinals
- * @param[in] aMesh mesg data base
- * @param[in] aNodeOrdinals array of node ordinals
+ * \brief Print 2D coordinates associated with node ordinals
+ * \param[in] aMesh mesg data base
+ * \param[in] aNodeOrdinals array of node ordinals
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline void print_2d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNodeOrdinals)
 {
     auto tSpaceDim = aMesh.dim();
@@ -467,11 +458,10 @@ inline void print_2d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNod
 
 /******************************************************************************//**
  *
- * @brief Print 3D coordinates associated with node ordinals
- * @param[in] aMesh mesg data base
- * @param[in] aNodeOrdinals array of node ordinals
+ * \param[in] aMesh mesg data base
+ * \param[in] aNodeOrdinals array of node ordinals
  *
-**********************************************************************************/
+ **********************************************************************************/
 inline void print_3d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNodeOrdinals)
 {
     auto tSpaceDim = aMesh.dim();
@@ -491,57 +481,80 @@ inline void print_3d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNod
     });
 }
 
-inline void set_dof_in_scalar_vector_on_boundary_2D(Omega_h::Mesh & aMesh,
-                                             const std::string & aBoundaryID,
-                                             const Plato::ScalarVector & aVector,
-                                             const Plato::OrdinalType  & aDofStride,
-                                             const Plato::OrdinalType  & aDofToSet,
-                                             const Plato::Scalar       & aSetValue)
+/******************************************************************************//**
+ * \brief Set Dirichlet boundary condition values for specified degree of freedom.
+ *   Specialized for 2-D applications
+ *
+ * \param [in] aMesh       finite element mesh
+ * \param [in] aBoundaryID boundary identifier
+ * \param [in] aDofValues  vector of Dirichlet boundary condition values
+ * \param [in] aDofStride  degree of freedom stride
+ * \param [in] aDofToSet   degree of freedom index to set
+ * \param [in] aSetValue   value to set
+ *
+ **********************************************************************************/
+inline void set_dof_value_in_vector_on_boundary_2D(Omega_h::Mesh & aMesh,
+                                                   const std::string & aBoundaryID,
+                                                   const Plato::ScalarVector & aDofValues,
+                                                   const Plato::OrdinalType & aDofStride,
+                                                   const Plato::OrdinalType & aDofToSet,
+                                                   const Plato::Scalar & aSetValue)
 {
     Omega_h::LOs tBoundaryNodes;
-    if (aBoundaryID == "x0")
+    if(aBoundaryID == "x0")
         tBoundaryNodes = PlatoUtestHelpers::get_2D_boundary_nodes_x0(aMesh);
-    else if (aBoundaryID == "x1")
+    else if(aBoundaryID == "x1")
         tBoundaryNodes = PlatoUtestHelpers::get_2D_boundary_nodes_x1(aMesh);
-    else if (aBoundaryID == "y0")
+    else if(aBoundaryID == "y0")
         tBoundaryNodes = PlatoUtestHelpers::get_2D_boundary_nodes_y0(aMesh);
-    else if (aBoundaryID == "y1")
+    else if(aBoundaryID == "y1")
         tBoundaryNodes = PlatoUtestHelpers::get_2D_boundary_nodes_y1(aMesh);
     else
         THROWERR("Specifed boundary ID not implemented.")
 
     auto tNumBoundaryNodes = tBoundaryNodes.size();
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumBoundaryNodes), 
-                         LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-        {
-            Plato::OrdinalType tIndex = aDofStride * tBoundaryNodes[aIndex] + aDofToSet;
-            aVector(tIndex) += aSetValue; 
-        }
-        , "fill vector boundary dofs");
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumBoundaryNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        Plato::OrdinalType tIndex = aDofStride * tBoundaryNodes[aIndex] + aDofToSet;
+        aDofValues(tIndex) += aSetValue;
+    },
+                         "fill vector boundary dofs");
 }
 
-inline void set_dof_in_scalar_vector_on_boundary_3D(Omega_h::Mesh & aMesh,
-                                             const std::string & aBoundaryID,
-                                             const Plato::ScalarVector & aVector,
-                                             const Plato::OrdinalType  & aDofStride,
-                                             const Plato::OrdinalType  & aDofToSet,
-                                             const Plato::Scalar       & aSetValue)
+/******************************************************************************//**
+ * \brief Set Dirichlet boundary condition values for specified degree of freedom.
+ *   Specialized for 3-D applications.
+ *
+ * \param [in] aMesh       finite element mesh
+ * \param [in] aBoundaryID boundary identifier
+ * \param [in] aDofValues  vector of Dirichlet boundary condition values
+ * \param [in] aDofStride  degree of freedom stride
+ * \param [in] aDofToSet   degree of freedom index to set
+ * \param [in] aSetValue   value to set
+ *
+ **********************************************************************************/
+inline void set_dof_value_in_vector_on_boundary_3D(Omega_h::Mesh & aMesh,
+                                                   const std::string & aBoundaryID,
+                                                   const Plato::ScalarVector & aDofValues,
+                                                   const Plato::OrdinalType & aDofStride,
+                                                   const Plato::OrdinalType & aDofToSet,
+                                                   const Plato::Scalar & aSetValue)
 {
     const Omega_h::Int tVertexDim = 0;
-    const Omega_h::Int tFaceDim   = 2;
+    const Omega_h::Int tFaceDim = 2;
     Omega_h::Read<Omega_h::I8> Marks;
-    if (aBoundaryID == "x0")
+    if(aBoundaryID == "x0")
         Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 12);
-    else if (aBoundaryID == "x1")
+    else if(aBoundaryID == "x1")
         Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 14);
-    else if (aBoundaryID == "y0")
+    else if(aBoundaryID == "y0")
         Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 10);
-    else if (aBoundaryID == "y1")
+    else if(aBoundaryID == "y1")
         Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 16);
-    else if (aBoundaryID == "z0")
-        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim,  4);
-    else if (aBoundaryID == "z1")
+    else if(aBoundaryID == "z0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 4);
+    else if(aBoundaryID == "z1")
         Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 22);
     else
         THROWERR("Specifed boundary ID not implemented.")
@@ -549,32 +562,128 @@ inline void set_dof_in_scalar_vector_on_boundary_3D(Omega_h::Mesh & aMesh,
     Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(Marks);
     auto tNumBoundaryNodes = tLocalOrdinals.size();
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumBoundaryNodes), 
-                         LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-        {
-            Plato::OrdinalType tIndex = aDofStride * tLocalOrdinals[aIndex] + aDofToSet;
-            aVector(tIndex) += aSetValue;
-        }
-        , "fill vector boundary dofs");
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumBoundaryNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        Plato::OrdinalType tIndex = aDofStride * tLocalOrdinals[aIndex] + aDofToSet;
+        aDofValues(tIndex) += aSetValue;
+    }, "fill vector boundary dofs");
 }
 
-
-inline void set_dof_in_scalar_vector(const Plato::ScalarVector & aVector,
-                                 const Plato::OrdinalType  & aDofStride,
-                                 const Plato::OrdinalType  & aDofToSet,
-                                 const Plato::Scalar       & aSetValue)
+/******************************************************************************//**
+ * \brief Return list of Dirichlet degree of freedom indices, specialized for 2-D applications.
+ *
+ * \param [in] aMesh       finite element mesh
+ * \param [in] aBoundaryID boundary identifier
+ * \param [in] aDofStride  degree of freedom stride
+ * \param [in] aDofToSet   degree of freedom index to set
+ *
+ * \return list of Dirichlet indices
+ *
+ **********************************************************************************/
+inline Plato::LocalOrdinalVector get_dirichlet_indices_on_boundary_2D(Omega_h::Mesh & aMesh,
+                                                                      const std::string & aBoundaryID,
+                                                                      const Plato::OrdinalType & aDofStride,
+                                                                      const Plato::OrdinalType & aDofToSet)
 {
-    auto tVectorSize = aVector.extent(0);
+    Omega_h::LOs tBoundaryNodes;
+    if(aBoundaryID == "x0")
+        tBoundaryNodes = PlatoUtestHelpers::get_2D_boundary_nodes_x0(aMesh);
+    else if(aBoundaryID == "x1")
+        tBoundaryNodes = PlatoUtestHelpers::get_2D_boundary_nodes_x1(aMesh);
+    else if(aBoundaryID == "y0")
+        tBoundaryNodes = PlatoUtestHelpers::get_2D_boundary_nodes_y0(aMesh);
+    else if(aBoundaryID == "y1")
+        tBoundaryNodes = PlatoUtestHelpers::get_2D_boundary_nodes_y1(aMesh);
+    else
+        THROWERR("Specifed boundary ID not implemented.")
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tVectorSize / aDofStride), 
-                         LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeIndex)
-        {
-            Plato::OrdinalType tIndex = aDofStride * aNodeIndex + aDofToSet;
-            aVector(tIndex) += aSetValue; 
-        }
-        , "fill specific vector entry globally");
+    Plato::LocalOrdinalVector tDofIndices;
+    auto tNumBoundaryNodes = tBoundaryNodes.size();
+    Kokkos::resize(tDofIndices, tNumBoundaryNodes);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumBoundaryNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        Plato::OrdinalType tIndex = aDofStride * tBoundaryNodes[aIndex] + aDofToSet;
+        tDofIndices(aIndex) = tIndex;
+    }, "fill dirichlet dof indices on boundary 2-D");
+
+    return (tDofIndices);
 }
 
-} // namespace PlatoUtestHelpers
+/******************************************************************************//**
+ * \brief Return list of Dirichlet degree of freedom indices, specialized for 3-D applications.
+ *
+ * \param [in]     aMesh       finite element mesh
+ * \param [in]     aBoundaryID boundary identifier
+ * \param [in]     aDofStride  degree of freedom stride
+ * \param [in]     aDofToSet   degree of freedom index to set
+ *
+ * \return list of Dirichlet indices
+ *
+ **********************************************************************************/
+inline Plato::LocalOrdinalVector get_dirichlet_indices_on_boundary_3D(Omega_h::Mesh & aMesh,
+                                                                      const std::string & aBoundaryID,
+                                                                      const Plato::OrdinalType & aDofStride,
+                                                                      const Plato::OrdinalType & aDofToSet)
+{
+    const Omega_h::Int tVertexDim = 0;
+    const Omega_h::Int tFaceDim = 2;
+    Omega_h::Read<Omega_h::I8> Marks;
+    if(aBoundaryID == "x0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 12);
+    else if(aBoundaryID == "x1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 14);
+    else if(aBoundaryID == "y0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 10);
+    else if(aBoundaryID == "y1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 16);
+    else if(aBoundaryID == "z0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 4);
+    else if(aBoundaryID == "z1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 22);
+    else
+        THROWERR("Specifed boundary ID not implemented.")
+
+    Omega_h::LOs tBoundaryNodes = Omega_h::collect_marked(Marks);
+
+    Plato::LocalOrdinalVector tDofIndices;
+    auto tNumBoundaryNodes = tBoundaryNodes.size();
+    Kokkos::resize(tDofIndices, tNumBoundaryNodes);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumBoundaryNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        Plato::OrdinalType tIndex = aDofStride * tBoundaryNodes[aIndex] + aDofToSet;
+        tDofIndices(aIndex) = tIndex;
+    }, "fill dirichlet dof indices on boundary 3-D");
+
+    return (tDofIndices);
+}
+
+/******************************************************************************//**
+ * \brief set value for this Dirichlet boundary condition index
+ *
+ * \param [in] aDofValues vector of Dirichlet boundary condition values
+ * \param [in] aDofStride degree of freedom stride
+ * \param [in] aDofToSet  degree of freedom index to set
+ * \param [in] aSetValue  value to set
+ *
+ **********************************************************************************/
+inline void set_dof_value_in_vector(const Plato::ScalarVector & aDofValues,
+                                    const Plato::OrdinalType & aDofStride,
+                                    const Plato::OrdinalType & aDofToSet,
+                                    const Plato::Scalar & aSetValue)
+{
+    auto tVectorSize = aDofValues.extent(0);
+    auto tRange = tVectorSize / aDofStride;
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tRange), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeIndex)
+    {
+        Plato::OrdinalType tIndex = aDofStride * aNodeIndex + aDofToSet;
+        aDofValues(tIndex) += aSetValue;
+    }, "fill specific vector entry globally");
+}
+
+}
+// namespace PlatoUtestHelpers
 
 #endif /* PLATOTESTHELPERS_HPP_ */
