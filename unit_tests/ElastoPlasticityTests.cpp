@@ -4300,8 +4300,8 @@ private:
     Plato::ScalarVector mDispControlDirichletValues; /*!< values associated with the Dirichlet boundary conditions at the current pseudo time step*/
     Plato::LocalOrdinalVector mDirichletDofs;        /*!< list of degrees of freedom associated with the Dirichlet boundary conditions*/
 
-    Plato::WorksetBase<PhysicsT> mWorksetBase; /*!< assembly routine interface*/
-    std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal*/
+    Plato::WorksetBase<Plato::SimplexPlasticity<mSpatialDim>> mWorksetBase; /*!< assembly routine interface */
+    std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal */
 
     bool mReadDirichletConditionsFromFile; /*!< flag used to ignore mesh sets - only used for unit testing */
 
@@ -4332,6 +4332,7 @@ public:
             mLocalStates("Local States", mMaxNumPseudoTimeSteps, mLocalResidualEq.size()),
             mGlobalStates("Global States", mMaxNumPseudoTimeSteps, mGlobalResidualEq.size()),
             mProjectedPressGrad("Projected Pressure Gradient", mMaxNumPseudoTimeSteps, mProjectionEq.size()),
+            mWorksetBase(aMesh),
             mReadDirichletConditionsFromFile(true)
     {
     }
@@ -5224,7 +5225,7 @@ private:
         // add contribution from local residual to gradient, i.e. DfDz += (DhDz)^T * gamma
         auto tDhDz_T = mLocalResidualEq.gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                    aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+                                                   aControls, aStateData.mCurrentStepIndex);
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
         Plato::ScalarMultiVector tDhDzTimesLocalAdjoint("Local Gradient times adjoint", tNumCells, mNumNodesPerCell);
@@ -5273,7 +5274,7 @@ private:
         // add contribution from local residual to gradient, i.e. DfDx += (DhDx)^T * gamma
         auto tDhDx_T = mLocalResidualEq.gradient_x(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                    aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+                                                   aControls, aStateData.mCurrentStepIndex);
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
         Plato::ScalarMultiVector tDhDxTimesLocalAdjoint("Local Gradient times adjoint", tNumCells, mNumNodesPerCell);
@@ -5353,7 +5354,6 @@ private:
         {
 
             // Get previous local adjoint workset
-            const Plato::OrdinalType tPreviousTimeIndex = 0;
             Plato::ScalarMultiVector tPreviousLocalAdjointWS("Local Previous Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
             mWorksetBase.worksetLocalState(aAdjointData.mPreviousLocalAdjoint, tPreviousLocalAdjointWS);
 
@@ -5367,7 +5367,7 @@ private:
             Plato::update_vector_workset(tNumCells, tAlpha, tDfDc, tBeta, tRHS);
             auto tDhDcp = mLocalResidualEq.gradient_cp(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                        aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
-                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+                                                       aControls, aStateData.mCurrentStepIndex);
             tBeta = 1.0;
             Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDcp, tPreviousLocalAdjointWS, tBeta, tRHS);
         }
@@ -5456,7 +5456,7 @@ private:
             Plato::ScalarMultiVector tWorkMultiVectorOneWS("Local State Work Workset", tNumCells, mNumLocalDofsPerCell);
             auto tDhDcp = mLocalResidualEq.gradient_cp(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                        aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
-                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+                                                       aControls, aStateData.mCurrentStepIndex);
             Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDcp, tLocalPrevAdjointWS, tBeta, tWorkMultiVectorOneWS);
             tBeta = 1.0;
             Plato::update_vector_workset(tNumCells, tAlpha, tDfDc, tBeta, tWorkMultiVectorOneWS);
@@ -5469,7 +5469,7 @@ private:
             // Compute tDhDu^T * [ Inv(tDhDc^T) * (tDfDc + tDhDcp^T * tPrevLocalAdjoint) ]
             auto tDhDu = mLocalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                      aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
-                                                     aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+                                                     aControls, aStateData.mCurrentStepIndex);
             Plato::ScalarMultiVector tRHS("Global State Right-Hand-Side Workset", tNumCells, mNumGlobalDofsPerCell);
             Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDu, tWorkMultiVectorTwoWS, tBeta, tRHS);
 
@@ -5549,7 +5549,7 @@ private:
         // Compute cell Jacobian of the local residual with respect to the current global state WorkSet (WS)
         auto tDhDu = mLocalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                 aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+                                                 aControls, aStateData.mCurrentStepIndex);
 
         // Compute cell C = (dH/dc)^{-1}*dH/du, where H is the local residual, c are the local states and u are the global states
         const Plato::Scalar tBeta = 1.0;
@@ -5625,7 +5625,7 @@ private:
     {
         auto tDhDc = mLocalResidualEq.gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                  aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
-                                                 aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+                                                 aControls, aStateData.mCurrentStepIndex);
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, aInvLocalJacobianT);
     }
