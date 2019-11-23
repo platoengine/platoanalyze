@@ -390,9 +390,9 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AugLagQuadratic_CheckThermalVonMises3D)
         tState(tIndex) = tTemperature;
     }
     , "fill specific vector entry globally");
-    PlatoUtestHelpers::set_dof_in_scalar_vector_on_boundary_3D(*tMesh, "x1", tState, tDofStride, 0, 0.1 - 0.05);
-    PlatoUtestHelpers::set_dof_in_scalar_vector_on_boundary_3D(*tMesh, "y1", tState, tDofStride, 1, 0.1 - 0.10);
-    PlatoUtestHelpers::set_dof_in_scalar_vector_on_boundary_3D(*tMesh, "z1", tState, tDofStride, 2, 0.1 + 0.05);
+    PlatoUtestHelpers::set_dof_value_in_vector_on_boundary_3D(*tMesh, "x1", tState, tDofStride, 0, 0.1 - 0.05);
+    PlatoUtestHelpers::set_dof_value_in_vector_on_boundary_3D(*tMesh, "y1", tState, tDofStride, 1, 0.1 - 0.10);
+    PlatoUtestHelpers::set_dof_value_in_vector_on_boundary_3D(*tMesh, "z1", tState, tDofStride, 2, 0.1 + 0.05);
     Plato::ScalarMultiVectorT<StateT> tStateWS("state workset", tNumCells, tDofsPerCell);
     tWorksetBase.worksetState(tState, tStateWS);
 
