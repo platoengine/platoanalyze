@@ -3351,7 +3351,7 @@ private:
     ***************************************************************************/
     template<typename AViewType>
     Teuchos::RCP<Plato::CrsMatrixType>
-    assembleJacobianPressGrad(const Plato::ScalarMultiVectorT<AViewType>& aJacobianWS)
+    assembleJacobianPressGrad(const Plato::ScalarMultiVectorT<AViewType>& aJacobianWS) const
     {
         // tJacobian has shape (Nc, (Nv x Nd), (Nv x Nn))
         //   Nc: number of cells
