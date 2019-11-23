@@ -4264,10 +4264,10 @@ private:
     static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell; /*!< number of local degrees of freedom per cell (i.e. element)*/
 
     // Required
-    Plato::LocalVectorFunctionInc<PhysicsT> mLocalResidualEq;     /*!< local equality constraint interface*/
-    Plato::GlobalVectorFunctionInc<PhysicsT> mGlobalResidualEq; /*!< global equality constraint interface*/
     using ProjectorT = typename Plato::Projection<mSpatialDim, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
-    Plato::VectorFunctionVMS<ProjectorT> mProjectionEq; /*!< global pressure gradient projection interface*/
+    Plato::VectorFunctionVMS<ProjectorT> mProjectionEq;                             /*!< global pressure gradient projection interface*/
+    Plato::GlobalVectorFunctionInc<PhysicsT> mGlobalResidualEq;                     /*!< global equality constraint interface*/
+    Plato::LocalVectorFunctionInc<Plato::Plasticity<mSpatialDim>> mLocalResidualEq; /*!< local equality constraint interface*/
 
     // Optional
     std::shared_ptr<Plato::LocalScalarFunctionInc> mObjective;  /*!< objective constraint interface*/
@@ -8612,7 +8612,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
     "  <Parameter name='Objective'      type='string'  value='My Internal Elastic Energy'/>  \n"
     "  <ParameterList name='Material Model'>                                                 \n"
     "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>4317"
+    "                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
     "    </ParameterList>                                                                    \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
