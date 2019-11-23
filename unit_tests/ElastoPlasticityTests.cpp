@@ -1199,7 +1199,7 @@ ComputeStabilization<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
 
 
 /***********************************************************************//**
- * \brief Evaluate stabilized small strains plastic residual, defined as
+ * \brief Evaluate stabilized infinitesimal strain plasticity residual, defined as
  *
  * \tparam EvaluationType denotes evaluation type for vector function, possible
  *   options are Residual, Jacobian, PartialControl, etc.
@@ -1556,7 +1556,7 @@ public:
             tPressureDivergence (aCellOrdinal, aResult, tPressure, tConfigurationGradient, tCellVolume);
             tStabilizedDivergence (aCellOrdinal, aResult, tStabilization, tConfigurationGradient, tCellVolume, -1.0);
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
-        }, "stabilized small strains plasticity residual");
+        }, "stabilized infinitesimal strain plasticity residual");
 
         this->addExternalForces(aCurrentGlobalState, aControls, aResult);
         this->outputData(tDeviatoricStress, "deviatoric stress");
@@ -2168,12 +2168,13 @@ namespace InfinitesimalStrainPlasticityFactory
 {
 
 /***************************************************************************//**
- * \brief Factory for stabilized small strains plasticity vector function.
+ * \brief Factory for stabilized infinitesimal strain plasticity vector function.
 *******************************************************************************/
 struct FunctionFactory
 {
     /***************************************************************************//**
-     * \brief Create a stabilized vector function with local history-dependent states (e.g. plasticity)
+     * \brief Create a stabilized vector function with local history-dependent states
+     *  (e.g. plasticity)
      *
      * \tparam automatic differentiation evaluation type, e.g. JacobianU, JacobianZ, etc.
      *
