@@ -1279,9 +1279,9 @@ private:
     *******************************************************************************/
     void parseOutputDataNames(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Small Strains Plasticity"))
+        if(aProblemParams.isSublist("Infinite Strain Plasticity"))
         {
-            auto tResidualParams = aProblemParams.sublist("Small Strains Plasticity");
+            auto tResidualParams = aProblemParams.sublist("Infinite Strain Plasticity");
             if (tResidualParams.isType < Teuchos::Array < std::string >> ("Plottable"))
             {
                 mPlotTable = tResidualParams.get < Teuchos::Array < std::string >> ("Plottable").toVector();
@@ -1289,7 +1289,7 @@ private:
         }
         else
         {
-            THROWERR("'Small Strains Plasticity' sublist is not defined in XML input file.")
+            THROWERR("'Infinite Strain Plasticity' sublist is not defined in XML input file.")
         }
     }
 
@@ -1299,9 +1299,9 @@ private:
     *******************************************************************************/
     void parseMaterialPenaltyInputs(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Small Strains Plasticity"))
+        if(aProblemParams.isSublist("Infinite Strain Plasticity"))
         {
-            auto tResidualParams = aProblemParams.sublist("Small Strains Plasticity");
+            auto tResidualParams = aProblemParams.sublist("Infinite Strain Plasticity");
             if(tResidualParams.isSublist("Penalty Function"))
             {
                 auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
@@ -1311,7 +1311,7 @@ private:
         }
         else
         {
-            THROWERR("'Small Strains Plasticity' sublist is not defined in XML input file.")
+            THROWERR("'Infinite Strain Plasticity' sublist is not defined in XML input file.")
         }
     }
 
@@ -2194,7 +2194,7 @@ struct FunctionFactory
                                   Teuchos::ParameterList& aInputParams,
                                   std::string aFunctionName)
     {
-        if(aFunctionName == "Small Strains Plasticity")
+        if(aFunctionName == "Infinite Strain Plasticity")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
             return ( std::make_shared<Plato::InfinitesimalStrainPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
@@ -2202,7 +2202,7 @@ struct FunctionFactory
         }
         else
         {
-            const auto tError = std::string("Unknown Vector Function with local history-dependent states. '")
+            const auto tError = std::string("Unknown Vector Function with history-dependent states. '")
                     + "User specified '" + aFunctionName + "'.  This Vector Function is not supported in PLATO.";
             THROWERR(tError)
         }
@@ -7472,7 +7472,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual3D_Elastic)
         "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>  \n"
         "    </ParameterList>                                                   \n"
         "  </ParameterList>                                                     \n"
-        "  <ParameterList name='Small Strains Plasticity'>                      \n"
+        "  <ParameterList name='Infinite Strain Plasticity'>                    \n"
         "    <ParameterList name='Penalty Function'>                            \n"
         "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
         "      <Parameter name='Exponent' type='double' value='3.0'/>           \n"
@@ -7577,7 +7577,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual2D_Elastic)
         "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>  \n"
         "    </ParameterList>                                                   \n"
         "  </ParameterList>                                                     \n"
-        "  <ParameterList name='Small Strains Plasticity'>                      \n"
+        "  <ParameterList name='Infinite Strain Plasticity'>                    \n"
         "    <ParameterList name='Penalty Function'>                            \n"
         "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
         "      <Parameter name='Exponent' type='double' value='3.0'/>           \n"
@@ -8159,7 +8159,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8169,7 +8169,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_control<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
@@ -8205,7 +8205,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8215,7 +8215,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_control<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
@@ -8251,7 +8251,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8261,7 +8261,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_current_global_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
@@ -8297,7 +8297,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8307,7 +8307,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_current_global_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
@@ -8343,7 +8343,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8353,7 +8353,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_previous_local_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
@@ -8389,7 +8389,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8399,7 +8399,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_previous_local_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
@@ -8435,7 +8435,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8445,7 +8445,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_previous_global_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
@@ -8481,7 +8481,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8491,7 +8491,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_previous_global_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
@@ -8528,7 +8528,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8538,7 +8538,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_current_local_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
@@ -8574,7 +8574,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Small Strains Plasticity'>                                       \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
@@ -8584,12 +8584,59 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tFuncName = "Small Strains Plasticity";
+    std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
     Plato::test_partial_global_vector_func_wrt_current_local_states<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
 }
 */
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <Parameter name='Physics'        type='string'  value='Mechanical'/>                  \n"
+    "  <Parameter name='PDE Constraint' type='string'  value='Elliptic'/>                    \n"
+    "  <Parameter name='Constraint'     type='string'  value='My Volume'/>                   \n"
+    "  <Parameter name='Objective'      type='string'  value='My Internal Elastic Energy'/>  \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList name='J2 Plasticity'>                                                \n"
+    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
+    "    <ParameterList name='Penalty Function'>                                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
+    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "</ParameterList>                                                                        \n"
+  );
+
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
+}
 
 
 }
