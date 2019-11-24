@@ -8654,8 +8654,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Constraint'       type='string'  value='My Volume'/>                  \n"
-      "  <Parameter name='Objective'        type='string'  value='My Internal Elastic Energy'/> \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
