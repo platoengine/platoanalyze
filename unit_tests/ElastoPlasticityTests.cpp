@@ -4380,8 +4380,16 @@ public:
     *******************************************************************************/
     void setDirichletBoundaryConditions(const Plato::LocalOrdinalVector & aDirichletDofs, const Plato::ScalarVector & aDirichletValues)
     {
-        Plato::copy(aDirichletDofs, mDirichletDofs);
-        Plato::copy(aDirichletValues, mDirichletValues);
+        if(aDirichletDofs.size() != aDirichletValues.size())
+        {
+            std::ostringstream tError;
+            tError << "Dimension mismatch: Number of elements in Dirichlet Dofs and Values array do not match."
+                << "aDirichletDofs size = " << aDirichletDofs.size() << " and aDirichletValues size = " << aDirichletValues.size();
+            THROWERR(tError.str())
+        }
+
+        mDirichletDofs = aDirichletDofs;
+        mDirichletValues = aDirichletValues;
     }
 
     /***************************************************************************//**
@@ -8649,12 +8657,11 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
     auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
     auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
 
+    // 3. Set Dirichlet Boundary Conditions
+    Plato::Scalar tValueToSet = 0;
     auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
     Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
-
-    // 3. Set Dirichlet Boundary Conditions
-    Plato::Scalar tValueToSet = 0;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         tDirichletValues(aIndex) = tValueToSet;
@@ -8670,21 +8677,22 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
     }, "set dirichlet values/indices");
 
     tValueToSet = 1.0;
-    tOffset = tDirichletIndicesBoundaryY0.size();
+    tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         auto tIndex = tOffset + aIndex;
         tDirichletValues(tIndex) = tValueToSet;
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
     }, "set dirichlet values/indices");
-
     tPlasticityProblem.setDirichletBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. Solve Problem
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::fill(1.0, tControls);
+    printf("H3\n");
     auto tSolution = tPlasticityProblem.solution(tControls);
+    printf("H4\n");
 }
 
 
