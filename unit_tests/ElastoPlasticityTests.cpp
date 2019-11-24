@@ -4833,7 +4833,7 @@ private:
     {
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
         this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
-        mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mSpatialDim, mNumGlobalDofsPerNode>(&aMesh);
+        mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumGlobalDofsPerNode>(&aMesh);
         mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
     }
 
