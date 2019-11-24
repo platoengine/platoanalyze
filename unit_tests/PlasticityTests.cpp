@@ -1459,10 +1459,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradGlobalState3D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1476,10 +1478,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradGlobalState3D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
-
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
     Plato::test_partial_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1504,10 +1503,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradGlobalState2D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1521,10 +1522,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradGlobalState2D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
-
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
     Plato::test_partial_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1548,11 +1546,13 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevGlobalState3D)
     "  <ParameterList name='Material Model'>                                                 \n"
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1e6'/>                     \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1566,10 +1566,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevGlobalState3D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
-
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
     Plato::test_partial_prev_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1594,10 +1591,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevGlobalState2D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1611,10 +1610,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevGlobalState2D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
-
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
     Plato::test_partial_prev_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1639,10 +1635,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradLocalState3D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1656,10 +1654,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradLocalState3D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
-
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
     Plato::test_partial_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1684,10 +1679,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradLocalState2D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1701,10 +1698,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradLocalState2D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
-
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
     Plato::test_partial_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1728,10 +1722,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevLocalState3D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1745,10 +1741,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevLocalState3D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
-
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
     Plato::test_partial_prev_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1773,10 +1766,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevLocalState2D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1790,10 +1785,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevLocalState2D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
-
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
     Plato::test_partial_prev_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1817,10 +1809,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradControl3D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1834,10 +1828,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradControl3D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
-
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
     Plato::test_partial_local_vect_func_inc_wrt_control<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1862,10 +1853,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradControl2D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
@@ -1879,9 +1872,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradControl2D)
     "</ParameterList>                                                                        \n"
   );
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
 
     Plato::test_partial_local_vect_func_inc_wrt_control<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
@@ -1907,10 +1898,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_Evaluate3D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='100.0'/>            \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
@@ -2006,9 +1999,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_Evaluate3D)
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressYZ, 2.0);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressXZ, 2.0);
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
 
     Plato::ScalarVector tLocalResidual = tLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                    tLocalState, tPrevLocalState,
@@ -2047,10 +2038,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_Evaluate2D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='100.0'/>            \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
@@ -2126,9 +2119,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_Evaluate2D)
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressXY, 2.0);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressZZ, 0.);
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
 
     Plato::ScalarVector tLocalResidual = tLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                    tLocalState, tPrevLocalState,
@@ -2167,10 +2158,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_UpdateLocalState3D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='100.0'/>            \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
@@ -2249,9 +2242,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_UpdateLocalState3D)
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressYZ, 2.0);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressXZ, 2.0);
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
 
     tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
                                          tLocalState, tPrevLocalState,
@@ -2290,10 +2281,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_UpdateLocalState2D)
     "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
     "      <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>   \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
     "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
     "      <Parameter  name='Reference Temperature' type='double' value='100.0'/>            \n"
     "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList name='Plasticity Model'>                                               \n"
     "    <ParameterList name='J2 Plasticity'>                                                \n"
     "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
     "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
@@ -2359,9 +2352,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_UpdateLocalState2D)
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressXY, 2.0);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressZZ, -0.02);
 
-    std::string tProblemType = "J2Plasticity";
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap,
-                                                                *tParamList, tProblemType);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
 
     tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
                                          tLocalState, tPrevLocalState,

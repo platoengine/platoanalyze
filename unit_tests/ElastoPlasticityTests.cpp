@@ -4314,7 +4314,7 @@ public:
      * \param [in] aInputParams input parameters database
     *******************************************************************************/
     PlasticityProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams) :
-            mLocalResidualEq(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("Plasticity Model")),
+            mLocalResidualEq(aMesh, aMeshSets, mDataMap, aInputParams),
             mGlobalResidualEq(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
             mProjectionEq(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
             mObjective(nullptr),
@@ -8606,35 +8606,37 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <Parameter name='Physics'        type='string'  value='Mechanical'/>                  \n"
-    "  <Parameter name='PDE Constraint' type='string'  value='Infinite Strain Plasticity'/>  \n"
-    "  <Parameter name='Constraint'     type='string'  value='My Volume'/>                   \n"
-    "  <Parameter name='Objective'      type='string'  value='My Internal Elastic Energy'/>  \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "    </ParameterList>                                                                    \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Infinite Strain Plasticity'>                                     \n"
-    "    <ParameterList name='Penalty Function'>                                             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
-    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
-    "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                    \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
+      "  <Parameter name='Constraint'       type='string'  value='My Volume'/>                  \n"
+      "  <Parameter name='Objective'        type='string'  value='My Internal Elastic Energy'/> \n"
+      "  <ParameterList name='Material Model'>                                                  \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Plasticity Model'>                                                \n"
+      "    <ParameterList name='J2 Plasticity'>                                                 \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
+      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
+      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
+      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
+      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
 
     Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
     tPlasticityProblem.ignoreMeshSets();

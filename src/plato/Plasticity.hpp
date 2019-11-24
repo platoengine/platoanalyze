@@ -25,18 +25,22 @@ struct FunctionFactory
      * \param [in] aMeshSets side sets database
      * \param [in] aDataMap PLATO Analyze physics-based database
      * \param [in] aInputParams input parameters
-     * \param [in] aFuncName vector function name
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<EvaluationType>>
     createLocalVectorFunctionInc(Omega_h::Mesh& aMesh, 
                                  Omega_h::MeshSets& aMeshSets,
                                  Plato::DataMap& aDataMap, 
-                                 Teuchos::ParameterList& aInputParams,
-                                 std::string aFuncName)
+                                 Teuchos::ParameterList& aInputParams)
     {
+        if(aInputParams.isSublist("Plasticity Model"))
+        {
+            THROWERR("Plasticity Model Sublist is not defined.")
+        }
 
-        if(aFuncName == "J2Plasticity")
+        auto tPlasticityParamList = aInputParams.get<Teuchos::ParameterList>("Plasticity Model");
+
+        if(tPlasticityParamList.isSublist("J2 Plasticity"))
         {
           constexpr Plato::OrdinalType tSpaceDim = EvaluationType::SpatialDim;
           return std::make_shared
@@ -45,9 +49,7 @@ struct FunctionFactory
         }
         else
         {
-          const std::string tError = std::string("Unknown LocalVectorFunctionInc '") + aFuncName
-                                   + "' specified.";
-          THROWERR(tError)
+          THROWERR("Plasticity Model is node defined.  Options are: J2 Plasticity.  User is advised to select one of the available options")
         }
     }
 }; // struct FunctionFactory

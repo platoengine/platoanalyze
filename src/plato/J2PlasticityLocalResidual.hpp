@@ -111,24 +111,24 @@ class J2PlasticityLocalResidual :
 
     /**************************************************************************//**
     * \brief Initialize problem parameters
-    * \param [in] aProblemParams Teuchos parameter list
+    * \param [in] aInputParams Teuchos parameter list
     ******************************************************************************/
-    void initialize(Teuchos::ParameterList& aProblemParams)
+    void initialize(Teuchos::ParameterList& aInputParams)
     {
-      auto tMaterialParamList = aProblemParams.get<Teuchos::ParameterList>("Material Model");
-      this->initializeIsotropicElasticMaterial(tMaterialParamList);
-      this->initializeJ2Plasticity(tMaterialParamList);
+      this->initializeIsotropicElasticMaterial(aInputParams);
+      this->initializeJ2Plasticity(aInputParams);
     }
 
     /**************************************************************************//**
     * \brief Initialize isotropic material parameters
-    * \param [in] aProblemParams Teuchos parameter list
+    * \param [in] aInputParams Teuchos parameter list
     ******************************************************************************/
-    void initializeIsotropicElasticMaterial(Teuchos::ParameterList& aMaterialParamList)
+    void initializeIsotropicElasticMaterial(Teuchos::ParameterList& aInputParams)
     {
-        if( aMaterialParamList.isSublist("Isotropic Linear Elastic") )
+        auto tMaterialParamList = aInputParams.get<Teuchos::ParameterList>("Material Model");
+        if( tMaterialParamList.isSublist("Isotropic Linear Elastic") )
         {
-          auto tElasticSubList = aMaterialParamList.sublist("Isotropic Linear Elastic");
+          auto tElasticSubList = tMaterialParamList.sublist("Isotropic Linear Elastic");
           mThermalExpansionCoefficient = 0.0;
           mReferenceTemperature        = 0.0;
 
@@ -137,9 +137,9 @@ class J2PlasticityLocalResidual :
           mElasticShearModulus = tElasticModulus /
                   (static_cast<Plato::Scalar>(2.0) * (static_cast<Plato::Scalar>(1.0) + tPoissonsRatio));
         }
-        else if( aMaterialParamList.isSublist("Isotropic Linear Thermoelastic") )
+        else if( tMaterialParamList.isSublist("Isotropic Linear Thermoelastic") )
         {
-          auto tThermoelasticSubList = aMaterialParamList.sublist("Isotropic Linear Thermoelastic");
+          auto tThermoelasticSubList = tMaterialParamList.sublist("Isotropic Linear Thermoelastic");
 
           mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
           mReferenceTemperature        = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
@@ -157,27 +157,45 @@ class J2PlasticityLocalResidual :
 
     /**************************************************************************//**
     * \brief Initialize J2 plasticity parameters
-    * \param [in] aProblemParams Teuchos parameter list
+    * \param [in] aInputParams Teuchos parameter list
     ******************************************************************************/
-    void initializeJ2Plasticity(Teuchos::ParameterList& aMaterialParamList)
+    void initializeJ2Plasticity(Teuchos::ParameterList& aInputParams)
     {
-        if( aMaterialParamList.isSublist("J2 Plasticity") )
+        auto tPlasticityParamList = aInputParams.get<Teuchos::ParameterList>("Plasticity Model");
+        if( tPlasticityParamList.isSublist("J2 Plasticity") )
         {
-          auto tJ2PlasticitySubList = aMaterialParamList.sublist("J2 Plasticity");
+          auto tJ2PlasticitySubList = tPlasticityParamList.sublist("J2 Plasticity");
+          this->checkJ2PlasticityInputs(tJ2PlasticitySubList);
 
           mHardeningModulusIsotropic = tJ2PlasticitySubList.get<Plato::Scalar>("Hardening Modulus Isotropic");
           mHardeningModulusKinematic = tJ2PlasticitySubList.get<Plato::Scalar>("Hardening Modulus Kinematic");
           mInitialYieldStress        = tJ2PlasticitySubList.get<Plato::Scalar>("Initial Yield Stress");
 
-          mElasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Penalty Exponent");
-          mElasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Minimum Ersatz");
+          mElasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Penalty Exponent", 3.0);
+          mElasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Minimum Ersatz", 1e-9);
 
-          mPlasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Penalty Exponent");
-          mPlasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Minimum Ersatz");
+          mPlasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Penalty Exponent", 2.5);
+          mPlasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Minimum Ersatz", 1e-9);
         }
         else
         {
-          THROWERR("'J2 Plasticity' sublist of 'Material Model' does not exist. Needed for J2Plasticity Implementation.")
+            THROWERR("'J2 Plasticity' sublist of 'Material Model' does not exist. Needed for J2Plasticity Implementation.")
+        }
+    }
+
+    /**************************************************************************//**
+    * \brief Check if all the required J2 plasticity parameters are defined.
+    * \param [in] aInputParams Teuchos parameter list
+    ******************************************************************************/
+    void checkJ2PlasticityInputs(Teuchos::ParameterList& aInputParams)
+    {
+        const bool tRequriedInputParamsAreDefined = aInputParams.isParameter("Hardening Modulus Isotropic") &&
+                aInputParams.isParameter("Hardening Modulus Kinematic") && aInputParams.isParameter("Initial Yield Stress");
+        if(tRequriedInputParamsAreDefined == false)
+        {
+            std::string tError = std::string("Required input parameters, 'Hardening Modulus Isotropic', 'Hardening Modulus Kinematic', ") +
+                    "and 'Initial Yield Stress', for J2 Plasticity model are not defined."
+            THROWERR(tError)
         }
     }
 
