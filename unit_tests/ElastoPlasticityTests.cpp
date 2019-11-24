@@ -5714,9 +5714,9 @@ private:
             mObjective = tObjectiveFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tUserDefinedName);
 
             // Allocate adjoint variable containers
-            mProjectionAdjoint("Projected Residual Adjoint", mProjectionEq.size());
-            mLocalAdjoint("Local Adjoint", static_cast<Plato::OrdinalType>(2), mLocalResidualEq.size());
-            mGlobalAdjoint("Global Adjoint", static_cast<Plato::OrdinalType>(2), mGlobalResidualEq.size());
+            mProjectionAdjoint = Plato::ScalarVector("Projected Residual Adjoint", mProjectionEq.size());
+            mLocalAdjoint = Plato::ScalarMultiVector("Local Adjoint", static_cast<Plato::OrdinalType>(2), mLocalResidualEq.size());
+            mGlobalAdjoint = Plato::ScalarMultiVector("Global Adjoint", static_cast<Plato::OrdinalType>(2), mGlobalResidualEq.size());
         }
     }
 
