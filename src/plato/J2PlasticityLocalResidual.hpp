@@ -194,7 +194,7 @@ class J2PlasticityLocalResidual :
         if(tRequriedInputParamsAreDefined == false)
         {
             std::string tError = std::string("Required input parameters, 'Hardening Modulus Isotropic', 'Hardening Modulus Kinematic', ") +
-                    "and 'Initial Yield Stress', for J2 Plasticity model are not defined."
+                    "and 'Initial Yield Stress', for J2 Plasticity model are not defined.";
             THROWERR(tError)
         }
     }
