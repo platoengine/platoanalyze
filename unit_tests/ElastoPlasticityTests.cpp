@@ -4477,7 +4477,7 @@ public:
         bool tGlobalStateComputed = false;
         while (tGlobalStateComputed == false)
         {
-            tGlobalStateComputed = this->solveFowardProblem(aControls);
+            tGlobalStateComputed = this->solveForwardProblem(aControls);
             if (tGlobalStateComputed == true)
             {
                 break;
@@ -4830,7 +4830,7 @@ private:
      * \param [in] aControls 1-D view of controls, e.g. design variables
      * \return flag used to indicate forward problem was solved to completion
     *******************************************************************************/
-    bool solveFowardProblem(const Plato::ScalarVector & aControls)
+    bool solveForwardProblem(const Plato::ScalarVector & aControls)
     {
         Plato::ForwardProblemStateData tStateData;
         auto tNumCells = mLocalResidualEq.numCells();
