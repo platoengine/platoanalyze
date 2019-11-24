@@ -4129,18 +4129,18 @@ private:
  * \brief Factory for scalar functions interface with local history-dependent states
  **********************************************************************************/
 template<typename PhysicsT>
-class ScalarFunctionHistoryBaseFactory
+class HistoryDependentScalarFunctionFactory
 {
 public:
     /******************************************************************************//**
      * \brief Constructor
      **********************************************************************************/
-    ScalarFunctionHistoryBaseFactory () {}
+    HistoryDependentScalarFunctionFactory () {}
 
     /******************************************************************************//**
      * \brief Destructor
      **********************************************************************************/
-    ~ScalarFunctionHistoryBaseFactory() {}
+    ~HistoryDependentScalarFunctionFactory() {}
 
     /******************************************************************************//**
      * \brief Create interface to a scalar function with local history-dependent states
@@ -5709,9 +5709,9 @@ private:
     {
         if(aInputParams.isType<std::string>("Objective"))
         {
-            auto tObjectiveType = aInputParams.get<std::string>("Objective");
-            Plato::ScalarFunctionIncBaseFactory<PhysicsT> tObjectiveFunctionFactory;
-            mObjective = tObjectiveFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tObjectiveType);
+            auto tUserDefinedName = aInputParams.get<std::string>("Objective");
+            Plato::HistoryDependentScalarFunctionFactory<PhysicsT> tObjectiveFunctionFactory;
+            mObjective = tObjectiveFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tUserDefinedName);
 
             // Allocate adjoint variable containers
             mProjectionAdjoint("Projected Residual Adjoint", mProjectionEq.size());
@@ -5730,9 +5730,9 @@ private:
     {
         if(aInputParams.isType<std::string>("Constraint"))
         {
-            Plato::ScalarFunctionHistoryBaseFactory<PhysicsT> tContraintFunctionFactory;
-            auto tConstraintType = aInputParams.get<std::string>("Constraint");
-            mConstraint = tContraintFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tConstraintType);
+            Plato::HistoryDependentScalarFunctionFactory<PhysicsT> tContraintFunctionFactory;
+            auto tUserDefinedName = aInputParams.get<std::string>("Constraint");
+            mConstraint = tContraintFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tUserDefinedName);
         }
     }
 };
