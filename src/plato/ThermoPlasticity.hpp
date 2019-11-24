@@ -33,7 +33,7 @@ struct FunctionFactory
                                  Plato::DataMap& aDataMap, 
                                  Teuchos::ParameterList& aInputParams)
     {
-        if(aInputParams.isSublist("Plasticity Model"))
+        if(aInputParams.isSublist("Plasticity Model") == false)
         {
             THROWERR("Plasticity Model Sublist is not defined.")
         }
