@@ -296,45 +296,58 @@ inline void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
                                     typename CViewType::const_value_type& aBeta,
                                     CViewType& aC)
 {
+    std::ostringstream tError;
     if(aA.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nInput 3D array A is empty, i.e. size <= 0\n")
+        tError << "\nInput 3D array A is empty, i.e. size <= 0.\n";
+        THROWERR(tError.str())
     }
     if(aB.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nInput 3D array B is empty, i.e. size <= 0\n")
+        tError << "\nInput 3D array B is empty, i.e. size <= 0.\n";
+        THROWERR(tError.str())
     }
     if(aC.size() <= static_cast<Plato::OrdinalType>(0))
     {
-        THROWERR("\nOutput 3D array C is empty, i.e. size <= 0\n")
+        tError << "\nOutput 3D array C is empty, i.e. size <= 0.\n";
+        THROWERR(tError.str())
     }
-    if(aA.extent(1) != aB.extent(1))
+    if(aA.extent(2) != aB.extent(1))
     {
-        THROWERR("\nDimension mismatch, input A and B matrices have different number of rows.\n")
-    }
-    if(aA.extent(2) != aB.extent(2))
-    {
-        THROWERR("\nDimension mismatch, input A and B matrices have different number of columns.\n")
+        tError << "\nDimension mismatch: The number of columns in A matrix workset does not match " 
+            << "the number of rows in B matrix workset. " << "A has " << aA.extent(2) << " columns and B has " 
+            << aB.extent(1) << " rows.\n";
+        THROWERR(tError.str())
     }
     if(aA.extent(1) != aC.extent(1))
     {
-        THROWERR("\nDimension mismatch. Mismatch in input (A) and output (C) matrices row count.\n")
+        tError << "\nDimension mismatch. Mismatch in input (A) and output (C) matrices row count. "
+            << "A has " << aA.extent(1) << " rows and C has " << aC.extent(1) << " rows.\n";
+        THROWERR(tError.str())
     }
-    if(aA.extent(2) != aC.extent(2))
+    if(aB.extent(2) != aC.extent(2))
     {
-        THROWERR("\nDimension mismatch. Mismatch in input (A) and output (C) matrices column count.\n")
+        tError << "\nDimension mismatch. Mismatch in input (B) and output (C) matrices column count. "
+            << "A has " << aA.extent(2) << " columns and C has " << aC.extent(2) << " columns.\n";
+        THROWERR(tError.str())
     }
     if(aA.extent(0) != aNumCells)
     {
-        THROWERR("\nDimension mismatch, number of cells of matrix A does not match input number of cells.\n")
+        tError << "\nDimension mismatch, number of cells of matrix A does not match input number of cells. "
+            << "A has " << aA.extent(0) << " and the input number of cells is set to " << aNumCells << "\n.";
+        THROWERR(tError.str())
     }
     if(aB.extent(0) != aNumCells)
     {
-        THROWERR("\nDimension mismatch, number of cells of matrix B does not match input number of cells.\n")
+        tError << "\nDimension mismatch, number of cells of matrix B does not match input number of cells. "
+            << "B has " << aB.extent(0) << " and the input number of cells is set to " << aNumCells << "\n.";
+        THROWERR(tError.str())
     }
     if(aC.extent(0) != aNumCells)
     {
-        THROWERR("\nDimension mismatch, number of cells of matrix C does not match input number of cells.\n")
+        tError << "\nDimension mismatch, number of cells of matrix C does not match input number of cells. "
+            << "C has " << aC.extent(0) << " and the input number of cells is set to " << aNumCells << "\n.";
+        THROWERR(tError.str())
     }
 
     const auto tNumRows = aA.extent(1);
@@ -4474,6 +4487,11 @@ public:
     *******************************************************************************/
     Plato::ScalarMultiVector solution(const Plato::ScalarVector &aControls) override
     {
+        if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("Input control vector is empty.")
+        }
+
         bool tGlobalStateComputed = false;
         while (tGlobalStateComputed == false)
         {
@@ -4837,7 +4855,7 @@ private:
         tStateData.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalResidualEq.size());
         Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
-        bool tForwardProblemSolved = false;
+        bool tToleranceSatisfied = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mMaxNumPseudoTimeSteps; tCurrentStepIndex++)
         {
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
@@ -4847,13 +4865,12 @@ private:
 
             if(tNewtonRaphsonConverged == false)
             {
-                return tForwardProblemSolved;
+                return tToleranceSatisfied;
             }
         }
 
-        tForwardProblemSolved = true;
-
-        return tForwardProblemSolved;
+        tToleranceSatisfied = true;
+        return tToleranceSatisfied;
     }
 
     /***************************************************************************//**
@@ -4891,23 +4908,30 @@ private:
             }
 
             // update inverse of local jacobian -> store in tInvLocalJacobianT
+            printf("NR1\n");
             this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
             // assemble tangent stiffness matrix
+            printf("NR2\n");
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
             // apply dirichlet conditions
+            printf("NR3\n");
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
             // solve global system of equations
+            printf("NR4\n");
             Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
             Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
             // update global state
+            printf("NR5\n");
             this->zeroDirichletDofs(aStateData.mDeltaGlobalState);
             Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
                           static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
             // update local state
+            printf("NR6\n");
             mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                               aControls, aStateData.mCurrentStepIndex);
             // copy projection state, i.e. pressure
+            printf("NR7\n");
             Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjectedPressure);
         }
 
@@ -5563,7 +5587,7 @@ private:
         const Plato::Scalar tBeta = 1.0;
         const Plato::Scalar tAlpha = 1.0;
         auto tNumCells = mLocalResidualEq.numCells();
-        Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDu times DhDu", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
+        Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDc times DhDu", tNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
         Plato::multiply_matrix_workset(tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
 
 
@@ -5574,9 +5598,10 @@ private:
 
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
-        Plato::ScalarArray3D tOutput("Schur Complement", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-        Plato::multiply_matrix_workset(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tOutput);
-        return tOutput;
+        Plato::ScalarArray3D tSchurComplement("Schur Complement", tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
+        Plato::multiply_matrix_workset(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tSchurComplement);
+
+        return tSchurComplement;
     }
 
     /***************************************************************************//**
@@ -5597,22 +5622,28 @@ private:
     {
         // Compute cell Schur Complement, i.e. dR/dc * (dH/dc)^{-1} * dH/du, where H is the local
         // residual, R is the global residual, c are the local states and u are the global states
+        printf("AT1\n");
         auto tSchurComplement = this->computeSchurComplement(aControls, aStateData, aInvLocalJacobianT);
 
         // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
+        printf("AT2\n");
         auto tDrDu = mGlobalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
 
         // Add cell Schur complement to dR/du, where R is the global residual and u are the global states
+        printf("AT3\n");
         const Plato::Scalar tBeta = 1.0;
         const Plato::Scalar tAlpha = -1.0;
         auto tNumCells = mGlobalResidualEq.numCells();
         Plato::update_matrix_workset(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
 
+        // Assemble full Jacobian
+        printf("AT4\n");
         auto tJacobianEntries = mGlobalJacobian->entries();
         Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell,
                                  *mGlobalJacEntryOrdinal, tDrDu, tJacobianEntries);
+        printf("AT5\n");
     }
 
     /***************************************************************************//**
@@ -6805,11 +6836,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Erro
     tB = Plato::ScalarArray3D("Matrix B", tNumCells, tNumRows + 1, tNumCols);
     TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
 
-    // CALL FUNCTION - NUM COLUMNS MISMATCH IN INPUT MATRICES
-    tC = Plato::ScalarArray3D("Matrix C", tNumCells, tNumRows, tNumCols + 1);
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tC, tBeta, tB)), std::runtime_error );
-
-    // CALL FUNCTION - NUM ROWS MISMATCH IN INPUT MATRICES
+    // CALL FUNCTION - NUM ROWS/COLUMNS MISMATCH IN INPUT MATRICES
+    tC = Plato::ScalarArray3D("Matrix C", tNumCells, tNumRows, tNumCols);
     TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
 
     // CALL FUNCTION - NUM ROWS MISMATCH IN INPUT AND OUTPUT MATRICES
@@ -6817,7 +6845,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Erro
     TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tD, tBeta, tB)), std::runtime_error );
 
     // CALL FUNCTION - NUM COLUMNS MISMATCH IN INPUT AND OUTPUT MATRICES
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tD, tBeta, tC)), std::runtime_error );
+    Plato::ScalarArray3D tH("Matrix H", tNumCells, tNumRows, tNumCols + 1);
+    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tC, tBeta, tH)), std::runtime_error );
 
     // CALL FUNCTION - NUM CELLS MISMATCH IN A
     Plato::ScalarArray3D tE("Matrix E", tNumCells, tNumRows, tNumCols);
