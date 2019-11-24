@@ -4316,7 +4316,7 @@ private:
     Plato::WorksetBase<Plato::SimplexPlasticity<mSpatialDim>> mWorksetBase; /*!< assembly routine interface */
     std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal */
 
-    bool mReadDirichletConditionsFromFile; /*!< flag used to ignore mesh sets - only used for unit testing */
+    bool mReadDirichletConditionsFromInputExoFile; /*!< flag used to ignore mesh sets - only used for unit testing */
 
 // public functions
 public:
@@ -4346,8 +4346,9 @@ public:
             mGlobalStates("Global States", mMaxNumPseudoTimeSteps, mGlobalResidualEq.size()),
             mProjectedPressGrad("Projected Pressure Gradient", mMaxNumPseudoTimeSteps, mProjectionEq.size()),
             mWorksetBase(aMesh),
-            mReadDirichletConditionsFromFile(true)
+            mReadDirichletConditionsFromInputExoFile(true)
     {
+        this->initialize(aMesh, aMeshSets, aInputParams);
     }
 
     /***************************************************************************//**
@@ -4356,29 +4357,22 @@ public:
     virtual ~PlasticityProblem(){}
 
     /***************************************************************************//**
-     * \brief Omega_h::MeshSets are ignored.
+     * \brief Set flag to avoid reading Dirichlet boundary conditions from exodus file.
     *******************************************************************************/
-    void ignoreMeshSets()
+    void doNotReadDirichletBCsFromExoFile()
     {
-        mReadDirichletConditionsFromFile = false;
+        mReadDirichletConditionsFromInputExoFile = false;
     }
 
     /***************************************************************************//**
-     * \brief Initialize member data
+     * \brief Read Dirichlet boundary conditions from exodus file.
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
     *******************************************************************************/
-    void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    void readDirichletBoundaryConditions(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
-        this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
-        this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
-
-        // Allocate Jacobian Matrix
-        mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mSpatialDim, mNumGlobalDofsPerNode>(&aMesh);
-        mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
-
-        if(mReadDirichletConditionsFromFile == true)
+        if(mReadDirichletConditionsFromInputExoFile == true)
         {
             // Parse Dirichlet boundary conditions
             Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputParams.sublist("Essential Boundary Conditions", false));
@@ -4829,6 +4823,18 @@ public:
 
 // private functions
 private:
+    /***************************************************************************//**
+     * \brief Initialize member data
+     * \param [in] aControls current set of controls, i.e. design variables
+    *******************************************************************************/
+    void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    {
+        this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
+        this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
+        mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mSpatialDim, mNumGlobalDofsPerNode>(&aMesh);
+        mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
+    }
+
     /***************************************************************************//**
      * \brief Resize global state, local state and projected pressure gradient containers
      * \param [in] aControls current set of controls, i.e. design variables
@@ -8676,7 +8682,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
     );
 
     Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
-    tPlasticityProblem.ignoreMeshSets();
+    tPlasticityProblem.doNotReadDirichletBCsFromExoFile();
 
     // 2. Get Dirichlet Boundary Conditions
     Plato::OrdinalType tDispDofX = 0;
