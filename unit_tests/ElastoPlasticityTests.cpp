@@ -4332,7 +4332,7 @@ public:
             mProjectionEq(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
             mObjective(nullptr),
             mConstraint(nullptr),
-            mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 40)),
+            mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Number Time Steps", 10)),
             mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Number Iterations", 10)),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mMaxNumPseudoTimeSteps))),
             mCurrentPseudoTimeStep(0.0),
@@ -4916,30 +4916,23 @@ private:
             }
 
             // update inverse of local jacobian -> store in tInvLocalJacobianT
-            printf("NR1\n");
             this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
             // assemble tangent stiffness matrix
-            printf("NR2\n");
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
             // apply dirichlet conditions
-            printf("NR3\n");
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
             // solve global system of equations
-            printf("NR4\n");
             Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
             Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
             // update global state
-            printf("NR5\n");
             this->zeroDirichletDofs(aStateData.mDeltaGlobalState);
             Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
                           static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
             // update local state
-            printf("NR6\n");
             mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                               aControls, aStateData.mCurrentStepIndex);
             // copy projection state, i.e. pressure
-            printf("NR7\n");
             Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjectedPressure);
         }
 
@@ -5630,28 +5623,23 @@ private:
     {
         // Compute cell Schur Complement, i.e. dR/dc * (dH/dc)^{-1} * dH/du, where H is the local
         // residual, R is the global residual, c are the local states and u are the global states
-        printf("AT1\n");
         auto tSchurComplement = this->computeSchurComplement(aControls, aStateData, aInvLocalJacobianT);
 
         // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
-        printf("AT2\n");
         auto tDrDu = mGlobalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
 
         // Add cell Schur complement to dR/du, where R is the global residual and u are the global states
-        printf("AT3\n");
         const Plato::Scalar tBeta = 1.0;
         const Plato::Scalar tAlpha = -1.0;
         auto tNumCells = mGlobalResidualEq.numCells();
         Plato::update_matrix_workset(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
 
         // Assemble full Jacobian
-        printf("AT4\n");
         auto tJacobianEntries = mGlobalJacobian->entries();
         Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell,
                                  *mGlobalJacEntryOrdinal, tDrDu, tJacobianEntries);
-        printf("AT5\n");
     }
 
     /***************************************************************************//**
