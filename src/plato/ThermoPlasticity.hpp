@@ -20,23 +20,27 @@ namespace ThermoPlasticityFactory
 struct FunctionFactory
 {
     /******************************************************************************//**
-     * @brief Create a PLATO local vector function  inc (i.e. local residual equations)
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Analyze physics-based database
-     * @param [in] aInputParams input parameters
-     * @param [in] aFuncName vector function name
+     * \brief Create a PLATO local vector function  inc (i.e. local residual equations)
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Analyze physics-based database
+     * \param [in] aInputParams input parameters
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<EvaluationType>>
     createLocalVectorFunctionInc(Omega_h::Mesh& aMesh, 
                                  Omega_h::MeshSets& aMeshSets,
                                  Plato::DataMap& aDataMap, 
-                                 Teuchos::ParameterList& aInputParams,
-                                 std::string aFuncName)
+                                 Teuchos::ParameterList& aInputParams)
     {
+        if(aInputParams.isSublist("Plasticity Model"))
+        {
+            THROWERR("Plasticity Model Sublist is not defined.")
+        }
 
-        if(aFuncName == "J2ThermoPlasticity")
+        auto tPlasticityParamList = aInputParams.get<Teuchos::ParameterList>("Plasticity Model");
+
+        if(tPlasticityParamList.isSublist("J2ThermoPlasticity"))
         {
           constexpr Plato::OrdinalType tSpaceDim = EvaluationType::SpatialDim;
           return std::make_shared
@@ -45,8 +49,8 @@ struct FunctionFactory
         }
         else
         {
-          const std::string tError = std::string("Unknown LocalVectorFunctionInc '") + aFuncName
-                                   + "' specified.";
+          const std::string tError = std::string("Unknown Plasticity Model.  Options are: J2ThermoPlasticity.")
+              + "User is advised to select one of the available options.";
           THROWERR(tError)
         }
     }
@@ -56,7 +60,7 @@ struct FunctionFactory
 
 
 /****************************************************************************//**
- * @brief Concrete class for use as the PhysicsT template argument in VectorFunctionVMS
+ * \brief Concrete class for use as the PhysicsT template argument in VectorFunctionVMS
  *******************************************************************************/
 template<Plato::OrdinalType SpaceDimParam>
 class ThermoPlasticity: public Plato::SimplexThermoPlasticity<SpaceDimParam>

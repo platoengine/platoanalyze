@@ -49,7 +49,7 @@ struct FunctionFactory
         }
         else
         {
-          THROWERR("Plasticity Model is node defined.  Options are: J2 Plasticity.  User is advised to select one of the available options")
+          THROWERR("Unknown Plasticity Model.  Options are: J2 Plasticity.  User is advised to select one of the available options.")
         }
     }
 }; // struct FunctionFactory
