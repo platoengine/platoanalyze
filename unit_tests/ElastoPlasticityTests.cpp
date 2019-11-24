@@ -4377,6 +4377,7 @@ public:
             // Parse Dirichlet boundary conditions
             Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputParams.sublist("Essential Boundary Conditions", false));
             tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);
+            Kokkos::resize(mDispControlDirichletValues, mDirichletValues.size());
         }
     }
 
@@ -4397,6 +4398,7 @@ public:
 
         mDirichletDofs = aDirichletDofs;
         mDirichletValues = aDirichletValues;
+        Kokkos::resize(mDispControlDirichletValues, mDirichletValues.size());
     }
 
     /***************************************************************************//**
