@@ -10,7 +10,9 @@
 
 #include <memory>
 #include <limits>
-#include <ostream>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
@@ -4234,7 +4236,118 @@ struct AdjointData
 };
 // struct AdjointData
 
+struct NewtonRaphson
+{
+    enum stop_t
+    {
+        DID_NOT_CONVERGE = 0,
+        MAX_NUMBER_ITERATIONS = 1,
+        RELATIVE_NORM_RESIDUAL_TOLERANCE = 2,
+    };
+};
 
+struct NewtonRaphsonOutputData
+{
+    bool mWriteOutput;                              /*!< flag: true = write output; false = do not write output */
+    Plato::Scalar mInitialNormResidual;             /*!< initial relative norm of residual vector */
+    Plato::Scalar mCurrentRelativeNormResidual;     /*!< current relative norm of residual vector */
+
+    Plato::OrdinalType mCurrentIteration;           /*!< current Newton-Raphson solver iteration */
+    Plato::NewtonRaphson::stop_t mStopingCriterion; /*!< stopping criterion */
+
+    NewtonRaphsonOutputData() :
+        mWriteOutput(true),
+        mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
+        mCurrentRelativeNormResidual(std::numeric_limits<Plato::Scalar>::max()),
+        mCurrentIteration(0),
+        mStopingCriterion(Plato::NewtonRaphson::DID_NOT_CONVERGE)
+    {}
+};
+// struct NewtonRaphsonOutputData
+
+
+
+
+
+
+
+
+/******************************************************************************//**
+ * \brief Write a brief sentence explaining why Newton-Raphson algorithm stop.
+ * \param [in] aStopCriterion stopping criterion flag
+ * \param [in,out] aOutput string with brief description
+**********************************************************************************/
+inline void print_newton_raphson_stop_criterion(const Plato::NewtonRaphsonOutputData & aOutputData, std::ofstream &aOutputFile)
+{
+    if(aOutputData.mWriteOutput == false)
+    {
+        return;
+    }
+
+    if(aOutputFile.is_open() == false)
+    {
+        THROWERR("Newton-Raphson solver diagnostic file is closed.")
+    }
+
+    switch(aOutputData.mStopingCriterion)
+    {
+        case Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS:
+        {
+            aOutputFile << "\n\n****** Newton-Raphson solver stopping due to exceeding maximum number of iterations. ******\n\n";
+            break;
+        }
+        case Plato::NewtonRaphson::RELATIVE_NORM_RESIDUAL_TOLERANCE:
+        {
+            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to relative norm of residual tolerance being met. ******\n\n";
+            break;
+        }
+        case Plato::NewtonRaphson::DID_NOT_CONVERGE:
+        {
+            aOutputFile << "\n\n****** Newton-Raphson algorithm did not converge. ******\n\n";
+            break;
+        }
+        default:
+        {
+            aOutputFile << "\n\n****** ERROR: Optimization algorithm stopping due to undefined behavior. ******\n\n";
+            break;
+        }
+    }
+}
+// function print_newton_raphson_stop_criterion
+
+inline void print_newton_raphson_diagnostics(const Plato::NewtonRaphsonOutputData & aOutputData, std::ofstream &aOutputFile)
+{
+    if(aOutputData.mWriteOutput == false)
+    {
+        return;
+    }
+
+    if(aOutputFile.is_open() == false)
+    {
+        THROWERR("Newton-Raphson solver diagnostic file is closed.")
+    }
+
+    aOutputFile << std::scientific << std::setprecision(8) << aOutputData.mCurrentIteration << std::setw(10)
+        << aOutputData.mInitialNormResidual << std::setw(20) << aOutputData.mCurrentRelativeNormResidual << "\n" << std::flush;
+}
+// function print_newton_raphson_diagnostics
+
+void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOutputData &aOutputData, std::ofstream &aOutputFile)
+{
+    if(aOutputData.mWriteOutput == false)
+    {
+        return;
+    }
+
+    if(aOutputFile.is_open() == false)
+    {
+        THROWERR("Newton-Raphson solver diagnostic file is closed.")
+    }
+
+    aOutputFile << std::scientific << std::setprecision(8) << std::right << "Iter" << std::setw(10)
+        << "||R_0||" << std::setw(16) << "||R||/||R_0||" "\n" << std::flush;
+}
+// function print_newton_raphson_diagnostics_header
 
 
 
@@ -4316,7 +4429,10 @@ private:
     Plato::WorksetBase<Plato::SimplexPlasticity<mSpatialDim>> mWorksetBase; /*!< assembly routine interface */
     std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal */
 
-    bool mReadDirichletConditionsFromInputExoFile; /*!< flag used to ignore mesh sets - only used for unit testing */
+    bool mWriteNewtonRaphsonDiagnostics;          /*!< flag to enable Newton-Raphson solver diagnostics (default=false) */
+    bool mReadDirichletConditionsFromInputExoFile; /*!< flag used to ignore mesh sets - only used for unit testing (default=true) */
+
+    std::ofstream mNewtonRaphsonDiagnostics; /*!< output string stream with diagnostics */
 
 // public functions
 public:
@@ -4346,6 +4462,7 @@ public:
             mGlobalStates("Global States", mMaxNumPseudoTimeSteps, mGlobalResidualEq.size()),
             mProjectedPressGrad("Projected Pressure Gradient", mMaxNumPseudoTimeSteps, mProjectionEq.size()),
             mWorksetBase(aMesh),
+            mWriteNewtonRaphsonDiagnostics(Plato::ParseTools::getSubParam<bool>(aInputParams, "Newton-Raphson", "Output Diagnostics", true)),
             mReadDirichletConditionsFromInputExoFile(true)
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
@@ -4354,7 +4471,10 @@ public:
     /***************************************************************************//**
      * \brief PLATO Plasticity Problem destructor
     *******************************************************************************/
-    virtual ~PlasticityProblem(){}
+    virtual ~PlasticityProblem()
+    {
+        this->closeNewtonRaphsonDiagnosticsFile();
+    }
 
     /***************************************************************************//**
      * \brief Set flag to avoid reading Dirichlet boundary conditions from exodus file.
@@ -4831,10 +4951,37 @@ private:
     *******************************************************************************/
     void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
+        this->openNewtonRaphsonDiagnosticsFile();
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
         this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
         mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumGlobalDofsPerNode>(&aMesh);
         mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
+    }
+
+    /***************************************************************************//**
+     * \brief Open diagnostic file for Newton-Raphson solver
+    *******************************************************************************/
+    void openNewtonRaphsonDiagnosticsFile()
+    {
+        if (mWriteNewtonRaphsonDiagnostics == false)
+        {
+            return;
+        }
+
+        mNewtonRaphsonDiagnostics.open("plato_analyze_newton_raphson_diagnostics.txt");
+    }
+
+    /******************************************************************************//**
+     * @brief Close diagnostic file for Newton-Raphson solver
+    **********************************************************************************/
+    void closeNewtonRaphsonDiagnosticsFile()
+    {
+        if (mWriteNewtonRaphsonDiagnostics == false)
+        {
+            return;
+        }
+
+        mNewtonRaphsonDiagnostics.close();
     }
 
     /***************************************************************************//**
@@ -4893,9 +5040,14 @@ private:
                             Plato::ScalarArray3D &aInvLocalJacobianT)
     {
         bool tNewtonRaphsonConverged = false;
+        Plato::NewtonRaphsonOutputData tOutputData;
+        tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
+        Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnostics);
 
-        for(Plato::OrdinalType tNewtonIteration = 0; tNewtonIteration < mMaxNumNewtonIter; tNewtonIteration++)
+        for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
+            tOutputData.mCurrentIteration = tIteration;
+
             // compute projected pressure gradient
             mProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjectedPressure,
                                                 aControls, aStateData.mCurrentStepIndex);
@@ -4909,8 +5061,11 @@ private:
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
 
             // check convergence
-            if(this->checkNewtonRaphsonStoppingCriteria(tNewtonIteration) == true)
+            this->computeRelativeNormResidual(tOutputData);
+            Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnostics);
+            if(this->checkNewtonRaphsonStoppingCriteria(tOutputData) == true)
             {
+                Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnostics);
                 tNewtonRaphsonConverged = true;
                 break;
             }
@@ -4936,7 +5091,53 @@ private:
             Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjectedPressure);
         }
 
+        Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnostics);
         return (tNewtonRaphsonConverged);
+    }
+
+    /***************************************************************************//**
+     * \brief Compute current relative norm of residual vector, i.e.
+     *     \f$ \frac{\Vert R_{i} \Vert}{\Vert R_{i=0} \Vert} \f$
+     * \param [in] aOutputData Newton-Raphson solver output data
+     * \return boolean flag, indicates if Newton-Raphson solver converged
+    *******************************************************************************/
+    void computeRelativeNormResidual(Plato::NewtonRaphsonOutputData & aOutputData)
+    {
+        auto tNormGlobalResidual = Plato::norm(mGlobalResidual);
+        if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
+        {
+            aOutputData.mInitialNormResidual = tNormGlobalResidual;
+            aOutputData.mCurrentRelativeNormResidual = 1.0;
+        }
+        else
+        {
+            // compute relative stopping criterion
+            aOutputData.mCurrentRelativeNormResidual = tNormGlobalResidual
+                    / aOutputData.mInitialNormResidual;
+        }
+    }
+
+    /***************************************************************************//**
+     * \brief Check Newton-Raphson solver convergence criterion
+     * \param [in] aOutputData Newton-Raphson solver output data
+     * \return boolean flag, indicates if Newton-Raphson solver converged
+    *******************************************************************************/
+    bool checkNewtonRaphsonStoppingCriteria(const Plato::NewtonRaphsonOutputData & aOutputData)
+    {
+        bool tStop = false;
+
+        if(aOutputData.mCurrentIteration == mMaxNumNewtonIter)
+        {
+            tStop = true;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
+        }
+        else if(aOutputData.mCurrentRelativeNormResidual < mNewtonRaphsonStopTolerance)
+        {
+            tStop = true;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::RELATIVE_NORM_RESIDUAL_TOLERANCE;
+        }
+
+        return (tStop);
     }
 
     /***************************************************************************//**
@@ -5663,30 +5864,6 @@ private:
                                                  aControls, aStateData.mCurrentStepIndex);
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, aInvLocalJacobianT);
-    }
-
-    /***************************************************************************//**
-     * \brief Check Newton-Raphson solver convergence criterion
-     * \param [in] aNewtonIteration current Newton-Raphson iteration
-     * \return boolean flag, indicates if Newton-Raphson solver converged
-    *******************************************************************************/
-    bool checkNewtonRaphsonStoppingCriteria(const Plato::OrdinalType & aNewtonIteration)
-    {
-        bool tStop = false;
-        auto tNormResidual = Plato::norm(mGlobalResidual);
-        if(aNewtonIteration == static_cast<Plato::OrdinalType>(0))
-        {
-            mInitialNormResidual = tNormResidual;
-        }
-        else
-        {
-            auto tStoppingMeasure = tNormResidual / mInitialNormResidual; // compute relative stopping criterion
-            if(tStoppingMeasure < mNewtonRaphsonStopTolerance)
-            {
-                tStop = true;
-            }
-        }
-        return (tStop);
     }
 
     /***************************************************************************//**
