@@ -4344,7 +4344,7 @@ void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOutputDat
         THROWERR("Newton-Raphson solver diagnostic file is closed.")
     }
 
-    aOutputFile << std::scientific << std::setprecision(6) << std::right << "Iter" << std::setw(16)
+    aOutputFile << std::scientific << std::setprecision(6) << std::right << "Iter" << std::setw(14)
         << "||R_0||" << std::setw(24) << "||R||/||R_0||" "\n" << std::flush;
 }
 // function print_newton_raphson_diagnostics_header
