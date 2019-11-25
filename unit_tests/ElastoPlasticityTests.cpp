@@ -4619,11 +4619,15 @@ public:
                 mNewtonRaphsonDiagnostics << "\n**** Successful Forward Solve ****\n";
                 break;
             }
-            else if(mNumPseudoTimeSteps > mMaxNumPseudoTimeSteps)
+            
+            mNumPseudoTimeSteps = mNumPseudoTimeStepMultiplier * static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
+      
+            if(mNumPseudoTimeSteps > mMaxNumPseudoTimeSteps)
             {
                 mNewtonRaphsonDiagnostics << "\n**** Unsuccessful Forward Solve.  Number of pseudo time steps is " 
-                    << "greater than maximum number of pseudo time steps. Maximum number of pseudo time steps is "
-                    << "set to " << mMaxNumPseudoTimeSteps << "****\n";
+                    << "greater than the maximum number of pseudo time steps.  The number of current pseudo time " 
+                    << "steps is set to " << mNumPseudoTimeSteps << " and the maximum number of pseudo time steps "
+                    << "is set to " << mMaxNumPseudoTimeSteps << ". ****\n";
                 break;
             }
 
@@ -4998,7 +5002,6 @@ private:
     *******************************************************************************/
     void resizeStateContainers()
     {
-        mNumPseudoTimeSteps = mNumPseudoTimeStepMultiplier * static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
         mDataMap.mScalarValues["NumPseudoTimeSteps"] = mNumPseudoTimeSteps;
         mPseudoTimeStep = 1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps));
         mLocalStates = Plato::ScalarMultiVector("Local States", mNumPseudoTimeSteps, mLocalResidualEq.size());
@@ -5030,7 +5033,7 @@ private:
             if(tNewtonRaphsonConverged == false)
             {
                 mNewtonRaphsonDiagnostics << "**** Newton-Raphson Solver did not converge at time step #" 
-                    << tCurrentStepIndex << ". Number of Newton-Raphson solver iterations will be increased to " 
+                    << tCurrentStepIndex << ".  Number of Newton-Raphson solver iterations will be increased to " 
                     << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mNumPseudoTimeStepMultiplier) << ". ****\n\n";
                 return tToleranceSatisfied;
             }
