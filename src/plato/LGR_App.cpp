@@ -2,6 +2,7 @@
 
 #include "plato/LGR_App.hpp"
 #include "plato/PlatoProblemFactory.hpp"
+#include <Plato_Console.hpp>
 
 /******************************************************************************/
 MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
@@ -458,10 +459,8 @@ void MPMD_App::ComputeObjectiveX::operator()()
 /******************************************************************************/
 MPMD_App::ComputeObjectiveP::
 ComputeObjectiveP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
-        LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode)
+        LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Objective Gradient")
 {
-    auto tOutputNode = Plato::Get::InputData(aOpNode, "Output");
-    mStrGradientP = Plato::Get::String(tOutputNode, "ArgumentName");
     mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(m_ESP->getNumParameters());
 }
 /******************************************************************************/
@@ -528,10 +527,8 @@ void MPMD_App::ComputeObjectiveGradientX::operator()()
 /******************************************************************************/
 MPMD_App::ComputeObjectiveGradientP::
 ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
-        LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode)
+        LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Objective Gradient")
 {
-    auto tOutputNode = Plato::Get::InputData(aOpNode, "Output");
-    mStrGradientP = Plato::Get::String(tOutputNode, "ArgumentName");
     mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(m_ESP->getNumParameters());
 }
 /******************************************************************************/
@@ -564,7 +561,9 @@ void MPMD_App::ComputeConstraint::operator()()
 
   mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mState);
 
-  std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  std::stringstream ss;
+  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  Plato::Console::Status(ss.str());
 }
 
 /******************************************************************************/
@@ -585,18 +584,18 @@ void MPMD_App::ComputeConstraintX::operator()()
 
   mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
 
-  std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  std::stringstream ss;
+  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  Plato::Console::Status(ss.str());
 }
 
 /******************************************************************************/
 MPMD_App::ComputeConstraintP::
 ComputeConstraintP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
-LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode)
+LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Constraint Gradient")
 /******************************************************************************/
 {
     mTarget = Plato::Get::Double(aOpNode, "Target");
-    auto tOutputNode = Plato::Get::InputData(aOpNode, "Output");
-    mStrGradientP = Plato::Get::String(tOutputNode, "ArgumentName");
     mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(m_ESP->getNumParameters());
 }
 
@@ -611,7 +610,9 @@ void MPMD_App::ComputeConstraintP::operator()()
   mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
   mMyApp->mapToParameters(m_ESP, tGradP, mMyApp->mConstraintGradientX);
 
-  std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  std::stringstream ss;
+  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  Plato::Console::Status(ss.str());
 }
 
 
@@ -631,7 +632,9 @@ void MPMD_App::ComputeConstraintValue::operator()()
   mMyApp->mConstraintValue  = mMyApp->mProblem->constraintValue(mMyApp->mControl,mMyApp->mState);
   mMyApp->mConstraintValue -= mTarget;
 
-  std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  std::stringstream ss;
+  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  Plato::Console::Status(ss.str());
 }
 
 /******************************************************************************/
@@ -667,10 +670,8 @@ void MPMD_App::ComputeConstraintGradientX::operator()()
 /******************************************************************************/
 MPMD_App::ComputeConstraintGradientP::
 ComputeConstraintGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
-        LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode)
+        LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Constraint Gradient")
 {
-    auto tOutputNode = Plato::Get::InputData(aOpNode, "Output");
-    mStrGradientP = Plato::Get::String(tOutputNode, "ArgumentName");
     mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(m_ESP->getNumParameters());
 }
 /******************************************************************************/
@@ -734,11 +735,16 @@ void MPMD_App::ReinitializeESP::operator()()
 {
     if ( update() )
     {
+        Plato::Console::Status("Operation: ReinitializeESP -- Recomputing Problem");
         auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
         auto tModelFileName = m_ESP->getModelFileName();
         auto tTessFileName  = m_ESP->getTessFileName();
         m_ESP.reset( new ESPType(tModelFileName, tTessFileName) );
         mMyApp->createProblem(*def);
+    }
+    else
+    {
+        Plato::Console::Status("Operation: ReinitializeESP -- Not recomputing Problem");
     }
 }
 
@@ -759,6 +765,11 @@ bool MPMD_App::ReinitializeESP::update()
         if( mLocalState == tInputState )
         {
             return false;
+        }
+        else
+        {
+            mLocalState = tInputState;
+            return true;
         }
     }
     return true;

@@ -144,16 +144,16 @@ public:
     void importData(const std::string & aName, const Plato::SharedData& aSharedField);
 
     /******************************************************************************//**
-     * @brief Export shared data from PLATO Analyze
+     * @brief Export shared data to PLATO Analyze
      * @param [in] aName shared data name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     void exportData(const std::string & aName, Plato::SharedData& aSharedField);
 
     /******************************************************************************//**
-     * @brief Export processor's owned global IDs from PLATO Analyze
+     * @brief Export processor's owned global IDs to PLATO Analyze
      * @param [in] aDataLayout data layout (e.g. node or element based data)
-     * @param [in/out] aMyOwnedGlobalIDs owned global IDs
+     * @param [out] aMyOwnedGlobalIDs owned global IDs
     **********************************************************************************/
     void exportDataMap(const Plato::data::layout_t & aDataLayout, std::vector<int> & aMyOwnedGlobalIDs);
 
@@ -239,9 +239,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Export data from PLATO Analyze
+     * @brief Export data to PLATO Analyze
      * @param [in] aName shared data name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportDataT(const std::string& aName, SharedDataT& aSharedField)
@@ -265,9 +265,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Export scalar value (i.e. global value) from PLATO Analyze
+     * @brief Export scalar value (i.e. global value) to PLATO Analyze
      * @param [in] aName shared data name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportScalarValue(const std::string& aName, SharedDataT& aSharedField)
@@ -288,7 +288,7 @@ public:
             if(tIterator == mValuesMap.end())
             {
                 std::stringstream ss;
-                ss << "Attempted to import SharedValue ('" << aName << "') that doesn't exist.";
+                ss << "Attempted to export SharedValue ('" << aName << "') that doesn't exist.";
                 throw Plato::ParsingException(ss.str());
             }
             std::vector<Plato::Scalar>& tValues = tIterator->second;
@@ -298,9 +298,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Export element field (i.e. element-based data) from PLATO Analyze
+     * @brief Export element field (i.e. element-based data) to PLATO Analyze
      * @param [in] aTokens element-based shared field name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportElementField(const std::string& aName, SharedDataT& aSharedField)
@@ -308,7 +308,6 @@ public:
         auto tTokens = split(aName, '@');
         auto tFieldName = tTokens[0];
         auto tDataMap = mProblem->getDataMap();
-        // element ScalarVector?
         if(tDataMap.scalarVectors.count(tFieldName))
         {
             auto tData = tDataMap.scalarVectors.at(tFieldName);
@@ -330,9 +329,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Export scalar field (i.e. node-based data) from PLATO Analyze
+     * @brief Export scalar field (i.e. node-based data) to PLATO Analyze
      * @param [in] aName node-based shared field name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportScalarField(const std::string& aName, SharedDataT& aSharedField)
