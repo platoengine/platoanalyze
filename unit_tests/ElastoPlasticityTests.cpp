@@ -4411,7 +4411,7 @@ private:
 
     Plato::ScalarVector mGlobalResidual;          /*!< global residual*/
     Plato::ScalarVector mProjResidual;            /*!< projection residual, i.e. projected pressure gradient solve residual*/
-    Plato::ScalarVector mProjectedPressure;       /*!< projected pressure*/
+    Plato::ScalarVector mProjPressure;       /*!< projected pressure*/
     Plato::ScalarVector mProjectionAdjoint;       /*!< projection adjoint variables*/
 
     Plato::ScalarMultiVector mLocalStates;        /*!< local state variables*/
@@ -4420,7 +4420,7 @@ private:
     Plato::ScalarMultiVector mGlobalAdjoint;      /*!< global adjoint variables*/
     Plato::ScalarMultiVector mProjectedPressGrad; /*!< projected pressure gradient (# Time Steps, # Projected Pressure Gradient dofs)*/
 
-    Teuchos::RCP<Plato::CrsMatrixType> mProjectionJacobian; /*!< projection residual Jacobian matrix*/
+    Teuchos::RCP<Plato::CrsMatrixType> mProjJacobian; /*!< projection residual Jacobian matrix*/
     Teuchos::RCP<Plato::CrsMatrixType> mGlobalJacobian;     /*!< global residual Jacobian matrix*/
 
     Plato::ScalarVector mDirichletValues;            /*!< values associated with the Dirichlet boundary conditions*/
@@ -4433,7 +4433,7 @@ private:
     bool mWriteNewtonRaphsonDiagnostics;          /*!< flag to enable Newton-Raphson solver diagnostics (default=false) */
     bool mReadDirichletConditionsFromInputExoFile; /*!< flag used to ignore mesh sets - only used for unit testing (default=true) */
 
-    std::ofstream mNewtonRaphsonDiagnostics; /*!< output string stream with diagnostics */
+    std::ofstream mNewtonRaphsonDiagnosticsFile; /*!< output string stream with diagnostics */
 
 // public functions
 public:
@@ -4459,7 +4459,7 @@ public:
             mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Expansion Multiplier", 1.5)),
             mGlobalResidual("Global Residual", mGlobalResidualEq.size()),
             mProjResidual("Projected Residual", mProjectionEq.size()),
-            mProjectedPressure("Project Pressure", aMesh.nverts()),
+            mProjPressure("Project Pressure", aMesh.nverts()),
             mLocalStates("Local States", mNumPseudoTimeSteps, mLocalResidualEq.size()),
             mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalResidualEq.size()),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEq.size()),
@@ -4616,7 +4616,7 @@ public:
             tGlobalStateComputed = this->solveForwardProblem(aControls);
             if (tGlobalStateComputed == true)
             {
-                mNewtonRaphsonDiagnostics << "\n**** Successful Forward Solve ****\n";
+                mNewtonRaphsonDiagnosticsFile << "\n**** Successful Forward Solve ****\n";
                 break;
             }
             
@@ -4624,7 +4624,7 @@ public:
       
             if(mNumPseudoTimeSteps > mMaxNumPseudoTimeSteps)
             {
-                mNewtonRaphsonDiagnostics << "\n**** Unsuccessful Forward Solve.  Number of pseudo time steps is " 
+                mNewtonRaphsonDiagnosticsFile << "\n**** Unsuccessful Forward Solve.  Number of pseudo time steps is "
                     << "greater than the maximum number of pseudo time steps.  The number of current pseudo time " 
                     << "steps is set to " << mNumPseudoTimeSteps << " and the maximum number of pseudo time steps "
                     << "is set to " << mMaxNumPseudoTimeSteps << ". ****\n";
@@ -4980,7 +4980,7 @@ private:
             return;
         }
 
-        mNewtonRaphsonDiagnostics.open("plato_analyze_newton_raphson_diagnostics.txt");
+        mNewtonRaphsonDiagnosticsFile.open("plato_analyze_newton_raphson_diagnostics.txt");
     }
 
     /******************************************************************************//**
@@ -4993,7 +4993,7 @@ private:
             return;
         }
 
-        mNewtonRaphsonDiagnostics.close();
+        mNewtonRaphsonDiagnosticsFile.close();
     }
 
     /***************************************************************************//**
@@ -5024,7 +5024,7 @@ private:
         bool tToleranceSatisfied = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
         {
-            mNewtonRaphsonDiagnostics << "TIME STEP #" << tCurrentStepIndex << "\n";
+            mNewtonRaphsonDiagnosticsFile << "TIME STEP #" << tCurrentStepIndex << "\n";
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
             this->updateStateData(tStateData);
 
@@ -5032,7 +5032,7 @@ private:
 
             if(tNewtonRaphsonConverged == false)
             {
-                mNewtonRaphsonDiagnostics << "**** Newton-Raphson Solver did not converge at time step #" 
+                mNewtonRaphsonDiagnosticsFile << "**** Newton-Raphson Solver did not converge at time step #"
                     << tCurrentStepIndex << ".  Number of Newton-Raphson solver iterations will be increased to " 
                     << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mNumPseudoTimeStepMultiplier) << ". ****\n\n";
                 return tToleranceSatisfied;
@@ -5057,18 +5057,18 @@ private:
         bool tNewtonRaphsonConverged = false;
         Plato::NewtonRaphsonOutputData tOutputData;
         tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
-        Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnostics);
+        Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
             tOutputData.mCurrentIteration = tIteration;
 
             // compute projected pressure gradient
-            mProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjectedPressure,
+            mProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                 aControls, aStateData.mCurrentStepIndex);
-            mProjectionJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjectedPressure,
-                                                           aControls, aStateData.mCurrentStepIndex);
-            Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjectionJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
+            mProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
+                                                     aControls, aStateData.mCurrentStepIndex);
+            Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
 
             // compute the global state residual
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
@@ -5077,10 +5077,10 @@ private:
 
             // check convergence
             this->computeRelativeNormResidual(tOutputData);
-            Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnostics);
+            Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
             if(this->checkNewtonRaphsonStoppingCriteria(tOutputData) == true)
             {
-                Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnostics);
+                Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
                 tNewtonRaphsonConverged = true;
                 break;
             }
@@ -5103,10 +5103,10 @@ private:
                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                               aControls, aStateData.mCurrentStepIndex);
             // copy projection state, i.e. pressure
-            Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjectedPressure);
+            Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
         }
 
-        Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnostics);
+        Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
         return (tNewtonRaphsonConverged);
     }
 
@@ -5122,7 +5122,8 @@ private:
         if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
         {
             aOutputData.mInitialNormResidual = tNormGlobalResidual;
-            aOutputData.mCurrentRelativeNormResidual = 1.0;
+            aOutputData.mCurrentRelativeNormResidual =
+                    tNormGlobalResidual <= std::numeric_limits<Plato::Scalar>::min() ? 0.0 : 1.0;
         }
         else
         {
@@ -5191,7 +5192,7 @@ private:
         auto tPreviousStepIndex = aCurrentStepIndex - static_cast<Plato::OrdinalType>(1);
         if(tPreviousStepIndex >= static_cast<Plato::OrdinalType>(0))
         {
-            aOutput = Kokkos::subview(aStates, aCurrentStepIndex, Kokkos::ALL());
+            aOutput = Kokkos::subview(aStates, tPreviousStepIndex, Kokkos::ALL());
         }
         else
         {
@@ -5396,7 +5397,7 @@ private:
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentLocalState);
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentGlobalState);
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentProjPressGrad);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressure);
+        Plato::fill(static_cast<Plato::Scalar>(0.0), mProjPressure);
     }
 
     /***************************************************************************//**
@@ -5466,8 +5467,8 @@ private:
         Plato::MatrixTimesVectorPlusVector(tDrDz_T, aAdjointData.mCurrentGlobalAdjoint, aGradient);
 
         // add projection adjoint contribution to gradient, i.e. DfDz += (DpDz)^T * mu
-        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjectedPressure);
-        auto tDpDz_T = mProjectionEq.gradient_z(aStateData.mCurrentProjPressGrad, mProjectedPressure,
+        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
+        auto tDpDz_T = mProjectionEq.gradient_z(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                 aControls, aStateData.mCurrentStepIndex); //todo: ask josh about the order of the input arguments
         Plato::MatrixTimesVectorPlusVector(tDpDz_T, mProjectionAdjoint, aGradient);
 
@@ -5515,8 +5516,8 @@ private:
         Plato::MatrixTimesVectorPlusVector(tDrDx_T, aAdjointData.mCurrentGlobalAdjoint, aGradient);
 
         // add projection adjoint contribution to gradient, i.e. DfDx += (DpDx)^T * mu
-        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjectedPressure);
-        auto tDpDx_T = mProjectionEq.gradient_x(aStateData.mCurrentProjPressGrad, mProjectedPressure,
+        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
+        auto tDpDx_T = mProjectionEq.gradient_x(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                 aControls, aStateData.mCurrentStepIndex); //todo: ask josh about the order of the input arguments
         Plato::MatrixTimesVectorPlusVector(tDpDx_T, mProjectionAdjoint, aGradient);
 
@@ -5550,13 +5551,13 @@ private:
                                  const Plato::AdjointProblemStateData& aStateData,
                                  Plato::AdjointData& aAdjointData)
     {
-        auto tDrDp_T = mProjectionEq.gradient_n_T(aStateData.mCurrentProjPressGrad, mProjectedPressure,
+        auto tDrDp_T = mProjectionEq.gradient_n_T(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                   aControls, aStateData.mCurrentStepIndex);
         Plato::fill(static_cast<Plato::Scalar>(0.0), mProjResidual);
         Plato::MatrixTimesVectorPlusVector(tDrDp_T, aAdjointData.mCurrentGlobalAdjoint, mProjResidual);
         Plato::scale(static_cast<Plato::Scalar>(-1), mProjResidual);
         Plato::fill(static_cast<Plato::Scalar>(0.0), mProjectionAdjoint);
-        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjectionJacobian, mProjectionAdjoint, mProjResidual);
+        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, mProjectionAdjoint, mProjResidual);
     }
 
     /***************************************************************************//**
@@ -5760,12 +5761,12 @@ private:
         this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
 
         // Compute assembled Jacobian wrt projected pressure gradient
-        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjectedPressure);
-        mProjectionJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjectedPressure,
+        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
+        mProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                        aControls, aStateData.mCurrentStepIndex);
 
         // Compute dPdn^T: Assembled transpose of partial of projection residual wrt projected pressure gradient
-        auto tDpDn_T = mProjectionEq.gradient_n_T(aStateData.mCurrentProjPressGrad, mProjectedPressure,
+        auto tDpDn_T = mProjectionEq.gradient_n_T(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                   aControls, aStateData.mCurrentStepIndex);
 
         // compute dgdPI^T: Assembled transpose of partial of global residual wrt projected pressure gradient
@@ -5776,7 +5777,7 @@ private:
         // Compute Jacobian for adjoint problem: K_t - dPdn_T * (dPdn)^-1 * dRdn_T, where K_t
         // is the tangent stiffness matrix, P is the projection problem residual, R is the
         // global residual, and n is the pressure gradient
-        Plato::Condense(mGlobalJacobian /*K_t*/ , tDpDn_T, mProjectionJacobian,  tDrDn_T, mPressureDofOffset  /*row offset*/ );
+        Plato::Condense(mGlobalJacobian /*K_t*/ , tDpDn_T, mProjJacobian,  tDrDn_T, mPressureDofOffset  /*row offset*/ );
     }
 
     /***************************************************************************//**
