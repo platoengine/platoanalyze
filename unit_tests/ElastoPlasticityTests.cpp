@@ -5128,7 +5128,7 @@ private:
         {
             // compute relative stopping criterion
             aOutputData.mCurrentRelativeNormResidual = tNormGlobalResidual
-                    / aOutputData.mInitialNormResidual;
+                    / (aOutputData.mInitialNormResidual + std::numeric_limits<Plato::Scalar>::epsilon());
         }
     }
 
