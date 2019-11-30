@@ -24,7 +24,7 @@ inline void print(const VecT & aInput)
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
             {
-                printf("X[%d] = %f\n", aIndex, aInput(aIndex));
+                printf("X[%d] = %e\n", aIndex, aInput(aIndex));
             }, "fill vector");
     printf("\n");
 }

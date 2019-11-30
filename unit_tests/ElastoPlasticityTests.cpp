@@ -7,6 +7,7 @@
 #include "Teuchos_UnitTestHarness.hpp"
 
 #include "PlatoTestHelpers.hpp"
+#include "plato/PlatoUtilities.hpp"
 
 #include <memory>
 #include <limits>
@@ -5085,23 +5086,57 @@ private:
         tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
+        Plato::scale(0.0, mGlobalResidual);
         mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
             tOutputData.mCurrentIteration = tIteration;
 
+            // update inverse of local jacobian -> store in tInvLocalJacobianT
+            this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
+            // assemble tangent stiffness matrix
+            this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
+
+            // solve global system of equations
+            this->applyConstraints(mGlobalJacobian, mGlobalResidual);
+            Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
+            Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
+            printf("DELTA STATE\n");
+            Plato::print(aStateData.mDeltaGlobalState);
+
+            // update global state
+            Plato::zero_dirichlet_dofs(mDirichletDofs, aStateData.mDeltaGlobalState);
+            Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
+                          static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
+            Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
+            printf("NEW STATE\n");
+            Plato::print(aStateData.mCurrentGlobalState);
+            
+            // update local state
+            mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                              aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                              aControls, aStateData.mCurrentStepIndex);
+            
+            // copy projection state, i.e. pressure
+            Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
+            printf("PROJECTED PRESSURE\n");
+            Plato::print(mProjPressure);
+            
             // compute projected pressure gradient
             mProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                 aControls, aStateData.mCurrentStepIndex);
             mProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                      aControls, aStateData.mCurrentStepIndex);
             Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
+            printf("PROJECTED PRESSURE GRADIENT\n");
+            Plato::print(aStateData.mCurrentProjPressGrad);
 
             // compute the global state residual
-            Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+            printf("GLOBAL RESIDUAL\n");
+            Plato::print(mGlobalResidual);
 
             // check convergence
             this->computeRelativeNormResidual(tOutputData);
@@ -5112,28 +5147,6 @@ private:
                 tNewtonRaphsonConverged = true;
                 break;
             }
-
-            // update inverse of local jacobian -> store in tInvLocalJacobianT
-            this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
-            // assemble tangent stiffness matrix
-            this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
-
-            // solve global system of equations
-            //this->applyConstraints(mGlobalJacobian, mGlobalResidual);
-            Plato::scale(-1.0, mGlobalResidual);
-            Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
-            Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
-
-            // update global state
-            Plato::zero_dirichlet_dofs(mDirichletDofs, aStateData.mDeltaGlobalState);
-            Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
-                          static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
-            // update local state
-            mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                              aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                              aControls, aStateData.mCurrentStepIndex);
-            // copy projection state, i.e. pressure
-            Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
         }
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
@@ -8920,7 +8933,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values/indices");
 
-    tValueToSet = 1.0;
+    tValueToSet = 0.01;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
