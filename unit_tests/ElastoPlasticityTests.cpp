@@ -4606,7 +4606,16 @@ public:
      * \param [in] aVector 1D view of Right-Hand-Side forces
     *******************************************************************************/
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
-    { return; /* Displacement control approach is used herein. */ }
+    {
+        if(mGlobalJacobian->isBlockMatrix())
+        {
+            Plato::applyBlockConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDirichletValues);
+        }
+        else
+        {
+            Plato::applyConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDirichletValues);
+        }
+    }
 
     /***************************************************************************//**
      * \brief Fill right-hand-side vector values
