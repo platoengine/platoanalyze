@@ -4447,8 +4447,9 @@ private:
     Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps*/
     Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps*/
 
-    Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step increment*/
+    Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual*/
+    Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step */
     Plato::Scalar mNewtonRaphsonStopTolerance;    /*!< Newton-Raphson stopping tolerance*/
     Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
 
@@ -4496,6 +4497,7 @@ public:
             mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Number Iterations", 10)),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
+            mCurrentPseudoTimeStep(std::numeric_limits<Plato::Scalar>::min()),
             mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
             mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Expansion Multiplier", 1.5)),
             mGlobalResidual("Global Residual", mGlobalResidualEq.size()),
@@ -4607,13 +4609,16 @@ public:
     *******************************************************************************/
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
+        Plato::ScalarVector tDispControlledDirichletValues("Dirichlet Values", mDirichletValues.size());
+        Plato::update(mCurrentPseudoTimeStep, mDirichletValues, 0.0, tDispControlledDirichletValues);
+
         if(mGlobalJacobian->isBlockMatrix())
         {
-            Plato::applyBlockConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDirichletValues);
+            Plato::applyBlockConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, tDispControlledDirichletValues);
         }
         else
         {
-            Plato::applyConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDirichletValues);
+            Plato::applyConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, tDispControlledDirichletValues);
         }
     }
 
@@ -5080,7 +5085,7 @@ private:
         tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
-        Plato::Scalar tCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
+        mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
             tOutputData.mCurrentIteration = tIteration;
@@ -5093,7 +5098,7 @@ private:
             Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
 
             // compute the global state residual
-            Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, tCurrentPseudoTimeStep);
+            Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
@@ -5112,7 +5117,10 @@ private:
             this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
             // assemble tangent stiffness matrix
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
+
             // solve global system of equations
+            //this->applyConstraints(mGlobalJacobian, mGlobalResidual);
+            Plato::scale(-1.0, mGlobalResidual);
             Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
             Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
 
