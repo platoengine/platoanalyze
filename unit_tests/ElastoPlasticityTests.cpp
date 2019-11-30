@@ -5123,6 +5123,8 @@ private:
             mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                               aControls, aStateData.mCurrentStepIndex);
+            printf("LOCAL STATE\n");
+            Plato::print(aStateData.mCurrentLocalState);
             
             // copy projection state, i.e. pressure
             Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
@@ -5181,6 +5183,7 @@ private:
 
         aOutputData.mInitialNormResidual = Plato::norm(mGlobalResidual);
         aOutputData.mCurrentNormResidual = aOutputData.mInitialNormResidual;
+        aOutputData.mCurrentRelativeNormResidual = 1.0;
     }
 
     /***************************************************************************//**
