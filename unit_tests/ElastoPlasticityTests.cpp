@@ -5868,7 +5868,7 @@ private:
                                                  aControls, aStateData.mCurrentStepIndex);
 
         // Compute cell C = (dH/dc)^{-1}*dH/du, where H is the local residual, c are the local states and u are the global states
-        const Plato::Scalar tBeta = 1.0;
+        Plato::Scalar tBeta = 0.0;
         const Plato::Scalar tAlpha = 1.0;
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDc times DhDu", tNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
@@ -5882,6 +5882,7 @@ private:
 
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
+        tBeta = 1.0;
         Plato::ScalarArray3D tSchurComplement("Schur Complement", tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
         Plato::multiply_matrix_workset(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tSchurComplement);
 
