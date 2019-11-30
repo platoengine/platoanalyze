@@ -5083,8 +5083,6 @@ private:
                             Plato::ForwardProblemStateData &aStateData,
                             Plato::ScalarArray3D &aInvLocalJacobianT)
     {
-        Plato::scale(0.0, mGlobalResidual);
-
         bool tNewtonRaphsonConverged = false;
         Plato::NewtonRaphsonOutputData tOutputData;
         tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
@@ -5105,6 +5103,7 @@ private:
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
 
             // solve global system of equations
+            Plato::scale(0.0, mGlobalResidual);
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
             printf("APPLY CONSTRAINT RESIDUAL\n");
             Plato::print(mGlobalResidual);
@@ -5172,9 +5171,13 @@ private:
                                     Plato::NewtonRaphsonOutputData &aOutputData)
     {
         // compute the global state residual
+        printf("BEFORE INITIAL RESIDUAL\n");
+        Plato::print(mGlobalResidual);
         mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+        printf("AFTER INITIAL RESIDUAL\n");
+        Plato::print(mGlobalResidual);
 
         aOutputData.mInitialNormResidual = Plato::norm(mGlobalResidual);
         aOutputData.mCurrentNormResidual = aOutputData.mInitialNormResidual;
