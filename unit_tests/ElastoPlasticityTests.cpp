@@ -5088,6 +5088,8 @@ private:
 
         Plato::scale(0.0, mGlobalResidual);
         mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
+        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
+
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
             tOutputData.mCurrentIteration = tIteration;
@@ -5108,7 +5110,6 @@ private:
             Plato::zero_dirichlet_dofs(mDirichletDofs, aStateData.mDeltaGlobalState);
             Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
                           static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
-            Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
             printf("NEW STATE\n");
             Plato::print(aStateData.mCurrentGlobalState);
             
