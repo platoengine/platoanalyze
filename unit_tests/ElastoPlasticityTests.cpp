@@ -5207,7 +5207,7 @@ private:
 
         if(aOutputData.mCurrentIteration == mMaxNumNewtonIter)
         {
-            tStop = true;
+            tStop = false;
             aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
         }
         else if(aOutputData.mCurrentRelativeNormResidual < mNewtonRaphsonStopTolerance)
