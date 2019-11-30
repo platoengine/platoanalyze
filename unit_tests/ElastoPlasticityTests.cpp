@@ -5092,7 +5092,7 @@ private:
 
         mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
-        tOutputData.mInitialNormResidual = this->computeInitialNormResidual(aControls, aStateData);
+        this->computeInitialNormResidual(aControls, aStateData, tOutputData);
         Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
@@ -5163,26 +5163,27 @@ private:
 
     /***************************************************************************//**
      * \brief Compute initial norm of residual vector, i.e. \f$ \Vert R_{0} \Vert \f$
-     * \param [in] aControls  control variables
-     * \param [in] aStateData state data structure, contains current state data
-     * \return norm of residual vector
+     * \param [in]     aControls   control variables
+     * \param [in]     aStateData  state data structure, contains current state data
+     * \param [in/out] aOutputData Newton-Raphson output data structure
     *******************************************************************************/
-    Plato::Scalar computeInitialNormResidual(const Plato::ScalarVector &aControls, const Plato::ForwardProblemStateData &aStateData)
+    void computeInitialNormResidual(const Plato::ScalarVector &aControls,
+                                    const Plato::ForwardProblemStateData &aStateData,
+                                    Plato::NewtonRaphsonOutputData &aOutputData)
     {
         // compute the global state residual
         mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
 
-        auto tNormGlobalResidual = Plato::norm(mGlobalResidual);
-        return (tNormGlobalResidual);
+        aOutputData.mInitialNormResidual = Plato::norm(mGlobalResidual);
+        aOutputData.mCurrentNormResidual = aOutputData.mInitialNormResidual;
     }
 
     /***************************************************************************//**
      * \brief Compute current relative norm of residual vector, i.e.
      *     \f$ \frac{\Vert R_{i} \Vert}{\Vert R_{i=0} \Vert} \f$
      * \param [in] aOutputData Newton-Raphson solver output data
-     * \return boolean flag, indicates if Newton-Raphson solver converged
     *******************************************************************************/
     void computeRelativeNormResidual(Plato::NewtonRaphsonOutputData & aOutputData)
     {
