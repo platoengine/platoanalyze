@@ -4349,6 +4349,50 @@ void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOutputDat
 }
 // function print_newton_raphson_diagnostics_header
 
+/***************************************************************************//**
+ * \brief Set Dirichlet degrees of freedom to zero
+ * \param [in]     aDirichletDofs list of local Dirichlet degrees of freedom indices
+ * \param [in/out] aState state vector
+*******************************************************************************/
+inline void zero_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs, Plato::ScalarVector & aState)
+{
+    auto tNumDirichletDofs = aDirichletDofs.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
+    {
+        auto tLocalDofIndex = aDirichletDofs[aDofOrdinal];
+        aState(tLocalDofIndex) = 0.0;
+    },"zero Dirichlet dofs");
+}
+// function zero_dirichlet_dofs
+
+/***************************************************************************//**
+ * \brief Set Dirichlet degrees of freedom to user defined values
+ * \param [in]     aDirichletDofs   list of local Dirichlet degrees of freedom indices
+ * \param [in]     aDirichletValues list of local Dirichlet values
+ * \param [in/out] aState           state vector
+ * \param [in]     aMultiplier      multiplier for continuation
+*******************************************************************************/
+inline void set_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs,
+                               const Plato::ScalarVector & aDirichletValues,
+                               Plato::ScalarVector & aState,
+                               Plato::Scalar aMultiplier = 1.0)
+{
+    auto tNumDirichletDofs = aDirichletDofs.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
+    {
+        auto tLocalDofIndex = aDirichletDofs[aDofOrdinal];
+        aState(tLocalDofIndex) = aMultiplier * aDirichletValues(aDofOrdinal);
+    },"set Dirichlet values");
+}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -4405,7 +4449,6 @@ private:
 
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step increment*/
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual*/
-    Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step*/
     Plato::Scalar mNewtonRaphsonStopTolerance;    /*!< Newton-Raphson stopping tolerance*/
     Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
 
@@ -4424,7 +4467,6 @@ private:
     Teuchos::RCP<Plato::CrsMatrixType> mGlobalJacobian;     /*!< global residual Jacobian matrix*/
 
     Plato::ScalarVector mDirichletValues;            /*!< values associated with the Dirichlet boundary conditions*/
-    Plato::ScalarVector mDispControlDirichletValues; /*!< values associated with the Dirichlet boundary conditions at the current pseudo time step*/
     Plato::LocalOrdinalVector mDirichletDofs;        /*!< list of degrees of freedom associated with the Dirichlet boundary conditions*/
 
     Plato::WorksetBase<Plato::SimplexPlasticity<mSpatialDim>> mWorksetBase; /*!< assembly routine interface */
@@ -4453,7 +4495,6 @@ public:
             mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Maximum Num. Pseudo Time Steps", 10)),
             mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Number Iterations", 10)),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
-            mCurrentPseudoTimeStep(0.0),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
             mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Expansion Multiplier", 1.5)),
@@ -4499,7 +4540,6 @@ public:
             // Parse Dirichlet boundary conditions
             Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputParams.sublist("Essential Boundary Conditions", false));
             tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);
-            Kokkos::resize(mDispControlDirichletValues, mDirichletValues.size());
         }
     }
 
@@ -4520,7 +4560,6 @@ public:
 
         mDirichletDofs = aDirichletDofs;
         mDirichletValues = aDirichletValues;
-        Kokkos::resize(mDispControlDirichletValues, mDirichletValues.size());
     }
 
     /***************************************************************************//**
@@ -4567,19 +4606,7 @@ public:
      * \param [in] aVector 1D view of Right-Hand-Side forces
     *******************************************************************************/
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
-    {
-        // apply displacement control, i.e. continuation
-        Plato::update(mCurrentPseudoTimeStep, mDirichletValues, static_cast<Plato::Scalar>(0), mDispControlDirichletValues);
-
-        if(mGlobalJacobian->isBlockMatrix())
-        {
-            Plato::applyBlockConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDispControlDirichletValues);
-        }
-        else
-        {
-            Plato::applyConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, mDispControlDirichletValues);
-        }
-    }
+    { return; /* Displacement control approach is used herein. */ }
 
     /***************************************************************************//**
      * \brief Fill right-hand-side vector values
@@ -4940,21 +4967,6 @@ public:
         return (tOutput);
     }
 
-    /***************************************************************************//**
-     * \brief Set Dirichlet degrees of freedom in global state increment view to zero
-     * \param [in] aGlobalStateIncrement 1D view of global state increments, i.e. Newton-Raphson solution
-    *******************************************************************************/
-    void zeroDirichletDofs(Plato::ScalarVector & aGlobalStateIncrement)
-    {
-        auto tDirichletDofs = mDirichletDofs;
-        auto tNumDirichletDofs = mDirichletDofs.size();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
-        {
-            auto tLocalDofIndex = tDirichletDofs[aDofOrdinal];
-            aGlobalStateIncrement(tLocalDofIndex) = 0.0;
-        },"zero global state increment dirichlet dofs");
-    }
-
 // private functions
 private:
     /***************************************************************************//**
@@ -5059,6 +5071,7 @@ private:
         tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
+        Plato::Scalar tCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
             tOutputData.mCurrentIteration = tIteration;
@@ -5071,6 +5084,7 @@ private:
             Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
 
             // compute the global state residual
+            Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, tCurrentPseudoTimeStep);
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
@@ -5089,13 +5103,12 @@ private:
             this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
             // assemble tangent stiffness matrix
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
-            // apply dirichlet conditions
-            this->applyConstraints(mGlobalJacobian, mGlobalResidual);
             // solve global system of equations
             Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
             Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
+
             // update global state
-            this->zeroDirichletDofs(aStateData.mDeltaGlobalState);
+            Plato::zero_dirichlet_dofs(mDirichletDofs, aStateData.mDeltaGlobalState);
             Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
                           static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
             // update local state
