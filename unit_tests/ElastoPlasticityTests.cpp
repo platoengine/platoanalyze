@@ -5912,6 +5912,7 @@ private:
 
         // Assemble full Jacobian
         auto tJacobianEntries = mGlobalJacobian->entries();
+        Plato::fill(0.0, tJacobianEntries);
         Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell,
                                  *mGlobalJacEntryOrdinal, tDrDu, tJacobianEntries);
     }
@@ -9027,11 +9028,11 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='10'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='20'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='1'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='10'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Number Iterations' type='int' value='10'/>                           \n"
+      "    <Parameter name='Number Iterations' type='int' value='5'/>                           \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
     );
