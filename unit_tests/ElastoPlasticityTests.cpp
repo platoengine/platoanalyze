@@ -4456,10 +4456,10 @@ private:
     Plato::Scalar mNewtonRaphsonStopTolerance;    /*!< Newton-Raphson stopping tolerance*/
     Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
 
-    Plato::ScalarVector mGlobalResidual;          /*!< global residual*/
-    Plato::ScalarVector mProjResidual;            /*!< projection residual, i.e. projected pressure gradient solve residual*/
-    Plato::ScalarVector mProjPressure;       /*!< projected pressure*/
-    Plato::ScalarVector mProjectionAdjoint;       /*!< projection adjoint variables*/
+    Plato::ScalarVector mProjResidual;            /*!< projection residual, i.e. projected pressure gradient solve residual */
+    Plato::ScalarVector mProjPressure;            /*!< projected pressure */
+    Plato::ScalarVector mGlobalResidual;          /*!< global residual */
+    Plato::ScalarVector mProjectionAdjoint;       /*!< projection adjoint variables */
 
     Plato::ScalarMultiVector mLocalStates;        /*!< local state variables*/
     Plato::ScalarMultiVector mLocalAdjoint;       /*!< local adjoint variables*/
@@ -4467,16 +4467,16 @@ private:
     Plato::ScalarMultiVector mGlobalAdjoint;      /*!< global adjoint variables*/
     Plato::ScalarMultiVector mProjectedPressGrad; /*!< projected pressure gradient (# Time Steps, # Projected Pressure Gradient dofs)*/
 
-    Teuchos::RCP<Plato::CrsMatrixType> mProjJacobian; /*!< projection residual Jacobian matrix*/
-    Teuchos::RCP<Plato::CrsMatrixType> mGlobalJacobian;     /*!< global residual Jacobian matrix*/
+    Teuchos::RCP<Plato::CrsMatrixType> mProjJacobian;   /*!< Jacobian matrix for pressure gradient solve */
+    Teuchos::RCP<Plato::CrsMatrixType> mGlobalJacobian; /*!< global Jacobian matrix */
 
-    Plato::ScalarVector mDirichletValues;            /*!< values associated with the Dirichlet boundary conditions*/
-    Plato::LocalOrdinalVector mDirichletDofs;        /*!< list of degrees of freedom associated with the Dirichlet boundary conditions*/
+    Plato::ScalarVector mDirichletValues;         /*!< values associated with the Dirichlet boundary conditions*/
+    Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions*/
 
     Plato::WorksetBase<Plato::SimplexPlasticity<mSpatialDim>> mWorksetBase; /*!< assembly routine interface */
     std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal */
 
-    bool mWriteNewtonRaphsonDiagnostics;          /*!< flag to enable Newton-Raphson solver diagnostics (default=false) */
+    bool mWriteNewtonRaphsonDiagnostics;           /*!< flag to enable Newton-Raphson solver diagnostics (default=false) */
     bool mReadDirichletConditionsFromInputExoFile; /*!< flag used to ignore mesh sets - only used for unit testing (default=true) */
 
     std::ofstream mNewtonRaphsonDiagnosticsFile; /*!< output string stream with diagnostics */
@@ -4503,9 +4503,9 @@ public:
             mCurrentPseudoTimeStep(std::numeric_limits<Plato::Scalar>::min()),
             mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
             mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Expansion Multiplier", 2)),
-            mGlobalResidual("Global Residual", mGlobalResidualEq.size()),
             mProjResidual("Projected Residual", mProjectionEq.size()),
             mProjPressure("Project Pressure", aMesh.nverts()),
+            mGlobalResidual("Global Residual", mGlobalResidualEq.size()),
             mLocalStates("Local States", mNumPseudoTimeSteps, mLocalResidualEq.size()),
             mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalResidualEq.size()),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEq.size()),
