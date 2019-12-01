@@ -5101,10 +5101,6 @@ private:
                 tNewtonRaphsonConverged = true;
                 break;
             }
-
-            // solve global system of equations
-            Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
-            Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
             
             // update global and local states
             this->updateGlobalAndLocalStates(aControls, aStateData);
@@ -5124,6 +5120,10 @@ private:
     void updateGlobalAndLocalStates(const Plato::ScalarVector &aControls,
                                     Plato::ForwardProblemStateData &aStateData)
     {
+        // solve global system of equations
+        Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
+        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
+
         // update global state
         Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
                       static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
