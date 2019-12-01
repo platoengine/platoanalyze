@@ -34,23 +34,24 @@ inline void print(const VecT & aInput)
  * \brief Print input 3D container to terminal
  * \tparam array type
  * \param [in] aInput 3D container
+ * \param [in] aName  container name (default = "")
 **********************************************************************************/
 template<typename ArrayT>
-inline void print_array_3D(const ArrayT & aInput)
+inline void print_array_3D(const ArrayT & aInput, const std::string & aName)
 {
-    Plato::OrdinalType tNumRows = aInput.extent(1);
-    Plato::OrdinalType tNumCols = aInput.extent(2);
-    Plato::OrdinalType tNumMatrices = aInput.extent(0);
+    printf("PRINT %s\n", aName.c_str());
+
+    const Plato::OrdinalType tNumRows = aInput.extent(1);
+    const Plato::OrdinalType tNumCols = aInput.extent(2);
+    const Plato::OrdinalType tNumMatrices = aInput.extent(0);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumMatrices), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
-        printf("MATRIX %d\n", aIndex);
         for(Plato::OrdinalType tRow = 0; tRow < tNumRows; tRow++)
         {
             for(Plato::OrdinalType tCol = 0; tCol < tNumCols; tCol++)
             {
-                printf("X(%d,%d,%d) = %e, ", aIndex, tRow, tCol, aInput(aIndex));
+                printf("X(%d,%d,%d) = %e\n", aIndex, tRow, tCol, aInput(aIndex,tRow, tCol));
             }
-            printf("\n");
         }
     }, "fill vector");
     printf("\n");

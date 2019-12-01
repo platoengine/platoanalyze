@@ -5072,6 +5072,15 @@ private:
         return tToleranceSatisfied;
     }
 
+    Plato::ScalarVector computeExternalForce(const Plato::ScalarVector &aControls, Plato::ForwardProblemStateData &aStateData)
+    {
+        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
+        auto tOutput = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                               aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+        return (tOutput);
+    }
+
     /***************************************************************************//**
      * \brief Solve Newton Raphson problem
      * \param [in] aControls           1-D view of controls, e.g. design variables
@@ -5089,7 +5098,7 @@ private:
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
         mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
-        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
+        auto tExternalForce = this->computeExternalForce(aControls, aStateData);
         this->computeInitialNormResidual(aControls, aStateData, tOutputData);
         Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
@@ -5103,33 +5112,22 @@ private:
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
 
             // solve global system of equations
-            Plato::scale(0.0, mGlobalResidual);
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
-            printf("APPLY CONSTRAINT RESIDUAL\n");
-            Plato::print(mGlobalResidual);
             Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
             Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
-            printf("DELTA STATE\n");
-            Plato::print(aStateData.mDeltaGlobalState);
 
             // update global state
             Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
                           static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
             Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
-            printf("NEW STATE\n");
-            Plato::print(aStateData.mCurrentGlobalState);
             
             // update local state
             mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                               aControls, aStateData.mCurrentStepIndex);
-            printf("LOCAL STATE\n");
-            Plato::print(aStateData.mCurrentLocalState);
             
             // copy projection state, i.e. pressure
             Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
-            printf("PROJECTED PRESSURE\n");
-            Plato::print(mProjPressure);
             
             // compute projected pressure gradient
             mProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjPressure,
@@ -5137,28 +5135,25 @@ private:
             mProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                      aControls, aStateData.mCurrentStepIndex);
             Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
-            printf("PROJECTED PRESSURE GRADIENT\n");
-            Plato::print(aStateData.mCurrentProjPressGrad);
 
-            // compute the global state residual
+            // first, compute the global internal force; then, compute residual
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-            printf("GLOBAL RESIDUAL\n");
-            Plato::print(mGlobalResidual);
+            Plato::update(-1.0, tExternalForce, 1.0, mGlobalResidual);
 
             // check convergence
             this->computeRelativeNormResidual(tOutputData);
             Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
             if(this->checkNewtonRaphsonStoppingCriteria(tOutputData) == true)
             {
-                Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
                 tNewtonRaphsonConverged = true;
                 break;
             }
         }
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
+        
         return (tNewtonRaphsonConverged);
     }
 
@@ -5173,13 +5168,9 @@ private:
                                     Plato::NewtonRaphsonOutputData &aOutputData)
     {
         // compute the global state residual
-        printf("BEFORE INITIAL RESIDUAL\n");
-        Plato::print(mGlobalResidual);
         mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-        printf("AFTER INITIAL RESIDUAL\n");
-        Plato::print(mGlobalResidual);
 
         aOutputData.mInitialNormResidual = Plato::norm(mGlobalResidual);
         aOutputData.mCurrentNormResidual = aOutputData.mInitialNormResidual;
@@ -5873,7 +5864,6 @@ private:
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDc times DhDu", tNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
         Plato::multiply_matrix_workset(tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
-
 
         // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
         auto tDrDc = mGlobalResidualEq.gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
@@ -8889,7 +8879,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -8923,6 +8913,13 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='1'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='1'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Number Iterations' type='int' value='2'/>                           \n"
+      "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
     );
 
@@ -8941,7 +8938,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
     // 3. Set Dirichlet Boundary Conditions
     Plato::Scalar tValueToSet = 0;
     auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
-    printf("tNumDirichletDofs = %d\n", tNumDirichletDofs);
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
     Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
@@ -8972,9 +8968,23 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::fill(1.0, tControls);
-    printf("H3\n");
     auto tSolution = tPlasticityProblem.solution(tControls);
-    printf("H4\n");
+
+    // 5. Test solution
+    const Plato::Scalar tTolerance = 1e-5;
+    auto tHostSolution = Kokkos::create_mirror(tSolution);
+    Kokkos::deep_copy(tHostSolution, tSolution);
+    std::vector<std::vector<Plato::Scalar>> tGold = 
+        {{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          1e-5,0.0, 0.0,1e-5, 0.0, 0.0, 0.0, 0.0, 0.0,1e-5, 0.0, 0.0}};
+    for(Plato::OrdinalType tTimeIndex = 0; tTimeIndex < tSolution.extent(0); tTimeIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex < tSolution.extent(1); tDofIndex++)
+        {
+            //printf("solution(%d,%d) = %.10f\n", tTimeIndex, tDofIndex, tHostSolution(tTimeIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostSolution(tTimeIndex,tDofIndex), tGold[tTimeIndex][tDofIndex], tTolerance);
+        }
+    }
 }
 
 
