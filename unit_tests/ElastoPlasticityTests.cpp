@@ -5078,7 +5078,7 @@ private:
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
-            tOutputData.mCurrentIteration = tIteration + static_cast<Plato::OrdinalType>(1);
+            tOutputData.mCurrentIteration = tIteration;
 
             // compute internal forces
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
@@ -5105,31 +5105,44 @@ private:
             // solve global system of equations
             Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
             Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
-
-            // update global state
-            Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
-                          static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
-            Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
             
-            // update local state
-            mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                              aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                              aControls, aStateData.mCurrentStepIndex);
-            
-            // copy projection state, i.e. pressure
-            Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
-            
-            // compute projected pressure gradient
-            mProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjPressure,
-                                                aControls, aStateData.mCurrentStepIndex);
-            mProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
-                                                     aControls, aStateData.mCurrentStepIndex);
-            Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
+            // update global and local states
+            this->updateGlobalAndLocalStates(aControls, aStateData);
         }
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
         
         return (tNewtonRaphsonConverged);
+    }
+
+    /***************************************************************************//**
+     * \brief Update global and local states after a new trial state is computed by
+     *   the Newton-Raphson solver.
+     * \param [in] aControls           1-D view of controls, e.g. design variables
+     * \param [in] aStateData         data manager with current and previous state data
+    *******************************************************************************/
+    void updateGlobalAndLocalStates(const Plato::ScalarVector &aControls,
+                                    Plato::ForwardProblemStateData &aStateData)
+    {
+        // update global state
+        Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
+                      static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
+        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
+
+        // update local state
+        mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                          aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                          aControls, aStateData.mCurrentStepIndex);
+
+        // copy projection state, i.e. pressure
+        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
+
+        // compute projected pressure gradient
+        mProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjPressure,
+                                            aControls, aStateData.mCurrentStepIndex);
+        mProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
+                                                 aControls, aStateData.mCurrentStepIndex);
+        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
     }
 
     /***************************************************************************//**
