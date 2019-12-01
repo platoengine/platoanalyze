@@ -15,27 +15,54 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Print input 1D container to terminal
- * @param [in] aInput 1D container
+ * \brief Print input 1D container to terminal
+ * \param [in] aInput 1D container
 **********************************************************************************/
 template<typename VecT>
 inline void print(const VecT & aInput)
 {
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-            {
-                printf("X[%d] = %e\n", aIndex, aInput(aIndex));
-            }, "fill vector");
+    {
+        printf("X[%d] = %e\n", aIndex, aInput(aIndex));
+    }, "fill vector");
     printf("\n");
 }
 // function print
 
 /******************************************************************************//**
- * @brief Copy 1D view into Omega_h 1D array
- * @param [in] aStride stride
- * @param [in] aNumVertices number of mesh vertices
- * @param [in] aInput 1D view
- * @param [out] aOutput 1D Omega_h array
+ * \brief Print input 3D container to terminal
+ * \tparam array type
+ * \param [in] aInput 3D container
+**********************************************************************************/
+template<typename ArrayT>
+inline void print_array_3D(const ArrayT & aInput)
+{
+    Plato::OrdinalType tNumRows = aInput.extent(1);
+    Plato::OrdinalType tNumCols = aInput.extent(2);
+    Plato::OrdinalType tNumMatrices = aInput.extent(0);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumMatrices), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        printf("MATRIX %d\n", aIndex);
+        for(Plato::OrdinalType tRow = 0; tRow < tNumRows; tRow++)
+        {
+            for(Plato::OrdinalType tCol = 0; tCol < tNumCols; tCol++)
+            {
+                printf("X(%d,%d,%d) = %e, ", aIndex, tRow, tCol, aInput(aIndex));
+            }
+            printf("\n");
+        }
+    }, "fill vector");
+    printf("\n");
+}
+// function print
+
+/******************************************************************************//**
+ * \brief Copy 1D view into Omega_h 1D array
+ * \param [in] aStride stride
+ * \param [in] aNumVertices number of mesh vertices
+ * \param [in] aInput 1D view
+ * \param [out] aOutput 1D Omega_h array
 **********************************************************************************/
 template<const Plato::OrdinalType NumDofsPerNodeInInputArray, const Plato::OrdinalType NumDofsPerNodeInOutputArray>
 inline void copy(const Plato::OrdinalType & aStride,
@@ -56,9 +83,9 @@ inline void copy(const Plato::OrdinalType & aStride,
 // function copy
 
 /******************************************************************************//**
- * @brief Copy 2D view into Omega_h 1D array
- * @param [in] aInput 2D view
- * @param [out] aOutput 1D Omega_h array
+ * \brief Copy 2D view into Omega_h 1D array
+ * \param [in] aInput 2D view
+ * \param [out] aOutput 1D Omega_h array
 **********************************************************************************/
 inline void copy_2Dview_to_write(const Plato::ScalarMultiVector & aInput, Omega_h::Write<Omega_h::Real> & aOutput)
 {
@@ -75,9 +102,9 @@ inline void copy_2Dview_to_write(const Plato::ScalarMultiVector & aInput, Omega_
 }
 
 /******************************************************************************//**
- * @brief Copy 1D view into Omega_h 1D array
- * @param [in] aInput 2D view
- * @param [out] aOutput 1D Omega_h array
+ * \brief Copy 1D view into Omega_h 1D array
+ * \param [in] aInput 2D view
+ * \param [out] aOutput 1D Omega_h array
 **********************************************************************************/
 inline void copy_1Dview_to_write(const Plato::ScalarVector & aInput, Omega_h::Write<Omega_h::Real> & aOutput)
 {
