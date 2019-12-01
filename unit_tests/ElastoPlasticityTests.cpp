@@ -4353,22 +4353,6 @@ void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOutputDat
 // function print_newton_raphson_diagnostics_header
 
 /***************************************************************************//**
- * \brief Set Dirichlet degrees of freedom to zero
- * \param [in]     aDirichletDofs list of local Dirichlet degrees of freedom indices
- * \param [in/out] aState state vector
-*******************************************************************************/
-inline void zero_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs, Plato::ScalarVector & aState)
-{
-    auto tNumDirichletDofs = aDirichletDofs.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
-    {
-        auto tLocalDofIndex = aDirichletDofs[aDofOrdinal];
-        aState(tLocalDofIndex) = 0.0;
-    },"zero Dirichlet dofs");
-}
-// function zero_dirichlet_dofs
-
-/***************************************************************************//**
  * \brief Set Dirichlet degrees of freedom to user defined values
  * \param [in]     aDirichletDofs   list of local Dirichlet degrees of freedom indices
  * \param [in]     aDirichletValues list of local Dirichlet values
@@ -4388,24 +4372,6 @@ inline void set_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs,
     },"set Dirichlet values");
 }
 // function set_dirichlet_dofs
-
-inline void compute_reaction_force(const Plato::LocalOrdinalVector & aDirichletDofs,
-                                   const Plato::ScalarVector & aAllForce,
-                                   Plato::ScalarVector & aReactionForce,
-                                   bool aZeroOutput = false)
-{
-    if(aZeroOutput == true)
-    {
-        Plato::fill(0.0, aReactionForce);
-    }
-
-    auto tNumDirichletDofs = aDirichletDofs.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
-    {
-        auto tLocalDofIndex = aDirichletDofs[aDofOrdinal];
-        aReactionForce(tLocalDofIndex) = aAllForce(tLocalDofIndex);
-    },"compute reaction force");
-}
 
 
 
@@ -5092,23 +5058,6 @@ private:
     }
 
     /***************************************************************************//**
-     * \brief Compute external force vector
-     * \param [in] aControls           1-D view of controls, e.g. design variables
-     * \param [in] aStateData         data manager with current and previous state data
-     * \return external force vector
-    *******************************************************************************/
-    Plato::ScalarVector computeReactionForce(const Plato::ScalarVector &aControls, Plato::ForwardProblemStateData &aStateData)
-    {
-        auto tForces = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                               aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-        Plato::ScalarVector tReactionForce("ReactionForce", tForces.size());
-        Plato::compute_reaction_force(mDirichletDofs, tForces, tReactionForce);
-
-        return (tReactionForce);
-    }
-
-    /***************************************************************************//**
      * \brief Solve Newton Raphson problem
      * \param [in] aControls           1-D view of controls, e.g. design variables
      * \param [in] aStateData         data manager with current and previous state data
@@ -5126,20 +5075,34 @@ private:
 
         mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
-        this->computeInitialNormResidual(aControls, aStateData, tOutputData);
-        Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
             tOutputData.mCurrentIteration = tIteration + static_cast<Plato::OrdinalType>(1);
+
+            // compute internal forces
+            mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                                      aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                                      aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
 
             // update inverse of local jacobian -> store in tInvLocalJacobianT
             this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
             // assemble tangent stiffness matrix
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
 
-            // solve global system of equations
+            // apply Dirichlet boundary conditions
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
+
+            // check convergence
+            this->computeRelativeNormResidual(tOutputData);
+            Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
+            if(this->checkNewtonRaphsonStoppingCriteria(tOutputData) == true)
+            {
+                tNewtonRaphsonConverged = true;
+                break;
+            }
+
+            // solve global system of equations
             Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
             Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
 
@@ -5162,47 +5125,11 @@ private:
             mProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                      aControls, aStateData.mCurrentStepIndex);
             Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
-
-            // first, compute new residual
-            mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                      aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                      aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-            auto tReactionForce = this->computeReactionForce(aControls, aStateData);
-            Plato::update(-1.0, tReactionForce, 1.0, mGlobalResidual);
-
-            // check convergence
-            this->computeRelativeNormResidual(tOutputData);
-            Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
-            if(this->checkNewtonRaphsonStoppingCriteria(tOutputData) == true)
-            {
-                tNewtonRaphsonConverged = true;
-                break;
-            }
         }
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
         
         return (tNewtonRaphsonConverged);
-    }
-
-    /***************************************************************************//**
-     * \brief Compute initial norm of residual vector, i.e. \f$ \Vert R_{0} \Vert \f$
-     * \param [in]     aControls   control variables
-     * \param [in]     aStateData  state data structure, contains current state data
-     * \param [in/out] aOutputData Newton-Raphson output data structure
-    *******************************************************************************/
-    void computeInitialNormResidual(const Plato::ScalarVector &aControls,
-                                    const Plato::ForwardProblemStateData &aStateData,
-                                    Plato::NewtonRaphsonOutputData &aOutputData)
-    {
-        // compute the global state residual
-        mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                  aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-
-        aOutputData.mInitialNormResidual = Plato::norm(mGlobalResidual);
-        aOutputData.mCurrentNormResidual = aOutputData.mInitialNormResidual;
-        aOutputData.mCurrentRelativeNormResidual = 1.0;
     }
 
     /***************************************************************************//**
@@ -5212,10 +5139,19 @@ private:
     *******************************************************************************/
     void computeRelativeNormResidual(Plato::NewtonRaphsonOutputData & aOutputData)
     {
-        auto tNormGlobalResidual = Plato::norm(mGlobalResidual);
-        aOutputData.mCurrentNormResidual = tNormGlobalResidual;
-        aOutputData.mCurrentRelativeNormResidual = tNormGlobalResidual
-                / (aOutputData.mInitialNormResidual + std::numeric_limits<Plato::Scalar>::epsilon());
+        if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
+        {
+            aOutputData.mCurrentRelativeNormResidual = 1.0;
+            aOutputData.mInitialNormResidual = Plato::norm(mGlobalResidual);
+            aOutputData.mCurrentNormResidual = aOutputData.mInitialNormResidual;
+        }
+        else
+        {
+            auto tNormGlobalResidual = Plato::norm(mGlobalResidual);
+            aOutputData.mCurrentNormResidual = tNormGlobalResidual;
+            aOutputData.mCurrentRelativeNormResidual = tNormGlobalResidual
+                    / (aOutputData.mInitialNormResidual + std::numeric_limits<Plato::Scalar>::epsilon());
+        }
     }
 
     /***************************************************************************//**
