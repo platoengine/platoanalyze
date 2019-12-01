@@ -5062,7 +5062,7 @@ private:
             if(tNewtonRaphsonConverged == false)
             {
                 mNewtonRaphsonDiagnosticsFile << "**** Newton-Raphson Solver did not converge at time step #"
-                    << tCurrentStepIndex << ".  Number of Newton-Raphson solver iterations will be increased to " 
+                    << tCurrentStepIndex << ".  Number of pseudo time steps will be increased to " 
                     << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mNumPseudoTimeStepMultiplier) << ". ****\n\n";
                 return tToleranceSatisfied;
             }
@@ -8918,7 +8918,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
       "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='1'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Number Iterations' type='int' value='2'/>                           \n"
+      "    <Parameter name='Number Iterations' type='int' value='10'/>                           \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
     );
@@ -8991,7 +8991,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
 {
     // 1. DEFINE PROBLEM
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
@@ -9027,11 +9027,11 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='1'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='1'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='10'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='20'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Number Iterations' type='int' value='2'/>                           \n"
+      "    <Parameter name='Number Iterations' type='int' value='10'/>                           \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
     );
@@ -9082,6 +9082,22 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
+
+    // 5. Test solution
+    const Plato::Scalar tTolerance = 1e-5;
+    auto tHostSolution = Kokkos::create_mirror(tSolution);
+    Kokkos::deep_copy(tHostSolution, tSolution);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          1e-5,0.0, 0.0,1e-5, 0.0, 0.0, 0.0, 0.0, 0.0,1e-5, 0.0, 0.0}};
+    for(Plato::OrdinalType tTimeIndex = 0; tTimeIndex < tSolution.extent(0); tTimeIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex < tSolution.extent(1); tDofIndex++)
+        {
+            printf("solution(%d,%d) = %.10f\n", tTimeIndex, tDofIndex, tHostSolution(tTimeIndex, tDofIndex));
+            //TEST_FLOATING_EQUALITY(tHostSolution(tTimeIndex,tDofIndex), tGold[tTimeIndex][tDofIndex], tTolerance);
+        }
+    }
 }
 
 }
