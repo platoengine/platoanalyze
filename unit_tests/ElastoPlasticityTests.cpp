@@ -4387,6 +4387,25 @@ inline void set_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs,
         aState(tLocalDofIndex) = aMultiplier * aDirichletValues(aDofOrdinal);
     },"set Dirichlet values");
 }
+// function set_dirichlet_dofs
+
+inline void compute_reaction_force(const Plato::LocalOrdinalVector & aDirichletDofs,
+                                   const Plato::ScalarVector & aAllForce,
+                                   Plato::ScalarVector & aReactionForce,
+                                   bool aZeroOutput = false)
+{
+    if(aZeroOutput == true)
+    {
+        Plato::fill(0.0, aReactionForce);
+    }
+
+    auto tNumDirichletDofs = aDirichletDofs.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
+    {
+        auto tLocalDofIndex = aDirichletDofs[aDofOrdinal];
+        aReactionForce(tLocalDofIndex) = aAllForce(tLocalDofIndex);
+    },"compute reaction force");
+}
 
 
 
@@ -5072,13 +5091,21 @@ private:
         return tToleranceSatisfied;
     }
 
-    Plato::ScalarVector computeExternalForce(const Plato::ScalarVector &aControls, Plato::ForwardProblemStateData &aStateData)
+    /***************************************************************************//**
+     * \brief Compute external force vector
+     * \param [in] aControls           1-D view of controls, e.g. design variables
+     * \param [in] aStateData         data manager with current and previous state data
+     * \return external force vector
+    *******************************************************************************/
+    Plato::ScalarVector computeReactionForce(const Plato::ScalarVector &aControls, Plato::ForwardProblemStateData &aStateData)
     {
-        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
-        auto tOutput = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+        auto tForces = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-        return (tOutput);
+        Plato::ScalarVector tReactionForce("ReactionForce", tForces.size());
+        Plato::compute_reaction_force(mDirichletDofs, tForces, tReactionForce);
+
+        return (tReactionForce);
     }
 
     /***************************************************************************//**
@@ -5098,7 +5125,7 @@ private:
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
         mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
-        auto tExternalForce = this->computeExternalForce(aControls, aStateData);
+        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
         this->computeInitialNormResidual(aControls, aStateData, tOutputData);
         Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
@@ -5136,11 +5163,12 @@ private:
                                                      aControls, aStateData.mCurrentStepIndex);
             Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(mProjJacobian, aStateData.mCurrentProjPressGrad, mProjResidual);
 
-            // first, compute the global internal force; then, compute residual
+            // first, compute new residual
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-            Plato::update(-1.0, tExternalForce, 1.0, mGlobalResidual);
+            auto tReactionForce = this->computeReactionForce(aControls, aStateData);
+            Plato::update(-1.0, tReactionForce, 1.0, mGlobalResidual);
 
             // check convergence
             this->computeRelativeNormResidual(tOutputData);
