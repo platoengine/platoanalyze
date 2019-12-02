@@ -4501,7 +4501,7 @@ public:
             mConstraint(nullptr),
             mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
             mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
-            mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Number Iterations", 10)),
+            mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Maximum Number Iterations", 10)),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mCurrentPseudoTimeStep(std::numeric_limits<Plato::Scalar>::min()),
@@ -8915,7 +8915,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
       "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='1'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Number Iterations' type='int' value='10'/>                           \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='10'/>                  \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
     );
@@ -9029,7 +9029,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
       "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Number Iterations' type='int' value='5'/>                           \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='5'/>                   \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
     );
