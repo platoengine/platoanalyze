@@ -236,6 +236,12 @@ public:
         std::vector<Plato::Scalar>& tValues = tIterator->second;
         tValues.resize(aSharedData.size());
         aSharedData.getData(tValues);
+        std::stringstream ss;
+        ss << "Importing Scalar Value: " << aName << std::endl;
+        ss << "[ ";
+        for( auto val : tValues ) ss << val << " ";
+        ss << "]" << std::endl;
+        Plato::Console::Status(ss.str());
     }
 
     /******************************************************************************//**
@@ -294,6 +300,12 @@ public:
             std::vector<Plato::Scalar>& tValues = tIterator->second;
             tValues.resize(aSharedField.size());
             aSharedField.setData(tValues);
+            std::stringstream ss;
+            ss << "Exporting Scalar Value: " << aName << std::endl;
+            ss << "[ ";
+            for( auto val : tValues ) ss << val << " ";
+            ss << "]" << std::endl;
+            Plato::Console::Status(ss.str());
         }
     }
 

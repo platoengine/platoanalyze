@@ -757,9 +757,9 @@ bool MPMD_App::ReinitializeESP::update()
         auto tInputState = mMyApp->mValuesMap[mStrParameters];
         if( mLocalState.size() == 0 )
         {
-            // don't update on first call
+            // update on first call
             mLocalState = tInputState;
-            return false;
+            return true;
         }
 
         if( mLocalState == tInputState )
