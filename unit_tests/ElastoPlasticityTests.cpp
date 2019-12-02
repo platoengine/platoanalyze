@@ -5143,8 +5143,6 @@ private:
         // solve global system of equations
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
-        printf("DELTA GLOBAL STATE\n");
-        Plato::print(aStateData.mDeltaGlobalState);
 
         // update global state
         Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
