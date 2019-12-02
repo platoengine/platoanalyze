@@ -4373,6 +4373,25 @@ inline void set_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs,
 }
 // function set_dirichlet_dofs
 
+/***************************************************************************//**
+ * \brief Subtract Dirichlet boundary conditions from output vector.
+ * \param [in]     aDirichletDofs   list of local Dirichlet degrees of freedom indices
+ * \param [in]     aDirichletValues list of local Dirichlet values
+ * \param [in/out] aOutput          output vector
+*******************************************************************************/
+inline void subtract_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs,
+                                    const Plato::ScalarVector & aDirichletValues,
+                                    Plato::ScalarVector & aOutput)
+{
+    auto tNumDirichletDofs = aDirichletDofs.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
+    {
+        auto tLocalDofIndex = aDirichletDofs[aDofOrdinal];
+        aOutput(tLocalDofIndex) -= aDirichletValues(aDofOrdinal);
+    },"set Dirichlet values");
+}
+// function subtract_dirichlet_dofs
+
 
 
 
@@ -5092,6 +5111,7 @@ private:
 
             // apply Dirichlet boundary conditions
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
+            Plato::subtract_dirichlet_dofs(mDirichletDofs, mDirichletValues, mGlobalResidual);
 
             // check convergence
             this->computeRelativeNormResidual(tOutputData);
