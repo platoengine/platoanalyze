@@ -5143,6 +5143,8 @@ private:
         // solve global system of equations
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
+        printf("DELTA GLOBAL STATE\n");
+        Plato::print(aStateData.mDeltaGlobalState);
 
         // update global state
         Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
@@ -5174,9 +5176,9 @@ private:
     {
         if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
         {
-            aOutputData.mCurrentRelativeNormResidual = 1.0;
             aOutputData.mInitialNormResidual = Plato::norm(mGlobalResidual);
             aOutputData.mCurrentNormResidual = aOutputData.mInitialNormResidual;
+            aOutputData.mCurrentRelativeNormResidual = aOutputData.mInitialNormResidual;
         }
         else
         {
@@ -8982,6 +8984,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
             TEST_FLOATING_EQUALITY(tHostSolution(tTimeIndex,tDofIndex), tGold[tTimeIndex][tDofIndex], tTolerance);
         }
     }
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -9085,17 +9088,26 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
     auto tHostSolution = Kokkos::create_mirror(tSolution);
     Kokkos::deep_copy(tHostSolution, tSolution);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-          1e-5,0.0, 0.0,1e-5, 0.0, 0.0, 0.0, 0.0, 0.0,1e-5, 0.0, 0.0}};
+        {{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0,1e-5, 0.0, 0.0, 0.0,1e-5, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,1e-5, 0.0, 0.0, 0.0}};
     for(Plato::OrdinalType tTimeIndex = 0; tTimeIndex < tSolution.extent(0); tTimeIndex++)
     {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex < tSolution.extent(1); tDofIndex++)
         {
-            printf("solution(%d,%d) = %.10f\n", tTimeIndex, tDofIndex, tHostSolution(tTimeIndex, tDofIndex));
-            //TEST_FLOATING_EQUALITY(tHostSolution(tTimeIndex,tDofIndex), tGold[tTimeIndex][tDofIndex], tTolerance);
+            //printf("solution(%d,%d) = %.10f\n", tTimeIndex, tDofIndex, tHostSolution(tTimeIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostSolution(tTimeIndex,tDofIndex), tGold[tTimeIndex][tDofIndex], tTolerance);
         }
     }
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
+
 
 }
 // ElastoPlasticityTest
