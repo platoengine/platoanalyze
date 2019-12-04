@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <limits>
+#include <cctype>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -4263,27 +4264,35 @@ struct NewtonRaphson
     {
         DID_NOT_CONVERGE = 0,
         MAX_NUMBER_ITERATIONS = 1,
-        RELATIVE_NORM_RESIDUAL_TOLERANCE = 2,
+        NORM_TOLERANCE = 2,
+    };
+
+    enum measure_t
+    {
+        RESIDUAL_NORM = 0,
+        DISPLACEMENT_NORM = 1,
     };
 };
 
 struct NewtonRaphsonOutputData
 {
-    bool mWriteOutput;                              /*!< flag: true = write output; false = do not write output */
-    Plato::Scalar mInitialNormResidual;             /*!< initial relative norm of residual vector */
-    Plato::Scalar mCurrentNormResidual;             /*!< current norm of residual vector */
-    Plato::Scalar mCurrentRelativeNormResidual;     /*!< current relative norm of residual vector */
+    bool mWriteOutput;              /*!< flag: true = write output; false = do not write output */
+    Plato::Scalar mCurrentNorm;     /*!< current norm */
+    Plato::Scalar mRelativeNorm;    /*!< relative norm */
+    Plato::Scalar mReferenceNorm;   /*!< reference norm */
 
-    Plato::OrdinalType mCurrentIteration;           /*!< current Newton-Raphson solver iteration */
-    Plato::NewtonRaphson::stop_t mStopingCriterion; /*!< stopping criterion */
+    Plato::OrdinalType mCurrentIteration;             /*!< current Newton-Raphson solver iteration */
+    Plato::NewtonRaphson::stop_t mStopingCriterion;   /*!< stopping criterion */
+    Plato::NewtonRaphson::measure_t mStoppingMeasure; /*!< stopping criterion measure */
 
     NewtonRaphsonOutputData() :
         mWriteOutput(true),
-        mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
-        mCurrentNormResidual(std::numeric_limits<Plato::Scalar>::max()),
-        mCurrentRelativeNormResidual(std::numeric_limits<Plato::Scalar>::max()),
+        mCurrentNorm(1.0),
+        mReferenceNorm(0.0),
+        mRelativeNorm(1.0),
         mCurrentIteration(0),
-        mStopingCriterion(Plato::NewtonRaphson::DID_NOT_CONVERGE)
+        mStopingCriterion(Plato::NewtonRaphson::DID_NOT_CONVERGE),
+        mStoppingMeasure(Plato::NewtonRaphson::RESIDUAL_NORM)
     {}
 };
 // struct NewtonRaphsonOutputData
@@ -4319,7 +4328,7 @@ inline void print_newton_raphson_stop_criterion(const Plato::NewtonRaphsonOutput
             aOutputFile << "\n\n****** Newton-Raphson solver stopping due to exceeding maximum number of iterations. ******\n\n";
             break;
         }
-        case Plato::NewtonRaphson::RELATIVE_NORM_RESIDUAL_TOLERANCE:
+        case Plato::NewtonRaphson::NORM_TOLERANCE:
         {
             aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to relative norm of residual tolerance being met. ******\n\n";
             break;
@@ -4351,7 +4360,7 @@ inline void print_newton_raphson_diagnostics(const Plato::NewtonRaphsonOutputDat
     }
 
     aOutputFile << std::scientific << std::setprecision(6) << aOutputData.mCurrentIteration << std::setw(20)
-        << aOutputData.mCurrentNormResidual << std::setw(20) << aOutputData.mCurrentRelativeNormResidual << "\n" << std::flush;
+        << aOutputData.mCurrentNorm << std::setw(20) << aOutputData.mRelativeNorm << "\n" << std::flush;
 }
 // function print_newton_raphson_diagnostics
 
@@ -4503,7 +4512,8 @@ private:
     bool mWriteNewtonRaphsonDiagnostics;           /*!< flag to enable Newton-Raphson solver diagnostics (default=false) */
     bool mReadDirichletConditionsFromInputExoFile; /*!< flag used to ignore mesh sets - only used for unit testing (default=true) */
 
-    std::ofstream mNewtonRaphsonDiagnosticsFile; /*!< output string stream with diagnostics */
+    std::ofstream mNewtonRaphsonDiagnosticsFile;      /*!< output string stream with diagnostics */
+    Plato::NewtonRaphson::measure_t mStoppingMeasure; /*!< stop measure for newton-raphson solver */
 
 // public functions
 public:
@@ -4525,7 +4535,7 @@ public:
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
-            mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
+            mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-4)),
             mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Expansion Multiplier", 2)),
             mProjResidual("Projected Residual", mProjectionEq.size()),
             mProjPressure("Project Pressure", aMesh.nverts()),
@@ -4534,6 +4544,7 @@ public:
             mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalResidualEq.size()),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEq.size()),
             mWorksetBase(aMesh),
+            mStoppingMeasure(Plato::NewtonRaphson::RESIDUAL_NORM),
             mWriteNewtonRaphsonDiagnostics(Plato::ParseTools::getSubParam<bool>(aInputParams, "Newton-Raphson", "Output Diagnostics", true)),
             mReadDirichletConditionsFromInputExoFile(true)
     {
@@ -5017,10 +5028,35 @@ private:
     void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
         this->openNewtonRaphsonDiagnosticsFile();
+        this->setNewtonRaphsonStopMeasure(aInputParams);
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
         this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
         mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumGlobalDofsPerNode>(&aMesh);
         mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
+    }
+
+    /***************************************************************************//**
+     * \brief Set stopping mesure for Newton-Raphson solver.
+    *******************************************************************************/
+    void setNewtonRaphsonStopMeasure(Teuchos::ParameterList& aInputParams)
+    {
+        auto tMeasure = Plato::ParseTools::getSubParam<std::string>(aInputParams, "Newton-Raphson", "Stop Measure", "residual");
+        std::transform(tMeasure.begin(), tMeasure.end(), tMeasure.begin(),[](unsigned char aInput){ return std::tolower(aInput); });
+        if(tMeasure.compare("residual") == 0)
+        {
+            mStoppingMeasure = Plato::NewtonRaphson::RESIDUAL_NORM;
+        }
+        else if(tMeasure.compare("displacement") == 0)
+        {
+            mStoppingMeasure = Plato::NewtonRaphson::DISPLACEMENT_NORM;
+        }
+        else
+        {
+            std::stringstream tMsg;
+            tMsg << "Stop Measure '" <<  tMeasure.c_str() << "' is NOT Defined. "
+                    << "Options are: 1) residual or 2) displacement."
+            THROWERR(tMsg.str());
+        }
     }
 
     /***************************************************************************//**
@@ -5143,7 +5179,7 @@ private:
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
 
-            // update inverse of local jacobian -> store in tInvLocalJacobianT
+            // update inverse of local Jacobian -> store in tInvLocalJacobianT
             this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
             // assemble tangent stiffness matrix
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
@@ -5153,14 +5189,14 @@ private:
             Plato::subtract_dirichlet_dofs(mDirichletDofs, mDirichletValues, mGlobalResidual);
 
             // check convergence
-            this->computeRelativeNormResidual(tOutputData);
+            this->computeStoppingCriterion(aStateData, tOutputData);
             Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
             if(this->checkNewtonRaphsonStoppingCriteria(tOutputData) == true)
             {
                 tNewtonRaphsonConverged = true;
                 break;
             }
-            
+
             // update global and local states
             this->updateGlobalAndLocalStates(aControls, aStateData);
         }
@@ -5205,24 +5241,64 @@ private:
     }
 
     /***************************************************************************//**
+     * \brief Compute displacement norm,
+     * \f$ \frac{\Vert \delta{u}_{i}^{T}\delta{u}_i \Vert}{\Vert \Delta{u}_0^{T}\Delta{u}_0 \Vert} \f$
+     * \param [in]     aStateData  state data
+     * \param [in\out] aOutputData Newton-Raphson solver output data
+    *******************************************************************************/
+    void computeDisplacementNorm(const Plato::ForwardProblemStateData &aStateData, Plato::NewtonRaphsonOutputData & aOutputData)
+    {
+        if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
+        {
+            aOutputData.mReferenceNorm = Plato::norm(aStateData.mCurrentGlobalState);
+            aOutputData.mCurrentNorm = aOutputData.mReferenceNorm;
+        }
+        else
+        {
+            aOutputData.mCurrentNorm = Plato::norm(aStateData.mDeltaGlobalState);
+            aOutputData.mRelativeNorm = aOutputData.mCurrentNorm / (aOutputData.mReferenceNorm + std::numeric_limits<Plato::Scalar>::epsilon());
+        }
+    }
+
+
+    /***************************************************************************//**
+     * \brief Compute residual norm, \f$ \mid \Vert R_{i}^{T} - \Vert R_{i-1} \Vert \mid \f$
+     * \param [in\out] aOutputData Newton-Raphson solver output data
+    *******************************************************************************/
+    void computeResidualNorm(Plato::NewtonRaphsonOutputData & aOutputData)
+    {
+        if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
+        {
+            aOutputData.mCurrentNorm = Plato::norm(mGlobalResidual);
+        }
+        else
+        {
+            aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
+            aOutputData.mCurrentNorm = Plato::norm(mGlobalResidual);
+            aOutputData.mRelativeNorm = std::abs(aOutputData.mCurrentNorm - aOutputData.mReferenceNorm);
+        }
+    }
+
+    /***************************************************************************//**
      * \brief Compute current relative norm of residual vector, i.e.
      *     \f$ \frac{\Vert R_{i} \Vert}{\Vert R_{i=0} \Vert} \f$
      * \param [in] aOutputData Newton-Raphson solver output data
     *******************************************************************************/
-    void computeRelativeNormResidual(Plato::NewtonRaphsonOutputData & aOutputData)
+    void computeStoppingCriterion(const Plato::ForwardProblemStateData &aStateData,
+                                  Plato::NewtonRaphsonOutputData & aOutputData)
     {
-        if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
+        switch(aOutputData.mStoppingMeasure)
         {
-            aOutputData.mInitialNormResidual = Plato::norm(mGlobalResidual);
-            aOutputData.mCurrentNormResidual = aOutputData.mInitialNormResidual;
-            aOutputData.mCurrentRelativeNormResidual = aOutputData.mInitialNormResidual;
-        }
-        else
-        {
-            auto tNormGlobalResidual = Plato::norm(mGlobalResidual);
-            aOutputData.mCurrentNormResidual = tNormGlobalResidual;
-            aOutputData.mCurrentRelativeNormResidual = tNormGlobalResidual
-                    / (aOutputData.mInitialNormResidual + std::numeric_limits<Plato::Scalar>::epsilon());
+            case Plato::NewtonRaphson::RESIDUAL_NORM:
+            {
+                this->computeResidualNorm(aOutputData);
+                break;
+            }
+            case Plato::NewtonRaphson::DISPLACEMENT_NORM:
+            {
+                this->computeDisplacementNorm(aStateData, aOutputData);
+                break;
+            }
         }
     }
 
@@ -5240,10 +5316,10 @@ private:
             tStop = false;
             aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
         }
-        else if(aOutputData.mCurrentRelativeNormResidual < mNewtonRaphsonStopTolerance)
+        else if(aOutputData.mRelativeNorm < mNewtonRaphsonStopTolerance)
         {
             tStop = true;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::RELATIVE_NORM_RESIDUAL_TOLERANCE;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::NORM_TOLERANCE;
         }
 
         return (tStop);
