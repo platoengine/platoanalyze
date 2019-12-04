@@ -1437,7 +1437,7 @@ private:
             mBodyLoads->get(mMesh, aGlobalState, aControl, aResult, tMultiplier);
         }
 
-        if( mBoundaryLoads != nullptr )
+        if( mNeumannLoads != nullptr )
         {
             auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
             if(tSearch == mDataMap.mScalarValues.end())
@@ -1445,7 +1445,7 @@ private:
                 THROWERR("Requested 'Load Control Constant' is NOT Defined.")
             }
             auto tLoadControlConstant = static_cast<Plato::Scalar>(-1) * tSearch->second;
-            mBoundaryLoads->get( &mMesh, mMeshSets, aGlobalState, aControl, aResult, tLoadControlConstant );
+            mNeumannLoads->get( &mMesh, mMeshSets, aGlobalState, aControl, aResult, tLoadControlConstant );
         }
     }
 
