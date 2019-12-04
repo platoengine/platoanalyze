@@ -1272,8 +1272,9 @@ private:
 
     std::vector<std::string> mPlotTable;           /*!< array with output data identifiers*/
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;               /*!< body loads interface */
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule; /*!< linear cubature rule */
+    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                        /*!< body loads interface */
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;          /*!< linear cubature rule */
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> mNeumannLoads;  /*!< Neumann loads interface */
 
 // Private access functions
 private:
@@ -1341,6 +1342,13 @@ private:
         if (aProblemParams.isSublist("Body Loads"))
         {
             mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
+        }
+
+        // Parse Neumman loads
+        if(aProblemParams.isSublist("Natural Boundary Conditions"))
+        {
+            mNeumannLoads =
+                    std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
         }
     }
 
@@ -1420,13 +1428,24 @@ private:
      * \param [in/out] aResult      residual evaluation
     ****************************************************************************/
     void addExternalForces(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
-                           const Plato::ScalarMultiVectorT<ControlT> &aControls,
+                           const Plato::ScalarMultiVectorT<ControlT> &aControl,
                            const Plato::ScalarMultiVectorT<ResultT> &aResult)
     {
         if (mBodyLoads != nullptr)
         {
             Plato::Scalar tMultiplier = -1.0;
-            mBodyLoads->get(mMesh, aGlobalState, aControls, aResult, tMultiplier);
+            mBodyLoads->get(mMesh, aGlobalState, aControl, aResult, tMultiplier);
+        }
+
+        if( mBoundaryLoads != nullptr )
+        {
+            auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
+            if(tSearch == mDataMap.mScalarValues.end())
+            {
+                THROWERR("Requested 'Load Control Constant' is NOT Defined.")
+            }
+            auto tLoadControlConstant = static_cast<Plato::Scalar>(-1) * tSearch->second;
+            mBoundaryLoads->get( &mMesh, mMeshSets, aGlobalState, aControl, aResult, tLoadControlConstant );
         }
     }
 
@@ -1453,7 +1472,8 @@ public:
         mElasticPropertiesPenaltySIMP(3),
         mElasticPropertiesMinErsatzSIMP(1e-9),
         mBodyLoads(nullptr),
-        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>())
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
+        mNeumannLoads(nullptr)
     {
         this->initialize(aProblemParams);
     }
@@ -4456,7 +4476,7 @@ private:
 
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual*/
-    Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step */
+    Plato::Scalar mDispControlConstant;         /*!< current pseudo time step */
     Plato::Scalar mNewtonRaphsonStopTolerance;    /*!< Newton-Raphson stopping tolerance*/
     Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
 
@@ -4504,7 +4524,7 @@ public:
             mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Maximum Number Iterations", 10)),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
-            mCurrentPseudoTimeStep(std::numeric_limits<Plato::Scalar>::min()),
+            mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
             mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8)),
             mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Expansion Multiplier", 2)),
             mProjResidual("Projected Residual", mProjectionEq.size()),
@@ -4617,7 +4637,7 @@ public:
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
         Plato::ScalarVector tDispControlledDirichletValues("Dirichlet Values", mDirichletValues.size());
-        Plato::update(mCurrentPseudoTimeStep, mDirichletValues, 0.0, tDispControlledDirichletValues);
+        Plato::update(mDispControlConstant, mDirichletValues, 0.0, tDispControlledDirichletValues);
 
         if(mGlobalJacobian->isBlockMatrix())
         {
@@ -5077,6 +5097,24 @@ private:
     }
 
     /***************************************************************************//**
+     * \brief Update load control constant
+     * \param [in] aStateData data manager with current and previous state data
+    *******************************************************************************/
+    void updateLoadControlConstant(Plato::ForwardProblemStateData &aStateData)
+    {
+        mDataMap.mScalarValues["LoadControlConstant"] = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
+    }
+
+    /***************************************************************************//**
+     * \brief Update displacement control constant
+     * \param [in] aStateData data manager with current and previous state data
+    *******************************************************************************/
+    void updateDispControlConstant(Plato::ForwardProblemStateData &aStateData)
+    {
+        mDispControlConstant = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
+    }
+
+    /***************************************************************************//**
      * \brief Solve Newton Raphson problem
      * \param [in] aControls           1-D view of controls, e.g. design variables
      * \param [in] aStateData         data manager with current and previous state data
@@ -5092,8 +5130,9 @@ private:
         tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
-        mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
-        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
+        this->updateLoadControlConstant(aStateData);
+        this->updateDispControlConstant(aStateData);
+        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
@@ -5147,7 +5186,7 @@ private:
         // update global state
         Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
                       static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
-        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mCurrentPseudoTimeStep);
+        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
 
         // update local state
         mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
