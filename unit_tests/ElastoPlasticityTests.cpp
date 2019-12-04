@@ -4509,6 +4509,7 @@ private:
     Plato::WorksetBase<Plato::SimplexPlasticity<mSpatialDim>> mWorksetBase; /*!< assembly routine interface */
     std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mSpatialDim, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal */
 
+    bool mUseAbsoluteTolerance;                    /*!< use absolute stopping tolerance */
     bool mWriteNewtonRaphsonDiagnostics;           /*!< flag to enable Newton-Raphson solver diagnostics (default=false) */
     bool mReadDirichletConditionsFromInputExoFile; /*!< flag used to ignore mesh sets - only used for unit testing (default=true) */
 
@@ -4544,9 +4545,10 @@ public:
             mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalResidualEq.size()),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEq.size()),
             mWorksetBase(aMesh),
-            mStoppingMeasure(Plato::NewtonRaphson::RESIDUAL_NORM),
+            mUseAbsoluteTolerance(false),
             mWriteNewtonRaphsonDiagnostics(Plato::ParseTools::getSubParam<bool>(aInputParams, "Newton-Raphson", "Output Diagnostics", true)),
-            mReadDirichletConditionsFromInputExoFile(true)
+            mReadDirichletConditionsFromInputExoFile(true),
+            mStoppingMeasure(Plato::NewtonRaphson::RESIDUAL_NORM)
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
     }
@@ -4557,6 +4559,14 @@ public:
     virtual ~PlasticityProblem()
     {
         this->closeNewtonRaphsonDiagnosticsFile();
+    }
+
+    /***************************************************************************//**
+     * \brief Use absolute tolerance in Newton-Raphson solver
+    *******************************************************************************/
+    void useAbsoluteTolerance()
+    {
+        mUseAbsoluteTolerance = true;
     }
 
     /***************************************************************************//**
@@ -5227,7 +5237,7 @@ private:
     {
         // solve global system of equations
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
-        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual);
+        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual, mUseAbsoluteTolerance);
 
         // update global state
         Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
@@ -5831,7 +5841,7 @@ private:
         this->applyConstraints(mGlobalJacobian, mGlobalResidual);
         // solve global system of equations
         Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointData.mCurrentGlobalAdjoint);
-        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointData.mCurrentGlobalAdjoint, mGlobalResidual);
+        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointData.mCurrentGlobalAdjoint, mGlobalResidual, mUseAbsoluteTolerance);
     }
 
     /***************************************************************************//**
@@ -9163,6 +9173,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
     using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
     Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
     tPlasticityProblem.doNotReadDirichletBCsFromExoFile();
+    tPlasticityProblem.useAbsoluteTolerance();
 
     // 2. Get Dirichlet Boundary Conditions
     Plato::OrdinalType tDispDofX = 0;

@@ -19,16 +19,19 @@ namespace Solve {
      * \param [in]     a_A Matrix, A
      * \param [in/out] a_x Solution vector, x, with initial guess
      * \param [in]     a_b Forcing vector, b
+     * \param [in]     aUseAbsoluteTolerance enables absolute stopping tolerance measure
     **********************************************************************************/
     template <Plato::OrdinalType NumDofsPerNode>
     void Consistent(
-        Teuchos::RCP<Plato::CrsMatrixType> a_A, 
+        Teuchos::RCP<Plato::CrsMatrixType> a_A,
         Plato::ScalarVector a_x,
-        Plato::ScalarVector a_b)
+        Plato::ScalarVector a_b,
+        bool aUseAbsoluteTolerance = false
+        )
         {
 #ifdef HAVE_AMGX
               using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, NumDofsPerNode>;
-              auto tConfigString = AmgXLinearProblem::getConfigString();
+              auto tConfigString = AmgXLinearProblem::getConfigString(aUseAbsoluteTolerance);
               auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*a_A, a_x, a_b, tConfigString));
               tSolver->solve();
               tSolver = Teuchos::null;
