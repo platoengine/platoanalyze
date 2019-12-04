@@ -17,10 +17,13 @@ namespace Plato
 /******************************************************************************//**
  * \brief Print input 1D container to terminal
  * \param [in] aInput 1D container
+ * \param [in] aName  container name (default = "")
 **********************************************************************************/
 template<typename VecT>
-inline void print(const VecT & aInput)
+inline void print(const VecT & aInput, std::string aName = "")
 {
+    printf("PRINT %s\n", aName.c_str());
+
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
