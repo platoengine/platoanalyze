@@ -4535,7 +4535,7 @@ public:
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
-            mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-8),
+            mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-6)),
             mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Expansion Multiplier", 2)),
             mProjResidual("Projected Residual", mProjectionEq.size()),
             mProjPressure("Project Pressure", aMesh.nverts()),
@@ -5151,7 +5151,20 @@ private:
     }
 
     /***************************************************************************//**
-     * \brief Solve Newton Raphson problem
+     * \brief Initialize Newton-Raphson solver
+     * \param [in] aStateData data manager with current and previous state data
+    *******************************************************************************/
+    void initializeNewtonRaphsonSolver(Plato::ForwardProblemStateData &aStateData)
+    {
+        this->updateLoadControlConstant(aStateData);
+        this->updateDispControlConstant(aStateData);
+        Plato::update(1.0, aStateData.mPreviousLocalState, 0.0, aStateData.mCurrentLocalState);
+        Plato::update(1.0, aStateData.mPreviousGlobalState, 0.0, aStateData.mCurrentGlobalState);
+        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
+    }
+
+    /***************************************************************************//**
+     * \brief Solve Newton-Raphson problem
      * \param [in] aControls           1-D view of controls, e.g. design variables
      * \param [in] aStateData         data manager with current and previous state data
      * \param [in] aInvLocalJacobianT 3-D container for inverse Jacobian
@@ -5166,10 +5179,7 @@ private:
         tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
-        this->updateLoadControlConstant(aStateData);
-        this->updateDispControlConstant(aStateData);
-        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
-
+        this->initializeNewtonRaphsonSolver(aStateData);
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
             tOutputData.mCurrentIteration = tIteration;
@@ -9219,7 +9229,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
             TEST_FLOATING_EQUALITY(tHostSolution(tTimeIndex,tDofIndex), tGold[tTimeIndex][tDofIndex], tTolerance);
         }
     }
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
