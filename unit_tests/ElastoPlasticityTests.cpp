@@ -5170,9 +5170,14 @@ private:
     {
         this->updateLoadControlConstant(aStateData);
         this->updateDispControlConstant(aStateData);
+        Plato::print(aStateData.mCurrentLocalState,"before initial current local state");
         Plato::update(1.0, aStateData.mPreviousLocalState, 0.0, aStateData.mCurrentLocalState);
+        Plato::print(aStateData.mCurrentLocalState,"after initial current local state");
+        Plato::print(aStateData.mCurrentGlobalState,"before initial current global state");
         Plato::update(1.0, aStateData.mPreviousGlobalState, 0.0, aStateData.mCurrentGlobalState);
+        Plato::print(aStateData.mCurrentGlobalState,"after initial current global state");
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
+        Plato::print(aStateData.mCurrentGlobalState,"after dirichlet initial current global state");
     }
 
     /***************************************************************************//**
@@ -5207,8 +5212,11 @@ private:
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
 
             // apply Dirichlet boundary conditions
+            Plato::print(mGlobalResidual,"before residual");
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
+            Plato::print(mGlobalResidual,"after residual");
             Plato::subtract_dirichlet_dofs(mDirichletDofs, mDirichletValues, mGlobalResidual, mDispControlConstant);
+            Plato::print(mGlobalResidual,"minus dirichlet residual");
 
             // check convergence
             this->computeStoppingCriterion(aStateData, tOutputData);
@@ -9163,7 +9171,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='1'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='1'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Maximum Number Iterations' type='int' value='5'/>                   \n"
@@ -9242,7 +9250,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
             TEST_FLOATING_EQUALITY(tHostSolution(tTimeIndex,tDofIndex), tGold[tTimeIndex][tDofIndex], tTolerance);
         }
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
