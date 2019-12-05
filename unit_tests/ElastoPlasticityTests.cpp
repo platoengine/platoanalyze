@@ -5170,14 +5170,9 @@ private:
     {
         this->updateLoadControlConstant(aStateData);
         this->updateDispControlConstant(aStateData);
-        Plato::print(aStateData.mCurrentLocalState,"before initial current local state");
         Plato::update(1.0, aStateData.mPreviousLocalState, 0.0, aStateData.mCurrentLocalState);
-        Plato::print(aStateData.mCurrentLocalState,"after initial current local state");
-        Plato::print(aStateData.mCurrentGlobalState,"before initial current global state");
         Plato::update(1.0, aStateData.mPreviousGlobalState, 0.0, aStateData.mCurrentGlobalState);
-        Plato::print(aStateData.mCurrentGlobalState,"after initial current global state");
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
-        Plato::print(aStateData.mCurrentGlobalState,"after dirichlet initial current global state");
     }
 
     /***************************************************************************//**
@@ -5212,11 +5207,8 @@ private:
             this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
 
             // apply Dirichlet boundary conditions
-            Plato::print(mGlobalResidual,"before residual");
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
-            Plato::print(mGlobalResidual,"after residual");
             Plato::subtract_dirichlet_dofs(mDirichletDofs, mDirichletValues, mGlobalResidual, mDispControlConstant);
-            Plato::print(mGlobalResidual,"minus dirichlet residual");
 
             // check convergence
             this->computeStoppingCriterion(aStateData, tOutputData);
