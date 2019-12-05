@@ -115,12 +115,7 @@ public:
         AMGX_solver_create(&mSolver, mResources, AMGX_mode_dDDI, mSolverConfigurations);
 
         // This seems to do the right thing whether the data is on device or host. In our case it is on the device.
-        const Plato::OrdinalType *tRowPtrs = aA.rowMap().data();
-        const Plato::OrdinalType *tColIndices = aA.columnIndices().data();
-        const void *tData = aA.entries().data();
-        const void *tDiagData = nullptr; // no exterior diagonal
-        AMGX_matrix_upload_all(mMatrix, tLocalNumVars / BlockSize, tNumNonZero, BlockSize, BlockSize, tRowPtrs, tColIndices, tData, tDiagData);
-
+        this->uploadMatrix(aA, tLocalNumVars);
         this->uploadLeftHandSide(aX);
         this->uploadRightHandSide(aB);
     }
