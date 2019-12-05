@@ -382,13 +382,12 @@ MPMD_App::ESP_Op::
 ESP_Op(MPMD_App* aMyApp, Plato::InputData& aNode)
 /******************************************************************************/
 {
-    auto tName = Plato::Get::String(aNode,"ESPName");
+    mESPName = Plato::Get::String(aNode,"ESPName");
     auto& tESP = aMyApp->mESP;
-    if( tESP.count(tName) == 0 )
+    if( tESP.count(mESPName) == 0 )
     {
         throw Plato::ParsingException("Requested ESP model that doesn't exist.");
     }
-    m_ESP = aMyApp->mESP[tName];
 }
 
 
@@ -461,7 +460,8 @@ MPMD_App::ComputeObjectiveP::
 ComputeObjectiveP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
         LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Objective Gradient")
 {
-    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(m_ESP->getNumParameters());
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
 }
 /******************************************************************************/
 void MPMD_App::ComputeObjectiveP::operator()()
@@ -473,7 +473,9 @@ void MPMD_App::ComputeObjectiveP::operator()()
 
   mMyApp->mObjectiveValue     = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mState);
   mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
-  mMyApp->mapToParameters(m_ESP, tGradP, mMyApp->mObjectiveGradientX);
+
+  auto tESP = mMyApp->mESP[mESPName];
+  mMyApp->mapToParameters(tESP, tGradP, mMyApp->mObjectiveGradientX);
 }
 
 
@@ -529,7 +531,8 @@ MPMD_App::ComputeObjectiveGradientP::
 ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
         LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Objective Gradient")
 {
-    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(m_ESP->getNumParameters());
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
 }
 /******************************************************************************/
 
@@ -539,7 +542,9 @@ void MPMD_App::ComputeObjectiveGradientP::operator()()
 {
   auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
   mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
-  mMyApp->mapToParameters(m_ESP, tGradP, mMyApp->mObjectiveGradientX);
+
+  auto tESP = mMyApp->mESP[mESPName];
+  mMyApp->mapToParameters(tESP, tGradP, mMyApp->mObjectiveGradientX);
   
 }
 
@@ -596,7 +601,8 @@ LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Constr
 /******************************************************************************/
 {
     mTarget = Plato::Get::Double(aOpNode, "Target");
-    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(m_ESP->getNumParameters());
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
 }
 
 /******************************************************************************/
@@ -608,7 +614,9 @@ void MPMD_App::ComputeConstraintP::operator()()
   mMyApp->mConstraintValue -= mTarget;
 
   mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
-  mMyApp->mapToParameters(m_ESP, tGradP, mMyApp->mConstraintGradientX);
+
+  auto tESP = mMyApp->mESP[mESPName];
+  mMyApp->mapToParameters(tESP, tGradP, mMyApp->mConstraintGradientX);
 
   std::stringstream ss;
   ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
@@ -672,7 +680,8 @@ MPMD_App::ComputeConstraintGradientP::
 ComputeConstraintGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
         LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Constraint Gradient")
 {
-    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(m_ESP->getNumParameters());
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
 }
 /******************************************************************************/
 
@@ -682,7 +691,9 @@ void MPMD_App::ComputeConstraintGradientP::operator()()
 {
   auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
   mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
-  mMyApp->mapToParameters(m_ESP, tGradP, mMyApp->mConstraintGradientX);
+
+  auto tESP = mMyApp->mESP[mESPName];
+  mMyApp->mapToParameters(tESP, tGradP, mMyApp->mConstraintGradientX);
 }
 
 /******************************************************************************/
@@ -737,9 +748,10 @@ void MPMD_App::ReinitializeESP::operator()()
     {
         Plato::Console::Status("Operation: ReinitializeESP -- Recomputing Problem");
         auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
-        auto tModelFileName = m_ESP->getModelFileName();
-        auto tTessFileName  = m_ESP->getTessFileName();
-        m_ESP.reset( new ESPType(tModelFileName, tTessFileName) );
+        auto& tESP = mMyApp->mESP[mESPName];
+        auto tModelFileName = tESP->getModelFileName();
+        auto tTessFileName  = tESP->getTessFileName();
+        tESP.reset( new ESPType(tModelFileName, tTessFileName) );
         mMyApp->createProblem(*def);
     }
     else

@@ -112,7 +112,7 @@ public:
         public:
             ESP_Op(MPMD_App* aMyApp, Plato::InputData& aNode);
         protected:
-            std::shared_ptr<ESPType> m_ESP;
+            std::string mESPName;
     };
 
     /******************************************************************************//**
