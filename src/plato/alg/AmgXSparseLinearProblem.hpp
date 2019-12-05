@@ -27,6 +27,36 @@
 
 namespace Plato
 {
+
+inline std::string get_config_string(bool aUseAbsoluteTolerance = false, Plato::OrdinalType aMaxIters = 1000)
+{
+    std::string tConfigString;
+
+    Plato::Scalar tTolerance = 1e-12;
+    Plato::OrdinalType tMaxIters = aMaxIters;
+
+    std::ifstream tInputFile;
+    tInputFile.open("amgx.json", std::ifstream::in);
+    if(tInputFile)
+    {
+        std::string tLine;
+        std::stringstream tConfig;
+        while(std::getline(tInputFile, tLine))
+        {
+            std::istringstream tInputStringStream(tLine);
+            tConfig << tInputStringStream.str();
+        }
+        tConfigString = tConfig.str();
+    }
+    else
+    {
+        tConfigString = Plato::configurationString("pcg_noprec", tTolerance, tMaxIters, aUseAbsoluteTolerance);
+    }
+
+    return tConfigString;
+}
+// function get_config_string
+
 template<class Ordinal, Plato::OrdinalType BlockSize = 1>
 class AmgXSparseLinearProblem : public CrsLinearProblem<Ordinal>
 {
@@ -91,8 +121,8 @@ public:
         const void *tDiagData = nullptr; // no exterior diagonal
         AMGX_matrix_upload_all(mMatrix, tLocalNumVars / BlockSize, tNumNonZero, BlockSize, BlockSize, tRowPtrs, tColIndices, tData, tDiagData);
 
-        setRHS(aB);
-        setInitialGuess(aX);
+        this->uploadLeftHandSide(aX);
+        this->uploadRightHandSide(aB);
     }
 
     void initializePreconditioner()
@@ -104,10 +134,10 @@ public:
 
     void initializeSolver() // TODO: add mechanism for setting options
     {
-        initializePreconditioner();
+        this->initializePreconditioner();
     }
 
-    void setInitialGuess(const Vector aLHS)
+    void uploadLeftHandSide(const Vector aLHS)
     {
         AMGX_vector_upload(mLHS, aLHS.size() / BlockSize, BlockSize, aLHS.data());
     }
@@ -121,12 +151,12 @@ public:
         AMGX_config_add_parameters(&mSolverConfigurations, tConfigStr.str().c_str());
     }
 
-    void setRHS(const Vector aRHS)
+    void uploadRightHandSide(const Vector aRHS)
     {
         AMGX_vector_upload(mRHS, aRHS.size() / BlockSize, BlockSize, aRHS.data());
     }
 
-    void setMatrix(const Matrix & aMatrix, const Ordinal & aNumEquations)
+    void uploadMatrix(const Matrix & aMatrix, const Ordinal & aNumEquations)
     {
         const void *tData = aMatrix.entries().data();
         const void *tDiagData = nullptr; // no exterior diagonal
@@ -185,34 +215,6 @@ public:
 
         AMGX_SAFE_CALL(AMGX_finalize_plugins());
         AMGX_SAFE_CALL(AMGX_finalize());
-    }
-
-    static std::string getConfigString(bool aUseAbsoluteTolerance = false, Plato::OrdinalType aMaxIters = 1000)
-    {
-        std::string tConfigString;
-
-        Plato::Scalar tTolerance = 1e-12;
-        Plato::OrdinalType tMaxIters = aMaxIters;
-
-        std::ifstream tInputFile;
-        tInputFile.open("amgx.json", std::ifstream::in);
-        if(tInputFile)
-        {
-            std::string tLine;
-            std::stringstream tConfig;
-            while(std::getline(tInputFile, tLine))
-            {
-                std::istringstream tInputStringStream(tLine);
-                tConfig << tInputStringStream.str();
-            }
-            tConfigString = tConfig.str();
-        }
-        else
-        {
-            tConfigString = configurationString("pcg_noprec", tTolerance, tMaxIters, aUseAbsoluteTolerance);
-        }
-
-        return tConfigString;
     }
 
     static void check_inputs(const Matrix aMatrix, Vector aLHS, const Vector aRHS)

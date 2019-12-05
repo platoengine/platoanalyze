@@ -291,7 +291,7 @@ public:
 
 #ifdef HAVE_AMGX
             using AmgXLinearProblem = Plato::AmgXSparseLinearProblem<Plato::OrdinalType, mNumDofsPerNode>;
-            auto tConfigString = AmgXLinearProblem::getConfigString(mNumIterationsAmgX);
+            auto tConfigString = Plato::get_config_string();
             auto tSolver = std::make_shared<AmgXLinearProblem>(*mJacobian, tMyStatesSubView, mResidual, tConfigString);
             tSolver->solve();
 #endif
@@ -779,7 +779,7 @@ private:
             Plato::fill(static_cast<Plato::Scalar>(0.0), tAdjoint);
 #ifdef HAVE_AMGX
             using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, mNumDofsPerNode>;
-            auto tConfigString = AmgXLinearProblem::getConfigString();
+            auto tConfigString = Plato::get_config_string();
             auto tSolver = std::make_shared<AmgXLinearProblem>(*mJacobian, tAdjoint, mGradState, tConfigString);
             tSolver->solve();
 #endif

@@ -4005,8 +4005,8 @@ private:
     void solve(MatrixType & aMatrix, ForceType & aForce, SolutionType & aSolution)
     {
 #ifdef HAVE_AMGX
-        using AmgXLinearProblem = lgr::AmgXSparseLinearProblem<Plato::OrdinalType, mNumDofsPerNode>;
-        auto tConfigString = AmgXLinearProblem::getConfigString();
+        using AmgXLinearProblem = Plato::AmgXSparseLinearProblem<Plato::OrdinalType, mNumDofsPerNode>;
+        auto tConfigString = Plato::get_config_string();
         auto tSolver = std::make_shared<AmgXLinearProblem>(aMatrix, aSolution, aForce, tConfigString);
         tSolver->solve();
 #endif

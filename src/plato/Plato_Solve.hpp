@@ -1,7 +1,7 @@
 #ifndef PLATO_SOLVE_HPP
 #define PLATO_SOLVE_HPP
 
-#include <Teuchos_RCPDecl.hpp>
+#include <memory>
 
 #include "plato/PlatoStaticsTypes.hpp"
 #include "plato/PlatoMathFunctors.hpp"
@@ -31,10 +31,9 @@ namespace Solve {
         {
 #ifdef HAVE_AMGX
               using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, NumDofsPerNode>;
-              auto tConfigString = AmgXLinearProblem::getConfigString(aUseAbsoluteTolerance);
-              auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*a_A, a_x, a_b, tConfigString));
-              tSolver->solve();
-              tSolver = Teuchos::null;
+              auto tConfigString = Plato::get_config_string(aUseAbsoluteTolerance);
+              AmgXLinearProblem tSolver(*a_A, a_x, a_b, tConfigString);
+              tSolver.solve();
 #endif
         }
 

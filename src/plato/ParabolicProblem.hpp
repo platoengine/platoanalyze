@@ -156,7 +156,7 @@ public:
 
 #ifdef HAVE_AMGX
           using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
-          auto tConfigString = AmgXLinearProblem::getConfigString();
+          auto tConfigString = Plato::get_config_string();
           Plato::ScalarVector deltaT("increment", tState.extent(0));
           Plato::fill(static_cast<Plato::Scalar>(0.0), deltaT);
           auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, deltaT, mResidual, tConfigString));
@@ -302,7 +302,7 @@ public:
 
 #ifdef HAVE_AMGX
             typedef Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode> AmgXLinearProblem;
-            auto tConfigString = AmgXLinearProblem::getConfigString();
+            auto tConfigString = Plato::get_config_string();
             auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tAdjoint, tPartialObjectiveWRT_State, tConfigString));
             tSolver->solve();
             tSolver = Teuchos::null;
@@ -370,7 +370,7 @@ public:
 
 #ifdef HAVE_AMGX
             typedef Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode> AmgXLinearProblem;
-            auto tConfigString = AmgXLinearProblem::getConfigString();
+            auto tConfigString = Plato::get_config_string();
             auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tAdjoint, tPartialObjectiveWRT_State, tConfigString));
             tSolver->solve();
             tSolver = Teuchos::null;

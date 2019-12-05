@@ -161,7 +161,7 @@ public:
 
 #ifdef HAVE_AMGX
         using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
-        auto tConfigString = AmgXLinearProblem::getConfigString();
+        auto tConfigString = Plato::get_config_string();
         Plato::scale(-1.0, mResidual);
         auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tStatesSubView, mResidual, tConfigString));
         tSolver->solve();
@@ -297,7 +297,7 @@ public:
             Plato::ScalarVector tAdjointSubView = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
 #ifdef HAVE_AMGX
             typedef Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode> AmgXLinearProblem;
-            auto tConfigString = AmgXLinearProblem::getConfigString();
+            auto tConfigString = Plato::get_config_string();
             auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State, tConfigString));
             tSolver->solve();
             tSolver = Teuchos::null;
@@ -356,7 +356,7 @@ public:
               tAdjointSubView = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
 #ifdef HAVE_AMGX
             typedef Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode> AmgXLinearProblem;
-            auto tConfigString = AmgXLinearProblem::getConfigString();
+            auto tConfigString = Plato::get_config_string();
             auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State, tConfigString));
             tSolver->solve();
             tSolver = Teuchos::null;

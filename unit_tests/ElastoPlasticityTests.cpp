@@ -5125,7 +5125,7 @@ private:
         bool tToleranceSatisfied = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
         {
-            mNewtonRaphsonDiagnosticsFile << "TIME STEP #" << tCurrentStepIndex << "\n";
+            mNewtonRaphsonDiagnosticsFile << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << "\n";
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
             this->updateStateData(tStateData);
 
@@ -9285,12 +9285,13 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblemWithS
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Maximum Number Iterations' type='int' value='10'/>                  \n"
       "    <Parameter name='Stopping Tolerance' type='double' value='1e-8'/>                    \n"
+      "    <Parameter name='Output Diagnostics' type='bool' value='false'/>                     \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
     );
