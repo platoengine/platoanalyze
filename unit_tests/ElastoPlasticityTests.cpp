@@ -4407,16 +4407,18 @@ inline void set_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs,
  * \param [in]     aDirichletDofs   list of local Dirichlet degrees of freedom indices
  * \param [in]     aDirichletValues list of local Dirichlet values
  * \param [in/out] aOutput          output vector
+ * \param [in]     aMultiplier      multiplier, e.g. displacement control constant in Newton-Raphson iterations
 *******************************************************************************/
 inline void subtract_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs,
                                     const Plato::ScalarVector & aDirichletValues,
-                                    Plato::ScalarVector & aOutput)
+                                    Plato::ScalarVector & aOutput,
+                                    Plato::Scalar aMultiplier = 1.0)
 {
     auto tNumDirichletDofs = aDirichletDofs.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
     {
         auto tLocalDofIndex = aDirichletDofs[aDofOrdinal];
-        aOutput(tLocalDofIndex) -= aDirichletValues(aDofOrdinal);
+        aOutput(tLocalDofIndex) -= aMultiplier * aDirichletValues(aDofOrdinal);
     },"set Dirichlet values");
 }
 // function subtract_dirichlet_dofs
@@ -5206,12 +5208,12 @@ private:
 
             // apply Dirichlet boundary conditions
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
-            Plato::subtract_dirichlet_dofs(mDirichletDofs, mDirichletValues, mGlobalResidual);
+            Plato::subtract_dirichlet_dofs(mDirichletDofs, mDirichletValues, mGlobalResidual, mDispControlConstant);
 
             // check convergence
             this->computeStoppingCriterion(aStateData, tOutputData);
             Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
-            if(this->checkNewtonRaphsonStoppingCriteria(tOutputData) == true)
+            if(this->checkNewtonRaphsonStoppingCriterion(tOutputData) == true)
             {
                 tNewtonRaphsonConverged = true;
                 break;
@@ -5327,7 +5329,7 @@ private:
      * \param [in] aOutputData Newton-Raphson solver output data
      * \return boolean flag, indicates if Newton-Raphson solver converged
     *******************************************************************************/
-    bool checkNewtonRaphsonStoppingCriteria(Plato::NewtonRaphsonOutputData & aOutputData)
+    bool checkNewtonRaphsonStoppingCriterion(Plato::NewtonRaphsonOutputData & aOutputData)
     {
         bool tStop = false;
 
