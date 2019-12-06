@@ -27,7 +27,7 @@ inline void print(const VecT & aInput, std::string aName = "")
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
-        printf("X[%d] = %e\n", aIndex, aInput(aIndex));
+        printf("X[%d] = %e\n", aIndex + static_cast<Plato::OrdinalType>(1), aInput(aIndex));
     }, "fill vector");
     printf("\n");
 }
@@ -53,7 +53,8 @@ inline void print_array_3D(const ArrayT & aInput, const std::string & aName)
         {
             for(Plato::OrdinalType tCol = 0; tCol < tNumCols; tCol++)
             {
-                printf("X(%d,%d,%d) = %e\n", aIndex, tRow, tCol, aInput(aIndex,tRow, tCol));
+                printf("X(%d,%d,%d) = %e\n", aIndex + static_cast<Plato::OrdinalType>(1), tRow + static_cast<Plato::OrdinalType>(1), 
+                                               tCol + static_cast<Plato::OrdinalType>(1), aInput(aIndex,tRow, tCol));
             }
         }
     }, "fill vector");

@@ -5210,9 +5210,11 @@ private:
             printf("CURRENT ITERATION = %d\n",tIteration);
 
             // compute internal forces
+            Plato::print(aStateData.mCurrentLocalState, "CURRENT LOCAL STATES");
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+            Plato::print(mGlobalResidual, "CURRENT INTERNAL FORCES");
 
             // update inverse of local Jacobian -> store in tInvLocalJacobianT
             this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
@@ -5263,8 +5265,6 @@ private:
         mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                           aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                           aControls, aStateData.mCurrentStepIndex);
-        Plato::print(aStateData.mPreviousLocalState, "PREVIOUS LOCAL STATES");
-        Plato::print(aStateData.mCurrentLocalState, "CURRENT LOCAL STATES");
 
         // copy projection state, i.e. pressure
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
@@ -6006,6 +6006,7 @@ private:
         auto tDhDu = mLocalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                  aControls, aStateData.mCurrentStepIndex);
+        Plato::print_array_3D(tDhDu,"DhDu");
 
         // Compute cell C = (dH/dc)^{-1}*dH/du, where H is the local residual, c are the local states and u are the global states
         Plato::Scalar tBeta = 0.0;
@@ -6013,16 +6014,19 @@ private:
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDc times DhDu", tNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
         Plato::multiply_matrix_workset(tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
+        Plato::print_array_3D(tInvDhDcTimesDhDu,"Inv(DhDc)*DhDu");
 
         // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
         auto tDrDc = mGlobalResidualEq.gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+        Plato::print_array_3D(tDrDc,"DrDc");
 
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
         Plato::ScalarArray3D tSchurComplement("Schur Complement", tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
         Plato::multiply_matrix_workset(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tSchurComplement);
+        Plato::print_array_3D(tSchurComplement,"tSchurComplement");
 
         return tSchurComplement;
     }
@@ -6084,8 +6088,10 @@ private:
         auto tDhDc = mLocalResidualEq.gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                  aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
                                                  aControls, aStateData.mCurrentStepIndex);
+        Plato::print_array_3D(tDhDc,"DhDc");
         auto tNumCells = mLocalResidualEq.numCells();
         Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, aInvLocalJacobianT);
+        Plato::print_array_3D(aInvLocalJacobianT,"Inv(DhDc)");
     }
 
     /***************************************************************************//**
@@ -9627,7 +9633,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -9673,7 +9679,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
       "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='20'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Maximum Number Iterations' type='int' value='10'/>                  \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='5'/>                  \n"
       "    <Parameter name='Stop Measure' type='string' value='displacement'/>                  \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
@@ -9711,7 +9717,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 1e-3;
+    tValueToSet = 1e-2;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
