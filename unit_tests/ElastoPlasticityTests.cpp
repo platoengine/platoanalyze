@@ -5333,15 +5333,20 @@ private:
     {
         bool tStop = false;
 
-        if(aOutputData.mCurrentIteration == mMaxNumNewtonIter)
+        if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0) && aOutputData.mReferenceNorm < mNewtonRaphsonStopTolerance)
         {
-            tStop = false;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
+            tStop = true;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::NORM_TOLERANCE;
         }
         else if(aOutputData.mRelativeNorm < mNewtonRaphsonStopTolerance)
         {
             tStop = true;
             aOutputData.mStopingCriterion = Plato::NewtonRaphson::NORM_TOLERANCE;
+        }
+        else if(aOutputData.mCurrentIteration == mMaxNumNewtonIter)
+        {
+            tStop = false;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
         }
 
         return (tStop);
