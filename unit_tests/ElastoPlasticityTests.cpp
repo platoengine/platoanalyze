@@ -5348,12 +5348,7 @@ private:
     {
         bool tStop = false;
 
-        if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0) && aOutputData.mReferenceNorm < mNewtonRaphsonStopTolerance)
-        {
-            tStop = true;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::NORM_TOLERANCE;
-        }
-        else if(aOutputData.mRelativeNorm < mNewtonRaphsonStopTolerance)
+        if(aOutputData.mRelativeNorm < mNewtonRaphsonStopTolerance)
         {
             tStop = true;
             aOutputData.mStopingCriterion = Plato::NewtonRaphson::NORM_TOLERANCE;
