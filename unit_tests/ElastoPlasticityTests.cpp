@@ -5207,6 +5207,7 @@ private:
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
             tOutputData.mCurrentIteration = tIteration;
+            printf("CURRENT ITERATION = %d\n",tIteration);
 
             // compute internal forces
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
@@ -5262,6 +5263,8 @@ private:
         mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                           aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                           aControls, aStateData.mCurrentStepIndex);
+        Plato::print(aStateData.mPreviousLocalState, "PREVIOUS LOCAL STATES");
+        Plato::print(aStateData.mCurrentLocalState, "CURRENT LOCAL STATES");
 
         // copy projection state, i.e. pressure
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
@@ -5303,11 +5306,11 @@ private:
     {
         if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
         {
-            aOutputData.mCurrentNorm = Plato::norm(mGlobalResidual);
+            aOutputData.mReferenceNorm = Plato::norm(mGlobalResidual);
+            aOutputData.mCurrentNorm = aOutputData.mReferenceNorm;
         }
         else
         {
-            aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
             aOutputData.mCurrentNorm = Plato::norm(mGlobalResidual);
             aOutputData.mRelativeNorm = std::abs(aOutputData.mCurrentNorm - aOutputData.mReferenceNorm);
         }
@@ -9671,8 +9674,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='20'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='20'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Maximum Number Iterations' type='int' value='10'/>                  \n"
@@ -9713,7 +9716,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 1e-1;
+    tValueToSet = 1e-3;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
