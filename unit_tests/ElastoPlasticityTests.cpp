@@ -747,7 +747,7 @@ public:
 
     /***************************************************************************//**
      *
-     * \brief Evaluate the scalar function with local history-dependent states.
+     * \brief Evaluate the scalar function with local path-dependent states.
      *
      * \param [in]     aCurrentGlobalState  current global state ( i.e. state at the n-th time step (\f$ t^{n} \f$) )
      * \param [in]     aPreviousGlobalState previous global state ( i.e. state at the n-th minus one time step (\f$ t^{n-1} \f$) )
@@ -2210,7 +2210,7 @@ namespace InfinitesimalStrainPlasticityFactory
 struct FunctionFactory
 {
     /***************************************************************************//**
-     * \brief Create a stabilized vector function with local history-dependent states
+     * \brief Create a stabilized vector function with local path-dependent states
      *  (e.g. plasticity)
      *
      * \tparam automatic differentiation evaluation type, e.g. JacobianU, JacobianZ, etc.
@@ -2221,7 +2221,7 @@ struct FunctionFactory
      * \param [in] aInputParams input parameters
      * \param [in] aFunctionName vector function name
      *
-     * \return shared pointer to stabilized vector function with local history-dependent states
+     * \return shared pointer to stabilized vector function with local path-dependent states
     *******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<EvaluationType>>
@@ -2239,14 +2239,14 @@ struct FunctionFactory
         }
         else
         {
-            const auto tError = std::string("Unknown Vector Function with history-dependent states. '")
+            const auto tError = std::string("Unknown Vector Function with path-dependent states. '")
                     + "User specified '" + aFunctionName + "'.  This Vector Function is not supported in PLATO.";
             THROWERR(tError)
         }
     }
 
     /***************************************************************************//**
-     * \brief Create a scalar function with local history-dependent states (e.g. plasticity)
+     * \brief Create a scalar function with local path-dependent states (e.g. plasticity)
      *
      * \tparam automatic differentiation evaluation type, e.g. JacobianU, JacobianZ, etc.
      *
@@ -2257,7 +2257,7 @@ struct FunctionFactory
      * \param [in] aFuncType    function type, used to identify requested function
      * \param [in] aFuncName    user defined name for requested function
      *
-     * \return shared pointer to scalar function with local history-dependent states
+     * \return shared pointer to scalar function with local path-dependent states
     *******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<EvaluationType>>
@@ -2276,7 +2276,7 @@ struct FunctionFactory
         }
         else
         {
-            const auto tError = std::string("Unknown Scalar Function with local history-dependent states. '")
+            const auto tError = std::string("Unknown Scalar Function with local path-dependent states. '")
                     + "User specified '" + aFuncType + "'.  This Scalar Function is not supported in PLATO.";
             THROWERR(tError)
         }
@@ -3515,7 +3515,7 @@ private:
 
 
 /***************************************************************************//**
- * \brief Abstract interface for scalar function with local history-dependent variables
+ * \brief Abstract interface for scalar function with local path-dependent variables
 *******************************************************************************/
 class LocalScalarFunctionInc
 {
@@ -4119,7 +4119,7 @@ private:
     {
         typename PhysicsT::FunctionFactory tFactory;
         auto tProblemDefault = aInputParams.sublist(mFunctionName);
-        // tFunctionType must be a hard-coded type name (e.g. Volume)
+        // tFunctionType must be a hard-coded function type name (e.g. Volume)
         auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
 
         mScalarFuncValue =
@@ -4150,30 +4150,30 @@ private:
 
 
 /******************************************************************************//**
- * \brief Factory for scalar functions interface with local history-dependent states
+ * \brief Factory for scalar functions interface with local path-dependent states
  **********************************************************************************/
 template<typename PhysicsT>
-class HistoryDependentScalarFunctionFactory
+class PathDependentScalarFunctionFactory
 {
 public:
     /******************************************************************************//**
      * \brief Constructor
      **********************************************************************************/
-    HistoryDependentScalarFunctionFactory () {}
+    PathDependentScalarFunctionFactory () {}
 
     /******************************************************************************//**
      * \brief Destructor
      **********************************************************************************/
-    ~HistoryDependentScalarFunctionFactory() {}
+    ~PathDependentScalarFunctionFactory() {}
 
     /******************************************************************************//**
-     * \brief Create interface to a scalar function with local history-dependent states
+     * \brief Create interface to a scalar function with local path-dependent states
      * \param [in] aMesh         mesh database
      * \param [in] aMeshSets     side sets database
      * \param [in] aDataMap      PLATO Analyze output data map
      * \param [in] aInputParams  problem inputs in XML file
      * \param [in] aFunctionName scalar function name, i.e. type
-     * \return shared pointer to the interface of a scalar function with local history-dependent states
+     * \return shared pointer to the interface of a scalar function with local path-dependent states
      **********************************************************************************/
     std::shared_ptr<Plato::LocalScalarFunctionInc>
     create(Omega_h::Mesh& aMesh,
@@ -6084,7 +6084,7 @@ private:
         if(aInputParams.isType<std::string>("Objective"))
         {
             auto tUserDefinedName = aInputParams.get<std::string>("Objective");
-            Plato::HistoryDependentScalarFunctionFactory<PhysicsT> tObjectiveFunctionFactory;
+            Plato::PathDependentScalarFunctionFactory<PhysicsT> tObjectiveFunctionFactory;
             mObjective = tObjectiveFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tUserDefinedName);
 
             // Allocate adjoint variable containers
@@ -6104,7 +6104,7 @@ private:
     {
         if(aInputParams.isType<std::string>("Constraint"))
         {
-            Plato::HistoryDependentScalarFunctionFactory<PhysicsT> tContraintFunctionFactory;
+            Plato::PathDependentScalarFunctionFactory<PhysicsT> tContraintFunctionFactory;
             auto tUserDefinedName = aInputParams.get<std::string>("Constraint");
             mConstraint = tContraintFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tUserDefinedName);
         }
@@ -6208,7 +6208,7 @@ private:
 
 
 /******************************************************************************//**
- * \brief Test partial derivative of scalar function with history-dependent variables
+ * \brief Test partial derivative of scalar function with path-dependent variables
  *        with respect to the control variables.
  * \param [in] aMesh           mesh database
  * \param [in] aScalarFunction scalar function to evaluate derivative of
@@ -6282,7 +6282,7 @@ test_partial_local_scalar_func_wrt_control
 // function test_partial_local_scalar_func_wrt_control
 
 /******************************************************************************//**
- * \brief Test partial derivative of scalar function with history-dependent variables
+ * \brief Test partial derivative of scalar function with path-dependent variables
  *        with respect to the current global state variables.
  * \param [in] aMesh           mesh database
  * \param [in] aScalarFunction scalar function to evaluate derivative of
@@ -6360,7 +6360,7 @@ test_partial_local_scalar_func_wrt_current_global_state
 // function test_partial_local_scalar_func_wrt_current_global_state
 
 /******************************************************************************//**
- * \brief Test partial derivative of scalar function with history-dependent variables
+ * \brief Test partial derivative of scalar function with path-dependent variables
  *        with respect to the current local state variables.
  * \param [in] aMesh           mesh database
  * \param [in] aScalarFunction scalar function to evaluate derivative of
@@ -6439,7 +6439,7 @@ test_partial_local_scalar_func_wrt_current_local_state
 
 
 /******************************************************************************//**
- * \brief Test partial derivative of vector function with history-dependent variables
+ * \brief Test partial derivative of vector function with path-dependent variables
  *        with respect to the control variables.
  * \param [in] aMesh           mesh database
  * \param [in] aScalarFunction scalar function to evaluate derivative of
@@ -6524,7 +6524,7 @@ test_partial_global_vector_func_wrt_control
 
 
 /******************************************************************************//**
- * \brief Test partial derivative of vector function with history-dependent variables
+ * \brief Test partial derivative of vector function with path-dependent variables
  *        with respect to the current global state variables.
  * \param [in] aMesh           mesh database
  * \param [in] aScalarFunction scalar function to evaluate derivative of
@@ -6614,7 +6614,7 @@ test_partial_global_vector_func_wrt_current_global_states
 
 
 /******************************************************************************//**
- * \brief Test partial derivative of vector function with history-dependent variables
+ * \brief Test partial derivative of vector function with path-dependent variables
  *        with respect to the previous global state variables.
  * \param [in] aMesh           mesh database
  * \param [in] aScalarFunction scalar function to evaluate derivative of
@@ -6744,7 +6744,7 @@ inline void assemble_global_vector_jacobian_times_step
 
 
 /******************************************************************************//**
- * \brief Test partial derivative of vector function with history-dependent variables
+ * \brief Test partial derivative of vector function with path-dependent variables
  *        with respect to the current local state variables.
  * \param [in] aMesh           mesh database
  * \param [in] aScalarFunction scalar function to evaluate derivative of
@@ -6834,7 +6834,7 @@ test_partial_global_vector_func_wrt_current_local_states
 
 
 /******************************************************************************//**
- * \brief Test partial derivative of vector function with history-dependent variables
+ * \brief Test partial derivative of vector function with path-dependent variables
  *        with respect to the previous local state variables.
  * \param [in] aMesh           mesh database
  * \param [in] aScalarFunction scalar function to evaluate derivative of
@@ -9504,6 +9504,113 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblemWithS
             TEST_FLOATING_EQUALITY(tHostSolution(tTimeIndex,tDofIndex), tGold[tTimeIndex][tDofIndex], tTolerance);
         }
     }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
+{
+    // 1. DEFINE PROBLEM
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
+      "  <Parameter name='Objective'        type='string'  value='My Maximize Plastic Work'/>   \n"
+      "  <ParameterList name='Material Model'>                                                  \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Plasticity Model'>                                                \n"
+      "    <ParameterList name='J2 Plasticity'>                                                 \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
+      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
+      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
+      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
+      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
+      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
+      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
+      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='10'/>                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='displacement'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
+    tPlasticityProblem.doNotReadDirichletBCsFromExoFile();
+    tPlasticityProblem.useAbsoluteTolerance();
+
+    // 2. Get Dirichlet Boundary Conditions
+    Plato::OrdinalType tDispDofX = 0;
+    Plato::OrdinalType tDispDofY = 1;
+    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+
+    // 3. Set Dirichlet Boundary Conditions
+    Plato::Scalar tValueToSet = 0;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
+    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
+    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tDirichletValues(aIndex) = tValueToSet;
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
+    }, "set dirichlet values and indices");
+
+    auto tOffset = tDirichletIndicesBoundaryX0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 1e-1;
+    tOffset += tDirichletIndicesBoundaryY0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
+    }, "set dirichlet values and indices");
+    tPlasticityProblem.setDirichletBoundaryConditions(tDirichletDofs, tDirichletValues);
+
+    // 4. Evaluate Objective Function
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::fill(1.0, tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls);
+    auto tObjectiveFunctionValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
 }
 
 
