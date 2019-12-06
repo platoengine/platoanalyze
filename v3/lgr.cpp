@@ -6,6 +6,7 @@
 #include <lgr_domain.hpp>
 #include <lgr_input.hpp>
 #include <hpc_vector3.hpp>
+#include <otm/otm.hpp>
 
 namespace lgr {
 
@@ -389,11 +390,15 @@ void twisting_column_ep(
   in.K0[body] = K;
   in.G0[body] = G;
 
+#if defined(HYPER_EP)
   in.elastic[body] = hyper_ep::Elastic::NEO_HOOKEAN;
+#endif
   in.E[body] = E;
   in.Nu[body] = nu;
 
+#if defined(HYPER_EP)
   in.hardening[body] = hyper_ep::Hardening::JOHNSON_COOK;
+#endif
   in.A[body] = 1000.0e+02;
   in.B[body] = 100.0e+02;
   in.n[body] = 0.32;
@@ -406,10 +411,14 @@ void twisting_column_ep(
   if (!plastic)
   {
     in.A[body] *= 1.0e+60;
+#if defined(HYPER_EP)
     in.hardening[body] = hyper_ep::Hardening::NONE;
+#endif
   }
 
+#if defined(HYPER_EP)
   in.damage[body] = hyper_ep::Damage::NONE;
+#endif
   in.allow_no_tension[body] = false;
   in.allow_no_shear[body] = false;
   in.set_stress_to_zero[body] = false;
@@ -1038,7 +1047,7 @@ int main() {
   if ((0)) lgr::twisting_column_ep(0.05, true);
   if ((0)) lgr::Noh_1D();
   if ((0)) lgr::Noh_2D(false,false);
-  if ((1)) lgr::Noh_2D(true,false);
+  if ((0)) lgr::Noh_2D(true, false);
   if ((0)) lgr::Noh_2D(true,true);
   if ((0)) lgr::Noh_3D();
   if ((0)) lgr::composite_Noh_3D();
@@ -1046,6 +1055,7 @@ int main() {
   if ((0)) lgr::twisting_composite_column();
   if ((0)) lgr::Sod_1D();
   if ((0)) lgr::triple_point();
+  if ((1)) lgr::otm();
 //run_for_average();
 }
 
