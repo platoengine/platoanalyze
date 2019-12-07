@@ -369,13 +369,14 @@ inline void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
 
         for(Plato::OrdinalType tOutRowIndex = 0; tOutRowIndex < tNumOutRows; tOutRowIndex++)
         {
-            for(Plato::OrdinalType tCommonIndex = 0; tCommonIndex < tNumInnerCols; tCommonIndex++)
+            for(Plato::OrdinalType tOutColIndex = 0; tOutColIndex < tNumOutCols; tOutColIndex++)
             {
-                for(Plato::OrdinalType tOutColIndex = 0; tOutColIndex < tNumOutCols; tOutColIndex++)
+                Plato::Scalar tValue = 0.0;
+                for(Plato::OrdinalType tCommonIndex = 0; tCommonIndex < tNumInnerCols; tCommonIndex++)
                 {
-                    aC(aCellOrdinal, tOutRowIndex, tOutColIndex) = aC(aCellOrdinal, tOutRowIndex, tOutColIndex) +
-                            aAlpha * aA(aCellOrdinal, tOutRowIndex, tCommonIndex) * aB(aCellOrdinal, tCommonIndex, tOutColIndex);
+                    tValue += aAlpha * aA(aCellOrdinal, tOutRowIndex, tCommonIndex) * aB(aCellOrdinal, tCommonIndex, tOutColIndex);
                 }
+                aC(aCellOrdinal, tOutRowIndex, tOutColIndex) += tValue;
             }
         }
     }, "multiply matrix workset");
@@ -7387,14 +7388,14 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Two)
       tHostB(0,2,5) = 0; tHostB(0,2,6) = 0; tHostB(0,2,7) = 0; tHostB(0,2,8) = 0;
     tHostB(0,3,0) = 0; tHostB(0,3,1) = 0; tHostB(0,3,2) = 0; tHostB(0,3,3) = 0; tHostB(0,3,4) = 0.076779750;
       tHostB(0,3,5) = 0; tHostB(0,3,6) = 0; tHostB(0,3,7) = -0.07677975; tHostB(0,3,8) = 0;
-    tHostB(0,4,0) = 0; tHostB(0,4,1) = 0.07677975; tHostB(0,4,2) = 0; tHostB(0,4,3) = 0; tHostB(0,4,4) = 0.076779750;
-      tHostB(0,4,5) = -0.07677975; tHostB(0,4,6) = 0; tHostB(0,4,7) = 0; tHostB(0,4,8) = 0;
+    tHostB(0,4,0) = 0; tHostB(0,4,1) = 0.07677975; tHostB(0,4,2) = 0; tHostB(0,4,3) = 0.07677975; tHostB(0,4,4) = -0.07677975;
+      tHostB(0,4,5) = 0; tHostB(0,4,6) = -0.07677975; tHostB(0,4,7) = 0; tHostB(0,4,8) = 0;
     tHostB(0,5,0) = 0; tHostB(0,5,1) = 0; tHostB(0,5,2) = 0; tHostB(0,5,3) = 0; tHostB(0,5,4) = -0.07677975;
       tHostB(0,5,5) = 0; tHostB(0,5,6) = 0; tHostB(0,5,7) = 0.07677975; tHostB(0,5,8) = 0;
     tHostB(0,6,0) = 0; tHostB(0,6,1) = 0; tHostB(0,6,2) = 0; tHostB(0,6,3) = 0; tHostB(0,6,4) = 0;
       tHostB(0,6,5) = 0; tHostB(0,6,6) = 0; tHostB(0,6,7) = 0; tHostB(0,6,8) = 0;
-    tHostB(0,7,0) = 0; tHostB(0,7,1) = 0; tHostB(0,7,2) = 0; tHostB(0,7,3) = 0; tHostB(0,7,4) = 0;
-      tHostB(0,7,5) = 51.18650; tHostB(0,7,6) = 0; tHostB(0,7,7) = 0; tHostB(0,7,8) = -51.1865; tHostB(0,7,9) = 0;
+    tHostB(0,7,0) = 0; tHostB(0,7,1) = 0; tHostB(0,7,2) = 0; tHostB(0,7,3) = 0; tHostB(0,7,4) = 51.1865;
+      tHostB(0,7,5) = 0; tHostB(0,7,6) = 0; tHostB(0,7,7) = -51.1865; tHostB(0,7,8) = 0;
     tHostB(0,8,0) = 0; tHostB(0,8,1) = 51.1865; tHostB(0,8,2) = 0; tHostB(0,8,3) = 51.1865; tHostB(0,8,4) = -51.1865;
       tHostB(0,8,5) = 0; tHostB(0,8,6) = -51.1865; tHostB(0,8,7) = 0; tHostB(0,8,8) = 0;
     tHostB(0,9,0) = 0; tHostB(0,9,1) = 0; tHostB(0,9,2) = 0; tHostB(0,9,3) = 0; tHostB(0,9,4) = -51.1865;
@@ -7440,7 +7441,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Two)
         {
             for(Plato::OrdinalType tColIndex = 0; tColIndex < tC.extent(2); tColIndex++)
             {
-                //printf("Result(%d,%d,%d) = %f\n", tCellIndex, tRowIndex, tColIndex, tHostC(tCellIndex, tRowIndex, tColIndex));
+                //printf("Result(%d,%d,%d) = %f\n", tCellIndex + 1, tRowIndex + 1, tColIndex+ 1, tHostC(tCellIndex, tRowIndex, tColIndex));
                 TEST_FLOATING_EQUALITY(tHostGold(tCellIndex, tRowIndex, tColIndex), tHostC(tCellIndex, tRowIndex, tColIndex), tTolerance);
             }
         }
