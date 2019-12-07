@@ -7428,7 +7428,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Two)
       tHostGold(0,9,5) = 0; tHostGold(0,9,6) = 0; tHostGold(0,9,7) = -66.5513036921381; tHostGold(0,9,8) = 0;
 
     auto tHostC = Kokkos::create_mirror(tC);
-    Kokkos::deep_copy(tC, tHostC);
+    Kokkos::deep_copy(tHostC, tC);
     constexpr Plato::Scalar tTolerance = 1e-4;
     for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tC.extent(0); tCellIndex++)
     {
