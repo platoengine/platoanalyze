@@ -2341,9 +2341,9 @@ private:
     using GradientX       = typename Plato::Evaluation<PhysicsT>::GradientX;      /*!< AD type for the configuration */
     using GradientZ       = typename Plato::Evaluation<PhysicsT>::GradientZ;      /*!< AD type for the controls */
     using JacobianPgrad   = typename Plato::Evaluation<PhysicsT>::JacobianN;      /*!< AD type for the nodal pressure gradient */
-    using LocalJacobian   = typename Plato::Evaluation<PhysicsT>::LocalJacobian;  /*!< AD type for the current local states */
+    using LocalJacobianC   = typename Plato::Evaluation<PhysicsT>::LocalJacobian; /*!< AD type for the current local states */
     using LocalJacobianP  = typename Plato::Evaluation<PhysicsT>::LocalJacobianP; /*!< AD type for the previous local states */
-    using GlobalJacobian  = typename Plato::Evaluation<PhysicsT>::Jacobian;       /*!< AD type for the current global states */
+    using GlobalJacobianC  = typename Plato::Evaluation<PhysicsT>::Jacobian;      /*!< AD type for the current global states */
     using GlobalJacobianP = typename Plato::Evaluation<PhysicsT>::JacobianP;      /*!< AD type for the previous global states */
 
     static constexpr auto mNumControl = PhysicsT::mNumControl;                        /*!< number of control fields, i.e. vectors, number of materials */
@@ -2366,9 +2366,9 @@ private:
     std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<GradientX>>       mGlobalVecFuncJacobianX;  /*!< global vector function Jacobian wrt configuration */
     std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<GradientZ>>       mGlobalVecFuncJacobianZ;  /*!< global vector function Jacobian wrt controls */
     std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<JacobianPgrad>>   mGlobalVecFuncJacPgrad;   /*!< global vector function Jacobian wrt projected pressure gradient */
-    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<LocalJacobian>>   mGlobalVecFuncJacobianC;  /*!< global vector function Jacobian wrt current local states */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<LocalJacobianC>>  mGlobalVecFuncJacobianCC; /*!< global vector function Jacobian wrt current local states */
     std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<LocalJacobianP>>  mGlobalVecFuncJacobianCP; /*!< global vector function Jacobian wrt previous local states */
-    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<GlobalJacobian>>  mGlobalVecFuncJacobianU;  /*!< global vector function Jacobian wrt current global states */
+    std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<GlobalJacobianC>> mGlobalVecFuncJacobianUC; /*!< global vector function Jacobian wrt current global states */
     std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<GlobalJacobianP>> mGlobalVecFuncJacobianUP; /*!< global vector function Jacobian wrt previous global states */
 
 // Public access functions
@@ -2396,13 +2396,13 @@ public:
         mGlobalVecFuncResidual = tFunctionFactory.template createGlobalVectorFunctionInc<Residual>
                                                            (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
-        mGlobalVecFuncJacobianU = tFunctionFactory.template createGlobalVectorFunctionInc<GlobalJacobian>
+        mGlobalVecFuncJacobianUC = tFunctionFactory.template createGlobalVectorFunctionInc<GlobalJacobianC>
                                                             (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
         mGlobalVecFuncJacobianUP = tFunctionFactory.template createGlobalVectorFunctionInc<GlobalJacobianP>
                                                              (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
-        mGlobalVecFuncJacobianC = tFunctionFactory.template createGlobalVectorFunctionInc<LocalJacobian>
+        mGlobalVecFuncJacobianCC = tFunctionFactory.template createGlobalVectorFunctionInc<LocalJacobianC>
                                                             (aMesh, aMeshSets, aDataMap, aParamList, aFuncType);
 
         mGlobalVecFuncJacobianCP = tFunctionFactory.template createGlobalVectorFunctionInc<LocalJacobianP>
@@ -2787,51 +2787,51 @@ public:
                Plato::Scalar aTimeStep = 0.0) const
     {
         // Workset config
-        using ConfigScalar = typename GlobalJacobian::ConfigScalarType;
+        using ConfigScalar = typename GlobalJacobianC::ConfigScalarType;
         Plato::ScalarArray3DT<ConfigScalar>
             tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
         mWorksetBase.worksetConfig(tConfigWS);
 
         // Workset current global state
-        using GlobalStateScalar = typename GlobalJacobian::StateScalarType;
+        using GlobalStateScalar = typename GlobalJacobianC::StateScalarType;
         Plato::ScalarMultiVectorT<GlobalStateScalar>
             tGlobalStateWS("Current Global State Workset", mNumCells, mNumGlobalDofsPerCell);
         mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
         // Workset previous global state
-        using PrevGlobalStateScalar = typename GlobalJacobian::PrevStateScalarType;
+        using PrevGlobalStateScalar = typename GlobalJacobianC::PrevStateScalarType;
         Plato::ScalarMultiVectorT<PrevGlobalStateScalar>
             tPrevGlobalStateWS("Previous Global State Workset", mNumCells, mNumGlobalDofsPerCell);
         mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
         // Workset local state
-        using LocalStateScalar = typename GlobalJacobian::LocalStateScalarType;
+        using LocalStateScalar = typename GlobalJacobianC::LocalStateScalarType;
         Plato::ScalarMultiVectorT<LocalStateScalar>
             tLocalStateWS("Local Current State Workset", mNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aLocalState, tLocalStateWS);
 
         // Workset previous local state
-        using PrevLocalStateScalar = typename GlobalJacobian::PrevLocalStateScalarType;
+        using PrevLocalStateScalar = typename GlobalJacobianC::PrevLocalStateScalarType;
         Plato::ScalarMultiVectorT<PrevLocalStateScalar>
             tPrevLocalStateWS("Previous Local State Workset", mNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aPrevLocalState, tPrevLocalStateWS);
 
         // Workset node state, i.e. projected pressure gradient
-        using NodeStateScalar = typename GlobalJacobian::NodeStateScalarType;
+        using NodeStateScalar = typename GlobalJacobianC::NodeStateScalarType;
         Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
         mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset control
-        using ControlScalar = typename GlobalJacobian::ControlScalarType;
+        using ControlScalar = typename GlobalJacobianC::ControlScalarType;
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
         mWorksetBase.worksetControl(aControls, tControlWS);
 
         // Workset Jacobian wrt current global states
-        using JacobianScalar = typename GlobalJacobian::ResultScalarType;
+        using JacobianScalar = typename GlobalJacobianC::ResultScalarType;
         Plato::ScalarMultiVectorT<JacobianScalar> tJacobianWS("Jacobian Current Global State", mNumCells, mNumGlobalDofsPerCell);
 
         // Call evaluate function - compute Jacobian wrt the current global states
-        mGlobalVecFuncJacobianU->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
+        mGlobalVecFuncJacobianUC->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
                                           tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current State", mNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
@@ -2981,51 +2981,51 @@ public:
                Plato::Scalar aTimeStep = 0.0) const
     {
         // Workset config
-        using ConfigScalar = typename LocalJacobian::ConfigScalarType;
+        using ConfigScalar = typename LocalJacobianC::ConfigScalarType;
         Plato::ScalarArray3DT<ConfigScalar>
             tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
         mWorksetBase.worksetConfig(tConfigWS);
 
         // Workset current global state
-        using GlobalStateScalar = typename LocalJacobian::StateScalarType;
+        using GlobalStateScalar = typename LocalJacobianC::StateScalarType;
         Plato::ScalarMultiVectorT<GlobalStateScalar>
             tGlobalStateWS("Current Global State Workset", mNumCells, mNumGlobalDofsPerCell);
         mWorksetBase.worksetState(aGlobalState, tGlobalStateWS);
 
         // Workset previous global state
-        using PrevGlobalStateScalar = typename LocalJacobian::PrevStateScalarType;
+        using PrevGlobalStateScalar = typename LocalJacobianC::PrevStateScalarType;
         Plato::ScalarMultiVectorT<PrevGlobalStateScalar>
             tPrevGlobalStateWS("Previous Global State Workset", mNumCells, mNumGlobalDofsPerCell);
         mWorksetBase.worksetState(aPrevGlobalState, tPrevGlobalStateWS);
 
         // Workset local state
-        using LocalStateScalar = typename LocalJacobian::LocalStateScalarType;
+        using LocalStateScalar = typename LocalJacobianC::LocalStateScalarType;
         Plato::ScalarMultiVectorT<LocalStateScalar>
             tLocalStateWS("Local Current State Workset", mNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aLocalState, tLocalStateWS);
 
         // Workset previous local state
-        using PrevLocalStateScalar = typename LocalJacobian::PrevLocalStateScalarType;
+        using PrevLocalStateScalar = typename LocalJacobianC::PrevLocalStateScalarType;
         Plato::ScalarMultiVectorT<PrevLocalStateScalar>
             tPrevLocalStateWS("Previous Local State Workset", mNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aPrevLocalState, tPrevLocalStateWS);
 
         // Workset node state, i.e. projected pressure gradient
-        using NodeStateScalar = typename LocalJacobian::NodeStateScalarType;
+        using NodeStateScalar = typename LocalJacobianC::NodeStateScalarType;
         Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
         mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset control
-        using ControlScalar = typename LocalJacobian::ControlScalarType;
+        using ControlScalar = typename LocalJacobianC::ControlScalarType;
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
         mWorksetBase.worksetControl(aControls, tControlWS);
 
         // Workset Jacobian wrt current local states
-        using JacobianScalar = typename LocalJacobian::ResultScalarType;
+        using JacobianScalar = typename LocalJacobianC::ResultScalarType;
         Plato::ScalarMultiVectorT<JacobianScalar> tJacobianWS("Jacobian Local State Workset", mNumCells, mNumGlobalDofsPerCell);
 
         // Call evaluate function - compute Jacobian wrt the current local states
-        mGlobalVecFuncJacobianC->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
+        mGlobalVecFuncJacobianCC->evaluate(tGlobalStateWS, tPrevGlobalStateWS, tLocalStateWS, tPrevLocalStateWS,
                                           tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current Local State", mNumCells, mNumGlobalDofsPerCell, mNumLocalDofsPerCell);
@@ -3307,7 +3307,7 @@ public:
     ***************************************************************************/
     void assembleJacobianGlobalStates(const Plato::ScalarArray3D & aJacobianWorkset, Teuchos::RCP<Plato::CrsMatrixType> & aAssembledJacobian)
     {
-        auto tMesh = mGlobalVecFuncJacobianU->getMesh();
+        auto tMesh = mGlobalVecFuncJacobianUC->getMesh();
         Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode> tJacobianMatEntryOrdinal(aAssembledJacobian, &tMesh);
         auto tJacobianMatEntries = aAssembledJacobian->entries();
         mWorksetBase.assembleJacobian(mNumGlobalDofsPerCell, mNumGlobalDofsPerCell, tJacobianMatEntryOrdinal, aJacobianWorkset, tJacobianMatEntries);
