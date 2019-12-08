@@ -20,6 +20,7 @@
 #include <Omega_h_assoc.hpp>
 
 #include "plato/Simp.hpp"
+#include "plato/Strain.hpp"
 #include "plato/Simplex.hpp"
 #include "plato/Kinetics.hpp"
 #include "plato/BodyLoads.hpp"
@@ -1522,6 +1523,7 @@ public:
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence ;
+        Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeCauchyStrain;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
@@ -1542,6 +1544,7 @@ public:
         Plato::ScalarMultiVectorT<GradScalarT> tPressureGrad("pressure gradient", tNumCells, mSpaceDim);
         Plato::ScalarMultiVectorT<ResultT> tDeviatoricStress("deviatoric stress", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<GradScalarT> tTotalCauchyStrain("Total Cauchy Strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
         Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
 
@@ -1579,7 +1582,8 @@ public:
             // compute deviatoric stress and displacement divergence
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
             tJ2PlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
-            tComputeStrainDivergence(aCellOrdinal, tElasticStrain, tStrainDivergence);
+            tComputeCauchyStrain(aCellOrdinal, tTotalCauchyStrain, aCurrentGlobalState, tConfigurationGradient);
+            tComputeStrainDivergence(aCellOrdinal, tTotalCauchyStrain, tStrainDivergence);
 
             // compute volume difference
             tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
