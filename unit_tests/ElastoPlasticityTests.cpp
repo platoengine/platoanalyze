@@ -5137,7 +5137,6 @@ private:
         Plato::ForwardProblemStateData tStateData;
         auto tNumCells = mLocalResidualEq.numCells();
         tStateData.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalResidualEq.size());
-        Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
         bool tToleranceSatisfied = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
@@ -5146,7 +5145,7 @@ private:
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
             this->updateStateData(tStateData);
 
-            bool tNewtonRaphsonConverged = this->solveNewtonRaphson(aControls, tStateData, tInvLocalJacobianT);
+            bool tNewtonRaphsonConverged = this->solveNewtonRaphson(aControls, tStateData);
 
             if(tNewtonRaphsonConverged == false)
             {
@@ -5200,8 +5199,7 @@ private:
      * \return flag used to indicate if the Newton-Raphson solver converged
     *******************************************************************************/
     bool solveNewtonRaphson(const Plato::ScalarVector &aControls,
-                            Plato::ForwardProblemStateData &aStateData,
-                            Plato::ScalarArray3D &aInvLocalJacobianT)
+                            Plato::ForwardProblemStateData &aStateData)
     {
         bool tNewtonRaphsonConverged = false;
         Plato::NewtonRaphsonOutputData tOutputData;
@@ -5219,10 +5217,8 @@ private:
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
             printf("ITERATION = %d, NORM CURRENT LOCAL STATES = %e\n", tIteration, Plato::norm(aStateData.mCurrentLocalState));
 
-            // update inverse of local Jacobian -> store in tInvLocalJacobianT
-            this->updateInverseLocalJacobian(aControls, aStateData, aInvLocalJacobianT);
             // assemble tangent stiffness matrix
-            this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
+            this->assemblePathIndependentTangentMatrix(aControls, aStateData);
 
             // apply Dirichlet boundary conditions
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
@@ -5973,7 +5969,7 @@ private:
         // global residual, H is the local residual, u are the global states, and c are the local states.
         // Note: tangent stiffness matrix is symmetric; hence, the tangent stiffness matrix assembly
         // routine for forward and adjoint problems are the same
-        this->assembleTangentStiffnessMatrix(aControls, aStateData, aInvLocalJacobianT);
+        this->assemblePathDependentTangentMatrix(aControls, aStateData, aInvLocalJacobianT);
 
         // Compute assembled Jacobian wrt projected pressure gradient
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
@@ -6037,20 +6033,46 @@ private:
     }
 
     /***************************************************************************//**
-     * \brief Assemble tangent stiffness matrix, which is defined as /f$ K_{T} =
-     * \frac{\partial{R}}{\partial{u}} - \frac{\partial{R}}{\partial{c}} * \left[
-     * \left(\frac{\partial{H}}{\partial{c}}\right)^{-1} * \frac{\partial{H}}{\partial{u}}
-     * \right] /f$, where R is the global residual, H is the local residual, u are
-     * the global states, and c are the local states.
+     * \brief Assemble path independent tangent stiffness matrix, which is defined
+     * as /f$ K_{T} = \frac{\partial{R}}{\partial{u}}, where R is the global residual
+     * and u are the global states.
+     *
+     * \param [in] aControls 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+    *******************************************************************************/
+    template<class StateDataType>
+    void assemblePathIndependentTangentMatrix(const Plato::ScalarVector & aControls,
+                                              const StateDataType & aStateData)
+    {
+        // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
+        auto tDrDu =
+                mGlobalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                             aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                             aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+
+        // Assemble full Jacobian
+        auto tNumCells = mGlobalResidualEq.numCells();
+        auto tJacobianEntries = mGlobalJacobian->entries();
+        Plato::fill(0.0, tJacobianEntries);
+        Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell,
+                                 *mGlobalJacEntryOrdinal, tDrDu, tJacobianEntries);
+    }
+
+    /***************************************************************************//**
+     * \brief Assemble path dependent tangent stiffness matrix, which is defined as
+     * /f$ K_{T} = \frac{\partial{R}}{\partial{u}} - \frac{\partial{R}}{\partial{c}} *
+     * \left[ \left( \frac{\partial{H}}{\partial{c}} \right)^{-1} * \frac{\partial{H}}
+     * {\partial{u}} \right] /f$.  Here, R is the global residual, H is the local
+     * residual, u are the global states, and c are the local states.
      *
      * \param [in] aControls 1D view of control variables, i.e. design variables
      * \param [in] aStateData state data manager
      * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
     *******************************************************************************/
     template<class StateDataType>
-    void assembleTangentStiffnessMatrix(const Plato::ScalarVector & aControls,
-                                        const StateDataType & aStateData,
-                                        const Plato::ScalarArray3D& aInvLocalJacobianT)
+    void assemblePathDependentTangentMatrix(const Plato::ScalarVector & aControls,
+                                            const StateDataType & aStateData,
+                                            const Plato::ScalarArray3D& aInvLocalJacobianT)
     {
         // Compute cell Schur Complement, i.e. dR/dc * (dH/dc)^{-1} * dH/du, where H is the local
         // residual, R is the global residual, c are the local states and u are the global states
