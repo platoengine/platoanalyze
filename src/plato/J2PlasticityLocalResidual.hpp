@@ -405,6 +405,7 @@ class J2PlasticityLocalResidual :
         tComputeGradient(aCellOrdinal, tGradient, aConfig, tCellVolume);
 
         // Accumulated Plastic Strain
+        printf("CELL:%d, BEFORE RESETTING ACCUMULATED PLASTIC STRAIN = %e\n", aCellOrdinal, aLocalState(aCellOrdinal, 0));
         aLocalState(aCellOrdinal, 0) = aPrevLocalState(aCellOrdinal, 0);
 
         // Plastic Multiplier Increment
@@ -437,10 +438,16 @@ class J2PlasticityLocalResidual :
         // compute yield stress
         Plato::Scalar tYieldStress = tPenalizedInitialYieldStress + 
                                      tPenalizedHardeningModulusIsotropic * aLocalState(aCellOrdinal, 0);
+        printf("CELL:%d, YIELD STRESS = %e\n", aCellOrdinal, tYieldStress);
+        printf("CELL:%d, ACCUMULATED PLASTIC STRAIN = %e\n", aCellOrdinal, aLocalState(aCellOrdinal, 0));
+        printf("CELL:%d, PENALIZED INITIAL YIELD STRESS = %e\n", aCellOrdinal, tPenalizedInitialYieldStress);
+        printf("CELL:%d, PENALIZED HARDENING MODULUS ISOTROPIC = %e\n", aCellOrdinal, tPenalizedHardeningModulusIsotropic);
+        printf("CELL:%d, DEVIATORIC STRESS - BACKSTRESS NORM = %e\n", aCellOrdinal, tDevStressMinusBackstressNorm(aCellOrdinal));
 
         // compute the yield function at the trial state
         Plato::Scalar tTrialStateYieldFunction = tSqrt3Over2 * tDevStressMinusBackstressNorm(aCellOrdinal) - tYieldStress;
 
+        printf("CELL:%d, YIELD FUNCTION = %e\n", aCellOrdinal, tTrialStateYieldFunction);
         if (tTrialStateYieldFunction > 0.0) // plastic step
         {
           // Plastic Multiplier Increment (for J2 w/ linear isotropic/kinematic hardening -> analytical return mapping)
