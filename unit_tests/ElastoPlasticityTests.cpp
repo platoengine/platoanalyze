@@ -4277,6 +4277,7 @@ struct NewtonRaphson
     {
         RESIDUAL_NORM = 0,
         DISPLACEMENT_NORM = 1,
+        RELATIVE_RESIDUAL_NORM = 2,
     };
 };
 
@@ -5087,6 +5088,10 @@ private:
         {
             mStoppingMeasure = Plato::NewtonRaphson::DISPLACEMENT_NORM;
         }
+        else if(tMeasure.compare("relative residual") == 0)
+        {
+            mStoppingMeasure = Plato::NewtonRaphson::RELATIVE_RESIDUAL_NORM;
+        }
         else
         {
             std::stringstream tMsg;
@@ -5302,7 +5307,6 @@ private:
         }
     }
 
-
     /***************************************************************************//**
      * \brief Compute residual norm, \f$ \mid \Vert R_{i}^{T} - \Vert R_{i-1} \Vert \mid \f$
      * \param [in\out] aOutputData Newton-Raphson solver output data
@@ -5319,6 +5323,25 @@ private:
             aOutputData.mCurrentNorm = Plato::norm(mGlobalResidual);
             aOutputData.mRelativeNorm = std::abs(aOutputData.mCurrentNorm - aOutputData.mReferenceNorm);
             aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
+        }
+    }
+
+    /***************************************************************************//**
+     * \brief Compute residual norm, \f$ \frac{\Vert R_{i}^{T}}{\Vert R_{0} \Vert} \f$
+     * \param [in\out] aOutputData Newton-Raphson solver output data
+    *******************************************************************************/
+    void computeRelativeResidualNorm(Plato::NewtonRaphsonOutputData & aOutputData)
+    {
+        if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
+        {
+            aOutputData.mReferenceNorm = Plato::norm(mGlobalResidual);
+            aOutputData.mCurrentNorm = aOutputData.mReferenceNorm;
+        }
+        else
+        {
+            aOutputData.mCurrentNorm = Plato::norm(mGlobalResidual);
+            aOutputData.mRelativeNorm = aOutputData.mCurrentNorm /
+                    (aOutputData.mReferenceNorm + std::numeric_limits<Plato::Scalar>::epsilon());
         }
     }
 
@@ -5340,6 +5363,11 @@ private:
             case Plato::NewtonRaphson::DISPLACEMENT_NORM:
             {
                 this->computeDisplacementNorm(aStateData, aOutputData);
+                break;
+            }
+            case Plato::NewtonRaphson::RELATIVE_RESIDUAL_NORM:
+            {
+                this->computeRelativeResidualNorm(aOutputData);
                 break;
             }
         }
