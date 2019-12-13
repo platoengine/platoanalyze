@@ -5223,7 +5223,6 @@ private:
             mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-            printf("ITERATION = %d, NORM CURRENT LOCAL STATES = %e\n", tIteration, Plato::norm(aStateData.mCurrentLocalState));
 
             // assemble tangent stiffness matrix
             this->assemblePathIndependentTangentMatrix(aControls, aStateData);
@@ -5247,6 +5246,11 @@ private:
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
         
+        // update local state
+        mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                          aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                          aControls, aStateData.mCurrentStepIndex);
+
         return (tNewtonRaphsonConverged);
     }
 
@@ -5264,19 +5268,9 @@ private:
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual, mUseAbsoluteTolerance);
 
         // update global state
-        printf("NORM DELTA GLOBAL STATES = %e\n", Plato::norm(aStateData.mDeltaGlobalState));
         Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
                       static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
-        printf("NORM UPDATED CURRENT GLOBAL STATES = %e\n", Plato::norm(aStateData.mCurrentGlobalState));
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
-        printf("NORM UPDATED CURRENT GLOBAL STATES WITH BCs = %e\n", Plato::norm(aStateData.mCurrentGlobalState));
-
-        // update local state
-        printf("NORM CURRENT LOCAL STATES = %e\n", Plato::norm(aStateData.mCurrentLocalState));
-        mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                          aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                          aControls, aStateData.mCurrentStepIndex);
-        printf("NORM UPDATED CURRENT LOCAL STATES = %e\n", Plato::norm(aStateData.mCurrentLocalState));
 
         // copy projection state, i.e. pressure
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
@@ -9666,7 +9660,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 16;
+    constexpr Plato::OrdinalType tMeshWidth = 8;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -9708,11 +9702,12 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='20'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='40'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='20'/>             \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='40'/>             \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Maximum Number Iterations' type='int' value='10'/>                  \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='50'/>                  \n"
+      "    <Parameter name='Stopping Tolerance' type='double' value='1e-8'/>                    \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
@@ -9721,7 +9716,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
     using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
     Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
     tPlasticityProblem.doNotReadDirichletBCsFromExoFile();
-    tPlasticityProblem.useAbsoluteTolerance();
 
     // 2. Get Dirichlet Boundary Conditions
     Plato::OrdinalType tDispDofX = 0;
@@ -9750,7 +9744,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 1.5e-4;
+    tValueToSet = 2.5e-4;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
