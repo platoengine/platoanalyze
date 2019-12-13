@@ -5154,6 +5154,10 @@ private:
             this->updateStateData(tStateData);
 
             bool tNewtonRaphsonConverged = this->solveNewtonRaphson(aControls, tStateData);
+            
+            mLocalResidualEq.updateLocalState(tStateData.mCurrentGlobalState, tStateData.mPreviousGlobalState,
+                                              tStateData.mCurrentLocalState, tStateData.mPreviousLocalState,
+                                              aControls, tStateData.mCurrentStepIndex);
 
             if(tNewtonRaphsonConverged == false)
             {
@@ -5246,11 +5250,6 @@ private:
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
         
-        // update local state
-        mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                          aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                          aControls, aStateData.mCurrentStepIndex);
-
         return (tNewtonRaphsonConverged);
     }
 
@@ -9706,8 +9705,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
       "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='40'/>             \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Maximum Number Iterations' type='int' value='50'/>                  \n"
-      "    <Parameter name='Stopping Tolerance' type='double' value='1e-8'/>                    \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
@@ -9760,6 +9757,10 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
     Plato::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tObjectiveFunctionValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
+
+    // 5. Test Results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    TEST_FLOATING_EQUALITY(tObjectiveFunctionValue, -0.133466, tTolerance);
 }
 
 
