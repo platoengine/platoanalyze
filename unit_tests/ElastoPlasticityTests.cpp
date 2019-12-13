@@ -5244,8 +5244,8 @@ private:
                 break;
             }
 
-            // update global and local states
-            this->updateGlobalAndLocalStates(aControls, aStateData);
+            // update global states
+            this->updateGlobalStates(aControls, aStateData);
         }
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
@@ -5259,7 +5259,7 @@ private:
      * \param [in] aControls           1-D view of controls, e.g. design variables
      * \param [in] aStateData         data manager with current and previous state data
     *******************************************************************************/
-    void updateGlobalAndLocalStates(const Plato::ScalarVector &aControls,
+    void updateGlobalStates(const Plato::ScalarVector &aControls,
                                     Plato::ForwardProblemStateData &aStateData)
     {
         // solve global system of equations
