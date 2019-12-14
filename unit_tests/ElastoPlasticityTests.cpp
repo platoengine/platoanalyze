@@ -74,6 +74,55 @@
 namespace Plato
 {
 
+
+template<typename EvaluationType, typename SimplexPhysicsType>
+class ComputeStructuralMass
+{
+private:
+  static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< number of spatial dimensions */
+  static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
+
+  using StateScalarType   = typename EvaluationType::StateScalarType;    /*!< current global state evaluation type */
+  using ResultScalarType  = typename EvaluationType::ResultScalarType;   /*!< output evaluation type */
+  using ConfigScalarType  = typename EvaluationType::ConfigScalarType;   /*!< configuation evaluation type */
+  using ControlScalarType = typename EvaluationType::ControlScalarType;  /*!< control evaluation type */
+
+  Plato::Scalar mMaterialDensity;  /*!< material density */
+
+public:
+    explicit ComputeStructuralMass(const Plato::Scalar & aMaterialDensity) :
+        mMaterialDensity(aMaterialDensity)
+    {
+    }
+
+    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
+                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
+                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
+                  Plato::ScalarVectorT<ResultScalarType> & aResult,
+                  Plato::Scalar aTimeStep = 0.0) const
+    {
+        auto tNumCells = aResult.size();
+        Plato::ComputeCellVolume<mSpaceDim> tComputeCellVolume;
+        Plato::LinearTetCubRuleDegreeOne<mSpaceDim> tCubatureRule;
+
+        auto tMaterialDensity = mMaterialDensity;
+        auto tCubWeight = tCubatureRule.getCubWeight();
+        auto tBasisFunc = tCubatureRule.getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            ConfigScalarType tCellVolume;
+            tComputeCellVolume(aCellOrdinal, aConfig, tCellVolume);
+            tCellVolume *= tCubWeight;
+
+            auto tCellMass = Plato::cell_mass<mNumNodesPerCell>(aCellOrdinal, tBasisFunc, aControl);
+            aResult(aCellOrdinal) = ( tCellMass * tMaterialDensity * tCellVolume );
+        }, "structural mass");
+    }
+};
+
+
+
+
 /******************************************************************************//**
  * \brief Set all the entries in a 3-D matrix workset to a single value.
  *
@@ -1886,6 +1935,85 @@ DoubleDotProduct2ndOrderTensor<1>::operator()(const Plato::OrdinalType& aCellOrd
 
 
 
+template<typename EvaluationType, typename SimplexPhysicsType>
+class StructuralMassInc : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
+{
+// public access functions
+private:
+    Plato::Scalar mMaterialDensity;
+
+    using GlobalStateT = typename EvaluationType::StateScalarType;             /*!< global state variables automatic differentiation type */
+    using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
+    using LocalStateT = typename EvaluationType::LocalStateScalarType;         /*!< local state variables automatic differentiation type */
+    using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType; /*!< local state variables automatic differentiation type */
+    using ControlT = typename EvaluationType::ControlScalarType;               /*!< control variables automatic differentiation type */
+    using ConfigT = typename EvaluationType::ConfigScalarType;                 /*!< config variables automatic differentiation type */
+    using ResultT = typename EvaluationType::ResultScalarType;                 /*!< result variables automatic differentiation type */
+
+
+// public access functions
+public:
+    /***************************************************************************//**
+     * \brief Constructor for structural mass criterion
+     *
+     * \param [in] aMesh        mesh database
+     * \param [in] aMeshSets    side sets database
+     * \param [in] aDataMap     PLATO Analyze output data map side sets database
+     * \param [in] aInputParams input parameters from XML file
+     * \param [in] aName        scalar function name
+     *******************************************************************************/
+    StructuralMassInc(Omega_h::Mesh& aMesh,
+            Omega_h::MeshSets& aMeshSets,
+            Plato::DataMap & aDataMap,
+            Teuchos::ParameterList& aParamList,
+            std::string& aName) :
+        Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName)
+    {
+        auto tMaterialModelInputs = aParamList.get<Teuchos::ParameterList>("Material Model");
+        mMaterialDensity = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
+    }
+
+    /***************************************************************************//**
+     * \brief Destructor for structural mass criterion
+    *******************************************************************************/
+    virtual ~StructuralMassInc(){}
+
+    /***************************************************************************//**
+     * \brief Evaluates structural mass criterion.  AD evaluation type determines
+     * output/result value.
+     *
+     * \param [in] aCurrentGlobalState  current global states
+     * \param [in] aPreviousGlobalState previous global states
+     * \param [in] aCurrentLocalState   current local states
+     * \param [in] aFutureLocalState    future global states
+     * \param [in] aPreviousLocalState  previous global states
+     * \param [in] aControls            control variables
+     * \param [in] aConfig              configuration variables
+     * \param [in] aResult              output container
+     * \param [in] aTimeStep            pseudo time step index
+    *******************************************************************************/
+    void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
+                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
+                  const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
+                  const Plato::ScalarMultiVectorT<Plato::Scalar> &aFutureLocalState,
+                  const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPreviousLocalState,
+                  const Plato::ScalarMultiVectorT<ControlT> &aControls,
+                  const Plato::ScalarArray3DT<ConfigT> &aConfig,
+                  const Plato::ScalarVectorT<ResultT> &aResult,
+                  Plato::Scalar aTimeStep = 0.0)
+    {
+        Plato::ComputeStructuralMass<EvaluationTypes, SimplexPhysicsType> tComputeStructuralMass(mMaterialDensity);
+        tComputeStructuralMass.evaluate(aCurrentGlobalState, aControls, aConfig, aResult, aTimeStep);
+    }
+};
+
+
+
+
+
+
+
+
 
 /***************************************************************************//**
  * \brief Approximate maximize plastic work criterion using trapezoid rule.
@@ -1927,6 +2055,7 @@ private:
     Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule;                     /*!< simplex linear cubature rule */
 
     using Plato::AbstractLocalScalarFunctionInc<EvaluationType>::mDataMap;      /*!< PLATO Analyze output database */
+
 // public access functions
 public:
     /***************************************************************************//**
@@ -1971,7 +2100,7 @@ public:
      * \param [in] aControls            control variables
      * \param [in] aConfig              configuration variables
      * \param [in] aResult              output container
-     * \param [in] aTimeStep            pseudo time setp index
+     * \param [in] aTimeStep            pseudo time step index
     *******************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
                   const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
@@ -2278,6 +2407,12 @@ struct FunctionFactory
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
             return ( std::make_shared<Plato::MaximizePlasticWork<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
+        }
+        else if(aFuncType == "Structural Mass")
+        {
+            constexpr auto tSpaceDim = EvaluationType::SpatialDim;
+            return ( std::make_shared<Plato::StructuralMassInc<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
         }
         else
@@ -9786,6 +9921,121 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
     TEST_FLOATING_EQUALITY(tObjectiveFunctionValue, -0.133466, tTolerance);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
+{
+    // 1. DEFINE PROBLEM
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 8;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
+      "  <Parameter name='Objective'        type='string'  value='My Maximize Plastic Work'/>   \n"
+      "  <Parameter name='Constraint'       type='string'  value='My Structural Mass'/>         \n"
+      "  <ParameterList name='Material Model'>                                                  \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
+      "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Plasticity Model'>                                                \n"
+      "    <ParameterList name='J2 Plasticity'>                                                 \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
+      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
+      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
+      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
+      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
+      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
+      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
+      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='My Structural Mass'>                                              \n"
+      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
+      "    <Parameter name='Scalar Function Type' type='string' value='Structural Mass'/>       \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='20'/>             \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='40'/>             \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
+    tPlasticityProblem.doNotReadDirichletBCsFromExoFile();
+
+    // 2. Get Dirichlet Boundary Conditions
+    Plato::OrdinalType tDispDofX = 0;
+    Plato::OrdinalType tDispDofY = 1;
+    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+
+    // 3. Set Dirichlet Boundary Conditions
+    Plato::Scalar tValueToSet = 0;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
+    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
+    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tDirichletValues(aIndex) = tValueToSet;
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
+    }, "set dirichlet values and indices");
+
+    auto tOffset = tDirichletIndicesBoundaryX0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 2.5e-4;
+    tOffset += tDirichletIndicesBoundaryY0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
+    }, "set dirichlet values and indices");
+    tPlasticityProblem.setDirichletBoundaryConditions(tDirichletDofs, tDirichletValues);
+
+    // 4. Evaluate Objective Function
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::fill(1.0, tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls);
+    auto tConstraintValue = tPlasticityProblem.constraintValue(tControls, tSolution);
+
+    // 5. Test Results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    TEST_FLOATING_EQUALITY(tConstraintValue, 0.0, tTolerance);
 }
 
 
