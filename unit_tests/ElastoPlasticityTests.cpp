@@ -99,7 +99,7 @@ public:
                   const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
                   const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
                   Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+                  Plato::Scalar aTimeStep = 0.0)
     {
         auto tNumCells = aResult.size();
         Plato::ComputeCellVolume<mSpaceDim> tComputeCellVolume;
@@ -1935,78 +1935,6 @@ DoubleDotProduct2ndOrderTensor<1>::operator()(const Plato::OrdinalType& aCellOrd
 
 
 
-template<typename EvaluationType, typename SimplexPhysicsType>
-class StructuralMassInc : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
-{
-// public access functions
-private:
-    Plato::Scalar mMaterialDensity;
-
-    using GlobalStateT = typename EvaluationType::StateScalarType;             /*!< global state variables automatic differentiation type */
-    using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
-    using LocalStateT = typename EvaluationType::LocalStateScalarType;         /*!< local state variables automatic differentiation type */
-    using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType; /*!< local state variables automatic differentiation type */
-    using ControlT = typename EvaluationType::ControlScalarType;               /*!< control variables automatic differentiation type */
-    using ConfigT = typename EvaluationType::ConfigScalarType;                 /*!< config variables automatic differentiation type */
-    using ResultT = typename EvaluationType::ResultScalarType;                 /*!< result variables automatic differentiation type */
-
-
-// public access functions
-public:
-    /***************************************************************************//**
-     * \brief Constructor for structural mass criterion
-     *
-     * \param [in] aMesh        mesh database
-     * \param [in] aMeshSets    side sets database
-     * \param [in] aDataMap     PLATO Analyze output data map side sets database
-     * \param [in] aInputParams input parameters from XML file
-     * \param [in] aName        scalar function name
-     *******************************************************************************/
-    StructuralMassInc(Omega_h::Mesh& aMesh,
-            Omega_h::MeshSets& aMeshSets,
-            Plato::DataMap & aDataMap,
-            Teuchos::ParameterList& aParamList,
-            std::string& aName) :
-        Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName)
-    {
-        auto tMaterialModelInputs = aParamList.get<Teuchos::ParameterList>("Material Model");
-        mMaterialDensity = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
-    }
-
-    /***************************************************************************//**
-     * \brief Destructor for structural mass criterion
-    *******************************************************************************/
-    virtual ~StructuralMassInc(){}
-
-    /***************************************************************************//**
-     * \brief Evaluates structural mass criterion.  AD evaluation type determines
-     * output/result value.
-     *
-     * \param [in] aCurrentGlobalState  current global states
-     * \param [in] aPreviousGlobalState previous global states
-     * \param [in] aCurrentLocalState   current local states
-     * \param [in] aFutureLocalState    future global states
-     * \param [in] aPreviousLocalState  previous global states
-     * \param [in] aControls            control variables
-     * \param [in] aConfig              configuration variables
-     * \param [in] aResult              output container
-     * \param [in] aTimeStep            pseudo time step index
-    *******************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
-                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
-                  const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
-                  const Plato::ScalarMultiVectorT<Plato::Scalar> &aFutureLocalState,
-                  const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPreviousLocalState,
-                  const Plato::ScalarMultiVectorT<ControlT> &aControls,
-                  const Plato::ScalarArray3DT<ConfigT> &aConfig,
-                  const Plato::ScalarVectorT<ResultT> &aResult,
-                  Plato::Scalar aTimeStep = 0.0)
-    {
-        Plato::ComputeStructuralMass<EvaluationTypes, SimplexPhysicsType> tComputeStructuralMass(mMaterialDensity);
-        tComputeStructuralMass.evaluate(aCurrentGlobalState, aControls, aConfig, aResult, aTimeStep);
-    }
-};
-
 
 
 
@@ -2409,12 +2337,14 @@ struct FunctionFactory
             return ( std::make_shared<Plato::MaximizePlasticWork<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
         }
+/*
         else if(aFuncType == "Structural Mass")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
             return ( std::make_shared<Plato::StructuralMassInc<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
         }
+*/
         else
         {
             const auto tError = std::string("Unknown Scalar Function with local path-dependent states. '")
@@ -9938,8 +9868,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'        type='string'  value='My Maximize Plastic Work'/>   \n"
-      "  <Parameter name='Constraint'       type='string'  value='My Structural Mass'/>         \n"
+      "  <Parameter name='Constraint'       type='string'  value='My Maximize Plastic Work'/>   \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -9970,10 +9899,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
       "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
       "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Structural Mass'>                                              \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Structural Mass'/>       \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='20'/>             \n"
@@ -10035,7 +9960,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
 
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    TEST_FLOATING_EQUALITY(tConstraintValue, 0.0, tTolerance);
+    TEST_FLOATING_EQUALITY(tConstraintValue, -0.133466, tTolerance);
 }
 
 
