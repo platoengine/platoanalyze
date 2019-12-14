@@ -9742,6 +9742,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblemWithS
             TEST_FLOATING_EQUALITY(tHostSolution(tTimeIndex,tDofIndex), tGold[tTimeIndex][tDofIndex], tTolerance);
         }
     }
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -9851,6 +9852,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
     TEST_FLOATING_EQUALITY(tObjectiveFunctionValue, -0.133466, tTolerance);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -9941,7 +9943,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_3D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values/indices");
 
-    tValueToSet = 1e-5;
+    tValueToSet = 2.5e-4;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
@@ -9960,7 +9962,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_3D)
 
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    TEST_FLOATING_EQUALITY(tObjectiveFunctionValue, 0.0, tTolerance);
+    TEST_FLOATING_EQUALITY(tObjectiveFunctionValue, -0.0277655, tTolerance);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -10071,6 +10074,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
     TEST_FLOATING_EQUALITY(tConstraintValue, -0.133466, tTolerance);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -10078,7 +10082,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 4;
+    constexpr Plato::OrdinalType tMeshWidth = 8;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -10161,7 +10165,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values/indices");
 
-    tValueToSet = 1e-5;
+    tValueToSet = 2.5e-4;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
@@ -10180,7 +10184,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
 
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    TEST_FLOATING_EQUALITY(tConstraintValue, 0.0, tTolerance);
+    TEST_FLOATING_EQUALITY(tConstraintValue, -0.0277655, tTolerance);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
