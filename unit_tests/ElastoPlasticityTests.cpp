@@ -5345,15 +5345,17 @@ private:
     {
 
         // compute internal forces
-        mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                  aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+        mGlobalResidual =
+                mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                        aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                        aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
         Plato::scale(static_cast<Plato::Scalar>(-1.0), mGlobalResidual);
 
         // compute local residual workset (WS)
-        auto tLocalResidualWS = mLocalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                       aControls, aStateData.mCurrentStepIndex);
+        auto tLocalResidualWS =
+                mLocalResidualEq.valueWorkSet(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                              aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                              aControls, aStateData.mCurrentStepIndex);
 
         // compute inv(DhDc)*h, where h is the local residual and DhDc is the local jacobian
         auto tNumCells = mLocalResidualEq.numCells();
