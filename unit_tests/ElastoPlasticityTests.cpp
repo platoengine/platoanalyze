@@ -1653,7 +1653,6 @@ public:
         this->addExternalForces(aCurrentGlobalState, aControls, aResult);
         this->outputData(tDeviatoricStress, "deviatoric stress");
         this->outputData(tPressure, "pressure");
-        Plato::print_array_2D(tElasticStrain, "GLOBAL RESIDUAL - ELASTIC STRAIN");
     }
 };
 // class InfinitesimalStrainPlasticityResidual
