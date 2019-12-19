@@ -1653,6 +1653,7 @@ public:
         this->addExternalForces(aCurrentGlobalState, aControls, aResult);
         this->outputData(tDeviatoricStress, "deviatoric stress");
         this->outputData(tPressure, "pressure");
+        Plato::print_array_2D(tElasticStrain, "GLOBAL RESIDUAL - ELASTIC STRAIN");
     }
 };
 // class InfinitesimalStrainPlasticityResidual
@@ -4797,9 +4798,9 @@ public:
             {
                 mNewtonRaphsonDiagnosticsFile << "\n**** Successful Forward Solve ****\n";
                 break;
-            }
+            }else{break;}
             
-            mNumPseudoTimeSteps = mNumPseudoTimeStepMultiplier * static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
+            /*mNumPseudoTimeSteps = mNumPseudoTimeStepMultiplier * static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
       
             if(mNumPseudoTimeSteps > mMaxNumPseudoTimeSteps)
             {
@@ -4808,7 +4809,7 @@ public:
                     << "steps is set to " << mNumPseudoTimeSteps << " and the maximum number of pseudo time steps "
                     << "is set to " << mMaxNumPseudoTimeSteps << ". ****\n";
                 break;
-            }
+            }*/
 
             this->resizeStateContainers();
         }
@@ -5119,8 +5120,10 @@ public:
         return (tOutput);
     }
 
+
+
 // private functions
-private:
+public:
     /***************************************************************************//**
      * \brief Initialize member data
      * \param [in] aControls current set of controls, i.e. design variables
@@ -5221,10 +5224,6 @@ private:
             this->updateStateData(tStateData);
 
             bool tNewtonRaphsonConverged = this->solveNewtonRaphson(aControls, tStateData);
-            
-            mLocalResidualEq.updateLocalState(tStateData.mCurrentGlobalState, tStateData.mPreviousGlobalState,
-                                              tStateData.mCurrentLocalState, tStateData.mPreviousLocalState,
-                                              aControls, tStateData.mCurrentStepIndex);
 
             if(tNewtonRaphsonConverged == false)
             {
@@ -5282,12 +5281,16 @@ private:
     {
         bool tNewtonRaphsonConverged = false;
         Plato::NewtonRaphsonOutputData tOutputData;
+        auto tNumCells = mLocalResidualEq.numCells();
+        Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
+
         tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
         this->initializeNewtonRaphsonSolver(aStateData);
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
+            printf("NEWTON ITERATION = %d\n",tIteration);
             tOutputData.mCurrentIteration = tIteration;
 
             // compute internal forces
@@ -5295,8 +5298,11 @@ private:
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
 
+            // update inverse of local Jacobian -> store in tInvLocalJacobianT	
+            this->updateInverseLocalJacobian(aControls, aStateData, tInvLocalJacobianT);
+
             // assemble tangent stiffness matrix
-            this->assemblePathIndependentTangentMatrix(aControls, aStateData);
+            this->assemblePathDependentTangentMatrix(aControls, aStateData, tInvLocalJacobianT);
 
             // apply Dirichlet boundary conditions
             this->applyConstraints(mGlobalJacobian, mGlobalResidual);
@@ -5313,6 +5319,12 @@ private:
 
             // update global states
             this->updateGlobalStates(aControls, aStateData);
+
+            // update local states
+            mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                              aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                              aControls, aStateData.mCurrentStepIndex);
+            Plato::print(aStateData.mCurrentLocalState, "LOCAL STATE");
         }
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
@@ -5323,20 +5335,22 @@ private:
     /***************************************************************************//**
      * \brief Update global and local states after a new trial state is computed by
      *   the Newton-Raphson solver.
-     * \param [in] aControls           1-D view of controls, e.g. design variables
-     * \param [in] aStateData         data manager with current and previous state data
+     * \param [in] aControls  1-D view of controls, e.g. design variables
+     * \param [in] aStateData data manager with current and previous state data
     *******************************************************************************/
     void updateGlobalStates(const Plato::ScalarVector &aControls,
-                                    Plato::ForwardProblemStateData &aStateData)
+                            Plato::ForwardProblemStateData &aStateData)
     {
         // solve global system of equations
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual, mUseAbsoluteTolerance);
 
+        Plato::print(aStateData.mDeltaGlobalState, "DELTA STATE");
         // update global state
         Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
                       static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
+        Plato::print(aStateData.mCurrentGlobalState, "GLOBAL STATE");
 
         // copy projection state, i.e. pressure
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
@@ -6236,7 +6250,7 @@ private:
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
-    /******************************************************************************/
+    *******************************************************************************/
     void allocateConstraintFunction(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
         if(aInputParams.isType<std::string>("Constraint"))
@@ -6248,9 +6262,6 @@ private:
     }
 };
 // class PlasticityProblem
-
-
-
 
 
 
@@ -9971,7 +9982,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 8;
+    constexpr Plato::OrdinalType tMeshWidth = 3;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -10019,6 +10030,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='50'/>                \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
     );
@@ -10054,7 +10066,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 2.5e-4;
+    tValueToSet = 5e-4;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
@@ -10074,7 +10086,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
     TEST_FLOATING_EQUALITY(tConstraintValue, -0.133466, tTolerance);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -10082,7 +10094,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 8;
+    constexpr Plato::OrdinalType tMeshWidth = 6;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -10124,8 +10136,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='20'/>             \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='40'/>             \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='10'/>             \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='10'/>             \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -10185,7 +10197,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
     TEST_FLOATING_EQUALITY(tConstraintValue, -0.0277655, tTolerance);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 

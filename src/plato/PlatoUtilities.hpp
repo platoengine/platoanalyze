@@ -28,10 +28,34 @@ inline void print(const VecT & aInput, std::string aName = "")
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         printf("X[%d] = %e\n", aIndex + static_cast<Plato::OrdinalType>(1), aInput(aIndex));
-    }, "fill vector");
+    }, "print 1D array");
     printf("\n");
 }
 // function print
+
+/******************************************************************************//**
+ * \brief Print input 3D container to terminal
+ * \tparam array type
+ * \param [in] aInput 3D container
+ * \param [in] aName  container name (default = "")
+**********************************************************************************/
+template<typename ArrayT>
+inline void print_array_2D(const ArrayT & aInput, const std::string & aName)
+{
+    printf("PRINT %s\n", aName.c_str());
+
+    const Plato::OrdinalType tNumRows = aInput.extent(0);
+    const Plato::OrdinalType tNumCols = aInput.extent(1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & aRow)
+    {
+        for(Plato::OrdinalType tCol = 0; tCol < tNumCols; tCol++)
+        {
+            printf("X(%d,%d) = %e\n", aRow + static_cast<Plato::OrdinalType>(1), tCol + static_cast<Plato::OrdinalType>(1), aInput(aRow, tCol));
+        }
+    }, "print 2D array");
+    printf("\n");
+}
+// function print_array_2D
 
 /******************************************************************************//**
  * \brief Print input 3D container to terminal
@@ -57,7 +81,7 @@ inline void print_array_3D(const ArrayT & aInput, const std::string & aName)
                                                tCol + static_cast<Plato::OrdinalType>(1), aInput(aIndex,tRow, tCol));
             }
         }
-    }, "fill vector");
+    }, "print 3D array");
     printf("\n");
 }
 // function print
