@@ -5359,12 +5359,12 @@ private:
 
         // compute inv(DhDc)*h, where h is the local residual and DhDc is the local jacobian
         auto tNumCells = mLocalResidualEq.numCells();
-        Plato::ScalarMultiVector tInvLocalJacTimesLocalRes(tNumCells, mNumLocalDofsPerCell);
+        Plato::ScalarMultiVector tInvLocalJacTimesLocalRes("InvLocalJacTimesLocalRes", tNumCells, mNumLocalDofsPerCell);
         Plato::matrix_times_vector_workset("N", tNumCells, static_cast<Plato::Scalar>(1.0), aInvLocalJacobianT,
                                            tLocalResidualWS, static_cast<Plato::Scalar>(0.0), tInvLocalJacTimesLocalRes);
 
         // compute DrDu*inv(DhDc)*h
-        Plato::ScalarMultiVector tLocalResidualTerm(tNumCells, mNumGlobalDofsPerCell);
+        Plato::ScalarMultiVector tLocalResidualTerm("LocalResidualTerm", tNumCells, mNumGlobalDofsPerCell);
         auto tDrDc = mGlobalResidualEq.gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
