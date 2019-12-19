@@ -4798,7 +4798,11 @@ public:
             {
                 mNewtonRaphsonDiagnosticsFile << "\n**** Successful Forward Solve ****\n";
                 break;
-            }else{break;}
+            }
+            else
+            {
+                break;
+            }
             
             /*mNumPseudoTimeSteps = mNumPseudoTimeStepMultiplier * static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
       
@@ -5123,7 +5127,7 @@ public:
 
 
 // private functions
-public:
+private:
     /***************************************************************************//**
      * \brief Initialize member data
      * \param [in] aControls current set of controls, i.e. design variables
@@ -5293,13 +5297,11 @@ public:
             printf("NEWTON ITERATION = %d\n",tIteration);
             tOutputData.mCurrentIteration = tIteration;
 
-            // compute internal forces
-            mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                      aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                      aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-
             // update inverse of local Jacobian -> store in tInvLocalJacobianT	
             this->updateInverseLocalJacobian(aControls, aStateData, tInvLocalJacobianT);
+
+            // assemble residual
+            this->assembleResidual(aControls, aStateData, tInvLocalJacobianT);
 
             // assemble tangent stiffness matrix
             this->assemblePathDependentTangentMatrix(aControls, aStateData, tInvLocalJacobianT);
@@ -5333,6 +5335,157 @@ public:
     }
 
     /***************************************************************************//**
+     * \brief Assemble residual vector
+     * \param [in] aControls          1-D view of controls, e.g. design variables
+     * \param [in] aStateData         data manager with current and previous state data
+     * \param [in] aInvLocalJacobianT 3-D container for inverse Jacobian
+    *******************************************************************************/
+    void assembleResidual(const Plato::ScalarVector & aControls,
+                          const Plato::ForwardProblemStateData & aStateData,
+                          const Plato::ScalarArray3D& aInvLocalJacobianT)
+    {
+
+        // compute internal forces
+        mGlobalResidual = mGlobalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                                  aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+        Plato::scale(static_cast<Plato::Scalar>(-1.0), mGlobalResidual);
+
+        // compute local residual workset (WS)
+        auto tLocalResidualWS = mLocalResidualEq.value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                                       aControls, aStateData.mCurrentStepIndex);
+
+        // compute inv(DhDc)*h, where h is the local residual and DhDc is the local jacobian
+        auto tNumCells = mLocalResidualEq.numCells();
+        Plato::ScalarMultiVector tInvLocalJacTimesLocalRes(tNumCells, mNumLocalDofsPerCell);
+        Plato::matrix_times_vector_workset("N", tNumCells, static_cast<Plato::Scalar>(1.0), aInvLocalJacobianT,
+                                           tLocalResidualWS, static_cast<Plato::Scalar>(0.0), tInvLocalJacTimesLocalRes);
+
+        // compute DrDu*inv(DhDc)*h
+        Plato::ScalarMultiVector tLocalResidualTerm(tNumCells, mNumGlobalDofsPerCell);
+        auto tDrDc = mGlobalResidualEq.gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                                  aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+        Plato::matrix_times_vector_workset("N", tNumCells, static_cast<Plato::Scalar>(1.0), tDrDc,
+                                           tInvLocalJacTimesLocalRes, static_cast<Plato::Scalar>(0.0), tLocalResidualTerm);
+
+        // assemble local residual contribution
+        const auto tNumNodes = mGlobalResidualEq.numNodes();
+        const auto tTotalNumDofs = mNumGlobalDofsPerNode * tNumNodes;
+        Plato::ScalarVector  tLocalResidualContribution("Assembled Local Residual", tTotalNumDofs);
+        mWorksetBase.assembleResidual(tLocalResidualTerm, tLocalResidualContribution);
+
+        // add local residual contribution to global residual term
+        Plato::axpy(static_cast<Plato::Scalar>(1.0), tLocalResidualContribution, mGlobalResidual);
+    }
+
+    /***************************************************************************//**
+     * \brief Assemble path independent tangent stiffness matrix, which is defined
+     * as /f$ K_{T} = \frac{\partial{R}}{\partial{u}}, where R is the global residual
+     * and u are the global states.
+     *
+     * \param [in] aControls 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+    *******************************************************************************/
+    template<class StateDataType>
+    void assemblePathIndependentTangentMatrix(const Plato::ScalarVector & aControls,
+                                              const StateDataType & aStateData)
+    {
+        // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
+        auto tDrDu =
+                mGlobalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                             aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                             aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+
+        // Assemble full Jacobian
+        auto tNumCells = mGlobalResidualEq.numCells();
+        auto tJacobianEntries = mGlobalJacobian->entries();
+        Plato::fill(0.0, tJacobianEntries);
+        Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell,
+                                 *mGlobalJacEntryOrdinal, tDrDu, tJacobianEntries);
+    }
+
+    /***************************************************************************//**
+     * \brief Assemble path dependent tangent stiffness matrix, which is defined as
+     * /f$ K_{T} = \frac{\partial{R}}{\partial{u}} - \frac{\partial{R}}{\partial{c}} *
+     * \left[ \left( \frac{\partial{H}}{\partial{c}} \right)^{-1} * \frac{\partial{H}}
+     * {\partial{u}} \right] /f$.  Here, R is the global residual, H is the local
+     * residual, u are the global states, and c are the local states.
+     *
+     * \param [in] aControls 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
+    *******************************************************************************/
+    template<class StateDataType>
+    void assemblePathDependentTangentMatrix(const Plato::ScalarVector & aControls,
+                                            const StateDataType & aStateData,
+                                            const Plato::ScalarArray3D& aInvLocalJacobianT)
+    {
+        // Compute cell Schur Complement, i.e. dR/dc * (dH/dc)^{-1} * dH/du, where H is the local
+        // residual, R is the global residual, c are the local states and u are the global states
+        auto tSchurComplement = this->computeSchurComplement(aControls, aStateData, aInvLocalJacobianT);
+
+        // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
+        auto tDrDu = mGlobalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                                  aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+
+        // Add cell Schur complement to dR/du, where R is the global residual and u are the global states
+        const Plato::Scalar tBeta = 1.0;
+        const Plato::Scalar tAlpha = -1.0;
+        auto tNumCells = mGlobalResidualEq.numCells();
+        Plato::update_matrix_workset(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
+
+        // Assemble full Jacobian
+        auto tJacobianEntries = mGlobalJacobian->entries();
+        Plato::fill(0.0, tJacobianEntries);
+        Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell,
+                                 *mGlobalJacEntryOrdinal, tDrDu, tJacobianEntries);
+    }
+
+    /***************************************************************************//**
+     * \brief Compute Schur complement, which is defined as /f$ A = \frac{\partial{R}}
+     * {\partial{c}} * \left[ \left(\frac{\partial{H}}{\partial{c}}\right)^{-1} *
+     * \frac{\partial{H}}{\partial{u}} \right] /f$, where R is the global residual, H
+     * is the local residual, u are the global states, and c are the local states.
+     *
+     * \param [in] aControls 1D view of control variables, i.e. design variables
+     * \param [in] aStateData state data manager
+     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
+     * \return 3D view with Schur complement per cell
+    *******************************************************************************/
+    template<class StateDataType>
+    Plato::ScalarArray3D computeSchurComplement(const Plato::ScalarVector & aControls,
+                                                const StateDataType & aStateData,
+                                                const Plato::ScalarArray3D& aInvLocalJacobianT)
+    {
+        // Compute cell Jacobian of the local residual with respect to the current global state WorkSet (WS)
+        auto tDhDu = mLocalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                                 aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                                 aControls, aStateData.mCurrentStepIndex);
+
+        // Compute cell C = (dH/dc)^{-1}*dH/du, where H is the local residual, c are the local states and u are the global states
+        Plato::Scalar tBeta = 0.0;
+        const Plato::Scalar tAlpha = 1.0;
+        auto tNumCells = mLocalResidualEq.numCells();
+        Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDc times DhDu", tNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
+        Plato::multiply_matrix_workset(tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
+
+        // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
+        auto tDrDc = mGlobalResidualEq.gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
+                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
+                                                  aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
+
+        // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
+        // R is the global residual, c are the local states and u are the global states
+        Plato::ScalarArray3D tSchurComplement("Schur Complement", tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
+        Plato::multiply_matrix_workset(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tSchurComplement);
+
+        return tSchurComplement;
+    }
+
+    /***************************************************************************//**
      * \brief Update global and local states after a new trial state is computed by
      *   the Newton-Raphson solver.
      * \param [in] aControls  1-D view of controls, e.g. design variables
@@ -5347,7 +5500,7 @@ public:
 
         Plato::print(aStateData.mDeltaGlobalState, "DELTA STATE");
         // update global state
-        Plato::update(static_cast<Plato::Scalar>(-1.0), aStateData.mDeltaGlobalState,
+        Plato::update(static_cast<Plato::Scalar>(1.0), aStateData.mDeltaGlobalState,
                       static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
         Plato::print(aStateData.mCurrentGlobalState, "GLOBAL STATE");
@@ -6096,110 +6249,6 @@ public:
         Plato::Condense(mGlobalJacobian /*K_t*/ , tDpDn_T, mProjJacobian,  tDrDn_T, mPressureDofOffset  /*row offset*/ );
     }
 
-    /***************************************************************************//**
-     * \brief Compute Schur complement, which is defined as /f$ A = \frac{\partial{R}}
-     * {\partial{c}} * \left[ \left(\frac{\partial{H}}{\partial{c}}\right)^{-1} *
-     * \frac{\partial{H}}{\partial{u}} \right] /f$, where R is the global residual, H
-     * is the local residual, u are the global states, and c are the local states.
-     *
-     * \param [in] aControls 1D view of control variables, i.e. design variables
-     * \param [in] aStateData state data manager
-     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
-     * \return 3D view with Schur complement per cell
-    *******************************************************************************/
-    template<class StateDataType>
-    Plato::ScalarArray3D computeSchurComplement(const Plato::ScalarVector & aControls,
-                                                const StateDataType & aStateData,
-                                                const Plato::ScalarArray3D& aInvLocalJacobianT)
-    {
-        // Compute cell Jacobian of the local residual with respect to the current global state WorkSet (WS)
-        auto tDhDu = mLocalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                 aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                 aControls, aStateData.mCurrentStepIndex);
-
-        // Compute cell C = (dH/dc)^{-1}*dH/du, where H is the local residual, c are the local states and u are the global states
-        Plato::Scalar tBeta = 0.0;
-        const Plato::Scalar tAlpha = 1.0;
-        auto tNumCells = mLocalResidualEq.numCells();
-        Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDc times DhDu", tNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::multiply_matrix_workset(tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
-
-        // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
-        auto tDrDc = mGlobalResidualEq.gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                  aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-
-        // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
-        // R is the global residual, c are the local states and u are the global states
-        Plato::ScalarArray3D tSchurComplement("Schur Complement", tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::multiply_matrix_workset(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tSchurComplement);
-
-        return tSchurComplement;
-    }
-
-    /***************************************************************************//**
-     * \brief Assemble path independent tangent stiffness matrix, which is defined
-     * as /f$ K_{T} = \frac{\partial{R}}{\partial{u}}, where R is the global residual
-     * and u are the global states.
-     *
-     * \param [in] aControls 1D view of control variables, i.e. design variables
-     * \param [in] aStateData state data manager
-    *******************************************************************************/
-    template<class StateDataType>
-    void assemblePathIndependentTangentMatrix(const Plato::ScalarVector & aControls,
-                                              const StateDataType & aStateData)
-    {
-        // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
-        auto tDrDu =
-                mGlobalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                             aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                             aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-
-        // Assemble full Jacobian
-        auto tNumCells = mGlobalResidualEq.numCells();
-        auto tJacobianEntries = mGlobalJacobian->entries();
-        Plato::fill(0.0, tJacobianEntries);
-        Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell,
-                                 *mGlobalJacEntryOrdinal, tDrDu, tJacobianEntries);
-    }
-
-    /***************************************************************************//**
-     * \brief Assemble path dependent tangent stiffness matrix, which is defined as
-     * /f$ K_{T} = \frac{\partial{R}}{\partial{u}} - \frac{\partial{R}}{\partial{c}} *
-     * \left[ \left( \frac{\partial{H}}{\partial{c}} \right)^{-1} * \frac{\partial{H}}
-     * {\partial{u}} \right] /f$.  Here, R is the global residual, H is the local
-     * residual, u are the global states, and c are the local states.
-     *
-     * \param [in] aControls 1D view of control variables, i.e. design variables
-     * \param [in] aStateData state data manager
-     * \param [in] aInvLocalJacobianT inverse of transpose local Jacobian wrt local states
-    *******************************************************************************/
-    template<class StateDataType>
-    void assemblePathDependentTangentMatrix(const Plato::ScalarVector & aControls,
-                                            const StateDataType & aStateData,
-                                            const Plato::ScalarArray3D& aInvLocalJacobianT)
-    {
-        // Compute cell Schur Complement, i.e. dR/dc * (dH/dc)^{-1} * dH/du, where H is the local
-        // residual, R is the global residual, c are the local states and u are the global states
-        auto tSchurComplement = this->computeSchurComplement(aControls, aStateData, aInvLocalJacobianT);
-
-        // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
-        auto tDrDu = mGlobalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                  aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-
-        // Add cell Schur complement to dR/du, where R is the global residual and u are the global states
-        const Plato::Scalar tBeta = 1.0;
-        const Plato::Scalar tAlpha = -1.0;
-        auto tNumCells = mGlobalResidualEq.numCells();
-        Plato::update_matrix_workset(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
-
-        // Assemble full Jacobian
-        auto tJacobianEntries = mGlobalJacobian->entries();
-        Plato::fill(0.0, tJacobianEntries);
-        Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell,
-                                 *mGlobalJacEntryOrdinal, tDrDu, tJacobianEntries);
-    }
 
     /***************************************************************************//**
      * \brief Update inverse of local Jacobian wrt local states, i.e.
