@@ -77,7 +77,14 @@ inline void random(const Plato::Scalar & aLowerBound, const Plato::Scalar & aUpp
 template<typename VecOneT, typename VecTwoT>
 inline Plato::Scalar dot(const VecOneT & aVec1, const VecTwoT & aVec2)
 {
-    assert(aVec2.size() == aVec1.size());
+    if(aVec2.size() == aVec1.size())
+    {
+        std::stringstream tMsg;
+        tMsg << "DIMENSION MISMATCH. VECTOR ONE HAS SIZE = " << aVec1.size()
+                << " AND VECTOR TWO HAS SIZE = " << aVec2.size() << ".\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
     Plato::Scalar tOutput = 0.;
     const Plato::OrdinalType tSize = aVec1.size();
     Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0, tSize),
@@ -97,6 +104,11 @@ inline Plato::Scalar dot(const VecOneT & aVec1, const VecTwoT & aVec2)
 template<typename VecOneT>
 inline Plato::Scalar norm(const VecOneT & aVector)
 {
+    if(aVector.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
     const Plato::Scalar tDot = Plato::dot(aVector, aVector);
     const Plato::Scalar tOutput = std::sqrt(tDot);
     return (tOutput);
@@ -111,6 +123,11 @@ inline Plato::Scalar norm(const VecOneT & aVector)
 template<typename VectorT>
 inline void fill(const Plato::Scalar & aInput, const VectorT & aVector)
 {
+    if(aVector.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
     Plato::OrdinalType tNumLocalVals = aVector.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
@@ -127,7 +144,14 @@ inline void fill(const Plato::Scalar & aInput, const VectorT & aVector)
 template<typename VecOneT, typename VecTwoT>
 inline void copy(const VecOneT & aInput, const VecTwoT & aOutput)
 {
-    assert(aInput.size() == aOutput.size());
+    if(aInput.size() == aOutput.size())
+    {
+        std::stringstream tMsg;
+        tMsg << "DIMENSION MISMATCH. INPUT VECTOR HAS SIZE = " << aInput.size()
+                << " AND OUTPUT VECTOR HAS SIZE = " << aOutput.size() << ".\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
     Plato::OrdinalType tNumLocalVals = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
@@ -144,7 +168,12 @@ inline void copy(const VecOneT & aInput, const VecTwoT & aOutput)
 template<typename VecT>
 inline void scale(const Plato::Scalar & aInput, const VecT & aVector)
 {
-    int tNumLocalVals = aVector.size();
+    if(aVector.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
+    Plato::OrdinalType tNumLocalVals = aVector.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
         aVector(aOrdinal) *= aInput;
@@ -161,7 +190,14 @@ inline void scale(const Plato::Scalar & aInput, const VecT & aVector)
 template<typename VecT>
 inline void axpy(const Plato::Scalar & aAlpha, const VecT & aInput, const VecT & aOutput)
 {
-    assert(aInput.size() == aOutput.size());
+    if(aInput.size() == aOutput.size())
+    {
+        std::stringstream tMsg;
+        tMsg << "DIMENSION MISMATCH. INPUT VECTOR HAS SIZE = " << aInput.size()
+                << " AND OUTPUT VECTOR HAS SIZE = " << aOutput.size() << ".\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
     Plato::OrdinalType tNumLocalVals = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
@@ -180,7 +216,14 @@ inline void axpy(const Plato::Scalar & aAlpha, const VecT & aInput, const VecT &
 template<typename VecT>
 void update(const Plato::Scalar & aAlpha, const VecT & aInput, const Plato::Scalar & aBeta, const VecT & aOutput)
 {
-    assert(aInput.size() == aOutput.size());
+    if(aInput.size() == aOutput.size())
+    {
+        std::stringstream tMsg;
+        tMsg << "DIMENSION MISMATCH. INPUT VECTOR HAS SIZE = " << aInput.size()
+                << " AND OUTPUT VECTOR HAS SIZE = " << aOutput.size() << ".\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
     Plato::OrdinalType tNumLocalVals = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
@@ -303,7 +346,11 @@ void MatrixTimesVectorPlusVector(const Teuchos::RCP<Plato::CrsMatrixType> & aMat
 template<typename VecT, typename ScalarT>
 void max(const VecT & aInput, ScalarT & aOutput)
 {
-    assert(aInput.size() > static_cast<OrdinalType>(0));
+    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
     const OrdinalType tSize = aInput.size();
     //const ScalarT* tInputData = aInput.data();
     aOutput = 0.0;
@@ -324,7 +371,11 @@ void max(const VecT & aInput, ScalarT & aOutput)
 template<typename VecT, typename ScalarT>
 void min(const VecT & aInput, ScalarT & aOutput)
 {
-    assert(aInput.size() > static_cast<OrdinalType>(0));
+    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
     const OrdinalType tSize = aInput.size();
     //const ScalarT* tInputData = aInput.data();
     aOutput = 0.0;
