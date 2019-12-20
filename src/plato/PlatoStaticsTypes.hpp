@@ -23,12 +23,24 @@ using ScalarVectorT = typename Kokkos::View<ScalarType*,Plato:: MemSpace>;
 using ScalarVector  = ScalarVectorT<Plato::Scalar>;
 
 template <typename ScalarType>
+using HostScalarVectorT = typename Kokkos::View<ScalarType*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
+using HostScalarVector  = HostScalarVectorT<Plato::Scalar>;
+
+template <typename ScalarType>
 using ScalarMultiVectorT = typename Kokkos::View<ScalarType**, Kokkos::LayoutRight, Plato::MemSpace>;
 using ScalarMultiVector  = ScalarMultiVectorT<Plato::Scalar>;
 
 template <typename ScalarType>
+using HostMultiScalarVectorT = typename Kokkos::View<ScalarType**, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
+using HostMultiScalarVector  = HostMultiScalarVectorT<Plato::Scalar>;
+
+template <typename ScalarType>
 using ScalarArray3DT = typename Kokkos::View<ScalarType***, Kokkos::LayoutRight, Plato::MemSpace>;
 using ScalarArray3D  = ScalarArray3DT<Plato::Scalar>;
+
+template <typename ScalarType>
+using HostScalarArray3DT = typename Kokkos::View<ScalarType***, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>;
+using HostScalarArray3D  = HostScalarArray3DT<Plato::Scalar>;
 
 struct DataMap
 {
