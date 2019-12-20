@@ -5293,7 +5293,6 @@ private:
         this->initializeNewtonRaphsonSolver(aStateData);
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumNewtonIter; tIteration++)
         {
-            printf("NEWTON ITERATION = %d\n",tIteration);
             tOutputData.mCurrentIteration = tIteration;
 
             // update inverse of local Jacobian -> store in tInvLocalJacobianT	
@@ -5325,7 +5324,6 @@ private:
             mLocalResidualEq.updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                               aControls, aStateData.mCurrentStepIndex);
-            Plato::print(aStateData.mCurrentLocalState, "LOCAL STATE");
         }
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
@@ -5499,12 +5497,10 @@ private:
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual, mUseAbsoluteTolerance);
 
-        Plato::print(aStateData.mDeltaGlobalState, "DELTA STATE");
         // update global state
         Plato::update(static_cast<Plato::Scalar>(1.0), aStateData.mDeltaGlobalState,
                       static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
-        Plato::print(aStateData.mCurrentGlobalState, "GLOBAL STATE");
 
         // copy projection state, i.e. pressure
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
@@ -9811,7 +9807,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 8;
+    constexpr Plato::OrdinalType tMeshWidth = 6;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -9854,7 +9850,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='20'/>             \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='40'/>             \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='20'/>             \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -9893,7 +9889,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 2.5e-4;
+    tValueToSet = 6e-4;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
@@ -9912,7 +9908,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
 
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    TEST_FLOATING_EQUALITY(tObjectiveFunctionValue, -0.133466, tTolerance);
+    TEST_FLOATING_EQUALITY(tObjectiveFunctionValue, -0.16819, tTolerance);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
@@ -10116,7 +10112,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 5e-4;
+    tValueToSet = 6e-4;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
@@ -10135,7 +10131,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
 
     // 5. Test Results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    TEST_FLOATING_EQUALITY(tConstraintValue, -0.133466, tTolerance);
+    TEST_FLOATING_EQUALITY(tConstraintValue, -0.16819, tTolerance);
     //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
@@ -10144,7 +10140,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 6;
+    constexpr Plato::OrdinalType tMeshWidth = 3;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -10186,8 +10182,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='10'/>             \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='10'/>             \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='25'/>             \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='25'/>             \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -10227,7 +10223,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values/indices");
 
-    tValueToSet = 2.5e-4;
+    tValueToSet = 6e-4;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
