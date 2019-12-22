@@ -115,6 +115,17 @@ public:
             std::string mESPName;
     };
 
+    class OnChangeOp
+    {
+        public:
+            OnChangeOp(MPMD_App* aMyApp, Plato::InputData& aNode);
+        protected:
+            bool hasChanged(const std::vector<Plato::Scalar>& aInputState);
+            std::vector<Plato::Scalar> mLocalState;
+            std::string mStrParameters;
+            bool mConditional;
+    };
+
     /******************************************************************************//**
      * @brief Multiple Program, Multiple Data (MPMD) application destructor
     **********************************************************************************/
@@ -239,7 +250,11 @@ public:
         std::stringstream ss;
         ss << "Importing Scalar Value: " << aName << std::endl;
         ss << "[ ";
-        for( auto val : tValues ) ss << val << " ";
+        const int tMaxDisplay = 5;
+        int tNumValues = tValues.size();
+        int tNumDisplay = tNumValues < tMaxDisplay ? tNumValues : tMaxDisplay;
+        for( int i=0; i<tNumDisplay; i++) ss << tValues[i] << " ";
+        if(tNumValues > tMaxDisplay) ss << " ... ";
         ss << "]" << std::endl;
         Plato::Console::Status(ss.str());
     }
@@ -568,7 +583,7 @@ private:
     // Reinitialize sub-class
     //
     /******************************************************************************/
-    class Reinitialize : public LocalOp
+    class Reinitialize : public LocalOp, public OnChangeOp
     {
     public:
         Reinitialize(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
@@ -580,16 +595,11 @@ private:
     // Reinitialize ESP sub-class
     //
     /******************************************************************************/
-    class ReinitializeESP : public LocalOp, public ESP_Op
+    class ReinitializeESP : public LocalOp, public ESP_Op, public OnChangeOp
     {
     public:
         ReinitializeESP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
-    private:
-        bool update();
-        std::vector<Plato::Scalar> mLocalState;
-        std::string mStrParameters;
-        bool mConditional;
     };
     friend class ReinitializeESP;
     /******************************************************************************/
@@ -750,6 +760,32 @@ private:
         void operator()();
     };
     friend class ComputeConstraintGradientX;
+    /******************************************************************************/
+
+    /******************************************************************************/
+    class MapObjectiveGradientX : public LocalOp
+    {
+    public:
+        MapObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string mStrOutputName;
+        std::vector<std::string> mStrInputNames;
+    };
+    friend class MapObjectiveGradientX;
+    /******************************************************************************/
+
+    /******************************************************************************/
+    class MapConstraintGradientX : public LocalOp
+    {
+    public:
+        MapConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string mStrOutputName;
+        std::vector<std::string> mStrInputNames;
+    };
+    friend class MapConstraintGradientX;
     /******************************************************************************/
 
     /******************************************************************************/
