@@ -6231,8 +6231,8 @@ private:
 
         // Compute assembled Jacobian wrt projected pressure gradient
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
-        auto tProjJacobian = mProjectionEq.gradient_u_T(aStateData.mCurrentProjPressGrad, mProjPressure,
-                                                        aControls, aStateData.mCurrentStepIndex);
+        auto tDpDu_T = mProjectionEq.gradient_u_T(aStateData.mCurrentProjPressGrad, mProjPressure,
+                                                  aControls, aStateData.mCurrentStepIndex);
 
         // Compute dPdn^T: Assembled transpose of partial of projection residual wrt projected pressure gradient
         auto tDpDn_T = mProjectionEq.gradient_n_T(aStateData.mCurrentProjPressGrad, mProjPressure,
@@ -6243,10 +6243,10 @@ private:
                                                       aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                       aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
 
-        // Compute Jacobian for adjoint problem: K_t - dPdn_T * (dPdn)^-1 * dRdn_T, where K_t
+        // Compute Jacobian for adjoint problem: K_t - dPdu_T * (dPdn)^-1 * dRdn_T, where K_t
         // is the tangent stiffness matrix, P is the projection problem residual, R is the
         // global residual, and n is the pressure gradient
-        Plato::Condense(mGlobalJacobian /*K_t*/ , tDpDn_T, tProjJacobian,  tDrDn_T, mPressureDofOffset  /*row offset*/ );
+        Plato::Condense(mGlobalJacobian /*K_t*/ , tDpDu_T, tDpDn_T,  tDrDn_T, mPressureDofOffset  /*row offset*/ );
     }
 
 
