@@ -77,7 +77,7 @@ inline void random(const Plato::Scalar & aLowerBound, const Plato::Scalar & aUpp
 template<typename VecOneT, typename VecTwoT>
 inline Plato::Scalar dot(const VecOneT & aVec1, const VecTwoT & aVec2)
 {
-    if(aVec2.size() == aVec1.size())
+    if(aVec2.size() != aVec1.size())
     {
         std::stringstream tMsg;
         tMsg << "DIMENSION MISMATCH. VECTOR ONE HAS SIZE = " << aVec1.size()
@@ -144,7 +144,7 @@ inline void fill(const Plato::Scalar & aInput, const VectorT & aVector)
 template<typename VecOneT, typename VecTwoT>
 inline void copy(const VecOneT & aInput, const VecTwoT & aOutput)
 {
-    if(aInput.size() == aOutput.size())
+    if(aInput.size() != aOutput.size())
     {
         std::stringstream tMsg;
         tMsg << "DIMENSION MISMATCH. INPUT VECTOR HAS SIZE = " << aInput.size()
@@ -190,7 +190,7 @@ inline void scale(const Plato::Scalar & aInput, const VecT & aVector)
 template<typename VecT>
 inline void axpy(const Plato::Scalar & aAlpha, const VecT & aInput, const VecT & aOutput)
 {
-    if(aInput.size() == aOutput.size())
+    if(aInput.size() != aOutput.size())
     {
         std::stringstream tMsg;
         tMsg << "DIMENSION MISMATCH. INPUT VECTOR HAS SIZE = " << aInput.size()
@@ -216,7 +216,7 @@ inline void axpy(const Plato::Scalar & aAlpha, const VecT & aInput, const VecT &
 template<typename VecT>
 void update(const Plato::Scalar & aAlpha, const VecT & aInput, const Plato::Scalar & aBeta, const VecT & aOutput)
 {
-    if(aInput.size() == aOutput.size())
+    if(aInput.size() != aOutput.size())
     {
         std::stringstream tMsg;
         tMsg << "DIMENSION MISMATCH. INPUT VECTOR HAS SIZE = " << aInput.size()
