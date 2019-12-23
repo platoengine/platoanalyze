@@ -5,6 +5,12 @@
 namespace Plato
 {
 
+#define WARNING(msg) \
+        std::cout << std::string("\n\nFILE: ") + __FILE__ \
+        + std::string("\nFUNCTION: ") + __PRETTY_FUNCTION__ \
+        + std::string("\nLINE:") + std::to_string(__LINE__) \
+        + std::string("\nMESSAGE: ") + msg + "\n\n";
+
 #define PRINTERR(msg) \
         std::cout << std::string("\n\nFILE: ") + __FILE__ \
         + std::string("\nFUNCTION: ") + __PRETTY_FUNCTION__ \
