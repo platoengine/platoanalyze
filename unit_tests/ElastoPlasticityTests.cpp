@@ -4741,9 +4741,7 @@ public:
     *******************************************************************************/
     Plato::ScalarMultiVector getAdjoint() override
     {
-        THROWERR("MEMBER ADJOINT DATA IS NOT DEFINED");
-        Plato::ScalarMultiVector tNull;
-        return tNull;
+        THROWERR("ADJOINT MEMBER DATA IS NOT DEFINED");
     }
 
     /***************************************************************************//**
@@ -6246,6 +6244,10 @@ private:
         // Compute Jacobian for adjoint problem: K_t - dPdu_T * (dPdn)^-1 * dRdn_T, where K_t
         // is the tangent stiffness matrix, P is the projection problem residual, R is the
         // global residual, and n is the pressure gradient
+        printf("NUM DpDu_T ROWS = %d AND COLS = %d\n", tDpDu_T->numRows(), tDpDu_T->numCols());
+        printf("NUM DpDn_T ROWS = %d AND COLS = %d\n", tDpDn_T->numRows(), tDpDn_T->numCols());
+        printf("NUM DrDn_T ROWS = %d AND COLS = %d\n", tDrDn_T->numRows(), tDrDn_T->numCols());
+        printf("NUM DrDu_T ROWS = %d AND COLS = %d\n", mGlobalJacobian->numRows(), mGlobalJacobian->numCols());
         Plato::Condense(mGlobalJacobian /*K_t*/ , tDpDu_T, tDpDn_T,  tDrDn_T, mPressureDofOffset  /*row offset*/ );
     }
 
