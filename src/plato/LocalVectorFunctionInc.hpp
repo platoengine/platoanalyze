@@ -31,13 +31,13 @@ namespace Plato
 template<typename PhysicsT>
 class LocalVectorFunctionInc
 {
-  private:
-    static constexpr Plato::OrdinalType mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;
-    static constexpr Plato::OrdinalType mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
-    static constexpr Plato::OrdinalType mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
-    static constexpr Plato::OrdinalType mNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    static constexpr Plato::OrdinalType mNumSpatialDims = PhysicsT::mNumSpatialDims;
-    static constexpr Plato::OrdinalType mNumControl = PhysicsT::mNumControl;
+private:
+    static constexpr auto mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;
+    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;
+    static constexpr auto mNumControl = PhysicsT::mNumControl;
 
     const Plato::OrdinalType mNumNodes;
     const Plato::OrdinalType mNumCells;
@@ -50,7 +50,7 @@ class LocalVectorFunctionInc
     using GradientX       = typename Plato::Evaluation<PhysicsT>::GradientX;
     using GradientZ       = typename Plato::Evaluation<PhysicsT>::GradientZ;
 
-    static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;
+    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;
 
     Plato::WorksetBase<PhysicsT> mWorksetBase;
 
@@ -64,7 +64,7 @@ class LocalVectorFunctionInc
 
     Plato::DataMap& mDataMap;
 
-  public:
+public:
 
     /**************************************************************************//**
     *
@@ -128,6 +128,93 @@ class LocalVectorFunctionInc
                            mLocalVectorFunctionJacobianZ(),
                            mDataMap(aDataMap)
     {
+    }
+
+    /**************************************************************************//**
+    *
+    * \brief Return total number of local degrees of freedom
+    *
+    ******************************************************************************/
+    Plato::OrdinalType size() const
+    {
+      return mNumCells * mNumLocalDofsPerCell;
+    }
+
+    /**************************************************************************//**
+     *
+     * \brief Return total number of nodes
+     * \return total number of nodes
+     *
+     ******************************************************************************/
+    decltype(mNumNodes) numNodes() const
+    {
+        return mNumNodes;
+    }
+
+    /**************************************************************************//**
+     *
+     * \brief Return total number of cells
+     * \return total number of cells
+     *
+     ******************************************************************************/
+    decltype(mNumCells) numCells() const
+    {
+        return mNumCells;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of spatial dimensions.
+     * \return number of spatial dimensions
+    ***************************************************************************/
+    decltype(mNumSpatialDims) numSpatialDims() const
+    {
+        return mNumSpatialDims;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of nodes per cell.
+     * \return number of nodes per cell
+    ***************************************************************************/
+    decltype(mNumNodesPerCell) numNodesPerCell() const
+    {
+        return mNumNodesPerCell;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of global degrees of freedom per node.
+     * \return number of global degrees of freedom per node
+    ***************************************************************************/
+    decltype(mNumDofsPerNode) numGlobalDofsPerNode() const
+    {
+        return mNumDofsPerNode;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of global degrees of freedom per cell.
+     * \return number of global degrees of freedom per cell
+    ***************************************************************************/
+    decltype(mNumGlobalDofsPerCell) numGlobalDofsPerCell() const
+    {
+        return mNumGlobalDofsPerCell;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of local degrees of freedom per cell.
+     * \return number of local degrees of freedom per cell
+    ***************************************************************************/
+    decltype(mNumLocalDofsPerCell) numLocalDofsPerCell() const
+    {
+        return mNumLocalDofsPerCell;
+    }
+
+    /**************************************************************************//**
+    *
+    * \brief Return state names
+    *
+    ******************************************************************************/
+    std::vector<std::string> getDofNames() const
+    {
+      return mLocalVectorFunctionResidual->getDofNames();
     }
 
     /**************************************************************************//**
@@ -205,49 +292,6 @@ class LocalVectorFunctionInc
     void allocateJacobianX(const std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<GradientX>>& aGradientX)
     {
         mLocalVectorFunctionJacobianX = aGradientX; 
-    }
-
-    /**************************************************************************//**
-    *
-    * \brief Return total number of local degrees of freedom
-    *
-    ******************************************************************************/
-    Plato::OrdinalType size() const
-    {
-      return mNumCells * mNumLocalDofsPerCell;
-    }
-
-
-    /**************************************************************************//**
-     *
-     * \brief Return total number of nodes
-     * \return total number of nodes
-     *
-     ******************************************************************************/
-    Plato::OrdinalType numNodes() const
-    {
-        return mNumNodes;
-    }
-
-    /**************************************************************************//**
-     *
-     * \brief Return total number of cells
-     * \return total number of cells
-     *
-     ******************************************************************************/
-    Plato::OrdinalType numCells() const
-    {
-        return mNumCells;
-    }
-
-    /**************************************************************************//**
-    *
-    * \brief Return state names
-    *
-    ******************************************************************************/
-    std::vector<std::string> getDofNames() const
-    {
-      return mLocalVectorFunctionResidual->getDofNames();
     }
 
     /**************************************************************************//**

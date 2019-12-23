@@ -2369,16 +2369,16 @@ struct FunctionFactory
 
 /*************************************************************************//**
  * \brief Concrete class defining the Physics Type template argument for a
- * GlobalVectorFunctionInc.  A GlobalVectorFunctionInc is defined by a stabilized
- * Partial Differential Equation (PDE) integrated implicitly in time.  The
- * stabilization technique is based on the Variational Multiscale (VMS) method.
- * Here, the (Inc) in GlobalVectorFunctionInc denotes increment.
+ * InfinitesimalStrainPlasticity.  A InfinitesimalStrainPlasticity is defined
+ * by a stabilized Partial Differential Equation (PDE) implicitly integrated
+ * in time.  The stabilization technique is based on a Variational Multiscale
+ * (VMS) method.
 *****************************************************************************/
 template<Plato::OrdinalType NumSpaceDim>
 class InfinitesimalStrainPlasticity: public Plato::SimplexPlasticity<NumSpaceDim>
 {
 public:
-    static constexpr auto mSpaceDim = NumSpaceDim;                           /*!< number of spatial dimensitons */
+    static constexpr auto mSpaceDim = NumSpaceDim;                           /*!< number of spatial dimensions */
     typedef Plato::InfinitesimalStrainPlasticityFactory::FunctionFactory FunctionFactory; /*!< define short name for elastoplasticity factory */
 
     using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>; /*!< define short name for simplex plasticity physics */
@@ -2510,12 +2510,75 @@ public:
     }
 
     /***********************************************************************//**
+     * \brief Return number of nodes per cell.
+     * \return total number of nodes per cell
+    ***************************************************************************/
+    decltype(mNumNodesPerCell) numNodesPerCell() const
+    {
+        return mNumNodesPerCell;
+    }
+
+    /***********************************************************************//**
      * \brief Return total number of cells
      * \return total number of cells
     ***************************************************************************/
     decltype(mNumCells) numCells() const
     {
         return mNumCells;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of spatial dimensions.
+     * \return number of spatial dimensions
+    ***************************************************************************/
+    decltype(mNumSpatialDims) numSpatialDims() const
+    {
+        return mNumSpatialDims;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of global degrees of freedom per node.
+     * \return number of global degrees of freedom per node
+    ***************************************************************************/
+    decltype(mNumGlobalDofsPerNode) numGlobalDofsPerNode() const
+    {
+        return mNumGlobalDofsPerNode;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of global degrees of freedom per cell.
+     * \return number of global degrees of freedom per cell
+    ***************************************************************************/
+    decltype(mNumGlobalDofsPerCell) numGlobalDofsPerCell() const
+    {
+        return mNumGlobalDofsPerCell;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of local degrees of freedom per cell.
+     * \return number of local degrees of freedom per cell
+    ***************************************************************************/
+    decltype(mNumLocalDofsPerCell) numLocalDofsPerCell() const
+    {
+        return mNumLocalDofsPerCell;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of pressure gradient degrees of freedom per node.
+     * \return number of pressure gradient degrees of freedom per node
+    ***************************************************************************/
+    decltype(mNumNodeStatePerNode) numNodeStatePerNode() const
+    {
+        return mNumNodeStatePerNode;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of pressure gradient degrees of freedom per cell.
+     * \return number of pressure gradient degrees of freedom per cell
+    ***************************************************************************/
+    decltype(mNumNodeStatePerCell) numNodeStatePerCell() const
+    {
+        return mNumNodeStatePerCell;
     }
 
     /***********************************************************************//**

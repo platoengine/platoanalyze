@@ -61,12 +61,12 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Constructor
-    * @param [in] aMesh mesh data base
-    * @param [in] aMeshSets mesh sets data base
-    * @param [in] aDataMap problem-specific data map 
-    * @param [in] aParamList Teuchos parameter list with input data
-    * @param [in] aProblemType problem type 
+    * \brief Constructor
+    * \param [in] aMesh mesh data base
+    * \param [in] aMeshSets mesh sets data base
+    * \param [in] aDataMap problem-specific data map
+    * \param [in] aParamList Teuchos parameter list with input data
+    * \param [in] aProblemType problem type
     *
     ******************************************************************************/
     VectorFunctionVMS(Omega_h::Mesh& aMesh,
@@ -92,9 +92,9 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Constructor
-    * @param [in] aMesh mesh data base
-    * @param [in] aDataMap problem-specific data map 
+    * \brief Constructor
+    * \param [in] aMesh mesh data base
+    * \param [in] aDataMap problem-specific data map
     *
     ******************************************************************************/
     VectorFunctionVMS(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
@@ -110,9 +110,104 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Allocate residual evaluator
-    * @param [in] aResidual residual evaluator
-    * @param [in] aJacobian Jacobian evaluator
+    * \brief Return number of degrees of freedom
+    *
+    ******************************************************************************/
+    Plato::OrdinalType size() const
+    {
+      return mNumNodes*mNumDofsPerNode;
+    }
+
+    /**************************************************************************//**
+     *
+     * \brief Return total number of nodes
+     * \return total number of nodes
+     *
+     ******************************************************************************/
+    decltype(mNumNodes) numNodes() const
+    {
+        return mNumNodes;
+    }
+
+    /**************************************************************************//**
+     *
+     * \brief Return total number of cells
+     * \return total number of cells
+     *
+     ******************************************************************************/
+    decltype(mNumCells) numCells() const
+    {
+        return mNumCells;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of spatial dimensions.
+     * \return number of spatial dimensions
+    ***************************************************************************/
+    decltype(mNumSpatialDims) numSpatialDims() const
+    {
+        return mNumSpatialDims;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of nodes per cell.
+     * \return number of nodes per cell
+    ***************************************************************************/
+    decltype(mNumNodesPerCell) numNodesPerCell() const
+    {
+        return mNumNodesPerCell;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of global degrees of freedom per node.
+     * \return number of global degrees of freedom per node
+    ***************************************************************************/
+    decltype(mNumDofsPerNode) numGlobalDofsPerNode() const
+    {
+        return mNumDofsPerNode;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of global degrees of freedom per cell.
+     * \return number of global degrees of freedom per cell
+    ***************************************************************************/
+    decltype(mNumDofsPerCell) numGlobalDofsPerCell() const
+    {
+        return mNumDofsPerCell;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of pressure gradient degrees of freedom per node.
+     * \return number of pressure gradient degrees of freedom per node
+    ***************************************************************************/
+    decltype(mNumNodeStatePerNode) numNodeStatePerNode() const
+    {
+        return mNumNodeStatePerNode;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of pressure gradient degrees of freedom per cell.
+     * \return number of pressure gradient degrees of freedom per cell
+    ***************************************************************************/
+    decltype(mNumNodeStatePerCell) numNodeStatePerCell() const
+    {
+        return mNumNodeStatePerCell;
+    }
+
+    /***********************************************************************//**
+     * \brief Return number of configuration degrees of freedom per cell.
+     * \return number of configuration degrees of freedom per cell
+    ***************************************************************************/
+    decltype(mNumConfigDofsPerCell) numConfigDofsPerCell() const
+    {
+        return mNumConfigDofsPerCell;
+    }
+
+    /**************************************************************************//**
+    *
+    * \brief Allocate residual evaluator
+    * \param [in] aResidual residual evaluator
+    * \param [in] aJacobian Jacobian evaluator
     *
     ******************************************************************************/
     void allocateResidual(const std::shared_ptr<Plato::AbstractVectorFunctionVMS<Residual>>& aResidual,
@@ -124,8 +219,8 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Allocate partial derivative with respect to control evaluator
-    * @param [in] aGradientZ partial derivative with respect to control evaluator
+    * \brief Allocate partial derivative with respect to control evaluator
+    * \param [in] aGradientZ partial derivative with respect to control evaluator
     *
     ******************************************************************************/
     void allocateJacobianZ(const std::shared_ptr<Plato::AbstractVectorFunctionVMS<GradientZ>>& aGradientZ)
@@ -135,23 +230,13 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Allocate partial derivative with respect to configuration evaluator
-    * @param [in] GradientX partial derivative with respect to configuration evaluator
+    * \brief Allocate partial derivative with respect to configuration evaluator
+    * \param [in] GradientX partial derivative with respect to configuration evaluator
     *
     ******************************************************************************/
     void allocateJacobianX(const std::shared_ptr<Plato::AbstractVectorFunctionVMS<GradientX>>& aGradientX)
     {
         mVectorFunctionVMSJacobianX = aGradientX; 
-    }
-
-    /**************************************************************************//**
-    *
-    * @brief Return local number of degrees of freedom
-    *
-    ******************************************************************************/
-    Plato::OrdinalType size() const
-    {
-      return mNumNodes*mNumDofsPerNode;
     }
 
     /**************************************************************************/
