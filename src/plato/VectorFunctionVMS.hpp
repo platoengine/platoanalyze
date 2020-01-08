@@ -239,6 +239,14 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
         mVectorFunctionVMSJacobianX = aGradientX; 
     }
 
+    /***************************************************************************//**
+     * \brief Evaluate and residual workset
+     * \param [in] aState     projected presuure gradient
+     * \param [in] aNodeState pressure field
+     * \param [in] aControl   design variables
+     * \param [in] aTimeStep  current time step
+     * \return residual workset
+    *******************************************************************************/
     Plato::ScalarMultiVectorT<typename Residual::ResultScalarType>
     valueWorkset(const Plato::ScalarVector & aState,
                  const Plato::ScalarVector & aNodeState,
@@ -282,50 +290,20 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
         return (tResidual);
     }
 
-    /**************************************************************************/
+    /***************************************************************************//**
+     * \brief Evaluate and assemble residual
+     * \param [in] aState     projected presuure gradient
+     * \param [in] aNodeState pressure field
+     * \param [in] aControl   design variables
+     * \param [in] aTimeStep  current time step
+     * \return assembled residual
+    *******************************************************************************/
     Plato::ScalarVector
     value(const Plato::ScalarVector & aState,
           const Plato::ScalarVector & aNodeState,
           const Plato::ScalarVector & aControl,
           Plato::Scalar aTimeStep = 0.0) const
-    /**************************************************************************/
     {
-      /*using ConfigScalar    = typename Residual::ConfigScalarType;
-      using StateScalar     = typename Residual::StateScalarType;
-      using NodeStateScalar = typename Residual::NodeStateScalarType;
-      using ControlScalar   = typename Residual::ControlScalarType;
-      using ResultScalar    = typename Residual::ResultScalarType;
-
-      // Workset state
-      //
-      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
-
-      // Workset node state
-      //
-      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
-      Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
-
-      // Workset control
-      //
-      Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
-
-      // Workset config
-      //
-      Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-      Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
-
-      // create result
-      //
-      Plato::ScalarMultiVectorT<ResultScalar> tResidual("Cells Residual",mNumCells, mNumDofsPerCell);
-
-      // evaluate function
-      //
-      mVectorFunctionVMSResidual->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );*/
-
-      // create and assemble to return view
-      //
         auto tResidual = this->valueWorkset(aState, aNodeState, aControl, aTimeStep);
         Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace>
             tAssembledResidual("Assembled Residual", mNumDofsPerNode * mNumNodes);
@@ -334,13 +312,19 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
         return tAssembledResidual;
     }
 
-    /**************************************************************************/
-    Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_x(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aNodeState,
-               const Plato::ScalarVector & aControl,
-               Plato::Scalar aTimeStep = 0.0) const
-    /**************************************************************************/
+    /***************************************************************************//**
+     * \brief Evaluate Jacobian with respect to configuration degrees of freedom
+     * \param [in] aState     projected presuure gradient
+     * \param [in] aNodeState pressure field
+     * \param [in] aControl   design variables
+     * \param [in] aTimeStep  current time step
+     * \return Jacobian workset
+    *******************************************************************************/
+    Plato::ScalarMultiVectorT<typename GradientX::ResultScalarType>
+    jacobianConfigWorkset(const Plato::ScalarVector & aState,
+                          const Plato::ScalarVector & aNodeState,
+                          const Plato::ScalarVector & aControl,
+                          const Plato::Scalar & aTimeStep) const
     {
         using ConfigScalar    = typename GradientX::ConfigScalarType;
         using StateScalar     = typename GradientX::StateScalarType;
@@ -371,86 +355,124 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
         // create return view
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianConfiguration", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian Configuration", mNumCells, mNumDofsPerCell);
 
         // evaluate function
         //
         mVectorFunctionVMSJacobianX->evaluate(tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep);
 
-        // create return matrix
-        //
+        return (tJacobian);
+    }
+
+    /***************************************************************************//**
+     * \brief Evaluate Jacobian with respect to configuration degrees of freedom
+     * \param [in] aState     projected presuure gradient
+     * \param [in] aNodeState pressure field
+     * \param [in] aControl   design variables
+     * \param [in] aTimeStep  current time step
+     * \return assembled Jacobian
+    *******************************************************************************/
+    Teuchos::RCP<Plato::CrsMatrixType>
+    gradient_x(const Plato::ScalarVector & aState,
+               const Plato::ScalarVector & aNodeState,
+               const Plato::ScalarVector & aControl,
+               Plato::Scalar aTimeStep = 0.0) const
+    {
+        // Allocate return Jacobian
         auto tMesh = mVectorFunctionVMSJacobianX->getMesh();
         Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
                 Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumDofsPerNode>(&tMesh);
 
-        // assembly to return matrix
-        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode>
-            tJacobianMatEntryOrdinal(tJacobianMat, &tMesh);
-
+        // Assemble Jacobian
         auto tJacobianMatEntries = tJacobianMat->entries();
+        auto tJacobian = this->jacobianConfigWorkset(aState, aNodeState, aControl, aTimeStep);
+        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode> tJacobianMatEntryOrdinal(tJacobianMat, &tMesh);
         Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(mNumDofsPerCell, mNumConfigDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
 
         return tJacobianMat;
     }
 
-    /**************************************************************************/
+    /***************************************************************************//**
+     * \brief Evaluate Jacobian with respect to state degrees of freedom
+     * \param [in] aState     projected presuure gradient
+     * \param [in] aNodeState pressure field
+     * \param [in] aControl   design variables
+     * \param [in] aTimeStep  current time step
+     * \return Jacobian workset
+    *******************************************************************************/
+    Plato::ScalarMultiVectorT<typename Jacobian::ResultScalarType>
+    jacobianStateWorkset(const Plato::ScalarVector & aState,
+                         const Plato::ScalarVector & aNodeState,
+                         const Plato::ScalarVector & aControl,
+                         const Plato::Scalar & aTimeStep) const
+    {
+        using ConfigScalar    = typename Jacobian::ConfigScalarType;
+        using StateScalar     = typename Jacobian::StateScalarType;
+        using NodeStateScalar = typename Jacobian::NodeStateScalarType;
+        using ControlScalar   = typename Jacobian::ControlScalarType;
+        using ResultScalar    = typename Jacobian::ResultScalarType;
+
+        // Workset config
+        //
+        Plato::ScalarArray3DT<ConfigScalar>
+            tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+        // Workset state
+        //
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+
+        // Workset node state
+        //
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNodeStatePerCell);
+        Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
+
+        // Workset control
+        //
+        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+
+        // create return view
+        //
+        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian State",mNumCells,mNumDofsPerCell);
+
+        // evaluate function
+        //
+        mVectorFunctionVMSJacobianU->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+
+        return (tJacobian);
+    }
+
+    /***************************************************************************//**
+     * \brief Evaluate Jacobian with respect to state degrees of freedom
+     * \param [in] aState     projected presuure gradient
+     * \param [in] aNodeState pressure field
+     * \param [in] aControl   design variables
+     * \param [in] aTimeStep  current time step
+     * \return assembled Jacobian
+    *******************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_u_T(const Plato::ScalarVector & aState,
                  const Plato::ScalarVector & aNodeState,
                  const Plato::ScalarVector & aControl,
                  Plato::Scalar aTimeStep = 0.0) const
-    /**************************************************************************/
     {
-      using ConfigScalar    = typename Jacobian::ConfigScalarType;
-      using StateScalar     = typename Jacobian::StateScalarType;
-      using NodeStateScalar = typename Jacobian::NodeStateScalarType;
-      using ControlScalar   = typename Jacobian::ControlScalarType;
-      using ResultScalar    = typename Jacobian::ResultScalarType;
 
-      // Workset config
-      //
-      Plato::ScalarArray3DT<ConfigScalar>
-          tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-      Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
-
-      // Workset state
-      //
-      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
-
-      // Workset node state
-      //
-      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNodeStatePerCell);
-      Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
-
-      // Workset control
-      //
-      Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
-
-      // create return view
-      //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState",mNumCells,mNumDofsPerCell);
-
-      // evaluate function
-      //
-      mVectorFunctionVMSJacobianU->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
-
-      // create return matrix
-      //
+      // Allocate return Jacobian
       auto tMesh = mVectorFunctionVMSJacobianU->getMesh();
       Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
               Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
 
-      // assembly to return matrix
-      Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode>
-          tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
-
+      // Assemble Jacobian
       auto tJacobianMatEntries = tJacobianMat->entries();
+      auto tJacobian = this->jacobianStateWorkset(aState, aNodeState, aControl, aTimeStep);
+      Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode> tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
       Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
 
       return tJacobianMat;
     }
+
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_u(const Plato::ScalarVector & aState,
