@@ -239,6 +239,49 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
         mVectorFunctionVMSJacobianX = aGradientX; 
     }
 
+    Plato::ScalarMultiVectorT<typename Residual::ResultScalarType>
+    valueWorkset(const Plato::ScalarVector & aState,
+                 const Plato::ScalarVector & aNodeState,
+                 const Plato::ScalarVector & aControl,
+                 const Plato::Scalar & aTimeStep) const
+    {
+        using ConfigScalar    = typename Residual::ConfigScalarType;
+        using StateScalar     = typename Residual::StateScalarType;
+        using NodeStateScalar = typename Residual::NodeStateScalarType;
+        using ControlScalar   = typename Residual::ControlScalarType;
+        using ResultScalar    = typename Residual::ResultScalarType;
+
+        // Workset state
+        //
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+
+        // Workset node state
+        //
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
+        Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
+
+        // Workset control
+        //
+        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+
+        // Workset config
+        //
+        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+        // create result
+        //
+        Plato::ScalarMultiVectorT<ResultScalar> tResidual("Cells Residual",mNumCells, mNumDofsPerCell);
+
+        // evaluate function
+        //
+        mVectorFunctionVMSResidual->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
+
+        return (tResidual);
+    }
+
     /**************************************************************************/
     Plato::ScalarVector
     value(const Plato::ScalarVector & aState,
@@ -247,7 +290,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
           Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar    = typename Residual::ConfigScalarType;
+      /*using ConfigScalar    = typename Residual::ConfigScalarType;
       using StateScalar     = typename Residual::StateScalarType;
       using NodeStateScalar = typename Residual::NodeStateScalarType;
       using ControlScalar   = typename Residual::ControlScalarType;
@@ -279,14 +322,16 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionVMSResidual->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
+      mVectorFunctionVMSResidual->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );*/
 
       // create and assemble to return view
       //
-      Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace>  tReturnValue("Assembled Residual",mNumDofsPerNode*mNumNodes);
-      Plato::WorksetBase<PhysicsT>::assembleResidual( tResidual, tReturnValue );
+        auto tResidual = this->valueWorkset(aState, aNodeState, aControl, aTimeStep);
+        Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace>
+            tAssembledResidual("Assembled Residual", mNumDofsPerNode * mNumNodes);
+        Plato::WorksetBase<PhysicsT>::assembleResidual(tResidual, tAssembledResidual);
 
-      return tReturnValue;
+        return tAssembledResidual;
     }
 
     /**************************************************************************/

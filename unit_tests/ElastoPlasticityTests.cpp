@@ -10054,6 +10054,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
 }
 
 
+/*
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
 {
     // 1. DEFINE PROBLEM
@@ -10159,6 +10160,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tObjGrad = tPlasticityProblem.objectiveGradient(tControls, tSolution);
 }
+*/
 
 
 }
