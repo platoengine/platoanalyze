@@ -561,7 +561,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
         // create return view
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianNodeState", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian Node State", mNumCells, mNumDofsPerCell);
 
         // evaluate function
         //
@@ -642,89 +642,92 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
                  Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar    = typename JacobianN::ConfigScalarType;
-      using StateScalar     = typename JacobianN::StateScalarType;
-      using NodeStateScalar = typename JacobianN::NodeStateScalarType;
-      using ControlScalar   = typename JacobianN::ControlScalarType;
-      using ResultScalar    = typename JacobianN::ResultScalarType;
+        /*
+        using ConfigScalar    = typename JacobianN::ConfigScalarType;
+        using StateScalar     = typename JacobianN::StateScalarType;
+        using NodeStateScalar = typename JacobianN::NodeStateScalarType;
+        using ControlScalar   = typename JacobianN::ControlScalarType;
+        using ResultScalar    = typename JacobianN::ResultScalarType;
 
-      // Workset config
-      //
-      Plato::ScalarArray3DT<ConfigScalar>
-          tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-      Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        // Workset config
+        //
+        Plato::ScalarArray3DT<ConfigScalar>
+            tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
-      // Workset state
-      //
-      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+        // Workset state
+        //
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
-      // Workset node state
-      //
-      Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
-      Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
+        // Workset node state
+        //
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
+        Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
 
-      // Workset control
-      //
-      Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+        // Workset control
+        //
+        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
 
-      // create return view
-      //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianNodeState", mNumCells, mNumDofsPerCell);
+        // create return view
+        //
+        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian Node State", mNumCells, mNumDofsPerCell);
 
-      // evaluate function
-      //
-      mVectorFunctionVMSJacobianN->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+        // evaluate function
+        //
+        mVectorFunctionVMSJacobianN->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+        */
 
-      // tJacobian has shape (Nc, (Nv x Nd), (Nv x Nn))
-      //   Nc: number of cells
-      //   Nv: number of vertices per cell
-      //   Nd: dimensionality of the vector function
-      //   Nn: dimensionality of the node state
-      //   (I x J) is a strided 1D array indexed by i*J+j where i /in I and j /in J.
-      //
-      // (tJacobian is (Nc, (Nv x Nd)) and the third dimension, (Nv x Nn), is in the AD type)
+        // tJacobian has shape (Nc, (Nv x Nd), (Nv x Nn))
+        //   Nc: number of cells
+        //   Nv: number of vertices per cell
+        //   Nd: dimensionality of the vector function
+        //   Nn: dimensionality of the node state
+        //   (I x J) is a strided 1D array indexed by i*J+j where i /in I and j /in J.
+        //
+        // (tJacobian is (Nc, (Nv x Nd)) and the third dimension, (Nv x Nn), is in the AD type)
 
-      // create *transpose* matrix with block size (Nn, Nd).
-      //
-      auto tMesh = mVectorFunctionVMSJacobianN->getMesh();
-      Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumNodeStatePerNode, mNumDofsPerNode>( &tMesh );
+        // create *transpose* matrix with block size (Nn, Nd).
+        //
+        auto tMesh = mVectorFunctionVMSJacobianN->getMesh();
+        Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumNodeStatePerNode, mNumDofsPerNode>( &tMesh );
 
-      // create entry ordinal functor:
-      // tJacobianMatEntryOrdinal(e, k, l) => G
-      //   e: cell index
-      //   k: row index /in (Nv x Nd)
-      //   l: col index /in (Nv x Nn)
-      //   G: entry index into CRS matrix
-      // 
-      // Template parameters:
-      //   mNumSpatialDims: Nv-1
-      //   mNumNodeStatePerNode:   Nn
-      //   mNumDofsPerNode: Nd
-      //
-      // Note that the second two template parameters must match the block shape of the destination matrix, tJacobianMat
-      //
-      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumNodeStatePerNode, mNumDofsPerNode>
-          tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+        // create entry ordinal functor:
+        // tJacobianMatEntryOrdinal(e, k, l) => G
+        //   e: cell index
+        //   k: row index /in (Nv x Nd)
+        //   l: col index /in (Nv x Nn)
+        //   G: entry index into CRS matrix
+        //
+        // Template parameters:
+        //   mNumSpatialDims: Nv-1
+        //   mNumNodeStatePerNode:   Nn
+        //   mNumDofsPerNode: Nd
+        //
+        // Note that the second two template parameters must match the block shape of the destination matrix, tJacobianMat
+        //
+        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumNodeStatePerNode, mNumDofsPerNode>
+            tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
-      // Assemble from the AD-typed result, tJacobian, into the POD-typed global matrix, tJacobianMat.
-      //
-      // The transpose is being assembled, (i.e., tJacobian is transposed before assembly into tJacobianMat), so
-      // arguments 1 and 2 below correspond to the size of tJacobian ((Nv x Nd), (Nv x Nn)) and the size of the
-      // *transpose* of tJacobianMat (Transpose(Nn, Nd) => (Nd, Nn)).
-      //
-      auto tJacobianMatEntries = tJacobianMat->entries();
-      Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(
-        mNumDofsPerCell,          /* (Nv x Nd) */
-        mNumNodeStatePerCell,            /* (Nv x Nn) */
-        tJacobianMatEntryOrdinal, /* entry ordinal functor */
-        tJacobian,                /* source data */
-        tJacobianMatEntries       /* destination */
-      );
+        // Assemble from the AD-typed result, tJacobian, into the POD-typed global matrix, tJacobianMat.
+        //
+        // The transpose is being assembled, (i.e., tJacobian is transposed before assembly into tJacobianMat), so
+        // arguments 1 and 2 below correspond to the size of tJacobian ((Nv x Nd), (Nv x Nn)) and the size of the
+        // *transpose* of tJacobianMat (Transpose(Nn, Nd) => (Nd, Nn)).
+        //
+        auto tJacobianMatEntries = tJacobianMat->entries();
+        auto tJacobian = this->jacobianNodeStateWorkset(aState, aNodeState, aControl, aTimeStep);
+        Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(
+          mNumDofsPerCell,          /* (Nv x Nd) */
+          mNumNodeStatePerCell,            /* (Nv x Nn) */
+          tJacobianMatEntryOrdinal, /* entry ordinal functor */
+          tJacobian,                /* source data */
+          tJacobianMatEntries       /* destination */
+        );
 
-      return tJacobianMat;
+        return tJacobianMat;
     }
 
     /**************************************************************************/
