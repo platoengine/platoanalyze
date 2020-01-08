@@ -4632,6 +4632,7 @@ private:
     static constexpr auto mNumGlobalDofsPerNode = PhysicsT::mNumDofsPerNode;     /*!< number of global degrees of freedom per node*/
     static constexpr auto mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;     /*!< number of global degrees of freedom per cell (i.e. element)*/
     static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell; /*!< number of local degrees of freedom per cell (i.e. element)*/
+    static constexpr auto mNumPressGradDofsPerCell = PhysicsT::mNumNodeStatePerCell; /*!< number of projected pressure gradient degrees of freedom per cell (i.e. element)*/
 
     // Required
     using ProjectorT = typename Plato::Projection<mSpatialDim, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
@@ -6290,9 +6291,11 @@ private:
                                                       aControls, aStateData.mCurrentStepIndex);
 
             // compute (tDpDu_T * CurrentProjPressGradAdjoint) + LocalAdjointRHS
-            auto tNumCells = mLocalResidualEq.numCells();
+            auto tNumCells = mProjectionEq.numCells();
+            Plato::ScalarMultiVector tCurrentProjPressGrad("Current Projected Pressure Gradient", tNumCells, mNumPressGradDofsPerCell);
+            mWorksetBase.worksetNodeState(aAdjointData.mCurrentProjPressGradAdjoint, tCurrentProjPressGrad);
             Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = -1.0;
-            Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDpDu_T, aAdjointData.mCurrentProjPressGradAdjoint, tBeta, tLocalRHS);
+            Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDpDu_T, tCurrentProjPressGrad, tBeta, tLocalRHS);
         }
 
         // Compute -( tDfDu_k + tDpDu_k^T * gamma_k - { tDhDu_k^T * [ INV(tDhDc_k^T) * (tDfDc_k + tDhDc_{k+1}^T * mu_{k+1}) ] } )
