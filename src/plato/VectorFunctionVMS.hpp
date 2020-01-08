@@ -481,6 +481,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
+        /*
       using ConfigScalar    = typename Jacobian::ConfigScalarType;
       using StateScalar     = typename Jacobian::StateScalarType;
       using NodeStateScalar = typename Jacobian::NodeStateScalarType;
@@ -515,18 +516,16 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
       // evaluate function
       //
       mVectorFunctionVMSJacobianU->evaluate( tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      */
 
-      // create return matrix
-      //
+      // Allocate Jacobian
       auto tMesh = mVectorFunctionVMSJacobianU->getMesh();
-      Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
+      Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
 
-      // assembly to return matrix
-      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode>
-          tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
-
+      // Assemble Jacobian
       auto tJacobianMatEntries = tJacobianMat->entries();
+      auto tJacobian = this->jacobianStateWorkset(aState, aNodeState, aControl, aTimeStep);
+      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode> tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
       Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
 
       return tJacobianMat;
