@@ -6325,10 +6325,8 @@ private:
         if(aStateData.mCurrentStepIndex != tFinalStepIndex)
         {
             // compute Jacobian tDpDu_T
-            auto tDpDu_T = mProjectionEq.jacobianStateWorkset(aStateData.mCurrentProjPressGrad,
-                                                              mProjPressure,
-                                                              aControls,
-                                                              aStateData.mCurrentStepIndex);
+            auto tDpDu_T = mProjectionEq.gradient_u_T_workset(aStateData.mCurrentProjPressGrad, mProjPressure,
+                                                              aControls, aStateData.mCurrentStepIndex);
 
             // compute F_k^{local} + (tDpDu_T * gamma_k)
             auto tNumCells = mProjectionEq.numCells();
