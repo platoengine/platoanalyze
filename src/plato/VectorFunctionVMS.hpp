@@ -73,7 +73,6 @@ public:
                    Plato::DataMap& aDataMap,
                    Teuchos::ParameterList& aParamList,
                    std::string aProblemType) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
             mNumNodes(aMesh.nverts()),
             mNumCells(aMesh.nelems()),
             mDataMap(aDataMap),
@@ -100,13 +99,13 @@ public:
     *
     ******************************************************************************/
     VectorFunctionVMS(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
             mVectorFunctionVMSResidual(),
             mVectorFunctionVMSJacobianU(),
             mVectorFunctionVMSJacobianN(),
             mVectorFunctionVMSJacobianX(),
             mVectorFunctionVMSJacobianZ(),
-            mDataMap(aDataMap)
+            mDataMap(aDataMap),
+            mWorksetBase(aMesh)
     {
     }
 
