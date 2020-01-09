@@ -6294,8 +6294,8 @@ private:
             auto tNumCells = mProjectionEq.numCells();
             Plato::ScalarMultiVector tCurrentProjPressGrad("Current Projected Pressure Gradient", tNumCells, mNumPressGradDofsPerCell);
             mWorksetBase.worksetNodeState(aAdjointData.mCurrentProjPressGradAdjoint, tCurrentProjPressGrad);
-            Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = -1.0;
-            Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDpDu_T, tCurrentProjPressGrad, tBeta, tLocalRHS);
+            //Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = -1.0;
+            //Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDpDu_T, tCurrentProjPressGrad, tBeta, tLocalRHS);
         }
 
         // Compute -( tDfDu_k + tDpDu_k^T * gamma_k - { tDhDu_k^T * [ INV(tDhDc_k^T) * (tDfDc_k + tDhDc_{k+1}^T * mu_{k+1}) ] } )
