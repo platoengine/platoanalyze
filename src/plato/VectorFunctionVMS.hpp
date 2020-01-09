@@ -24,7 +24,7 @@ namespace Plato
 */
 /******************************************************************************/
 template<typename PhysicsT>
-class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
+class VectorFunctionVMS
 {
 private:
     static constexpr auto mNumControl      = PhysicsT::mNumControl;
@@ -54,6 +54,7 @@ private:
     std::shared_ptr<Plato::AbstractVectorFunctionVMS<GradientZ>> mVectorFunctionVMSJacobianZ;
 
     Plato::DataMap& mDataMap;
+    Plato::WorksetBase<PhysicsT> mWorksetBase; /*!< assembly routine interface */
 
 public:
 
@@ -75,7 +76,8 @@ public:
             Plato::WorksetBase<PhysicsT>(aMesh),
             mNumNodes(aMesh.nverts()),
             mNumCells(aMesh.nelems()),
-            mDataMap(aDataMap)
+            mDataMap(aDataMap),
+            mWorksetBase(aMesh)
     {
       typename PhysicsT::FunctionFactory tFunctionFactory;
 
@@ -262,22 +264,22 @@ public:
         // Workset state
         //
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+        mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset node state
         //
         Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
-        Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
+        mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset control
         //
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+        mWorksetBase.worksetControl(aControl, tControlWS);
 
         // Workset config
         //
         Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        mWorksetBase.worksetConfig(tConfigWS);
 
         // create result
         //
@@ -307,7 +309,7 @@ public:
         auto tResidual = this->valueWorkset(aState, aNodeState, aControl, aTimeStep);
         Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace>
             tAssembledResidual("Assembled Residual", mNumDofsPerNode * mNumNodes);
-        Plato::WorksetBase<PhysicsT>::assembleResidual(tResidual, tAssembledResidual);
+        mWorksetBase.assembleResidual(tResidual, tAssembledResidual);
 
         return tAssembledResidual;
     }
@@ -336,22 +338,22 @@ public:
         //
         Plato::ScalarArray3DT<ConfigScalar>
             tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        mWorksetBase.worksetConfig(tConfigWS);
 
         // Workset state
         //
         Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
-        Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
+        mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset node state
         //
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+        mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset control
         //
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+        mWorksetBase.worksetControl(aControl, tControlWS);
 
         // create return view
         //
@@ -387,7 +389,7 @@ public:
         auto tJacobianMatEntries = tJacobianMat->entries();
         auto tJacobian = this->jacobianConfigWorkset(aState, aNodeState, aControl, aTimeStep);
         Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode> tJacobianMatEntryOrdinal(tJacobianMat, &tMesh);
-        Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(
+        mWorksetBase.assembleTransposeJacobian(
            mNumDofsPerCell,
            mNumConfigDofsPerCell,
            tJacobianMatEntryOrdinal,
@@ -422,22 +424,22 @@ public:
         //
         Plato::ScalarArray3DT<ConfigScalar>
             tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        mWorksetBase.worksetConfig(tConfigWS);
 
         // Workset state
         //
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+        mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset node state
         //
         Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNodeStatePerCell);
-        Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
+        mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset control
         //
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+        mWorksetBase.worksetControl(aControl, tControlWS);
 
         // create return view
         //
@@ -473,7 +475,7 @@ public:
       auto tJacobianMatEntries = tJacobianMat->entries();
       auto tJacobian = this->jacobianStateWorkset(aState, aNodeState, aControl, aTimeStep);
       Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode> tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
-      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(
+      mWorksetBase.assembleJacobianFad(
         mNumDofsPerCell,
         mNumDofsPerCell,
         tJacobianMatEntryOrdinal,
@@ -507,7 +509,7 @@ public:
       auto tJacobianMatEntries = tJacobianMat->entries();
       auto tJacobian = this->jacobianStateWorkset(aState, aNodeState, aControl, aTimeStep);
       Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode> tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
-      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(
+      mWorksetBase.assembleJacobianFad(
         mNumDofsPerCell,
         mNumDofsPerCell,
         tJacobianMatEntryOrdinal,
@@ -542,22 +544,22 @@ public:
         //
         Plato::ScalarArray3DT<ConfigScalar>
             tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        mWorksetBase.worksetConfig(tConfigWS);
 
         // Workset state
         //
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+        mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset node state
         //
         Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
-        Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
+        mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset control
         //
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+        mWorksetBase.worksetControl(aControl, tControlWS);
 
         // create return view
         //
@@ -623,7 +625,7 @@ public:
         //
         auto tJacobianMatEntries = tJacobianMat->entries();
         auto tJacobian = this->jacobianNodeStateWorkset(aState, aNodeState, aControl, aTimeStep);
-        Plato::WorksetBase<PhysicsT>::assembleJacobianFad(
+        mWorksetBase.assembleJacobianFad(
           mNumDofsPerCell,          /* (Nv x Nd) */
           mNumNodeStatePerCell,            /* (Nv x Nn) */
           tJacobianMatEntryOrdinal, /* entry ordinal functor */
@@ -688,7 +690,7 @@ public:
         //
         auto tJacobianMatEntries = tJacobianMat->entries();
         auto tJacobian = this->jacobianNodeStateWorkset(aState, aNodeState, aControl, aTimeStep);
-        Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(
+        mWorksetBase.assembleTransposeJacobian(
           mNumDofsPerCell,          /* (Nv x Nd) */
           mNumNodeStatePerCell,            /* (Nv x Nn) */
           tJacobianMatEntryOrdinal, /* entry ordinal functor */
@@ -723,22 +725,22 @@ public:
         //
         Plato::ScalarArray3DT<ConfigScalar>
             tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        mWorksetBase.worksetConfig(tConfigWS);
 
         // Workset control
         //
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+        mWorksetBase.worksetControl(aControl, tControlWS);
 
         // Workset state
         //
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+        mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset node state
         //
         Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNodeStatePerCell);
-        Plato::WorksetBase<PhysicsT>::worksetNodeState(aNodeState, tNodeStateWS);
+        mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // create result
         //
@@ -774,7 +776,7 @@ public:
       auto tJacobianMatEntries = tJacobianMat->entries();
       auto tJacobian = this->jacobianControlWorkset(aState, aNodeState, aControl, aTimeStep);
       Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode> tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
-      Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(
+      mWorksetBase.assembleTransposeJacobian(
         mNumDofsPerCell,
         mNumNodesPerCell,
         tJacobianMatEntryOrdinal,
