@@ -27,7 +27,8 @@ template<typename PhysicsT>
 class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 {
   private:
-    using Plato::WorksetBase<PhysicsT>::mNumDofsPerCell;
+    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell;
+    //using Plato::WorksetBase<PhysicsT>::mNumDofsPerCell;
     using Plato::WorksetBase<PhysicsT>::mNumNodesPerCell;
     using Plato::WorksetBase<PhysicsT>::mNumDofsPerNode;
     using Plato::WorksetBase<PhysicsT>::mNumSpatialDims;
@@ -37,9 +38,6 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 
     using Plato::WorksetBase<PhysicsT>::mNumNodeStatePerNode;
     using Plato::WorksetBase<PhysicsT>::mNumNodeStatePerCell;
-
-    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal;
-    using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
 
     using Residual  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual;
     using Jacobian  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Jacobian;
