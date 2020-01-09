@@ -27,8 +27,19 @@ template<typename PhysicsT>
 class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
 {
   private:
-    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell;
-    //using Plato::WorksetBase<PhysicsT>::mNumDofsPerCell;
+    static constexpr auto mNumControl      = PhysicsT::mNumControl;
+    static constexpr auto mNumDofsPerNode  = PhysicsT::mNumDofsPerNode;
+    static constexpr auto mNumSpatialDims  = PhysicsT::mNumSpatialDims;
+    static constexpr auto mNumDofsPerCell  = PhysicsT::mNumDofsPerCell;
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+
+    static constexpr auto mNumNodeStatePerNode = PhysicsT::mNumNodeStatePerNode;
+    static constexpr auto mNumNodeStatePerCell = PhysicsT::mNumNodeStatePerCell;
+
+    const Plato::OrdinalType mNumNodes; /*!< total number of nodes */
+    const Plato::OrdinalType mNumCells; /*!< total number of cells (i.e. elements)*/
+
+    /*using Plato::WorksetBase<PhysicsT>::mNumDofsPerCell;
     using Plato::WorksetBase<PhysicsT>::mNumNodesPerCell;
     using Plato::WorksetBase<PhysicsT>::mNumDofsPerNode;
     using Plato::WorksetBase<PhysicsT>::mNumSpatialDims;
@@ -37,7 +48,7 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
     using Plato::WorksetBase<PhysicsT>::mNumCells;
 
     using Plato::WorksetBase<PhysicsT>::mNumNodeStatePerNode;
-    using Plato::WorksetBase<PhysicsT>::mNumNodeStatePerCell;
+    using Plato::WorksetBase<PhysicsT>::mNumNodeStatePerCell;*/
 
     using Residual  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual;
     using Jacobian  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Jacobian;
@@ -73,6 +84,8 @@ class VectorFunctionVMS : public Plato::WorksetBase<PhysicsT>
                    Teuchos::ParameterList& aParamList,
                    std::string aProblemType) :
             Plato::WorksetBase<PhysicsT>(aMesh),
+            mNumNodes(aMesh.nverts()),
+            mNumCells(aMesh.nelems()),
             mDataMap(aDataMap)
     {
       typename PhysicsT::FunctionFactory tFunctionFactory;
