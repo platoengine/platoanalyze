@@ -1,3 +1,0 @@
-[submodule "tests/plato"]
-	path = tests/plato
-	url = https://github.com/platoengine/tests.git
