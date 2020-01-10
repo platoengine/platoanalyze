@@ -5988,7 +5988,7 @@ private:
         // add projection adjoint contribution to gradient, i.e. DfDz += (DpDz)^T * mu
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
         auto tDpDz_T = mProjectionEq.gradient_z(aStateData.mCurrentProjPressGrad, mProjPressure,
-                                                aControls, aStateData.mCurrentStepIndex); //todo: ask josh about the order of the input arguments
+                                                aControls, aStateData.mCurrentStepIndex);
         Plato::MatrixTimesVectorPlusVector(tDpDz_T, aAdjointData.mCurrentProjPressGradAdjoint, aGradient);
 
         // add contribution from local residual to gradient, i.e. DfDz += (DhDz)^T * gamma
@@ -6037,7 +6037,7 @@ private:
         // add projection adjoint contribution to gradient, i.e. DfDx += (DpDx)^T * mu
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
         auto tDpDx_T = mProjectionEq.gradient_x(aStateData.mCurrentProjPressGrad, mProjPressure,
-                                                aControls, aStateData.mCurrentStepIndex); //todo: ask josh about the order of the input arguments
+                                                aControls, aStateData.mCurrentStepIndex);
         Plato::MatrixTimesVectorPlusVector(tDpDx_T, aAdjointData.mCurrentProjPressGradAdjoint, aGradient);
 
         // add contribution from local residual to gradient, i.e. DfDx += (DhDx)^T * gamma
