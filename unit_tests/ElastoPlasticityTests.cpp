@@ -5864,7 +5864,7 @@ private:
             this->updateAdjointData(tAdjointData);
             this->updateInverseLocalJacobian(aControls, tAdjointStateData, tInvLocalJacobianT);
 
-            this->updatePressGradAdjointVars(aControls, tAdjointStateData, tAdjointData);
+            this->updateProjPressGradAdjointVars(aControls, tAdjointStateData, tAdjointData);
             this->updateGlobalAdjointVars(aCriterion, aControls, tAdjointStateData, tInvLocalJacobianT, tAdjointData);
             this->updateLocalAdjointVars(aCriterion, aControls, tAdjointStateData, tInvLocalJacobianT, tAdjointData);
 
@@ -5986,21 +5986,25 @@ private:
         Plato::MatrixTimesVectorPlusVector(tDrDz_T, aAdjointData.mCurrentGlobalAdjoint, aGradient);
 
         // add projection adjoint contribution to gradient, i.e. DfDz += (DpDz)^T * mu
+        // TODO: IMPLEMENT gradient_z_T in Projected Pressure Gradient Residual Equation. The gradient_z function will not work.
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
         auto tDpDz_T = mProjectionEq.gradient_z(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                 aControls, aStateData.mCurrentStepIndex);
         Plato::MatrixTimesVectorPlusVector(tDpDz_T, aAdjointData.mCurrentProjPressGradAdjoint, aGradient);
 
-        // add contribution from local residual to gradient, i.e. DfDz += (DhDz)^T * gamma
+        // compute local contribution to total gradient, i.e. (DhDz)^T * gamma
+        auto tNumCells = mLocalResidualEq.numCells();
+        Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
+        Plato::ScalarMultiVector tCurrentMu("Current Local Adjoint", tNumCells, mNumLocalDofsPerCell);
+        mWorksetBase.worksetLocalState(aAdjointData.mCurrentLocalAdjoint, tCurrentMu);
         auto tDhDz_T = mLocalResidualEq.gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                    aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                    aControls, aStateData.mCurrentStepIndex);
-        auto tNumCells = mLocalResidualEq.numCells();
-        Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
-        Plato::ScalarMultiVector tDhDzTimesLocalAdjoint("Local Gradient times adjoint", tNumCells, mNumNodesPerCell);
-        Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDz_T, aAdjointData.mCurrentLocalAdjoint, tBeta, tDhDzTimesLocalAdjoint);
+        Plato::ScalarMultiVector tDhDzTimesMu("Local Contribution", tNumCells, mNumNodesPerCell);
+        Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDz_T, tCurrentMu, tBeta, tDhDzTimesMu);
 
-        mWorksetBase.assembleScalarGradientZ(tDhDzTimesLocalAdjoint, aGradient);
+        // add local contribution to total gradient, i.e. DfDz += (DhDz)^T * gamma
+        mWorksetBase.assembleScalarGradientZ(tDhDzTimesMu, aGradient);
     }
 
     /***************************************************************************//**
@@ -6035,21 +6039,25 @@ private:
         Plato::MatrixTimesVectorPlusVector(tDrDx_T, aAdjointData.mCurrentGlobalAdjoint, aGradient);
 
         // add projection adjoint contribution to gradient, i.e. DfDx += (DpDx)^T * mu
+        // TODO: IMPLEMENT gradient_z_T in Projected Pressure Gradient Residual Equation. The gradient_z function will not work.
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
         auto tDpDx_T = mProjectionEq.gradient_x(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                 aControls, aStateData.mCurrentStepIndex);
         Plato::MatrixTimesVectorPlusVector(tDpDx_T, aAdjointData.mCurrentProjPressGradAdjoint, aGradient);
 
-        // add contribution from local residual to gradient, i.e. DfDx += (DhDx)^T * gamma
+        // compute local contribution to total gradient, i.e. (DhDx)^T * gamma
+        auto tNumCells = mLocalResidualEq.numCells();
+        Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
+        Plato::ScalarMultiVector tCurrentMu("Current Local Adjoint", tNumCells, mNumLocalDofsPerCell);
+        mWorksetBase.worksetLocalState(aAdjointData.mCurrentLocalAdjoint, tCurrentMu);
         auto tDhDx_T = mLocalResidualEq.gradient_x(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                    aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                    aControls, aStateData.mCurrentStepIndex);
-        auto tNumCells = mLocalResidualEq.numCells();
-        Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
-        Plato::ScalarMultiVector tDhDxTimesLocalAdjoint("Local Gradient times adjoint", tNumCells, mNumNodesPerCell);
-        Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDx_T, aAdjointData.mCurrentLocalAdjoint, tBeta, tDhDxTimesLocalAdjoint);
+        Plato::ScalarMultiVector tDhDxTimesMu("Local Jacobian times Local Adjoint", tNumCells, mNumNodesPerCell);
+        Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDx_T, tCurrentMu, tBeta, tDhDxTimesMu);
 
-        mWorksetBase.assembleVectorGradientX(tDhDxTimesLocalAdjoint, aGradient);
+        // add local contribution to total gradient, i.e. DfDx += (DhDx)^T * gamma
+        mWorksetBase.assembleVectorGradientX(tDhDxTimesMu, aGradient);
     }
 
     /***************************************************************************//**
@@ -6072,9 +6080,9 @@ private:
      * \param [in] aStateData   state data manager
      * \param [in] aAdjointData adjoint data manager
     *******************************************************************************/
-    void updatePressGradAdjointVars(const Plato::ScalarVector & aControls,
-                                    const Plato::AdjointStateData& aStateData,
-                                    Plato::AdjointData& aAdjointData)
+    void updateProjPressGradAdjointVars(const Plato::ScalarVector & aControls,
+                                        const Plato::AdjointStateData& aStateData,
+                                        Plato::AdjointData& aAdjointData)
     {
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aStateData.mCurrentStepIndex == tLastStepIndex)
@@ -6141,8 +6149,8 @@ private:
 
         // Get current global adjoint workset
         auto tNumCells = mLocalResidualEq.numCells();
-        Plato::ScalarMultiVector tCurrentLambda("Current Global Adjoint Workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetLocalState(aAdjointData.mCurrentGlobalAdjoint, tCurrentLambda);
+        Plato::ScalarMultiVector tCurrentLambda("Current Global Adjoint", tNumCells, mNumGlobalDofsPerCell);
+        mWorksetBase.worksetState(aAdjointData.mCurrentGlobalAdjoint, tCurrentLambda);
 
         // Compute Jacobian tDrDc_k, where k denotes the current time step
         auto tDrDc_T = mGlobalResidualEq.gradient_c_T(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
@@ -6279,9 +6287,7 @@ private:
                                                  aControls, aStateData.mCurrentStepIndex);
         Plato::ScalarMultiVector tRHS("Local Adjoint RHS", tNumCells, mNumGlobalDofsPerCell);
         Plato::matrix_times_vector_workset("T", tNumCells, tAlpha, tDhDu, tLocalStateWorkSet, tBeta, tRHS);
-
-        tBeta = -1.0;
-        Plato::scale_multivector(tBeta, tRHS);
+        Plato::scale_multivector(static_cast<Plato::Scalar>(-1.0), tRHS);
 
         return (tRHS);
     }
@@ -6325,6 +6331,8 @@ private:
         if(aStateData.mCurrentStepIndex != tFinalStepIndex)
         {
             // compute Jacobian tDpDu_T
+            // TODO: DERIVATIVE SHOULD BE WRT TO PRESSURE FIELD NOT PROJECTED PRESSURE GRADIENT, I.E SHOULD
+            // BE gradient_n_T_workset and not gradient_u_T_workset. FIX THIS
             auto tDpDu_T = mProjectionEq.gradient_u_T_workset(aStateData.mCurrentProjPressGrad, mProjPressure,
                                                               aControls, aStateData.mCurrentStepIndex);
 
