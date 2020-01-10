@@ -4897,9 +4897,9 @@ public:
                     << "steps is set to " << mNumPseudoTimeSteps << " and the maximum number of pseudo time steps "
                     << "is set to " << mMaxNumPseudoTimeSteps << ". ****\n";
                 break;
-            }*/
+            }
 
-            this->resizeStateContainers();
+            this->resizeStateContainers();*/
         }
 
         return mGlobalStates;
