@@ -563,7 +563,7 @@ public:
      * \param [in] aTimeStep  current time step
      * \return Workset of Jacobian with respect to configuration degrees of freedom
     *******************************************************************************/
-    Teuchos::RCP<Plato::CrsMatrixType>
+    Plato::ScalarArray3D
     gradient_x_workset(const Plato::ScalarVector & aState,
                        const Plato::ScalarVector & aNodeState,
                        const Plato::ScalarVector & aControl,
@@ -834,7 +834,7 @@ public:
      * \param [in] aTimeStep  current time step
      * \return Workset of Jacobian with respect to control degrees of freedom
     *******************************************************************************/
-    Teuchos::RCP<Plato::CrsMatrixType>
+    Plato::ScalarArray3D
     gradient_z_workset(const Plato::ScalarVectorT<Plato::Scalar> & aState,
                        const Plato::ScalarVectorT<Plato::Scalar> & aNodeState,
                        const Plato::ScalarVectorT<Plato::Scalar> & aControl,

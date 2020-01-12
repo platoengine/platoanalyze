@@ -3316,7 +3316,7 @@ public:
         auto tJacobianWS = this->jacobianControlWorkset(aCurrentGlobalState, aPrevGlobalState,
                                                         aCurrentLocalState, aPrevLocalState,
                                                         aProjPressGrad, aControls, aTimeStep);
-        mWorksetBase.assembleJacobian(mNumGlobalDofsPerCell, mNumControl, tJacobianEntryOrdinal, tJacobianWS, tJacobianEntries);
+        mWorksetBase.assembleJacobian(mNumGlobalDofsPerCell, mNumNodesPerCell, tJacobianEntryOrdinal, tJacobianWS, tJacobianEntries);
 
         return tJacobian;
     }
@@ -8928,7 +8928,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
     std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_global_jacobian_wrt_control<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+    Plato::test_partial_global_jacobian_wrt_control<PhysicsT::SimplexT>(tVectorFunc);
 }
 
 
@@ -8974,7 +8974,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
     std::string tFuncName = "Infinite Strain Plasticity";
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> tVectorFunc =
         std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_global_jacobian_wrt_control<PhysicsT::SimplexT>(tVectorFunc, *tMesh);
+    Plato::test_partial_global_jacobian_wrt_control<PhysicsT::SimplexT>(tVectorFunc);
 }
 
 
