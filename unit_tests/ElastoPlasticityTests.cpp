@@ -218,11 +218,12 @@ inline void update_2Dview(typename XViewType::const_value_type& aAlpha,
  * \tparam NumDofsPerNode number of degrees of freedom per node
  * \tparam DofOffset      offset
  *
- * \param [in]     aXvec 2-D vector workset (NumCells, NumEntriesPerCell)
- * \param [in/out] aYvec 2-D vector workset (NumCells, NumEntriesPerCell)
+ * \param [in]     aAlpha 2-D scalar multiplier
+ * \param [in]     aXvec  2-D vector workset (NumCells, NumEntriesPerCell)
+ * \param [in/out] aYvec  2-D vector workset (NumCells, NumEntriesPerCell)
 **********************************************************************************/
 template<Plato::OrdinalType NumDofsPerNode, Plato::OrdinalType DofOffset>
-inline void add_2Dview(const Plato::ScalarMultiVector& aIn, Plato::ScalarMultiVector& aOut)
+inline void axpy_2Dview(const Plato::Scalar & aAlpha, const Plato::ScalarMultiVector& aIn, Plato::ScalarMultiVector& aOut)
 {
     if(aOut.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -247,9 +248,9 @@ inline void add_2Dview(const Plato::ScalarMultiVector& aIn, Plato::ScalarMultiVe
         for(Plato::OrdinalType tInputVecIndex = 0; tInputVecIndex < tInputVecDim1; tInputVecIndex++)
         {
             const auto tOutputVecIndex = (NumDofsPerNode * tInputVecIndex) + DofOffset;
-            aOut(aCellOrdinal, tOutputVecIndex) = aOut(aCellOrdinal, tOutputVecIndex) + aIn(aCellOrdinal, tInputVecIndex);
+            aOut(aCellOrdinal, tOutputVecIndex) = aAlpha * aOut(aCellOrdinal, tOutputVecIndex) + aIn(aCellOrdinal, tInputVecIndex);
         }
-    }, "add_2Dview");
+    }, "axpy_2Dview");
 }
 
 /************************************************************************//**
@@ -6225,8 +6226,9 @@ private:
         if(aStateData.mCurrentStepIndex != tFinalStepIndex)
         {
             // Compute projected pressure gradient contribution to global adjoint rhs, i.e. tDpDu_T * gamma_k
+            const Plato::Scalar tAlpha = 1.0;
             auto tProjPressGradAdjointRHS = this->computeProjPressGradAdjointRHS(aControls, aStateData, aAdjointData);
-            Plato::add_2Dview<mNumGlobalDofsPerNode, mPressureDofOffset>(tProjPressGradAdjointRHS, tDfDu);
+            Plato::axpy_2Dview<mNumGlobalDofsPerNode, mPressureDofOffset>(tAlpha, tProjPressGradAdjointRHS, tDfDu);
         }
 
         // Assemble -( tDfDu_k - F_k^{local} + (tDpDu_T * gamma_k) )
