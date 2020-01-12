@@ -482,10 +482,6 @@ inline void matrix_times_vector_workset(const char aTransA[],
     {
         THROWERR("\nDimension mismatch, matrix A and vector Y have different number of cells.\n")
     }
-    if(aYvec.extent(0) != aXvec.extent(0))
-    {
-        THROWERR("\nDimension mismatch, vector X and vector Y have different number of cells.\n")
-    }
 
     // Check validity of transpose argument
     bool tValidTransA = (aTransA[0] == 'N') || (aTransA[0] == 'n') ||
@@ -7694,10 +7690,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset_E
     // CALL FUNCTION - NUM CELL MISMATCH IN INPUT VECTOR X
     Plato::ScalarMultiVector tVecX("X Vector WS", tNumCells + 1, tNumRows);
     TEST_THROW( (Plato::matrix_times_vector_workset("N", tAlpha, tA, tVecX, tBeta, tY)), std::runtime_error );
-
-    // CALL FUNCTION - NUM CELL MISMATCH IN INPUT VECTOR Y
-    Plato::ScalarMultiVector tVecY("Y Vector WS", tNumCells, tNumRows);
-    TEST_THROW( (Plato::matrix_times_vector_workset("N", tAlpha, tA, tX, tBeta, tVecY)), std::runtime_error );
 }
 
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
