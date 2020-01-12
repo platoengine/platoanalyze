@@ -66,8 +66,7 @@ inline void flatten_vector_workset(const Plato::OrdinalType& aNumCells,
 
 /************************************************************************//**
  *
- * \brief Convert an automatic differentiated (AD) partial derivative of a
- * scalar function to POD type.
+ * \brief (2D-View) Transform automatic differentiation (AD) type to POD.
  *
  * \tparam NumNodesPerCell number of nodes per cell
  * \tparam ADType          AD scalar type
@@ -78,7 +77,7 @@ inline void flatten_vector_workset(const Plato::OrdinalType& aNumCells,
  *
  ********************************************************************************/
 template<Plato::OrdinalType NumDofsPerCell, typename ADType>
-inline void convert_ad_partial_scalar_func_to_pod(const Plato::ScalarVectorT<ADType>& aInput,
+inline void transform_ad_type_to_pod_2Dview(const Plato::ScalarVectorT<ADType>& aInput,
                                                   Plato::ScalarMultiVector& aOutput)
 {
     if(aInput.extent(0) != aOutput.extent(0))
@@ -99,11 +98,11 @@ inline void convert_ad_partial_scalar_func_to_pod(const Plato::ScalarVectorT<ADT
         }
     }, "Convert AD Partial to POD type");
 }
-// function convert_ad_partial_scalar_func_to_pod
+// function transform_ad_type_to_pod_2Dview
 
 /************************************************************************//**
  *
- * \brief Convert an automatic differentiated (AD) Jacobian to POD type.
+ * \brief (3D-View) Transform automatic differentiation (AD) type to POD.
  *
  * \tparam NumRowsPerCell number of rows per cell
  * \tparam NumColsPerCell number of columns per cell
@@ -115,9 +114,9 @@ inline void convert_ad_partial_scalar_func_to_pod(const Plato::ScalarVectorT<ADT
  *
 ********************************************************************************/
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColsPerCell, typename ADType>
-inline void convert_ad_jacobian_to_scalar_jacobian(const Plato::OrdinalType& aNumCells,
-                                                   const Plato::ScalarMultiVectorT<ADType>& aInput,
-                                                   Plato::ScalarArray3D& aOutput)
+inline void transform_ad_type_to_pod_3Dview(const Plato::OrdinalType& aNumCells,
+                                            const Plato::ScalarMultiVectorT<ADType>& aInput,
+                                            Plato::ScalarArray3D& aOutput)
 {
     if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -143,7 +142,7 @@ inline void convert_ad_jacobian_to_scalar_jacobian(const Plato::OrdinalType& aNu
       }
     }, "convert AD type to Scalar type");
 }
-// function convert_ad_jacobian_to_scalar_jacobian
+// function transform_ad_type_to_pod_3Dview
 
 /*************************************************************************//**
 *

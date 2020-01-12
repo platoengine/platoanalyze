@@ -580,7 +580,7 @@ public:
 
         constexpr auto tNumConfigDofsPerCell = mNumNodesPerCell * mNumSpatialDims;
         Plato::ScalarArray3D tOutputJacobian("Output Jacobian Configuration", mNumCells, mNumLocalDofsPerCell, tNumConfigDofsPerCell);
-        Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, tNumConfigDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, tNumConfigDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
 
         return tOutputJacobian;
     }
@@ -655,7 +655,7 @@ public:
                                               tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
       Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current Global State", mNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
-      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+      Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
 
       return tOutputJacobian;
     }
@@ -730,7 +730,7 @@ public:
                                               tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
       Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Global State", mNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
-      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+      Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumGlobalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
 
       return tOutputJacobian;
     }
@@ -805,7 +805,7 @@ public:
                                               tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
       Plato::ScalarArray3D tOutputJacobian("Output Jacobian Current Local State", mNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+      Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
 
       return tOutputJacobian;
     }
@@ -880,7 +880,7 @@ public:
                                                tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
       Plato::ScalarArray3D tOutputJacobian("Output Jacobian Previous Local State", mNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+      Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
 
       return tOutputJacobian;
     }
@@ -955,7 +955,7 @@ public:
                                               tControlWS, tConfigWS, tJacobianWS, aTimeStep);
 
       Plato::ScalarArray3D tOutputJacobian("Output Jacobian Control", mNumCells, mNumLocalDofsPerCell, mNumNodesPerCell);
-      Plato::convert_ad_jacobian_to_scalar_jacobian<mNumLocalDofsPerCell, mNumNodesPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+      Plato::transform_ad_type_to_pod_3Dview<mNumLocalDofsPerCell, mNumNodesPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
 
       return tOutputJacobian;
     }

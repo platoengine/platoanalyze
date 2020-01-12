@@ -556,6 +556,26 @@ public:
     }
 
     /***************************************************************************//**
+     * \brief Evaluate Jacobian with respect to configuration degrees of freedom
+     * \param [in] aState     projected pressure gradient
+     * \param [in] aNodeState pressure field
+     * \param [in] aControl   design variables
+     * \param [in] aTimeStep  current time step
+     * \return Workset of Jacobian with respect to configuration degrees of freedom
+    *******************************************************************************/
+    Teuchos::RCP<Plato::CrsMatrixType>
+    gradient_x_workset(const Plato::ScalarVector & aState,
+                       const Plato::ScalarVector & aNodeState,
+                       const Plato::ScalarVector & aControl,
+                       Plato::Scalar aTimeStep = 0.0) const
+    {
+        auto tJacobianWS = this->jacobianConfigWorkset(aState, aNodeState, aControl, aTimeStep);
+        Plato::ScalarArray3D tOutputJacobian("Jacobian WRT Configuration", mNumCells, mNumDofsPerCell, mNumConfigDofsPerCell);
+        Plato::transform_ad_type_to_pod_3Dview<mNumDofsPerCell, mNumConfigDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        return tOutputJacobian;
+    }
+
+    /***************************************************************************//**
      * \brief Evaluate Jacobian with respect to state degrees of freedom
      * \param [in] aState     projected pressure gradient
      * \param [in] aNodeState pressure field
@@ -624,41 +644,23 @@ public:
     }
 
     /***************************************************************************//**
-     * \brief Evaluate Jacobian with respect to state degrees of freedom
+     * \brief Evaluate Jacobian with respect to node state degrees of freedom
      * \param [in] aState     projected pressure gradient
      * \param [in] aNodeState pressure field
      * \param [in] aControl   design variables
      * \param [in] aTimeStep  current time step
-     * \return workset of Jacobian with respect to state degrees of freedom
+     * \return workset of Jacobian with respect to node state degrees of freedom
     *******************************************************************************/
     Plato::ScalarArray3D
-    gradient_u_workset(const Plato::ScalarVector & aState,
+    gradient_n_workset(const Plato::ScalarVector & aState,
                        const Plato::ScalarVector & aNodeState,
                        const Plato::ScalarVector & aControl,
                        Plato::Scalar aTimeStep = 0.0) const
     {
-        auto tJacobianWS = this->jacobianStateWorkset(aState, aNodeState, aControl, aTimeStep);
-        Plato::ScalarArray3D tOutJacobian("Output Jacobian Configuration", mNumCells, mNumDofsPerCell, mNumDofsPerCell);
-        Plato::convert_ad_jacobian_to_scalar_jacobian<mNumDofsPerCell, mNumDofsPerCell>(mNumCells, tJacobianWS, tOutJacobian);
+        auto tJacobianWS = this->jacobianNodeStateWorkset(aState, aNodeState, aControl, aTimeStep);
+        Plato::ScalarArray3D tOutJacobian("POD Jacobian Node State", mNumCells, mNumDofsPerCell, mNumNodeStatePerNode);
+        Plato::transform_ad_type_to_pod_3Dview<mNumDofsPerCell, mNumNodeStatePerNode>(mNumCells, tJacobianWS, tOutJacobian);
         return (tOutJacobian);
-    }
-
-    /***************************************************************************//**
-     * \brief Evaluate transpose of Jacobian with respect to state degrees of freedom
-     * \param [in] aState     projected pressure gradient
-     * \param [in] aNodeState pressure field
-     * \param [in] aControl   design variables
-     * \param [in] aTimeStep  current time step
-     * \return transpose of Jacobian with respect to state degrees of freedom - workset
-    *******************************************************************************/
-    Plato::ScalarArray3D
-    gradient_u_T_workset(const Plato::ScalarVector & aState,
-                         const Plato::ScalarVector & aNodeState,
-                         const Plato::ScalarVector & aControl,
-                         Plato::Scalar aTimeStep = 0.0) const
-    {
-        // symmetric operator
-        return (this->gradient_u_workset(aState, aNodeState, aControl, aTimeStep));
     }
 
     /***************************************************************************//**
@@ -822,6 +824,26 @@ public:
       );
 
       return tJacobianMat;
+    }
+
+    /***************************************************************************//**
+     * \brief Evaluate Jacobian with respect to control degrees of freedom
+     * \param [in] aState     projected pressure gradient
+     * \param [in] aNodeState pressure field
+     * \param [in] aControl   design variables
+     * \param [in] aTimeStep  current time step
+     * \return Workset of Jacobian with respect to control degrees of freedom
+    *******************************************************************************/
+    Teuchos::RCP<Plato::CrsMatrixType>
+    gradient_z_workset(const Plato::ScalarVectorT<Plato::Scalar> & aState,
+                       const Plato::ScalarVectorT<Plato::Scalar> & aNodeState,
+                       const Plato::ScalarVectorT<Plato::Scalar> & aControl,
+                       Plato::Scalar aTimeStep = 0.0) const
+    {
+      auto tJacobianWS = this->jacobianControlWorkset(aState, aNodeState, aControl, aTimeStep);
+      Plato::ScalarArray3D tOutputJacobian("Output Jacobian WRT Control", mNumCells, mNumDofsPerCell, mNumNodesPerCell);
+      Plato::transform_ad_type_to_pod_3Dview<mNumDofsPerCell, mNumNodesPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+      return tOutputJacobian;
     }
 };
 // class VectorFunctionVMS
