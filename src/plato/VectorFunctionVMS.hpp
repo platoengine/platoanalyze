@@ -28,13 +28,13 @@ class VectorFunctionVMS
 {
 private:
     static constexpr auto mNumControl      = PhysicsT::mNumControl;
-    static constexpr auto mNumDofsPerNode  = PhysicsT::mNumDofsPerNode;
     static constexpr auto mNumSpatialDims  = PhysicsT::mNumSpatialDims;
-    static constexpr auto mNumDofsPerCell  = PhysicsT::mNumDofsPerCell;
     static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
 
-    static constexpr auto mNumNodeStatePerNode = PhysicsT::mNumNodeStatePerNode;
-    static constexpr auto mNumNodeStatePerCell = PhysicsT::mNumNodeStatePerCell;
+    static constexpr auto mNumPressureDofsPerNode = PhysicsT::mNumNodeStatePerNode;
+    static constexpr auto mNumPressureDofsPerCell = PhysicsT::mNumNodeStatePerCell;
+    static constexpr auto mNumProjPressGradDofsPerNode = PhysicsT::mNumDofsPerNode;
+    static constexpr auto mNumProjPressGradDofsPerCell = PhysicsT::mNumDofsPerCell;
 
     const Plato::OrdinalType mNumNodes; /*!< total number of nodes */
     const Plato::OrdinalType mNumCells; /*!< total number of cells (i.e. elements)*/
@@ -79,12 +79,12 @@ private:
 
         // Workset state
         //
-        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumProjPressGradDofsPerCell);
         mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset node state
         //
-        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumPressureDofsPerCell);
         mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset control
@@ -99,7 +99,7 @@ private:
 
         // create result
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tResidual("Cells Residual",mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tResidual("Cells Residual",mNumCells, mNumProjPressGradDofsPerCell);
 
         // evaluate function
         //
@@ -136,12 +136,12 @@ private:
 
         // Workset state
         //
-        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumPressureDofsPerCell);
         mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset node state
         //
-        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumProjPressGradDofsPerCell);
         mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset control
@@ -151,7 +151,7 @@ private:
 
         // create return view
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian Configuration", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian Configuration", mNumCells, mNumProjPressGradDofsPerCell);
 
         // evaluate function
         //
@@ -188,12 +188,12 @@ private:
 
         // Workset state
         //
-        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumProjPressGradDofsPerCell);
         mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset node state
         //
-        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNodeStatePerCell);
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumPressureDofsPerCell);
         mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset control
@@ -203,7 +203,7 @@ private:
 
         // create return view
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian State",mNumCells,mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian State",mNumCells,mNumProjPressGradDofsPerCell);
 
         // evaluate function
         //
@@ -240,12 +240,12 @@ private:
 
         // Workset state
         //
-        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumProjPressGradDofsPerCell);
         mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset node state
         //
-        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumNodeStatePerCell);
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset", mNumCells, mNumPressureDofsPerCell);
         mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // Workset control
@@ -255,7 +255,7 @@ private:
 
         // create return view
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian Node State", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("Jacobian Node State", mNumCells, mNumProjPressGradDofsPerCell);
 
         // evaluate function
         //
@@ -297,17 +297,17 @@ private:
 
         // Workset state
         //
-        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumProjPressGradDofsPerCell);
         mWorksetBase.worksetState(aState, tStateWS);
 
         // Workset node state
         //
-        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumNodeStatePerCell);
+        Plato::ScalarMultiVectorT<NodeStateScalar> tNodeStateWS("Node State Workset",mNumCells, mNumPressureDofsPerCell);
         mWorksetBase.worksetNodeState(aNodeState, tNodeStateWS);
 
         // create result
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianControl",mNumCells,mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianControl",mNumCells,mNumProjPressGradDofsPerCell);
 
         // evaluate function
         //
@@ -375,7 +375,7 @@ public:
     ******************************************************************************/
     Plato::OrdinalType size() const
     {
-      return mNumNodes*mNumDofsPerNode;
+      return (mNumNodes * mNumProjPressGradDofsPerNode);
     }
 
     /**************************************************************************//**
@@ -419,39 +419,39 @@ public:
     }
 
     /***********************************************************************//**
-     * \brief Return number of global degrees of freedom per node.
-     * \return number of global degrees of freedom per node
+     * \brief Return number of projected pressure gradient degrees of freedom per node.
+     * \return number of projected pressure gradient degrees of freedom per node
     ***************************************************************************/
-    decltype(mNumDofsPerNode) numGlobalDofsPerNode() const
+    decltype(mNumProjPressGradDofsPerNode) numDofsPerNode() const
     {
-        return mNumDofsPerNode;
+        return mNumProjPressGradDofsPerNode;
     }
 
     /***********************************************************************//**
-     * \brief Return number of global degrees of freedom per cell.
-     * \return number of global degrees of freedom per cell
+     * \brief Return number of projected pressure gradient degrees of freedom per cell.
+     * \return number of projected pressure gradient degrees of freedom per cell
     ***************************************************************************/
-    decltype(mNumDofsPerCell) numGlobalDofsPerCell() const
+    decltype(mNumProjPressGradDofsPerCell) numDofsPerCell() const
     {
-        return mNumDofsPerCell;
+        return mNumProjPressGradDofsPerCell;
     }
 
     /***********************************************************************//**
-     * \brief Return number of pressure gradient degrees of freedom per node.
-     * \return number of pressure gradient degrees of freedom per node
+     * \brief Return number of pressure degrees of freedom per node.
+     * \return number of pressure degrees of freedom per node
     ***************************************************************************/
-    decltype(mNumNodeStatePerNode) numNodeStatePerNode() const
+    decltype(mNumPressureDofsPerNode) numNodeStatePerNode() const
     {
-        return mNumNodeStatePerNode;
+        return mNumPressureDofsPerNode;
     }
 
     /***********************************************************************//**
-     * \brief Return number of pressure gradient degrees of freedom per cell.
-     * \return number of pressure gradient degrees of freedom per cell
+     * \brief Return number of pressure degrees of freedom per cell.
+     * \return number of pressure degrees of freedom per cell
     ***************************************************************************/
-    decltype(mNumNodeStatePerCell) numNodeStatePerCell() const
+    decltype(mNumPressureDofsPerCell) numNodeStatePerCell() const
     {
-        return mNumNodeStatePerCell;
+        return mNumPressureDofsPerCell;
     }
 
     /***********************************************************************//**
@@ -515,7 +515,7 @@ public:
     {
         auto tResidual = this->valueWorkset(aState, aNodeState, aControl, aTimeStep);
         Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace>
-            tAssembledResidual("Assembled Residual", mNumDofsPerNode * mNumNodes);
+            tAssembledResidual("Assembled Residual", mNumProjPressGradDofsPerNode * mNumNodes);
         mWorksetBase.assembleResidual(tResidual, tAssembledResidual);
 
         return tAssembledResidual;
@@ -538,14 +538,15 @@ public:
         // Allocate Jacobian
         auto tMesh = mVectorFunctionVMSJacobianX->getMesh();
         Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumDofsPerNode>(&tMesh);
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumProjPressGradDofsPerNode>(&tMesh);
 
         // Assemble Jacobian
         auto tJacobianMatEntries = tJacobianMat->entries();
         auto tJacobian = this->jacobianConfigWorkset(aState, aNodeState, aControl, aTimeStep);
-        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode> tJacobianMatEntryOrdinal(tJacobianMat, &tMesh);
+        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumProjPressGradDofsPerNode>
+            tJacobianMatEntryOrdinal(tJacobianMat, &tMesh);
         mWorksetBase.assembleTransposeJacobian(
-           mNumDofsPerCell,
+           mNumProjPressGradDofsPerCell,
            mNumConfigDofsPerCell,
            tJacobianMatEntryOrdinal,
            tJacobian,
@@ -570,8 +571,8 @@ public:
                        Plato::Scalar aTimeStep = 0.0) const
     {
         auto tJacobianWS = this->jacobianConfigWorkset(aState, aNodeState, aControl, aTimeStep);
-        Plato::ScalarArray3D tOutputJacobian("Jacobian WRT Configuration", mNumCells, mNumDofsPerCell, mNumConfigDofsPerCell);
-        Plato::transform_ad_type_to_pod_3Dview<mNumDofsPerCell, mNumConfigDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+        Plato::ScalarArray3D tOutputJacobian("Jacobian WRT Configuration", mNumCells, mNumProjPressGradDofsPerCell, mNumConfigDofsPerCell);
+        Plato::transform_ad_type_to_pod_3Dview<mNumProjPressGradDofsPerCell, mNumConfigDofsPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
         return tOutputJacobian;
     }
 
@@ -592,15 +593,16 @@ public:
       // Allocate Jacobian
       auto tMesh = mVectorFunctionVMSJacobianU->getMesh();
       Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
+              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumProjPressGradDofsPerNode, mNumProjPressGradDofsPerNode>( &tMesh );
 
       // Assemble Jacobian
       auto tJacobianMatEntries = tJacobianMat->entries();
       auto tJacobian = this->jacobianStateWorkset(aState, aNodeState, aControl, aTimeStep);
-      Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode> tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+      Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumProjPressGradDofsPerNode>
+          tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
       mWorksetBase.assembleJacobianFad(
-        mNumDofsPerCell,
-        mNumDofsPerCell,
+        mNumProjPressGradDofsPerCell,
+        mNumProjPressGradDofsPerCell,
         tJacobianMatEntryOrdinal,
         tJacobian,
         tJacobianMatEntries
@@ -626,15 +628,16 @@ public:
       // Allocate Jacobian
       auto tMesh = mVectorFunctionVMSJacobianU->getMesh();
       Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
+              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumProjPressGradDofsPerNode, mNumProjPressGradDofsPerNode>( &tMesh );
 
       // Assemble Jacobian
       auto tJacobianMatEntries = tJacobianMat->entries();
       auto tJacobian = this->jacobianStateWorkset(aState, aNodeState, aControl, aTimeStep);
-      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode> tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumProjPressGradDofsPerNode>
+          tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
       mWorksetBase.assembleJacobianFad(
-        mNumDofsPerCell,
-        mNumDofsPerCell,
+        mNumProjPressGradDofsPerCell,
+        mNumProjPressGradDofsPerCell,
         tJacobianMatEntryOrdinal,
         tJacobian,
         tJacobianMatEntries
@@ -658,8 +661,8 @@ public:
                        Plato::Scalar aTimeStep = 0.0) const
     {
         auto tJacobianWS = this->jacobianNodeStateWorkset(aState, aNodeState, aControl, aTimeStep);
-        Plato::ScalarArray3D tOutJacobian("POD Jacobian Node State", mNumCells, mNumDofsPerCell, mNumNodeStatePerNode);
-        Plato::transform_ad_type_to_pod_3Dview<mNumDofsPerCell, mNumNodeStatePerNode>(mNumCells, tJacobianWS, tOutJacobian);
+        Plato::ScalarArray3D tOutJacobian("POD Jacobian Node State", mNumCells, mNumProjPressGradDofsPerCell, mNumPressureDofsPerNode);
+        Plato::transform_ad_type_to_pod_3Dview<mNumProjPressGradDofsPerCell, mNumPressureDofsPerNode>(mNumCells, tJacobianWS, tOutJacobian);
         return (tOutJacobian);
     }
 
@@ -690,7 +693,7 @@ public:
         //
         auto tMesh = mVectorFunctionVMSJacobianN->getMesh();
         Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumNodeStatePerNode>( &tMesh );
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumPressureDofsPerNode>( &tMesh );
 
         // create entry ordinal functor:
         // tJacobianMatEntryOrdinal(e, k, l) => G
@@ -706,7 +709,7 @@ public:
         //
         // Note that the second two template parameters must match the block shape of the destination matrix, tJacobianMat
         //
-        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumNodeStatePerNode>
+        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumPressureDofsPerNode>
             tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
         // Assemble from the AD-typed result, tJacobian, into the POD-typed global matrix, tJacobianMat.
@@ -717,8 +720,8 @@ public:
         auto tJacobianMatEntries = tJacobianMat->entries();
         auto tJacobian = this->jacobianNodeStateWorkset(aState, aNodeState, aControl, aTimeStep);
         mWorksetBase.assembleJacobianFad(
-          mNumDofsPerCell,          /* (Nv x Nd) */
-          mNumNodeStatePerCell,            /* (Nv x Nn) */
+          mNumProjPressGradDofsPerCell,          /* (Nv x Nd) */
+          mNumPressureDofsPerCell,            /* (Nv x Nn) */
           tJacobianMatEntryOrdinal, /* entry ordinal functor */
           tJacobian,                /* source data */
           tJacobianMatEntries       /* destination */
@@ -754,7 +757,7 @@ public:
         //
         auto tMesh = mVectorFunctionVMSJacobianN->getMesh();
         Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumNodeStatePerNode, mNumDofsPerNode>( &tMesh );
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumPressureDofsPerNode, mNumProjPressGradDofsPerNode>( &tMesh );
 
         // create entry ordinal functor:
         // tJacobianMatEntryOrdinal(e, k, l) => G
@@ -770,7 +773,7 @@ public:
         //
         // Note that the second two template parameters must match the block shape of the destination matrix, tJacobianMat
         //
-        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumNodeStatePerNode, mNumDofsPerNode>
+        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressureDofsPerNode, mNumProjPressGradDofsPerNode>
             tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
         // Assemble from the AD-typed result, tJacobian, into the POD-typed global matrix, tJacobianMat.
@@ -782,8 +785,8 @@ public:
         auto tJacobianMatEntries = tJacobianMat->entries();
         auto tJacobian = this->jacobianNodeStateWorkset(aState, aNodeState, aControl, aTimeStep);
         mWorksetBase.assembleTransposeJacobian(
-          mNumDofsPerCell,          /* (Nv x Nd) */
-          mNumNodeStatePerCell,            /* (Nv x Nn) */
+          mNumProjPressGradDofsPerCell,          /* (Nv x Nd) */
+          mNumPressureDofsPerCell,            /* (Nv x Nn) */
           tJacobianMatEntryOrdinal, /* entry ordinal functor */
           tJacobian,                /* source data */
           tJacobianMatEntries       /* destination */
@@ -809,14 +812,14 @@ public:
       // Allocate Jacobian
       auto tMesh = mVectorFunctionVMSJacobianZ->getMesh();
       Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumControl, mNumDofsPerNode>( &tMesh );
+              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumControl, mNumProjPressGradDofsPerNode>( &tMesh );
 
       // Assemble Jacobian
       auto tJacobianMatEntries = tJacobianMat->entries();
       auto tJacobian = this->jacobianControlWorkset(aState, aNodeState, aControl, aTimeStep);
-      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode> tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumProjPressGradDofsPerNode> tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
       mWorksetBase.assembleTransposeJacobian(
-        mNumDofsPerCell,
+        mNumProjPressGradDofsPerCell,
         mNumNodesPerCell,
         tJacobianMatEntryOrdinal,
         tJacobian,
@@ -841,8 +844,8 @@ public:
                        Plato::Scalar aTimeStep = 0.0) const
     {
       auto tJacobianWS = this->jacobianControlWorkset(aState, aNodeState, aControl, aTimeStep);
-      Plato::ScalarArray3D tOutputJacobian("Output Jacobian WRT Control", mNumCells, mNumDofsPerCell, mNumNodesPerCell);
-      Plato::transform_ad_type_to_pod_3Dview<mNumDofsPerCell, mNumNodesPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
+      Plato::ScalarArray3D tOutputJacobian("Output Jacobian WRT Control", mNumCells, mNumProjPressGradDofsPerCell, mNumNodesPerCell);
+      Plato::transform_ad_type_to_pod_3Dview<mNumProjPressGradDofsPerCell, mNumNodesPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
       return tOutputJacobian;
     }
 };
