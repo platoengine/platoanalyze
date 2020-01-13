@@ -264,16 +264,16 @@ void MatrixTimesVectorPlusVector(const Teuchos::RCP<Plato::CrsMatrixType> & aMat
     if(aMatrix->numCols() != aInput.size())
     {
         std::ostringstream tMsg;
-        tMsg << "Dimension mismatch, input vector size does not match the number of columns. "
-             << "Input vector size = '" <<  aInput.size() << "' and the number of columns = '"
+        tMsg << "DIMENSION MISMATCH.  INPUT VECTOR LENGTH DOES NOT MATCH THE NUMBER OF COLUMNS IN MATRIX A.  "
+             << "INPUT VECTOR LENGTH = '" <<  aInput.size() << "' AND THE NUMBER OF COLUMNS IN MATRIX A = '"
              << aMatrix->numCols() << "'.";
         THROWERR(tMsg.str());
     }
     if(aMatrix->numRows() != aOutput.size())
     {
         std::ostringstream tMsg;
-        tMsg << "Dimension mismatch, output vector size does not match the number of rows. "
-             << "Input vector size = '" <<  aInput.size() << "' and the number of rows = '"
+        tMsg << "DIMENSION MISMATCH.  INPUT VECTOR LENGTH DOES NOT MATCH THE NUMBER OF ROWS IN MATRIX A.  "
+             << "INPUT VECTOR LENGTH = '" <<  aInput.size() << "' AND THE NUMBER OF ROWS IN MATRIX A = '"
              << aMatrix->numRows() << "'.";
         THROWERR(tMsg.str());
     }

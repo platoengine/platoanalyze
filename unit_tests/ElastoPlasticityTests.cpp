@@ -2910,7 +2910,7 @@ private:
         //
         auto tMesh = mGlobalJacProjPressGrad->getMesh();
         Teuchos::RCP<Plato::CrsMatrixType> tAssembledJacobian =
-                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumNodeStatePerNode>( &tMesh );
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumNodeStatePerNode>( &tMesh );
 
         // create entry ordinal functor:
         // tJacobianMatEntryOrdinal(e, k, l) => G
@@ -2926,7 +2926,7 @@ private:
         //
         // Note that the second two template parameters must match the block shape of the destination matrix, tJacobianMat
         //
-        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumNodeStatePerNode>
+        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode, mNumNodeStatePerNode>
             tJacobianMatEntryOrdinal( tAssembledJacobian, &tMesh );
 
         // Assemble from the AD-typed result, tJacobian, into the POD-typed global matrix, tJacobianMat.
@@ -2971,7 +2971,7 @@ private:
         //
         auto tMesh = mGlobalJacProjPressGrad->getMesh();
         Teuchos::RCP<Plato::CrsMatrixType> tAssembledTransposeJacobian =
-                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumNodeStatePerNode, mNumGlobalDofsPerCell>( &tMesh );
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumNodeStatePerNode, mNumGlobalDofsPerNode>( &tMesh );
 
         // create entry ordinal functor:
         // tJacobianMatEntryOrdinal(e, k, l) => G
@@ -2987,7 +2987,7 @@ private:
         //
         // Note that the second two template parameters must match the block shape of the destination matrix, tJacobianMat
         //
-        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumNodeStatePerNode, mNumGlobalDofsPerCell>
+        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumNodeStatePerNode, mNumGlobalDofsPerNode>
             tJacobianMatEntryOrdinal( tAssembledTransposeJacobian, &tMesh );
 
         // Assemble from the AD-typed result, tJacobian, into the POD-typed global matrix, tJacobianMat.
@@ -2998,11 +2998,11 @@ private:
         //
         auto tJacobianMatEntries = tAssembledTransposeJacobian->entries();
         mWorksetBase.assembleTransposeJacobian(
-           mNumGlobalDofsPerCell,     // (Nv x Nd)
-           mNumNodeStatePerCell,      // (Nv x Nn)
-           tJacobianMatEntryOrdinal,  // entry ordinal functor
-           aJacobianWS,               // source data
-           tJacobianMatEntries        // destination
+            mNumNodeStatePerCell,
+            mNumGlobalDofsPerCell,
+            tJacobianMatEntryOrdinal,
+            aJacobianWS,
+            tJacobianMatEntries
         );
 
         return tAssembledTransposeJacobian;
