@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(LGR VERSION 1.0.0 LANGUAGES CXX)
-MESSAGE("\n\nConfiguring LGR Version ${LGR_VERSION_MAJOR}.${LGR_VERSION_MINOR}.${LGR_VERSION_PATCH}")
+project(PLATOANALYZE VERSION 1.0.0 LANGUAGES CXX)
+MESSAGE("\n\nConfiguring Plato Analyze Version ${PLATOANALYZE_VERSION_MAJOR}.${PLATOANALYZE_VERSION_MINOR}.${PLATOANALYZE_VERSION_PATCH}")
 
 IF (DEFINED Trilinos_PREFIX)
   SET(CMAKE_PREFIX_PATH ${Trilinos_PREFIX} ${CMAKE_PREFIX_PATH})
@@ -28,7 +28,7 @@ MESSAGE("   Trilinos_CXX_COMPILER_FLAGS = ${Trilinos_CXX_COMPILER_FLAGS}")
 MESSAGE("End of Trilinos details\n")
 
 # Important: We want to set the compilers and build flags from the Trilinos build. We do not need to check for valid compilers
-# etc here in the LGR build, as it has already been done in the Trilinos build. So, we force the compilers here
+# etc here in the Plato Analyze build, as it has already been done in the Trilinos build. So, we force the compilers here
 # to be the same as the Trilinos build. We need the project statement after we force the compilers, or the compiler testing
 # will occur.
 
@@ -109,33 +109,33 @@ SET(VTKDIFF "${VTKDIFF} -onestep")
 # This needs to be the one on the front end for Cuda and MIC machines - it runs the utilities.
 
 #SET(MPIEXEC mpiexec.hydra -hosts mic0 -env OMP_NUM_THREADS 56 -env KMP_AFFINITY=balanced -binding domain=omp)
-IF(LGR_MPIEXEC)
-  MESSAGE("-- User defined LGR_MPIEXEC=${LGR_MPIEXEC}")
-  SEPARATE_ARGUMENTS(LGR_MPIEXEC)
+IF(PLATOANALYZE_MPIEXEC)
+  MESSAGE("-- User defined PLATOANALYZE_MPIEXEC=${PLATOANALYZE_MPIEXEC}")
+  SEPARATE_ARGUMENTS(PLATOANALYZE_MPIEXEC)
 ELSE()
-  SET(LGR_MPIEXEC)
+  SET(PLATOANALYZE_MPIEXEC)
 
   #mpirun is frequently found alongside mpicxx, try looking for it there.
   get_filename_component(COMPILER_DIR ${CMAKE_CXX_COMPILER} PATH)
 
   FIND_FILE(
-    LGR_MPIEXEC
+    PLATOANALYZE_MPIEXEC
     NAMES mpirun mpiexec
     PATHS "${COMPILER_DIR}" ENV PATH
     )
 
-  IF(LGR_MPIEXEC)
-    MESSAGE("-- Found LGR_MPIEXEC=${LGR_MPIEXEC}")
+  IF(PLATOANALYZE_MPIEXEC)
+    MESSAGE("-- Found PLATOANALYZE_MPIEXEC=${PLATOANALYZE_MPIEXEC}")
   ELSE()
-    MESSAGE(FATAL_ERROR "Fatal Error: Cannot find mpirun or mpiexec for LGR_MPIEXEC")
+    MESSAGE(FATAL_ERROR "Fatal Error: Cannot find mpirun or mpiexec for PLATOANALYZE_MPIEXEC")
   ENDIF()
 ENDIF()
 
-option( LGR_CHECK_FPE "Flag to enable LGR checks for floating point exceptions" OFF)
-if ( LGR_CHECK_FPE)
-  add_definitions(-DLGR_CHECK_FPE)
+option( PLATOANALYZE_CHECK_FPE "Flag to enable Plato Analyze checks for floating point exceptions" OFF)
+if ( PLATOANALYZE_CHECK_FPE)
+  add_definitions(-DPLATOANALYZE_CHECK_FPE)
   if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-    add_definitions(-DLGR_USE_GNU_FPE)
+    add_definitions(-DPLATOANALYZE_USE_GNU_FPE)
     message("-- Building with GNU FPE checking enabled.")
   else()
     message("-- Building with XMM FPE checking enabled.")
@@ -144,27 +144,17 @@ else()
   message("-- Building without FPE checking.")
 endif()
 
-option(LGR_ENABLE_LGRV1 "Enable LGR Version 1" OFF)
-if(LGR_ENABLE_LGRV1)
-  add_definitions(-DUSE_LGRV1)
-  add_executable(
-    lgr
-    src/Run.cpp
-    src/LGR.cpp
+add_executable(
+    analyze 
+    src/alg/Run.cpp
+    src/alg/LGR.cpp
   )
-else()
-  add_executable(
-    lgr
-    src/plato/alg/Run.cpp
-    src/plato/alg/LGR.cpp
-  )
-endif()
 
 if( CMAKE_INSTALL_PREFIX )
-  install( TARGETS lgr DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
+  install( TARGETS analyze DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
 endif()
-target_include_directories(lgr PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(lgr lgrtk)
+target_include_directories(analyze PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(analyze analyzelib)
 
 IF (DEFINED AMGX_PREFIX)
   ADD_DEFINITIONS(-DHAVE_AMGX)
@@ -184,24 +174,6 @@ IF (DEFINED AMGX_PREFIX)
   MESSAGE("-- AMGX_LIBRARIES = ${AMGX_LIBRARIES}")
 ENDIF()
 
-IF (DEFINED ViennaCL_PREFIX)
-  ADD_DEFINITIONS(-DHAVE_VIENNA_CL)
-  SET(CMAKE_PREFIX_PATH ${ViennaCL_PREFIX} ${CMAKE_PREFIX_PATH})
-  IF(VIENNACL_SKIP_FIND_PACKAGE)
-    SET(VIENNACL_INCLUDE_DIRS ${ViennaCL_PREFIX}/include)
-    SET(VIENNACL_LIBRARIES)  # will need/want to add OpenCL here if ever we support that
-    SET(VIENNACL_FOUND TRUE) # a bit of a hack
-  ELSE()
-# for some reason, using the following line on my Mac causes the cmake configure to fail...
-    FIND_PACKAGE(ViennaCL)
-  ENDIF()
-  IF (VIENNACL_FOUND)
-    MESSAGE("-- Found ViennaCL!")
-    MESSAGE("-- VIENNACL_INCLUDE_DIRS = ${VIENNACL_INCLUDE_DIRS}")
-    MESSAGE("-- VIENNACL_LIBRARIES = ${VIENNACL_LIBRARIES}")
-  ENDIF()
-ENDIF()
-
 SET(SOLVER_INTERFACE_LIBRARIES)
 
 IF( AMGX_FOUND )
@@ -211,48 +183,33 @@ IF( AMGX_FOUND )
      )
 ENDIF()
 
-IF( VIENNACL_FOUND )
-  SET(SOLVER_INTERFACE_LIBRARIES
-      ${SOLVER_INTERFACE_LIBRARIES}
-      ${VIENNACL_LIBRARIES}
-     )
-ENDIF()
+add_definitions(-DUSE_PLATO)
 
-option(LGR_ENABLE_PLATO "Enable LGR Plato driver" OFF)
-if(LGR_ENABLE_PLATO)
-  add_definitions(-DUSE_PLATO)
-endif()
-
-
-option(LGR_ENABLE_PLATO_1D "Compile with 1D physics" OFF)
-option(LGR_ENABLE_PLATO_2D "Compile with 2D physics" ON )
-option(LGR_ENABLE_PLATO_3D "Compile with 3D physics" ON )
-if (LGR_ENABLE_PLATO_1D)
-  add_definitions(-DPLATO_1D)
+option(PLATOANALYZE_1D "Compile with 1D physics" OFF)
+option(PLATOANALYZE_2D "Compile with 2D physics" ON )
+option(PLATOANALYZE_3D "Compile with 3D physics" ON )
+if (PLATOANALYZE_1D)
   message("-- Plato: 1d physics added")
 endif()
-if (LGR_ENABLE_PLATO_2D)
-  add_definitions(-DPLATO_2D)
+if (PLATOANALYZE_2D)
   message("-- Plato: 2d physics added")
 endif()
-if (LGR_ENABLE_PLATO_3D)
-  add_definitions(-DPLATO_3D)
+if (PLATOANALYZE_3D)
   message("-- Plato: 3d physics added")
 endif()
 
 ADD_SUBDIRECTORY(src)
 
-
 ###### PLATO ANALYZE APP + PLATO ENGINE EXECUTABLE ######
-option(LGR_ENABLE_PLATO_MPMD "Enable the Plato interface MPMD executable" OFF)
-if (LGR_ENABLE_PLATO_MPMD)
+option(PLATOANALYZE_ENABLE_MPMD "Enable the Plato interface MPMD executable" OFF)
+if (PLATOANALYZE_ENABLE_MPMD)
   FIND_PACKAGE(Epetra REQUIRED)
-  set(PLATO_PREFIX "" CACHE STRING "Path to Plato install")
-  find_library(PLATO_DATA_LAYER_LIB NAMES PlatoDataLayer PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_INTERFACE_LIB NAMES PlatoInterface PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
+  set(PLATOENGINE_PREFIX "" CACHE STRING "Path to Plato install")
+  find_library(PLATO_DATA_LAYER_LIB NAMES PlatoDataLayer PATHS ${PLATOENGINE_PREFIX}/lib)
+  find_library(PLATO_INTERFACE_LIB NAMES PlatoInterface PATHS ${PLATOENGINE_PREFIX}/lib)
+  find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATOENGINE_PREFIX}/lib)
+  find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATOENGINE_PREFIX}/lib)
+  find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATOENGINE_PREFIX}/lib)
   find_package(Epetra REQUIRED)
   find_package(AztecOO REQUIRED)
   find_package(SEACASExodus REQUIRED)
@@ -261,20 +218,6 @@ if (LGR_ENABLE_PLATO_MPMD)
   find_package(Intrepid REQUIRED)
   find_package(TeuchosCore REQUIRED)
 
-  add_library( LGR_App src/plato/LGR_App.cpp )
-  target_include_directories(LGR_App PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  target_include_directories(LGR_App PRIVATE "${PLATO_PREFIX}/include")
-  target_link_libraries(LGR_App ${PLATO_LIBS} ${PLATO_LIBS} lgrtk)
-  if( CMAKE_INSTALL_PREFIX )
-    install( TARGETS LGR_App DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
-  endif()
-
-  add_executable( LGR_MPMD src/plato/LGR_MPMD.cpp)
-  if( CMAKE_INSTALL_PREFIX )
-    install( TARGETS LGR_MPMD DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
-  endif()
-  target_include_directories(LGR_MPMD PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  target_include_directories(LGR_MPMD PRIVATE "${PLATO_PREFIX}/include")
   set(PLATO_LIBS
       ${PLATO_DATA_LAYER_LIB}
       ${PLATO_INTERFACE_LIB}
@@ -291,134 +234,148 @@ if (LGR_ENABLE_PLATO_MPMD)
       exodus
      )
 
-  if (LGR_ENABLE_PLATO_GEOMETRY)
-    find_library(PLATO_GEOMETRY_MLS_LIB NAMES PlatoGeometryMLS PATHS ${PLATO_PREFIX}/lib)
-    find_library(PLATO_GEOMETRY_COGENT_LIB NAMES PlatoGeometryCogent PATHS ${PLATO_PREFIX}/lib)
+  add_library( Analyze_App src/LGR_App.cpp )
+  target_include_directories(Analyze_App PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  target_include_directories(Analyze_App PRIVATE "${PLATOENGINE_PREFIX}/include")
+  # target_link_libraries(Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
+  if( CMAKE_INSTALL_PREFIX )
+    install( TARGETS Analyze_App DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
+  endif()
+
+  add_executable( analyze_MPMD src/LGR_MPMD.cpp)
+  if( CMAKE_INSTALL_PREFIX )
+    install( TARGETS analyze_MPMD DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
+  endif()
+  target_include_directories(analyze_MPMD PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  target_include_directories(analyze_MPMD PRIVATE "${PLATOENGINE_PREFIX}/include")
+
+  option(PLATOANALYZE_ENABLE_GEOMETRY "Enable Plato Geometry" OFF)
+  if (PLATOANALYZE_ENABLE_GEOMETRY)
+    add_definitions(-DPLATO_GEOMETRY)
+    find_library(PLATO_GEOMETRY_MLS_LIB NAMES PlatoGeometryMLS PATHS ${PLATOENGINE_PREFIX}/lib)
+    find_library(PLATO_GEOMETRY_COGENT_LIB NAMES PlatoGeometryCogent PATHS ${PLATOENGINE_PREFIX}/lib)
     find_package(Pamgen REQUIRED)
     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_MLS_LIB} ${PLATO_GEOMETRY_COGENT_LIB} pamgen)
   endif()
 
-  target_link_libraries(LGR_MPMD LGR_App ${PLATO_LIBS} ${PLATO_LIBS} lgrtk)
+  target_link_libraries(analyze_MPMD Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
 
-  option(LGR_ENABLE_PLATO_PYTHON "Enable the Plato Python interface" OFF)
-  if (LGR_ENABLE_PLATO_PYTHON)
+  option(PLATOANALYZE_ENABLE_PYTHON "Enable the Plato Python interface" OFF)
+  if (PLATOANALYZE_ENABLE_PYTHON)
       find_package(Python2 COMPONENTS Development)
       include_directories( ${Python2_INCLUDE_DIRS} )
-      add_library( Plato SHARED src/plato/PlatoPythonModule.cpp )
-      target_include_directories( Plato PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-      target_include_directories( Plato PRIVATE "${PLATO_PREFIX}/include")
-      target_link_libraries( Plato LGR_App lgrtk ${PLATO_LIBS} ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES} ${Python2_LIBRARIES} )
-      set_target_properties( Plato PROPERTIES PREFIX "" )
-      target_compile_options( Plato PRIVATE "-lmpi" )
+      add_library( PlatoPython SHARED src/PlatoPythonModule.cpp )
+      target_include_directories( PlatoPython PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+      target_include_directories( PlatoPython PRIVATE "${PLATOENGINE_PREFIX}/include")
+      target_link_libraries( PlatoPython Analyze_App analyzelib ${PLATO_LIBS} ${Trilinos_LIBRARIES} ${Trilinos_TPL_LIBRARIES} ${Python2_LIBRARIES} )
+      set_target_properties( PlatoPython PROPERTIES PREFIX "" )
+      target_compile_options( PlatoPython PRIVATE "-lmpi" )
       if( CMAKE_INSTALL_PREFIX )
-        install( TARGETS Plato DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
+        install( TARGETS PlatoPython DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
       endif()
   endif()
-  option(LGR_ENABLE_PLATO_GEOMETRY "Enable Plato Geometry" OFF)
-  if (LGR_ENABLE_PLATO_GEOMETRY)
-    add_definitions(-DPLATO_GEOMETRY)
-  endif()
+
 
 endif()
 
-###### START ROCKET APP EXECUTABLE ######
-if (LGR_ENABLE_PLATO_MPMD)
-  FIND_PACKAGE(Epetra REQUIRED)
-  set(PLATO_PREFIX "" CACHE STRING "Path to Plato install")
-  find_library(PLATO_DATA_LAYER_LIB NAMES PlatoDataLayer PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_INTERFACE_LIB NAMES PlatoInterface PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
-  find_package(Epetra REQUIRED)
-  find_package(AztecOO REQUIRED)
-  find_package(SEACASExodus REQUIRED)
-  find_package(SEACASNemesis REQUIRED)
-  find_package(Shards REQUIRED)
-  find_package(Intrepid REQUIRED)
-  find_package(TeuchosCore REQUIRED)
-  add_executable(
-    ROCKET_MPMD
-    src/plato/PlatoRocketApp.cpp
-    src/plato/PlatoRocketAppMPMD.cpp
-  )
-  if( CMAKE_INSTALL_PREFIX )
-    install( TARGETS ROCKET_MPMD DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
-  endif()
-  target_include_directories(ROCKET_MPMD PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  target_include_directories(ROCKET_MPMD PRIVATE "${PLATO_PREFIX}/include")
-  set(PLATO_LIBS
-      ${PLATO_DATA_LAYER_LIB}
-      ${PLATO_INTERFACE_LIB}
-      ${PLATO_ANALYZE_LIB}
-      ${PLATO_PARSER_LIB}
-      ${PLATO_EXCEPTIONS_LIB}
-      aztecoo
-      epetra
-      intrepid
-      shards
-      sacado
-      teuchoscore
-      nemesis
-      exodus
-     )
+# ###### START ROCKET APP EXECUTABLE ######
+# if (LGR_ENABLE_PLATO_MPMD)
+#   FIND_PACKAGE(Epetra REQUIRED)
+#   set(PLATO_PREFIX "" CACHE STRING "Path to Plato install")
+#   find_library(PLATO_DATA_LAYER_LIB NAMES PlatoDataLayer PATHS ${PLATO_PREFIX}/lib)
+#   find_library(PLATO_INTERFACE_LIB NAMES PlatoInterface PATHS ${PLATO_PREFIX}/lib)
+#   find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
+#   find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
+#   find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
+#   find_package(Epetra REQUIRED)
+#   find_package(AztecOO REQUIRED)
+#   find_package(SEACASExodus REQUIRED)
+#   find_package(SEACASNemesis REQUIRED)
+#   find_package(Shards REQUIRED)
+#   find_package(Intrepid REQUIRED)
+#   find_package(TeuchosCore REQUIRED)
+#   add_executable(
+#     ROCKET_MPMD
+#     src/plato/PlatoRocketApp.cpp
+#     src/plato/PlatoRocketAppMPMD.cpp
+#   )
+#   if( CMAKE_INSTALL_PREFIX )
+#     install( TARGETS ROCKET_MPMD DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
+#   endif()
+#   target_include_directories(ROCKET_MPMD PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+#   target_include_directories(ROCKET_MPMD PRIVATE "${PLATO_PREFIX}/include")
+#   set(PLATO_LIBS
+#       ${PLATO_DATA_LAYER_LIB}
+#       ${PLATO_INTERFACE_LIB}
+#       ${PLATO_ANALYZE_LIB}
+#       ${PLATO_PARSER_LIB}
+#       ${PLATO_EXCEPTIONS_LIB}
+#       aztecoo
+#       epetra
+#       intrepid
+#       shards
+#       sacado
+#       teuchoscore
+#       nemesis
+#       exodus
+#      )
 
-  if (LGR_ENABLE_PLATO_GEOMETRY)
-    find_library(PLATO_GEOMETRY_MLS_LIB NAMES PlatoGeometryMLS PATHS ${PLATO_PREFIX}/lib)
-    find_library(PLATO_GEOMETRY_COGENT_LIB NAMES PlatoGeometryCogent PATHS ${PLATO_PREFIX}/lib)
-    find_package(Pamgen REQUIRED)
-    set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_MLS_LIB} ${PLATO_GEOMETRY_COGENT_LIB} pamgen)
-  endif()
+#   if (LGR_ENABLE_PLATO_GEOMETRY)
+#     find_library(PLATO_GEOMETRY_MLS_LIB NAMES PlatoGeometryMLS PATHS ${PLATO_PREFIX}/lib)
+#     find_library(PLATO_GEOMETRY_COGENT_LIB NAMES PlatoGeometryCogent PATHS ${PLATO_PREFIX}/lib)
+#     find_package(Pamgen REQUIRED)
+#     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_MLS_LIB} ${PLATO_GEOMETRY_COGENT_LIB} pamgen)
+#   endif()
 
-  target_link_libraries(ROCKET_MPMD ${PLATO_LIBS} ${PLATO_LIBS} lgrtk)
+#   target_link_libraries(ROCKET_MPMD ${PLATO_LIBS} ${PLATO_LIBS} lgrtk)
 
-endif()
-###### END ROCKET APP EXECUTABLE ######
+# endif()
+# ###### END ROCKET APP EXECUTABLE ######
 
-###### START ROCKET EXECUTABLE ######
-if (LGR_ENABLE_PLATO_MPMD)
-  FIND_PACKAGE(Epetra REQUIRED)
-  set(PLATO_PREFIX "" CACHE STRING "Path to Plato install")
-  find_library(PLATO_DATA_LAYER_LIB NAMES PlatoDataLayer PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_INTERFACE_LIB NAMES PlatoInterface PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
-  find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
-  find_package(Epetra REQUIRED)
-  find_package(AztecOO REQUIRED)
-  find_package(SEACASExodus REQUIRED)
-  find_package(SEACASNemesis REQUIRED)
-  find_package(Shards REQUIRED)
-  find_package(Intrepid REQUIRED)
-  find_package(TeuchosCore REQUIRED)
-  add_executable(
-    ROCKET
-    src/plato/AlgebraicRocketMain.cpp
-  )
-  if( CMAKE_INSTALL_PREFIX )
-    install( TARGETS ROCKET DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
-  endif()
-  target_include_directories(ROCKET PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-  target_include_directories(ROCKET PRIVATE "${PLATO_PREFIX}/include")
-  set(PLATO_LIBS
-      ${PLATO_DATA_LAYER_LIB}
-      ${PLATO_INTERFACE_LIB}
-      ${PLATO_ANALYZE_LIB}
-      ${PLATO_PARSER_LIB}
-      ${PLATO_EXCEPTIONS_LIB}
-      aztecoo
-      epetra
-      intrepid
-      shards
-      sacado
-      teuchoscore
-      nemesis
-      exodus
-     )
+# ###### START ROCKET EXECUTABLE ######
+# if (LGR_ENABLE_PLATO_MPMD)
+#   FIND_PACKAGE(Epetra REQUIRED)
+#   set(PLATO_PREFIX "" CACHE STRING "Path to Plato install")
+#   find_library(PLATO_DATA_LAYER_LIB NAMES PlatoDataLayer PATHS ${PLATO_PREFIX}/lib)
+#   find_library(PLATO_INTERFACE_LIB NAMES PlatoInterface PATHS ${PLATO_PREFIX}/lib)
+#   find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
+#   find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
+#   find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
+#   find_package(Epetra REQUIRED)
+#   find_package(AztecOO REQUIRED)
+#   find_package(SEACASExodus REQUIRED)
+#   find_package(SEACASNemesis REQUIRED)
+#   find_package(Shards REQUIRED)
+#   find_package(Intrepid REQUIRED)
+#   find_package(TeuchosCore REQUIRED)
+#   add_executable(
+#     ROCKET
+#     src/plato/AlgebraicRocketMain.cpp
+#   )
+#   if( CMAKE_INSTALL_PREFIX )
+#     install( TARGETS ROCKET DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
+#   endif()
+#   target_include_directories(ROCKET PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+#   target_include_directories(ROCKET PRIVATE "${PLATO_PREFIX}/include")
+#   set(PLATO_LIBS
+#       ${PLATO_DATA_LAYER_LIB}
+#       ${PLATO_INTERFACE_LIB}
+#       ${PLATO_ANALYZE_LIB}
+#       ${PLATO_PARSER_LIB}
+#       ${PLATO_EXCEPTIONS_LIB}
+#       aztecoo
+#       epetra
+#       intrepid
+#       shards
+#       sacado
+#       teuchoscore
+#       nemesis
+#       exodus
+#      )
 
-  target_link_libraries(ROCKET ${PLATO_LIBS} ${PLATO_LIBS} lgrtk)
+#   target_link_libraries(ROCKET ${PLATO_LIBS} ${PLATO_LIBS} lgrtk)
 
-endif()
+# endif()
 ###### END ROCKET EXECUTABLE ######
 
 list(REVERSE Trilinos_TPL_LIBRARIES)
@@ -430,25 +387,13 @@ message(STATUS "Trilinos_EXTRA_LD_FLAGS: ${Trilinos_EXTRA_LD_FLAGS}")
 ENABLE_TESTING()
 INCLUDE(CTest)
 
-SET(LGR_RANKS_PER_NODE_FLAG "-npernode" CACHE STRING "Processes per node flag for LGR_MPIEXEC")
-SET(LGR_RANKS_FLAG "-n" CACHE STRING "Number of processes flag for LGR_MPIEXEC")
-SET(LGR_RANKS_PER_NODE "1" CACHE STRING "Maximum number of processes per node")
-SET(LGR_VALGRIND "" CACHE STRING "Optional Valgrind call and arguments")
-
-function(build_mpi_test_string RESULT_NAME num_mpi_proc)
-  string(REPLACE " " ";" VALGRIND "${LGR_VALGRIND}")
-  set(${RESULT_NAME} ${LGR_MPIEXEC} ${LGR_RANKS_PER_NODE_FLAG} ${LGR_RANKS_PER_NODE} ${LGR_RANKS_FLAG} ${num_mpi_proc} ${VALGRIND} ${ARGN} PARENT_SCOPE)
-endfunction(build_mpi_test_string)
-
-option( LGR_UNIT_TEST "Flag to enable LGR unit tests" ON)
-if( LGR_UNIT_TEST)
+option( PLATOANALYZE_UNIT_TEST "Flag to enable unit tests" ON)
+if( PLATOANALYZE_UNIT_TEST)
   ADD_SUBDIRECTORY(unit_tests)
 endif()
 
-ADD_SUBDIRECTORY(tests)
-
-set(LGR_KEY_INTS
-    LGR_VERSION_MAJOR
-    LGR_VERSION_MINOR
-    LGR_VERSION_PATCH
+set(PLATOANALYZE_KEY_INTS
+    PLATOANALYZE_VERSION_MAJOR
+    PLATOANALYZE_VERSION_MINOR
+    PLATOANALYZE_VERSION_PATCH
    )

@@ -1,4 +1,4 @@
-#include "LGR_App.hpp"
+#include "Analyze_App.hpp"
 
 #ifndef NDEBUG
 #include <fenv.h>

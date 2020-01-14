@@ -5,7 +5,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
-#include "plato/LGR_App.hpp"
+#include <Analyze_App.hpp>
 
 std::vector<Plato::Scalar> double_vector_from_list(PyObject* list);
 PyObject* list_from_double_vector(std::vector<Plato::Scalar> inVector);

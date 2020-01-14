@@ -1,0 +1,8 @@
+#ifndef PLATOANALYZE_CONFIG_HPP
+#define PLATOANALYZE_CONFIG_HPP
+
+const int version_major = @PLATOANALYZE_VERSION_MAJOR@ ;
+const int version_minor = @PLATOANALYZE_VERSION_MINOR@ ;
+const int version_patch = @PLATOANALYZE_VERSION_PATCH@ ;
+
+#endif

@@ -1,7 +1,7 @@
 #include <Omega_h_file.hpp>
 
-#include "plato/LGR_App.hpp"
-#include "plato/PlatoProblemFactory.hpp"
+#include <Analyze_App.hpp>
+#include <PlatoProblemFactory.hpp>
 
 /******************************************************************************/
 MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
