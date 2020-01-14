@@ -728,8 +728,8 @@ public:
         auto tJacobianMatEntries = tJacobianMat->entries();
         auto tJacobian = this->jacobianNodeStateWorkset(aState, aNodeState, aControl, aTimeStep);
         mWorksetBase.assembleJacobianFad(
-          mNumStateDofsPerCell,          /* (Nv x Nd) */
-          mNumNodeStateDofsPerCell,            /* (Nv x Nn) */
+          mNumStateDofsPerCell,     /* (Nv x Nd) */
+          mNumNodeStateDofsPerCell, /* (Nv x Nn) */
           tJacobianMatEntryOrdinal, /* entry ordinal functor */
           tJacobian,                /* source data */
           tJacobianMatEntries       /* destination */
@@ -793,11 +793,11 @@ public:
         auto tJacobianMatEntries = tJacobianMat->entries();
         auto tJacobian = this->jacobianNodeStateWorkset(aState, aNodeState, aControl, aTimeStep);
         mWorksetBase.assembleTransposeJacobian(
-          mNumStateDofsPerCell,          /* (Nv x Nd) */
-          mNumNodeStateDofsPerCell,            /* (Nv x Nn) */
-          tJacobianMatEntryOrdinal, /* entry ordinal functor */
-          tJacobian,                /* source data */
-          tJacobianMatEntries       /* destination */
+            mNumStateDofsPerCell,     /* (Nv x Nd) */
+            mNumNodeStateDofsPerCell, /* (Nv x Nn) */
+            tJacobianMatEntryOrdinal, /* entry ordinal functor */
+            tJacobian,                /* source data */
+            tJacobianMatEntries       /* destination */
         );
 
         return tJacobianMat;
