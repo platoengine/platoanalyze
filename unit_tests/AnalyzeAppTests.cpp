@@ -1,8 +1,6 @@
 #include <Analyze_App.hpp>
 #include <Teuchos_UnitTestHarness.hpp>
 
-using namespace analyze;
-
 TEUCHOS_UNIT_TEST( AnalyzeAppTests, 3D )
 { 
  

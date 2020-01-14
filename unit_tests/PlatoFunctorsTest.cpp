@@ -9,8 +9,6 @@
 
 #include "PlatoTestHelpers.hpp"
  
-#include "MatrixIO.hpp"
-
 #include "Mechanics.hpp"
 #include "WorksetBase.hpp"
 #include "VectorFunction.hpp"
