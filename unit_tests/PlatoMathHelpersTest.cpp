@@ -1382,7 +1382,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_InvertLocalMatrices)
     }
     Kokkos::deep_copy(tAInverse, tHostAInverse);
 
-    using namespace KokkosBatched::Experimental;
+    using namespace KokkosBatched;
 
     /// [template]AlgoType: Unblocked, Blocked, CompatMKL
     /// [in/out]A: 2d view

@@ -1,5 +1,5 @@
 #include <Teuchos_UnitTestHarness.hpp>
-#include <AnalyzeAppIntxTests.hpp>
+#include "AnalyzeAppIntxTests.hpp"
 
 #include <Analyze_App.hpp>
 

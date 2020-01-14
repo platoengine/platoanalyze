@@ -740,7 +740,7 @@ setParameterValue( Teuchos::ParameterList& params,
   auto& token = tokens[0];
   auto p1 = token.find("(");
   auto p2 = token.find(")");
-  if( p1 != string::npos && p2 != string::npos )
+  if( p1 != std::string::npos && p2 != std::string::npos )
   {
       std::string vecName = token.substr(0,p1);
       auto vec = params.get<Teuchos::Array<Plato::Scalar>>(vecName);

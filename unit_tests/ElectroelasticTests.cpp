@@ -41,9 +41,6 @@
 
 #include <fenv.h>
 
-
-using namespace analyze;
-
 /******************************************************************************/
 /*! 
   \brief Compute value and both gradients (wrt state and control) of 

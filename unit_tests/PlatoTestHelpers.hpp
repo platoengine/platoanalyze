@@ -17,9 +17,6 @@
 #include "Omega_h_library.hpp"
 #include "AnalyzeMacros.hpp"
 
-#include "FEMesh.hpp"
-#include "Fields.hpp"
-
 #include "PlatoStaticsTypes.hpp"
 
 namespace PlatoUtestHelpers
@@ -118,54 +115,54 @@ Teuchos::RCP<Omega_h::Mesh> getBoxMesh(Omega_h::Int aSpaceDim,
     return (tOmegaH_mesh);
 }
 
-/******************************************************************************/
-/*! Create an analyze::FEMesh from a Omega_h::Mesh
+///******************************************************************************/
+///*! Create an analyze::FEMesh from a Omega_h::Mesh
 
- @param meshOmegaH Input Omega_h mesh.
- */
-template<int SpaceDim>
-inline
-analyze::FEMesh<SpaceDim> createFEMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH)
-/******************************************************************************/
-{
-    using DefaultFields = analyze::Fields<SpaceDim>;
-    analyze::FEMesh<SpaceDim> tMesh;
-    {
-        // hopefully the following is enough to get things set up in the FEMesh
+// @param meshOmegaH Input Omega_h mesh.
+// */
+//template<int SpaceDim>
+//inline
+//analyze::FEMesh<SpaceDim> createFEMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH)
+///******************************************************************************/
+//{
+//    using DefaultFields = analyze::Fields<SpaceDim>;
+//    analyze::FEMesh<SpaceDim> tMesh;
+//    {
+//        // hopefully the following is enough to get things set up in the FEMesh
 
-        tMesh.omega_h_mesh = aMeshOmegaH.get();
+//        tMesh.omega_h_mesh = aMeshOmegaH.get();
 
-        tMesh.resetSizes();
+//        tMesh.resetSizes();
 
-        // Element counts:
+//        // Element counts:
 
-        const size_t tElemCount = tMesh.omega_h_mesh->nelems();
-        const size_t tFaceCount = Omega_h::FACE <= tMesh.omega_h_mesh->dim() ? tMesh.omega_h_mesh->nfaces() : 0;
+//        const size_t tElemCount = tMesh.omega_h_mesh->nelems();
+//        const size_t tFaceCount = Omega_h::FACE <= tMesh.omega_h_mesh->dim() ? tMesh.omega_h_mesh->nfaces() : 0;
 
-        //! list of total nodes on the rank
-        size_t tNodeCount = tMesh.omega_h_mesh->nverts();
+//        //! list of total nodes on the rank
+//        size_t tNodeCount = tMesh.omega_h_mesh->nverts();
 
-        // Allocate the initial arrays. Note that the mesh.reAlloc() function does the resize
-        if(tNodeCount)
-        {
-            tMesh.node_coords = typename DefaultFields::node_coords_type("node_coords", tMesh.geom_layout);
-        }
+//        // Allocate the initial arrays. Note that the mesh.reAlloc() function does the resize
+//        if(tNodeCount)
+//        {
+//            tMesh.node_coords = typename DefaultFields::node_coords_type("node_coords", tMesh.geom_layout);
+//        }
 
-        if(tElemCount)
-        {
-            tMesh.elem_node_ids = typename DefaultFields::elem_node_ids_type("elem_node_ids", tElemCount);
-	    tMesh.elem_face_ids = typename DefaultFields::elem_face_ids_type("elem_face_ids", tElemCount );
-	    tMesh.elem_face_orientations = typename DefaultFields::elem_face_orient_type("elem_face_orientations", tElemCount );
-        }
-        if(tFaceCount)
-        {
-            tMesh.face_node_ids = typename DefaultFields::face_node_ids_type("face_node_ids", tFaceCount);
-        }
+//        if(tElemCount)
+//        {
+//            tMesh.elem_node_ids = typename DefaultFields::elem_node_ids_type("elem_node_ids", tElemCount);
+//	    tMesh.elem_face_ids = typename DefaultFields::elem_face_ids_type("elem_face_ids", tElemCount );
+//	    tMesh.elem_face_orientations = typename DefaultFields::elem_face_orient_type("elem_face_orientations", tElemCount );
+//        }
+//        if(tFaceCount)
+//        {
+//            tMesh.face_node_ids = typename DefaultFields::face_node_ids_type("face_node_ids", tFaceCount);
+//        }
 
-        tMesh.updateMesh();
-    }
-    return (tMesh);
-}
+//        tMesh.updateMesh();
+//    }
+//    return (tMesh);
+//}
 
 /******************************************************************************/
 inline
