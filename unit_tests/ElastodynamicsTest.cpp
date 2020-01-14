@@ -4005,7 +4005,7 @@ private:
     void solve(MatrixType & aMatrix, ForceType & aForce, SolutionType & aSolution)
     {
 #ifdef HAVE_AMGX
-        using AmgXLinearProblem = lgr::AmgXSparseLinearProblem<Plato::OrdinalType, mNumDofsPerNode>;
+        using AmgXLinearProblem = analyze::AmgXSparseLinearProblem<Plato::OrdinalType, mNumDofsPerNode>;
         auto tConfigString = AmgXLinearProblem::getConfigString();
         auto tSolver = std::make_shared<AmgXLinearProblem>(aMatrix, aSolution, aForce, tConfigString);
         tSolver->solve();
@@ -4925,7 +4925,7 @@ namespace PlatoUnitTests
  * where \f$\mathbf{u}_{t=0}\f$ is the displacement vector at time \f$t=0\f$.
  *
  *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, SetInitialConditionVector)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SetInitialConditionVector)
 {
     // SET TEST DATA
      const Plato::OrdinalType tNumBCs = 3;
@@ -4983,7 +4983,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, SetInitialConditionVector)
  * the ApplyProjection class.
  *
  *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HeavisideProjection_GradZ)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, HeavisideProjection_GradZ)
 {
     const Plato::OrdinalType tNumNodesPerCell = 2;
     typedef Sacado::Fad::SFad<Plato::Scalar, tNumNodesPerCell> FadType;
@@ -5050,7 +5050,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HeavisideProjection_GradZ)
  * the ApplyProjection class.
  *
  *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HyperbolicTangentProjection_GradZ)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, HyperbolicTangentProjection_GradZ)
 {
     const Plato::OrdinalType tNumNodesPerCell = 2;
     typedef Sacado::Fad::SFad<Plato::Scalar, tNumNodesPerCell> FadType;
@@ -5109,7 +5109,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HyperbolicTangentProjection_GradZ)
  *   bar length, \f$\omega\f$ is the angular frequency and \f$m\f$ is mass.
  *
  *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, RayleighDamping_Elastodynamics)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, RayleighDamping_Elastodynamics)
 {
     Plato::Scalar tArea = 1;
     Plato::Scalar tMass = 1;
@@ -5181,7 +5181,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, RayleighDamping_Elastodynamics)
  * vectors,
  *
  *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeInterpolatedDispNewmark)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeInterpolatedDispNewmark)
 {
     // SET STATE MULTIVECTORS
      const Plato::OrdinalType tNumCells = 1;
@@ -5240,7 +5240,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeInterpolatedDispNewmark)
  * are the current acceleration and velocity vectors,
  *
  *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeInterpolatedVelNewmark)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeInterpolatedVelNewmark)
 {
     // SET STATE MULTIVECTORS
      const Plato::OrdinalType tNumCells = 1;
@@ -5302,7 +5302,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeInterpolatedVelNewmark)
  *   accelerations.
  *
 **********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, NewmarkUpdateScheme)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NewmarkUpdateScheme)
 {
     const Plato::Scalar tGamma = 0.6;
     const Plato::Scalar tBeta = 0.3025;
@@ -5365,7 +5365,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, NewmarkUpdateScheme)
  * is the vector of displacements.
  *
 **********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, InitialAccelerationsCalculation)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InitialAccelerationsCalculation)
 {
     const Plato::OrdinalType tSpaceDim = 1;
     using ResidualT = typename Plato::Experimental::DynamicsEvaluation<Plato::Experimental::Elastodynamics<tSpaceDim>>::Residual;
@@ -5452,7 +5452,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, InitialAccelerationsCalculation)
  * modes.
  *
  *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeNewmarkAlphaDampingParameters)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNewmarkAlphaDampingParameters)
 {
     // CALL FUNCTION
     Plato::Scalar tBeta = 0.0;
@@ -5490,7 +5490,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeNewmarkAlphaDampingParameters)
  * the stiffness matrix and \f$\{\mathbf{D}\}\f$ is the vector of displacements.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_Residual)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastodynamicsResidual_Residual)
 {
     // SET EVALUATION TYPES FOR UNIT TEST
     const Plato::OrdinalType tSpaceDim = 1;
@@ -5587,7 +5587,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_Residual)
  * the stiffness matrix and \f$\{\mathbf{D}\}\f$ is the vector of displacements.
  *
 **********************************************************************************/ 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_VectorFunc_Residual)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastodynamicsResidual_VectorFunc_Residual)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -5694,7 +5694,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_VectorFunc_Residual)
  * the stiffness matrix and \f$\{\mathbf{D}\}\f$ is the vector of displacements.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_VectorFuncJac)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastodynamicsResidual_VectorFuncJac)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -5806,7 +5806,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_VectorFuncJac)
  * the stiffness matrix and \f$\{\mathbf{D}\}\f$ is the vector of displacements.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_VectorFuncJacZ)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastodynamicsResidual_VectorFuncJacZ)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -5918,7 +5918,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_VectorFuncJacZ)
  * the stiffness matrix and \f$\{\mathbf{D}\}\f$ is the vector of displacements.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_VectorFuncJacX)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastodynamicsResidual_VectorFuncJacX)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6030,7 +6030,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsResidual_VectorFuncJacX)
  * is the vector of displacements.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, EquationMotion_VectorFuncValue)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EquationMotion_VectorFuncValue)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6135,7 +6135,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, EquationMotion_VectorFuncValue)
  * is the vector of displacements.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, EquationMotion_VectorFuncJac)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EquationMotion_VectorFuncJac)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6241,7 +6241,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, EquationMotion_VectorFuncJac)
  * is the vector of displacements.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, EquationMotion_VectorFuncJacZ)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EquationMotion_VectorFuncJacZ)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6348,7 +6348,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, EquationMotion_VectorFuncJacZ)
  * is the vector of displacements.
  *
 **********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, EquationMotion_VectorFuncJacX)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EquationMotion_VectorFuncJacX)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6460,7 +6460,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, EquationMotion_VectorFuncJacX)
  * velocities and displacement vectors.
  *
 **********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointElastodynamics_VectorFunc_Residual)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointElastodynamics_VectorFunc_Residual)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6565,7 +6565,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointElastodynamics_VectorFunc_Residual)
  * \f$\mathbf{C}\f$ and \f$\mathbf{K}\f$ are the mass, damping and stiffness matrices.
  *
 **********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointElastodynamics_VectorFuncJac)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointElastodynamics_VectorFuncJac)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6682,7 +6682,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointElastodynamics_VectorFuncJac)
  * velocities and displacement vectors.
  *
 **********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointElastodynamics_VectorFuncGradZ)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointElastodynamics_VectorFuncGradZ)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6784,7 +6784,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointElastodynamics_VectorFuncGradZ)
  * displacement vector.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, LinearElasticForce_Evaluate)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LinearElasticForce_Evaluate)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6857,7 +6857,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, LinearElasticForce_Evaluate)
  * and \f$\dot{\mathbf{u}}\f$ is the velocity vector.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, RayleighViscousForce_Evaluate)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, RayleighViscousForce_Evaluate)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 1;
@@ -6938,7 +6938,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, RayleighViscousForce_Evaluate)
  * displacement and acceleration vectors.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointDisplacementNewmarkUpdate)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointDisplacementNewmarkUpdate)
 {
     // DEFINE CONTAINER SIZE 
     const Plato::OrdinalType tNumCells = 1;
@@ -6995,7 +6995,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointDisplacementNewmarkUpdate)
  * \f$\Lambda\f$ are the adjoint displacement and acceleration vectors.
  *
 *********************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointVelocityNewmarkUpdate)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointVelocityNewmarkUpdate)
 {
     // DEFINE CONTAINER SIZE
     const Plato::OrdinalType tNumCells = 1;
@@ -7046,7 +7046,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointVelocityNewmarkUpdate)
 }
 
 /*
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastodynamicsSolve_1D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastodynamicsSolve_1D)
 {
     // CREATE 2D-MESH
     Omega_h::LO aNx = 10;

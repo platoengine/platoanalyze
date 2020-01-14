@@ -48,7 +48,7 @@
 #include <fenv.h>
 
 
-using namespace lgr;
+using namespace analyze;
 
 TEUCHOS_UNIT_TEST( DerivativeTests, 3D )
 { 
@@ -436,7 +436,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
   auto grad_x_entriesHost = Kokkos::create_mirror_view( grad_x_entries );
   Kokkos::deep_copy(grad_x_entriesHost, grad_x_entries);
 
-  std::vector<lgr::Scalar> gold_grad_x_entries = {
+  std::vector<analyze::Scalar> gold_grad_x_entries = {
   -4153.84615384615245,   -2278.84615384615336,  -3192.30769230769147, 
    1423.07692307692287,    -500.000000000000000,   557.692307692307281, 
     -19.2307692307692832,    28.8461538461539817, -115.384615384615515, 
@@ -1376,7 +1376,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
   auto grad_x_entriesHost = Kokkos::create_mirror_view( grad_x_entries );
   Kokkos::deep_copy(grad_x_entriesHost, grad_x_entries);
 
-  std::vector<lgr::Scalar> gold_grad_x_entries = {
+  std::vector<analyze::Scalar> gold_grad_x_entries = {
   -151.666666666666686,   23.3333333333333499,  -1.66666666666667229, 
      4.99999999999999467, 19.9999999999999929, -14.9999999999999964, 
     48.3333333333333286, -11.6666666666666714,  40.0000000000000071, 

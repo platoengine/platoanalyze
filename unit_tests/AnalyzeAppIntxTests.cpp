@@ -1,11 +1,11 @@
 #include <Teuchos_UnitTestHarness.hpp>
-#include "LGRAppIntxTests.hpp"
+#include <AnalyzeAppIntxTests.hpp>
 
-#include "plato/LGR_App.hpp"
+#include <Analyze_App.hpp>
 
 void objectiveFiniteDifferenceTest(std::string inputFile, std::string appFile, Plato::Scalar& val1, Plato::Scalar& val2, Plato::Scalar tol);
 
-TEUCHOS_UNIT_TEST( LGRAppTests, MultipleProblemDefinitions )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, MultipleProblemDefinitions )
 { 
   /*
    * Two operations with different ProblemDefinitions on
@@ -70,7 +70,7 @@ TEUCHOS_UNIT_TEST( LGRAppTests, MultipleProblemDefinitions )
   }
 }
 
-TEUCHOS_UNIT_TEST( LGRAppTests, OperationParameter )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, OperationParameter )
 { 
   /*
    * One operation with a Parameter.
@@ -145,7 +145,7 @@ TEUCHOS_UNIT_TEST( LGRAppTests, OperationParameter )
   }
 }
 
-TEUCHOS_UNIT_TEST( LGRAppTests, CellForcing )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, CellForcing )
 { 
   /*
    * One operation with cell forcing
@@ -199,7 +199,7 @@ TEUCHOS_UNIT_TEST( LGRAppTests, CellForcing )
 //  }
 }
 
-TEUCHOS_UNIT_TEST( LGRAppTests, EffectiveEnergy )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, EffectiveEnergy )
 { 
   /*
    * One operation with cell forcing
@@ -249,7 +249,7 @@ TEUCHOS_UNIT_TEST( LGRAppTests, EffectiveEnergy )
   TEST_FLOATING_EQUALITY(stdStateOne[0], 17308575.3656760529, 1e-12);
 }
 
-TEUCHOS_UNIT_TEST( LGRAppTests, InternalEnergyGradX )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, InternalEnergyGradX )
 { 
   
   int argc = 2;
@@ -306,7 +306,7 @@ TEUCHOS_UNIT_TEST( LGRAppTests, InternalEnergyGradX )
 //  TEST_FLOATING_EQUALITY(stdStateOut[0], 17308575.3656760529, 1e-12);
 }
 
-TEUCHOS_UNIT_TEST( LGRAppTests, InternalEnergyHeatEq )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, InternalEnergyHeatEq )
 { 
   std::string inputFile = "InternalEnergyHeatEq_input.xml";
   std::string appFile = "InternalEnergyHeatEq_appfile.xml";
@@ -315,7 +315,7 @@ TEUCHOS_UNIT_TEST( LGRAppTests, InternalEnergyHeatEq )
   TEST_FLOATING_EQUALITY(val1, val2, tol);
 }
 
-TEUCHOS_UNIT_TEST( LGRAppTests, InternalElectroelasticEnergy )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, InternalElectroelasticEnergy )
 { 
   std::string inputFile = "InternalElectroelasticEnergy_input.xml";
   std::string appFile = "InternalElectroelasticEnergy_appfile.xml";
@@ -324,7 +324,7 @@ TEUCHOS_UNIT_TEST( LGRAppTests, InternalElectroelasticEnergy )
   TEST_FLOATING_EQUALITY(val1, val2, tol);
 }
 
-TEUCHOS_UNIT_TEST( LGRAppTests, EMStressPNorm )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, EMStressPNorm )
 { 
   std::string inputFile = "EMStressPNorm_input.xml";
   std::string appFile = "EMStressPNorm_appfile.xml";
@@ -333,7 +333,7 @@ TEUCHOS_UNIT_TEST( LGRAppTests, EMStressPNorm )
   TEST_FLOATING_EQUALITY(val1, val2, tol);
 }
 
-TEUCHOS_UNIT_TEST( LGRAppTests, ThermoelasticEnergy )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, ThermoelasticEnergy )
 { 
   std::string inputFile = "InternalThermoelasticEnergy_input.xml";
   std::string appFile = "InternalThermoelasticEnergy_appfile.xml";

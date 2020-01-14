@@ -42,7 +42,7 @@
 #include <fenv.h>
 
 
-using namespace lgr;
+using namespace analyze;
 
 /******************************************************************************/
 /*! 

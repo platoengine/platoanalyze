@@ -119,17 +119,17 @@ Teuchos::RCP<Omega_h::Mesh> getBoxMesh(Omega_h::Int aSpaceDim,
 }
 
 /******************************************************************************/
-/*! Create an lgr::FEMesh from a Omega_h::Mesh
+/*! Create an analyze::FEMesh from a Omega_h::Mesh
 
  @param meshOmegaH Input Omega_h mesh.
  */
 template<int SpaceDim>
 inline
-lgr::FEMesh<SpaceDim> createFEMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH)
+analyze::FEMesh<SpaceDim> createFEMesh(const Teuchos::RCP<Omega_h::Mesh> & aMeshOmegaH)
 /******************************************************************************/
 {
-    using DefaultFields = lgr::Fields<SpaceDim>;
-    lgr::FEMesh<SpaceDim> tMesh;
+    using DefaultFields = analyze::Fields<SpaceDim>;
+    analyze::FEMesh<SpaceDim> tMesh;
     {
         // hopefully the following is enough to get things set up in the FEMesh
 

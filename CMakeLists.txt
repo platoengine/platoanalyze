@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(PLATOANALYZE VERSION 1.0.0 LANGUAGES CXX)
+project(PLATOANALYZE VERSION 0.0.0 LANGUAGES CXX)
 MESSAGE("\n\nConfiguring Plato Analyze Version ${PLATOANALYZE_VERSION_MAJOR}.${PLATOANALYZE_VERSION_MINOR}.${PLATOANALYZE_VERSION_PATCH}")
 
 IF (DEFINED Trilinos_PREFIX)
@@ -75,7 +75,6 @@ if(${srcdir} STREQUAL ${bindir})
 endif()
 
 FIND_PACKAGE(KokkosCore REQUIRED)
-# for StaticCrsGraph
 FIND_PACKAGE(KokkosContainers REQUIRED)
 FIND_PACKAGE(KokkosKernels REQUIRED)
 FIND_PACKAGE(Teuchos REQUIRED)
@@ -108,7 +107,6 @@ SET(VTKDIFF "${VTKDIFF} -onestep")
 # We need to do this better, but for now lets see how well it works to find the right mpirun
 # This needs to be the one on the front end for Cuda and MIC machines - it runs the utilities.
 
-#SET(MPIEXEC mpiexec.hydra -hosts mic0 -env OMP_NUM_THREADS 56 -env KMP_AFFINITY=balanced -binding domain=omp)
 IF(PLATOANALYZE_MPIEXEC)
   MESSAGE("-- User defined PLATOANALYZE_MPIEXEC=${PLATOANALYZE_MPIEXEC}")
   SEPARATE_ARGUMENTS(PLATOANALYZE_MPIEXEC)
@@ -147,7 +145,7 @@ endif()
 add_executable(
     analyze 
     src/alg/Run.cpp
-    src/alg/LGR.cpp
+    src/alg/Analyze.cpp
   )
 
 if( CMAKE_INSTALL_PREFIX )
@@ -182,8 +180,6 @@ IF( AMGX_FOUND )
       ${AMGX_LIBRARIES}
      )
 ENDIF()
-
-add_definitions(-DUSE_PLATO)
 
 option(PLATOANALYZE_1D "Compile with 1D physics" OFF)
 option(PLATOANALYZE_2D "Compile with 2D physics" ON )
@@ -234,7 +230,7 @@ if (PLATOANALYZE_ENABLE_MPMD)
       exodus
      )
 
-  add_library( Analyze_App src/LGR_App.cpp )
+   add_library( Analyze_App src/Analyze_App.cpp )
   target_include_directories(Analyze_App PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
   target_include_directories(Analyze_App PRIVATE "${PLATOENGINE_PREFIX}/include")
   # target_link_libraries(Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
@@ -242,7 +238,7 @@ if (PLATOANALYZE_ENABLE_MPMD)
     install( TARGETS Analyze_App DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
   endif()
 
-  add_executable( analyze_MPMD src/LGR_MPMD.cpp)
+  add_executable( analyze_MPMD src/Analyze_MPMD.cpp)
   if( CMAKE_INSTALL_PREFIX )
     install( TARGETS analyze_MPMD DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
   endif()
@@ -387,9 +383,25 @@ message(STATUS "Trilinos_EXTRA_LD_FLAGS: ${Trilinos_EXTRA_LD_FLAGS}")
 ENABLE_TESTING()
 INCLUDE(CTest)
 
-option( PLATOANALYZE_UNIT_TEST "Flag to enable unit tests" ON)
+SET(PLATOANALYZE_RANKS_PER_NODE_FLAG "-npernode" CACHE STRING "Processes per node flag for PLATOANALYZE_MPIEXEC")
+SET(PLATOANALYZE_RANKS_FLAG "-n" CACHE STRING "Number of processes flag for PLATOANALYZE_MPIEXEC")
+SET(PLATOANALYZE_RANKS_PER_NODE "1" CACHE STRING "Maximum number of processes per node")
+SET(PLATOANALYZE_VALGRIND "" CACHE STRING "Optional Valgrind call and arguments")
+
+function(build_mpi_test_string RESULT_NAME num_mpi_proc)
+  string(REPLACE " " ";" VALGRIND "${PLATOANALYZE_VALGRIND}")
+  set(${RESULT_NAME} ${PLATOANALYZE_MPIEXEC} ${PLATOANALYZE_RANKS_PER_NODE_FLAG} ${PLATOANALYZE_RANKS_PER_NODE} ${PLATOANALYZE_RANKS_FLAG} ${num_mpi_proc} ${VALGRIND} ${ARGN} PARENT_SCOPE)
+endfunction(build_mpi_test_string)
+
+
+option(PLATOANALYZE_UNIT_TEST "Flag to enable unit tests" ON)
 if( PLATOANALYZE_UNIT_TEST)
   ADD_SUBDIRECTORY(unit_tests)
+endif()
+
+option(PLATOANALYZE_SMOKE_TESTS "Flag to enable smoke tests" ON)
+if(PLATOANALYZE_SMOKE_TESTS)
+  add_subdirectory(tests)
 endif()
 
 set(PLATOANALYZE_KEY_INTS

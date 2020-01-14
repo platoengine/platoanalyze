@@ -1,13 +1,13 @@
 #include "Teuchos_UnitTestHarness.hpp"
 
-#include "LGRTestHelpers.hpp"
+#include "AnalyzeTestHelpers.hpp"
 
 #include "CrsMatrix.hpp"
 #include "MatrixIO.hpp"
 
 #include <sstream>
 
-using namespace lgr;
+using namespace analyze;
 using namespace std;
 
 namespace {

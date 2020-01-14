@@ -37,7 +37,7 @@
 namespace PlatoUnitTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, LinearTetCubRuleDegreeOne_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LinearTetCubRuleDegreeOne_3D)
 {
     const Plato::OrdinalType tSpatialDim = 3;
     Plato::LinearTetCubRuleDegreeOne<tSpatialDim> tTetCubRule;
@@ -73,7 +73,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, LinearTetCubRuleDegreeOne_3D)
     TEST_FLOATING_EQUALITY(tHostBasisFunctions(3), tGoldScalar, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, LinearTetCubRuleDegreeOne_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LinearTetCubRuleDegreeOne_2D)
 {
     const Plato::OrdinalType tSpatialDim = 2;
     Plato::LinearTetCubRuleDegreeOne<tSpatialDim> tTetCubRule;
@@ -104,7 +104,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, LinearTetCubRuleDegreeOne_2D)
     TEST_FLOATING_EQUALITY(tHostBasisFunctions(2), tGoldScalar, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, LinearTetCubRuleDegreeOne_1D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LinearTetCubRuleDegreeOne_1D)
 {   
     const Plato::OrdinalType tSpatialDim = 1;
     Plato::LinearTetCubRuleDegreeOne<tSpatialDim> tTetCubRule;
@@ -137,7 +137,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, LinearTetCubRuleDegreeOne_1D)
     TEST_FLOATING_EQUALITY(tHostBasisFunctions(1), tGoldScalar, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HyperbolicTangentProjection)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, HyperbolicTangentProjection)
 {
     Plato::HyperbolicTangentProjection tProjection;
     
@@ -171,7 +171,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HyperbolicTangentProjection)
     TEST_FLOATING_EQUALITY(tOutput, tGoldValue, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HeavisideProjection)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, HeavisideProjection)
 {
     Plato::HeavisideProjection tProjection;
     
@@ -190,7 +190,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HeavisideProjection)
     TEST_FLOATING_EQUALITY(tOutput, tGoldValue, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ApplyPenaltyHeaviside)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyPenaltyHeaviside)
 {
     // ALLOCATE PROJECTION AND PENALTY MODELS   
     Teuchos::ParameterList tParamList;
@@ -250,7 +250,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ApplyPenaltyHeaviside)
     } 
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ApplyPenaltyHyperbolicTangent_Array2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyPenaltyHyperbolicTangent_Array2D)
 {
     // ALLOCATE PROJECTION AND PENALTY MODELS   
     Teuchos::ParameterList tParamList;
@@ -310,7 +310,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ApplyPenaltyHyperbolicTangent_Array2D)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, StateValuesFunctor)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StateValuesFunctor)
 {
     // ALLOCATE AND INITIALIZE NODAL STATES VIEW
     const Plato::OrdinalType tNumDofs = 12;
@@ -361,7 +361,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, StateValuesFunctor)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, InertialForcesFunctor)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InertialForcesFunctor)
 {
     // ALLOCATE AND INITIALIZE CUB-POINTS STATES VIEW
     const Plato::OrdinalType tNumCells = 2;
@@ -410,7 +410,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, InertialForcesFunctor)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComplexInertialEnergy)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComplexInertialEnergy)
 {
     const Plato::OrdinalType tNumCells = 2;
     const Plato::OrdinalType tNumDofsPerCell = 6;
@@ -449,7 +449,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComplexInertialEnergy)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComplexElasticEnergy)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComplexElasticEnergy)
 {
     const Plato::OrdinalType tNumCells = 2;
     const Plato::OrdinalType tComplexDim = 2;
@@ -493,7 +493,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComplexElasticEnergy)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, DynamicCompliance)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicCompliance)
 {
     // SET EVALUATION TYPES FOR UNIT TEST
     const Plato::OrdinalType tSpaceDim = 3;
@@ -540,7 +540,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, DynamicCompliance)
     TEST_FLOATING_EQUALITY(tGoldValues, tValue, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, DynamicComplianceGradZ)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradZ)
 {
     // SET EVALUATION TYPES FOR UNIT TEST
     const Plato::OrdinalType tSpaceDim = 3;
@@ -599,7 +599,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, DynamicComplianceGradZ)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, DynamicComplianceGradX)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradX)
 {
     // SET EVALUATION TYPES FOR UNIT TEST
     const Plato::OrdinalType tSpaceDim = 3;
@@ -657,7 +657,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, DynamicComplianceGradX)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, DynamicComplianceGradU)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradU)
 {
     // SET EVALUATION TYPES FOR UNIT TEST
     const Plato::OrdinalType tSpaceDim = 3;
@@ -731,7 +731,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, DynamicComplianceGradU)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ExpVolumeValue)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeValue)
 {
     // SET EVALUATION TYPES FOR UNIT TEST
     const Plato::OrdinalType tSpaceDim = 3;
@@ -778,7 +778,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ExpVolumeValue)
     TEST_FLOATING_EQUALITY(tGoldValues, tValue, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ExpVolumeGradZ)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradZ)
 {
     // SET EVALUATION TYPES FOR UNIT TEST
     const Plato::OrdinalType tSpaceDim = 3;
@@ -834,7 +834,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ExpVolumeGradZ)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ExpVolumeGradU)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradU)
 {
     // SET EVALUATION TYPES FOR UNIT TEST
     const Plato::OrdinalType tSpaceDim = 3;
@@ -886,7 +886,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ExpVolumeGradU)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ExpVolumeGradX)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradX)
 {
     // SET EVALUATION TYPES FOR UNIT TEST
     const Plato::OrdinalType tSpaceDim = 3;
@@ -947,7 +947,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ExpVolumeGradX)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComplexRayleighDamping)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComplexRayleighDamping)
 {
     // ALLOCATE INERTIAL FORCES
     const Plato::OrdinalType tNumCells = 2;
@@ -1000,7 +1000,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComplexRayleighDamping)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointComplexRayleighDamping)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointComplexRayleighDamping)
 {
     // ALLOCATE INERTIAL FORCES
     const Plato::OrdinalType tNumCells = 2;
@@ -1053,7 +1053,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointComplexRayleighDamping)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, StructuralDynamicsResidual)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StructuralDynamicsResidual)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 3;
@@ -1135,7 +1135,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, StructuralDynamicsResidual)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointStructuralDynamicsResidual)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointStructuralDynamicsResidual)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 3;
@@ -1213,7 +1213,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointStructuralDynamicsResidual)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeFrequencyResponseMisfit)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeFrequencyResponseMisfit)
 {
     //***** INITIALIZE TRIAL STATES *****
     const Plato::OrdinalType tNumDofs = 12;
@@ -1271,7 +1271,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeFrequencyResponseMisfit)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, FrequencyResponseMisfitValue)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfitValue)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 2;
@@ -1325,7 +1325,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, FrequencyResponseMisfitValue)
     TEST_FLOATING_EQUALITY(tOutput, tGoldValues, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, FrequencyResponseMisfit_GradZ)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradZ)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 2;
@@ -1387,7 +1387,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, FrequencyResponseMisfit_GradZ)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, FrequencyResponseMisfit_GradX)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradX)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 2;
@@ -1449,7 +1449,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, FrequencyResponseMisfit_GradX)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, FrequencyResponseMisfit_GradU)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradU)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 2;
@@ -1514,7 +1514,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, FrequencyResponseMisfit_GradU)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, StructuralDynamicsSolve)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StructuralDynamicsSolve)
 {
     // CREATE 2D-MESH
     Omega_h::LO aNx = 4;
@@ -1600,7 +1600,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, StructuralDynamicsSolve)
     //Plato::StructuralDynamicsOutput<tSpaceDim> tOutput(*tMesh);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AdjointStructuralDynamicsSolve)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointStructuralDynamicsSolve)
 {
     // CREATE 2D-MESH
     Omega_h::LO aNx = 4;

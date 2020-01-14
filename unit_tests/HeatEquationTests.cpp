@@ -43,7 +43,7 @@
 #include <fenv.h>
 
 
-using namespace lgr;
+using namespace analyze;
 
 TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
 { 
@@ -554,7 +554,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, HeatEquationResidual3D )
   auto grad_x_entriesHost = Kokkos::create_mirror_view( grad_x_entries );
   Kokkos::deep_copy(grad_x_entriesHost, grad_x_entries);
 
-  std::vector<lgr::Scalar> gold_grad_x_entries = {
+  std::vector<analyze::Scalar> gold_grad_x_entries = {
     -5.687544531250000e6,  8.749757812500000e5, -6.252343749999994e4, 
      1.875000000000000e5,  7.499757812499998e5, -5.625000000000002e5, 
      1.812500000000000e6, -4.375000000000001e5,  1.499976562500000e6, 

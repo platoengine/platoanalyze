@@ -1,5 +1,5 @@
-#ifndef LGR_TEST_HELPERS
-#define LGR_TEST_HELPERS
+#ifndef ANALYZE_TEST_HELPERS
+#define ANALYZE_TEST_HELPERS
 
 #include <Omega_h_assoc.hpp>
 #include <Omega_h_expr.hpp>
@@ -11,7 +11,7 @@
 #include "CrsMatrix.hpp"
 #include <ParallelComm.hpp>
 
-namespace lgr
+namespace analyze
 {
   void initializeCommMachine(int *argc , char ***argv);
   void initializeOmegaH(int *argc , char ***argv);

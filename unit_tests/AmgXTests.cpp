@@ -4,9 +4,9 @@
 
 #include <vector>
 
-#include "LGRTestHelpers.hpp"
+#include "AnalyzeTestHelpers.hpp"
 
-using namespace lgr;
+using namespace analyze;
 using namespace std;
 
 namespace {

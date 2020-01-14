@@ -1,8 +1,8 @@
-#include "LGRTestHelpers.hpp"
+#include "AnalyzeTestHelpers.hpp"
 
 #include <fstream>
 
-namespace lgr {
+namespace analyze {
   static Teuchos::RCP<comm::Machine>  commMachine;
   static Teuchos::RCP<Omega_h::Library> libOmegaH;
 

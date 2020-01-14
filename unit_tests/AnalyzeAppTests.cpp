@@ -1,9 +1,9 @@
-#include "plato/LGR_App.hpp"
+#include <Analyze_App.hpp>
 #include <Teuchos_UnitTestHarness.hpp>
 
-using namespace lgr;
+using namespace analyze;
 
-TEUCHOS_UNIT_TEST( LGRAppTests, 3D )
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, 3D )
 { 
  
   int argc = 2;
