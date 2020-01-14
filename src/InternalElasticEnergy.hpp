@@ -1,20 +1,20 @@
 #ifndef INTERNAL_ELASTIC_ENERGY_HPP
 #define INTERNAL_ELASTIC_ENERGY_HPP
 
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/SimplexMechanics.hpp"
-#include "plato/ScalarProduct.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/Strain.hpp"
-#include "plato/LinearStress.hpp"
-#include "plato/LinearElasticMaterial.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/ExpInstMacros.hpp"
-#include "plato/ToMap.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "SimplexFadTypes.hpp"
+#include "SimplexMechanics.hpp"
+#include "ScalarProduct.hpp"
+#include "ApplyWeighting.hpp"
+#include "Strain.hpp"
+#include "LinearStress.hpp"
+#include "LinearElasticMaterial.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "ImplicitFunctors.hpp"
+#include "ExpInstMacros.hpp"
+#include "ToMap.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
 namespace Plato
 {

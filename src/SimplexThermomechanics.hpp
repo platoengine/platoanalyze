@@ -1,8 +1,8 @@
 #ifndef SIMPLEX_TWOFIELD_THERMOMECHANICS_HPP
 #define SIMPLEX_TWOFIELD_THERMOMECHANICS_HPP
 
-#include "plato/Simplex.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "Simplex.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

@@ -7,7 +7,7 @@
 #ifndef SRC_PLATO_COMPUTEFREQUENCYRESPONSEMISFIT_HPP_
 #define SRC_PLATO_COMPUTEFREQUENCYRESPONSEMISFIT_HPP_
 
-#include "plato/SimplexStructuralDynamics.hpp"
+#include "SimplexStructuralDynamics.hpp"
 
 namespace Plato
 {

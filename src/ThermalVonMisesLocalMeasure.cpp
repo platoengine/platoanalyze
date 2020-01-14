@@ -3,7 +3,7 @@
  *
  */
 
-#include "plato/ThermalVonMisesLocalMeasure.hpp"
+#include "ThermalVonMisesLocalMeasure.hpp"
 
 
 #ifdef PLATO_1D

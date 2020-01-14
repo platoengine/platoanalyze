@@ -7,7 +7,7 @@
 #ifndef INERTIALFORCES_HPP_
 #define INERTIALFORCES_HPP_
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

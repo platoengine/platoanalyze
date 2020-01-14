@@ -1,7 +1,7 @@
 #ifndef SCALAR_GRAD_HPP
 #define SCALAR_GRAD_HPP
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 #include <Omega_h_vector.hpp>
 
 namespace Plato

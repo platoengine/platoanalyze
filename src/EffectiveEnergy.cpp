@@ -1,5 +1,5 @@
-#include "plato/EffectiveEnergy.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "EffectiveEnergy.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF(Plato::EffectiveEnergy, Plato::SimplexMechanics, 1)

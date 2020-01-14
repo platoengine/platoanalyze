@@ -6,12 +6,12 @@
 
 #include <Teuchos_ParameterList.hpp>
 
-#include "plato/alg/Basis.hpp"
-#include "plato/alg/Cubature.hpp"
+#include "alg/Basis.hpp"
+#include "alg/Cubature.hpp"
 #include "ImplicitFunctors.hpp"
-#include "plato/Plato_TopOptFunctors.hpp"
+#include "Plato_TopOptFunctors.hpp"
 
-//#include "plato/PlatoStaticsTypes.hpp"
+//#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

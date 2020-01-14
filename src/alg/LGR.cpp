@@ -45,10 +45,10 @@
 #include <Teuchos_ParameterList.hpp>
 #include <Teuchos_Time.hpp>
 
-#include "plato/alg/ErrorHandling.hpp"
-#include "plato/alg/ParallelComm.hpp"
-#include "plato/alg/ParseInput.hpp"
-#include "plato/alg/Run.hpp"
+#include "alg/ErrorHandling.hpp"
+#include "alg/ParallelComm.hpp"
+#include "alg/ParseInput.hpp"
+#include "alg/Run.hpp"
 
 int main(int argc, char** argv) {
   Plato::enable_floating_point_exceptions();

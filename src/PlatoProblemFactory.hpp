@@ -15,18 +15,18 @@
 
 #include <Teuchos_ParameterList.hpp>
 
-#include "plato/EllipticProblem.hpp"
-#include "plato/EllipticVMSProblem.hpp"
-#include "plato/ParabolicProblem.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "EllipticProblem.hpp"
+#include "EllipticVMSProblem.hpp"
+#include "ParabolicProblem.hpp"
+#include "AnalyzeMacros.hpp"
 
-#include "plato/Mechanics.hpp"
-#include "plato/StabilizedMechanics.hpp"
-#include "plato/Electromechanics.hpp"
-#include "plato/Thermomechanics.hpp"
-#include "plato/StabilizedThermomechanics.hpp"
-//#include "plato/StructuralDynamics.hpp"
-//#include "plato/StructuralDynamicsProblem.hpp"
+#include "Mechanics.hpp"
+#include "StabilizedMechanics.hpp"
+#include "Electromechanics.hpp"
+#include "Thermomechanics.hpp"
+#include "StabilizedThermomechanics.hpp"
+//#include "StructuralDynamics.hpp"
+//#include "StructuralDynamicsProblem.hpp"
 
 namespace Plato
 {

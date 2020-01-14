@@ -1,12 +1,12 @@
 #pragma once
 
-#include "plato/Simp.hpp"
+#include "Simp.hpp"
 
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "SimplexFadTypes.hpp"
+#include "AnalyzeMacros.hpp"
 
-#include "plato/SimplexPlasticity.hpp"
-#include "plato/SimplexThermoPlasticity.hpp"
+#include "SimplexPlasticity.hpp"
+#include "SimplexThermoPlasticity.hpp"
 
 namespace Plato
 {

@@ -1,8 +1,8 @@
 #ifndef STRAIN_HPP
 #define STRAIN_HPP
 
-#include "plato/SimplexMechanics.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "SimplexMechanics.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 #include <Omega_h_vector.hpp>
 

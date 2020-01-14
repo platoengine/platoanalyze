@@ -7,10 +7,10 @@
 #include <numeric>
 #include <fstream>
 
-#include "plato/Plato_Cylinder.hpp"
-#include "plato/PlatoRocketApp.hpp"
-#include "plato/Plato_RocketMocks.hpp"
-#include "plato/Plato_LevelSetCylinderInBox.hpp"
+#include "Plato_Cylinder.hpp"
+#include "PlatoRocketApp.hpp"
+#include "Plato_RocketMocks.hpp"
+#include "Plato_LevelSetCylinderInBox.hpp"
 
 namespace Plato
 {

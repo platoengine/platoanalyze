@@ -3,20 +3,20 @@
 
 #include <memory>
 
-#include "plato/PlatoTypes.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/SimplexElectromechanics.hpp"
-#include "plato/EMKinematics.hpp"
-#include "plato/EMKinetics.hpp"
-#include "plato/StressDivergence.hpp"
-#include "plato/FluxDivergence.hpp"
-#include "plato/AbstractVectorFunction.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/CellForcing.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/LinearElectroelasticMaterial.hpp"
-#include "plato/NaturalBCs.hpp"
-#include "plato/BodyLoads.hpp"
+#include "PlatoTypes.hpp"
+#include "SimplexFadTypes.hpp"
+#include "SimplexElectromechanics.hpp"
+#include "EMKinematics.hpp"
+#include "EMKinetics.hpp"
+#include "StressDivergence.hpp"
+#include "FluxDivergence.hpp"
+#include "AbstractVectorFunction.hpp"
+#include "ApplyWeighting.hpp"
+#include "CellForcing.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "LinearElectroelasticMaterial.hpp"
+#include "NaturalBCs.hpp"
+#include "BodyLoads.hpp"
 
 namespace Plato
 {

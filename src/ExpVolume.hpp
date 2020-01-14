@@ -13,10 +13,10 @@
 
 #include "ImplicitFunctors.hpp"
 
-#include "plato/ApplyProjection.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/SimplexStructuralDynamics.hpp"
+#include "ApplyProjection.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "SimplexStructuralDynamics.hpp"
 
 namespace Plato
 {

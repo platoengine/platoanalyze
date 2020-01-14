@@ -12,15 +12,15 @@
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 
-#include "plato/VectorFunction.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/PlatoAbstractProblem.hpp"
-#include "plato/ScalarFunctionBaseFactory.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "VectorFunction.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "PlatoAbstractProblem.hpp"
+#include "ScalarFunctionBaseFactory.hpp"
+#include "AnalyzeMacros.hpp"
 
 #ifdef HAVE_AMGX
-#include "plato/alg/AmgXSparseLinearProblem.hpp"
+#include "alg/AmgXSparseLinearProblem.hpp"
 #endif
 
 namespace Plato

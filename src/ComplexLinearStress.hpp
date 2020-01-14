@@ -11,7 +11,7 @@
 
 #include <Omega_h_matrix.hpp>
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

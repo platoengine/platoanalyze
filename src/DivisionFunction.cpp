@@ -1,4 +1,4 @@
-#include "plato/DivisionFunction.hpp"
+#include "DivisionFunction.hpp"
 
 #ifdef PLATO_1D
 template class Plato::DivisionFunction<::Plato::Thermal<1>>;

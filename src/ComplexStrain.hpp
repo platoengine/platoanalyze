@@ -7,7 +7,7 @@
 #ifndef COMPLEXSTRAIN_HPP_
 #define COMPLEXSTRAIN_HPP_
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

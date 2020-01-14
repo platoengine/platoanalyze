@@ -1,5 +1,5 @@
-#include "plato/InternalElectroelasticEnergy.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "InternalElectroelasticEnergy.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF(Plato::InternalElectroelasticEnergy, Plato::SimplexElectromechanics, 1)

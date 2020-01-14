@@ -1,4 +1,4 @@
-#include "plato/WeightedSumFunction.hpp"
+#include "WeightedSumFunction.hpp"
 
 #ifdef PLATO_1D
 template class Plato::WeightedSumFunction<::Plato::Thermal<1>>;

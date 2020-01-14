@@ -1,5 +1,5 @@
-#include "plato/StressPNorm.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "StressPNorm.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF(Plato::StressPNorm, Plato::SimplexMechanics, 1)

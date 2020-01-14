@@ -6,10 +6,10 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "plato/WorksetBase.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/ScalarFunctionBaseFactory.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "WorksetBase.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "ScalarFunctionBaseFactory.hpp"
+#include "AnalyzeMacros.hpp"
 
 #include <Teuchos_ParameterList.hpp>
 

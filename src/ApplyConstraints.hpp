@@ -1,7 +1,7 @@
 #ifndef APPLY_CONSTRAINTS_HPP
 #define APPLY_CONSTRAINTS_HPP
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

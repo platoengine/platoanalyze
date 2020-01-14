@@ -12,21 +12,21 @@
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 
-#include "plato/Thermal.hpp"
-#include "plato/Mechanics.hpp"
-#include "plato/VectorFunctionInc.hpp"
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/ScalarFunctionIncBase.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/PlatoAbstractProblem.hpp"
-#include "plato/ComputedField.hpp"
+#include "Thermal.hpp"
+#include "Mechanics.hpp"
+#include "VectorFunctionInc.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "ScalarFunctionIncBase.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "PlatoAbstractProblem.hpp"
+#include "ComputedField.hpp"
 
-#include "plato/ScalarFunctionBaseFactory.hpp"
-#include "plato/ScalarFunctionIncBaseFactory.hpp"
+#include "ScalarFunctionBaseFactory.hpp"
+#include "ScalarFunctionIncBaseFactory.hpp"
 
 #ifdef HAVE_AMGX
-#include "plato/alg/AmgXSparseLinearProblem.hpp"
+#include "alg/AmgXSparseLinearProblem.hpp"
 #endif
 
 /**********************************************************************************/

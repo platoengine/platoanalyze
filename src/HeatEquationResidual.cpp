@@ -1,5 +1,5 @@
-#include "plato/HeatEquationResidual.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "HeatEquationResidual.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF_INC(Plato::HeatEquationResidual, Plato::SimplexThermal, 1)

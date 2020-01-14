@@ -2,11 +2,11 @@
 
 #include <memory>
 
-#include "plato/SimplexFadTypes.hpp"
+#include "SimplexFadTypes.hpp"
 #include "AnalyzeMacros.hpp"
 
-#include "plato/VonMisesLocalMeasure.hpp"
-#include "plato/TensileEnergyDensityLocalMeasure.hpp"
+#include "VonMisesLocalMeasure.hpp"
+#include "TensileEnergyDensityLocalMeasure.hpp"
 #include <Teuchos_ParameterList.hpp>
 
 namespace Plato
@@ -46,7 +46,7 @@ public:
 }
 //namespace Plato
 
-#include "plato/SimplexMechanics.hpp"
+#include "SimplexMechanics.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEC2(Plato::LocalMeasureFactory, Plato::SimplexMechanics, 1)

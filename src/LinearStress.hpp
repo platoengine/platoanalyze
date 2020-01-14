@@ -1,8 +1,8 @@
 #ifndef LGR_PLATO_LINEAR_STRESS_HPP
 #define LGR_PLATO_LINEAR_STRESS_HPP
 
-#include "plato/SimplexMechanics.hpp"
-#include "plato/LinearElasticMaterial.hpp"
+#include "SimplexMechanics.hpp"
+#include "LinearElasticMaterial.hpp"
 
 #include <Omega_h_matrix.hpp>
 

@@ -1,4 +1,4 @@
-#include "plato/PhysicsScalarFunctionInc.hpp"
+#include "PhysicsScalarFunctionInc.hpp"
 
 #ifdef PLATO_1D
 template class Plato::PhysicsScalarFunctionInc<::Plato::Thermal<1>>;

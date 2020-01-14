@@ -1,8 +1,8 @@
 #ifndef PRESSURE_GRADIENT_HPP
 #define PRESSURE_GRADIENT_HPP
 
-#include "plato/Simplex.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "Simplex.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

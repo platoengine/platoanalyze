@@ -11,17 +11,17 @@
 #include "ImplicitFunctors.hpp"
 #include "LinearElasticMaterial.hpp"
 
-#include "plato/Simp.hpp"
-#include "plato/ToMap.hpp"
-#include "plato/Strain.hpp"
-#include "plato/WorksetBase.hpp"
-#include "plato/LinearStress.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/Plato_VonMisesYield.hpp"
-#include "plato/Plato_TopOptFunctors.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
+#include "Simp.hpp"
+#include "ToMap.hpp"
+#include "Strain.hpp"
+#include "WorksetBase.hpp"
+#include "LinearStress.hpp"
+#include "SimplexFadTypes.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "Plato_VonMisesYield.hpp"
+#include "Plato_TopOptFunctors.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 
 namespace Plato
 {
@@ -507,7 +507,7 @@ public:
 
 }// namespace Plato
 
-#include "plato/Mechanics.hpp"
+#include "Mechanics.hpp"
 
 #ifdef PLATO_1D
 extern template class Plato::AugLagStressCriterion<Plato::ResidualTypes<Plato::SimplexMechanics<1>>>;

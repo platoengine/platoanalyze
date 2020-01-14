@@ -1,7 +1,7 @@
 #ifndef VECTOR_P_NORM_HPP
 #define VECTOR_P_NORM_HPP
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

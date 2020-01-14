@@ -42,7 +42,7 @@
 // Must be included first on Intel-Phi systems due to
 // redefinition of SEEK_SET in <mpi.h>.
 
-#include "plato/alg/ParallelComm.hpp"
+#include "alg/ParallelComm.hpp"
 #include <Teuchos_ParameterList.hpp>
 #include <Teuchos_Time.hpp>
 

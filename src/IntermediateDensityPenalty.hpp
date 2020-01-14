@@ -1,13 +1,13 @@
 #pragma once
 
-#include "plato/Simplex.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/SimplexMechanics.hpp"
-#include "plato/WorksetBase.hpp"
-#include "plato/Plato_TopOptFunctors.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
+#include "Simplex.hpp"
+#include "SimplexFadTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "SimplexMechanics.hpp"
+#include "WorksetBase.hpp"
+#include "Plato_TopOptFunctors.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 #include <Teuchos_ParameterList.hpp>
 
 #include <math.h> // need PI

@@ -48,7 +48,7 @@
 
 #pragma once
 
-#include "plato/PlatoTypes.hpp"
+#include "PlatoTypes.hpp"
 
 namespace Plato
 {

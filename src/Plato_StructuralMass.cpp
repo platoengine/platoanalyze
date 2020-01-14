@@ -4,7 +4,7 @@
  *  Created on: Apr 17, 2019
  */
 
-#include "plato/Plato_StructuralMass.hpp"
+#include "Plato_StructuralMass.hpp"
 
 #ifdef PLATO_1D
 template class Plato::StructuralMass<1>;

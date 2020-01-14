@@ -7,9 +7,9 @@
 
 #include <Teuchos_ParameterList.hpp>
 
-#include "plato/WorksetBase.hpp"
-#include "plato/AbstractLocalVectorFunctionInc.hpp"
-#include "plato/SimplexFadTypes.hpp"
+#include "WorksetBase.hpp"
+#include "AbstractLocalVectorFunctionInc.hpp"
+#include "SimplexFadTypes.hpp"
 
 namespace Plato
 {
@@ -825,8 +825,8 @@ class LocalVectorFunctionInc
 
 } // namespace Plato
 
-#include "plato/Plasticity.hpp"
-#include "plato/ThermoPlasticity.hpp"
+#include "Plasticity.hpp"
+#include "ThermoPlasticity.hpp"
 
 #ifdef PLATO_2D
 extern template class Plato::LocalVectorFunctionInc<Plato::Plasticity<2>>;

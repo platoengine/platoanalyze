@@ -12,8 +12,8 @@
 
 #include <Plato_Application.hpp>
 
-#include "plato/PlatoTypes.hpp"
-#include "plato/Plato_AlgebraicRocketModel.hpp"
+#include "PlatoTypes.hpp"
+#include "Plato_AlgebraicRocketModel.hpp"
 
 namespace Plato
 {

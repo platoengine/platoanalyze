@@ -6,9 +6,9 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "plato/SimplexPlasticity.hpp"
-#include "plato/J2PlasticityLocalResidual.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "SimplexPlasticity.hpp"
+#include "J2PlasticityLocalResidual.hpp"
+#include "AnalyzeMacros.hpp"
 
 namespace Plato
 {

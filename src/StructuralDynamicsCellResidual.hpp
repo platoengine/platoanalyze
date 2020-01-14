@@ -9,7 +9,7 @@
 
 #include <cassert>
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

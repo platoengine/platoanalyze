@@ -1,7 +1,7 @@
 #ifndef PRESSURE_DIVERGENCE
 #define PRESSURE_DIVERGENCE
 
-#include "plato/SimplexMechanics.hpp"
+#include "SimplexMechanics.hpp"
 
 namespace Plato
 {

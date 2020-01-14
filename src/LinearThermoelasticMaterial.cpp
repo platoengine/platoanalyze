@@ -1,4 +1,4 @@
-#include "plato/LinearThermoelasticMaterial.hpp"
+#include "LinearThermoelasticMaterial.hpp"
 
 namespace Plato {
 

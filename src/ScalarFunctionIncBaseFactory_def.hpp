@@ -1,8 +1,8 @@
 #pragma once
 
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/PhysicsScalarFunctionInc.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "PhysicsScalarFunctionInc.hpp"
+#include "AnalyzeMacros.hpp"
 
 namespace Plato
 {

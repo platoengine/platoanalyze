@@ -1,4 +1,4 @@
-#include "plato/J2PlasticityLocalResidual.hpp"
+#include "J2PlasticityLocalResidual.hpp"
 
 #ifdef PLATO_2D
 PLATO_EXPL_DEF_INC_LOCAL(Plato::J2PlasticityLocalResidual, Plato::SimplexPlasticity, 2)

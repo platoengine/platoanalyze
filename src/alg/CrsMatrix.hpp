@@ -9,8 +9,8 @@
 #ifndef PLATO_CRS_MATRIX_HPP
 #define PLATO_CRS_MATRIX_HPP
 
-#include "plato/alg/PlatoLambda.hpp"
-#include "plato/PlatoTypes.hpp"
+#include "alg/PlatoLambda.hpp"
+#include "PlatoTypes.hpp"
 
 #include <Kokkos_Core.hpp>
 

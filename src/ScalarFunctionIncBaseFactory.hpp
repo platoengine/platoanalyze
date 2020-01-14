@@ -4,8 +4,8 @@
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/ScalarFunctionIncBase.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "ScalarFunctionIncBase.hpp"
 #include <Teuchos_ParameterList.hpp>
 
 namespace Plato

@@ -1,4 +1,4 @@
-#include "plato/LinearElectroelasticMaterial.hpp"
+#include "LinearElectroelasticMaterial.hpp"
 
 namespace Plato {
 

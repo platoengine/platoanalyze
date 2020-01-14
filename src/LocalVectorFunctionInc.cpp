@@ -1,4 +1,4 @@
-#include "plato/LocalVectorFunctionInc.hpp"
+#include "LocalVectorFunctionInc.hpp"
 
 #ifdef PLATO_2D
 template class Plato::LocalVectorFunctionInc<Plato::Plasticity<2>>;

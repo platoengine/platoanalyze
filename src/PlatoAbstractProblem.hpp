@@ -9,7 +9,7 @@
 
 #include <Teuchos_RCPDecl.hpp>
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

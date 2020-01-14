@@ -1,22 +1,22 @@
 #ifndef INTERNAL_ELECTROELASTIC_ENERGY_HPP
 #define INTERNAL_ELECTROELASTIC_ENERGY_HPP
 
-#include "plato/SimplexElectromechanics.hpp"
-#include "plato/LinearElectroelasticMaterial.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/ScalarProduct.hpp"
-#include "plato/EMKinematics.hpp"
-#include "plato/EMKinetics.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/Strain.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/ToMap.hpp"
-#include "plato/ExpInstMacros.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "SimplexElectromechanics.hpp"
+#include "LinearElectroelasticMaterial.hpp"
+#include "SimplexFadTypes.hpp"
+#include "ImplicitFunctors.hpp"
+#include "ScalarProduct.hpp"
+#include "EMKinematics.hpp"
+#include "EMKinetics.hpp"
+#include "ApplyWeighting.hpp"
+#include "Strain.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "ToMap.hpp"
+#include "ExpInstMacros.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
 namespace Plato
 {

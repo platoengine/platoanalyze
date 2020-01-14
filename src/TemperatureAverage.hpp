@@ -1,19 +1,19 @@
 #ifndef TEMPERATURE_PNORM_HPP
 #define TEMPERATURE_PNORM_HPP
 
-#include "plato/ScalarProduct.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/SimplexThermal.hpp"
-#include "plato/StateValues.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/AbstractScalarFunctionInc.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
+#include "ScalarProduct.hpp"
+#include "ApplyWeighting.hpp"
+#include "SimplexThermal.hpp"
+#include "StateValues.hpp"
+#include "ImplicitFunctors.hpp"
+#include "SimplexFadTypes.hpp"
+#include "AbstractScalarFunctionInc.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {

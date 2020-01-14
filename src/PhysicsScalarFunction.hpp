@@ -6,10 +6,10 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/WorksetBase.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/AbstractScalarFunction.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "WorksetBase.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "AbstractScalarFunction.hpp"
 #include <Teuchos_ParameterList.hpp>
 
 namespace Plato

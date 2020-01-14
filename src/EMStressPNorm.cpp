@@ -1,5 +1,5 @@
-#include "plato/EMStressPNorm.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "EMStressPNorm.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF(Plato::EMStressPNorm, Plato::SimplexElectromechanics, 1)

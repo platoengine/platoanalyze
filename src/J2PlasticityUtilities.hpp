@@ -1,11 +1,11 @@
 #pragma once
 
-#include "plato/Simp.hpp"
+#include "Simp.hpp"
 
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "SimplexFadTypes.hpp"
+#include "AnalyzeMacros.hpp"
 
-#include "plato/ExpInstMacros.hpp"
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {

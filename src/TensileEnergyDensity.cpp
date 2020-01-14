@@ -3,7 +3,7 @@
  *
  */
 
-#include "plato/TensileEnergyDensity.hpp"
+#include "TensileEnergyDensity.hpp"
 
 #ifdef PLATO_1D
 template class Plato::TensileEnergyDensity<1>;

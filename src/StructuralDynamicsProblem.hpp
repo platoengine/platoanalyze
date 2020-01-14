@@ -17,18 +17,18 @@
 #include <Teuchos_Array.hpp>
 #include <Teuchos_ParameterList.hpp>
 
-#include "plato/EssentialBCs.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/ApplyConstraints.hpp"
+#include "EssentialBCs.hpp"
+#include "ImplicitFunctors.hpp"
+#include "ApplyConstraints.hpp"
 
-#include "plato/PhysicsScalarFunction.hpp"
-#include "plato/VectorFunction.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/PlatoAbstractProblem.hpp"
-#include "plato/SimplexStructuralDynamics.hpp"
+#include "PhysicsScalarFunction.hpp"
+#include "VectorFunction.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "PlatoAbstractProblem.hpp"
+#include "SimplexStructuralDynamics.hpp"
 
 #ifdef HAVE_AMGX
-#include "plato/alg/AmgXSparseLinearProblem.hpp"
+#include "alg/AmgXSparseLinearProblem.hpp"
 #endif
 
 namespace Plato

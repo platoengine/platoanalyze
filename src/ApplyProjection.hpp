@@ -7,7 +7,7 @@
 #ifndef APPLYPROJECTION_HPP_
 #define APPLYPROJECTION_HPP_
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

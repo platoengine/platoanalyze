@@ -1,24 +1,24 @@
 #ifndef STABILIZED_ELASTOSTATIC_ENERGY_HPP
 #define STABILIZED_ELASTOSTATIC_ENERGY_HPP
 
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/SimplexStabilizedMechanics.hpp"
-#include "plato/ScalarProduct.hpp"
-#include "plato/ProjectToNode.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/Kinematics.hpp"
-#include "plato/Kinetics.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/InterpolateFromNodal.hpp"
-#include "plato/AbstractScalarFunctionInc.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/LinearElasticMaterial.hpp"
-#include "plato/ToMap.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "SimplexFadTypes.hpp"
+#include "SimplexStabilizedMechanics.hpp"
+#include "ScalarProduct.hpp"
+#include "ProjectToNode.hpp"
+#include "ApplyWeighting.hpp"
+#include "Kinematics.hpp"
+#include "Kinetics.hpp"
+#include "ImplicitFunctors.hpp"
+#include "InterpolateFromNodal.hpp"
+#include "AbstractScalarFunctionInc.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "LinearElasticMaterial.hpp"
+#include "ToMap.hpp"
+#include "ExpInstMacros.hpp"
 
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
 namespace Plato
 {

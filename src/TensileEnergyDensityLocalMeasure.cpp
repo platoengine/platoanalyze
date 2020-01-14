@@ -3,7 +3,7 @@
  *
  */
 
-#include "plato/TensileEnergyDensityLocalMeasure.hpp"
+#include "TensileEnergyDensityLocalMeasure.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF2(Plato::TensileEnergyDensityLocalMeasure, Plato::SimplexMechanics, 1)

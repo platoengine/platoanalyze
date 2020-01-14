@@ -1,18 +1,18 @@
 #ifndef STRESS_P_NORM_HPP
 #define STRESS_P_NORM_HPP
 
-#include "plato/ScalarProduct.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/Strain.hpp"
-#include "plato/LinearStress.hpp"
-#include "plato/TensorPNorm.hpp"
-#include "plato/LinearElasticMaterial.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/ExpInstMacros.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "ScalarProduct.hpp"
+#include "ApplyWeighting.hpp"
+#include "Strain.hpp"
+#include "LinearStress.hpp"
+#include "TensorPNorm.hpp"
+#include "LinearElasticMaterial.hpp"
+#include "ImplicitFunctors.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "ExpInstMacros.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
 namespace Plato
 {

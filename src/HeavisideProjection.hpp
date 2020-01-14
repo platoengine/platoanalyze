@@ -9,7 +9,7 @@
 
 #include <cmath>
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

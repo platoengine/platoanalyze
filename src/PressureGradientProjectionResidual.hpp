@@ -3,15 +3,15 @@
 
 #include <memory>
 
-#include "plato/PlatoTypes.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/PressureGradient.hpp"
-#include "plato/AbstractVectorFunctionVMS.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/ProjectToNode.hpp"
-#include "plato/CellForcing.hpp"
-#include "plato/InterpolateFromNodal.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
+#include "PlatoTypes.hpp"
+#include "SimplexFadTypes.hpp"
+#include "PressureGradient.hpp"
+#include "AbstractVectorFunctionVMS.hpp"
+#include "ApplyWeighting.hpp"
+#include "ProjectToNode.hpp"
+#include "CellForcing.hpp"
+#include "InterpolateFromNodal.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 
 namespace Plato
 {

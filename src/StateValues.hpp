@@ -7,7 +7,7 @@
 #ifndef STATEVALUES_HPP_
 #define STATEVALUES_HPP_
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

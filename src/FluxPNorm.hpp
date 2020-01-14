@@ -1,20 +1,20 @@
 #ifndef FLUX_P_NORM_HPPS
 #define FLUX_P_NORM_HPP
 
-#include "plato/ScalarGrad.hpp"
-#include "plato/ThermalFlux.hpp"
-#include "plato/VectorPNorm.hpp"
-#include "plato/SimplexThermal.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/LinearThermalMaterial.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "ScalarGrad.hpp"
+#include "ThermalFlux.hpp"
+#include "VectorPNorm.hpp"
+#include "SimplexThermal.hpp"
+#include "ApplyWeighting.hpp"
+#include "SimplexFadTypes.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "LinearThermalMaterial.hpp"
+#include "ImplicitFunctors.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
-#include "plato/ExpInstMacros.hpp"
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {

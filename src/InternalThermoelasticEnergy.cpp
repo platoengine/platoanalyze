@@ -1,5 +1,5 @@
-#include "plato/InternalThermoelasticEnergy.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "InternalThermoelasticEnergy.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF(Plato::InternalThermoelasticEnergy,    Plato::SimplexThermomechanics, 1)

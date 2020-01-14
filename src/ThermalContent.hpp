@@ -1,7 +1,7 @@
 #ifndef THERMAL_CONTENT_HPP
 #define THERMAL_CONTENT_HPP
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

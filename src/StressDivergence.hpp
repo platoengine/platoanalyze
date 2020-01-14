@@ -1,7 +1,7 @@
 #ifndef STRESS_DIVERGENCE
 #define STRESS_DIVERGENCE
 
-#include "plato/SimplexMechanics.hpp"
+#include "SimplexMechanics.hpp"
 
 namespace Plato
 {

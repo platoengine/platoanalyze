@@ -15,20 +15,20 @@
 #include <Teuchos_ParameterList.hpp>
 
 
-#include "plato/StateValues.hpp"
-#include "plato/ApplyPenalty.hpp"
-#include "plato/ComplexStrain.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/ApplyProjection.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/ComplexLinearStress.hpp"
-#include "plato/ComplexElasticEnergy.hpp"
-#include "plato/LinearElasticMaterial.hpp"
-#include "plato/ComplexInertialEnergy.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/SimplexStructuralDynamics.hpp"
+#include "StateValues.hpp"
+#include "ApplyPenalty.hpp"
+#include "ComplexStrain.hpp"
+#include "SimplexFadTypes.hpp"
+#include "ApplyProjection.hpp"
+#include "ImplicitFunctors.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "ComplexLinearStress.hpp"
+#include "ComplexElasticEnergy.hpp"
+#include "LinearElasticMaterial.hpp"
+#include "ComplexInertialEnergy.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "SimplexStructuralDynamics.hpp"
 
 namespace Plato
 {

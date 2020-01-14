@@ -6,26 +6,26 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "plato/Plato_AugLagStressCriterionQuadratic.hpp"
-#include "plato/Plato_AugLagStressCriterionGeneral.hpp"
-#include "plato/Plato_AugLagStressCriterion.hpp"
-#include "plato/SimplexMechanics.hpp"
-#include "plato/AbstractScalarFunctionInc.hpp"
-#include "plato/ElastostaticResidual.hpp"
-#include "plato/InternalElasticEnergy.hpp"
-#include "plato/EffectiveEnergy.hpp"
-#include "plato/Volume.hpp"
-#include "plato/StressPNorm.hpp"
-#include "plato/IntermediateDensityPenalty.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "Plato_AugLagStressCriterionQuadratic.hpp"
+#include "Plato_AugLagStressCriterionGeneral.hpp"
+#include "Plato_AugLagStressCriterion.hpp"
+#include "SimplexMechanics.hpp"
+#include "AbstractScalarFunctionInc.hpp"
+#include "ElastostaticResidual.hpp"
+#include "InternalElasticEnergy.hpp"
+#include "EffectiveEnergy.hpp"
+#include "Volume.hpp"
+#include "StressPNorm.hpp"
+#include "IntermediateDensityPenalty.hpp"
+#include "AnalyzeMacros.hpp"
 
-#include "plato/AbstractLocalMeasure.hpp"
-#include "plato/VonMisesLocalMeasure.hpp"
-#include "plato/TensileEnergyDensityLocalMeasure.hpp"
+#include "AbstractLocalMeasure.hpp"
+#include "VonMisesLocalMeasure.hpp"
+#include "TensileEnergyDensityLocalMeasure.hpp"
 
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
 namespace Plato
 {

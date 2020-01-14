@@ -4,7 +4,7 @@
  *  Created on: Feb 12, 2019
  */
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 #pragma once
 

@@ -1,7 +1,7 @@
 #ifndef FLUX_DIVERGENCE
 #define FLUX_DIVERGENCE
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

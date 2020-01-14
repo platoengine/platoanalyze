@@ -3,7 +3,7 @@
 
 #include <Sacado.hpp>
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato {
 

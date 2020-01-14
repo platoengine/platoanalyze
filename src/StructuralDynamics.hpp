@@ -13,14 +13,14 @@
 
 #include <Teuchos_ParameterList.hpp>
 
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/ExpVolume.hpp"
-#include "plato/DynamicCompliance.hpp"
-#include "plato/AbstractVectorFunction.hpp"
-#include "plato/StructuralDynamicsResidual.hpp"
-#include "plato/HyperbolicTangentProjection.hpp"
-#include "plato/AdjointStructuralDynamicsResidual.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "ExpVolume.hpp"
+#include "DynamicCompliance.hpp"
+#include "AbstractVectorFunction.hpp"
+#include "StructuralDynamicsResidual.hpp"
+#include "HyperbolicTangentProjection.hpp"
+#include "AdjointStructuralDynamicsResidual.hpp"
 
 namespace Plato
 {

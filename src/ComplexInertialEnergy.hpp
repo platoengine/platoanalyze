@@ -7,7 +7,7 @@
 #ifndef COMPLEXINERTIALENERGY_HPP_
 #define COMPLEXINERTIALENERGY_HPP_
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

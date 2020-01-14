@@ -1,5 +1,5 @@
-#include "plato/ThermostaticResidual.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "ThermostaticResidual.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF(Plato::ThermostaticResidual, Plato::SimplexThermal, 1)

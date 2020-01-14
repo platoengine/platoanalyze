@@ -1,8 +1,8 @@
 #ifndef TMKINEMATICS_HPP
 #define TMKINEMATICS_HPP
 
-#include "plato/SimplexThermomechanics.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "SimplexThermomechanics.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

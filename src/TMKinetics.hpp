@@ -1,8 +1,8 @@
 #ifndef LGR_PLATO_TMKINETICS_HPP
 #define LGR_PLATO_TMKINETICS_HPP
 
-#include "plato/SimplexThermomechanics.hpp"
-#include "plato/LinearThermoelasticMaterial.hpp"
+#include "SimplexThermomechanics.hpp"
+#include "LinearThermoelasticMaterial.hpp"
 
 namespace Plato
 {

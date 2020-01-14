@@ -1,21 +1,21 @@
 #ifndef PLATO_THERMAL_HPP
 #define PLATO_THERMAL_HPP
 
-#include "plato/Simplex.hpp"
-#include "plato/SimplexThermal.hpp"
-#include "plato/AbstractVectorFunction.hpp"
-#include "plato/AbstractVectorFunctionInc.hpp"
-#include "plato/AbstractScalarFunctionInc.hpp"
-#include "plato/ThermostaticResidual.hpp"
-#include "plato/HeatEquationResidual.hpp"
-#include "plato/InternalThermalEnergy.hpp"
-#include "plato/TemperatureAverage.hpp"
-#include "plato/ThermalFluxRate.hpp"
-#include "plato/FluxPNorm.hpp"
-#include "plato/Volume.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "Simplex.hpp"
+#include "SimplexThermal.hpp"
+#include "AbstractVectorFunction.hpp"
+#include "AbstractVectorFunctionInc.hpp"
+#include "AbstractScalarFunctionInc.hpp"
+#include "ThermostaticResidual.hpp"
+#include "HeatEquationResidual.hpp"
+#include "InternalThermalEnergy.hpp"
+#include "TemperatureAverage.hpp"
+#include "ThermalFluxRate.hpp"
+#include "FluxPNorm.hpp"
+#include "Volume.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
 
 namespace Plato {

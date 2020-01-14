@@ -1,7 +1,7 @@
 #pragma once
 
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/SimplexMechanics.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "SimplexMechanics.hpp"
 #include <Teuchos_ParameterList.hpp>
 
 namespace Plato

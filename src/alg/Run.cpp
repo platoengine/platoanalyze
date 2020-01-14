@@ -49,10 +49,10 @@
 #include <Kokkos_Core.hpp>
 
 #include "LGRConfig.hpp"
-#include "plato/alg/Run.hpp"
+#include "alg/Run.hpp"
 
-#include "plato/alg/ErrorHandling.hpp"
-#include "plato/PlatoDriver.hpp"
+#include "alg/ErrorHandling.hpp"
+#include "PlatoDriver.hpp"
 
 namespace Plato {
 

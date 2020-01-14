@@ -6,11 +6,11 @@
 
 #pragma once
 
-#include "plato/Simplex.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/Plato_TopOptFunctors.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
+#include "Simplex.hpp"
+#include "ImplicitFunctors.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "Plato_TopOptFunctors.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 
 namespace Plato
 {

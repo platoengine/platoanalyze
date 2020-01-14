@@ -6,16 +6,16 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "plato/Simplex.hpp"
-#include "plato/SimplexElectromechanics.hpp"
-#include "plato/AbstractVectorFunction.hpp"
-#include "plato/ElectroelastostaticResidual.hpp"
-#include "plato/InternalElectroelasticEnergy.hpp"
-#include "plato/Volume.hpp"
-#include "plato/EMStressPNorm.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "Simplex.hpp"
+#include "SimplexElectromechanics.hpp"
+#include "AbstractVectorFunction.hpp"
+#include "ElectroelastostaticResidual.hpp"
+#include "InternalElectroelasticEnergy.hpp"
+#include "Volume.hpp"
+#include "EMStressPNorm.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
 namespace Plato
 {

@@ -3,21 +3,21 @@
 
 #include <memory>
 
-#include "plato/PlatoTypes.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/SimplexThermomechanics.hpp"
-#include "plato/TMKinematics.hpp"
-#include "plato/TMKinetics.hpp"
-#include "plato/StressDivergence.hpp"
-#include "plato/FluxDivergence.hpp"
-#include "plato/AbstractVectorFunction.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/CellForcing.hpp"
-#include "plato/InterpolateFromNodal.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/LinearThermoelasticMaterial.hpp"
-#include "plato/NaturalBCs.hpp"
-#include "plato/BodyLoads.hpp"
+#include "PlatoTypes.hpp"
+#include "SimplexFadTypes.hpp"
+#include "SimplexThermomechanics.hpp"
+#include "TMKinematics.hpp"
+#include "TMKinetics.hpp"
+#include "StressDivergence.hpp"
+#include "FluxDivergence.hpp"
+#include "AbstractVectorFunction.hpp"
+#include "ApplyWeighting.hpp"
+#include "CellForcing.hpp"
+#include "InterpolateFromNodal.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "LinearThermoelasticMaterial.hpp"
+#include "NaturalBCs.hpp"
+#include "BodyLoads.hpp"
 
 namespace Plato
 {

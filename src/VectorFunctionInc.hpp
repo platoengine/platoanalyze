@@ -6,9 +6,9 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "plato/WorksetBase.hpp"
-#include "plato/AbstractVectorFunctionInc.hpp"
-#include "plato/SimplexFadTypes.hpp"
+#include "WorksetBase.hpp"
+#include "AbstractVectorFunctionInc.hpp"
+#include "SimplexFadTypes.hpp"
 
 namespace Plato
 {

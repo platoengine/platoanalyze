@@ -22,11 +22,11 @@
 
 #include "ImplicitFunctors.hpp"
 
-#include "plato/WorksetBase.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/SimplexStructuralDynamics.hpp"
-#include "plato/ComputeFrequencyResponseMisfit.hpp"
+#include "WorksetBase.hpp"
+#include "SimplexFadTypes.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "SimplexStructuralDynamics.hpp"
+#include "ComputeFrequencyResponseMisfit.hpp"
 
 namespace Plato
 {

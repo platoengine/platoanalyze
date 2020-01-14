@@ -1,8 +1,8 @@
 #ifndef SIMPLEX_PROJECTION_HPP
 #define SIMPLEX_PROJECTION_HPP
 
-#include "plato/Simplex.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "Simplex.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

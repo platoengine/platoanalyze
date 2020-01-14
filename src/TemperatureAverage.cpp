@@ -1,5 +1,5 @@
-#include "plato/TemperatureAverage.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "TemperatureAverage.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF(Plato::TemperatureAverageInc, Plato::SimplexThermal, 1)

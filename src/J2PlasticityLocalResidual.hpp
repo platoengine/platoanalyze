@@ -1,20 +1,20 @@
 #pragma once
 
-#include "plato/ScalarGrad.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/Plato_TopOptFunctors.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/Simp.hpp"
+#include "ScalarGrad.hpp"
+#include "SimplexFadTypes.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "Plato_TopOptFunctors.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "Simp.hpp"
 
-#include "plato/AbstractLocalVectorFunctionInc.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "AbstractLocalVectorFunctionInc.hpp"
+#include "ImplicitFunctors.hpp"
+#include "AnalyzeMacros.hpp"
 
-#include "plato/J2PlasticityUtilities.hpp"
-#include "plato/ThermoPlasticityUtilities.hpp"
+#include "J2PlasticityUtilities.hpp"
+#include "ThermoPlasticityUtilities.hpp"
 
-#include "plato/ExpInstMacros.hpp"
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {
@@ -417,8 +417,8 @@ class J2PlasticityLocalResidual :
 
 } // namespace Plato
 
-#include "plato/SimplexPlasticity.hpp"
-#include "plato/SimplexThermoPlasticity.hpp"
+#include "SimplexPlasticity.hpp"
+#include "SimplexThermoPlasticity.hpp"
 
 #ifdef PLATO_2D
 PLATO_EXPL_DEC_INC_LOCAL(Plato::J2PlasticityLocalResidual, Plato::SimplexPlasticity, 2)

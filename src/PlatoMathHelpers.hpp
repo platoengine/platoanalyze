@@ -15,9 +15,9 @@
 #include <KokkosSparse_spadd.hpp>
 #include <KokkosSparse_CrsMatrix.hpp>
 
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/PlatoMathFunctors.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "PlatoMathFunctors.hpp"
+#include "AnalyzeMacros.hpp"
 
 namespace Plato
 {

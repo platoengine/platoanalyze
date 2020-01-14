@@ -7,8 +7,8 @@
 #ifndef INTERPOLATE_FROM_NODAL_HPP_
 #define INTERPOLATE_FROM_NODAL_HPP_
 
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/Simplex.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "Simplex.hpp"
 
 namespace Plato
 {

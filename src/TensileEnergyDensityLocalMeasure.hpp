@@ -1,15 +1,15 @@
 #pragma once
 
-#include "plato/AbstractLocalMeasure.hpp"
+#include "AbstractLocalMeasure.hpp"
 #include <Omega_h_matrix.hpp>
-#include "plato/LinearStress.hpp"
-#include "plato/TensileEnergyDensity.hpp"
-#include "plato/Strain.hpp"
-#include "plato/ImplicitFunctors.hpp"
+#include "LinearStress.hpp"
+#include "TensileEnergyDensity.hpp"
+#include "Strain.hpp"
+#include "ImplicitFunctors.hpp"
 #include <Teuchos_ParameterList.hpp>
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/Eigenvalues.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "SimplexFadTypes.hpp"
+#include "Eigenvalues.hpp"
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {
@@ -144,7 +144,7 @@ public:
 }
 //namespace Plato
 
-#include "plato/SimplexMechanics.hpp"
+#include "SimplexMechanics.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEC2(Plato::TensileEnergyDensityLocalMeasure, Plato::SimplexMechanics, 1)

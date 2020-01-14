@@ -11,7 +11,7 @@
 
 #include <Teuchos_ParameterList.hpp>
 
-#include "plato/SimplexFadTypes.hpp"
+#include "SimplexFadTypes.hpp"
 
 namespace Plato
 {

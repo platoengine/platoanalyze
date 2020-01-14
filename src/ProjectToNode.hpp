@@ -1,7 +1,7 @@
 #ifndef PROJECT_TO_NODE
 #define PROJECT_TO_NODE
 
-#include "plato/Simplex.hpp"
+#include "Simplex.hpp"
 
 namespace Plato {
 

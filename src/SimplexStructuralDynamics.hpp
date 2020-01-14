@@ -7,8 +7,8 @@
 #ifndef SIMPLEXSTRUCTURALDYNAMICS_HPP_
 #define SIMPLEXSTRUCTURALDYNAMICS_HPP_
 
-#include "plato/Simplex.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "Simplex.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

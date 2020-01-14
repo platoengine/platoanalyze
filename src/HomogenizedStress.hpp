@@ -2,7 +2,7 @@
 #define LGR_PLATO_HOMOGENIZED_STRESS_HPP
 
 #include <Omega_h_matrix.hpp>
-#include "plato/SimplexMechanics.hpp"
+#include "SimplexMechanics.hpp"
 
 namespace Plato
 {

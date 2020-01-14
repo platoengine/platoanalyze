@@ -1,26 +1,26 @@
 #ifndef THERMOSTATIC_RESIDUAL_HPP
 #define THERMOSTATIC_RESIDUAL_HPP
 
-#include "plato/SimplexThermal.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/ScalarGrad.hpp"
-#include "plato/ThermalFlux.hpp"
-#include "plato/FluxDivergence.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
-#include "plato/ToMap.hpp"
+#include "SimplexThermal.hpp"
+#include "ApplyWeighting.hpp"
+#include "ScalarGrad.hpp"
+#include "ThermalFlux.hpp"
+#include "FluxDivergence.hpp"
+#include "SimplexFadTypes.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
+#include "ToMap.hpp"
 
-#include "plato/LinearThermalMaterial.hpp"
-#include "plato/AbstractVectorFunction.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/NaturalBCs.hpp"
-#include "plato/SimplexFadTypes.hpp"
+#include "LinearThermalMaterial.hpp"
+#include "AbstractVectorFunction.hpp"
+#include "ImplicitFunctors.hpp"
+#include "ApplyWeighting.hpp"
+#include "NaturalBCs.hpp"
+#include "SimplexFadTypes.hpp"
 
-#include "plato/ExpInstMacros.hpp"
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {

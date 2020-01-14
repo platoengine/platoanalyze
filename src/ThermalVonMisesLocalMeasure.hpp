@@ -1,16 +1,16 @@
 #pragma once
 
-#include "plato/AbstractLocalMeasure.hpp"
-#include "plato/Plato_VonMisesYield.hpp"
-#include "plato/ImplicitFunctors.hpp"
+#include "AbstractLocalMeasure.hpp"
+#include "Plato_VonMisesYield.hpp"
+#include "ImplicitFunctors.hpp"
 #include <Teuchos_ParameterList.hpp>
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/ExpInstMacros.hpp"
-#include "plato/TMKinematics.hpp"
-#include "plato/TMKinetics.hpp"
-#include "plato/InterpolateFromNodal.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/LinearThermoelasticMaterial.hpp"
+#include "SimplexFadTypes.hpp"
+#include "ExpInstMacros.hpp"
+#include "TMKinematics.hpp"
+#include "TMKinetics.hpp"
+#include "InterpolateFromNodal.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "LinearThermoelasticMaterial.hpp"
 
 namespace Plato
 {
@@ -128,7 +128,7 @@ public:
 }
 //namespace Plato
 
-#include "plato/SimplexThermomechanics.hpp"
+#include "SimplexThermomechanics.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEC2(Plato::ThermalVonMisesLocalMeasure, Plato::SimplexThermomechanics, 1)

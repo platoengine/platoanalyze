@@ -8,13 +8,13 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "plato/WorksetBase.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/LocalVectorFunctionInc.hpp"
-#include "plato/ImplicitFunctors.hpp"
+#include "WorksetBase.hpp"
+#include "SimplexFadTypes.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "LocalVectorFunctionInc.hpp"
+#include "ImplicitFunctors.hpp"
 
 namespace Plato
 {

@@ -1,5 +1,5 @@
-#include "plato/TransientThermomechResidual.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "TransientThermomechResidual.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF_INC(TransientThermomechResidual, Plato::SimplexThermomechanics, 1)

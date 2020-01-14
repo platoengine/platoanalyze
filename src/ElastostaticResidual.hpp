@@ -3,26 +3,26 @@
 
 #include <memory>
 
-#include "plato/PlatoTypes.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/SimplexMechanics.hpp"
-#include "plato/Strain.hpp"
-#include "plato/LinearStress.hpp"
-#include "plato/StressDivergence.hpp"
-#include "plato/AbstractVectorFunction.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/CellForcing.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
-#include "plato/ToMap.hpp"
+#include "PlatoTypes.hpp"
+#include "SimplexFadTypes.hpp"
+#include "SimplexMechanics.hpp"
+#include "Strain.hpp"
+#include "LinearStress.hpp"
+#include "StressDivergence.hpp"
+#include "AbstractVectorFunction.hpp"
+#include "ApplyWeighting.hpp"
+#include "CellForcing.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
+#include "ToMap.hpp"
 
-#include "plato/LinearElasticMaterial.hpp"
-#include "plato/NaturalBCs.hpp"
-#include "plato/BodyLoads.hpp"
+#include "LinearElasticMaterial.hpp"
+#include "NaturalBCs.hpp"
+#include "BodyLoads.hpp"
 
-#include "plato/ExpInstMacros.hpp"
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {

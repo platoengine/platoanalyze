@@ -1,4 +1,4 @@
-#include "plato/MassPropertiesFunction.hpp"
+#include "MassPropertiesFunction.hpp"
 
 #ifdef PLATO_1D
 template class Plato::MassPropertiesFunction<::Plato::Thermal<1>>;

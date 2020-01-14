@@ -1,4 +1,4 @@
-#include "plato/LeastSquaresFunction.hpp"
+#include "LeastSquaresFunction.hpp"
 
 #ifdef PLATO_1D
 template class Plato::LeastSquaresFunction<::Plato::Thermal<1>>;

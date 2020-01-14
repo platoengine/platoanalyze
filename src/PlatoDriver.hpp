@@ -15,9 +15,9 @@
 #include <Omega_h_assoc.hpp>
 #include <Omega_h_teuchos.hpp>
 
-#include "plato/PlatoUtilities.hpp"
-#include "plato/PlatoProblemFactory.hpp"
-//#include "plato/StructuralDynamicsOutput.hpp"
+#include "PlatoUtilities.hpp"
+#include "PlatoProblemFactory.hpp"
+//#include "StructuralDynamicsOutput.hpp"
 
 namespace Plato
 {

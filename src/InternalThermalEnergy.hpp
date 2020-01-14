@@ -1,21 +1,21 @@
 #ifndef INTERNAL_THERMAL_ENERGY_HPP
 #define INTERNAL_THERMAL_ENERGY_HPP
 
-#include "plato/ScalarGrad.hpp"
-#include "plato/ThermalFlux.hpp"
-#include "plato/ScalarProduct.hpp"
-#include "plato/ApplyWeighting.hpp"
-#include "plato/SimplexThermal.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/LinearThermalMaterial.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/AbstractScalarFunctionInc.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "ScalarGrad.hpp"
+#include "ThermalFlux.hpp"
+#include "ScalarProduct.hpp"
+#include "ApplyWeighting.hpp"
+#include "SimplexThermal.hpp"
+#include "SimplexFadTypes.hpp"
+#include "ImplicitFunctors.hpp"
+#include "LinearThermalMaterial.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "AbstractScalarFunctionInc.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
-#include "plato/ExpInstMacros.hpp"
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {

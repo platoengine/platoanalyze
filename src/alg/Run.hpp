@@ -44,7 +44,7 @@
 #ifndef LGR_RUN_HPP
 #define LGR_RUN_HPP
 
-#include "plato/alg/ParallelComm.hpp"
+#include "alg/ParallelComm.hpp"
 #include <Omega_h_library.hpp>
 #include <Teuchos_ParameterList.hpp>
 

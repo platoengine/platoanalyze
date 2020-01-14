@@ -3,7 +3,7 @@
  *
  */
 
-#include "plato/VonMisesLocalMeasure.hpp"
+#include "VonMisesLocalMeasure.hpp"
 
 
 #ifdef PLATO_1D

@@ -12,21 +12,21 @@
 #include <Teuchos_ParameterList.hpp>
 
 
-#include "plato/StateValues.hpp"
-#include "plato/ApplyPenalty.hpp"
-#include "plato/ComplexStrain.hpp"
-#include "plato/InertialForces.hpp"
-#include "plato/ApplyProjection.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/ComplexLinearStress.hpp"
-#include "plato/LinearElasticMaterial.hpp"
-#include "plato/AbstractVectorFunction.hpp"
-#include "plato/ComplexStressDivergence.hpp"
-#include "plato/SimplexStructuralDynamics.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/AdjointComplexRayleighDamping.hpp"
-#include "plato/StructuralDynamicsCellResidual.hpp"
+#include "StateValues.hpp"
+#include "ApplyPenalty.hpp"
+#include "ComplexStrain.hpp"
+#include "InertialForces.hpp"
+#include "ApplyProjection.hpp"
+#include "ImplicitFunctors.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "ComplexLinearStress.hpp"
+#include "LinearElasticMaterial.hpp"
+#include "AbstractVectorFunction.hpp"
+#include "ComplexStressDivergence.hpp"
+#include "SimplexStructuralDynamics.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "AdjointComplexRayleighDamping.hpp"
+#include "StructuralDynamicsCellResidual.hpp"
 
 namespace Plato
 {

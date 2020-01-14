@@ -7,7 +7,7 @@
 #ifndef APPLYPENALTY_HPP_
 #define APPLYPENALTY_HPP_
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

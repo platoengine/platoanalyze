@@ -1,12 +1,12 @@
 #pragma once
 
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/WeightedSumFunction.hpp"
-#include "plato/PhysicsScalarFunction.hpp"
-#include "plato/DivisionFunction.hpp"
-#include "plato/LeastSquaresFunction.hpp"
-#include "plato/MassPropertiesFunction.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "WeightedSumFunction.hpp"
+#include "PhysicsScalarFunction.hpp"
+#include "DivisionFunction.hpp"
+#include "LeastSquaresFunction.hpp"
+#include "MassPropertiesFunction.hpp"
+#include "AnalyzeMacros.hpp"
 
 namespace Plato
 {

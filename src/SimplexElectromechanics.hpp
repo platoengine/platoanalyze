@@ -1,8 +1,8 @@
 #ifndef SIMPLEX_ELECTROMECHANICS_HPP
 #define SIMPLEX_ELECTROMECHANICS_HPP
 
-#include "plato/Simplex.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "Simplex.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

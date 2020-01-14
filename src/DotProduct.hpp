@@ -1,7 +1,7 @@
 #ifndef DOT_PRODUCT_HPP
 #define DOT_PRODUCT_HPP
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

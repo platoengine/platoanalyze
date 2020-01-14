@@ -24,9 +24,9 @@
 #include "Mechanics.hpp"
 #include "Thermal.hpp"
 #include "PlatoAbstractProblem.hpp"
-#include "plato/alg/ParseInput.hpp"
+#include "alg/ParseInput.hpp"
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 #ifdef PLATO_GEOMETRY
 #include "Plato_MLS.hpp"

@@ -1,5 +1,5 @@
-#include "plato/ElastostaticResidual.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "ElastostaticResidual.hpp"
+#include "ExpInstMacros.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEF(Plato::ElastostaticResidual, Plato::SimplexMechanics, 1)

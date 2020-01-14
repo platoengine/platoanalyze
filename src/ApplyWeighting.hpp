@@ -1,8 +1,8 @@
 #ifndef APPLY_WEIGHTING_HPP
 #define APPLY_WEIGHTING_HPP
 
-#include "plato/Simplex.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "Simplex.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

@@ -1,16 +1,16 @@
 #ifndef VOLUME_HPP
 #define VOLUME_HPP
 
-#include "plato/ApplyWeighting.hpp"
-#include "plato/Simplex.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/AbstractScalarFunction.hpp"
+#include "ApplyWeighting.hpp"
+#include "Simplex.hpp"
+#include "SimplexFadTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "AbstractScalarFunction.hpp"
 
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
-#include "plato/ExpInstMacros.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {

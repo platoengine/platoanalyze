@@ -17,7 +17,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_array.hpp>
 
-#include "plato/SimplexStructuralDynamics.hpp"
+#include "SimplexStructuralDynamics.hpp"
 
 namespace Plato
 {

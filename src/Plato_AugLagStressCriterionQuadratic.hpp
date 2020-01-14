@@ -3,18 +3,18 @@
 #include <algorithm>
 #include <memory>
 
-#include "plato/Simp.hpp"
-#include "plato/ToMap.hpp"
-#include "plato/WorksetBase.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/Plato_TopOptFunctors.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
-#include "plato/ExpInstMacros.hpp"
-//#include "plato/VonMisesLocalMeasure.hpp"
-#include "plato/AbstractLocalMeasure.hpp"
-//#include "plato/LocalMeasureFactory.hpp"
+#include "Simp.hpp"
+#include "ToMap.hpp"
+#include "WorksetBase.hpp"
+#include "SimplexFadTypes.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "Plato_TopOptFunctors.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
+#include "ExpInstMacros.hpp"
+//#include "VonMisesLocalMeasure.hpp"
+#include "AbstractLocalMeasure.hpp"
+//#include "LocalMeasureFactory.hpp"
 
 namespace Plato
 {
@@ -347,8 +347,8 @@ public:
 
 }
 //namespace Plato
-#include "plato/SimplexMechanics.hpp"
-#include "plato/SimplexThermomechanics.hpp"
+#include "SimplexMechanics.hpp"
+#include "SimplexThermomechanics.hpp"
 
 #ifdef PLATO_1D
 PLATO_EXPL_DEC2(Plato::AugLagStressCriterionQuadratic, Plato::SimplexMechanics, 1)

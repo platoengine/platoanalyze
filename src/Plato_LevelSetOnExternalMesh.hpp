@@ -65,9 +65,9 @@
 #include <cstddef>
 #include <cstdlib>
 
-#include "plato/Plato_BuildMesh.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/Plato_GeometryModel.hpp"
+#include "Plato_BuildMesh.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "Plato_GeometryModel.hpp"
 
 namespace Plato
 {

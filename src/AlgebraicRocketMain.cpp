@@ -9,8 +9,8 @@
 #include <string>
 #include <memory>
 
-#include "plato/Plato_AlgebraicRocketModel.hpp"
-#include "plato/Plato_LevelSetOnExternalMesh.hpp"
+#include "Plato_AlgebraicRocketModel.hpp"
+#include "Plato_LevelSetOnExternalMesh.hpp"
 
 #ifndef NDEBUG
 #include <fenv.h>

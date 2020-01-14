@@ -6,11 +6,11 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "plato/SimplexProjection.hpp"
-#include "plato/PressureGradientProjectionResidual.hpp"
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "SimplexProjection.hpp"
+#include "PressureGradientProjectionResidual.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
 namespace Plato
 {

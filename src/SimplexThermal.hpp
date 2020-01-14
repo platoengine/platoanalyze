@@ -1,7 +1,7 @@
 #ifndef SIMPLEX_THERMAL_HPP
 #define SIMPLEX_THERMAL_HPP
 
-#include "plato/Simplex.hpp"
+#include "Simplex.hpp"
 
 namespace Plato
 {

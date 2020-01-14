@@ -8,8 +8,8 @@
 #include "Omega_h_mesh.hpp"
 
 #include "ImplicitFunctors.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 template<int SpatialDim>
 KOKKOS_INLINE_FUNCTION

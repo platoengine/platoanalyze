@@ -9,16 +9,16 @@
 #include <Omega_h_vector.hpp>
 #include <Omega_h_eigen.hpp>
 
-#include "plato/WorksetBase.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/ScalarFunctionBaseFactory.hpp"
-#include "plato/PhysicsScalarFunction.hpp"
-#include "plato/DivisionFunction.hpp"
-#include "plato/LeastSquaresFunction.hpp"
-#include "plato/WeightedSumFunction.hpp"
-#include "plato/MassMoment.hpp"
-#include "plato/AnalyzeMacros.hpp"
-#include "plato/PlatoMathHelpers.hpp"
+#include "WorksetBase.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "ScalarFunctionBaseFactory.hpp"
+#include "PhysicsScalarFunction.hpp"
+#include "DivisionFunction.hpp"
+#include "LeastSquaresFunction.hpp"
+#include "WeightedSumFunction.hpp"
+#include "MassMoment.hpp"
+#include "AnalyzeMacros.hpp"
+#include "PlatoMathHelpers.hpp"
 
 #include <Teuchos_ParameterList.hpp>
 

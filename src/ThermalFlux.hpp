@@ -1,7 +1,7 @@
 #ifndef THERMAL_FLUX_HPP
 #define THERMAL_FLUX_HPP
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 #include <Omega_h_matrix.hpp>
 
 namespace Plato

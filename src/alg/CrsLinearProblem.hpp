@@ -9,7 +9,7 @@
 #ifndef LGR_CRS_LINEAR_PROBLEM_HPP
 #define LGR_CRS_LINEAR_PROBLEM_HPP
 
-#include "plato/alg/CrsMatrix.hpp"
+#include "alg/CrsMatrix.hpp"
 #include <Kokkos_Core.hpp>
 
 namespace Plato {

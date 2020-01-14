@@ -12,17 +12,17 @@
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 
-#include "plato/VectorFunctionVMS.hpp"
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/ScalarFunctionIncBase.hpp"
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/PlatoAbstractProblem.hpp"
-#include "plato/ParseTools.hpp"
-#include "plato/Plato_Solve.hpp"
+#include "VectorFunctionVMS.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "ScalarFunctionIncBase.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "PlatoAbstractProblem.hpp"
+#include "ParseTools.hpp"
+#include "Plato_Solve.hpp"
 
-#include "plato/ScalarFunctionBaseFactory.hpp"
-#include "plato/ScalarFunctionIncBaseFactory.hpp"
+#include "ScalarFunctionBaseFactory.hpp"
+#include "ScalarFunctionIncBaseFactory.hpp"
 
 namespace Plato
 {

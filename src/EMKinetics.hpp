@@ -1,8 +1,8 @@
 #ifndef LGR_PLATO_EMKINETICS_HPP
 #define LGR_PLATO_EMKINETICS_HPP
 
-#include "plato/SimplexElectromechanics.hpp"
-#include "plato/LinearElectroelasticMaterial.hpp"
+#include "SimplexElectromechanics.hpp"
+#include "LinearElectroelasticMaterial.hpp"
 
 /******************************************************************************/
 /*! Electroelastics functor.

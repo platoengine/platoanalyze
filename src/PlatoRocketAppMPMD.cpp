@@ -8,7 +8,7 @@
 
 #include <Plato_Interface.hpp>
 
-#include "plato/PlatoRocketApp.hpp"
+#include "PlatoRocketApp.hpp"
 
 #ifndef NDEBUG
 #include <fenv.h>

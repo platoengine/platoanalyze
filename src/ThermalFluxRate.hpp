@@ -1,14 +1,14 @@
 #ifndef THERMAL_FLUX_RATE_HPP
 #define THERMAL_FLUX_RATE_HPP
 
-#include "plato/LinearThermalMaterial.hpp"
+#include "LinearThermalMaterial.hpp"
 
-#include "plato/ScalarGrad.hpp"
-#include "plato/ThermalFlux.hpp"
-#include "plato/ScalarProduct.hpp"
-#include "plato/SimplexThermal.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/AbstractScalarFunctionInc.hpp"
+#include "ScalarGrad.hpp"
+#include "ThermalFlux.hpp"
+#include "ScalarProduct.hpp"
+#include "SimplexThermal.hpp"
+#include "SimplexFadTypes.hpp"
+#include "AbstractScalarFunctionInc.hpp"
 
 namespace Plato
 {

@@ -3,8 +3,8 @@
 
 #include <Teuchos_ParameterList.hpp>
 
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/SimplexFadTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "SimplexFadTypes.hpp"
 
 namespace Plato
 {

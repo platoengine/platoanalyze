@@ -1,8 +1,8 @@
 #ifndef EMKINEMATICS_HPP
 #define EMKINEMATICS_HPP
 
-#include "plato/SimplexElectromechanics.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
+#include "SimplexElectromechanics.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

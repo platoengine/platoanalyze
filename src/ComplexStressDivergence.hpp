@@ -7,7 +7,7 @@
 #ifndef COMPLEXSTRESSDIVERGENCE_HPP_
 #define COMPLEXSTRESSDIVERGENCE_HPP_
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {

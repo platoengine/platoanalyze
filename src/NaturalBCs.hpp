@@ -3,7 +3,7 @@
 
 #include "ImplicitFunctors.hpp"
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 #include <Omega_h_assoc.hpp>
 #include <Teuchos_ParameterList.hpp>

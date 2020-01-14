@@ -6,20 +6,20 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "plato/Simplex.hpp"
-#include "plato/SimplexProjection.hpp"
-#include "plato/AbstractVectorFunctionVMS.hpp"
-#include "plato/AbstractScalarFunction.hpp"
-#include "plato/AbstractScalarFunctionInc.hpp"
-#include "plato/Projection.hpp"
-#include "plato/StabilizedThermoelastostaticResidual.hpp"
-#include "plato/PressureGradientProjectionResidual.hpp"
-#include "plato/ThermoPlasticity.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "Simplex.hpp"
+#include "SimplexProjection.hpp"
+#include "AbstractVectorFunctionVMS.hpp"
+#include "AbstractScalarFunction.hpp"
+#include "AbstractScalarFunctionInc.hpp"
+#include "Projection.hpp"
+#include "StabilizedThermoelastostaticResidual.hpp"
+#include "PressureGradientProjectionResidual.hpp"
+#include "ThermoPlasticity.hpp"
+#include "AnalyzeMacros.hpp"
 
-#include "plato/Simp.hpp"
-#include "plato/Ramp.hpp"
-#include "plato/Heaviside.hpp"
+#include "Simp.hpp"
+#include "Ramp.hpp"
+#include "Heaviside.hpp"
 
 namespace Plato
 {

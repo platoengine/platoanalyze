@@ -1,10 +1,10 @@
 #ifndef PLATO_SOLVE_HPP
 #define PLATO_SOLVE_HPP
 
-#include "plato/PlatoMathFunctors.hpp"
+#include "PlatoMathFunctors.hpp"
 
 #ifdef HAVE_AMGX
-#include "plato/alg/AmgXSparseLinearProblem.hpp"
+#include "alg/AmgXSparseLinearProblem.hpp"
 #endif
 
 namespace Plato {
