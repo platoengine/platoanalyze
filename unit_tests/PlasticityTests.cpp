@@ -8,10 +8,10 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "plato/Plato_Diagnostics.hpp"
+#include "Plato_Diagnostics.hpp"
 
-#include "plato/LocalVectorFunctionInc.hpp"
-#include "plato/J2PlasticityLocalResidual.hpp"
+#include "LocalVectorFunctionInc.hpp"
+#include "J2PlasticityLocalResidual.hpp"
 
 
 namespace PlasticityTests

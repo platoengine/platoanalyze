@@ -8,18 +8,18 @@
 
 #include "PlatoTestHelpers.hpp"
 
-#include "plato/Plato_Diagnostics.hpp"
-#include "plato/Plato_AugLagStressCriterion.hpp"
-#include "plato/Plato_AugLagStressCriterionGeneral.hpp"
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/Eigenvalues.hpp"
-#include "plato/Plato_AugLagStressCriterionQuadratic.hpp"
-#include "plato/VonMisesLocalMeasure.hpp"
-#include "plato/TensileEnergyDensityLocalMeasure.hpp"
-#include "plato/ThermalVonMisesLocalMeasure.hpp"
-#include "plato/WeightedSumFunction.hpp"
-#include "plato/PhysicsScalarFunction.hpp"
-#include "plato/MassPropertiesFunction.hpp"
+#include "Plato_Diagnostics.hpp"
+#include "Plato_AugLagStressCriterion.hpp"
+#include "Plato_AugLagStressCriterionGeneral.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "Eigenvalues.hpp"
+#include "Plato_AugLagStressCriterionQuadratic.hpp"
+#include "VonMisesLocalMeasure.hpp"
+#include "TensileEnergyDensityLocalMeasure.hpp"
+#include "ThermalVonMisesLocalMeasure.hpp"
+#include "WeightedSumFunction.hpp"
+#include "PhysicsScalarFunction.hpp"
+#include "MassPropertiesFunction.hpp"
 
 
 namespace AugLagStressTest

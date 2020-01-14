@@ -14,7 +14,7 @@
 #include <Teuchos_XMLParameterListHelpers.hpp>
 
 #ifdef HAVE_AMGX
-#include "plato/alg/AmgXSparseLinearProblem.hpp"
+#include "alg/AmgXSparseLinearProblem.hpp"
 #endif
 
 #include <sstream>
@@ -23,21 +23,21 @@
 #include <type_traits>
 #include <Sacado.hpp>
 
-#include <plato/alg/CrsLinearProblem.hpp>
-#include <plato/alg/ParallelComm.hpp>
-#include "plato/Simp.hpp"
-#include "plato/ScalarProduct.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/WorksetBase.hpp"
-#include "plato/VectorFunction.hpp"
-#include "plato/PhysicsScalarFunction.hpp"
-#include "plato/StateValues.hpp"
-#include "plato/ApplyConstraints.hpp"
-#include "plato/SimplexThermomechanics.hpp"
-#include "plato/Thermomechanics.hpp"
-#include "plato/ComputedField.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/LinearThermoelasticMaterial.hpp"
+#include <alg/CrsLinearProblem.hpp>
+#include <alg/ParallelComm.hpp>
+#include "Simp.hpp"
+#include "ScalarProduct.hpp"
+#include "SimplexFadTypes.hpp"
+#include "WorksetBase.hpp"
+#include "VectorFunction.hpp"
+#include "PhysicsScalarFunction.hpp"
+#include "StateValues.hpp"
+#include "ApplyConstraints.hpp"
+#include "SimplexThermomechanics.hpp"
+#include "Thermomechanics.hpp"
+#include "ComputedField.hpp"
+#include "ImplicitFunctors.hpp"
+#include "LinearThermoelasticMaterial.hpp"
 
 #include <fenv.h>
 

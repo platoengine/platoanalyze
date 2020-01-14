@@ -10,12 +10,12 @@
 #include "PlatoTestHelpers.hpp"
 #include "Teuchos_UnitTestHarness.hpp"
 
-#include "plato/Plato_Cylinder.hpp"
-#include "plato/Plato_BuildMesh.hpp"
-#include "plato/Plato_RocketMocks.hpp"
-#include "plato/Plato_AlgebraicRocketModel.hpp"
-#include "plato/Plato_LevelSetCylinderInBox.hpp"
-#include "plato/Plato_LevelSetOnExternalMesh.hpp"
+#include "Plato_Cylinder.hpp"
+#include "Plato_BuildMesh.hpp"
+#include "Plato_RocketMocks.hpp"
+#include "Plato_AlgebraicRocketModel.hpp"
+#include "Plato_LevelSetCylinderInBox.hpp"
+#include "Plato_LevelSetOnExternalMesh.hpp"
 
 namespace AlgebraicRocketTest
 {

@@ -17,7 +17,7 @@
 
 #include "alg/CrsLinearProblem.hpp"
 #include "alg/AmgXConfigs.hpp"
-#include <plato/PlatoTypes.hpp>
+#include <PlatoTypes.hpp>
 
 #include <amgx_c.h>
 #include <sstream>

@@ -3,7 +3,52 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/AnalyzeConfig.hpp
   @ONLY)
 
-file(GLOB_RECURSE ANALYZE_SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
+# file(GLOB_RECURSE ANALYZE_SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
+set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp 
+    Plato_AugLagStressCriterionGeneral.cpp 
+    Plato_AugLagStressCriterion.cpp 
+    Plato_StructuralMass.cpp 
+    LinearElasticMaterial.cpp 
+    LinearElectroelasticMaterial.cpp 
+    LinearThermoelasticMaterial.cpp 
+    HeatEquationResidual.cpp 
+    TransientThermomechResidual.cpp 
+    InternalThermalEnergy.cpp 
+    InternalThermoelasticEnergy.cpp 
+    InternalElectroelasticEnergy.cpp 
+    InternalElasticEnergy.cpp 
+    StabilizedElastostaticEnergy.cpp 
+    TemperatureAverage.cpp 
+    FluxPNorm.cpp 
+    StressPNorm.cpp 
+    EMStressPNorm.cpp 
+    EffectiveEnergy.cpp 
+    ThermostaticResidual.cpp 
+    ElastostaticResidual.cpp 
+    ParabolicProblem.cpp 
+    EllipticProblem.cpp 
+    EllipticVMSProblem.cpp 
+    alg/ParseInput.cpp 
+    alg/Basis.cpp 
+    alg/Cubature.cpp 
+    alg/ParallelComm.cpp 
+    alg/AmgXConfigs.cpp 
+    ScalarFunctionBaseFactory.cpp 
+    WeightedSumFunction.cpp 
+    PhysicsScalarFunction.cpp 
+    TensileEnergyDensity.cpp 
+    TensileEnergyDensityLocalMeasure.cpp 
+    VonMisesLocalMeasure.cpp 
+    ThermalVonMisesLocalMeasure.cpp 
+    LeastSquaresFunction.cpp 
+    DivisionFunction.cpp 
+    MassMoment.cpp 
+    MassPropertiesFunction.cpp 
+    IntermediateDensityPenalty.cpp 
+    ScalarFunctionIncBaseFactory.cpp 
+    PhysicsScalarFunctionInc.cpp 
+    J2PlasticityLocalResidual.cpp 
+    LocalVectorFunctionInc.cpp)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${Trilinos_INCLUDE_DIRS})

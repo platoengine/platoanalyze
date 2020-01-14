@@ -15,12 +15,12 @@
 #include "Omega_h_file.hpp"
 #include "Omega_h_teuchos.hpp"
 #include "Omega_h_library.hpp"
-#include "plato/AnalyzeMacros.hpp"
+#include "AnalyzeMacros.hpp"
 
 #include "FEMesh.hpp"
 #include "Fields.hpp"
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 namespace PlatoUtestHelpers
 {

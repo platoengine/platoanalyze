@@ -1,9 +1,5 @@
-/*
 //@HEADER
 // ************************************************************************
-//
-//                                lgr
-//
 // Copyright 2018 National Technology & Engineering Solutions of Sandia,
 // LLC (NTESS).  Under the terms of Contract DE-NA0003525, the U.S. 
 // Government retains certain rights // in this software.
@@ -35,12 +31,8 @@
 // those of the authors and should not be interpreted as representing 
 // official policies, either expressed or implied, of NTESS or the U.S. 
 // Government.
-//
-// Questions? Contact  Glen A. Hansen (gahanse@sandia.gov)
-//
 // ************************************************************************
 //@HEADER
-*/
 
 
 #include <cstdlib>
@@ -48,7 +40,7 @@
 #include <Teuchos_ParameterList.hpp>
 #include <Kokkos_Core.hpp>
 
-#include "LGRConfig.hpp"
+#include "AnalyzeConfig.hpp"
 #include "alg/Run.hpp"
 
 #include "alg/ErrorHandling.hpp"
@@ -71,7 +63,7 @@ void run(
     comm::Machine           machine) {
   if (comm::rank(machine) == 0) {
 
-    std::cout << "\nRunning lgr version " 
+    std::cout << "\nRunning Plato Analyze version " 
               << version_major << "." 
               << version_minor << "." 
               << version_patch << std::endl;

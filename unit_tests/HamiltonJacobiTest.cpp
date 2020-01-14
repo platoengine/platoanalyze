@@ -5,7 +5,7 @@
  *      Author: drnoble
  */
 
-#include "plato/HamiltonJacobi.hpp"
+#include "HamiltonJacobi.hpp"
 #include "Teuchos_UnitTestHarness.hpp"
 #include "PlatoTestHelpers.hpp"
 

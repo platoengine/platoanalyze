@@ -13,12 +13,12 @@
 #include "Teuchos_UnitTestHarness.hpp"
 #include <Teuchos_XMLParameterListHelpers.hpp>
 
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/LinearElasticMaterial.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "ImplicitFunctors.hpp"
+#include "LinearElasticMaterial.hpp"
 
 #ifdef HAVE_AMGX
-#include "plato/alg/AmgXSparseLinearProblem.hpp"
+#include "alg/AmgXSparseLinearProblem.hpp"
 #endif
 
 #include <sstream>
@@ -27,23 +27,23 @@
 #include <type_traits>
 
 #include <Sacado.hpp>
-#include <plato/alg/CrsLinearProblem.hpp>
-#include <plato/alg/ParallelComm.hpp>
+#include <alg/CrsLinearProblem.hpp>
+#include <alg/ParallelComm.hpp>
 
-#include <plato/Simp.hpp>
-#include <plato/ScalarProduct.hpp>
-#include <plato/SimplexFadTypes.hpp>
-#include <plato/SimplexMechanics.hpp>
-#include <plato/WorksetBase.hpp>
-#include <plato/AbstractVectorFunction.hpp>
-#include <plato/VectorFunction.hpp>
-#include <plato/AbstractScalarFunction.hpp>
-#include <plato/InternalElasticEnergy.hpp>
-#include <plato/PhysicsScalarFunction.hpp>
-#include "plato/ApplyConstraints.hpp"
-#include "plato/EllipticProblem.hpp"
-#include "plato/Mechanics.hpp"
-#include "plato/Thermal.hpp"
+#include <Simp.hpp>
+#include <ScalarProduct.hpp>
+#include <SimplexFadTypes.hpp>
+#include <SimplexMechanics.hpp>
+#include <WorksetBase.hpp>
+#include <AbstractVectorFunction.hpp>
+#include <VectorFunction.hpp>
+#include <AbstractScalarFunction.hpp>
+#include <InternalElasticEnergy.hpp>
+#include <PhysicsScalarFunction.hpp>
+#include "ApplyConstraints.hpp"
+#include "EllipticProblem.hpp"
+#include "Mechanics.hpp"
+#include "Thermal.hpp"
 
 #include <fenv.h>
 

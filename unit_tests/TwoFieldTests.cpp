@@ -12,11 +12,11 @@
 #include "Teuchos_UnitTestHarness.hpp"
 #include <Teuchos_XMLParameterListHelpers.hpp>
 
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/LinearThermoelasticMaterial.hpp"
+#include "ImplicitFunctors.hpp"
+#include "LinearThermoelasticMaterial.hpp"
 
 #ifdef HAVE_AMGX
-#include "plato/alg/AmgXSparseLinearProblem.hpp"
+#include "alg/AmgXSparseLinearProblem.hpp"
 #endif
 
 #include <sstream>
@@ -25,22 +25,22 @@
 #include <type_traits>
 
 #include <Sacado.hpp>
-#include <plato/alg/CrsLinearProblem.hpp>
-#include <plato/alg/ParallelComm.hpp>
-#include <plato/Simp.hpp>
-#include <plato/ApplyWeighting.hpp>
-#include <plato/SimplexFadTypes.hpp>
-#include <plato/WorksetBase.hpp>
-#include <plato/VectorFunctionInc.hpp>
-#include <plato/VectorFunctionVMS.hpp>
-#include <plato/StateValues.hpp>
-#include <plato/Plato_Solve.hpp>
-#include "plato/ApplyConstraints.hpp"
-#include "plato/PressureDivergence.hpp"
-#include "plato/StabilizedThermomechanics.hpp"
-#include "plato/ThermalContent.hpp"
-#include "plato/ComputedField.hpp"
-#include "plato/PlatoMathHelpers.hpp"
+#include <alg/CrsLinearProblem.hpp>
+#include <alg/ParallelComm.hpp>
+#include <Simp.hpp>
+#include <ApplyWeighting.hpp>
+#include <SimplexFadTypes.hpp>
+#include <WorksetBase.hpp>
+#include <VectorFunctionInc.hpp>
+#include <VectorFunctionVMS.hpp>
+#include <StateValues.hpp>
+#include <Plato_Solve.hpp>
+#include "ApplyConstraints.hpp"
+#include "PressureDivergence.hpp"
+#include "StabilizedThermomechanics.hpp"
+#include "ThermalContent.hpp"
+#include "ComputedField.hpp"
+#include "PlatoMathHelpers.hpp"
 
 #include <fenv.h>
 

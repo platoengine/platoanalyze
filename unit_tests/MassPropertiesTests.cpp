@@ -8,11 +8,11 @@
 
 #include "PlatoTestHelpers.hpp"
 
-#include "plato/Plato_Diagnostics.hpp"
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/WeightedSumFunction.hpp"
-#include "plato/PhysicsScalarFunction.hpp"
-#include "plato/MassPropertiesFunction.hpp"
+#include "Plato_Diagnostics.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "WeightedSumFunction.hpp"
+#include "PhysicsScalarFunction.hpp"
+#include "MassPropertiesFunction.hpp"
 
 
 namespace MassPropertiesTest

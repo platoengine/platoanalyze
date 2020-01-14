@@ -11,11 +11,11 @@
  
 #include "MatrixIO.hpp"
 
-#include "plato/Mechanics.hpp"
-#include "plato/WorksetBase.hpp"
-#include "plato/VectorFunction.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/StructuralDynamics.hpp"
+#include "Mechanics.hpp"
+#include "WorksetBase.hpp"
+#include "VectorFunction.hpp"
+#include "ImplicitFunctors.hpp"
+#include "StructuralDynamics.hpp"
 
 #include "Teuchos_UnitTestHarness.hpp"
 
