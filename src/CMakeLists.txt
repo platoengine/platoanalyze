@@ -9,7 +9,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${Trilinos_INCLUDE_DIRS})
 
 add_library( analyzelib ${ANALYZE_SOURCES})
-SET_TARGET_PROPERTIES(analyzelib OUTPUT_NAME analyze)
+SET_TARGET_PROPERTIES(analyzelib PROPERTIES OUTPUT_NAME analyze)
 if( CMAKE_INSTALL_PREFIX )
   install( TARGETS analyzelib DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
 endif()

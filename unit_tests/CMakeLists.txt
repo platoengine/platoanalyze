@@ -376,7 +376,7 @@ endif()
 
 if(PLATOANALYZE_ENABLE_MPMD)
   set(AnalyzeApp_HEADERS
-    ${CMAKE_SOURCE_DIR}/src/plato/Analyze_App.hpp
+    ${CMAKE_SOURCE_DIR}/src/Analyze_App.hpp
     PlatoTestHelpers.hpp
   )
   set(AnalyzeApp_SOURCES

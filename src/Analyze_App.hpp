@@ -1,5 +1,5 @@
-#ifndef LGR_APP_HPP
-#define LGR_APP_HPP
+#ifndef ANALYZE_APP_HPP
+#define ANALYZE_APP_HPP
 
 #include <string>
 #include <memory>
