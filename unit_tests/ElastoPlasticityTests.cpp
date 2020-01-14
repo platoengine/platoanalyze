@@ -2333,7 +2333,7 @@ private:
     using Residual        = typename Plato::Evaluation<PhysicsT>::Residual;       /*!< automatic differentiation (AD) type for the residual */
     using GradientX       = typename Plato::Evaluation<PhysicsT>::GradientX;      /*!< AD type for the configuration */
     using GradientZ       = typename Plato::Evaluation<PhysicsT>::GradientZ;      /*!< AD type for the controls */
-    using JacobianPgrad   = typename Plato::Evaluation<PhysicsT>::JacobianN;      /*!< AD type for the nodal pressure gradient */
+    using JacobianPgrad   = typename Plato::Evaluation<PhysicsT>::JacobianN;      /*!< AD type for the projected pressure gradient */
     using LocalJacobianC   = typename Plato::Evaluation<PhysicsT>::LocalJacobian; /*!< AD type for the current local states */
     using LocalJacobianP  = typename Plato::Evaluation<PhysicsT>::LocalJacobianP; /*!< AD type for the previous local states */
     using GlobalJacobianC  = typename Plato::Evaluation<PhysicsT>::Jacobian;      /*!< AD type for the current global states */
@@ -2998,8 +2998,8 @@ private:
         //
         auto tJacobianMatEntries = tAssembledTransposeJacobian->entries();
         mWorksetBase.assembleTransposeJacobian(
-            mNumNodeStatePerCell,
             mNumGlobalDofsPerCell,
+            mNumNodeStatePerCell,
             tJacobianMatEntryOrdinal,
             aJacobianWS,
             tJacobianMatEntries
@@ -3482,7 +3482,6 @@ public:
                                                               aCurrentLocalState, aPrevLocalState,
                                                               aProjPressGrad, aControls, aTimeStep);
         auto tOutput = this->assembleTransposeJacobianPressGrad(tJacobianWS);
-
         return (tOutput);
     }
 };
@@ -5966,7 +5965,8 @@ private:
                                                      aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
 
         // Compute tDrDp_{k+1}^T * lambda_{k+1}
-        Plato::ScalarVector tResidual("Projected Pressure Gradient Residual", mProjectionEq.size());
+        auto tNumProjPressGradDofs = mProjectionEq.size();
+        Plato::ScalarVector tResidual("Projected Pressure Gradient Residual", tNumProjPressGradDofs);
         Plato::MatrixTimesVectorPlusVector(tDrDp_T, aAdjointData.mPreviousGlobalAdjoint, tResidual);
         Plato::scale(static_cast<Plato::Scalar>(-1), tResidual);
 
@@ -9968,7 +9968,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
 }
 
 
-/*
 TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
 {
     // 1. DEFINE PROBLEM
@@ -10016,8 +10015,8 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='25'/>             \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='25'/>             \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='10'/>             \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='10'/>             \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -10074,7 +10073,6 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tObjGrad = tPlasticityProblem.objectiveGradient(tControls, tSolution);
 }
-*/
 
 
 }
