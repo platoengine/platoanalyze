@@ -890,20 +890,20 @@ public:
      * \tparam MatrixEntriesOrdinalType Input container of matrix ordinal
      * \tparam AssembledJacobianType Output container, as a 1-D Kokkos::View
      *
-     * \param [in] aNumRows number of rows
-     * \param [in] aNumColumns number of columns
-     * \param [in] aMatrixEntryOrdinal container of Jacobian entry ordinal (local-to-global ID map)
-     * \param [in] aJacobianWorkset Jacobian cell workset
-     * \param [in/out] aReturnValue assembled Jacobian
+     * \param [in] aNumRowsPerCell     number of rows per matrix
+     * \param [in] aNumColumnsPerCell  number of columns per matrix
+     * \param [in] aMatrixEntryOrdinal Jacobian entry ordinal (i.e. local-to-global ID map)
+     * \param [in] aJacobianWorkset    workset of cell Jacobians
+     * \param [in/out] aReturnValue    assembled transposed Jacobian
     **********************************************************************************/
     template<class MatrixEntriesOrdinalType, class AssembledJacobianType>
-    void assembleJacobian(Plato::OrdinalType aNumRows,
-                          Plato::OrdinalType aNumColumns,
+    void assembleJacobian(Plato::OrdinalType aNumRowsPerCell,
+                          Plato::OrdinalType aNumColumnsPerCell,
                           const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
                           const Plato::ScalarArray3D & aJacobianWorkset,
                           AssembledJacobianType & aReturnValue) const
     {
-        Plato::assemble_jacobian(mNumCells, aNumRows, aNumColumns, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
+        Plato::assemble_jacobian(mNumCells, aNumRowsPerCell, aNumColumnsPerCell, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
     }
 
     /******************************************************************************//**
@@ -913,20 +913,20 @@ public:
      * \tparam JacobianWorksetType Input container, as a 2-D Kokkos::View
      * \tparam AssembledJacobianType Output container, as a 1-D Kokkos::View
      *
-     * \param [in] aNumRows number of rows
-     * \param [in] aNumColumns number of columns
-     * \param [in] aMatrixEntryOrdinal container of Jacobian entry ordinal (local-to-global ID map)
-     * \param [in] aJacobianWorkset Jacobian cell workset
-     * \param [in/out] aReturnValue assembled transposed Jacobian
+     * \param [in] aNumRowsPerCell     number of rows per matrix - (use row count from untransposed matrix)
+     * \param [in] aNumColumnsPerCell  number of columns per matrix - (use column count from untransposed matrix)
+     * \param [in] aMatrixEntryOrdinal Jacobian entry ordinal (i.e. local-to-global ID map)
+     * \param [in] aJacobianWorkset    workset of cell Jacobians
+     * \param [in/out] aReturnValue    assembled transposed Jacobian
     **********************************************************************************/
     template<class MatrixEntriesOrdinalType, class JacobianWorksetType, class AssembledJacobianType>
-    void assembleTransposeJacobian(Plato::OrdinalType aNumRows,
-                                   Plato::OrdinalType aNumColumns,
+    void assembleTransposeJacobian(Plato::OrdinalType aNumRowsPerCell,
+                                   Plato::OrdinalType aNumColumnsPerCell,
                                    const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
                                    const JacobianWorksetType & aJacobianWorkset,
                                    AssembledJacobianType & aReturnValue) const
     {
-        Plato::assemble_transpose_jacobian(mNumCells, aNumRows, aNumColumns, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
+        Plato::assemble_transpose_jacobian(mNumCells, aNumRowsPerCell, aNumColumnsPerCell, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
     }
 
 };
