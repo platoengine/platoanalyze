@@ -154,6 +154,19 @@ endif()
 target_include_directories(analyze PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(analyze analyzelib)
 
+option(PLATOANALYZE_ENABLE_ROCKET "Enable building the rocket app" OFF)
+if(PLATOANALYZE_ENABLE_ROCKET)
+  add_executable(
+    ROCKET
+    src/AlgebraicRocketMain.cpp
+  )
+  if( CMAKE_INSTALL_PREFIX )
+    install( TARGETS ROCKET DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
+  endif()
+  target_include_directories(ROCKET PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  target_link_libraries(ROCKET analyzelib)
+endif()
+
 IF (DEFINED AMGX_PREFIX)
   ADD_DEFINITIONS(-DHAVE_AMGX)
   FIND_PATH(AMGX_INCLUDE_DIR NAMES amgx_c.h PATHS ${AMGX_PREFIX}/include)
@@ -271,108 +284,21 @@ if (PLATOANALYZE_ENABLE_MPMD)
       endif()
   endif()
 
+  if(PLATOANALYZE_ENABLE_ROCKET)
+    add_executable(
+      ROCKET_MPMD
+      src/PlatoRocketApp.cpp
+      src/PlatoRocketAppMPMD.cpp
+    )  
+    if( CMAKE_INSTALL_PREFIX )
+      install( TARGETS ROCKET_MPMD DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
+    endif()
+    target_include_directories(ROCKET_MPMD PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_include_directories(ROCKET_MPMD PRIVATE "${PLATOENGINE_PREFIX}/include")
+    target_link_libraries(ROCKET_MPMD ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
+  endif()
 
 endif()
-
-# ###### START ROCKET APP EXECUTABLE ######
-# if (LGR_ENABLE_PLATO_MPMD)
-#   FIND_PACKAGE(Epetra REQUIRED)
-#   set(PLATO_PREFIX "" CACHE STRING "Path to Plato install")
-#   find_library(PLATO_DATA_LAYER_LIB NAMES PlatoDataLayer PATHS ${PLATO_PREFIX}/lib)
-#   find_library(PLATO_INTERFACE_LIB NAMES PlatoInterface PATHS ${PLATO_PREFIX}/lib)
-#   find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
-#   find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
-#   find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
-#   find_package(Epetra REQUIRED)
-#   find_package(AztecOO REQUIRED)
-#   find_package(SEACASExodus REQUIRED)
-#   find_package(SEACASNemesis REQUIRED)
-#   find_package(Shards REQUIRED)
-#   find_package(Intrepid REQUIRED)
-#   find_package(TeuchosCore REQUIRED)
-#   add_executable(
-#     ROCKET_MPMD
-#     src/plato/PlatoRocketApp.cpp
-#     src/plato/PlatoRocketAppMPMD.cpp
-#   )
-#   if( CMAKE_INSTALL_PREFIX )
-#     install( TARGETS ROCKET_MPMD DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
-#   endif()
-#   target_include_directories(ROCKET_MPMD PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-#   target_include_directories(ROCKET_MPMD PRIVATE "${PLATO_PREFIX}/include")
-#   set(PLATO_LIBS
-#       ${PLATO_DATA_LAYER_LIB}
-#       ${PLATO_INTERFACE_LIB}
-#       ${PLATO_ANALYZE_LIB}
-#       ${PLATO_PARSER_LIB}
-#       ${PLATO_EXCEPTIONS_LIB}
-#       aztecoo
-#       epetra
-#       intrepid
-#       shards
-#       sacado
-#       teuchoscore
-#       nemesis
-#       exodus
-#      )
-
-#   if (LGR_ENABLE_PLATO_GEOMETRY)
-#     find_library(PLATO_GEOMETRY_MLS_LIB NAMES PlatoGeometryMLS PATHS ${PLATO_PREFIX}/lib)
-#     find_library(PLATO_GEOMETRY_COGENT_LIB NAMES PlatoGeometryCogent PATHS ${PLATO_PREFIX}/lib)
-#     find_package(Pamgen REQUIRED)
-#     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_MLS_LIB} ${PLATO_GEOMETRY_COGENT_LIB} pamgen)
-#   endif()
-
-#   target_link_libraries(ROCKET_MPMD ${PLATO_LIBS} ${PLATO_LIBS} lgrtk)
-
-# endif()
-# ###### END ROCKET APP EXECUTABLE ######
-
-# ###### START ROCKET EXECUTABLE ######
-# if (LGR_ENABLE_PLATO_MPMD)
-#   FIND_PACKAGE(Epetra REQUIRED)
-#   set(PLATO_PREFIX "" CACHE STRING "Path to Plato install")
-#   find_library(PLATO_DATA_LAYER_LIB NAMES PlatoDataLayer PATHS ${PLATO_PREFIX}/lib)
-#   find_library(PLATO_INTERFACE_LIB NAMES PlatoInterface PATHS ${PLATO_PREFIX}/lib)
-#   find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATO_PREFIX}/lib)
-#   find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATO_PREFIX}/lib)
-#   find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATO_PREFIX}/lib)
-#   find_package(Epetra REQUIRED)
-#   find_package(AztecOO REQUIRED)
-#   find_package(SEACASExodus REQUIRED)
-#   find_package(SEACASNemesis REQUIRED)
-#   find_package(Shards REQUIRED)
-#   find_package(Intrepid REQUIRED)
-#   find_package(TeuchosCore REQUIRED)
-#   add_executable(
-#     ROCKET
-#     src/plato/AlgebraicRocketMain.cpp
-#   )
-#   if( CMAKE_INSTALL_PREFIX )
-#     install( TARGETS ROCKET DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
-#   endif()
-#   target_include_directories(ROCKET PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-#   target_include_directories(ROCKET PRIVATE "${PLATO_PREFIX}/include")
-#   set(PLATO_LIBS
-#       ${PLATO_DATA_LAYER_LIB}
-#       ${PLATO_INTERFACE_LIB}
-#       ${PLATO_ANALYZE_LIB}
-#       ${PLATO_PARSER_LIB}
-#       ${PLATO_EXCEPTIONS_LIB}
-#       aztecoo
-#       epetra
-#       intrepid
-#       shards
-#       sacado
-#       teuchoscore
-#       nemesis
-#       exodus
-#      )
-
-#   target_link_libraries(ROCKET ${PLATO_LIBS} ${PLATO_LIBS} lgrtk)
-
-# endif()
-###### END ROCKET EXECUTABLE ######
 
 list(REVERSE Trilinos_TPL_LIBRARIES)
 list(REMOVE_DUPLICATES Trilinos_TPL_LIBRARIES)
