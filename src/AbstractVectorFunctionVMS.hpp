@@ -10,8 +10,8 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Abstract vector function (i.e. PDE) interface for variational multiscale
- * @tparam EvaluationType evaluation type use to determine automatic differentiation
+ * \brief Abstract vector function (i.e. PDE) interface for Variational Multi-Scale (VMS)
+ * \tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
  **********************************************************************************/
 template<typename EvaluationType>
@@ -24,10 +24,10 @@ protected:
 
 public:
     /******************************************************************************//**
-     * @brief Constructor
-     * @param [in] aMesh volume mesh database
-     * @param [in] aMeshSets surface mesh database
-     * @param [in] aDataMap PLATO Analyze database
+     * \brief Constructor
+     * \param [in] aMesh volume mesh database
+     * \param [in] aMeshSets surface mesh database
+     * \param [in] aDataMap PLATO Analyze database
     **********************************************************************************/
     explicit AbstractVectorFunctionVMS(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap) :
             mMesh(aMesh),
@@ -37,15 +37,15 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
     **********************************************************************************/
     virtual ~AbstractVectorFunctionVMS()
     {
     }
 
     /****************************************************************************//**
-    * @brief Return reference to Omega_h mesh database
-    * @return volume mesh database
+    * \brief Return reference to Omega_h mesh database
+    * \return volume mesh database
     ********************************************************************************/
     decltype(mMesh) getMesh() const
     {
@@ -53,8 +53,8 @@ public:
     }
 
     /****************************************************************************//**
-    * @brief Return reference to Omega_h mesh sets
-    * @return surface mesh database
+    * \brief Return reference to Omega_h mesh sets
+    * \return surface mesh database
     ********************************************************************************/
     decltype(mMeshSets) getMeshSets() const
     {
@@ -62,13 +62,13 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate vector function
-     * @param [in] aState 2D array with state variables (C,DOF)
-     * @param [in] aNodeState 2D array with state variables (C,D*N)
-     * @param [in] aControl 2D array with control variables (C,N)
-     * @param [in] aConfig 3D array with control variables (C,N,D)
-     * @param [in] aResult 1D array with control variables (C,DOF)
-     * @param [in] aTimeStep current time step
+     * \brief Evaluate vector function
+     * \param [in] aState 2D array with state variables (C,DOF)
+     * \param [in] aNodeState 2D array with state variables (C,D*N)
+     * \param [in] aControl 2D array with control variables (C,N)
+     * \param [in] aConfig 3D array with control variables (C,N,D)
+     * \param [in] aResult 1D array with control variables (C,DOF)
+     * \param [in] aTimeStep current time step
      * Nomenclature: C = number of cells, DOF = number of degrees of freedom per cell
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/

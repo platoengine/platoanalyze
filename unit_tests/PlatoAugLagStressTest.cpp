@@ -390,9 +390,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_CheckThermalVonMises3D)
         tState(tIndex) = tTemperature;
     }
     , "fill specific vector entry globally");
-    PlatoUtestHelpers::set_dof_in_scalar_vector_on_boundary_3D(*tMesh, "x1", tState, tDofStride, 0, 0.1 - 0.05);
-    PlatoUtestHelpers::set_dof_in_scalar_vector_on_boundary_3D(*tMesh, "y1", tState, tDofStride, 1, 0.1 - 0.10);
-    PlatoUtestHelpers::set_dof_in_scalar_vector_on_boundary_3D(*tMesh, "z1", tState, tDofStride, 2, 0.1 + 0.05);
+    PlatoUtestHelpers::set_dof_value_in_vector_on_boundary_3D(*tMesh, "x1", tState, tDofStride, 0, 0.1 - 0.05);
+    PlatoUtestHelpers::set_dof_value_in_vector_on_boundary_3D(*tMesh, "y1", tState, tDofStride, 1, 0.1 - 0.10);
+    PlatoUtestHelpers::set_dof_value_in_vector_on_boundary_3D(*tMesh, "z1", tState, tDofStride, 2, 0.1 + 0.05);
     Plato::ScalarMultiVectorT<StateT> tStateWS("state workset", tNumCells, tDofsPerCell);
     tWorksetBase.worksetState(tState, tStateWS);
 
@@ -423,7 +423,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_CheckThermalVonMises3D)
                          tLocalMeasure(tMaterialModel, tName);
 
     Plato::ScalarVector tResult("ThermalVonMises", tNumCells);
-    tLocalMeasure(tStateWS, tConfigWS, tDataMap, tResult);
+    tLocalMeasure(tStateWS, tConfigWS, tResult);
 
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);

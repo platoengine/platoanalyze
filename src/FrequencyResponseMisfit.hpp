@@ -50,7 +50,7 @@ private:
     Plato::ScalarMultiVector mExpStates;
     std::vector<Plato::Scalar> mTimeSteps;
 
-    Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode> mStateEntryOrdinal;
+    Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode> mGlobalStateEntryOrdinal;
 
 public:
     /*************************************************************************/
@@ -61,7 +61,7 @@ public:
             Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Frequency Response Misfit"),
             mExpStates(),
             mTimeSteps(),
-            mStateEntryOrdinal(Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode>(&aMesh))
+            mGlobalStateEntryOrdinal(Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode>(&aMesh))
     /*************************************************************************/
     {
         this->readTimeSteps(aParamList);
@@ -77,7 +77,7 @@ public:
             Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Frequency Response Misfit"),
             mExpStates(aExpStates),
             mTimeSteps(aTimeSteps),
-            mStateEntryOrdinal(Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode>(&aMesh))
+            mGlobalStateEntryOrdinal(Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode>(&aMesh))
     /*************************************************************************/
     {
     }
@@ -109,7 +109,7 @@ public:
         auto tMyExpStates = Kokkos::subview(mExpStates, tIndex, Kokkos::ALL());
         Plato::ScalarMultiVector tExpStatesWorkSet("ExpStatesWorkSet", tNumCells, mNumDofsPerCell);
         Plato::workset_state_scalar_scalar<mNumDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mStateEntryOrdinal, tMyExpStates, tExpStatesWorkSet);
+            (tNumCells, mGlobalStateEntryOrdinal, tMyExpStates, tExpStatesWorkSet);
         assert(tExpStatesWorkSet.size() == aStates.size());
 
         Plato::ComputeFrequencyResponseMisfit<EvaluationType::SpatialDim> tComputeMisfit;

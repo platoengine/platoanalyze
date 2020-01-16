@@ -16,7 +16,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Physics scalar function class 
+ * \brief Physics scalar function class
  **********************************************************************************/
 template<typename PhysicsT>
 class PhysicsScalarFunction : public ScalarFunctionBase, public Plato::WorksetBase<PhysicsT>
@@ -30,7 +30,7 @@ private:
     using Plato::WorksetBase<PhysicsT>::mNumNodes; /*!< total number of nodes in the mesh */
     using Plato::WorksetBase<PhysicsT>::mNumCells; /*!< total number of cells/elements in the mesh */
 
-    using Plato::WorksetBase<PhysicsT>::mStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
+    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
     using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal; /*!< number of degree of freedom per cell/element */
     using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal; /*!< number of degree of freedom per cell/element */
 
@@ -48,9 +48,11 @@ private:
 
     std::string mFunctionName;/*!< User defined function name */
 
-	/******************************************************************************//**
-     * @brief Initialization of Physics Scalar Function
-     * @param [in] aInputParams input parameters database
+// private access functions
+private:
+    /******************************************************************************//**
+     * \brief Initialization of Physics Scalar Function
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void initialize (Omega_h::Mesh& aMesh, 
                      Omega_h::MeshSets& aMeshSets, 
@@ -77,12 +79,12 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Primary physics scalar function constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
-     * @param [in] aName user defined function name
+     * \brief Primary physics scalar function constructor
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Engine and Analyze data map
+     * \param [in] aInputParams input parameters database
+     * \param [in] aName user defined function name
     **********************************************************************************/
     PhysicsScalarFunction(Omega_h::Mesh& aMesh,
             Omega_h::MeshSets& aMeshSets,
@@ -97,9 +99,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Secondary physics scalar function constructor, used for unit testing
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * \brief Secondary physics scalar function constructor, used for unit testing
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
     **********************************************************************************/
     PhysicsScalarFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
             Plato::WorksetBase<PhysicsT>(aMesh),
@@ -113,8 +115,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Allocate scalar function using the residual automatic differentiation type
-     * @param [in] aInput scalar function
+     * \brief Allocate scalar function using the residual automatic differentiation type
+     * \param [in] aInput scalar function
     **********************************************************************************/
     void allocateValue(const std::shared_ptr<Plato::AbstractScalarFunction<Residual>>& aInput)
     {
@@ -122,8 +124,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Allocate scalar function using the Jacobian automatic differentiation type
-     * @param [in] aInput scalar function
+     * \brief Allocate scalar function using the Jacobian automatic differentiation type
+     * \param [in] aInput scalar function
     **********************************************************************************/
     void allocateGradientU(const std::shared_ptr<Plato::AbstractScalarFunction<Jacobian>>& aInput)
     {
@@ -131,8 +133,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Allocate scalar function using the GradientZ automatic differentiation type
-     * @param [in] aInput scalar function
+     * \brief Allocate scalar function using the GradientZ automatic differentiation type
+     * \param [in] aInput scalar function
     **********************************************************************************/
     void allocateGradientZ(const std::shared_ptr<Plato::AbstractScalarFunction<GradientZ>>& aInput)
     {
@@ -140,8 +142,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Allocate scalar function using the GradientX automatic differentiation type
-     * @param [in] aInput scalar function
+     * \brief Allocate scalar function using the GradientX automatic differentiation type
+     * \param [in] aInput scalar function
     **********************************************************************************/
     void allocateGradientX(const std::shared_ptr<Plato::AbstractScalarFunction<GradientX>>& aInput)
     {
@@ -149,9 +151,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
+     * \brief Update physics-based parameters within optimization iterations
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
      **********************************************************************************/
     void updateProblem(const Plato::ScalarVector & aState, const Plato::ScalarVector & aControl) const
     {
@@ -171,11 +173,11 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate physics scalar function
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return scalar physics function evaluation
+     * \brief Evaluate physics scalar function
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return scalar physics function evaluation
     **********************************************************************************/
     Plato::Scalar value(const Plato::ScalarVector & aState,
                         const Plato::ScalarVector & aControl,
@@ -213,18 +215,18 @@ public:
         // sum across elements
         //
         auto tReturnVal = Plato::local_result_sum<Plato::Scalar>(mNumCells, tResult);
-printf("%s value = %12.4e\n", (mScalarFunctionValue->getName()).c_str(), tReturnVal);
+        printf("%s value = %12.4e\n", (mScalarFunctionValue->getName()).c_str(), tReturnVal);
         mScalarFunctionValue->postEvaluate(tReturnVal);
 
         return tReturnVal;
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the configuration parameters
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the physics scalar function wrt the configuration parameters
+     * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the configuration parameters
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the physics scalar function wrt the configuration parameters
     **********************************************************************************/
     Plato::ScalarVector gradient_x(const Plato::ScalarVector & aState,
                                    const Plato::ScalarVector & aControl,
@@ -261,10 +263,10 @@ printf("%s value = %12.4e\n", (mScalarFunctionValue->getName()).c_str(), tReturn
         // create and assemble to return view
         //
         Plato::ScalarVector tObjGradientX("objective gradient configuration", mNumSpatialDims * mNumNodes);
-        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumSpatialDims>(mNumCells,
-                                                                             mConfigEntryOrdinal,
-                                                                             tResult,
-                                                                             tObjGradientX);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>(mNumCells,
+                                                                               mConfigEntryOrdinal,
+                                                                               tResult,
+                                                                               tObjGradientX);
 
         Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
         mScalarFunctionGradientX->postEvaluate(tObjGradientX, tObjectiveValue);
@@ -273,11 +275,11 @@ printf("%s value = %12.4e\n", (mScalarFunctionValue->getName()).c_str(), tReturn
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the physics scalar function wrt the state variables
+     * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the physics scalar function wrt the state variables
     **********************************************************************************/
     Plato::ScalarVector gradient_u(const Plato::ScalarVector & aState,
                                    const Plato::ScalarVector & aControl,
@@ -314,21 +316,18 @@ printf("%s value = %12.4e\n", (mScalarFunctionValue->getName()).c_str(), tReturn
         // create and assemble to return view
         //
         Plato::ScalarVector tObjGradientU("objective gradient state", mNumDofsPerNode * mNumNodes);
-        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(mNumCells,
-                                                                             mStateEntryOrdinal,
-                                                                             tResult,
-                                                                             tObjGradientU);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, tResult, tObjGradientU);
         Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
         mScalarFunctionGradientU->postEvaluate(tObjGradientU, tObjectiveValue);
         return tObjGradientU;
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the control variables
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the physics scalar function wrt the control variables
+     * \brief Evaluate gradient of the physics scalar function with respect to (wrt) the control variables
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the physics scalar function wrt the control variables
     **********************************************************************************/
     Plato::ScalarVector gradient_z(const Plato::ScalarVector & aState,
                                    const Plato::ScalarVector & aControl,
@@ -366,7 +365,7 @@ printf("%s value = %12.4e\n", (mScalarFunctionValue->getName()).c_str(), tReturn
         // create and assemble to return view
         //
         Plato::ScalarVector tObjGradientZ("objective gradient control", mNumNodes);
-        Plato::assemble_scalar_gradient<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, tResult, tObjGradientZ);
+        Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, tResult, tObjGradientZ);
 
         Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
         mScalarFunctionGradientZ->postEvaluate(tObjGradientZ, tObjectiveValue);
@@ -374,8 +373,8 @@ printf("%s value = %12.4e\n", (mScalarFunctionValue->getName()).c_str(), tReturn
     }
 
     /******************************************************************************//**
-     * @brief Set user defined function name
-     * @param [in] function name
+     * \brief Set user defined function name
+     * \param [in] function name
     **********************************************************************************/
     void setFunctionName(const std::string aFunctionName)
     {
@@ -383,10 +382,10 @@ printf("%s value = %12.4e\n", (mScalarFunctionValue->getName()).c_str(), tReturn
     }
 
     /******************************************************************************//**
-     * @brief Return user defined function name
-     * @return User defined function name
+     * \brief Return user defined function name
+     * \return User defined function name
     **********************************************************************************/
-    std::string name() const
+    decltype(mFunctionName) name() const
     {
         return mFunctionName;
     }

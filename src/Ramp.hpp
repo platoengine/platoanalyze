@@ -24,7 +24,7 @@ public:
 
     RAMP(Teuchos::ParameterList & aParamList)
     {
-        mPenaltyParam = aParamList.get < Plato::Scalar > ("Exponent");
+        mPenaltyParam = aParamList.get < Plato::Scalar > ("Exponent", 3.0);
         mMinValue = aParamList.get < Plato::Scalar > ("Minimum Value", 0.0);
     }
 

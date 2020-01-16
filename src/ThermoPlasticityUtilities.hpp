@@ -28,7 +28,7 @@ class ThermoPlasticityUtilities
     * @param [in] aThermalExpansionCoefficient thermal expansion coefficient
     * @param [in] aReferenceTemperature reference temperature
     ******************************************************************************/
-    ThermoPlasticityUtilities(Plato::Scalar aThermalExpansionCoefficient, Plato::Scalar aReferenceTemperature) :
+    ThermoPlasticityUtilities(Plato::Scalar aThermalExpansionCoefficient = 0.0, Plato::Scalar aReferenceTemperature = 0.0) :
       mThermalExpansionCoefficient(aThermalExpansionCoefficient),
       mReferenceTemperature(aReferenceTemperature)
     {
@@ -104,9 +104,10 @@ class ThermoPlasticityUtilities
     }
 
     // Subtract the plastic strain
-    aElasticStrain(aCellOrdinal, 0) -= aLocalState(aCellOrdinal, 2);
-    aElasticStrain(aCellOrdinal, 1) -= aLocalState(aCellOrdinal, 3);
-    aElasticStrain(aCellOrdinal, 2) -= aLocalState(aCellOrdinal, 4);
+    aElasticStrain(aCellOrdinal, 0) -= aLocalState(aCellOrdinal, 2); // epsilon_{11}^{e}
+    aElasticStrain(aCellOrdinal, 1) -= aLocalState(aCellOrdinal, 3); // epsilon_{22}^{e}
+    aElasticStrain(aCellOrdinal, 2) -= aLocalState(aCellOrdinal, 4); // epsilon_{12}^{e}
+    aElasticStrain(aCellOrdinal, 3) -= aLocalState(aCellOrdinal, 5); // epsilon_{33}^{e}
   }
 
   /******************************************************************************//**
@@ -199,9 +200,10 @@ class ThermoPlasticityUtilities
     }
 
     // Subtract plastic strain
-    aElasticStrain(aCellOrdinal, 0) -= aLocalState(aCellOrdinal, 2);
-    aElasticStrain(aCellOrdinal, 1) -= aLocalState(aCellOrdinal, 3);
-    aElasticStrain(aCellOrdinal, 2) -= aLocalState(aCellOrdinal, 4);
+    aElasticStrain(aCellOrdinal, 0) -= aLocalState(aCellOrdinal, 2); // epsilon_{11}^{e}
+    aElasticStrain(aCellOrdinal, 1) -= aLocalState(aCellOrdinal, 3); // epsilon_{22}^{e}
+    aElasticStrain(aCellOrdinal, 2) -= aLocalState(aCellOrdinal, 4); // epsilon_{12}^{e}
+    aElasticStrain(aCellOrdinal, 3) -= aLocalState(aCellOrdinal, 5); // epsilon_{33}^{e}
 
     // Compute the temperature
     GlobalStateT tTemperature = 0.0;
@@ -215,6 +217,7 @@ class ThermoPlasticityUtilities
     GlobalStateT tThermalStrain = mThermalExpansionCoefficient * (tTemperature - mReferenceTemperature);
     aElasticStrain(aCellOrdinal, 0) -= tThermalStrain;
     aElasticStrain(aCellOrdinal, 1) -= tThermalStrain;
+    aElasticStrain(aCellOrdinal, 3) -= tThermalStrain;
   }
 
   /******************************************************************************//**

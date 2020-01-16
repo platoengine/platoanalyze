@@ -15,8 +15,8 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief VonMises local measure class for use in Augmented Lagrange constraint formulation
- * @tparam EvaluationType evaluation type use to determine automatic differentiation
+ * \brief VonMises local measure class for use in Augmented Lagrange constraint formulation
+ * \tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
@@ -35,9 +35,9 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Primary constructor
-     * @param [in] aInputParams input parameters database
-     * @param [in] aName local measure name
+     * \brief Primary constructor
+     * \param [in] aInputParams input parameters database
+     * \param [in] aName local measure name
      **********************************************************************************/
     VonMisesLocalMeasure(Teuchos::ParameterList & aInputParams,
                          const std::string & aName) : 
@@ -49,9 +49,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Constructor tailored for unit testing
-     * @param [in] aCellStiffMatrix stiffness matrix
-     * @param [in] aName local measure name
+     * \brief Constructor tailored for unit testing
+     * \param [in] aCellStiffMatrix stiffness matrix
+     * \param [in] aName local measure name
      **********************************************************************************/
     VonMisesLocalMeasure(const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> & aCellStiffMatrix,
                          const std::string aName) :
@@ -61,23 +61,21 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
+     * \brief Destructor
      **********************************************************************************/
     virtual ~VonMisesLocalMeasure()
     {
     }
 
     /******************************************************************************//**
-     * @brief Evaluate vonmises local measure
-     * @param [in] aState 2D container of state variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [in] aDataMap map to stored data
-     * @param [out] aResult 1D container of cell local measure values
+     * \brief Evaluate vonmises local measure
+     * \param [in] aState 2D container of state variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [out] aResult 1D container of cell local measure values
     **********************************************************************************/
-    virtual void operator()(const Plato::ScalarMultiVectorT<StateT> & aStateWS,
-                            const Plato::ScalarArray3DT<ConfigT> & aConfigWS,
-                            Plato::DataMap & aDataMap,
-                            Plato::ScalarVectorT<ResultT> & aResultWS)
+    void operator()(const Plato::ScalarMultiVectorT<StateT> & aStateWS,
+                    const Plato::ScalarArray3DT<ConfigT> & aConfigWS,
+                    Plato::ScalarVectorT<ResultT> & aResultWS) override
     {
         const Plato::OrdinalType tNumCells = aResultWS.size();
         using StrainT = typename Plato::fad_type_t<SimplexPhysics, StateT, ConfigT>;

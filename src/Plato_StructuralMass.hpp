@@ -22,8 +22,7 @@ template<Plato::OrdinalType SpaceDim>
 class StructuralMass : public Plato::Simplex<SpaceDim>
 {
 private:
-    static constexpr Plato::OrdinalType mSpaceDim = Plato::Simplex<SpaceDim>::mNumSpatialDims; /*!< spatial dimensions */
-    static constexpr Plato::OrdinalType mNumNodesPerCell = Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per element/cell */
+    static constexpr auto mNumNodesPerCell = Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per element/cell */
 
     Plato::Scalar mMaterialDensity; /*!< material density (note: constant for all elements/cells) */
 

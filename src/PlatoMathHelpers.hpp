@@ -7,6 +7,7 @@
 #ifndef PLATOMATHHELPERS_HPP_
 #define PLATOMATHHELPERS_HPP_
 
+#include <sstream>
 #include <cassert>
 
 #include <Kokkos_Macros.hpp>
@@ -23,14 +24,14 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Device only function used to compare two values (conditional values)
+ * \brief Device only function used to compare two values (conditional values)
  * between themselves and return the decision (consequent value). The conditional
  * expression evaluated in this function is defined as if(X > Y) A = B.
- * @param [in] aConditionalValOne conditional value given by X
- * @param [in] aConditionalValTwo conditional value given by Y
- * @param [in] aConsequentValOne consequent value given by A
- * @param [in] aConsequentValTwo consequent value given by B
- * @return result/decision
+ * \param [in] aConditionalValOne conditional value given by X
+ * \param [in] aConditionalValTwo conditional value given by Y
+ * \param [in] aConsequentValOne consequent value given by A
+ * \param [in] aConsequentValTwo consequent value given by B
+ * \return result/decision
 **********************************************************************************/
 DEVICE_TYPE inline Plato::Scalar
 conditional_expression(const Plato::Scalar & aX,
@@ -48,10 +49,10 @@ conditional_expression(const Plato::Scalar & aX,
 // function conditional_expression
 
 /******************************************************************************//**
- * @brief Fill host 1D container with random numbers
- * @param [in] aLowerBound lower bounds on random numbers
- * @param [in] aUpperBound upper bounds on random numbers
- * @param [in] aOutput output 1D container
+ * \brief Fill host 1D container with random numbers
+ * \param [in] aLowerBound lower bounds on random numbers
+ * \param [in] aUpperBound upper bounds on random numbers
+ * \param [in] aOutput output 1D container
 **********************************************************************************/
 template<typename VecType>
 inline void random(const Plato::Scalar & aLowerBound, const Plato::Scalar & aUpperBound, VecType & aOutput)
@@ -68,15 +69,22 @@ inline void random(const Plato::Scalar & aLowerBound, const Plato::Scalar & aUpp
 // function random
 
 /******************************************************************************//**
- * @brief Compute inner product
- * @param [in] aVec1 1D container
- * @param [in] aVec2 1D container
- * @return inner product
+ * \brief Compute inner product
+ * \param [in] aVec1 1D container
+ * \param [in] aVec2 1D container
+ * \return inner product
 **********************************************************************************/
 template<typename VecOneT, typename VecTwoT>
 inline Plato::Scalar dot(const VecOneT & aVec1, const VecTwoT & aVec2)
 {
-    assert(aVec2.size() == aVec1.size());
+    if(aVec2.size() != aVec1.size())
+    {
+        std::stringstream tMsg;
+        tMsg << "DIMENSION MISMATCH. VECTOR ONE HAS SIZE = " << aVec1.size()
+                << " AND VECTOR TWO HAS SIZE = " << aVec2.size() << ".\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
     Plato::Scalar tOutput = 0.;
     const Plato::OrdinalType tSize = aVec1.size();
     Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0, tSize),
@@ -89,13 +97,18 @@ inline Plato::Scalar dot(const VecOneT & aVec1, const VecTwoT & aVec2)
 // function dot
 
 /******************************************************************************//**
- * @brief Compute the norm/length of a vector
- * @param [in] aVector 1D container
- * @return norm/length
+ * \brief Compute the norm/length of a vector
+ * \param [in] aVector 1D container
+ * \return norm/length
 **********************************************************************************/
 template<typename VecOneT>
 inline Plato::Scalar norm(const VecOneT & aVector)
 {
+    if(aVector.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
     const Plato::Scalar tDot = Plato::dot(aVector, aVector);
     const Plato::Scalar tOutput = std::sqrt(tDot);
     return (tOutput);
@@ -103,13 +116,18 @@ inline Plato::Scalar norm(const VecOneT & aVector)
 // function norm
 
 /******************************************************************************//**
- * @brief Set all the elements to a scalar value
- * @param [in] aInput scalar value
- * @param [out] aVector 1D container
+ * \brief Set all the elements to a scalar value
+ * \param [in] aInput scalar value
+ * \param [out] aVector 1D container
 **********************************************************************************/
 template<typename VectorT>
 inline void fill(const Plato::Scalar & aInput, const VectorT & aVector)
 {
+    if(aVector.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
     Plato::OrdinalType tNumLocalVals = aVector.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
@@ -119,14 +137,21 @@ inline void fill(const Plato::Scalar & aInput, const VectorT & aVector)
 // function fill
 
 /******************************************************************************//**
- * @brief Copy input 1D container into output 1D container
- * @param [in] aInput 1D container
- * @param [out] aOutput 1D container
+ * \brief Copy input 1D container into output 1D container
+ * \param [in] aInput 1D container
+ * \param [out] aOutput 1D container
 **********************************************************************************/
 template<typename VecOneT, typename VecTwoT>
 inline void copy(const VecOneT & aInput, const VecTwoT & aOutput)
 {
-    assert(aInput.size() == aOutput.size());
+    if(aInput.size() != aOutput.size())
+    {
+        std::stringstream tMsg;
+        tMsg << "DIMENSION MISMATCH. INPUT VECTOR HAS SIZE = " << aInput.size()
+                << " AND OUTPUT VECTOR HAS SIZE = " << aOutput.size() << ".\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
     Plato::OrdinalType tNumLocalVals = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
@@ -136,14 +161,19 @@ inline void copy(const VecOneT & aInput, const VecTwoT & aOutput)
 // function copy
 
 /******************************************************************************//**
- * @brief Scale all the elements by input scalar value
- * @param [in] aInput scalar value
- * @param [out] aOutput 1D container
+ * \brief Scale all the elements by input scalar value
+ * \param [in] aInput scalar value
+ * \param [out] aOutput 1D container
 **********************************************************************************/
 template<typename VecT>
 inline void scale(const Plato::Scalar & aInput, const VecT & aVector)
 {
-    int tNumLocalVals = aVector.size();
+    if(aVector.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
+    Plato::OrdinalType tNumLocalVals = aVector.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
         aVector(aOrdinal) *= aInput;
@@ -152,15 +182,22 @@ inline void scale(const Plato::Scalar & aInput, const VecT & aVector)
 // function scale
 
 /******************************************************************************//**
- * @brief Update elements of B with scaled values of A, /f$ B = B + alpha*A /f$
- * @param [in] aAlpha multiplier of 1D container A
- * @param [in] aInput input 1D container
- * @param [out] aOutput output 1D container
+ * \brief Update elements of B with scaled values of A, /f$ B = B + alpha*A /f$
+ * \param [in] aAlpha multiplier of 1D container A
+ * \param [in] aInput input 1D container
+ * \param [out] aOutput output 1D container
 **********************************************************************************/
 template<typename VecT>
 inline void axpy(const Plato::Scalar & aAlpha, const VecT & aInput, const VecT & aOutput)
 {
-    assert(aInput.size() == aOutput.size());
+    if(aInput.size() != aOutput.size())
+    {
+        std::stringstream tMsg;
+        tMsg << "DIMENSION MISMATCH. INPUT VECTOR HAS SIZE = " << aInput.size()
+                << " AND OUTPUT VECTOR HAS SIZE = " << aOutput.size() << ".\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
     Plato::OrdinalType tNumLocalVals = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
@@ -170,16 +207,23 @@ inline void axpy(const Plato::Scalar & aAlpha, const VecT & aInput, const VecT &
 // function axpy
 
 /******************************************************************************//**
- * @brief Update elements of B with scaled values of A, /f$ B = beta*B + alpha*A /f$
- * @param [in] aAlpha multiplier of 1D container A
- * @param [in] aInput input 1D container
- * @param [in] aBeta multiplier of 1D container B
- * @param [out] aOutput output 1D container
+ * \brief Update elements of B with scaled values of A, /f$ B = beta*B + alpha*A /f$
+ * \param [in] aAlpha multiplier of 1D container A
+ * \param [in] aInput input 1D container
+ * \param [in] aBeta multiplier of 1D container B
+ * \param [out] aOutput output 1D container
 **********************************************************************************/
 template<typename VecT>
 void update(const Plato::Scalar & aAlpha, const VecT & aInput, const Plato::Scalar & aBeta, const VecT & aOutput)
 {
-    assert(aInput.size() == aOutput.size());
+    if(aInput.size() != aOutput.size())
+    {
+        std::stringstream tMsg;
+        tMsg << "DIMENSION MISMATCH. INPUT VECTOR HAS SIZE = " << aInput.size()
+                << " AND OUTPUT VECTOR HAS SIZE = " << aOutput.size() << ".\n";
+        THROWERR(tMsg.str().c_str())
+    }
+
     Plato::OrdinalType tNumLocalVals = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
@@ -189,9 +233,9 @@ void update(const Plato::Scalar & aAlpha, const VecT & aInput, const Plato::Scal
 // function update
 
 /******************************************************************************//**
- * @brief Reduced operation: sum all the elements in input array and return local sum
- * @param [in] aInput 1D container
- * @param [out] aOutput local sum
+ * \brief Reduced operation: sum all the elements in input array and return local sum
+ * \param [in] aInput 1D container
+ * \param [out] aOutput local sum
 **********************************************************************************/
 template<typename VecT, typename ScalarT>
 void local_sum(const VecT & aInput, ScalarT & aOutput)
@@ -207,16 +251,33 @@ void local_sum(const VecT & aInput, ScalarT & aOutput)
 // function local_sum
 
 /******************************************************************************//**
- * @brief Matrix times vector plus vector
- * @param [in] aMatrix multiplier of 1D container A
- * @param [in] aInput input 1D container
- * @param [out] aOutput output 1D container
+ * \brief Matrix times vector plus vector
+ * \param [in] aMatrix multiplier of 1D container A
+ * \param [in] aInput input 1D container
+ * \param [out] aOutput output 1D container
 **********************************************************************************/
 template<typename ScalarT>
 void MatrixTimesVectorPlusVector(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
                                  const Plato::ScalarVectorT<ScalarT> & aInput,
                                  const Plato::ScalarVectorT<ScalarT> & aOutput)
 {
+    if(aMatrix->numCols() != aInput.size())
+    {
+        std::ostringstream tMsg;
+        tMsg << "DIMENSION MISMATCH.  INPUT VECTOR LENGTH DOES NOT MATCH THE NUMBER OF COLUMNS IN MATRIX A.  "
+             << "INPUT VECTOR LENGTH = '" <<  aInput.size() << "' AND THE NUMBER OF COLUMNS IN MATRIX A = '"
+             << aMatrix->numCols() << "'.";
+        THROWERR(tMsg.str());
+    }
+    if(aMatrix->numRows() != aOutput.size())
+    {
+        std::ostringstream tMsg;
+        tMsg << "DIMENSION MISMATCH.  INPUT VECTOR LENGTH DOES NOT MATCH THE NUMBER OF ROWS IN MATRIX A.  "
+             << "INPUT VECTOR LENGTH = '" <<  aInput.size() << "' AND THE NUMBER OF ROWS IN MATRIX A = '"
+             << aMatrix->numRows() << "'.";
+        THROWERR(tMsg.str());
+    }
+
     if(aMatrix->isBlockMatrix())
     {
         auto tNodeRowMap = aMatrix->rowMap();
@@ -278,14 +339,18 @@ void MatrixTimesVectorPlusVector(const Teuchos::RCP<Plato::CrsMatrixType> & aMat
 // function MatrixTimesVectorPlusVector
 
 /******************************************************************************//**
- * @brief Compute the global maximum element in range.
- * @param [in] aInput array of elements
- * @param [out] aOutput maximum element
+ * \brief Compute the global maximum element in range.
+ * \param [in] aInput array of elements
+ * \param [out] aOutput maximum element
 **********************************************************************************/
 template<typename VecT, typename ScalarT>
 void max(const VecT & aInput, ScalarT & aOutput)
 {
-    assert(aInput.size() > static_cast<OrdinalType>(0));
+    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
     const OrdinalType tSize = aInput.size();
     //const ScalarT* tInputData = aInput.data();
     aOutput = 0.0;
@@ -299,14 +364,18 @@ void max(const VecT & aInput, ScalarT & aOutput)
 }
 
 /******************************************************************************//**
- * @brief Compute the global minimum element in range.
- * @param [in] aInput array of elements
- * @param [out] aOutput minimum element
+ * \brief Compute the global minimum element in range.
+ * \param [in] aInput array of elements
+ * \param [out] aOutput minimum element
 **********************************************************************************/
 template<typename VecT, typename ScalarT>
 void min(const VecT & aInput, ScalarT & aOutput)
 {
-    assert(aInput.size() > static_cast<OrdinalType>(0));
+    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
     const OrdinalType tSize = aInput.size();
     //const ScalarT* tInputData = aInput.data();
     aOutput = 0.0;
@@ -320,9 +389,9 @@ void min(const VecT & aInput, ScalarT & aOutput)
 }
 
 /******************************************************************************//**
- * @brief Extract a sub array
- * @param [in] aFromVector
- * @param [out] aToVector
+ * \brief Extract a sub array
+ * \param [in] aFromVector
+ * \param [out] aToVector
  *
  * aToVector(i) = aFromVector(i*NumStride+NumOffset)
  *
@@ -340,9 +409,9 @@ inline void extract(const Plato::ScalarVector& aFromVector, Plato::ScalarVector&
 
 
 /******************************************************************************//**
- * @brief Compute row sum inverse product
- * @param [in] aA
- * @param [in/out] aB
+ * \brief Compute row sum inverse product
+ * \param [in] aA
+ * \param [in/out] aB
  *
  * aB = RowSum(aA)^{-1} . aB
  *
@@ -365,13 +434,13 @@ RowSummedInverseMultiply( const Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOn
 
 /******************************************************************************/
 /*! 
-  @brief Extract block matrix graph and values into a non-block matrix format
-  @param [in] aMatrix Block matrix from which graph and values will be extracted
-  @param [out] aMatrixRowMap Non-block row map: (rowIndex) => {offsetIndex}
-  @param [out] aMatrixColMap Non-block column map: (offsetIndex) => {columnIndex}
-  @param [out] aMatrixValues Non-block matrix entries: (offsetIndex) => {matrix value}
-  @param [in] aRowStride If greater than one, the input matrix is considered a sub-block matrix.
-  @param [in] aRowOffset Offset of the submatrix.  Ignored if aRowStride equals one.
+  \brief Extract block matrix graph and values into a non-block matrix format
+  \param [in] aMatrix Block matrix from which graph and values will be extracted
+  \param [out] aMatrixRowMap Non-block row map: (rowIndex) => {offsetIndex}
+  \param [out] aMatrixColMap Non-block column map: (offsetIndex) => {columnIndex}
+  \param [out] aMatrixValues Non-block matrix entries: (offsetIndex) => {matrix value}
+  \param [in] aRowStride If greater than one, the input matrix is considered a sub-block matrix.
+  \param [in] aRowOffset Offset of the submatrix.  Ignored if aRowStride equals one.
 
   The column map for the block matrix provides the node column index.  The matrix 
   values are indexed by offsetIndex*numColsPerBlock*numRowsPerBlock + blockRowIndex*numColsPerBlock + blockColIndex.
@@ -480,11 +549,11 @@ getDataAsNonBlock( const Teuchos::RCP<Plato::CrsMatrixType>       & aMatrix,
 }
 
 /******************************************************************************//**
- * @brief Sort the column indices within each row to ascending order and apply
+ * \brief Sort the column indices within each row to ascending order and apply
           the same map to the matrix entries array.
- * @param [in] aMatrixRowMap matrix row map
- * @param [in/out] aMatrixColMap matrix column map to be sorted
- * @param [in/out] aMatrixValues matrix values
+ * \param [in] aMatrixRowMap matrix row map
+ * \param [in/out] aMatrixColMap matrix column map to be sorted
+ * \param [in/out] aMatrixValues matrix values
  *
 **********************************************************************************/
 inline void
@@ -515,11 +584,11 @@ sortColumnEntries( const Plato::ScalarVectorT<Plato::OrdinalType> & aMatrixRowMa
 }
 
 /******************************************************************************//**
- * @brief Set block matrix data from non-block data
- * @param [in/out] aMatrix
- * @param [in] aMatrixRowMap Non-block matrix row map
- * @param [in] aMatrixColMap Non-block matrix col map
- * @param [in] aMatrixValues Non-block matrix values
+ * \brief Set block matrix data from non-block data
+ * \param [in/out] aMatrix
+ * \param [in] aMatrixRowMap Non-block matrix row map
+ * \param [in] aMatrixColMap Non-block matrix col map
+ * \param [in] aMatrixValues Non-block matrix values
  *
 **********************************************************************************/
 inline void
@@ -585,10 +654,10 @@ using namespace KokkosKernels;
 using namespace KokkosKernels::Experimental;
 
 /******************************************************************************//**
- * @brief Compute the matrix product
- * @param [in] aM1
- * @param [in] aM2
- * @param [out] aProduct
+ * \brief Compute the matrix product
+ * \param [in] aM1
+ * \param [in] aM2
+ * \param [out] aProduct
  *
  * aProduct = aM1 . aM2
  *
@@ -672,9 +741,9 @@ MatrixMatrixMultiply( const Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
 }
 
 /******************************************************************************//**
- * @brief matrix minus matrix
- * @param [in/out] aM1
- * @param [in] aM2
+ * \brief matrix minus matrix
+ * \param [in/out] aM1
+ * \param [in] aM2
  *
  * aM1 = aM1 - aM2
  *
@@ -752,11 +821,11 @@ MatrixMinusMatrix(      Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
 }
 
 /******************************************************************************//**
- * @brief Condense into reduced matrix
- * @param [in/out] aA
- * @param [in] aB
- * @param [in] aC
- * @param [in] aD
+ * \brief Condense into reduced matrix
+ * \param [in/out] aA
+ * \param [in] aB
+ * \param [in] aC
+ * \param [in] aD
  *
  * aA = aA - aB . RowSum(aC)^{-1} . aD
  *

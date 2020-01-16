@@ -26,11 +26,11 @@ namespace StabilizedMechanicsFactory
 {
 
 /******************************************************************************//**
- * @brief Create elastostatics residual equation
- * @param [in] aMesh mesh database
- * @param [in] aMeshSets side sets database
- * @param [in] aDataMap PLATO Analyze physics-based database
- * @param [in] aInputParams input parameters
+ * \brief Create elastostatics residual equation
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aDataMap PLATO Analyze physics-based database
+ * \param [in] aInputParams input parameters
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::AbstractVectorFunctionVMS<EvaluationType>>
@@ -66,17 +66,17 @@ stabilized_elastostatics_residual(Omega_h::Mesh& aMesh,
 
 
 /******************************************************************************//**
- * @brief Factory for linear mechanics problem
+ * \brief Factory for linear mechanics problem
 **********************************************************************************/
 struct FunctionFactory
 {
     /******************************************************************************//**
-     * @brief Create a PLATO vector function (i.e. residual equation)
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Analyze physics-based database
-     * @param [in] aInputParams input parameters
-     * @param [in] aFuncName vector function name
+     * \brief Create a PLATO vector function (i.e. residual equation)
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Analyze physics-based database
+     * \param [in] aInputParams input parameters
+     * \param [in] aFuncName vector function name
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractVectorFunctionVMS<EvaluationType>>
@@ -140,12 +140,12 @@ struct FunctionFactory
     }
 
     /******************************************************************************//**
-     * @brief Create a PLATO scalar function (i.e. optimization criterion)
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Analyze physics-based database
-     * @param [in] aInputParams input parameters
-     * @param [in] aFuncName scalar function name
+     * \brief Create a PLATO scalar function (i.e. optimization criterion)
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Analyze physics-based database
+     * \param [in] aInputParams input parameters
+     * \param [in] aFuncName scalar function name
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
@@ -191,27 +191,23 @@ struct FunctionFactory
 } // namespace StabilizedMechanicsFactory
 
 /****************************************************************************//**
- * @brief Concrete class for use as the SimplexPhysics template argument in
+ * \brief Concrete class for use as the SimplexPhysics template argument in
  *        EllipticVMSProblem
  *******************************************************************************/
 template<Plato::OrdinalType SpaceDimParam>
-class StabilizedMechanics: public Plato::SimplexStabilizedMechanics<SpaceDimParam>
+class StabilizedMechanics : public Plato::SimplexStabilizedMechanics<SpaceDimParam>
 {
 public:
     typedef Plato::StabilizedMechanicsFactory::FunctionFactory FunctionFactory;
-    using SimplexT        = SimplexStabilizedMechanics<SpaceDimParam>;
 
-    using LocalStateT   = typename Plato::Plasticity<SpaceDimParam>;
-
-    using ProjectorT = typename Plato::Projection<SpaceDimParam,
-                                                  SimplexT::mNumDofsPerNode,
-                                                  SimplexT::mPDofOffset,
-                                                  /* numProjectionDofs=*/ 1>;
+    using SimplexT    = SimplexStabilizedMechanics<SpaceDimParam>;
+    using ProjectorT  = typename Plato::Projection<SpaceDimParam, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset, /* numProjectionDofs=*/ 1>;
 
     static constexpr Plato::OrdinalType SpaceDim = SpaceDimParam;
 };
+// class StabilizedMechanics
 
-
-} // namespace Plato
+}
+// namespace Plato
 
 #endif

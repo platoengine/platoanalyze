@@ -1,5 +1,4 @@
-#ifndef PRESSURE_GRADIENT_PROJECTION_RESIDUAL_HPP
-#define PRESSURE_GRADIENT_PROJECTION_RESIDUAL_HPP
+#pragma once
 
 #include <memory>
 
@@ -16,105 +15,116 @@
 namespace Plato
 {
 
-/******************************************************************************/
+/******************************************************************************//**
+ * \brief Evaluate pressure gradient projection residual (reference Chiumenti et al. (2004))
+ *
+ *               \langle \nabla{p},\eta \rangle - <\Phi,\eta> = 0
+ *
+ **********************************************************************************/
 template<typename EvaluationType, typename IndicatorFunctionType>
-class PressureGradientProjectionResidual :
-        public Plato::Simplex<EvaluationType::SpatialDim>,
-        public Plato::AbstractVectorFunctionVMS<EvaluationType>
-/******************************************************************************/
+class PressureGradientProjectionResidual : public Plato::Simplex<EvaluationType::SpatialDim>,
+                                           public Plato::AbstractVectorFunctionVMS<EvaluationType>
 {
 private:
-    static constexpr int SpaceDim = EvaluationType::SpatialDim;
+    static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
+    using Plato::Simplex<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
 
-    using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
+    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mMesh; /*!< mesh metadata */
+    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mDataMap; /*!< output data map */
+    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mMeshSets; /*!< side-sets metadata */
 
-    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mMesh;
-    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mDataMap;
-    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mMeshSets;
+    using StateScalarType = typename EvaluationType::StateScalarType; /*!< State Automatic Differentiation (AD) type */
+    using NodeStateScalarType = typename EvaluationType::NodeStateScalarType; /*!< Node State AD type */
+    using ControlScalarType = typename EvaluationType::ControlScalarType; /*!< Control AD type */
+    using ConfigScalarType = typename EvaluationType::ConfigScalarType; /*!< Configuration AD type */
+    using ResultScalarType = typename EvaluationType::ResultScalarType; /*!< Result AD type */
 
-    using StateScalarType     = typename EvaluationType::StateScalarType;
-    using NodeStateScalarType = typename EvaluationType::NodeStateScalarType;
-    using ControlScalarType   = typename EvaluationType::ControlScalarType;
-    using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
-    using ResultScalarType    = typename EvaluationType::ResultScalarType;
-
-    IndicatorFunctionType mIndicatorFunction;
-    Plato::ApplyWeighting<SpaceDim, SpaceDim, IndicatorFunctionType> mApplyVectorWeighting;
-
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
+    IndicatorFunctionType mIndicatorFunction; /*!< material penalty function */
+    Plato::ApplyWeighting<mSpaceDim, mSpaceDim, IndicatorFunctionType> mApplyVectorWeighting; /*!< apply penalty to vector function */
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule; /*!< cubature integration rule interface */
 
 public:
-    /**************************************************************************/
+    /******************************************************************************//**
+     * \brief Constructor
+     * \param [in] aMesh mesh metadata
+     * \param [in] aMeshSets side-sets metadata
+     * \param [in] aDataMap output data map
+     * \param [in] aProblemParams input XML data
+     * \param [in] aPenaltyParams penalty function input XML data
+    **********************************************************************************/
     PressureGradientProjectionResidual(Omega_h::Mesh& aMesh,
-                               Omega_h::MeshSets& aMeshSets,
-                               Plato::DataMap& aDataMap,
-                               Teuchos::ParameterList& aProblemParams,
-                               Teuchos::ParameterList& aPenaltyParams) :
+                                       Omega_h::MeshSets& aMeshSets,
+                                       Plato::DataMap& aDataMap,
+                                       Teuchos::ParameterList& aProblemParams,
+                                       Teuchos::ParameterList& aPenaltyParams) :
             Plato::AbstractVectorFunctionVMS<EvaluationType>(aMesh, aMeshSets, aDataMap),
             mIndicatorFunction(aPenaltyParams),
             mApplyVectorWeighting(mIndicatorFunction),
             mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
-    /**************************************************************************/
     {
     }
 
-    /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType>     & aNodalPGradWS,
+    /******************************************************************************//**
+     * \brief Evaluate stabilized elastostatics residual
+     * \param [in] aNodalPGradWS pressure gradient workset on H^1(\Omega)
+     * \param [in] aPressureWS pressure gradient workset on H^1(\Omega)
+     * \param [in] aControlWS control workset
+     * \param [in] aConfigWS configuration workset
+     * \param [in/out] aResultWS result, e.g. residual workset
+     * \param [in] aTimeStep time step
+    **********************************************************************************/
+    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aNodalPGradWS,
                   const Plato::ScalarMultiVectorT<NodeStateScalarType> & aPressureWS,
-                  const Plato::ScalarMultiVectorT<ControlScalarType>   & aControlWS,
-                  const Plato::ScalarArray3DT<ConfigScalarType>        & aConfigWS,
-                  Plato::ScalarMultiVectorT<ResultScalarType>          & aResultWS,
+                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControlWS,
+                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfigWS,
+                  Plato::ScalarMultiVectorT<ResultScalarType> & aResultWS,
                   Plato::Scalar aTimeStep = 0.0) const
-    /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+        auto tNumCells = mMesh.nelems();
 
-      Plato::ComputeGradientWorkset <SpaceDim> computeGradient;
-      Plato::PressureGradient       <SpaceDim> kinematics;
+        Plato::PressureGradient<mSpaceDim> tComputePressureGradient;
+        Plato::ComputeGradientWorkset < mSpaceDim > tComputeGradient;
+        Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0, mSpaceDim> tInterpolatePressGradFromNodal;
 
-      Plato::InterpolateFromNodal   <SpaceDim, SpaceDim, 0, SpaceDim>         interpolatePGradFromNodal;
-      
-      Plato::ScalarVectorT      <ConfigScalarType>  tCellVolume     ("cell weight",        tNumCells);
-      Plato::ScalarMultiVectorT <ResultScalarType>  tProjectedPGrad ("projected p grad",   tNumCells, SpaceDim);
-      Plato::ScalarMultiVectorT <ResultScalarType>  tComputedPGrad  ("compute p grad",     tNumCells, SpaceDim);
-      Plato::ScalarArray3DT     <ConfigScalarType>  tGradient       ("gradient",           tNumCells, mNumNodesPerCell, SpaceDim);
+        Plato::ScalarVectorT<ConfigScalarType> tCellVolume("cell weight", tNumCells);
+        Plato::ScalarMultiVectorT<ResultScalarType> tPressureGrad("compute p grad", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<ResultScalarType> tProjectedPGrad("projected p grad", tNumCells, mSpaceDim);
+        Plato::ScalarArray3DT<ConfigScalarType> tGradient("gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
 
-      auto tQuadratureWeight = mCubatureRule->getCubWeight();
-      auto tBasisFunctions   = mCubatureRule->getBasisFunctions();
+        auto tQuadratureWeight = mCubatureRule->getCubWeight();
+        auto tBasisFunctions = mCubatureRule->getBasisFunctions();
+        auto& tApplyVectorWeighting = mApplyVectorWeighting;
+        Plato::ProjectToNode<mSpaceDim> tProjectPressGradToNodal;
 
-      auto& applyVectorWeighting = mApplyVectorWeighting;
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
+        {
+            // compute gradient operator and cell volume
+            //
+            tComputeGradient(aCellOrdinal, tGradient, aConfigWS, tCellVolume);
+            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
 
-      Plato::ProjectToNode<SpaceDim> projectPGradToNodal;
+            // compute pressure gradient
+            //
+            tComputePressureGradient(aCellOrdinal, tPressureGrad, aPressureWS, tGradient);
 
-      Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumCells), LAMBDA_EXPRESSION(int cellOrdinal)
-      {
-        // compute gradient operator and cell volume
-        //
-        computeGradient(cellOrdinal, tGradient, aConfigWS, tCellVolume);
-        tCellVolume(cellOrdinal) *= tQuadratureWeight;
+            // interpolate projected pressure gradient from nodes
+            //
+            tInterpolatePressGradFromNodal (aCellOrdinal, tBasisFunctions, aNodalPGradWS, tProjectedPGrad);
 
-        // compute pressure gradient
-        //
-        kinematics(cellOrdinal, tComputedPGrad, aPressureWS, tGradient);
+            // apply weighting
+            //
+            tApplyVectorWeighting (aCellOrdinal, tPressureGrad, aControlWS);
+            tApplyVectorWeighting (aCellOrdinal, tProjectedPGrad, aControlWS);
 
-        // interpolate projected pressure gradient from nodes
-        //
-        interpolatePGradFromNodal (cellOrdinal, tBasisFunctions, aNodalPGradWS, tProjectedPGrad);
+            // project pressure gradient to nodes
+            //
+            tProjectPressGradToNodal (aCellOrdinal, tCellVolume, tBasisFunctions, tProjectedPGrad, aResultWS);
+            tProjectPressGradToNodal (aCellOrdinal, tCellVolume, tBasisFunctions, tPressureGrad, aResultWS, /*scale=*/-1.0);
 
-        // apply weighting
-        //
-        applyVectorWeighting (cellOrdinal, tComputedPGrad, aControlWS);
-        applyVectorWeighting (cellOrdinal, tProjectedPGrad, aControlWS);
-
-        // project pressure gradient to nodes
-        //
-        projectPGradToNodal (cellOrdinal, tCellVolume, tBasisFunctions, tProjectedPGrad, aResultWS);
-        projectPGradToNodal (cellOrdinal, tCellVolume, tBasisFunctions, tComputedPGrad,  aResultWS, /*scale=*/-1.0);
-
-      }, "Projected pressure gradient residual");
+        }, "Projected pressure gradient residual");
     }
 };
-// class ThermoelastostaticResidual
+// class PressureGradientProjectionResidual
 
-} // namespace Plato
-#endif
+}
+// namespace Plato

@@ -25,210 +25,224 @@
 
 #include <cassert>
 
-namespace Plato {
-  template<class Ordinal, int BlockSize=1>
-  class AmgXSparseLinearProblem : public CrsLinearProblem<Ordinal>
-  {
+namespace Plato
+{
 
-  public:
-    typedef Kokkos::View<Scalar*, MemSpace>                        Vector;
-  private:
-    typedef int RowMapEntryType;
-    typedef CrsMatrix<Ordinal>  Matrix;
-    
+inline std::string get_config_string(bool aUseAbsoluteTolerance = false, Plato::OrdinalType aMaxIters = 1000)
+{
+    std::string tConfigString;
+
+    Plato::Scalar tTolerance = 1e-12;
+    Plato::OrdinalType tMaxIters = aMaxIters;
+
+    std::ifstream tInputFile;
+    tInputFile.open("amgx.json", std::ifstream::in);
+    if(tInputFile)
+    {
+        std::string tLine;
+        std::stringstream tConfig;
+        while(std::getline(tInputFile, tLine))
+        {
+            std::istringstream tInputStringStream(tLine);
+            tConfig << tInputStringStream.str();
+        }
+        tConfigString = tConfig.str();
+    }
+    else
+    {
+        tConfigString = Plato::configurationString("pcg_noprec", tTolerance, tMaxIters, aUseAbsoluteTolerance);
+    }
+
+    return tConfigString;
+}
+// function get_config_string
+
+template<class Ordinal, Plato::OrdinalType BlockSize = 1>
+class AmgXSparseLinearProblem : public CrsLinearProblem<Ordinal>
+{
+
+public:
+    typedef Kokkos::View<Scalar*, MemSpace> Vector;
+private:
+    typedef Plato::OrdinalType RowMapEntryType;
+    typedef CrsMatrix<Ordinal> Matrix;
+
     typedef Ordinal LocalOrdinal;
     typedef Ordinal GlobalOrdinal;
-    
-    AMGX_matrix_handle    _matrix;
-    AMGX_vector_handle    _rhs;
-    AMGX_vector_handle    _lhs;
-    AMGX_resources_handle _rsrc;
-    AMGX_solver_handle    _solver;
-    AMGX_config_handle    _config;
-    
-    bool _haveInitialized = false;
 
-    Vector _x; // will want to copy here (from _lhs) in solve()...
+    AMGX_matrix_handle mMatrix;
+    AMGX_vector_handle mRHS;
+    AMGX_vector_handle mLHS;
+    AMGX_resources_handle mResources;
+    AMGX_solver_handle mSolver;
+    AMGX_config_handle mSolverConfigurations;
 
-  public:
+    bool mHaveInitialized = false;
+
+    Vector mSolution; // will want to copy here (from mLHS) in solve()...
+
+public:
     static void initializeAMGX()
     {
         AMGX_SAFE_CALL(AMGX_initialize());
         AMGX_SAFE_CALL(AMGX_initialize_plugins());
         AMGX_SAFE_CALL(AMGX_install_signal_handler());
     }
-    
-    AmgXSparseLinearProblem(const Matrix A, Vector x, const Vector b, std::string const& solverConfigString = configurationString("pcg_noprec"))
-                          : CrsLinearProblem<Ordinal>(A,x,b)
-    {
-      check_inputs(A, x, b);
 
-      initializeAMGX();
-      AMGX_config_create(&_config, solverConfigString.c_str());
-      // everything currently assumes exactly one MPI rank.
-      MPI_Comm mpi_comm = MPI_COMM_SELF;
-      int ndevices = 1;
-      int devices[1];
-      //it is critical to specify the current device, which is not always zero
-      cudaGetDevice(&devices[0]);
-      AMGX_resources_create(
-          &_rsrc, _config, &mpi_comm, ndevices, devices);
-      AMGX_matrix_create(&_matrix, _rsrc, AMGX_mode_dDDI);
-      AMGX_vector_create(&_rhs,    _rsrc, AMGX_mode_dDDI);
-      AMGX_vector_create(&_lhs,    _rsrc, AMGX_mode_dDDI);
-      
-      _x = x;
-      Ordinal N = x.size();
-      Ordinal nnz = A.columnIndices().size();
-      
-      AMGX_solver_create(&_solver, _rsrc, AMGX_mode_dDDI, _config);
-      
-      // This seems to do the right thing whether the data is on device or host. In our case it is on the device.
-      const int *row_ptrs = A.rowMap().data();
-      const int *col_indices = A.columnIndices().data();
-      const void *data = A.entries().data();
-      const void *diag_data = nullptr; // no exterior diagonal
-      AMGX_matrix_upload_all(_matrix, N/BlockSize, nnz, BlockSize, BlockSize, row_ptrs, col_indices, data, diag_data);
-      
-      setRHS(b);
-      setInitialGuess(x);
+    AmgXSparseLinearProblem(const Matrix aA, Vector aX, const Vector aB,
+                            std::string const& aSolverConfigString = configurationString("pcg_noprec")) :
+            CrsLinearProblem<Ordinal>(aA, aX, aB)
+    {
+        check_inputs(aA, aX, aB);
+
+        initializeAMGX();
+        AMGX_config_create(&mSolverConfigurations, aSolverConfigString.c_str());
+        // everything currently assumes exactly one MPI rank.
+        MPI_Comm tMPI_COMM = MPI_COMM_SELF;
+        Plato::OrdinalType tNumDevices = 1;
+        Plato::OrdinalType tDevices[1];
+        //it is critical to specify the current device, which is not always zero
+        cudaGetDevice(&tDevices[0]);
+        AMGX_resources_create(&mResources, mSolverConfigurations, &tMPI_COMM, tNumDevices, tDevices);
+        AMGX_matrix_create(&mMatrix, mResources, AMGX_mode_dDDI);
+        AMGX_vector_create(&mRHS, mResources, AMGX_mode_dDDI);
+        AMGX_vector_create(&mLHS, mResources, AMGX_mode_dDDI);
+
+        mSolution = aX;
+        Ordinal tLocalNumVars = aX.size();
+        Ordinal tNumNonZero = aA.columnIndices().size();
+
+        AMGX_solver_create(&mSolver, mResources, AMGX_mode_dDDI, mSolverConfigurations);
+
+        // This seems to do the right thing whether the data is on device or host. In our case it is on the device.
+        this->uploadMatrix(aA, tLocalNumVars);
+        this->uploadLeftHandSide(aX);
+        this->uploadRightHandSide(aB);
     }
-    
+
     void initializePreconditioner()
     {
-      Kokkos::Profiling::pushRegion("AMGX_solver_setup");
-      AMGX_solver_setup(_solver, _matrix);
-      Kokkos::Profiling::popRegion();
+        Kokkos::Profiling::pushRegion("AMGX_solver_setup");
+        AMGX_solver_setup(mSolver, mMatrix);
+        Kokkos::Profiling::popRegion();
     }
-    
+
     void initializeSolver() // TODO: add mechanism for setting options
     {
-      initializePreconditioner();
-    }
-    
-    void setInitialGuess(const Vector x)
-    {
-      AMGX_vector_upload(_lhs, x.size()/BlockSize, BlockSize, x.data());
-    }
-    
-    void setMaxIters(int maxCGIters)
-    {
-      // NOTE: this does not work; we're getting the format wrong, somehow
-      std::ostringstream cfgStr;
-      cfgStr << "config_version=2" << std::endl;
-      cfgStr << "solver:max_iters=" << maxCGIters << std::endl;
-      AMGX_config_add_parameters(&_config, cfgStr.str().c_str());
+        this->initializePreconditioner();
     }
 
-    void setRHS(const Vector b)
+    void uploadLeftHandSide(const Vector aLHS)
     {
-      AMGX_vector_upload(_rhs, b.size()/BlockSize, BlockSize, b.data());
+        AMGX_vector_upload(mLHS, aLHS.size() / BlockSize, BlockSize, aLHS.data());
     }
 
-    void setMatrix(const Matrix & aMatrix, const Ordinal & aNumEquations)
+    void setMaxIters(Plato::OrdinalType aMaxCGIters)
+    {
+        // NOTE: this does not work; we're getting the format wrong, somehow
+        std::ostringstream tConfigStr;
+        tConfigStr << "config_version=2" << std::endl;
+        tConfigStr << "solver:max_iters=" << aMaxCGIters << std::endl;
+        AMGX_config_add_parameters(&mSolverConfigurations, tConfigStr.str().c_str());
+    }
+
+    void uploadRightHandSide(const Vector aRHS)
+    {
+        AMGX_vector_upload(mRHS, aRHS.size() / BlockSize, BlockSize, aRHS.data());
+    }
+
+    void uploadMatrix(const Matrix & aMatrix, const Ordinal & aNumEquations)
     {
         const void *tData = aMatrix.entries().data();
         const void *tDiagData = nullptr; // no exterior diagonal
-        const int *tRowPtrs = aMatrix.rowMap().data();
-        const int *tColIndices = aMatrix.columnIndices().data();
+        const Plato::OrdinalType *tRowPtrs = aMatrix.rowMap().data();
+        const Plato::OrdinalType *tColIndices = aMatrix.columnIndices().data();
         const Ordinal tNumNonZeros = aMatrix.columnIndices().size();
-        AMGX_matrix_upload_all(_matrix, aNumEquations/BlockSize, tNumNonZeros, BlockSize, BlockSize, tRowPtrs, tColIndices, tData, tDiagData);
-    }
-    
-    void setTolerance(Plato::Scalar tol)
-    {
-      // NOTE: this does not work; we're getting the format wrong, somehow
-      std::ostringstream cfgStr;
-      cfgStr << "config_version=2" << std::endl;
-      cfgStr << "solver:tolerance=" << tol << std::endl;
-      AMGX_config_add_parameters(&_config, cfgStr.str().c_str());
+        AMGX_matrix_upload_all(mMatrix,
+                               aNumEquations / BlockSize,
+                               tNumNonZeros,
+                               BlockSize,
+                               BlockSize,
+                               tRowPtrs,
+                               tColIndices,
+                               tData,
+                               tDiagData);
     }
 
-    int solve()
+    void setTolerance(Plato::Scalar aTolerance)
     {
-      using namespace std;
+        // NOTE: this does not work; we're getting the format wrong, somehow
+        std::ostringstream tConfigStr;
+        tConfigStr << "config_version=2" << std::endl;
+        tConfigStr << "solver:tolerance=" << aTolerance << std::endl;
+        AMGX_config_add_parameters(&mSolverConfigurations, tConfigStr.str().c_str());
+    }
 
-      if (!_haveInitialized)
-      {
-        initializeSolver();
-        _haveInitialized = true;
-      }
-      int err = cudaDeviceSynchronize();
-      assert(err == cudaSuccess);
-      Kokkos::Profiling::pushRegion("AMGX_solver_solve");
-      auto solverErr = AMGX_solver_solve(_solver, _rhs, _lhs);
-      Kokkos::Profiling::popRegion();
-      Kokkos::Profiling::pushRegion("AMGX_vector_download");
-      AMGX_vector_download(_lhs, _x.data());
-      Kokkos::Profiling::popRegion();
-      return solverErr;
+    Plato::OrdinalType solve()
+    {
+        using namespace std;
+
+        if(!mHaveInitialized)
+        {
+            this->initializeSolver();
+            mHaveInitialized = true;
+        }
+        Plato::OrdinalType tErrorMsg = cudaDeviceSynchronize();
+        assert(tErrorMsg == cudaSuccess);
+        Kokkos::Profiling::pushRegion("AMGX_solver_solve");
+        auto tSolverErr = AMGX_solver_solve(mSolver, mRHS, mLHS);
+        Kokkos::Profiling::popRegion();
+        Kokkos::Profiling::pushRegion("AMGX_vector_download");
+        AMGX_vector_download(mLHS, mSolution.data());
+        Kokkos::Profiling::popRegion();
+        return tSolverErr;
     }
 
     ~AmgXSparseLinearProblem()
     {
-      AMGX_solver_destroy    (_solver);
-      AMGX_matrix_destroy    (_matrix);
-      AMGX_vector_destroy    (_rhs);
-      AMGX_vector_destroy    (_lhs);
-      AMGX_resources_destroy (_rsrc);
-      
-      AMGX_SAFE_CALL(AMGX_config_destroy    (_config));
+        AMGX_solver_destroy(mSolver);
+        AMGX_matrix_destroy(mMatrix);
+        AMGX_vector_destroy(mRHS);
+        AMGX_vector_destroy(mLHS);
+        AMGX_resources_destroy(mResources);
 
-      AMGX_SAFE_CALL(AMGX_finalize_plugins());
-      AMGX_SAFE_CALL(AMGX_finalize());
+        AMGX_SAFE_CALL(AMGX_config_destroy(mSolverConfigurations));
+
+        AMGX_SAFE_CALL(AMGX_finalize_plugins());
+        AMGX_SAFE_CALL(AMGX_finalize());
     }
-    static std::string getConfigString(int aMaxIters = 1000)
+
+    static void check_inputs(const Matrix aMatrix, Vector aLHS, const Vector aRHS)
     {
-      std::string configString;
-      
-      Plato::Scalar tol = 1e-12;
-      int maxIters = aMaxIters;
-      
-      std::ifstream infile;
-      infile.open("amgx.json", std::ifstream::in);
-      if(infile){
-        std::string line;
-        std::stringstream config;
-        while (std::getline(infile, line)){
-          std::istringstream iss(line);
-          config << iss.str();
-        }
-        configString = config.str();
-      } else {
-        configString = configurationString("pcg_noprec",tol,maxIters);
-      }
-    
-      return configString;
+        auto tNumDofs = Plato::OrdinalType(aLHS.extent(0));
+        assert(Plato::OrdinalType(aRHS.extent(0)) == tNumDofs);
+        assert(tNumDofs % BlockSize == 0);
+        auto tNumBlocks = tNumDofs / BlockSize;
+        auto tRowMap = aMatrix.rowMap();
+        assert(Plato::OrdinalType(tRowMap.extent(0)) == tNumBlocks + 1);
+        auto tColIndices = aMatrix.columnIndices();
+        auto tNumNonZero = Plato::OrdinalType(tColIndices.extent(0));
+        assert(Plato::OrdinalType(aMatrix.entries().extent(0)) == tNumNonZero * BlockSize * BlockSize);
+        assert(cudaSuccess == cudaDeviceSynchronize());
+        Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumBlocks), KOKKOS_LAMBDA(Plato::OrdinalType aBlockIndex)
+        {
+            auto tBegin = tRowMap(aBlockIndex);
+            assert(0 <= tBegin);
+            auto tEnd = tRowMap(aBlockIndex + 1);
+            assert(tBegin <= tEnd);
+            if (aBlockIndex == tNumBlocks - 1) assert(tEnd == tNumNonZero);
+            else assert(tEnd < tNumNonZero);
+            for (Plato::OrdinalType tIJ = tBegin; tIJ < tEnd; ++tIJ)
+            {
+                auto tJ = tColIndices(tIJ);
+                assert(0 <= tJ);
+                assert(tJ < tNumBlocks);
+            }
+        }, "check_inputs");
+        assert(cudaSuccess == cudaDeviceSynchronize());
     }
 
-    static void check_inputs(const Matrix A, Vector x, const Vector b) {
-      auto ndofs = int(x.extent(0));
-      assert(int(b.extent(0)) == ndofs);
-      assert(ndofs % BlockSize == 0);
-      auto nblocks = ndofs / BlockSize;
-      auto row_map = A.rowMap();
-      assert(int(row_map.extent(0)) == nblocks + 1);
-      auto col_inds = A.columnIndices();
-      auto nnz = int(col_inds.extent(0));
-      assert(int(A.entries().extent(0)) == nnz * BlockSize * BlockSize);
-      assert(cudaSuccess == cudaDeviceSynchronize());
-      Kokkos::parallel_for(Kokkos::RangePolicy<int>(0, nblocks), KOKKOS_LAMBDA(int i) {
-        auto begin = row_map(i);
-        assert(0 <= begin);
-        auto end = row_map(i + 1);
-        assert(begin <= end);
-        if (i == nblocks - 1) assert(end == nnz);
-        else assert(end < nnz);
-        for (int ij = begin; ij < end; ++ij) {
-          auto j = col_inds(ij);
-          assert(0 <= j);
-          assert(j < nblocks);
-        }
-      }, "check_inputs");
-      assert(cudaSuccess == cudaDeviceSynchronize());
-    }
-
-  };
+};
 }
 
 #endif /* AmgXSparseLinearProblem_h */

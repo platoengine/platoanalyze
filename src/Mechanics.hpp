@@ -34,9 +34,9 @@ namespace MechanicsFactory
 {
 
   /******************************************************************************//**
-   * @brief Create a local measure for use in augmented lagrangian quadratic
-   * @param [in] aInputParams input parameters
-   * @param [in] aFuncName scalar function name
+   * \brief Create a local measure for use in augmented lagrangian quadratic
+   * \param [in] aInputParams input parameters
+   * \param [in] aFuncName scalar function name
   **********************************************************************************/
   template <typename EvaluationType>
   inline std::shared_ptr<Plato::AbstractLocalMeasure<EvaluationType,Plato::SimplexMechanics<EvaluationType::SpatialDim>>> 
@@ -61,11 +61,11 @@ namespace MechanicsFactory
   }
 
 /******************************************************************************//**
- * @brief Create elastostatics residual equation
- * @param [in] aMesh mesh database
- * @param [in] aMeshSets side sets database
- * @param [in] aDataMap PLATO Analyze physics-based database
- * @param [in] aInputParams input parameters
+ * \brief Create elastostatics residual equation
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aDataMap PLATO Analyze physics-based database
+ * \param [in] aInputParams input parameters
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::AbstractVectorFunction<EvaluationType>>
@@ -100,11 +100,11 @@ elastostatics_residual(Omega_h::Mesh& aMesh,
 // function elastostatics_residual
 
 /******************************************************************************//**
- * @brief Create augmented Lagrangian stress constraint criterion tailored for linear problems
- * @param [in] aMesh mesh database
- * @param [in] aMeshSets side sets database
- * @param [in] aDataMap PLATO Analyze physics-based database
- * @param [in] aInputParams input parameters
+ * \brief Create augmented Lagrangian stress constraint criterion tailored for linear problems
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aDataMap PLATO Analyze physics-based database
+ * \param [in] aInputParams input parameters
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
@@ -121,11 +121,11 @@ stress_constraint_linear(Omega_h::Mesh& aMesh,
 }
 
 /******************************************************************************//**
- * @brief Create augmented Lagrangian stress constraint criterion tailored for general problems
- * @param [in] aMesh mesh database
- * @param [in] aMeshSets side sets database
- * @param [in] aDataMap PLATO Analyze physics-based database
- * @param [in] aInputParams input parameters
+ * \brief Create augmented Lagrangian stress constraint criterion tailored for general problems
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aDataMap PLATO Analyze physics-based database
+ * \param [in] aInputParams input parameters
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
@@ -143,11 +143,11 @@ stress_constraint_general(Omega_h::Mesh& aMesh,
 
 
 /******************************************************************************//**
- * @brief Create augmented Lagrangian local constraint criterion with quadratic constraint formulation
- * @param [in] aMesh mesh database
- * @param [in] aMeshSets side sets database
- * @param [in] aDataMap PLATO Analyze physics-based database
- * @param [in] aInputParams input parameters
+ * \brief Create augmented Lagrangian local constraint criterion with quadratic constraint formulation
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aDataMap PLATO Analyze physics-based database
+ * \param [in] aInputParams input parameters
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
@@ -172,12 +172,12 @@ stress_constraint_quadratic(Omega_h::Mesh& aMesh,
 
 
 /******************************************************************************//**
- * @brief Create internal elastic energy criterion
- * @param [in] aMesh mesh database
- * @param [in] aMeshSets side sets database
- * @param [in] aDataMap PLATO Analyze physics-based database
- * @param [in] aInputParams input parameters
- * @param [in] aFuncType vector function name
+ * \brief Create internal elastic energy criterion
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aDataMap PLATO Analyze physics-based database
+ * \param [in] aInputParams input parameters
+ * \param [in] aFuncType vector function name
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
@@ -212,12 +212,12 @@ internal_elastic_energy(Omega_h::Mesh& aMesh,
 // function internal_elastic_energy
 
 /******************************************************************************//**
- * @brief Create stress p-norm criterion
- * @param [in] aMesh mesh database
- * @param [in] aMeshSets side sets database
- * @param [in] aDataMap PLATO Analyze physics-based database
- * @param [in] aInputParams input parameters
- * @param [in] aFuncType vector function name
+ * \brief Create stress p-norm criterion
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aDataMap PLATO Analyze physics-based database
+ * \param [in] aInputParams input parameters
+ * \param [in] aFuncType vector function name
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
@@ -252,12 +252,12 @@ stress_p_norm(Omega_h::Mesh& aMesh,
 // function stress_p_norm
 
 /******************************************************************************//**
- * @brief Create effective energy criterion
- * @param [in] aMesh mesh database
- * @param [in] aMeshSets side sets database
- * @param [in] aDataMap PLATO Analyze physics-based database
- * @param [in] aInputParams input parameters
- * @param [in] aFuncType vector function name
+ * \brief Create effective energy criterion
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aDataMap PLATO Analyze physics-based database
+ * \param [in] aInputParams input parameters
+ * \param [in] aFuncType vector function name
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
@@ -292,12 +292,12 @@ effective_energy(Omega_h::Mesh& aMesh,
 // function effective_energy
 
 /******************************************************************************//**
- * @brief Create volume criterion
- * @param [in] aMesh mesh database
- * @param [in] aMeshSets side sets database
- * @param [in] aDataMap PLATO Analyze physics-based database
- * @param [in] aInputParams input parameters
- * @param [in] aFuncType vector function name
+ * \brief Create volume criterion
+ * \param [in] aMesh mesh database
+ * \param [in] aMeshSets side sets database
+ * \param [in] aDataMap PLATO Analyze physics-based database
+ * \param [in] aInputParams input parameters
+ * \param [in] aFuncType vector function name
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
@@ -332,17 +332,17 @@ volume(Omega_h::Mesh& aMesh,
 // function volume
 
 /******************************************************************************//**
- * @brief Factory for linear mechanics problem
+ * \brief Factory for linear mechanics problem
 **********************************************************************************/
 struct FunctionFactory
 {
     /******************************************************************************//**
-     * @brief Create a PLATO vector function (i.e. residual equation)
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Analyze physics-based database
-     * @param [in] aInputParams input parameters
-     * @param [in] aFuncName vector function name
+     * \brief Create a PLATO vector function (i.e. residual equation)
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Analyze physics-based database
+     * \param [in] aInputParams input parameters
+     * \param [in] aFuncName vector function name
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractVectorFunction<EvaluationType>>
@@ -379,12 +379,12 @@ struct FunctionFactory
     }
 
     /******************************************************************************//**
-     * @brief Create a PLATO scalar function (i.e. optimization criterion)
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Analyze physics-based database
-     * @param [in] aInputParams input parameters
-     * @param [in] aFuncName scalar function name
+     * \brief Create a PLATO scalar function (i.e. optimization criterion)
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Analyze physics-based database
+     * \param [in] aInputParams input parameters
+     * \param [in] aFuncName scalar function name
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
@@ -434,9 +434,9 @@ struct FunctionFactory
     }
 
     /******************************************************************************//**
-     * @brief Create a local measure for use in augmented lagrangian quadratic
-     * @param [in] aInputParams input parameters
-     * @param [in] aFuncName scalar function name
+     * \brief Create a local measure for use in augmented lagrangian quadratic
+     * \param [in] aInputParams input parameters
+     * \param [in] aFuncName scalar function name
     **********************************************************************************/
     template <typename EvaluationType>
     std::shared_ptr<Plato::AbstractLocalMeasure<EvaluationType,Plato::SimplexMechanics<EvaluationType::SpatialDim>>> 
@@ -465,7 +465,7 @@ struct FunctionFactory
 } // namespace MechanicsFactory
 
 /******************************************************************************//**
- * @brief Concrete class for use as the SimplexPhysics template argument in
+ * \brief Concrete class for use as the SimplexPhysics template argument in
  *        EllipticProblem
 **********************************************************************************/
 template<Plato::OrdinalType SpaceDimParam>

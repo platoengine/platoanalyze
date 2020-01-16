@@ -1,50 +1,53 @@
-#ifndef FLUX_DIVERGENCE
-#define FLUX_DIVERGENCE
+#pragma once
 
 #include "PlatoStaticsTypes.hpp"
+#include "Simplex.hpp"
 
 namespace Plato
 {
 
 /******************************************************************************/
 /*! Flux divergence functor.
-  
-    Given a thermal flux, compute the flux divergence.
-*/
+
+ Given a thermal flux, compute the flux divergence.
+ */
 /******************************************************************************/
-template<int SpaceDim, int NumDofsPerNode=1, int DofOffset=0>
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumDofsPerNode = 1, Plato::OrdinalType DofOffset = 0>
 class FluxDivergence : public Plato::Simplex<SpaceDim>
 {
-  private:
+private:
+    using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
 
-    using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
-
-  public:
-
-    template<
-      typename ForcingScalarType, 
-      typename FluxScalarType,
-      typename GradientScalarType,
-      typename VolumeScalarType>
-    DEVICE_TYPE inline void
-    operator()( int cellOrdinal,
-                Plato::ScalarMultiVectorT< ForcingScalarType > q,
-                Plato::ScalarMultiVectorT< FluxScalarType    > tflux,
-                Plato::ScalarArray3DT<     GradientScalarType > gradient,
-                Plato::ScalarVectorT<VolumeScalarType> cellVolume,
-                Plato::Scalar scale = 1.0 ) const {
-
-      // compute flux divergence
-      //
-      for( int iNode=0; iNode<mNumNodesPerCell; iNode++){
-        Plato::OrdinalType localOrdinal = iNode*NumDofsPerNode+DofOffset;
-        for(int iDim=0; iDim<SpaceDim; iDim++){
-          q(cellOrdinal, localOrdinal) += scale*tflux(cellOrdinal,iDim)*gradient(cellOrdinal,iNode,iDim)*cellVolume(cellOrdinal);
+public:
+    /******************************************************************************//**
+     * \brief Compute flux divergence
+     * \param [in] aCellOrdinal cell (i.e. element) ordinal
+     * \param [in/out] aOutput output, i.e. flux divergence
+     * \param [in] aFlux input flux workset
+     * \param [in] aGradient configuration gradients
+     * \param [in] aStateValues 2D state values workset
+     * \param [in] aScale scale parameter (default = 1.0)
+    **********************************************************************************/
+    template<typename ForcingScalarType, typename FluxScalarType, typename GradientScalarType, typename VolumeScalarType>
+    DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
+                                       Plato::ScalarMultiVectorT<ForcingScalarType> aOutput,
+                                       Plato::ScalarMultiVectorT<FluxScalarType> aFlux,
+                                       Plato::ScalarArray3DT<GradientScalarType> aGradient,
+                                       Plato::ScalarVectorT<VolumeScalarType> aCellVolume,
+                                       Plato::Scalar aScale = 1.0) const
+    {
+        for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < mNumNodesPerCell; tNodeIndex++)
+        {
+            Plato::OrdinalType tLocalOrdinal = tNodeIndex * NumDofsPerNode + DofOffset;
+            for(Plato::OrdinalType tDimIndex = 0; tDimIndex < SpaceDim; tDimIndex++)
+            {
+                aOutput(aCellOrdinal, tLocalOrdinal) += aScale * aFlux(aCellOrdinal, tDimIndex)
+                        * aGradient(aCellOrdinal, tNodeIndex, tDimIndex) * aCellVolume(aCellOrdinal);
+            }
         }
-      }
     }
 };
 // class FluxDivergence
 
-} // namespace Plato
-#endif
+}
+// namespace Plato

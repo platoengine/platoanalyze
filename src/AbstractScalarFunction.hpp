@@ -10,8 +10,8 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Abstract scalar function (i.e. criterion) interface
- * @tparam EvaluationType evaluation type use to determine automatic differentiation
+ * \brief Abstract scalar function (i.e. criterion) interface
+ * \tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
 **********************************************************************************/
 template<typename EvaluationType>
@@ -27,11 +27,11 @@ protected:
  
 public:
     /******************************************************************************//**
-     * @brief Abstract scalar function constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets mesh side sets database
-     * @param [in] aDataMap PLATO Engine and PLATO Analyze data map
-     * @param [in] aName my abstract scalar function name
+     * \brief Abstract scalar function constructor
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets mesh side sets database
+     * \param [in] aDataMap PLATO Engine and PLATO Analyze data map
+     * \param [in] aName my abstract scalar function name
     **********************************************************************************/
     AbstractScalarFunction(Omega_h::Mesh& aMesh,
                            Omega_h::MeshSets& aMeshSets,
@@ -45,17 +45,17 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Abstract scalar function destructor
+     * \brief Abstract scalar function destructor
     **********************************************************************************/
     virtual ~AbstractScalarFunction(){}
 
     /******************************************************************************//**
-     * @brief Evaluate abstract scalar function
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
-     * @param [out] aResult 1D container of cell criterion values
-     * @param [in] aTimeStep time step (default = 0)
+     * \brief Evaluate abstract scalar function
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
+     * \param [out] aResult 1D container of cell criterion values
+     * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
     virtual void
     evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType> & aState,
@@ -65,10 +65,10 @@ public:
              Plato::Scalar aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
-     * @brief Update physics-based data in between optimization iterations
-     * @param [in] aState 2D container of state variables
-     * @param [in] aControl 2D container of control variables
-     * @param [in] aConfig 3D container of configuration/coordinates
+     * \brief Update physics-based data in between optimization iterations
+     * \param [in] aState 2D container of state variables
+     * \param [in] aControl 2D container of control variables
+     * \param [in] aConfig 3D container of configuration/coordinates
     **********************************************************************************/
     virtual void updateProblem(const Plato::ScalarMultiVector & aState,
                                const Plato::ScalarMultiVector & aControl,
@@ -76,21 +76,21 @@ public:
     { return; }
 
     /******************************************************************************//**
-     * @brief Get abstract scalar function evaluation and total gradient
+     * \brief Get abstract scalar function evaluation and total gradient
     **********************************************************************************/
     virtual void postEvaluate(Plato::ScalarVector, Plato::Scalar)
     { return; }
 
     /******************************************************************************//**
-     * @brief Get abstract scalar function evaluation
-     * @param [out] aOutput scalar function evaluation
+     * \brief Get abstract scalar function evaluation
+     * \param [out] aOutput scalar function evaluation
     **********************************************************************************/
     virtual void postEvaluate(Plato::Scalar& aOutput)
     { return; }
 
     /******************************************************************************//**
-     * @brief Return abstract scalar function name
-     * @return name
+     * \brief Return abstract scalar function name
+     * \return name
     **********************************************************************************/
     const decltype(mFunctionName)& getName()
     {

@@ -1,45 +1,52 @@
 #ifndef LGR_PLATO_CELL_FORCING_HPP
 #define LGR_PLATO_CELL_FORCING_HPP
 
+#include <Omega_h_matrix.hpp>
+
+#include "plato/PlatoStaticsTypes.hpp"
+
 /******************************************************************************/
 /*! Add forcing for homogenization cell problem.
-  
-    given a view, subtract the forcing column.
-*/
-/******************************************************************************/
-namespace Plato {
 
-template<int NumTerms>
+ given a view, subtract the forcing column.
+ */
+/******************************************************************************/
+namespace Plato
+{
+
+template<Plato::OrdinalType NumTerms>
 class CellForcing
 {
-  private:
+private:
 
-    const Omega_h::Matrix<NumTerms,NumTerms> mCellStiffness;
-    const int mColumnIndex;
+    const Omega_h::Matrix<NumTerms, NumTerms> mCellStiffness;
+    const Plato::OrdinalType mColumnIndex;
 
-  public:
+public:
 
-    CellForcing( const Omega_h::Matrix<NumTerms,NumTerms> aCellStiffness, int aColumnIndex ) :
-            mCellStiffness(aCellStiffness), mColumnIndex(aColumnIndex) {}
+    CellForcing(const Omega_h::Matrix<NumTerms, NumTerms> aCellStiffness, Plato::OrdinalType aColumnIndex) :
+            mCellStiffness(aCellStiffness),
+            mColumnIndex(aColumnIndex)
+    {
+    }
 
     template<typename TensorScalarType>
-    void
-    add( Kokkos::View<TensorScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& tensor ) const
+    void add(Kokkos::View<TensorScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aTensor) const
     {
-      int numCells = tensor.extent(0);
-      int numTerms = tensor.extent(1);
-      auto cellStiffness = mCellStiffness;
-      auto& tTensor = tensor;
-      auto columnIndex = mColumnIndex;
-      Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numCells), LAMBDA_EXPRESSION(int cellOrdinal)
-      {
-
-        // add forcing
-        //
-        for(int iTerm=0; iTerm<numTerms; iTerm++){
-          tTensor(cellOrdinal,iTerm) -= cellStiffness(iTerm, columnIndex);
-        }
-      }, "Add Forcing");
+        Plato::OrdinalType tNumCells = aTensor.extent(0);
+        Plato::OrdinalType tNumTerms = aTensor.extent(1);
+        auto tCellStiffness = mCellStiffness;
+        auto& tTensor = aTensor;
+        auto tColumnIndex = mColumnIndex;
+        Kokkos::parallel_for(Kokkos::RangePolicy < Plato::OrdinalType > (0, tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
+        {
+            // add forcing
+            //
+            for(Plato::OrdinalType tTermIndex = 0; tTermIndex < tNumTerms; tTermIndex++)
+            {
+                tTensor(aCellOrdinal,tTermIndex) -= tCellStiffness(tTermIndex, tColumnIndex);
+            }
+        }, "Add Forcing");
     }
 };
 

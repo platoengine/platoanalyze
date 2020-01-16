@@ -69,7 +69,7 @@ struct FunctionFactory
 
 
 /****************************************************************************//**
- * @brief Concrete class for use as the PhysicsT template argument in VectorFunctionVMS
+ * \brief Concrete class for use as the PhysicsT template argument in VectorFunctionVMS
  *******************************************************************************/
 template<
   Plato::OrdinalType SpaceDimParam,
@@ -80,7 +80,7 @@ class Projection: public Plato::SimplexProjection<SpaceDimParam>
 {
 public:
     typedef Plato::ProjectionFactory::FunctionFactory FunctionFactory;
-    using SimplexT        = SimplexProjection<SpaceDimParam, TotalDofsParam, ProjectionDofOffset, NumProjectionDofs>;
+    using SimplexT = SimplexProjection<SpaceDimParam, TotalDofsParam, ProjectionDofOffset, NumProjectionDofs>;
     static constexpr Plato::OrdinalType SpaceDim = SpaceDimParam;
 };
 

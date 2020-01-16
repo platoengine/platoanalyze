@@ -30,7 +30,7 @@ private:
     using Plato::WorksetBase<PhysicsT>::mNumNodes; /*!< total number of nodes in the mesh */
     using Plato::WorksetBase<PhysicsT>::mNumCells; /*!< total number of cells/elements in the mesh */
 
-    using Plato::WorksetBase<PhysicsT>::mStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
+    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
     using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal; /*!< number of degree of freedom per cell/element */
     using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal; /*!< number of degree of freedom per cell/element */
 
@@ -312,7 +312,7 @@ public:
         Kokkos::deep_copy(tResult, 0.0);
         mScalarFunctionGradientX->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tResult, aTimeStep );
 
-        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumSpatialDims>(mNumCells, mConfigEntryOrdinal, tResult, tObjGradientX);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>(mNumCells, mConfigEntryOrdinal, tResult, tObjGradientX);
         tObjectiveValue += Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
 
         }
@@ -380,7 +380,7 @@ public:
         // create and assemble to return view
         //
         Plato::ScalarVector tObjGradientU("objective gradient state",mNumDofsPerNode*mNumNodes);
-        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mStateEntryOrdinal, tResult, tObjGradientU);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, tResult, tObjGradientU);
         Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
 
         if( aStepIndex+1 < tNumSteps ) {
@@ -398,7 +398,7 @@ public:
 
         // create and assemble to return view
         //
-        Plato::assemble_vector_gradient<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mStateEntryOrdinal, tResult, tObjGradientU);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, tResult, tObjGradientU);
         tObjectiveValue += Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
         }
 
@@ -468,7 +468,7 @@ public:
         Kokkos::deep_copy(tResult, 0.0);
         mScalarFunctionGradientZ->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tResult, aTimeStep );
 
-        Plato::assemble_scalar_gradient<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, tResult, tObjGradientZ);
+        Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, tResult, tObjGradientZ);
 
         tObjectiveValue += Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
 

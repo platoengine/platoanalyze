@@ -20,7 +20,7 @@ namespace Plato
 * Evaluate cell's nodal states at cubature points.
 *
 ***********************************************************************************/
-template<int SpaceDim, int NumDofsPerNode=SpaceDim, int DofOffset=0, int NumDofs=1>
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumDofsPerNode=SpaceDim, Plato::OrdinalType DofOffset=0, Plato::OrdinalType NumDofs=1>
 class InterpolateFromNodal : public Plato::Simplex<SpaceDim>
 {
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
