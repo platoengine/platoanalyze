@@ -19,43 +19,43 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "plato/Simp.hpp"
-#include "plato/Strain.hpp"
-#include "plato/Simplex.hpp"
-#include "plato/Kinetics.hpp"
-#include "plato/BodyLoads.hpp"
-#include "plato/ParseTools.hpp"
-#include "plato/NaturalBCs.hpp"
-#include "plato/ScalarGrad.hpp"
-#include "plato/Projection.hpp"
-#include "plato/WorksetBase.hpp"
-#include "plato/EssentialBCs.hpp"
-#include "plato/ProjectToNode.hpp"
-#include "plato/FluxDivergence.hpp"
-#include "plato/SimplexFadTypes.hpp"
-#include "plato/StressDivergence.hpp"
-#include "plato/SimplexPlasticity.hpp"
-#include "plato/VectorFunctionVMS.hpp"
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/Plato_Diagnostics.hpp"
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/PressureDivergence.hpp"
-#include "plato/StabilizedMechanics.hpp"
-#include "plato/PlatoAbstractProblem.hpp"
-#include "plato/Plato_TopOptFunctors.hpp"
-#include "plato/InterpolateFromNodal.hpp"
-#include "plato/LinearElasticMaterial.hpp"
-#include "plato/ScalarFunctionIncBase.hpp"
-#include "plato/J2PlasticityUtilities.hpp"
-#include "plato/LocalVectorFunctionInc.hpp"
-#include "plato/ThermoPlasticityUtilities.hpp"
-#include "plato/LinearTetCubRuleDegreeOne.hpp"
+#include "Simp.hpp"
+#include "Strain.hpp"
+#include "Simplex.hpp"
+#include "Kinetics.hpp"
+#include "BodyLoads.hpp"
+#include "ParseTools.hpp"
+#include "NaturalBCs.hpp"
+#include "ScalarGrad.hpp"
+#include "Projection.hpp"
+#include "WorksetBase.hpp"
+#include "EssentialBCs.hpp"
+#include "ProjectToNode.hpp"
+#include "FluxDivergence.hpp"
+#include "SimplexFadTypes.hpp"
+#include "StressDivergence.hpp"
+#include "SimplexPlasticity.hpp"
+#include "VectorFunctionVMS.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "Plato_Diagnostics.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "PressureDivergence.hpp"
+#include "StabilizedMechanics.hpp"
+#include "PlatoAbstractProblem.hpp"
+#include "Plato_TopOptFunctors.hpp"
+#include "InterpolateFromNodal.hpp"
+#include "LinearElasticMaterial.hpp"
+#include "ScalarFunctionIncBase.hpp"
+#include "J2PlasticityUtilities.hpp"
+#include "LocalVectorFunctionInc.hpp"
+#include "ThermoPlasticityUtilities.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/Plato_Solve.hpp"
-#include "plato/ApplyConstraints.hpp"
-#include "plato/ScalarFunctionBaseFactory.hpp"
-#include "plato/ScalarFunctionIncBaseFactory.hpp"
+#include "ImplicitFunctors.hpp"
+#include "Plato_Solve.hpp"
+#include "ApplyConstraints.hpp"
+#include "ScalarFunctionBaseFactory.hpp"
+#include "ScalarFunctionIncBaseFactory.hpp"
 
 #include "KokkosBatched_LU_Decl.hpp"
 #include "KokkosBatched_LU_Serial_Impl.hpp"
@@ -7122,7 +7122,7 @@ namespace ElastoPlasticityTest
 {
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_FlattenVectorWorkset_Errors)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_FlattenVectorWorkset_Errors)
 {
     // CALL FUNCTION - TEST tLocalStateWorset IS EMPTY
     Plato::ScalarVector tAssembledLocalState;
@@ -7141,7 +7141,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_FlattenVectorWorkset_Error
     TEST_THROW(Plato::flatten_vector_workset<tNumLocalDofsPerCell>(tEmptyNumCells, tLocalStateWorset, tAssembledLocalState), std::runtime_error);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_FlattenVectorWorkset)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_FlattenVectorWorkset)
 {
     // PREPARE DATA
     constexpr Plato::OrdinalType tNumCells = 3;
@@ -7183,7 +7183,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_FlattenVectorWorkset)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_fill3DView_Error)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill3DView_Error)
 {
     // PREPARE DATA
     constexpr Plato::OrdinalType tNumRows = 14;
@@ -7205,7 +7205,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_fill3DView_Error)
     TEST_THROW( (Plato::fill_matrix_workset<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_fill3DView)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill3DView)
 {
     // PREPARE DATA
     constexpr Plato::OrdinalType tNumRows = 14;
@@ -7235,7 +7235,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_fill3DView)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateMatrixWorkset_Error)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateMatrixWorkset_Error)
 {
     // CALL FUNCTION - INPUT VIEW IS EMPTY
     Plato::ScalarArray3D tB;
@@ -7273,7 +7273,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateMatrixWorkset_Error)
     TEST_THROW( (Plato::update_3Dview(tBadNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateMatrixWorkset)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateMatrixWorkset)
 {
     // PREPARE DATA
     constexpr Plato::OrdinalType tNumRows = 14;
@@ -7310,7 +7310,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateMatrixWorkset)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateVectorWorkset_Error)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateVectorWorkset_Error)
 {
     // CALL FUNCTION - DIM(1) MISMATCH
     Plato::OrdinalType tNumDofsPerCell = 3;
@@ -7327,7 +7327,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateVectorWorkset_Error)
     TEST_THROW( (Plato::update_2Dview(tAlpha, tVecY, tBeta, tVecZ)), std::runtime_error );
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateVectorWorkset)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateVectorWorkset)
 {
     // PREPARE DATA
     constexpr Plato::OrdinalType tNumCells = 2;
@@ -7370,7 +7370,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_UpdateVectorWorkset)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Error)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Error)
 {
     // PREPARE DATA
     Plato::ScalarArray3D tA;
@@ -7417,7 +7417,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Erro
     TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tD, tBeta, tG)), std::runtime_error );
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_One)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_One)
 {
     // PREPARE DATA FOR TEST ONE
     constexpr Plato::OrdinalType tNumRows = 4;
@@ -7501,7 +7501,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_One)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Two)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Two)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 1;
@@ -7602,7 +7602,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_Two)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset_Error)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset_Error)
 {
     // PREPARE DATA
     Plato::ScalarArray3D tA;
@@ -7633,7 +7633,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset_E
     TEST_THROW( (Plato::matrix_times_vector_workset("N", tAlpha, tA, tVecX, tBeta, tY)), std::runtime_error );
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
 {
     // 1. PREPARE DATA FOR TEST ONE
     constexpr Plato::OrdinalType tNumRows = 3;
@@ -7747,7 +7747,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
     TEST_THROW( (Plato::matrix_times_vector_workset("C", tAlpha, tA, tVecX, tBeta, tVecY)), std::runtime_error );
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_IdentityWorkset)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_IdentityWorkset)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumRows = 4;
@@ -7775,7 +7775,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_IdentityWorkset)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_InverseMatrixWorkset)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_InverseMatrixWorkset)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumRows = 2;
@@ -7815,7 +7815,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_InverseMatrixWorkset)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ApplyPenalty)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ApplyPenalty)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumRows = 3;
@@ -7853,7 +7853,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ApplyPenalty)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeShearAndBulkModulus)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeShearAndBulkModulus)
 {
     const Plato::Scalar tPoisson = 0.3;
     const Plato::Scalar tElasticModulus = 1;
@@ -7864,7 +7864,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeShearAndBulkModulus
     TEST_FLOATING_EQUALITY(tShear, 0.384615384615385, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_StrainDivergence3D)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 3;
@@ -7902,7 +7902,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence3D)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_StrainDivergence2D)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 3;
@@ -7937,7 +7937,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence2D)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence1D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_StrainDivergence1D)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 3;
@@ -7970,7 +7970,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_StrainDivergence1D)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeStabilization3D)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 3;
@@ -8030,7 +8030,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization3D)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeStabilization2D)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 3;
@@ -8088,7 +8088,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization2D)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization1D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeStabilization1D)
 {
     // PREPARE DATA FOR TEST
     constexpr Plato::OrdinalType tNumCells = 3;
@@ -8144,7 +8144,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ComputeStabilization1D)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual3D_Elastic)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual3D_Elastic)
 {
     // 1. PREPARE PROBLEM INPUS FOR TEST
     Plato::DataMap tDataMap;
@@ -8249,7 +8249,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual3D_Elastic)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual2D_Elastic)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual2D_Elastic)
 {
     // 1. PREPARE PROBLEM INPUS FOR TEST
     Plato::DataMap tDataMap;
@@ -8347,7 +8347,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Residual2D_Elastic)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Update2ndOrderTensor)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Update2ndOrderTensor)
 {
     //****************************** 3-D TEST ******************************
 
@@ -8490,7 +8490,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_Update2ndOrderTensor)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtControl_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtControl_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -8545,7 +8545,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtControl_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtControl_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -8600,7 +8600,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentGlobalStates_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentGlobalStates_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -8655,7 +8655,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentGlobalStates_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentGlobalStates_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -8710,7 +8710,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentLocalStates_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentLocalStates_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -8765,7 +8765,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentLocalStates_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtCurrentLocalStates_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -8820,7 +8820,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialMaximizePlastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtControls_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtControls_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -8866,7 +8866,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtControls_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtControls_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -8912,7 +8912,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCont
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentGlobalStates_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentGlobalStates_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -8958,7 +8958,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentGlobalStates_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentGlobalStates_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -9004,7 +9004,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousLocalStates_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousLocalStates_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -9050,7 +9050,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousLocalStates_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousLocalStates_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -9096,7 +9096,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousGlobalStates_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousGlobalStates_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -9142,7 +9142,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousGlobalStates_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtPreviousGlobalStates_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -9189,7 +9189,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtPrev
 
 
 /*
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentLocalStates_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentLocalStates_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -9235,7 +9235,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentLocalStates_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialResidualWrtCurrentLocalStates_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -9282,7 +9282,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPartialResidualWrtCurr
 */
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -9398,7 +9398,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -9524,7 +9524,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_TestPlasticityProblem_3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveValue_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -9634,7 +9634,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_2D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveValue_3D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -9745,7 +9745,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveValue_3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintValue_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -9857,7 +9857,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_2D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintValue_3D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -9968,7 +9968,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ConstraintValue_3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
