@@ -43,8 +43,8 @@
 #include "AnalyzeConfig.hpp"
 #include "alg/Run.hpp"
 
+#include "alg/ErrorHandling.hpp"
 #include "PlatoDriver.hpp"
-#include "AnalyzeMacros.hpp"
 
 namespace Plato {
 
@@ -97,7 +97,7 @@ void run(
       ::Plato::driver(lib_osh, problem, input_mesh, output_viz);
     } else
     {
-      THROWERR("Unrecognized Physics " << physicsString);
+      PLATO_THROW_IF(true, "Unrecognized Physics " << physicsString);
     }
   }
 }
