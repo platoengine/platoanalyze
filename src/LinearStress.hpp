@@ -1,5 +1,5 @@
-#ifndef LGR_PLATO_LINEAR_STRESS_HPP
-#define LGR_PLATO_LINEAR_STRESS_HPP
+#ifndef PLATO_LINEAR_STRESS_HPP
+#define PLATO_LINEAR_STRESS_HPP
 
 #include "SimplexMechanics.hpp"
 #include "LinearElasticMaterial.hpp"

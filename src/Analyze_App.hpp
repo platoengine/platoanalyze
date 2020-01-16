@@ -174,13 +174,13 @@ public:
     {
         if(aName == "Topology")
         {
-            this->copyFieldIntolgr(mControl, aSharedField);
+            this->copyFieldIntoAnalyze(mControl, aSharedField);
         }
         else if(aName == "Solution")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
-            this->copyFieldIntolgr(tStatesSubView, aSharedField);
+            this->copyFieldIntoAnalyze(tStatesSubView, aSharedField);
         }
     }
 
@@ -297,7 +297,7 @@ public:
         if(tDataMap.scalarVectors.count(tFieldName))
         {
             auto tData = tDataMap.scalarVectors.at(tFieldName);
-            this->copyFieldFromlgr(tData, aSharedField);
+            this->copyFieldFromAnalyze(tData, aSharedField);
         }
         else if(tDataMap.scalarMultiVectors.count(tFieldName))
         {
@@ -307,7 +307,7 @@ public:
             {
                 tComponentIndex = std::atoi(tTokens[1].c_str());
             }
-            this->copyFieldFromlgr(tData, tComponentIndex, aSharedField);
+            this->copyFieldFromAnalyze(tData, tComponentIndex, aSharedField);
         }
         else if(tDataMap.scalarArray3Ds.count(tFieldName))
         {
@@ -324,97 +324,97 @@ public:
     {
         if(aName == "Objective Gradient")
         {
-            this->copyFieldFromlgr(mObjectiveGradientZ, aSharedField);
+            this->copyFieldFromAnalyze(mObjectiveGradientZ, aSharedField);
         }
         else if(aName == "Constraint Gradient")
         {
-            this->copyFieldFromlgr(mConstraintGradientZ, aSharedField);
+            this->copyFieldFromAnalyze(mConstraintGradientZ, aSharedField);
         }
         else if(aName == "Adjoint")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tAdjoint,/*component=*/0, /*stride=*/1);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Adjoint X")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tAdjoint,/*component=*/0, /*stride=*/mNumSolutionDofs);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Adjoint Y")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tAdjoint,/*component=*/1, /*stride=*/mNumSolutionDofs);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Adjoint Z")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tAdjoint,/*component=*/2, /*stride=*/mNumSolutionDofs);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution X")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSolutionDofs);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Y")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSolutionDofs);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Z")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSolutionDofs);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Objective GradientX X")
         {
             auto tScalarField = getVectorComponent(mObjectiveGradientX,/*component=*/0, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Objective GradientX Y")
         {
             auto tScalarField = getVectorComponent(mObjectiveGradientX,/*component=*/1, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Objective GradientX Z")
         {
             auto tScalarField = getVectorComponent(mObjectiveGradientX,/*component=*/2, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Constraint GradientX X")
         {
             auto tScalarField = getVectorComponent(mConstraintGradientX,/*component=*/0, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Constraint GradientX Y")
         {
             auto tScalarField = getVectorComponent(mConstraintGradientX,/*component=*/1, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Constraint GradientX Z")
         {
             auto tScalarField = getVectorComponent(mConstraintGradientX,/*component=*/2, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromlgr(tScalarField, aSharedField);
+            this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
     }
 
@@ -430,7 +430,7 @@ private:
 
     /******************************************************************************/
     template<typename VectorT, typename SharedDataT>
-    void copyFieldIntolgr(VectorT & aDeviceData, const SharedDataT& aSharedField)
+    void copyFieldIntoAnalyze(VectorT & aDeviceData, const SharedDataT& aSharedField)
     /******************************************************************************/
     {
         // get data from data layer
@@ -448,7 +448,7 @@ private:
 
     /******************************************************************************/
     template<typename SharedDataT>
-    void copyFieldFromlgr(const Plato::ScalarVector & aDeviceData, SharedDataT& aSharedField)
+    void copyFieldFromAnalyze(const Plato::ScalarVector & aDeviceData, SharedDataT& aSharedField)
     /******************************************************************************/
     {
         // create kokkos::view around std::vector
@@ -466,7 +466,7 @@ private:
 public:
     /******************************************************************************/
     template<typename SharedDataT>
-    void copyFieldFromlgr(const Plato::ScalarMultiVector & aDeviceData, int aIndex, SharedDataT& aSharedField)
+    void copyFieldFromAnalyze(const Plato::ScalarMultiVector & aDeviceData, int aIndex, SharedDataT& aSharedField)
     /******************************************************************************/
     {
 
@@ -477,7 +477,7 @@ public:
                     tCopy(datumOrdinal) = aDeviceData(datumOrdinal,aIndex);
                 }, "get subview");
 
-        copyFieldFromlgr(tCopy, aSharedField);
+        copyFieldFromAnalyze(tCopy, aSharedField);
     }
 
 private:
