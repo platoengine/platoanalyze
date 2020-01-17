@@ -7,7 +7,7 @@
 #include "Teuchos_UnitTestHarness.hpp"
 
 #include "PlatoTestHelpers.hpp"
-#include "plato/PlatoUtilities.hpp"
+#include "PlatoUtilities.hpp"
 
 #include <memory>
 #include <limits>

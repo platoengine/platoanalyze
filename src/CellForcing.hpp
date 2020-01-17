@@ -3,7 +3,7 @@
 
 #include <Omega_h_matrix.hpp>
 
-#include "plato/PlatoStaticsTypes.hpp"
+#include "PlatoStaticsTypes.hpp"
 
 /******************************************************************************/
 /*! Add forcing for homogenization cell problem.
