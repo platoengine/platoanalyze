@@ -6,8 +6,8 @@
 //
 //
 
-#ifndef LGR_CRS_LINEAR_PROBLEM_HPP
-#define LGR_CRS_LINEAR_PROBLEM_HPP
+#ifndef CRS_LINEAR_PROBLEM_HPP
+#define CRS_LINEAR_PROBLEM_HPP
 
 #include "alg/CrsMatrix.hpp"
 #include <Kokkos_Core.hpp>

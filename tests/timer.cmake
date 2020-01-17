@@ -17,7 +17,7 @@ endif()
 execute_process(COMMAND bash "-c" "echo '' > cmake_timing_data")
 
 ## test
-set( TEST_COMMAND "${TEST_COMMAND} ${LGR_EXECUTABLE} --output-viz=output_data --input-config=${CONFIG_FILE} &>> cmake_timing_data" )
+set( TEST_COMMAND "${TEST_COMMAND} ${ANALYZE_EXECUTABLE} --output-viz=output_data --input-config=${CONFIG_FILE} &>> cmake_timing_data" )
 foreach(timed_run RANGE 1 ${NUM_RUNS})
   execute_process(COMMAND bash "-c" "${TEST_COMMAND}" RESULT_VARIABLE HAD_ERROR)
   if (HAD_ERROR)

@@ -1,5 +1,5 @@
-#ifndef LGR_PLATO_CELL_FORCING_HPP
-#define LGR_PLATO_CELL_FORCING_HPP
+#ifndef PLATO_CELL_FORCING_HPP
+#define PLATO_CELL_FORCING_HPP
 
 #include <Omega_h_matrix.hpp>
 

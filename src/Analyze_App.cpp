@@ -641,7 +641,7 @@ void MPMD_App::exportDataMap(const Plato::data::layout_t & aDataLayout, std::vec
     }
     else
     {
-        Plato::ParsingException tParsingException("lgrMPMD currently only supports SCALAR_FIELD and ELEMENT_FIELD data layout");
+        Plato::ParsingException tParsingException("analyze_MPMD currently only supports SCALAR_FIELD and ELEMENT_FIELD data layout");
         throw tParsingException;
     }
 }

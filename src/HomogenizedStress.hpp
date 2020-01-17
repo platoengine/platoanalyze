@@ -1,5 +1,5 @@
-#ifndef LGR_PLATO_HOMOGENIZED_STRESS_HPP
-#define LGR_PLATO_HOMOGENIZED_STRESS_HPP
+#ifndef PLATO_HOMOGENIZED_STRESS_HPP
+#define PLATO_HOMOGENIZED_STRESS_HPP
 
 #include <Omega_h_matrix.hpp>
 #include "SimplexMechanics.hpp"
