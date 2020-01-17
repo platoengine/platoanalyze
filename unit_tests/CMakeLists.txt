@@ -177,7 +177,7 @@ add_test(NAME runPlasticityUnitTests COMMAND ${ES_MPI_TEST})
   )
 
   target_link_libraries(ElastoPlasticityUnitTests 
-    lgrtk
+    analyzelib
     ${Trilinos_LIBRARIES} 
     ${Trilinos_TPL_LIBRARIES} 
     )
