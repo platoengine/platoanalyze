@@ -38,8 +38,8 @@
 //@HEADER
 */
 
-#ifndef LGR_PARALLEL_COMM_HPP
-#define LGR_PARALLEL_COMM_HPP
+#ifndef ANALYZE_PARALLEL_COMM_HPP
+#define ANALYZE_PARALLEL_COMM_HPP
 
 #include <Teuchos_RCPDecl.hpp>
 #include <Teuchos_GlobalMPISession.hpp>

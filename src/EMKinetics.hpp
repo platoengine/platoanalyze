@@ -1,5 +1,5 @@
-#ifndef LGR_PLATO_EMKINETICS_HPP
-#define LGR_PLATO_EMKINETICS_HPP
+#ifndef PLATO_EMKINETICS_HPP
+#define PLATO_EMKINETICS_HPP
 
 #include "SimplexElectromechanics.hpp"
 #include "LinearElectroelasticMaterial.hpp"

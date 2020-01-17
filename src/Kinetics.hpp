@@ -1,5 +1,5 @@
-#ifndef LGR_PLATO_KINETICS_HPP
-#define LGR_PLATO_KINETICS_HPP
+#ifndef PLATO_KINETICS_HPP
+#define PLATO_KINETICS_HPP
 
 #include "SimplexMechanics.hpp"
 #include "LinearElasticMaterial.hpp"

@@ -1,5 +1,5 @@
-#ifndef LGR_PLATO_IMPLICIT_FUNCTORS_HPP
-#define LGR_PLATO_IMPLICIT_FUNCTORS_HPP
+#ifndef PLATO_IMPLICIT_FUNCTORS_HPP
+#define PLATO_IMPLICIT_FUNCTORS_HPP
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_matrix.hpp>

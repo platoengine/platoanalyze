@@ -1,5 +1,5 @@
-#ifndef LGR_PLATO_TMKINETICS_HPP
-#define LGR_PLATO_TMKINETICS_HPP
+#ifndef PLATO_TMKINETICS_HPP
+#define PLATO_TMKINETICS_HPP
 
 #include "SimplexThermomechanics.hpp"
 #include "LinearThermoelasticMaterial.hpp"

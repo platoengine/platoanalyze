@@ -5,8 +5,8 @@
 //  Created by Roberts, Nathan V on 8/8/17.
 //
 //
-#ifndef LGR_AMGX_SPARSE_LINEAR_PROBLEM_HPP
-#define LGR_AMGX_SPARSE_LINEAR_PROBLEM_HPP
+#ifndef AMGX_SPARSE_LINEAR_PROBLEM_HPP
+#define AMGX_SPARSE_LINEAR_PROBLEM_HPP
 
 #include <Teuchos_Comm.hpp>
 #include <Teuchos_RCP.hpp>

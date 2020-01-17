@@ -2,7 +2,6 @@
 //@HEADER
 // ************************************************************************
 //
-//                        lgr v. 1.0
 //              Copyright (2014) Sandia Corporation
 //
 // Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
@@ -35,14 +34,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// Questions? Contact  Glen A. Hansen (gahanse@sandia.gov)
-//
 // ************************************************************************
 //@HEADER
 */
 
-#ifndef LGR_RUN_HPP
-#define LGR_RUN_HPP
+#ifndef ANALYZE_RUN_HPP
+#define ANALYZE_RUN_HPP
 
 #include "alg/ParallelComm.hpp"
 #include <Omega_h_library.hpp>

@@ -1,8 +1,8 @@
 //
 //  AmgXConfigs.hpp
 //  
-#ifndef LGR_AMGX_CONFIGS_HPP
-#define LGR_AMGX_CONFIGS_HPP
+#ifndef AMGX_CONFIGS_HPP
+#define AMGX_CONFIGS_HPP
 
 #include <string>
 #include <PlatoTypes.hpp>
