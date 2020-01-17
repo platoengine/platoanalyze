@@ -63,8 +63,8 @@ namespace Plato {
 inline void enable_floating_point_exceptions();
 }
 
-#ifdef PLATO_CHECK_FPE
-#ifdef PLATO_USE_GNU_FPE
+#ifdef PLATOANALYZE_CHECK_FPE
+#ifdef PLATOANALYZE_USE_GNU_FPE
 #define _GNU_SOURCE 1
 #include <fenv.h>
 inline void Plato::enable_floating_point_exceptions() {
