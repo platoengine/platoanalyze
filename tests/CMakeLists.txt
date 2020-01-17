@@ -1,4 +1,4 @@
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/plato/CMakeLists.txt)
   ADD_SUBDIRECTORY(plato)
   message("-- Adding plato tests")
 else()
