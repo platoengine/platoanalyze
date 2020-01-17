@@ -967,11 +967,11 @@ public:
 #include "Plasticity.hpp"
 #include "ThermoPlasticity.hpp"
 
-#ifdef PLATO_2D
+#ifdef PLATOANALYZE_2D
 extern template class Plato::LocalVectorFunctionInc<Plato::Plasticity<2>>;
 extern template class Plato::LocalVectorFunctionInc<Plato::ThermoPlasticity<2>>;
 #endif
-#ifdef PLATO_3D
+#ifdef PLATOANALYZE_3D
 extern template class Plato::LocalVectorFunctionInc<Plato::Plasticity<3>>;
 extern template class Plato::LocalVectorFunctionInc<Plato::ThermoPlasticity<3>>;
 #endif

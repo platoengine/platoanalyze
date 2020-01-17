@@ -85,7 +85,7 @@ createProblem(ProblemDefinition& aDefinition){
 
   if (mNumSpatialDims == 3)
   {
-    #ifdef PLATO_3D
+    #ifdef PLATOANALYZE_3D
     Plato::ProblemFactory<3> tProblemFactory;
     mProblem = tProblemFactory.create(mMesh, mMeshSets, aDefinition.params);
     #else
@@ -94,7 +94,7 @@ createProblem(ProblemDefinition& aDefinition){
   } else
   if (mNumSpatialDims == 2)
   {
-    #ifdef PLATO_2D
+    #ifdef PLATOANALYZE_2D
     Plato::ProblemFactory<2> tProblemFactory;
     mProblem = tProblemFactory.create(mMesh, mMeshSets, aDefinition.params);
     #else
@@ -103,7 +103,7 @@ createProblem(ProblemDefinition& aDefinition){
   } else
   if (mNumSpatialDims == 1)
   {
-    #ifdef PLATO_1D
+    #ifdef PLATOANALYZE_1D
     Plato::ProblemFactory<1> tProblemFactory;
     mProblem = tProblemFactory.create(mMesh, mMeshSets, aDefinition.params);
     #else

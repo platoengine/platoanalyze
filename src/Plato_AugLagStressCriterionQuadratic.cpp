@@ -5,17 +5,17 @@
 
 #include "Plato_AugLagStressCriterionQuadratic.hpp"
 
-#ifdef PLATO_1D
+#ifdef PLATOANALYZE_1D
 PLATO_EXPL_DEF2(Plato::AugLagStressCriterionQuadratic, Plato::SimplexMechanics, 1)
 PLATO_EXPL_DEF2(Plato::AugLagStressCriterionQuadratic, Plato::SimplexThermomechanics, 1)
 #endif
 
-#ifdef PLATO_2D
+#ifdef PLATOANALYZE_2D
 PLATO_EXPL_DEF2(Plato::AugLagStressCriterionQuadratic, Plato::SimplexMechanics, 2)
 PLATO_EXPL_DEF2(Plato::AugLagStressCriterionQuadratic, Plato::SimplexThermomechanics, 2)
 #endif
 
-#ifdef PLATO_3D
+#ifdef PLATOANALYZE_3D
 PLATO_EXPL_DEF2(Plato::AugLagStressCriterionQuadratic, Plato::SimplexMechanics, 3)
 PLATO_EXPL_DEF2(Plato::AugLagStressCriterionQuadratic, Plato::SimplexThermomechanics, 3)
 #endif

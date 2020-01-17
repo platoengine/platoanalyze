@@ -509,21 +509,21 @@ public:
 
 #include "Mechanics.hpp"
 
-#ifdef PLATO_1D
+#ifdef PLATOANALYZE_1D
 extern template class Plato::AugLagStressCriterion<Plato::ResidualTypes<Plato::SimplexMechanics<1>>>;
 extern template class Plato::AugLagStressCriterion<Plato::JacobianTypes<Plato::SimplexMechanics<1>>>;
 extern template class Plato::AugLagStressCriterion<Plato::GradientXTypes<Plato::SimplexMechanics<1>>>;
 extern template class Plato::AugLagStressCriterion<Plato::GradientZTypes<Plato::SimplexMechanics<1>>>;
 #endif
 
-#ifdef PLATO_2D
+#ifdef PLATOANALYZE_2D
 extern template class Plato::AugLagStressCriterion<Plato::ResidualTypes<Plato::SimplexMechanics<2>>>;
 extern template class Plato::AugLagStressCriterion<Plato::JacobianTypes<Plato::SimplexMechanics<2>>>;
 extern template class Plato::AugLagStressCriterion<Plato::GradientXTypes<Plato::SimplexMechanics<2>>>;
 extern template class Plato::AugLagStressCriterion<Plato::GradientZTypes<Plato::SimplexMechanics<2>>>;
 #endif
 
-#ifdef PLATO_3D
+#ifdef PLATOANALYZE_3D
 extern template class Plato::AugLagStressCriterion<Plato::ResidualTypes<Plato::SimplexMechanics<3>>>;
 extern template class Plato::AugLagStressCriterion<Plato::JacobianTypes<Plato::SimplexMechanics<3>>>;
 extern template class Plato::AugLagStressCriterion<Plato::GradientXTypes<Plato::SimplexMechanics<3>>>;
