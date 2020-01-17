@@ -170,15 +170,15 @@ class ThermostaticResidual :
 
 } // namespace Plato
 
-#ifdef PLATO_1D
+#ifdef PLATOANALYZE_1D
 PLATO_EXPL_DEC(Plato::ThermostaticResidual, Plato::SimplexThermal, 1)
 #endif
 
-#ifdef PLATO_2D
+#ifdef PLATOANALYZE_2D
 PLATO_EXPL_DEC(Plato::ThermostaticResidual, Plato::SimplexThermal, 2)
 #endif
 
-#ifdef PLATO_3D
+#ifdef PLATOANALYZE_3D
 PLATO_EXPL_DEC(Plato::ThermostaticResidual, Plato::SimplexThermal, 3)
 #endif
 

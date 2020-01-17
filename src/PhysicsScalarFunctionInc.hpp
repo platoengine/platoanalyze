@@ -505,17 +505,17 @@ public:
 #include "Thermal.hpp"
 #include "Thermomechanics.hpp"
 
-#ifdef PLATO_1D
+#ifdef PLATOANALYZE_1D
 extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermal<1>>;
 extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermomechanics<1>>;
 #endif
 
-#ifdef PLATO_2D
+#ifdef PLATOANALYZE_2D
 extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermal<2>>;
 extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermomechanics<2>>;
 #endif
 
-#ifdef PLATO_3D
+#ifdef PLATOANALYZE_3D
 extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermal<3>>;
 extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermomechanics<3>>;
 #endif

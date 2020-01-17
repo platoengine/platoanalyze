@@ -81,14 +81,14 @@ public:
 
 } // namespace Plato
 
-#ifdef PLATO_1D
+#ifdef PLATOANALYZE_1D
 extern template class Plato::StructuralMass<1>;
 #endif
 
-#ifdef PLATO_2D
+#ifdef PLATOANALYZE_2D
 extern template class Plato::StructuralMass<2>;
 #endif
 
-#ifdef PLATO_3D
+#ifdef PLATOANALYZE_3D
 extern template class Plato::StructuralMass<3>;
 #endif

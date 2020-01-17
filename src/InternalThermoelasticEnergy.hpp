@@ -289,17 +289,17 @@ class InternalThermoelasticEnergyInc :
 
 } // namespace Plato
 
-#ifdef PLATO_1D
+#ifdef PLATOANALYZE_1D
 PLATO_EXPL_DEC(Plato::InternalThermoelasticEnergy,    Plato::SimplexThermomechanics, 1)
 PLATO_EXPL_DEC(Plato::InternalThermoelasticEnergyInc, Plato::SimplexThermomechanics, 1)
 #endif
 
-#ifdef PLATO_2D
+#ifdef PLATOANALYZE_2D
 PLATO_EXPL_DEC(Plato::InternalThermoelasticEnergy,    Plato::SimplexThermomechanics, 2)
 PLATO_EXPL_DEC(Plato::InternalThermoelasticEnergyInc, Plato::SimplexThermomechanics, 2)
 #endif
 
-#ifdef PLATO_3D
+#ifdef PLATOANALYZE_3D
 PLATO_EXPL_DEC(Plato::InternalThermoelasticEnergy,    Plato::SimplexThermomechanics, 3)
 PLATO_EXPL_DEC(Plato::InternalThermoelasticEnergyInc, Plato::SimplexThermomechanics, 3)
 #endif

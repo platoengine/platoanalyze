@@ -5,14 +5,14 @@
 
 #include "TensileEnergyDensity.hpp"
 
-#ifdef PLATO_1D
+#ifdef PLATOANALYZE_1D
 template class Plato::TensileEnergyDensity<1>;
 #endif
 
-#ifdef PLATO_2D
+#ifdef PLATOANALYZE_2D
 template class Plato::TensileEnergyDensity<2>;
 #endif
 
-#ifdef PLATO_3D
+#ifdef PLATOANALYZE_3D
 template class Plato::TensileEnergyDensity<3>;
 #endif

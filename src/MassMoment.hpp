@@ -318,21 +318,21 @@ class MassMoment : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
 }
 // namespace Plato
 
-#ifdef PLATO_1D
+#ifdef PLATOANALYZE_1D
 extern template class Plato::MassMoment<Plato::ResidualTypes<Plato::SimplexMechanics<1>>>;
 extern template class Plato::MassMoment<Plato::JacobianTypes<Plato::SimplexMechanics<1>>>;
 extern template class Plato::MassMoment<Plato::GradientXTypes<Plato::SimplexMechanics<1>>>;
 extern template class Plato::MassMoment<Plato::GradientZTypes<Plato::SimplexMechanics<1>>>;
 #endif
 
-#ifdef PLATO_2D
+#ifdef PLATOANALYZE_2D
 extern template class Plato::MassMoment<Plato::ResidualTypes<Plato::SimplexMechanics<2>>>;
 extern template class Plato::MassMoment<Plato::JacobianTypes<Plato::SimplexMechanics<2>>>;
 extern template class Plato::MassMoment<Plato::GradientXTypes<Plato::SimplexMechanics<2>>>;
 extern template class Plato::MassMoment<Plato::GradientZTypes<Plato::SimplexMechanics<2>>>;
 #endif
 
-#ifdef PLATO_3D
+#ifdef PLATOANALYZE_3D
 extern template class Plato::MassMoment<Plato::ResidualTypes<Plato::SimplexMechanics<3>>>;
 extern template class Plato::MassMoment<Plato::JacobianTypes<Plato::SimplexMechanics<3>>>;
 extern template class Plato::MassMoment<Plato::GradientXTypes<Plato::SimplexMechanics<3>>>;
