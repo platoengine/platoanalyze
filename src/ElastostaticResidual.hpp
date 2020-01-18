@@ -17,6 +17,7 @@
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "ToMap.hpp"
+#include "Plato_VonMisesYield.hpp"
 
 #include "LinearElasticMaterial.hpp"
 #include "NaturalBCs.hpp"

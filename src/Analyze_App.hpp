@@ -179,7 +179,7 @@ public:
         else if(aName == "Solution")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
+            auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
             this->copyFieldIntoAnalyze(tStatesSubView, aSharedField);
         }
     }

@@ -531,7 +531,7 @@ inline void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewTyp
 
     Plato::identity_workset<NumRowsPerCell, NumColumnsPerCell>(aNumCells, aInverse);
 
-    using namespace KokkosBatched::Experimental;
+    using namespace KokkosBatched;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         auto tA = Kokkos::subview(aA, aCellOrdinal, Kokkos::ALL(), Kokkos::ALL());
@@ -1401,11 +1401,13 @@ private:
     /************************************************************************//**
      * \brief Add external forces to residual
      * \param [in]     aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
-     * \param [in]     aControls     design variables
+     * \param [in]     aControls    design variables
+     * \param [in]     aConfig      configuration variables
      * \param [in/out] aResult      residual evaluation
     ****************************************************************************/
     void addExternalForces(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
                            const Plato::ScalarMultiVectorT<ControlT> &aControl,
+                           const Plato::ScalarArray3DT<ConfigT> &aConfig,
                            const Plato::ScalarMultiVectorT<ResultT> &aResult)
     {
         if (mBodyLoads != nullptr)
@@ -1422,7 +1424,7 @@ private:
                 THROWERR("Requested 'Load Control Constant' is NOT Defined.")
             }
             auto tLoadControlConstant = static_cast<Plato::Scalar>(-1) * tSearch->second;
-            mNeumannLoads->get( &mMesh, mMeshSets, aGlobalState, aControl, aResult, tLoadControlConstant );
+            mNeumannLoads->get( &mMesh, mMeshSets, aGlobalState, aControl, aConfig, aResult, tLoadControlConstant );
         }
     }
 
@@ -1574,7 +1576,7 @@ public:
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
         }, "stabilized infinitesimal strain plasticity residual");
 
-        this->addExternalForces(aCurrentGlobalState, aControls, aResult);
+        this->addExternalForces(aCurrentGlobalState, aControls, aConfig, aResult);
         this->outputData(tDeviatoricStress, "deviatoric stress");
         this->outputData(tPressure, "pressure");
     }
