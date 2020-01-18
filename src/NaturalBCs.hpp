@@ -137,6 +137,13 @@ namespace Plato {
     // get sideset faces
     auto& sidesets = aMeshSets[Omega_h::SIDE_SET];
     auto ssIter = sidesets.find(this->ss_name);
+    if(ssIter == sidesets.end())
+    {
+        std::ostringstream tMsg;
+        tMsg << "COULD NOT FIND SIDE SET WITH NAME = '" << this->ss_name.c_str()
+            << "'.  SIDE SET IS NOT DEFINED IN THE INPUT MESH FILE, I.E. EXODUS FILE.\n";
+        THROWERR(tMsg.str());
+    }
     auto faceLids = (ssIter->second);
     auto numFaces = faceLids.size();
 
