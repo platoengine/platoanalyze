@@ -5722,14 +5722,14 @@ private:
             this->updateGlobalAdjointVars(aCriterion, aControls, tAdjointStateData, tInvLocalJacobianT, tAdjointData);
             this->updateLocalAdjointVars(aCriterion, aControls, tAdjointStateData, tInvLocalJacobianT, tAdjointData);
 
-            this->addPDEpartialDerivative(aControls, tAdjointStateData, tAdjointData, aTotalDerivative);
+            this->updatePartialDerivativePDE(aControls, tAdjointStateData, tAdjointData, aTotalDerivative);
         }
     }
 
-    void addPDEpartialDerivative(const Plato::ScalarVector &aControls,
-                                 const Plato::AdjointStateData &aStateData,
-                                 const Plato::AdjointData &aAdjointData,
-                                 Plato::ScalarVector &aOutput)
+    void updatePartialDerivativePDE(const Plato::ScalarVector &aControls,
+                                    const Plato::AdjointStateData &aStateData,
+                                    const Plato::AdjointData &aAdjointData,
+                                    Plato::ScalarVector &aOutput)
     {
         switch(aStateData.mPartialDerivativeType)
         {
