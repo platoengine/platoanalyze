@@ -5712,7 +5712,7 @@ private:
 
         // outer loop for pseudo time steps
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
-        for(tAdjointStateData.mCurrentStepIndex = tLastStepIndex; tAdjointStateData.mCurrentStepIndex > 0; tAdjointStateData.mCurrentStepIndex--)
+        for(tAdjointStateData.mCurrentStepIndex = tLastStepIndex; tAdjointStateData.mCurrentStepIndex >= 0; tAdjointStateData.mCurrentStepIndex--)
         {
             this->updateStateData(tAdjointStateData);
             this->updateAdjointData(tAdjointData);
@@ -5803,7 +5803,7 @@ private:
     void updateAdjointData(Plato::AdjointData& aAdjointData)
     {
         // NOTE: CURRENT ADJOINT VARIABLES ARE UPDATED AT SOLVE TIME. THERE IS NO NEED TO SET THEM TO ZERO HERE.
-        Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
+        const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 0.0;
         Plato::update(tAlpha, aAdjointData.mCurrentLocalAdjoint, tBeta, aAdjointData.mPreviousLocalAdjoint);
         Plato::update(tAlpha, aAdjointData.mCurrentGlobalAdjoint, tBeta, aAdjointData.mPreviousGlobalAdjoint);
         Plato::update(tAlpha, aAdjointData.mCurrentProjPressGradAdjoint, tBeta, aAdjointData.mPreviousProjPressGradAdjoint);
@@ -5843,18 +5843,17 @@ private:
         auto tDrDz = mGlobalResidualEq.gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-        Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
+        const Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDrDz, tCurrentLambda, tBeta, tGradientControl);
 
         // add projected pressure gradient adjoint contribution to total gradient, i.e. DfDz += (DpDz)^T * gamma
-        tBeta = 1.0;
         Plato::ScalarMultiVector tCurrentGamma("Current Projected Pressure Gradient Adjoint", tNumCells, mNumPressGradDofsPerCell);
         mWorksetBase.worksetNodeState(aAdjointData.mCurrentProjPressGradAdjoint, tCurrentGamma);
-        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
         auto tDpDz = mProjectionEq.gradient_z_workset(aStateData.mCurrentProjPressGrad,
                                                       mProjPressure,
                                                       aControls,
                                                       aStateData.mCurrentStepIndex);
+        tBeta = 1.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDpDz, tCurrentGamma, tBeta, tGradientControl);
 
         // compute local adjoint contribution to total gradient, i.e. (DhDz)^T * mu
@@ -5904,18 +5903,17 @@ private:
         auto tDrDx = mGlobalResidualEq.gradient_x(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
-        Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
+        const Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDrDx, tCurrentLambda, tBeta, tGradientConfiguration);
 
         // add projected pressure gradient adjoint contribution to total gradient, i.e. DfDx += (DpDx)^T * gamma
-        tBeta = 1.0;
         Plato::ScalarMultiVector tCurrentGamma("Current Projected Pressure Gradient Adjoint", tNumCells, mNumPressGradDofsPerCell);
         mWorksetBase.worksetNodeState(aAdjointData.mCurrentProjPressGradAdjoint, tCurrentGamma);
-        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
         auto tDpDx = mProjectionEq.gradient_x_workset(aStateData.mCurrentProjPressGrad,
                                                       mProjPressure,
                                                       aControls,
                                                       aStateData.mCurrentStepIndex);
+        tBeta = 1.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDpDx, tCurrentGamma, tBeta, tGradientConfiguration);
 
         // compute local contribution to total gradient, i.e. (DhDx)^T * mu
@@ -6159,10 +6157,10 @@ private:
         auto tDhDu = mLocalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                  aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
                                                  aControls, aStateData.mCurrentStepIndex);
-        Plato::ScalarMultiVector tRHS("Local Adjoint RHS", tNumCells, mNumGlobalDofsPerCell);
-        Plato::matrix_times_vector_workset("T", tAlpha, tDhDu, tLocalStateWorkSet, tBeta, tRHS);
+        Plato::ScalarMultiVector tLocalRHS("Local Adjoint RHS", tNumCells, mNumGlobalDofsPerCell);
+        Plato::matrix_times_vector_workset("T", tAlpha, tDhDu, tLocalStateWorkSet, tBeta, tLocalRHS);
 
-        return (tRHS);
+        return (tLocalRHS);
     }
 
     Plato::ScalarMultiVector
@@ -6170,15 +6168,18 @@ private:
                                    const Plato::AdjointStateData& aStateData,
                                    const Plato::AdjointData& aAdjointData)
     {
+        // Compute partial derivative of projected pressure gradient residual wrt pressure field, i.e. DpDn
         auto tDpDn = mProjectionEq.gradient_n_workset(aStateData.mCurrentProjPressGrad,
                                                       mProjPressure,
                                                       aControls,
                                                       aStateData.mCurrentStepIndex);
 
+        // Compute projected pressure gradient adjoint workset
         auto tNumCells = mProjectionEq.numCells();
         Plato::ScalarMultiVector tCurrentGamma("Projected Pressure Gradient Adjoint", tNumCells, mNumPressGradDofsPerCell);
         mWorksetBase.worksetNodeState(aAdjointData.mCurrentProjPressGradAdjoint, tCurrentGamma);
 
+        // Compute DpDn_k^T * gamma_k
         const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 1.0;
         const auto tNumPressureDofsPerCell = mProjectionEq.numNodeStatePerCell();
         Plato::ScalarMultiVector tOuput("DpDn_k^T * gamma_k", tNumCells, tNumPressureDofsPerCell);
@@ -10017,8 +10018,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='10'/>             \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='10'/>             \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='5'/>             \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='5'/>             \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
