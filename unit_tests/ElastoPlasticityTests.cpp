@@ -6417,9 +6417,10 @@ inline void test_partial_objective_wrt_control(PlatoProblem & aProblem, Omega_h:
     auto tGlobalStates = aProblem.solution(tControls);
     auto tObjGradZ = aProblem.objectiveGradient(tControls, tGlobalStates);
     auto tGradientDotStep = Plato::dot(tObjGradZ, tStep);
-
-    std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
-              << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
+    
+    std::ostringstream tOutput;
+    tOutput << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step" 
+        << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
 
     constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
     constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
@@ -6432,23 +6433,23 @@ inline void test_partial_objective_wrt_control(PlatoProblem & aProblem, Omega_h:
         // four point finite difference approximation
         Plato::update(1.0, tControls, 0.0, tTrialControl);
         Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
-        tGlobalStates = aProblem.solution(tControls);
-        Plato::Scalar tValuePlus1Eps = aProblem.objectiveValue(tControls, tGlobalStates);
+        tGlobalStates = aProblem.solution(tTrialControl);
+        Plato::Scalar tValuePlus1Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
         Plato::update(1.0, tControls, 0.0, tTrialControl);
         Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
-        tGlobalStates = aProblem.solution(tControls);
-        Plato::Scalar tValueMinus1Eps = aProblem.objectiveValue(tControls, tGlobalStates);
+        tGlobalStates = aProblem.solution(tTrialControl);
+        Plato::Scalar tValueMinus1Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
         Plato::update(1.0, tControls, 0.0, tTrialControl);
         Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
-        tGlobalStates = aProblem.solution(tControls);
-        Plato::Scalar tValuePlus2Eps = aProblem.objectiveValue(tControls, tGlobalStates);
+        tGlobalStates = aProblem.solution(tTrialControl);
+        Plato::Scalar tValuePlus2Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
         Plato::update(1.0, tControls, 0.0, tTrialControl);
         Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
-        tGlobalStates = aProblem.solution(tControls);
-        Plato::Scalar tValueMinus2Eps = aProblem.objectiveValue(tControls, tGlobalStates);
+        tGlobalStates = aProblem.solution(tTrialControl);
+        Plato::Scalar tValueMinus2Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
         Plato::Scalar tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
                 - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
@@ -6456,9 +6457,10 @@ inline void test_partial_objective_wrt_control(PlatoProblem & aProblem, Omega_h:
         Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
         Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStep);
 
-        std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
-              << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
+        tOutput << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+            << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
     }
+    std::cout << tOutput.str().c_str();
 }
 
 
@@ -10094,8 +10096,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='5'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='5'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -10197,8 +10199,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='5'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='5'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
