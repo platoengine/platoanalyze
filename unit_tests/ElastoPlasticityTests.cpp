@@ -5172,9 +5172,13 @@ private:
         {
             mNewtonRaphsonDiagnosticsFile << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << "\n";
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
-            this->updateStateData(tStateData);
+            this->cacheStateData(tStateData);
 
+            // update local and global states
             bool tNewtonRaphsonConverged = this->solveNewtonRaphson(aControls, tStateData);
+
+            // update projected pressure gradient state
+            this->updateProjectedPressureGradient(aControls, tStateData);
 
             if(tNewtonRaphsonConverged == false)
             {
@@ -5406,6 +5410,25 @@ private:
     }
 
     /***************************************************************************//**
+     * \brief Update projected pressure gradient.
+     * \param [in]     aControls  1-D view of controls, e.g. design variables
+     * \param [in/out] aStateData data manager with current and previous global and local state data
+    *******************************************************************************/
+    void updateProjectedPressureGradient(const Plato::ScalarVector &aControls,
+                                         Plato::ForwardProblemStateData &aStateData)
+    {
+        // copy projection state, i.e. pressure
+        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
+
+        // compute projected pressure gradient
+        auto tProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjPressure,
+                                                 aControls, aStateData.mCurrentStepIndex);
+        auto tProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
+                                                      aControls, aStateData.mCurrentStepIndex);
+        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aStateData.mCurrentProjPressGrad, tProjResidual);
+    }
+
+    /***************************************************************************//**
      * \brief Update global and local states after a new trial state is computed by
      *   the Newton-Raphson solver.
      * \param [in] aControls  1-D view of controls, e.g. design variables
@@ -5422,16 +5445,6 @@ private:
         Plato::update(static_cast<Plato::Scalar>(1.0), aStateData.mDeltaGlobalState,
                       static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
-
-        // copy projection state, i.e. pressure
-        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
-
-        // compute projected pressure gradient
-        auto tProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjPressure,
-                                                 aControls, aStateData.mCurrentStepIndex);
-        auto tProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
-                                                      aControls, aStateData.mCurrentStepIndex);
-        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aStateData.mCurrentProjPressGrad, tProjResidual);
     }
 
     /***************************************************************************//**
@@ -5755,7 +5768,7 @@ private:
      * \param [in] aStateData state data manager
      * \param [in] aZeroEntries flag - zero all entries in current states (default = false)
     *******************************************************************************/
-    void updateStateData(Plato::ForwardProblemStateData &aStateData)
+    void cacheStateData(Plato::ForwardProblemStateData &aStateData)
     {
         // GET CURRENT STATE
         aStateData.mCurrentLocalState = Kokkos::subview(mLocalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
