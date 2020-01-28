@@ -4689,7 +4689,7 @@ public:
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
         Plato::ScalarVector tDispControlledDirichletValues("Dirichlet Values", mDirichletValues.size());
-        Plato::update(mDispControlConstant, mDirichletValues, 0.0, tDispControlledDirichletValues);
+        Plato::update(mDispControlConstant, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
 
         if(aMatrix->isBlockMatrix())
         {
@@ -5326,7 +5326,7 @@ private:
         Plato::ScalarVector  tLocalResidualContribution("Assembled Local Residual", tTotalNumDofs);
         mWorksetBase.assembleResidual(tLocalResidualTerm, tLocalResidualContribution);
 
-        // add local residual contribution to global residual term
+        // add local residual contribution to global residual, i.e. -r + DrDu*inv(DhDc)*h
         Plato::axpy(static_cast<Plato::Scalar>(1.0), tLocalResidualContribution, mGlobalResidual);
     }
 
@@ -5442,8 +5442,8 @@ private:
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual, mUseAbsoluteTolerance);
 
         // update global state
-        Plato::update(static_cast<Plato::Scalar>(1.0), aStateData.mDeltaGlobalState,
-                      static_cast<Plato::Scalar>(1.0), aStateData.mCurrentGlobalState);
+        const Plato::Scalar tAlpha = 1.0;
+        Plato::update(tAlpha, aStateData.mDeltaGlobalState, tAlpha, aStateData.mCurrentGlobalState);
         Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
     }
 
@@ -5718,24 +5718,24 @@ private:
                                  Plato::ScalarVector aTotalDerivative)
     {
         // Create state data manager
-        auto tNumCells = mLocalResidualEq.numCells();
-        Plato::AdjointStateData tAdjointStateData(aType);
+        Plato::AdjointStateData tStateData(aType);
         Plato::AdjointData tAdjointData(mGlobalResidualEq.size(), mLocalResidualEq.size(), mProjectionEq.size());
+        auto tNumCells = mLocalResidualEq.numCells();
         Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
         // outer loop for pseudo time steps
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
-        for(tAdjointStateData.mCurrentStepIndex = tLastStepIndex; tAdjointStateData.mCurrentStepIndex >= 0; tAdjointStateData.mCurrentStepIndex--)
+        for(tStateData.mCurrentStepIndex = tLastStepIndex; tStateData.mCurrentStepIndex >= 0; tStateData.mCurrentStepIndex--)
         {
-            this->updateStateData(tAdjointStateData);
+            this->updateStateData(tStateData);
             this->updateAdjointData(tAdjointData);
-            this->updateInverseLocalJacobian(aControls, tAdjointStateData, tInvLocalJacobianT);
+            this->updateInverseLocalJacobian(aControls, tStateData, tInvLocalJacobianT);
 
-            this->updateProjPressGradAdjointVars(aControls, tAdjointStateData, tAdjointData);
-            this->updateGlobalAdjointVars(aCriterion, aControls, tAdjointStateData, tInvLocalJacobianT, tAdjointData);
-            this->updateLocalAdjointVars(aCriterion, aControls, tAdjointStateData, tInvLocalJacobianT, tAdjointData);
+            this->updateProjPressGradAdjointVars(aControls, tStateData, tAdjointData);
+            this->updateGlobalAdjointVars(aCriterion, aControls, tStateData, tInvLocalJacobianT, tAdjointData);
+            this->updateLocalAdjointVars(aCriterion, aControls, tStateData, tInvLocalJacobianT, tAdjointData);
 
-            this->updatePartialDerivativePDE(aControls, tAdjointStateData, tAdjointData, aTotalDerivative);
+            this->updatePartialDerivativePDE(aControls, tStateData, tAdjointData, aTotalDerivative);
         }
     }
 
