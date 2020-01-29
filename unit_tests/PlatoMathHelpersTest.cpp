@@ -17,17 +17,17 @@
 #include "PlatoTestHelpers.hpp"
 #include "Teuchos_UnitTestHarness.hpp"
 
-#include "plato/PlatoMathHelpers.hpp"
-#include "plato/PlatoMathFunctors.hpp"
-#include "plato/Mechanics.hpp"
-#include "plato/StabilizedMechanics.hpp"
-#include "plato/PhysicsScalarFunction.hpp"
-#include "plato/VectorFunction.hpp"
-#include "plato/VectorFunctionVMS.hpp"
-#include "plato/ApplyProjection.hpp"
-#include "plato/AnalyzeMacros.hpp"
-#include "plato/HyperbolicTangentProjection.hpp"
-#include "plato/alg/CrsMatrix.hpp"
+#include "PlatoMathHelpers.hpp"
+#include "PlatoMathFunctors.hpp"
+#include "Mechanics.hpp"
+#include "StabilizedMechanics.hpp"
+#include "PhysicsScalarFunction.hpp"
+#include "VectorFunction.hpp"
+#include "VectorFunctionVMS.hpp"
+#include "ApplyProjection.hpp"
+#include "AnalyzeMacros.hpp"
+#include "HyperbolicTangentProjection.hpp"
+#include "alg/CrsMatrix.hpp"
 
 #include "KokkosBatched_LU_Decl.hpp"
 #include "KokkosBatched_LU_Serial_Impl.hpp"
@@ -627,7 +627,7 @@ createStabilizedProjector(Teuchos::RCP<Omega_h::Mesh> aMesh)
  that the starting and final matrices are the same.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_FromToBlockMatrix)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_FromToBlockMatrix)
 {
   auto tMatrixA = createSquareMatrix();
 
@@ -655,7 +655,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_FromToBlockMatrix)
  that the starting and final matrices are the same.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_FromToBlockMatrix_Rect)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_FromToBlockMatrix_Rect)
 {
   auto tMatrixA = Teuchos::rcp( new Plato::CrsMatrixType(12, 9, 4, 3) );
   std::vector<Plato::OrdinalType> tRowMapA = { 0, 2, 3, 4 };
@@ -691,7 +691,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_FromToBlockMatrix_Rect)
   \brief Make sure is_same(A, A) == true, and is_same(A, B) == false when A != B
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_is_same)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_is_same)
 {
   auto tMatrixA = Teuchos::rcp( new Plato::CrsMatrixType(12, 6, 4, 2) );
   std::vector<Plato::OrdinalType> tRowMap = { 0, 2, 3, 4 };
@@ -717,7 +717,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_is_same)
          compare against gold.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_Rect)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_Rect)
 {
   auto tMatrixA = Teuchos::rcp( new Plato::CrsMatrixType(12, 6, 4, 2) );
   std::vector<Plato::OrdinalType> tRowMap = { 0, 2, 3, 4 };
@@ -747,7 +747,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_Rect)
   \brief Create a square matrix, A, then compute A.A and compare against gold.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_1)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_1)
 {
   auto tMatrixA = Teuchos::rcp( new Plato::CrsMatrixType(12, 12, 4, 4) );
   std::vector<Plato::OrdinalType> tRowMapA = { 0, 2, 3, 4 };
@@ -788,7 +788,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_1)
   \brief Create a square matrix, A, then sort the column entries
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_SortColumnEntries)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_SortColumnEntries)
 {
   auto tMatrix = createSquareMatrix();
 
@@ -816,7 +816,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_SortColumnEntries)
          matrix and verify that A doesn't change.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_ToFromFull)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_ToFromFull)
 {
   auto tMatrix = createSquareMatrix();
   auto tFullMatrix = PlatoDevel::toFull(tMatrix);
@@ -834,7 +834,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_ToFromFull)
   \brief Create a square matrix, A, then compute A.A and compare.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_2)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_2)
 {
   auto tMatrixA = createSquareMatrix();
   auto tMatrixB = createSquareMatrix();
@@ -860,7 +860,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_2)
   \brief Create a square matrix, A, then verify that A - A = 0.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMinusEqualsMatrix)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMinusEqualsMatrix)
 {
   auto tMatrixA = createSquareMatrix();
   PlatoDevel::MatrixMinusEqualsMatrix( tMatrixA, tMatrixA );
@@ -873,7 +873,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMinusEqualsMatrix)
   \brief Create a sub-block matrix, B, and convert to full non-block.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_GetDataAsNonBlock)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_GetDataAsNonBlock)
 {
   Plato::OrdinalType tTargetBlockColSize = 4;
   Plato::OrdinalType tTargetBlockColOffset = 3;
@@ -927,7 +927,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_GetDataAsNonBlock)
   \brief Create a block matrix, compute the row sum, and compare against gold.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_RowSum)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_RowSum)
 {
   auto tMatrix = Teuchos::rcp( new Plato::CrsMatrixType(12, 12, 4, 4) );
   std::vector<Plato::OrdinalType> tRowMap = { 0, 2, 3, 4 };
@@ -955,7 +955,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_RowSum)
          compute the inverse weighted A: A[I][J]/d[I], and compare against gold.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_InverseMultiply_1)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_InverseMultiply_1)
 {
   auto tMatrix = Teuchos::rcp( new Plato::CrsMatrixType(12, 12, 4, 4) );
   std::vector<Plato::OrdinalType> tRowMap = { 0, 2, 3, 4 };
@@ -986,7 +986,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_InverseMultiply_1)
          compute the inverse weighted A: A[I][J]/d[I], and compare against gold.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_InverseMultiply_2)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_InverseMultiply_2)
 {
   auto tMatrix = Teuchos::rcp( new Plato::CrsMatrixType(12, 12, 4, 4) );
   std::vector<Plato::OrdinalType> tRowMap = { 0, 2, 3, 4 };
@@ -1017,7 +1017,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_InverseMultiply_2)
          to B: B[I][J]/d[I], where d[I] = Sum(A[I][J] in J). Compare against gold.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_SlowDumbRowSummedInverseMultiply)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_SlowDumbRowSummedInverseMultiply)
 {
   auto tMatrixA = Teuchos::rcp( new Plato::CrsMatrixType(12, 12, 4, 4) );
   {
@@ -1063,7 +1063,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_SlowDumbRowSummedInverseMu
          to B: B[I][J]/d[I], where d[I] = Sum(A[I][J] in J). Compare against gold.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_RowSummedInverseMultiply)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_RowSummedInverseMultiply)
 {
   auto tMatrixA = Teuchos::rcp( new Plato::CrsMatrixType(12, 12, 4, 4) );
   {
@@ -1119,7 +1119,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_RowSummedInverseMultiply)
     a full-block matrix with number block rows, n.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_CondenseMatrix_1)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_CondenseMatrix_1)
 {
 
   const int Nf = 4;
@@ -1212,7 +1212,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_CondenseMatrix_1)
 
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_CondenseMatrix_2)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_CondenseMatrix_2)
 {
   constexpr int cSpaceDim  = 3;
   constexpr int cMeshWidth = 2;
@@ -1273,7 +1273,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_CondenseMatrix_2)
          compute C=A-B, then verify C against gold.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_SlowDumbMatrixMinusMatrix_1)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_SlowDumbMatrixMinusMatrix_1)
 {
   Plato::OrdinalType tOffset = 3;
 
@@ -1317,7 +1317,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_SlowDumbMatrixMinusMatrix_
          compute C=A-B, then verify C against gold.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMinusMatrix_1)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMinusMatrix_1)
 {
   Plato::OrdinalType tOffset = 3;
 
@@ -1356,7 +1356,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixMinusMatrix_1)
   TEST_ASSERT(is_same(tMatrixA, tMatrixC_Gold));
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_InvertLocalMatrices)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_InvertLocalMatrices)
 {
     const int N = 3; // Number of matrices to invert
     Plato::ScalarArray3D tMatrix("Matrix A", N, 2, 2);
@@ -1382,7 +1382,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_InvertLocalMatrices)
     }
     Kokkos::deep_copy(tAInverse, tHostAInverse);
 
-    using namespace KokkosBatched::Experimental;
+    using namespace KokkosBatched;
 
     /// [template]AlgoType: Unblocked, Blocked, CompatMKL
     /// [in/out]A: 2d view
@@ -1424,7 +1424,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_InvertLocalMatrices)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HyperbolicTangentProjection)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, HyperbolicTangentProjection)
 {
     const Plato::OrdinalType tNumNodesPerCell = 2;
     typedef Sacado::Fad::SFad<Plato::Scalar, tNumNodesPerCell> FadType;
@@ -1465,7 +1465,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, HyperbolicTangentProjection)
     TEST_FLOATING_EQUALITY(tHostGrad(1), tGoldGrad[1], tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_ConditionalExpression)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_ConditionalExpression)
 {
     const Plato::OrdinalType tRange = 1;
     Plato::ScalarVector tOuput("Output", 2 /* number of outputs */);
@@ -1488,7 +1488,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_ConditionalExpression)
     TEST_FLOATING_EQUALITY(tHostOuput(1), 2.0, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_dot)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_dot)
 {
   constexpr Plato::OrdinalType tNumElems = 10;
   Plato::ScalarVector tVecA("Vec A", tNumElems);
@@ -1502,7 +1502,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_dot)
   TEST_FLOATING_EQUALITY(20., tOutput, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_norm)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_norm)
 {
   constexpr Plato::OrdinalType tNumElems = 10;
   Plato::ScalarVector tVecA("Vec A", tNumElems);
@@ -1513,7 +1513,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_norm)
   TEST_FLOATING_EQUALITY(3.16227766016838, tOutput, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_sum)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_sum)
 {
   constexpr Plato::OrdinalType tNumElems = 10;
   Plato::ScalarVector tVecA("Vec", tNumElems);
@@ -1526,7 +1526,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_sum)
   TEST_FLOATING_EQUALITY(10., tOutput, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_fill)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_fill)
 {
   // create test mesh
   //
@@ -1545,7 +1545,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_fill)
   TEST_FLOATING_EQUALITY(tSomeVectorHost(numVerts-1), 2.0, 1e-17);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_copy)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_copy)
 {
   // create test mesh
   //
@@ -1569,7 +1569,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_copy)
   TEST_FLOATING_EQUALITY(tSomeVectorHost(numVerts-1), tSomeOtherVectorHost(numVerts-1), 1e-17);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_scale)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_scale)
 {
   // create test mesh
   //
@@ -1589,7 +1589,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_scale)
   TEST_FLOATING_EQUALITY(tSomeVectorHost(numVerts-1), 2.0, 1e-17);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_update)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_update)
 {
   // create test mesh
   //
@@ -1611,7 +1611,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_update)
   TEST_FLOATING_EQUALITY(tVector_B_Host(numVerts-1), 8.0, 1e-17);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusVector)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusVector)
 {
   // create test mesh
   //

@@ -9,13 +9,11 @@
 
 #include "PlatoTestHelpers.hpp"
  
-#include "MatrixIO.hpp"
-
-#include "plato/Mechanics.hpp"
-#include "plato/WorksetBase.hpp"
-#include "plato/VectorFunction.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/StructuralDynamics.hpp"
+#include "Mechanics.hpp"
+#include "WorksetBase.hpp"
+#include "VectorFunction.hpp"
+#include "ImplicitFunctors.hpp"
+#include "StructuralDynamics.hpp"
 
 #include "Teuchos_UnitTestHarness.hpp"
 
@@ -50,7 +48,7 @@
 namespace PlatoUnitTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeStateWorkset)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeStateWorkset)
 {
     // ****** TEST STATE WORKSET TOOLS ****** //
     const Plato::OrdinalType tSpaceDim = 3;
@@ -165,7 +163,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ComputeStateWorkset)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, CompareLinearStrainsToComplexStrains)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStrainsToComplexStrains)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 3;
@@ -314,7 +312,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, CompareLinearStrainsToComplexStrains)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, CompareLinearStressToComplexStress)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStressToComplexStress)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 3;
@@ -482,7 +480,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, CompareLinearStressToComplexStress)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, CompareLinearElasticForcesToComplexElasticForces)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearElasticForcesToComplexElasticForces)
 {
     // BUILD OMEGA_H MESH
     const Plato::OrdinalType tSpaceDim = 3;

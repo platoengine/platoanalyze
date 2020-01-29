@@ -8,17 +8,17 @@
 
 #include "PlatoTestHelpers.hpp"
 
-#include "plato/Plato_Diagnostics.hpp"
-#include "plato/ScalarFunctionBase.hpp"
-#include "plato/WeightedSumFunction.hpp"
-#include "plato/PhysicsScalarFunction.hpp"
-#include "plato/MassPropertiesFunction.hpp"
+#include "Plato_Diagnostics.hpp"
+#include "ScalarFunctionBase.hpp"
+#include "WeightedSumFunction.hpp"
+#include "PhysicsScalarFunction.hpp"
+#include "MassPropertiesFunction.hpp"
 
 
 namespace MassPropertiesTest
 {
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassInsteadOfVolume2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassInsteadOfVolume2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -73,7 +73,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassInsteadOfVolume2D)
     TEST_FLOATING_EQUALITY(tGoldValue, tObjFuncVal, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassInsteadOfVolume3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassInsteadOfVolume3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -128,7 +128,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassInsteadOfVolume3D)
     TEST_FLOATING_EQUALITY(tGoldValue, tObjFuncVal, tTolerance);
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassPropertiesValue3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 15; // Need high mesh density in order to get correct inertias
@@ -186,7 +186,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassPropertiesValue3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassPropertiesValue3DNormalized)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3DNormalized)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 15; // Need high mesh density in order to get correct inertias
@@ -245,7 +245,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassPropertiesValue3DNormalized)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassPropertiesGradZ_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesGradZ_3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -293,7 +293,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassPropertiesGradZ_3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, MassPropertiesGradU_3D) // All state derivatives should be zero!
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesGradU_3D) // All state derivatives should be zero!
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;

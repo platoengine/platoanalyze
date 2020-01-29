@@ -13,11 +13,11 @@
 #include "Teuchos_UnitTestHarness.hpp"
 #include <Teuchos_XMLParameterListHelpers.hpp>
 
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/LinearThermalMaterial.hpp"
+#include "ImplicitFunctors.hpp"
+#include "LinearThermalMaterial.hpp"
 
 #ifdef HAVE_AMGX
-#include "plato/alg/AmgXSparseLinearProblem.hpp"
+#include "alg/AmgXSparseLinearProblem.hpp"
 #endif
 
 #include <sstream>
@@ -26,24 +26,22 @@
 #include <type_traits>
 
 #include <Sacado.hpp>
-#include <plato/alg/CrsLinearProblem.hpp>
-#include <plato/alg/ParallelComm.hpp>
-#include <plato/Simp.hpp>
-#include <plato/ScalarProduct.hpp>
-#include <plato/SimplexFadTypes.hpp>
-#include <plato/WorksetBase.hpp>
-#include <plato/VectorFunctionInc.hpp>
-#include <plato/PhysicsScalarFunctionInc.hpp>
-#include <plato/StateValues.hpp>
-#include "plato/ApplyConstraints.hpp"
-#include "plato/SimplexThermal.hpp"
-#include "plato/Thermal.hpp"
-#include "plato/ComputedField.hpp"
+#include <alg/CrsLinearProblem.hpp>
+#include <alg/ParallelComm.hpp>
+#include <Simp.hpp>
+#include <ScalarProduct.hpp>
+#include <SimplexFadTypes.hpp>
+#include <WorksetBase.hpp>
+#include <VectorFunctionInc.hpp>
+#include <PhysicsScalarFunctionInc.hpp>
+#include <StateValues.hpp>
+#include "ApplyConstraints.hpp"
+#include "SimplexThermal.hpp"
+#include "Thermal.hpp"
+#include "ComputedField.hpp"
 
 #include <fenv.h>
 
-
-using namespace lgr;
 
 TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
 { 
@@ -554,7 +552,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, HeatEquationResidual3D )
   auto grad_x_entriesHost = Kokkos::create_mirror_view( grad_x_entries );
   Kokkos::deep_copy(grad_x_entriesHost, grad_x_entries);
 
-  std::vector<lgr::Scalar> gold_grad_x_entries = {
+  std::vector<Plato::Scalar> gold_grad_x_entries = {
     -5.687544531250000e6,  8.749757812500000e5, -6.252343749999994e4, 
      1.875000000000000e5,  7.499757812499998e5, -5.625000000000002e5, 
      1.812500000000000e6, -4.375000000000001e5,  1.499976562500000e6, 

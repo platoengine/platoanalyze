@@ -8,10 +8,10 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "plato/Plato_Diagnostics.hpp"
+#include "Plato_Diagnostics.hpp"
 
-#include "plato/LocalVectorFunctionInc.hpp"
-#include "plato/J2PlasticityLocalResidual.hpp"
+#include "LocalVectorFunctionInc.hpp"
+#include "J2PlasticityLocalResidual.hpp"
 
 
 namespace PlasticityTests
@@ -19,7 +19,7 @@ namespace PlasticityTests
 
 using namespace PlatoUtestHelpers;
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_UpdatePlasticStep2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_UpdatePlasticStep2D)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -72,7 +72,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_UpdatePlasticStep2D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_UpdatePlasticStep3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_UpdatePlasticStep3D)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -125,7 +125,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_UpdatePlasticStep3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_UpdateElasticStep2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_UpdateElasticStep2D)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -162,7 +162,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_UpdateElasticStep2D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_UpdateElasticStep3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_UpdateElasticStep3D)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -199,7 +199,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_UpdateElasticStep3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_YieldSurfaceNormal2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_YieldSurfaceNormal2D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -252,7 +252,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_YieldSurfaceNormal2D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_YieldSurfaceNormal3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_YieldSurfaceNormal3D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -305,7 +305,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_YieldSurfaceNormal3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_DeviatoricStress2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_DeviatoricStress2D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -344,7 +344,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_DeviatoricStress2D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_DeviatoricStress3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_DeviatoricStress3D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -383,7 +383,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_DeviatoricStress3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_PlasticStrainResidualPlasticStep2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidualPlasticStep2D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -441,7 +441,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_PlasticStrainResidualPlas
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_PlasticStrainResidualPlasticStep3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidualPlasticStep3D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -499,7 +499,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_PlasticStrainResidualPlas
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_BackstressResidualPlasticStep2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_BackstressResidualPlasticStep2D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -559,7 +559,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_BackstressResidualPlastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_BackstressResidualPlasticStep3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_BackstressResidualPlasticStep3D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -619,7 +619,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_BackstressResidualPlastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_PlasticStrainResidualElasticStep2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidualElasticStep2D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -667,7 +667,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_PlasticStrainResidualElas
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_PlasticStrainResidualElasticStep3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidualElasticStep3D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -715,7 +715,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_PlasticStrainResidualElas
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_BackstressResidualElasticStep2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_BackstressResidualElasticStep2D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -763,7 +763,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_BackstressResidualElastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_BackstressResidualElasticStep3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_BackstressResidualElasticStep3D)
 {
     constexpr Plato::OrdinalType tNumCells = 1;
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -811,7 +811,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2PlasticityUtils_BackstressResidualElastic
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ThermoPlasticityUtils_ElasticStrainWithThermo2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWithThermo2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -922,7 +922,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ThermoPlasticityUtils_ElasticStrainWithTher
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ThermoPlasticityUtils_ElasticStrainWithoutThermo2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWithoutThermo2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1029,7 +1029,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ThermoPlasticityUtils_ElasticStrainWithoutT
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ThermoPlasticityUtils_ElasticStrainWithThermo3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWithThermo3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1156,7 +1156,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ThermoPlasticityUtils_ElasticStrainWithTher
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ThermoPlasticityUtils_ElasticStrainWithoutThermo3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWithoutThermo3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1279,7 +1279,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ThermoPlasticityUtils_ElasticStrainWithoutT
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradGlobalState3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradGlobalState3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1324,7 +1324,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradGlobalState3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevGlobalState3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradPrevGlobalState3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1369,7 +1369,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevGlobalState3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradLocalState3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradLocalState3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1414,7 +1414,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradLocalState3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevLocalState3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradPrevLocalState3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1459,7 +1459,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradPrevLocalState3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradControl3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradControl3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1504,7 +1504,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_GradControl3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_Evaluate3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1644,7 +1644,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_Evaluate3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_Evaluate2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1758,7 +1758,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_Evaluate2D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_UpdateLocalState3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState3D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -1881,7 +1881,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_UpdateLocalState3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, J2Plasticity_UpdateLocalState2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;

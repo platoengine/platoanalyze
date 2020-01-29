@@ -13,12 +13,12 @@
 #include "Teuchos_UnitTestHarness.hpp"
 #include <Teuchos_XMLParameterListHelpers.hpp>
 
-#include "plato/PlatoStaticsTypes.hpp"
-#include "plato/ImplicitFunctors.hpp"
-#include "plato/LinearElasticMaterial.hpp"
+#include "PlatoStaticsTypes.hpp"
+#include "ImplicitFunctors.hpp"
+#include "LinearElasticMaterial.hpp"
 
 #ifdef HAVE_AMGX
-#include "plato/alg/AmgXSparseLinearProblem.hpp"
+#include "alg/AmgXSparseLinearProblem.hpp"
 #endif
 
 #include <sstream>
@@ -27,28 +27,26 @@
 #include <type_traits>
 
 #include <Sacado.hpp>
-#include <plato/alg/CrsLinearProblem.hpp>
-#include <plato/alg/ParallelComm.hpp>
+#include <alg/CrsLinearProblem.hpp>
+#include <alg/ParallelComm.hpp>
 
-#include <plato/Simp.hpp>
-#include <plato/ScalarProduct.hpp>
-#include <plato/SimplexFadTypes.hpp>
-#include <plato/SimplexMechanics.hpp>
-#include <plato/WorksetBase.hpp>
-#include <plato/AbstractVectorFunction.hpp>
-#include <plato/VectorFunction.hpp>
-#include <plato/AbstractScalarFunction.hpp>
-#include <plato/InternalElasticEnergy.hpp>
-#include <plato/PhysicsScalarFunction.hpp>
-#include "plato/ApplyConstraints.hpp"
-#include "plato/EllipticProblem.hpp"
-#include "plato/Mechanics.hpp"
-#include "plato/Thermal.hpp"
+#include <Simp.hpp>
+#include <ScalarProduct.hpp>
+#include <SimplexFadTypes.hpp>
+#include <SimplexMechanics.hpp>
+#include <WorksetBase.hpp>
+#include <AbstractVectorFunction.hpp>
+#include <VectorFunction.hpp>
+#include <AbstractScalarFunction.hpp>
+#include <InternalElasticEnergy.hpp>
+#include <PhysicsScalarFunction.hpp>
+#include "ApplyConstraints.hpp"
+#include "EllipticProblem.hpp"
+#include "Mechanics.hpp"
+#include "Thermal.hpp"
 
 #include <fenv.h>
 
-
-using namespace lgr;
 
 TEUCHOS_UNIT_TEST( DerivativeTests, 3D )
 { 
@@ -436,7 +434,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
   auto grad_x_entriesHost = Kokkos::create_mirror_view( grad_x_entries );
   Kokkos::deep_copy(grad_x_entriesHost, grad_x_entries);
 
-  std::vector<lgr::Scalar> gold_grad_x_entries = {
+  std::vector<Plato::Scalar> gold_grad_x_entries = {
   -4153.84615384615245,   -2278.84615384615336,  -3192.30769230769147, 
    1423.07692307692287,    -500.000000000000000,   557.692307692307281, 
     -19.2307692307692832,    28.8461538461539817, -115.384615384615515, 
@@ -1376,7 +1374,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
   auto grad_x_entriesHost = Kokkos::create_mirror_view( grad_x_entries );
   Kokkos::deep_copy(grad_x_entriesHost, grad_x_entries);
 
-  std::vector<lgr::Scalar> gold_grad_x_entries = {
+  std::vector<Plato::Scalar> gold_grad_x_entries = {
   -151.666666666666686,   23.3333333333333499,  -1.66666666666667229, 
      4.99999999999999467, 19.9999999999999929, -14.9999999999999964, 
     48.3333333333333286, -11.6666666666666714,  40.0000000000000071, 

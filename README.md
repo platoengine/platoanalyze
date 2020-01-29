@@ -1,14 +1,21 @@
-# lgrtk
-Tool Kit for Lagrangian Grid Reconnection
+# Plato Analyze
+Fast physics with gradients for multidisciplinary analysis and optimization
 
-This repo contains the code and tests that support running example explicit high strain-rate mechanics calculations.
 
-# Building [LGRTK](https://github.com/SNLComputation/lgrtk) and running the tests
+## Building [Plato Analyze](https://github.com/platoengine/platoanalyze)
 
-First, be sure to have SSH keys of your machine registered with GitHub, as the clone commands used in the environment use the SSH interface to GitHub.
+The recommended way to build and install Plato Analyze is with the [Plato fork](https://github.com/platoengine/spack) of [Spack](https://spack.io).
 
-Second, clone the [lgrtk-build](https://github.com/SNLComputation/lgrtk-build) repo and follow the build instructions listed in the README located there.
+```shell
+git clone https://github.com/platoengine/spack.git
+source spack/share/spack/setup-env.sh
+spack install platoanalyze ^nvcc-wrapper compute_capability=$COMPUTE_CAPABILITY
+```
 
-The url for the [lgrtk-build](https://github.com/SNLComputation/lgrtk-build) repo is:
+Where $COMPUTE_CAPABILITY is the compute capability of your GPU. For example, for an nVidia Tesla V100 GPU, you would run
 
-```https://github.com/SNLComputation/lgrtk-build```
+```shell
+spack install platoanalyze ^nvcc-wrapper compute_capability=70
+```
+
+For more information on building and configuring Plato Analyze, please see the [wiki](https://github.com/platoengine/platoengine/wiki)

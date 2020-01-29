@@ -10,17 +10,17 @@
 #include "PlatoTestHelpers.hpp"
 #include "Teuchos_UnitTestHarness.hpp"
 
-#include "plato/Plato_Cylinder.hpp"
-#include "plato/Plato_BuildMesh.hpp"
-#include "plato/Plato_RocketMocks.hpp"
-#include "plato/Plato_AlgebraicRocketModel.hpp"
-#include "plato/Plato_LevelSetCylinderInBox.hpp"
-#include "plato/Plato_LevelSetOnExternalMesh.hpp"
+#include "Plato_Cylinder.hpp"
+#include "Plato_BuildMesh.hpp"
+#include "Plato_RocketMocks.hpp"
+#include "Plato_AlgebraicRocketModel.hpp"
+#include "Plato_LevelSetCylinderInBox.hpp"
+#include "Plato_LevelSetOnExternalMesh.hpp"
 
 namespace AlgebraicRocketTest
 {
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AlgebraicRocketAnalyticalCylinder)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AlgebraicRocketAnalyticalCylinder)
 {
   const Plato::Scalar tInitialRadius = 0.075; // m
   const Plato::Scalar tMaxRadius = 0.15; // m
@@ -37,7 +37,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AlgebraicRocketAnalyticalCylinder)
   tDriver.solve();
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AlgebraicRocketLevelSetCylinder)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AlgebraicRocketLevelSetCylinder)
 {
   const Plato::Scalar tInitialRadius = 0.075; // m
   const Plato::Scalar tMaxRadius = 0.15; // m
@@ -55,7 +55,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AlgebraicRocketLevelSetCylinder)
   tDriver.solve();
 }
 
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AlgebraicRocketLevelSetCylinderLinearBurnRate)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AlgebraicRocketLevelSetCylinderLinearBurnRate)
 {
   const Plato::Scalar tInitialRadius = 0.025; // m (1in)
   const Plato::Scalar tLength = 0.65; // m
@@ -76,7 +76,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AlgebraicRocketLevelSetCylinderLinearBurnRa
 }
 
 /*
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ReadData)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ReadData)
 {
     Omega_h::Library tOmega_h_Lib(nullptr, nullptr, MPI_COMM_WORLD);
     Omega_h::Mesh tMesh(&tOmega_h_Lib);
@@ -102,7 +102,7 @@ TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, ReadData)
 */
 
 /*
-TEUCHOS_UNIT_TEST(PlatoLGRUnitTests, AlgebraicRocketLevelSetOnExternalMesh)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AlgebraicRocketLevelSetOnExternalMesh)
 {
     std::string tConnInputFile("./ParcMesh/tetTT.txt");
     std::string tCoordsInputFile("./ParcMesh/tetV.txt");

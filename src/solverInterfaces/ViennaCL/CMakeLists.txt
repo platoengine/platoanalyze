@@ -1,1 +1,0 @@
-# All CMake commands regarding ViennaCL are controlled in src/CMakeLists.txt
