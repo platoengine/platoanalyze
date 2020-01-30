@@ -5858,7 +5858,7 @@ private:
     void addPDEpartialDerivativeZ(const Plato::ScalarVector &aControls,
                                   const Plato::AdjointStateData &aStateData,
                                   const Plato::AdjointData &aAdjointData,
-                                  Plato::ScalarVector &aGradient)
+                                  Plato::ScalarVector &aTotalGradient)
     {
         auto tNumCells = mGlobalResidualEq.numCells();
         Plato::ScalarMultiVector tGradientControl("Gradient WRT Control", tNumCells, mNumNodesPerCell);
@@ -5890,7 +5890,7 @@ private:
                                                  aControls, aStateData.mCurrentStepIndex);
         Plato::matrix_times_vector_workset("T", tAlpha, tDhDz, tCurrentMu, tBeta, tGradientControl);
 
-        mWorksetBase.assembleScalarGradientZ(tGradientControl, aGradient);
+        mWorksetBase.assembleScalarGradientZ(tGradientControl, aTotalGradient);
     }
 
     /***************************************************************************//**
