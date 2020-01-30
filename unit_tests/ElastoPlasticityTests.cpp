@@ -5174,14 +5174,13 @@ private:
         {
             mNewtonRaphsonDiagnosticsFile << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) 
                 << ", TOTAL TIME = " << mPseudoTimeStep * static_cast<Plato::Scalar>(tCurrentStepIndex + 1) << "\n";
+
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
             this->cacheStateData(tStateData);
 
             // update local and global states
             bool tNewtonRaphsonConverged = this->solveNewtonRaphson(aControls, tStateData);
-
-            // update projected pressure gradient state
-            this->updateProjectedPressureGradient(aControls, tStateData);
+            //Plato::print(tStateData.mCurrentProjPressGrad, "CURRENT PI USED IN NEWTON RAPHSON SOLVE");
 
             if(tNewtonRaphsonConverged == false)
             {
@@ -5190,6 +5189,10 @@ private:
                     << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mNumPseudoTimeStepMultiplier) << ". ****\n\n";
                 return tToleranceSatisfied;
             }
+
+            // update projected pressure gradient state
+            this->updateProjectedPressureGradient(aControls, tStateData);
+            //Plato::print(tStateData.mCurrentProjPressGrad, "IS CURRENT PI MODIFIED");
         }
 
         tToleranceSatisfied = true;
@@ -5354,6 +5357,7 @@ private:
         auto tSchurComplement = this->computeSchurComplement(aControls, aStateData, aInvLocalJacobianT);
 
         // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
+        //Plato::print(aStateData.mCurrentProjPressGrad, "PATH DEPENDENT PI");
         auto tDrDu = mGlobalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mCurrentProjPressGrad, aControls, aStateData.mCurrentStepIndex);
@@ -5420,14 +5424,20 @@ private:
     void updateProjectedPressureGradient(const Plato::ScalarVector &aControls,
                                          Plato::ForwardProblemStateData &aStateData)
     {
+        Plato::OrdinalType tNextStepIndex = aStateData.mCurrentStepIndex + static_cast<Plato::OrdinalType>(1);
+        if(tNextStepIndex >= mNumPseudoTimeSteps)
+        {
+            return;
+        }
+
         // copy projection state, i.e. pressure
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mProjPressure);
 
         // compute projected pressure gradient
-        auto tProjResidual = mProjectionEq.value(aStateData.mCurrentProjPressGrad, mProjPressure,
-                                                 aControls, aStateData.mCurrentStepIndex);
-        auto tProjJacobian = mProjectionEq.gradient_u(aStateData.mCurrentProjPressGrad, mProjPressure,
-                                                      aControls, aStateData.mCurrentStepIndex);
+        auto tNextProjectedPressureGradient = Kokkos::subview(mProjectedPressGrad, tNextStepIndex, Kokkos::ALL());
+        Plato::fill(0.0, tNextProjectedPressureGradient);
+        auto tProjResidual = mProjectionEq.value(tNextProjectedPressureGradient, mProjPressure, aControls, tNextStepIndex);
+        auto tProjJacobian = mProjectionEq.gradient_u(tNextProjectedPressureGradient, mProjPressure, aControls, tNextStepIndex);
         Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aStateData.mCurrentProjPressGrad, tProjResidual);
     }
 
