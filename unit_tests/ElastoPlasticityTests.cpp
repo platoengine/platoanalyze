@@ -5356,7 +5356,7 @@ private:
         //Plato::print(aStateData.mProjectedPressGrad, "PATH DEPENDENT PI");
         auto tDrDu = mGlobalResidualEq.gradient_u(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                  aStateData.mProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
+                                                  aStateData.mPreviousProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
 
         // Add cell Schur complement to dR/du, where R is the global residual and u are the global states
         const Plato::Scalar tBeta = 1.0;
@@ -5402,7 +5402,7 @@ private:
         // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
         auto tDrDc = mGlobalResidualEq.gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                  aStateData.mProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
+                                                  aStateData.mPreviousProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
 
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
@@ -6237,7 +6237,7 @@ private:
         // Compute and add local contribution to global adjoint rhs, i.e. tDfDu_k - F_k^{local}
         auto tLocalStateAdjointRHS =
             this->computeLocalAdjointRHS(aCriterion, aControls, aStateData, aInvLocalJacobianT, aAdjointData);
-        const Plato::Scalar  tAlpha = -1.0; const Plato::Scalar tBeta = 1.0;
+        Plato::Scalar  tAlpha = -1.0; const Plato::Scalar tBeta = 1.0;
         Plato::update_2Dview(tAlpha, tLocalStateAdjointRHS, tBeta, tDfDu);
 
         // Compute projected pressure gradient contribution to global adjoint rhs, i.e. tDpDu_{k+1}^T * gamma_{k+1}
