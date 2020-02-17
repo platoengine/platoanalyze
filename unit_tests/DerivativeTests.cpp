@@ -1959,3 +1959,94 @@ TEUCHOS_UNIT_TEST( DerivativeTests, referenceStrain3D )
   }
 
 }
+
+TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentialConditions )
+{
+    // SETUP INPUT PARAMETERS
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 3;
+    Teuchos::RCP<Omega_h::Mesh> tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    Teuchos::RCP<Teuchos::ParameterList> tElasticityParams =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                          \n"
+      "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
+      "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                   \n"
+      "  <ParameterList name='Elliptic'>                                             \n"
+      "    <ParameterList name='Penalty Function'>                                   \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                  \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>          \n"
+      "    </ParameterList>                                                          \n"
+      "  </ParameterList>                                                            \n"
+      "  <ParameterList name='Material Model'>                                       \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                           \n"
+      "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>            \n"
+      "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n"
+      "    </ParameterList>                                                          \n"
+      "  </ParameterList>                                                            \n"
+      "</ParameterList>                                                              \n"
+    );
+    Plato::EllipticProblem<Plato::Mechanics<tSpaceDim>> tElasticityProblem(*tMesh, tMeshSets, *tElasticityParams);
+
+    // SET ESSENTIAL/DIRICHLET BOUNDARY CONDITIONS 
+    Plato::OrdinalType tDispDofX = 0;
+    Plato::OrdinalType tDispDofY = 1;
+    auto tNumDofsPerNode = tElasticityProblem.numDofsPerNode();
+    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+
+    Plato::Scalar tValueToSet = 0;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
+    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
+    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tDirichletValues(aIndex) = tValueToSet;
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
+    }, "set dirichlet values and indices");
+
+    auto tOffset = tDirichletIndicesBoundaryX0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 6e-4;
+    tOffset += tDirichletIndicesBoundaryY0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
+    }, "set dirichlet values and indices");
+
+    // SOLVE ELASTOSTATICS EQUATIONS
+    auto tNumVerts = tMesh->nverts();
+    Plato::ScalarVector tControl("Control", tNumVerts);
+    Plato::fill(1.0, tControl);
+    tElasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
+    auto tElasticitySolution = tElasticityProblem.solution(tControl);
+
+    // TEST RESULTS    
+    const Plato::OrdinalType tTimeStep = 0;
+    auto tSolution = Kokkos::subview(tElasticitySolution, tTimeStep, Kokkos::ALL());
+    auto tHostSolution = Kokkos::create_mirror_view(tSolution);
+    Kokkos::deep_copy(tHostSolution, tSolution);
+
+    std::vector<Plato::Scalar> tGold = {0.0, 0.0, 2e-4, 0.0, 2e-4, -8.5714285714e-5, 0.0, -8.5714285714e-5, 0.0, -1.7142857143e-4, 0.0, -2.5714285714e-4, 
+                                        2e-4, -2.5714285714e-4, 2e-4, -1.7142857143e-4, 4e-4, -1.7142857143e-4, 4e-4, -2.5714285714e-4, 6e-4, -2.5714285714e-4,
+                                        6e-4, -1.7142857143e-4, 6e-4, -8.5714285714e-5, 4e-4, -8.5714285714e-5, 4e-4, 0.0, 6e-4, 0.0};
+
+    constexpr Plato::Scalar tTolerance = 1e-8;
+    for(Plato::OrdinalType tDofIndex=0; tDofIndex < tHostSolution.size(); tDofIndex++)
+    {
+        //printf("solution(%d,%d) = %.10e\n", tTimeStep, tDofIndex, tHostSolution(tDofIndex));
+        TEST_FLOATING_EQUALITY(tHostSolution(tDofIndex), tGold[tDofIndex], tTolerance);
+    }
+}

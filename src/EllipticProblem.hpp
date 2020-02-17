@@ -1,6 +1,8 @@
 #ifndef PLATO_PROBLEM_HPP
 #define PLATO_PROBLEM_HPP
 
+#include "PlatoUtilities.hpp"
+
 #include <memory>
 #include <sstream>
 
@@ -37,11 +39,11 @@ private:
     static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims; /*!< spatial dimensions */
 
     // required
-    Plato::VectorFunction<SimplexPhysics> mEqualityConstraint; /*!< equality constraint interface */
+    std::shared_ptr<Plato::VectorFunction<SimplexPhysics>> mPDE; /*!< equality constraint interface */
 
     // optional
-    std::shared_ptr<const Plato::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
-    std::shared_ptr<const Plato::ScalarFunctionBase> mObjective; /*!< objective constraint interface */
+    std::shared_ptr<Plato::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
+    std::shared_ptr<Plato::ScalarFunctionBase> mObjective; /*!< objective constraint interface */
 
     Plato::ScalarMultiVector mAdjoint;
     Plato::ScalarVector mResidual;
@@ -63,15 +65,68 @@ public:
      * \param [in] aInputParams input parameters database
     **********************************************************************************/
     EllipticProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams) :
-            mEqualityConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
+            mPDE(std::make_shared<Plato::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint"))),
             mConstraint(nullptr),
             mObjective(nullptr),
-            mResidual("MyResidual", mEqualityConstraint.size()),
-            mStates("States", static_cast<Plato::OrdinalType>(1), mEqualityConstraint.size()),
+            mResidual("MyResidual", mPDE->size()),
+            mStates("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
             mJacobian(Teuchos::null),
             mIsSelfAdjoint(aInputParams.get<bool>("Self-Adjoint", false))
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
+    }
+
+    virtual ~EllipticProblem(){}
+
+    Plato::OrdinalType numNodes() const
+    {
+        const auto tNumNodes = mPDE->numNodes();
+        return (tNumNodes);
+    }
+
+    Plato::OrdinalType numCells() const
+    {
+        const auto tNumCells = mPDE->numCells();
+        return (tNumCells);
+    }
+    
+    Plato::OrdinalType numDofsPerCell() const
+    {
+        const auto tNumDofsPerCell = mPDE->numDofsPerCell();
+        return (tNumDofsPerCell);
+    }
+
+    Plato::OrdinalType numNodesPerCell() const
+    {
+        const auto tNumNodesPerCell = mPDE->numNodesPerCell();
+        return (tNumNodesPerCell);
+    }
+
+    Plato::OrdinalType numDofsPerNode() const
+    {
+        const auto tNumDofsPerNode = mPDE->numDofsPerNode();
+        return (tNumDofsPerNode);
+    }
+
+    Plato::OrdinalType numControlsPerNode() const
+    {
+        const auto tNumControlsPerNode = mPDE->numControlsPerNode();
+        return (tNumControlsPerNode);
+    }
+
+    void appendResidual(const std::shared_ptr<Plato::VectorFunction<SimplexPhysics>>& aPDE)
+    {
+        mPDE = aPDE;
+    }
+
+    void appendObjective(const std::shared_ptr<Plato::ScalarFunctionBase>& aObjective)
+    {
+        mObjective = aObjective;
+    }
+
+    void appendConstraint(const std::shared_ptr<Plato::ScalarFunctionBase>& aConstraint)
+    {
+        mConstraint = aConstraint;
     }
 
     /******************************************************************************//**
@@ -154,21 +209,22 @@ public:
         auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
         Plato::fill(static_cast<Plato::Scalar>(0.0), tStatesSubView);
 
-        mResidual = mEqualityConstraint.value(tStatesSubView, aControl);
+        mResidual = mPDE->value(tStatesSubView, aControl);
+        Plato::scale(-1.0, mResidual);
 
-        mJacobian = mEqualityConstraint.gradient_u(tStatesSubView, aControl);
+        mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
         this->applyConstraints(mJacobian, mResidual);
 
 #ifdef HAVE_AMGX
         using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
         auto tConfigString = Plato::get_config_string();
-        Plato::scale(-1.0, mResidual);
         auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tStatesSubView, mResidual, tConfigString));
         tSolver->solve();
         tSolver = Teuchos::null;
 #endif
 
-        mResidual = mEqualityConstraint.value(tStatesSubView, aControl);
+        mResidual = mPDE->value(tStatesSubView, aControl);
+        Plato::scale(-1.0, mResidual);
 
         return mStates;
     }
@@ -272,6 +328,12 @@ public:
             THROWERR(tErrorMessage)
         }
 
+        if(static_cast<Plato::OrdinalType>(mAdjoint.size()) <= static_cast<Plato::OrdinalType>(0))
+        {
+            const auto tLength = mPDE->size();
+            mAdjoint = Plato::ScalarMultiVector("Adjoint Variables", 1, tLength);
+        }
+
         // compute dfdz: partial of objective wrt z
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
         auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
@@ -287,9 +349,9 @@ public:
             Plato::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
 
             // compute dgdu: partial of PDE wrt state
-            mJacobian = mEqualityConstraint.gradient_u_T(tStatesSubView, aControl);
+            mJacobian = mPDE->gradient_u_T(tStatesSubView, aControl);
 
-            this->applyConstraints(mJacobian, tPartialObjectiveWRT_State);
+            this->applyAdjointConstraints(mJacobian, tPartialObjectiveWRT_State);
 
             // adjoint problem uses transpose of global stiffness, but we're assuming the constrained
             // system is symmetric.
@@ -305,7 +367,7 @@ public:
 
             // compute dgdz: partial of PDE wrt state.
             // dgdz is returned transposed, nxm.  n=z.size() and m=u.size().
-            auto tPartialPDE_WRT_Control = mEqualityConstraint.gradient_z(tStatesSubView, aControl);
+            auto tPartialPDE_WRT_Control = mPDE->gradient_z(tStatesSubView, aControl);
 
             // compute dgdz . adjoint + dfdz
             Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Control, tAdjointSubView, tPartialObjectiveWRT_Control);
@@ -346,7 +408,7 @@ public:
             Plato::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
 
             // compute dgdu: partial of PDE wrt state
-            mJacobian = mEqualityConstraint.gradient_u(tStatesSubView, aControl);
+            mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
             this->applyConstraints(mJacobian, tPartialObjectiveWRT_State);
 
             // adjoint problem uses transpose of global stiffness, but we're assuming the constrained
@@ -364,7 +426,7 @@ public:
 
             // compute dgdx: partial of PDE wrt config.
             // dgdx is returned transposed, nxm.  n=x.size() and m=u.size().
-            auto tPartialPDE_WRT_Config = mEqualityConstraint.gradient_x(tStatesSubView, aControl);
+            auto tPartialPDE_WRT_Config = mPDE->gradient_x(tStatesSubView, aControl);
 
             // compute dgdx . adjoint + dfdx
             Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Config, tAdjointSubView, tPartialObjectiveWRT_Config);
@@ -488,6 +550,40 @@ public:
         return mConstraint->gradient_x(tStatesSubView, aControl);
     }
 
+    /***************************************************************************//**
+     * \brief Read essential (Dirichlet) boundary conditions from the Exodus file.
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aInputParams input parameters database
+    *******************************************************************************/
+    void readEssentialBoundaryConditions(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    {
+        if(aInputParams.isSublist("Essential Boundary Conditions") == false)
+        {
+            THROWERR("ESSENTIAL BOUNDARY CONDITIONS SUBLIST IS NOT DEFINED IN THE INPUT FILE.")
+        }
+        Plato::EssentialBCs<SimplexPhysics> tEssentialBoundaryConditions(aInputParams.sublist("Essential Boundary Conditions", false));
+        tEssentialBoundaryConditions.get(aMeshSets, mBcDofs, mBcValues);
+    }
+
+    /***************************************************************************//**
+     * \brief Set essential (Dirichlet) boundary conditions
+     * \param [in] aDofs   degrees of freedom associated with Dirichlet boundary conditions
+     * \param [in] aValues values associated with Dirichlet degrees of freedom
+    *******************************************************************************/
+    void setEssentialBoundaryConditions(const Plato::LocalOrdinalVector & aDofs, const Plato::ScalarVector & aValues)
+    {
+        if(aDofs.size() != aValues.size())
+        {
+            std::ostringstream tError;
+            tError << "DIMENSION MISMATCH: THE NUMBER OF ELEMENTS IN INPUT DOFS AND VALUES ARRAY DO NOT MATCH."
+                << "DOFS SIZE = " << aDofs.size() << " AND VALUES SIZE = " << aValues.size();
+            THROWERR(tError.str())
+        }
+        mBcDofs = aDofs;
+        mBcValues = aValues;
+    }
+
 private:
     /******************************************************************************//**
      * \brief Initialize member data
@@ -497,6 +593,9 @@ private:
     **********************************************************************************/
     void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
+        auto tName = aInputParams.get<std::string>("PDE Constraint");
+        mPDE = std::make_shared<Plato::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+
         Plato::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
         if(aInputParams.isType<std::string>("Constraint"))
         {
@@ -509,16 +608,25 @@ private:
             std::string tName = aInputParams.get<std::string>("Objective");
             mObjective = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
 
-            auto tLength = mEqualityConstraint.size();
-            mAdjoint = Plato::ScalarMultiVector("MyAdjoint", 1, tLength);
+            auto tLength = mPDE->size();
+            mAdjoint = Plato::ScalarMultiVector("Adjoint Variables", 1, tLength);
         }
-
-        // parse constraints
-        //
-        Plato::EssentialBCs<SimplexPhysics>
-            tEssentialBoundaryConditions(aInputParams.sublist("Essential Boundary Conditions",false));
-        tEssentialBoundaryConditions.get(aMeshSets, mBcDofs, mBcValues);
     }
+
+    void applyAdjointConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
+    {
+        Plato::ScalarVector tDirichletValues("Dirichlet Values For Adjoint Problem", mBcValues.size());
+        Plato::scale(static_cast<Plato::Scalar>(0.0), tDirichletValues);
+        if(mJacobian->isBlockMatrix())
+        {
+            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tDirichletValues);
+        }
+        else
+        {
+            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tDirichletValues);
+        }
+    }
+
 };
 // class EllipticProblem
 

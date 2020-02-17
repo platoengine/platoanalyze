@@ -57,6 +57,24 @@ inline void print_array_2D(const ArrayT & aInput, const std::string & aName)
 }
 // function print_array_2D
 
+template<class ArrayT>
+inline void print_array_2D_Fad(Plato::OrdinalType aNumCells, 
+                               Plato::OrdinalType aNumDofsPerCell, 
+                               const ArrayT & aInput, 
+                               std::string aName = "")
+{
+    printf("PRINT %s\n", aName.c_str());
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCell)
+    {
+        for(Plato::OrdinalType tDof = 0; tDof < aNumDofsPerCell; tDof++)
+        {
+            printf("X(%d,%d) = %e\n", aCell + static_cast<Plato::OrdinalType>(1), tDof + static_cast<Plato::OrdinalType>(1), aInput(aCell).dx(tDof));
+        }
+    }, "print 2D array Fad");
+    printf("\n");
+}
+
 /******************************************************************************//**
  * \brief Print input 3D container to terminal
  * \tparam array type

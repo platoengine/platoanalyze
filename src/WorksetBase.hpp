@@ -308,10 +308,10 @@ inline void assemble_scalar_gradient_fad(const Plato::OrdinalType& aNumCells,
 
 /******************************************************************************/
 template<Plato::OrdinalType numNodesPerCell, class ControlEntryOrdinal, class Control, class ControlWS>
-inline void workset_control_scalar_scalar(Plato::OrdinalType aNumCells,
-                                          ControlEntryOrdinal aControlEntryOrdinal,
-                                          Control aControl,
-                                          ControlWS aControlWS)
+inline void workset_control_scalar_scalar(const Plato::OrdinalType& aNumCells,
+                                          const ControlEntryOrdinal& aControlEntryOrdinal,
+                                          const Control& aControl,
+                                          ControlWS& aControlWS)
 /******************************************************************************/
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -327,10 +327,10 @@ inline void workset_control_scalar_scalar(Plato::OrdinalType aNumCells,
 
 /******************************************************************************/
 template<Plato::OrdinalType numNodesPerCell, class ControlFad, class ControlEntryOrdinal, class Control, class FadControlWS>
-inline void workset_control_scalar_fad(Plato::OrdinalType aNumCells,
-                                       ControlEntryOrdinal aControlEntryOrdinal,
-                                       Control aControl,
-                                       FadControlWS aFadControlWS)
+inline void workset_control_scalar_fad(const Plato::OrdinalType & aNumCells,
+                                       const ControlEntryOrdinal & aControlEntryOrdinal,
+                                       const Control & aControl,
+                                       FadControlWS & aFadControlWS)
 /******************************************************************************/
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -346,7 +346,10 @@ inline void workset_control_scalar_fad(Plato::OrdinalType aNumCells,
 
 /******************************************************************************/
 template<Plato::OrdinalType numDofsPerNode, Plato::OrdinalType numNodesPerCell, class StateEntryOrdinal, class State, class StateWS>
-inline void workset_state_scalar_scalar(Plato::OrdinalType aNumCells, StateEntryOrdinal aStateEntryOrdinal, State aState, StateWS aStateWS)
+inline void workset_state_scalar_scalar(const Plato::OrdinalType& aNumCells, 
+                                        const StateEntryOrdinal& aStateEntryOrdinal, 
+                                        const State& aState, 
+                                        StateWS& aStateWS)
 /******************************************************************************/
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -366,10 +369,10 @@ inline void workset_state_scalar_scalar(Plato::OrdinalType aNumCells, StateEntry
 
 /******************************************************************************/
 template<Plato::OrdinalType numDofsPerNode, Plato::OrdinalType numNodesPerCell, class StateFad, class StateEntryOrdinal, class State, class FadStateWS>
-inline void workset_state_scalar_fad(Plato::OrdinalType aNumCells,
-                                     StateEntryOrdinal aStateEntryOrdinal,
-                                     State aState,
-                                     FadStateWS aFadStateWS)
+inline void workset_state_scalar_fad(const Plato::OrdinalType& aNumCells,
+                                     const StateEntryOrdinal& aStateEntryOrdinal,
+                                     const State& aState,
+                                     FadStateWS& aFadStateWS)
 /******************************************************************************/
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -389,7 +392,9 @@ inline void workset_state_scalar_fad(Plato::OrdinalType aNumCells,
 
 /******************************************************************************/
 template<Plato::OrdinalType NumLocalDofsPerCell, class State, class StateWS>
-inline void workset_local_state_scalar_scalar(Plato::OrdinalType aNumCells, State & aState, StateWS & aStateWS)
+inline void workset_local_state_scalar_scalar(const Plato::OrdinalType& aNumCells, 
+                                              const State& aState, 
+                                              StateWS& aStateWS)
 /******************************************************************************/
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -405,9 +410,9 @@ inline void workset_local_state_scalar_scalar(Plato::OrdinalType aNumCells, Stat
 
 /******************************************************************************/
 template<Plato::OrdinalType NumLocalDofsPerCell, class StateFad, class State, class FadStateWS>
-inline void workset_local_state_scalar_fad(Plato::OrdinalType aNumCells,
-                                           State aState,
-                                           FadStateWS aFadStateWS)
+inline void workset_local_state_scalar_fad(const Plato::OrdinalType& aNumCells,
+                                           const State& aState,
+                                           FadStateWS& aFadStateWS)
 /******************************************************************************/
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -423,7 +428,9 @@ inline void workset_local_state_scalar_fad(Plato::OrdinalType aNumCells,
 
 /******************************************************************************/
 template<Plato::OrdinalType spaceDim, Plato::OrdinalType numNodesPerCell, class ConfigWS, class NodeCoordinates>
-inline void workset_config_scalar(Plato::OrdinalType aNumCells, NodeCoordinates aNodeCoordinate, ConfigWS aConfigWS)
+inline void workset_config_scalar(const Plato::OrdinalType& aNumCells, 
+                                  const NodeCoordinates& aNodeCoordinate, 
+                                  ConfigWS& aConfigWS)
 /******************************************************************************/
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -441,7 +448,9 @@ inline void workset_config_scalar(Plato::OrdinalType aNumCells, NodeCoordinates 
 
 /******************************************************************************/
 template<Plato::OrdinalType spaceDim, Plato::OrdinalType numNodesPerCell, Plato::OrdinalType numConfigDofsPerCell, class ConfigFad, class FadConfigWS, class NodeCoordinates>
-inline void workset_config_fad(Plato::OrdinalType aNumCells, NodeCoordinates aNodeCoordinate, FadConfigWS aFadConfigWS)
+inline void workset_config_fad(const Plato::OrdinalType& aNumCells, 
+                               const NodeCoordinates& aNodeCoordinate, 
+                               FadConfigWS& aFadConfigWS)
 /******************************************************************************/
 {
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -623,7 +632,7 @@ public:
     void worksetControl( const Plato::ScalarVectorT<Plato::Scalar> & aControl,
                          Plato::ScalarMultiVectorT<Plato::Scalar> & aControlWS ) const
     {
-      Plato::workset_control_scalar_scalar<mNumNodesPerCell>(
+        Plato::workset_control_scalar_scalar<mNumNodesPerCell>(
               mNumCells, mControlEntryOrdinal, aControl, aControlWS);
     }
 
@@ -635,7 +644,7 @@ public:
     void worksetControl( const Plato::ScalarVectorT<Plato::Scalar> & aControl,
                          Plato::ScalarMultiVectorT<ControlFad> & aFadControlWS ) const
     {
-      Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlFad>(
+        Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlFad>(
               mNumCells, mControlEntryOrdinal, aControl, aFadControlWS);
     }
 
@@ -647,7 +656,7 @@ public:
     void worksetState( const Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace> & aState,
                        Kokkos::View<Plato::Scalar**, Kokkos::LayoutRight, Plato::MemSpace> & aStateWS ) const
     {
-      Plato::workset_state_scalar_scalar<mNumDofsPerNode, mNumNodesPerCell>(
+        Plato::workset_state_scalar_scalar<mNumDofsPerNode, mNumNodesPerCell>(
               mNumCells, mGlobalStateEntryOrdinal, aState, aStateWS);
     }
 
@@ -659,7 +668,7 @@ public:
     void worksetState( const Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace> & aState,
                        Kokkos::View<StateFad**, Kokkos::LayoutRight, Plato::MemSpace> & aFadStateWS ) const
     {
-      Plato::workset_state_scalar_fad<mNumDofsPerNode, mNumNodesPerCell, StateFad>(
+        Plato::workset_state_scalar_fad<mNumDofsPerNode, mNumNodesPerCell, StateFad>(
               mNumCells, mGlobalStateEntryOrdinal, aState, aFadStateWS);
     }
 

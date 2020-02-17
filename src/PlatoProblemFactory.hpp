@@ -61,7 +61,9 @@ public:
         {
             if(tProblemPDE == "Elliptic")
             {
-                return std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                auto tOutput = std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+                return tOutput;
             }
             else
             {
@@ -91,7 +93,9 @@ public:
             }
             else if(tProblemPDE == "Thermostatics")
             {
-                return std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+                return tOutput;
             }
             else
             {
@@ -106,7 +110,9 @@ public:
         }
         else if(tProblemPhysics == "Electromechanical")
         {
-            return std::make_shared < EllipticProblem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+            auto tOutput = std::make_shared < EllipticProblem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+            tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+            return tOutput;
         }
         else if(tProblemPhysics == "Stabilized Thermomechanical")
         {
@@ -129,7 +135,9 @@ public:
             }
             else if(tProblemPDE == "Elliptic")
             {
-                return std::make_shared < EllipticProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+                return tOutput;
             }
             else
             {

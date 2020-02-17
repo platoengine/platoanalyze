@@ -1,5 +1,8 @@
 #pragma once
 
+#include "PlatoUtilities.hpp"
+
+
 #include <memory>
 #include <cassert>
 #include <vector>
@@ -360,7 +363,6 @@ public:
         // evaluate function
         //
         mScalarFunctionGradientZ->evaluate(tStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
-
 
         // create and assemble to return view
         //

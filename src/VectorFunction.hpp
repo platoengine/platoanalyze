@@ -100,6 +100,36 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     {
     }
 
+    Plato::OrdinalType numNodes() const
+    {
+        return (mNumNodes);
+    }
+
+    Plato::OrdinalType numCells() const
+    {
+        return (mNumCells);
+    }
+
+    Plato::OrdinalType numDofsPerCell() const
+    {
+        return (mNumDofsPerCell);
+    }
+
+    Plato::OrdinalType numNodesPerCell() const
+    {
+        return (mNumNodesPerCell);
+    }
+
+    Plato::OrdinalType numDofsPerNode() const
+    {
+        return (mNumDofsPerNode);
+    }
+
+    Plato::OrdinalType numControlsPerNode() const
+    {
+        return (mNumControl);
+    }
+
     /**************************************************************************//**
     *
     * @brief Allocate residual evaluator
