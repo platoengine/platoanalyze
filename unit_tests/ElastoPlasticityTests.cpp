@@ -4725,7 +4725,8 @@ private:
     std::shared_ptr<Plato::LocalScalarFunctionInc> mObjective;  /*!< objective constraint interface*/
     std::shared_ptr<Plato::LocalScalarFunctionInc> mConstraint; /*!< constraint constraint interface*/
 
-    Plato::OrdinalType mMaxNumAmgxIter;           /*!< maximum number of AMGX iterations*/
+    Plato::OrdinalType mMaxNumAmgxIter;           /*!< maximum number of AMGX iterations */
+    Plato::OrdinalType mNewtonIteration;          /*!< current Newton-Raphson iteration */
     Plato::OrdinalType mMaxNumNewtonIter;         /*!< maximum number of Newton-Raphson iterations*/
     Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps*/
     Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps*/
@@ -4774,6 +4775,7 @@ public:
             mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
             mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
             mMaxNumAmgxIter(500),
+            mNewtonIteration(0),
             mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Maximum Number Iterations", 10)),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
@@ -4802,6 +4804,7 @@ public:
             mNumPseudoTimeSteps(20),
             mMaxNumPseudoTimeSteps(80),
             mMaxNumAmgxIter(500),
+            mNewtonIteration(0),
             mMaxNumNewtonIter(10),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
@@ -4942,7 +4945,11 @@ public:
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
         Plato::ScalarVector tDispControlledDirichletValues("Dirichlet Values", mDirichletValues.size());
-        Plato::update(mDispControlConstant, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
+        Plato::fill(0.0, tDispControlledDirichletValues);
+        if(mNewtonIteration == static_cast<Plato::OrdinalType>(0))
+        {
+            Plato::update(mPseudoTimeStep, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
+        }
 
         if(aMatrix->isBlockMatrix())
         {
@@ -5463,7 +5470,8 @@ private:
     *******************************************************************************/
     void updateDispControlConstant(Plato::ForwardProblemStateData &aStateData)
     {
-        mDispControlConstant = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
+        //mDispControlConstant = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
+        mDispControlConstant = mPseudoTimeStep;
     }
 
     /***************************************************************************//**
@@ -5476,6 +5484,7 @@ private:
         this->updateDispControlConstant(aStateData);
         Plato::update(1.0, aStateData.mPreviousLocalState, 0.0, aStateData.mCurrentLocalState);
         Plato::update(1.0, aStateData.mPreviousGlobalState, 0.0, aStateData.mCurrentGlobalState);
+        //Plato::print(aStateData.mCurrentGlobalState, "Initial Guess - U_0");
     }
 
     /***************************************************************************//**
@@ -5496,12 +5505,12 @@ private:
         tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
 
-        Plato::OrdinalType tIteration = 0;
+        mNewtonIteration = 0;
         this->initializeNewtonRaphsonSolver(aStateData);
         
         while(true)
         {
-            tOutputData.mCurrentIteration = tIteration;
+            tOutputData.mCurrentIteration = mNewtonIteration;
 
             // update inverse of local Jacobian -> store in tInvLocalJacobianT
             this->updateInverseLocalJacobian(aControls, aStateData, tInvLocalJacobianT);
@@ -5521,7 +5530,7 @@ private:
             Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
             
             const bool tStoppingCriteriaMet = this->checkNewtonRaphsonStoppingCriterion(tOutputData);
-            if(tStoppingCriteriaMet == true || tIteration >= mMaxNumNewtonIter)
+            if(tStoppingCriteriaMet == true || mNewtonIteration >= mMaxNumNewtonIter)
             {
                 tNewtonRaphsonConverged = true;
                 break;
@@ -5534,7 +5543,7 @@ private:
             mLocalResidualEq->updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                aControls, aStateData.mCurrentStepIndex);
-            tIteration++;
+            mNewtonIteration++;
         }
 
         Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
@@ -5706,8 +5715,10 @@ private:
 
         // update global state
         const Plato::Scalar tAlpha = 1.0;
+        //Plato::print(aStateData.mDeltaGlobalState, "Delta(U)");
         Plato::update(tAlpha, aStateData.mDeltaGlobalState, tAlpha, aStateData.mCurrentGlobalState);
-        Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
+        //Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
+        //Plato::print(aStateData.mCurrentGlobalState, "U^{k+1} = U_0^{k} + Delta(U)^k");
     }
 
     /***************************************************************************//**
@@ -5931,6 +5942,7 @@ private:
             auto tDfDz = aCriterion.gradient_z(tCurrentGlobalState, tPreviousGlobalState,
                                                tCurrentLocalState, tFutureLocalState,
                                                tPreviousLocalState, aControls, tCurrentStepIndex);
+            //Plato::print_array_2D(tDfDz, "DfDz");
             mWorksetBase.assembleScalarGradientZ(tDfDz, aTotalGradient);
         }
     }
@@ -6113,15 +6125,18 @@ private:
 
         // add global adjoint contribution to total gradient, i.e. DfDz += (DrDz)^T * lambda
         Plato::ScalarMultiVector tCurrentLambda("Current Global State Adjoint", tNumCells, mNumGlobalDofsPerCell);
+        //Plato::print(aAdjointData.mCurrentGlobalAdjoint, "lambda_k");
         mWorksetBase.worksetState(aAdjointData.mCurrentGlobalAdjoint, tCurrentLambda);
         auto tDrDz = mGlobalResidualEq->gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
         const Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDrDz, tCurrentLambda, tBeta, tGradientControl);
+        //Plato::print_array_2D(tGradientControl, "DrDz^{T}*lambda_k");
 
         // add projected pressure gradient adjoint contribution to total gradient, i.e. DfDz += (DpDz)^T * gamma
         Plato::ScalarMultiVector tCurrentGamma("Current Projected Pressure Gradient Adjoint", tNumCells, mNumPressGradDofsPerCell);
+        //Plato::print(aAdjointData.mProjPressGradAdjoint, "gamma_k");
         mWorksetBase.worksetNodeState(aAdjointData.mProjPressGradAdjoint, tCurrentGamma);
         auto tDpDz = mProjectionEq->gradient_z_workset(aStateData.mProjectedPressGrad,
                                                       mPressure,
@@ -6129,14 +6144,22 @@ private:
                                                       aStateData.mCurrentStepIndex);
         tBeta = 1.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDpDz, tCurrentGamma, tBeta, tGradientControl);
+        //Plato::print_array_2D(tGradientControl, "DrDz^{T}*lambda_k + DpDz^{T}*gamma_k");
 
         // compute local adjoint contribution to total gradient, i.e. (DhDz)^T * mu
         Plato::ScalarMultiVector tCurrentMu("Current Local State Adjoint", tNumCells, mNumLocalDofsPerCell);
+        //Plato::print(aAdjointData.mCurrentLocalAdjoint, "mu_k");
         mWorksetBase.worksetLocalState(aAdjointData.mCurrentLocalAdjoint, tCurrentMu);
         auto tDhDz = mLocalResidualEq->gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                  aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                  aControls, aStateData.mCurrentStepIndex);
         Plato::matrix_times_vector_workset("T", tAlpha, tDhDz, tCurrentMu, tBeta, tGradientControl);
+        //Plato::print_array_3D(tDhDz, "DhDz");
+        //Plato::print_array_2D(tGradientControl, "DrDz^{T}*lambda_k + DpDz^{T}*gamma_k + DhDz^{T}*mu_k");
+        
+        //Plato::ScalarMultiVector tDummy("Gradient WRT Control", tNumCells, mNumNodesPerCell);
+        //Plato::matrix_times_vector_workset("T", tAlpha, tDhDz, tCurrentMu, tBeta, tDummy);
+        //Plato::print_array_2D(tDummy, "DhDz^{T}*mu_k");
 
         mWorksetBase.assembleScalarGradientZ(tGradientControl, aTotalGradient);
     }
@@ -6251,6 +6274,7 @@ private:
 
         Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointData.mProjPressGradAdjoint);
         Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointData.mProjPressGradAdjoint, tResidual);
+        //Plato::print(aAdjointData.mProjPressGradAdjoint, "Gamma_k");
     }
 
     /***************************************************************************//**
@@ -6289,6 +6313,7 @@ private:
                                            aStateData.mCurrentLocalState, aStateData.mFutureLocalState,
                                            aStateData.mPreviousLocalState, aControls,
                                            aStateData.mCurrentStepIndex);
+        //Plato::print_array_2D(tDfDc, "DfDc");
 
         // Get current global adjoint workset
         auto tNumCells = mLocalResidualEq->numCells();
@@ -6299,10 +6324,12 @@ private:
         auto tDrDc = mGlobalResidualEq->gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
                                                   aStateData.mProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
+        //Plato::print_array_3D(tDrDc, "DrDc");
 
         // Compute tDfDc_k + tDrDc_k * lambda_k
         Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 1.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDrDc, tCurrentLambda, tBeta, tDfDc);
+        //Plato::print_array_2D(tDfDc, "DfDc + drdc^T * lambda_{k+1}");
 
         auto tFinalStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aStateData.mCurrentStepIndex != tFinalStepIndex)
@@ -6310,12 +6337,15 @@ private:
             // Get previous local adjoint workset
             Plato::ScalarMultiVector tPreviousMu("Previous Local Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
             mWorksetBase.worksetLocalState(aAdjointData.mPreviousLocalAdjoint, tPreviousMu);
+            //Plato::print_array_2D(tPreviousMu, "mu_{k+1}");
 
             // Compute local adjoint RHS_{local} <- tDfDc_k + (tDrDc_k^T * lambda_k) + (tDhDc_{k+1}^T * mu_{k+1})
             auto tDhDcp = mLocalResidualEq->gradient_cp(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                        aStateData.mCurrentLocalState , aStateData.mPreviousLocalState,
                                                        aControls, aStateData.mCurrentStepIndex);
+            //Plato::print_array_3D(tDhDcp, "DhDcp");
             Plato::matrix_times_vector_workset("T", tAlpha, tDhDcp, tPreviousMu, tBeta, tDfDc);
+            //Plato::print_array_2D(tDfDc, "DfDc + drdc^T * lambda_{k+1} + dhdc^{T} * mu_{k+1}");
         }
 
         // Solve for current local adjoint variables, i.e. mu_k = -Inv(tDhDc_k^T) * RHS_{local}
@@ -6323,6 +6353,7 @@ private:
         Plato::ScalarMultiVector tCurrentMu("Current Local Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
         Plato::matrix_times_vector_workset("T", tAlpha, aInvLocalJacobianT, tDfDc, tBeta, tCurrentMu);
         Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tCurrentMu, aAdjointData.mCurrentLocalAdjoint);
+        //Plato::print(aAdjointData.mCurrentLocalAdjoint, "mu_{k}");
     }
 
     /***************************************************************************//**
@@ -6348,6 +6379,7 @@ private:
         // Solve for lambda_k = (K_{tangent})_k^{-T} * F_k^{adjoint}
         Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointData.mCurrentGlobalAdjoint);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointData.mCurrentGlobalAdjoint, mGlobalResidual, mUseAbsoluteTolerance);
+        //Plato::print(aAdjointData.mCurrentGlobalAdjoint, "Lambda_k");
     }
 
     /***************************************************************************//**
@@ -6680,7 +6712,7 @@ inline void test_partial_objective_wrt_control(PlatoProblem & aProblem, Omega_h:
     // Allocate Data
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
-    Plato::fill(0.85, tControls);
+    Plato::fill(0.5, tControls);
 
     Plato::ScalarVector tStep = Plato::ScalarVector("Step", tNumVerts);
     auto tHostStep = Kokkos::create_mirror(tStep);
@@ -10364,8 +10396,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='1'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='1'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -10404,7 +10436,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 1e-5;
+    tValueToSet = 2e-3;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
@@ -10466,8 +10498,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='5'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='5'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -10506,7 +10538,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 6e-4;
+    tValueToSet = 2e-3;
     tOffset += tDirichletIndicesBoundaryY0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
@@ -10521,7 +10553,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
+    //Plato::print_array_2D(tSolution, "Solution");
     auto tObjGrad = tPlasticityProblem.objectiveGradient(tControls, tSolution);
+    //Plato::print(tObjGrad, "ObjGrad");
 }
 
 }
