@@ -1875,64 +1875,6 @@ DoubleDotProduct2ndOrderTensor<1>::operator()(const Plato::OrdinalType& aCellOrd
 
 
 
-template<typename EvaluationType, typename SimplexPhysicsT>
-class ObjectiveTest : public Plato::AbstractScalarFunction<EvaluationType>
-{
-private:
-    static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
-    static constexpr Plato::OrdinalType mNumVoigtTerms = SimplexPhysicsT::mNumVoigtTerms; /*!< number of Voigt terms */
-    static constexpr Plato::OrdinalType mNumNodesPerCell = SimplexPhysicsT::mNumNodesPerCell; /*!< number of nodes per cell/element */
-
-    using StateT = typename EvaluationType::StateScalarType; /*!< state variables automatic differentiation type */
-    using ConfigT = typename EvaluationType::ConfigScalarType; /*!< configuration variables automatic differentiation type */
-    using ResultT = typename EvaluationType::ResultScalarType; /*!< result variables automatic differentiation type */
-    using ControlT = typename EvaluationType::ControlScalarType; /*!< control variables automatic differentiation type */
-
-    using Plato::AbstractScalarFunction<EvaluationType>::mMesh; /*!< mesh database */
-
-public:
-    ObjectiveTest(Omega_h::Mesh & aMesh, Omega_h::MeshSets & aMeshSets, Plato::DataMap & aDataMap) : 
-        Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Objective Test"){}
-    virtual ~ObjectiveTest(){}
-
-    void evaluate(const Plato::ScalarMultiVectorT<StateT> &aState,
-                  const Plato::ScalarMultiVectorT<ControlT> &aControls,
-                  const Plato::ScalarArray3DT<ConfigT> &aConfig,
-                  Plato::ScalarVectorT<ResultT> &aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
-    {
-        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsT, ConfigT, StateT>;
-
-        Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
-        Plato::Strain<mSpaceDim, SimplexPhysicsT::mNumDofsPerNode> tComputeVoigtStrain;
-        Plato::MSIMP tPenaltyFunction(3.0, 1e-9);
-
-        auto tNumCells = mMesh.nelems();
-        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
-        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mNumVoigtTerms);
-        Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
-
-        Plato::LinearTetCubRuleDegreeOne<mSpaceDim> tCubatureRule;
-        auto tQuadratureWeight = tCubatureRule.getCubWeight();
-        auto tBasisFunctions = tCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
-        {
-            tComputeGradient(aCellOrdinal, tConfigurationGradient, aConfig, tCellVolume);
-            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
-
-            tComputeVoigtStrain(aCellOrdinal, tCurrentElasticStrain, aState, tConfigurationGradient);
-            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
-            ControlT tElasticPropertiesPenalty = tPenaltyFunction(tDensity);
-
-            const Plato::Scalar tMultiplier = -0.5;
-            tComputeDoubleDotProduct(aCellOrdinal, tCurrentElasticStrain, tCurrentElasticStrain, aResult);
-            aResult(aCellOrdinal) *= (tMultiplier * tElasticPropertiesPenalty * tCellVolume(aCellOrdinal));
-        }, "test objective");
-    }
-};
-
-
 
 
 
