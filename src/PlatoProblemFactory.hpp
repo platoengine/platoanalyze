@@ -25,6 +25,7 @@
 #include "Electromechanics.hpp"
 #include "Thermomechanics.hpp"
 #include "StabilizedThermomechanics.hpp"
+#include "hyperbolic/HyperbolicProblem.hpp"
 //#include "StructuralDynamics.hpp"
 //#include "StructuralDynamicsProblem.hpp"
 
@@ -62,6 +63,10 @@ public:
             if(tProblemPDE == "Elliptic")
             {
                 return std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+            }
+            if(tProblemPDE == "Hyperbolic")
+            {
+                return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
             }
             else
             {

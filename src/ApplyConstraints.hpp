@@ -11,7 +11,7 @@ template<int NumDofPerNode>
  void applyBlockConstraints(Teuchos::RCP<Plato::CrsMatrixType> aMatrix,
                             Plato::ScalarVector aRhs,
                             Plato::LocalOrdinalVector aDirichletDofs,
-                            Plato::ScalarVector aDirichletValues
+                            Plato::ScalarVector aDirichletValues, Plato::Scalar aScale=1.0
   )
 /******************************************************************************/
 {
@@ -28,7 +28,7 @@ template<int NumDofPerNode>
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumBCs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aBcOrdinal)
     {
         OrdinalType tRowDofOrdinal = aDirichletDofs[aBcOrdinal];
-        Scalar tValue = aDirichletValues[aBcOrdinal];
+        Scalar tValue = aScale*aDirichletValues[aBcOrdinal];
         auto tRowNodeOrdinal = tRowDofOrdinal / NumDofPerNode;
         auto tLocalRowDofOrdinal  = tRowDofOrdinal % NumDofPerNode;
         OrdinalType tRowStart = tRowMap(tRowNodeOrdinal  );
@@ -72,7 +72,7 @@ template<int NumDofPerNode>
   
     Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumBCs), LAMBDA_EXPRESSION(int bcOrdinal){
         OrdinalType tDofOrdinal = aDirichletDofs[bcOrdinal];
-        Scalar tValue = aDirichletValues[bcOrdinal];
+        Scalar tValue = aScale*aDirichletValues[bcOrdinal];
         aRhs(tDofOrdinal) = tValue;
     },"Dirichlet BC imposition - Second loop");
 
@@ -84,7 +84,8 @@ applyConstraints(
     Teuchos::RCP<Plato::CrsMatrixType> matrix,
     Plato::ScalarVector                rhs,
     Plato::LocalOrdinalVector          bcDofs,
-    Plato::ScalarVector                bcValues
+    Plato::ScalarVector                bcValues,
+    Plato::Scalar                      aScale=1.0
   )
 /******************************************************************************/
 {
@@ -101,7 +102,7 @@ applyConstraints(
   Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numBCs), LAMBDA_EXPRESSION(int bcOrdinal)
   {
     OrdinalType nodeNumber = bcDofs[bcOrdinal];
-    Scalar value = bcValues[bcOrdinal];
+    Scalar value = aScale*bcValues[bcOrdinal];
     OrdinalType rowStart = rowMap(nodeNumber  );
     OrdinalType rowEnd   = rowMap(nodeNumber+1);
     for (OrdinalType entryOrdinal=rowStart; entryOrdinal<rowEnd; entryOrdinal++)
@@ -135,7 +136,7 @@ applyConstraints(
   Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numBCs), LAMBDA_EXPRESSION(int bcOrdinal)
   {
     OrdinalType nodeNumber = bcDofs[bcOrdinal];
-    Scalar value = bcValues[bcOrdinal];
+    Scalar value = aScale*bcValues[bcOrdinal];
     rhs(nodeNumber) = value;
   },"BC imposition");
 

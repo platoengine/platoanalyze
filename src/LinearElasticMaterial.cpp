@@ -21,6 +21,11 @@ LinearElasticMaterial<1>(paramList)
     } else {
       mPressureScaling = k / (3.0*(1.0-2.0*v));
     }
+    if( paramList.isType<Plato::Scalar>("Mass Density") ){
+      mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
+    } else {
+      mCellDensity = 1.0;
+    }
 }
 /******************************************************************************/
 template<>
@@ -43,6 +48,11 @@ LinearElasticMaterial<2>(paramList)
       mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
     } else {
       mPressureScaling = k / (3.0*(1.0-2.0*v));
+    }
+    if( paramList.isType<Plato::Scalar>("Mass Density") ){
+      mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
+    } else {
+      mCellDensity = 1.0;
     }
 }
 /******************************************************************************/
@@ -70,7 +80,11 @@ LinearElasticMaterial<3>(paramList)
     } else {
       mPressureScaling = k / (3.0*(1.0-2.0*v));
     }
-
+    if( paramList.isType<Plato::Scalar>("Mass Density") ){
+      mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
+    } else {
+      mCellDensity = 1.0;
+    }
 }
 
 /******************************************************************************/

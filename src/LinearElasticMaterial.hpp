@@ -24,11 +24,13 @@ namespace Plato {
 
     Omega_h::Matrix<mNumVoigtTerms,mNumVoigtTerms> mCellStiffness;
     Omega_h::Vector<mNumVoigtTerms> mReferenceStrain;
+    Plato::Scalar mCellDensity;
     Plato::Scalar mPressureScaling;
   
   public:
     LinearElasticMaterial();
     LinearElasticMaterial(const Teuchos::ParameterList& paramList);
+    decltype(mCellDensity)     getMassDensity()     const {return mCellDensity;}
     decltype(mCellStiffness)   getStiffnessMatrix() const {return mCellStiffness;}
     decltype(mPressureScaling) getPressureScaling() const {return mPressureScaling;}
     decltype(mReferenceStrain) getReferenceStrain() const {return mReferenceStrain;}
