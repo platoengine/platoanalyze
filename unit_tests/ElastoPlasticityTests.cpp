@@ -6517,7 +6517,7 @@ private:
 
 
 template<class PlatoProblem>
-inline void test_partial_objective_wrt_control(PlatoProblem & aProblem, Omega_h::Mesh & aMesh)
+inline void test_objective_grad_wrt_control(PlatoProblem & aProblem, Omega_h::Mesh & aMesh)
 {
     // Allocate Data
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
@@ -10114,7 +10114,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    Plato::test_partial_objective_wrt_control(tPlasticityProblem, *tMesh);
+    Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
 }
 
 
