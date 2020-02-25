@@ -4310,7 +4310,7 @@ struct PartialDerivative
  * forward and adjoint equations as well as assembling the total gradient with
  * respect to the variables of interest, e.g. design variables & configurations.
 *******************************************************************************/
-struct ForwardProblemStateData
+struct ForwardProblemStates
 {
     Plato::OrdinalType mCurrentStepIndex;      /*!< current time step index */
     Plato::ScalarVector mDeltaGlobalState;     /*!< global state increment */
@@ -4330,33 +4330,30 @@ struct ForwardProblemStateData
  * forward and adjoint equations as well as assembling the total gradient with
  * respect to the variables of interest, e.g. design variables & configurations.
 *******************************************************************************/
-struct AdjointStateData
+struct StateData
 {
     Plato::OrdinalType mCurrentStepIndex;      /*!< current time step index */
-
     Plato::ScalarVector mCurrentLocalState;    /*!< current local state */
     Plato::ScalarVector mPreviousLocalState;   /*!< previous local state */
-
     Plato::ScalarVector mCurrentGlobalState;   /*!< current global state */
     Plato::ScalarVector mPreviousGlobalState;  /*!< previous global state */
-
-    Plato::ScalarVector mProjectedPressGrad; /*!< projected pressure gradient at time step k-1, where k is the step index */
+    Plato::ScalarVector mProjectedPressGrad;   /*!< projected pressure gradient at time step k-1, where k is the step index */
 
     Plato::PartialDerivative::derivative_t mPartialDerivativeType;
 
-    explicit AdjointStateData(const Plato::PartialDerivative::derivative_t &aType) :
+    explicit StateData(const Plato::PartialDerivative::derivative_t &aType) :
         mCurrentStepIndex(0),
         mPartialDerivativeType(aType)
     {
     }
 
-    ~AdjointStateData(){}
+    ~StateData(){}
 };
 // struct StateData
 
-struct AdjointData
+struct AdjointProblemStates
 {
-    AdjointData(const Plato::OrdinalType & aNumGlobalAdjointVars,
+    AdjointProblemStates(const Plato::OrdinalType & aNumGlobalAdjointVars,
                 const Plato::OrdinalType & aNumLocalAdjointVars,
                 const Plato::OrdinalType & aNumProjPressGradAdjointVars) :
             mCurrentLocalAdjoint(Plato::ScalarVector("Current Local Adjoint", aNumLocalAdjointVars)),
@@ -4368,7 +4365,7 @@ struct AdjointData
     {
     }
 
-    ~AdjointData(){}
+    ~AdjointProblemStates(){}
 
     Plato::ScalarVector mCurrentLocalAdjoint;          /*!< current local adjoint */
     Plato::ScalarVector mPreviousLocalAdjoint;         /*!< previous local adjoint */
@@ -4377,7 +4374,7 @@ struct AdjointData
     Plato::ScalarVector mProjPressGradAdjoint;  /*!< projected pressure adjoint */
     Plato::ScalarVector mPreviousProjPressGradAdjoint; /*!< projected pressure adjoint */
 };
-// struct AdjointData
+// struct AdjointProblemStates
 
 struct NewtonRaphsonOutputData
 {
@@ -5240,7 +5237,7 @@ private:
     *******************************************************************************/
     bool solveForwardProblem(const Plato::ScalarVector & aControls)
     {
-        Plato::ForwardProblemStateData tStateData;
+        Plato::ForwardProblemStates tStateData;
         auto tNumCells = mLocalResidualEq->numCells();
         tStateData.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalResidualEq->size());
 
@@ -5276,7 +5273,7 @@ private:
      * \brief Update load control constant
      * \param [in] aStateData data manager with current and previous state data
     *******************************************************************************/
-    void updateLoadControlConstant(Plato::ForwardProblemStateData &aStateData)
+    void updateLoadControlConstant(Plato::ForwardProblemStates &aStateData)
     {
         mDataMap.mScalarValues["LoadControlConstant"] = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
     }
@@ -5285,7 +5282,7 @@ private:
      * \brief Update displacement control constant
      * \param [in] aStateData data manager with current and previous state data
     *******************************************************************************/
-    void updateDispControlConstant(Plato::ForwardProblemStateData &aStateData)
+    void updateDispControlConstant(Plato::ForwardProblemStates &aStateData)
     {
         //mDispControlConstant = mPseudoTimeStep * static_cast<Plato::Scalar>(aStateData.mCurrentStepIndex + 1);
         mDispControlConstant = mPseudoTimeStep;
@@ -5295,7 +5292,7 @@ private:
      * \brief Initialize Newton-Raphson solver
      * \param [in] aStateData data manager with current and previous state data
     *******************************************************************************/
-    void initializeNewtonRaphsonSolver(Plato::ForwardProblemStateData &aStateData)
+    void initializeNewtonRaphsonSolver(Plato::ForwardProblemStates &aStateData)
     {
         this->updateLoadControlConstant(aStateData);
         this->updateDispControlConstant(aStateData);
@@ -5312,7 +5309,7 @@ private:
      * \return flag used to indicate if the Newton-Raphson solver converged
     *******************************************************************************/
     bool solveNewtonRaphson(const Plato::ScalarVector &aControls,
-                            Plato::ForwardProblemStateData &aStateData)
+                            Plato::ForwardProblemStates &aStateData)
     {
         bool tNewtonRaphsonConverged = false;
         Plato::NewtonRaphsonOutputData tOutputData;
@@ -5375,7 +5372,7 @@ private:
      * \param [in] aInvLocalJacobianT 3-D container for inverse Jacobian
     *******************************************************************************/
     void assembleResidual(const Plato::ScalarVector & aControls,
-                          const Plato::ForwardProblemStateData & aStateData,
+                          const Plato::ForwardProblemStates & aStateData,
                           const Plato::ScalarArray3D& aInvLocalJacobianT)
     {
 
@@ -5498,7 +5495,7 @@ private:
      * \param [in/out] aStateData data manager with current and previous global and local state data
     *******************************************************************************/
     void updateProjectedPressureGradient(const Plato::ScalarVector &aControls,
-                                         Plato::ForwardProblemStateData &aStateData)
+                                         Plato::ForwardProblemStates &aStateData)
     {
         Plato::OrdinalType tNextStepIndex = aStateData.mCurrentStepIndex + static_cast<Plato::OrdinalType>(1);
         if(tNextStepIndex >= mNumPseudoTimeSteps)
@@ -5524,7 +5521,7 @@ private:
      * \param [in] aStateData data manager with current and previous state data
     *******************************************************************************/
     void updateGlobalStates(const Plato::ScalarVector &aControls,
-                            Plato::ForwardProblemStateData &aStateData)
+                            Plato::ForwardProblemStates &aStateData)
     {
         const Plato::Scalar tAlpha = 1.0;
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
@@ -5538,7 +5535,7 @@ private:
      * \param [in]     aStateData  state data
      * \param [in\out] aOutputData Newton-Raphson solver output data
     *******************************************************************************/
-    void computeDisplacementNorm(const Plato::ForwardProblemStateData &aStateData, Plato::NewtonRaphsonOutputData & aOutputData)
+    void computeDisplacementNorm(const Plato::ForwardProblemStates &aStateData, Plato::NewtonRaphsonOutputData & aOutputData)
     {
         if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
         {
@@ -5595,7 +5592,7 @@ private:
      *     \f$ \frac{\Vert R_{i} \Vert}{\Vert R_{i=0} \Vert} \f$
      * \param [in] aOutputData Newton-Raphson solver output data
     *******************************************************************************/
-    void computeStoppingCriterion(const Plato::ForwardProblemStateData &aStateData,
+    void computeStoppingCriterion(const Plato::ForwardProblemStates &aStateData,
                                   Plato::NewtonRaphsonOutputData & aOutputData)
     {
         switch(aOutputData.mStoppingMeasure)
@@ -5772,9 +5769,9 @@ private:
     {
         // Create state data manager
         auto tNumCells = mLocalResidualEq->numCells();
-        Plato::AdjointStateData tCurrentStates(aType);
-        Plato::AdjointStateData tPreviousStates(aType);
-        Plato::AdjointData tAdjointStates(mGlobalResidualEq->size(), mLocalResidualEq->size(), mProjectionEq->size());
+        Plato::StateData tCurrentStates(aType);
+        Plato::StateData tPreviousStates(aType);
+        Plato::AdjointProblemStates tAdjointStates(mGlobalResidualEq->size(), mLocalResidualEq->size(), mProjectionEq->size());
         Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
         // outer loop for pseudo time steps
@@ -5800,20 +5797,20 @@ private:
     }
 
     void updatePartialDerivativePDE(const Plato::ScalarVector &aControls,
-                                    const Plato::AdjointStateData &aStateData,
-                                    const Plato::AdjointData &aAdjointData,
+                                    const Plato::StateData &aStateData,
+                                    const Plato::AdjointProblemStates &aAdjointStates,
                                     Plato::ScalarVector &aOutput)
     {
         switch(aStateData.mPartialDerivativeType)
         {
             case Plato::PartialDerivative::CONTROL:
             {
-                this->addPDEpartialDerivativeZ(aControls, aStateData, aAdjointData, aOutput);
+                this->addPDEpartialDerivativeZ(aControls, aStateData, aAdjointStates, aOutput);
                 break;
             }
             case Plato::PartialDerivative::CONFIGURATION:
             {
-                this->addPDEpartialDerivativeX(aControls, aStateData, aAdjointData, aOutput);
+                this->addPDEpartialDerivativeX(aControls, aStateData, aAdjointStates, aOutput);
                 break;
             }
             default:
@@ -5828,7 +5825,7 @@ private:
      * \param [in] aStateData state data manager
      * \param [in] aZeroEntries flag - zero all entries in current states (default = false)
     *******************************************************************************/
-    void cacheStateData(Plato::ForwardProblemStateData &aStateData)
+    void cacheStateData(Plato::ForwardProblemStates &aStateData)
     {
         // GET CURRENT STATE
         aStateData.mCurrentLocalState = Kokkos::subview(mLocalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
@@ -5851,7 +5848,7 @@ private:
      * \param [in] aStateData state data manager
      * \param [in] aZeroEntries flag - zero all entries in current states (default = false)
     *******************************************************************************/
-    void updateStateData(Plato::AdjointStateData &aStateData)
+    void updateStateData(Plato::StateData &aStateData)
     {
         // GET CURRENT STATE
         aStateData.mCurrentLocalState = Kokkos::subview(mLocalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
@@ -5868,13 +5865,13 @@ private:
      * \brief Update adjoint data for time step n, i.e. current time step:
      * \param [in] aAdjointData adjoint data manager
     *******************************************************************************/
-    void updateAdjointData(Plato::AdjointData& aAdjointData)
+    void updateAdjointData(Plato::AdjointProblemStates& aAdjointStates)
     {
         // NOTE: CURRENT ADJOINT VARIABLES ARE UPDATED AT SOLVE TIME. THERE IS NO NEED TO SET THEM TO ZERO HERE.
         const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 0.0;
-        Plato::update(tAlpha, aAdjointData.mCurrentLocalAdjoint, tBeta, aAdjointData.mPreviousLocalAdjoint);
-        Plato::update(tAlpha, aAdjointData.mCurrentGlobalAdjoint, tBeta, aAdjointData.mPreviousGlobalAdjoint);
-        Plato::update(tAlpha, aAdjointData.mProjPressGradAdjoint, tBeta, aAdjointData.mPreviousProjPressGradAdjoint);
+        Plato::update(tAlpha, aAdjointStates.mCurrentLocalAdjoint, tBeta, aAdjointStates.mPreviousLocalAdjoint);
+        Plato::update(tAlpha, aAdjointStates.mCurrentGlobalAdjoint, tBeta, aAdjointStates.mPreviousGlobalAdjoint);
+        Plato::update(tAlpha, aAdjointStates.mProjPressGradAdjoint, tBeta, aAdjointStates.mPreviousProjPressGradAdjoint);
     }
 
     /***************************************************************************//**
@@ -5898,8 +5895,8 @@ private:
      * \param [in/out] aGradient total derivative wrt controls
     *********************************************************************************/
     void addPDEpartialDerivativeZ(const Plato::ScalarVector &aControls,
-                                  const Plato::AdjointStateData &aStateData,
-                                  const Plato::AdjointData &aAdjointData,
+                                  const Plato::StateData &aStateData,
+                                  const Plato::AdjointProblemStates &aAdjointStates,
                                   Plato::ScalarVector &aTotalGradient)
     {
         auto tNumCells = mGlobalResidualEq->numCells();
@@ -5908,7 +5905,7 @@ private:
         // add global adjoint contribution to total gradient, i.e. DfDz += (DrDz)^T * lambda
         Plato::ScalarMultiVector tCurrentLambda("Current Global State Adjoint", tNumCells, mNumGlobalDofsPerCell);
         //Plato::print(aAdjointData.mCurrentGlobalAdjoint, "lambda_k");
-        mWorksetBase.worksetState(aAdjointData.mCurrentGlobalAdjoint, tCurrentLambda);
+        mWorksetBase.worksetState(aAdjointStates.mCurrentGlobalAdjoint, tCurrentLambda);
         auto tDrDz = mGlobalResidualEq->gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
@@ -5919,7 +5916,7 @@ private:
         // add projected pressure gradient adjoint contribution to total gradient, i.e. DfDz += (DpDz)^T * gamma
         Plato::ScalarMultiVector tCurrentGamma("Current Projected Pressure Gradient Adjoint", tNumCells, mNumPressGradDofsPerCell);
         //Plato::print(aAdjointData.mProjPressGradAdjoint, "gamma_k");
-        mWorksetBase.worksetNodeState(aAdjointData.mProjPressGradAdjoint, tCurrentGamma);
+        mWorksetBase.worksetNodeState(aAdjointStates.mProjPressGradAdjoint, tCurrentGamma);
         auto tDpDz = mProjectionEq->gradient_z_workset(aStateData.mProjectedPressGrad, mPressure,
                                                        aControls, aStateData.mCurrentStepIndex);
         tBeta = 1.0;
@@ -5929,7 +5926,7 @@ private:
         // compute local adjoint contribution to total gradient, i.e. (DhDz)^T * mu
         Plato::ScalarMultiVector tCurrentMu("Current Local State Adjoint", tNumCells, mNumLocalDofsPerCell);
         //Plato::print(aAdjointData.mCurrentLocalAdjoint, "mu_k");
-        mWorksetBase.worksetLocalState(aAdjointData.mCurrentLocalAdjoint, tCurrentMu);
+        mWorksetBase.worksetLocalState(aAdjointStates.mCurrentLocalAdjoint, tCurrentMu);
         auto tDhDz = mLocalResidualEq->gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aControls, aStateData.mCurrentStepIndex);
@@ -5966,8 +5963,8 @@ private:
      * \param [in/out] aGradient total derivative wrt configuration
     *******************************************************************************/
     void addPDEpartialDerivativeX(const Plato::ScalarVector &aControls,
-                                  const Plato::AdjointStateData &aStateData,
-                                  const Plato::AdjointData &aAdjointData,
+                                  const Plato::StateData &aStateData,
+                                  const Plato::AdjointProblemStates &aAdjointStates,
                                   Plato::ScalarVector &aGradient)
     {
         // Allocate return gradient
@@ -5976,7 +5973,7 @@ private:
 
         // add global adjoint contribution to total gradient, i.e. DfDx += (DrDx)^T * lambda
         Plato::ScalarMultiVector tCurrentLambda("Current Global State Adjoint", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aAdjointData.mCurrentGlobalAdjoint, tCurrentLambda);
+        mWorksetBase.worksetState(aAdjointStates.mCurrentGlobalAdjoint, tCurrentLambda);
         auto tDrDx = mGlobalResidualEq->gradient_x(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
@@ -5985,7 +5982,7 @@ private:
 
         // add projected pressure gradient adjoint contribution to total gradient, i.e. DfDx += (DpDx)^T * gamma
         Plato::ScalarMultiVector tCurrentGamma("Current Projected Pressure Gradient Adjoint", tNumCells, mNumPressGradDofsPerCell);
-        mWorksetBase.worksetNodeState(aAdjointData.mProjPressGradAdjoint, tCurrentGamma);
+        mWorksetBase.worksetNodeState(aAdjointStates.mProjPressGradAdjoint, tCurrentGamma);
         auto tDpDx = mProjectionEq->gradient_x_workset(aStateData.mProjectedPressGrad,
                                                       mPressure,
                                                       aControls,
@@ -5995,7 +5992,7 @@ private:
 
         // compute local contribution to total gradient, i.e. (DhDx)^T * mu
         Plato::ScalarMultiVector tCurrentMu("Current Local State Adjoint", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aAdjointData.mCurrentLocalAdjoint, tCurrentMu);
+        mWorksetBase.worksetLocalState(aAdjointStates.mCurrentLocalAdjoint, tCurrentMu);
         auto tDhDx = mLocalResidualEq->gradient_x(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                    aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                    aControls, aStateData.mCurrentStepIndex);
@@ -6025,13 +6022,13 @@ private:
      * \param [in] aAdjointData adjoint data manager
     *******************************************************************************/
     void updateProjPressGradAdjointVars(const Plato::ScalarVector & aControls,
-                                        const Plato::AdjointStateData& aStateData,
-                                        Plato::AdjointData& aAdjointData)
+                                        const Plato::StateData& aStateData,
+                                        Plato::AdjointProblemStates& aAdjointStates)
     {
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aStateData.mCurrentStepIndex == tLastStepIndex)
         {
-            Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointData.mProjPressGradAdjoint);
+            Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointStates.mProjPressGradAdjoint);
             return;
         }
 
@@ -6044,7 +6041,7 @@ private:
         // Compute tDrDp_{k+1}^T * lambda_{k+1}
         auto tNumProjPressGradDofs = mProjectionEq->size();
         Plato::ScalarVector tResidual("Projected Pressure Gradient Residual", tNumProjPressGradDofs);
-        Plato::MatrixTimesVectorPlusVector(tDrDp_T, aAdjointData.mPreviousGlobalAdjoint, tResidual);
+        Plato::MatrixTimesVectorPlusVector(tDrDp_T, aAdjointStates.mPreviousGlobalAdjoint, tResidual);
         Plato::scale(static_cast<Plato::Scalar>(-1), tResidual);
 
         // Solve for current projected pressure gradient adjoint, i.e.
@@ -6052,8 +6049,8 @@ private:
         auto tProjJacobian = mProjectionEq->gradient_u_T(aStateData.mProjectedPressGrad, mPressure,
                                                         aControls, aStateData.mCurrentStepIndex);
 
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointData.mProjPressGradAdjoint);
-        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointData.mProjPressGradAdjoint, tResidual);
+        Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointStates.mProjPressGradAdjoint);
+        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointStates.mProjPressGradAdjoint, tResidual);
         //Plato::print(aAdjointData.mProjPressGradAdjoint, "Gamma_k");
     }
 
@@ -6084,10 +6081,10 @@ private:
     *******************************************************************************/
     void updateLocalAdjointVars(Plato::LocalScalarFunctionInc& aCriterion,
                                 const Plato::ScalarVector & aControls,
-                                const Plato::AdjointStateData& aCurrentStates,
-                                const Plato::AdjointStateData& aPreviousStates,
+                                const Plato::StateData& aCurrentStates,
+                                const Plato::StateData& aPreviousStates,
                                 const Plato::ScalarArray3D& aInvLocalJacobianT,
-                                Plato::AdjointData & aAdjointData)
+                                Plato::AdjointProblemStates & aAdjointStates)
     {
         // Compute DfDc_{k}
         auto tDfDc = aCriterion.gradient_c(aCurrentStates.mCurrentGlobalState, aCurrentStates.mPreviousGlobalState,
@@ -6097,7 +6094,7 @@ private:
         // Compute DfDc_k + ( DrDc_k^T * lambda_k )
         auto tNumCells = mLocalResidualEq->numCells();
         Plato::ScalarMultiVector tCurrentLambda("Current Global Adjoint Workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aAdjointData.mCurrentGlobalAdjoint, tCurrentLambda);
+        mWorksetBase.worksetState(aAdjointStates.mCurrentGlobalAdjoint, tCurrentLambda);
         auto tDrDc = mGlobalResidualEq->gradient_c(aCurrentStates.mCurrentGlobalState, aCurrentStates.mPreviousGlobalState,
                                                   aCurrentStates.mCurrentLocalState , aCurrentStates.mPreviousLocalState,
                                                   aCurrentStates.mProjectedPressGrad, aControls, aCurrentStates.mCurrentStepIndex);
@@ -6116,7 +6113,7 @@ private:
 
             // Compute DfDc_k + ( DrDc_k^T * lambda_k ) + DfDc_{k+1} + ( DhDc_{k+1}^T * mu_{k+1} )
             Plato::ScalarMultiVector tPreviousMu("Previous Local Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
-            mWorksetBase.worksetLocalState(aAdjointData.mPreviousLocalAdjoint, tPreviousMu);
+            mWorksetBase.worksetLocalState(aAdjointStates.mPreviousLocalAdjoint, tPreviousMu);
             auto tDhDcp = mLocalResidualEq->gradient_cp(aPreviousStates.mCurrentGlobalState, aPreviousStates.mPreviousGlobalState,
                                                        aPreviousStates.mCurrentLocalState , aPreviousStates.mPreviousLocalState,
                                                        aControls, aCurrentStates.mCurrentStepIndex);
@@ -6124,7 +6121,7 @@ private:
             
             // Compute RHS_{local} = DfDc_k + ( DrDc_k^T * lambda_k ) + DfDc_{k+1} + ( DhDc_{k+1}^T * mu_{k+1} ) + ( DrDc_{k+1}^T * lambda_{k+1} )
             Plato::ScalarMultiVector tPrevLambda("Previous Global Adjoint Workset", tNumCells, mNumGlobalDofsPerCell);
-            mWorksetBase.worksetState(aAdjointData.mPreviousGlobalAdjoint, tPrevLambda);
+            mWorksetBase.worksetState(aAdjointStates.mPreviousGlobalAdjoint, tPrevLambda);
             auto tDrDcp = mGlobalResidualEq->gradient_cp(aPreviousStates.mCurrentGlobalState, aPreviousStates.mPreviousGlobalState,
                                                          aPreviousStates.mCurrentLocalState , aPreviousStates.mPreviousLocalState,
                                                          aCurrentStates.mProjectedPressGrad, aControls, aCurrentStates.mCurrentStepIndex);
@@ -6135,7 +6132,7 @@ private:
         tAlpha = -1.0; tBeta = 0.0;
         Plato::ScalarMultiVector tCurrentMu("Current Local Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
         Plato::matrix_times_vector_workset("T", tAlpha, aInvLocalJacobianT, tDfDc, tBeta, tCurrentMu);
-        Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tCurrentMu, aAdjointData.mCurrentLocalAdjoint);
+        Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tCurrentMu, aAdjointStates.mCurrentLocalAdjoint);
         //Plato::print(aAdjointData.mCurrentLocalAdjoint, "mu_{k}");
     }
 
@@ -6149,20 +6146,20 @@ private:
     *******************************************************************************/
     void updateGlobalAdjointVars(Plato::LocalScalarFunctionInc& aCriterion,
                                  const Plato::ScalarVector & aControls,
-                                 const Plato::AdjointStateData& aCurrentStates,
-                                 const Plato::AdjointStateData& aPreviousStates,
+                                 const Plato::StateData& aCurrentStates,
+                                 const Plato::StateData& aPreviousStates,
                                  const Plato::ScalarArray3D& aInvLocalJacobianT,
-                                 Plato::AdjointData & aAdjointData)
+                                 Plato::AdjointProblemStates & aAdjointStates)
     {
         // Assemble adjoint Jacobian into mGlobalJacobian
         this->assemblePathDependentTangentMatrix(aControls, aCurrentStates, aInvLocalJacobianT);
         // Assemble right hand side vector into mGlobalResidual
-        this->assembleGlobalAdjointRHS(aCriterion, aControls, aCurrentStates, aPreviousStates, aInvLocalJacobianT, aAdjointData);
+        this->assembleGlobalAdjointRHS(aCriterion, aControls, aCurrentStates, aPreviousStates, aInvLocalJacobianT, aAdjointStates);
         // Apply Dirichlet conditions for adjoint problem
         this->applyAdjointConstraints(mGlobalJacobian, mGlobalResidual);
         // Solve for lambda_k = (K_{tangent})_k^{-T} * F_k^{adjoint}
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointData.mCurrentGlobalAdjoint);
-        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointData.mCurrentGlobalAdjoint, mGlobalResidual, mUseAbsoluteTolerance);
+        Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointStates.mCurrentGlobalAdjoint);
+        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointStates.mCurrentGlobalAdjoint, mGlobalResidual, mUseAbsoluteTolerance);
         //Plato::print(aAdjointData.mCurrentGlobalAdjoint, "Lambda_k");
     }
 
@@ -6211,10 +6208,10 @@ private:
     Plato::ScalarMultiVector
     computeLocalAdjointRHS(Plato::LocalScalarFunctionInc &aCriterion,
                            const Plato::ScalarVector &aControls,
-                           const Plato::AdjointStateData &aCurrentStates,
-                           const Plato::AdjointStateData &aPreviousStates,
+                           const Plato::StateData &aCurrentStates,
+                           const Plato::StateData &aPreviousStates,
                            const Plato::ScalarArray3D &aInvLocalJacobianT,
-                           const Plato::AdjointData & aAdjointData)
+                           const Plato::AdjointProblemStates & aAdjointStates)
     {
         // Compute partial derivative of objective with respect to current local states
         auto tDfDc = aCriterion.gradient_c(aCurrentStates.mCurrentGlobalState, aCurrentStates.mPreviousGlobalState,
@@ -6234,7 +6231,7 @@ private:
             // Compute DfDc_k + DfDc_{k+1} + ( DhDc_{k+1}^T * mu_{k+1} )
             auto tNumCells = mLocalResidualEq->numCells();
             Plato::ScalarMultiVector tPrevMu("Previous Local Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
-            mWorksetBase.worksetLocalState(aAdjointData.mPreviousLocalAdjoint, tPrevMu);
+            mWorksetBase.worksetLocalState(aAdjointStates.mPreviousLocalAdjoint, tPrevMu);
             auto tDhDcp = mLocalResidualEq->gradient_cp(aPreviousStates.mCurrentGlobalState, aPreviousStates.mPreviousGlobalState,
                                                         aPreviousStates.mCurrentLocalState , aPreviousStates.mPreviousLocalState,
                                                         aControls, aCurrentStates.mCurrentStepIndex);
@@ -6242,7 +6239,7 @@ private:
             
             // Compute DfDc_k + DfDc_{k+1} + ( DhDc_{k+1}^T * mu_{k+1} ) + ( DrDc_{k+1}^T * lambda_{k+1} )
             Plato::ScalarMultiVector tPrevLambda("Previous Global Adjoint Workset", tNumCells, mNumGlobalDofsPerCell);
-            mWorksetBase.worksetState(aAdjointData.mPreviousGlobalAdjoint, tPrevLambda);
+            mWorksetBase.worksetState(aAdjointStates.mPreviousGlobalAdjoint, tPrevLambda);
             auto tDrDcp = mGlobalResidualEq->gradient_cp(aPreviousStates.mCurrentGlobalState, aPreviousStates.mPreviousGlobalState,
                                                          aPreviousStates.mCurrentLocalState , aPreviousStates.mPreviousLocalState,
                                                          aPreviousStates.mProjectedPressGrad, aControls, aCurrentStates.mCurrentStepIndex);
@@ -6267,8 +6264,8 @@ private:
 
     Plato::ScalarMultiVector
     computeProjPressGradAdjointRHS(const Plato::ScalarVector& aControls,
-                                   const Plato::AdjointStateData& aStateData,
-                                   const Plato::AdjointData& aAdjointData)
+                                   const Plato::StateData& aStateData,
+                                   const Plato::AdjointProblemStates& aAdjointStates)
     {
         // Compute partial derivative of projected pressure gradient residual wrt pressure field, i.e. DpDn
         auto tDpDn = mProjectionEq->gradient_n_workset(aStateData.mProjectedPressGrad,
@@ -6279,7 +6276,7 @@ private:
         // Compute projected pressure gradient adjoint workset
         auto tNumCells = mProjectionEq->numCells();
         Plato::ScalarMultiVector tGamma("Projected Pressure Gradient Adjoint", tNumCells, mNumPressGradDofsPerCell);
-        mWorksetBase.worksetNodeState(aAdjointData.mProjPressGradAdjoint, tGamma);
+        mWorksetBase.worksetNodeState(aAdjointStates.mProjPressGradAdjoint, tGamma);
 
         // Compute DpDn_k^T * gamma_k
         const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 1.0;
@@ -6311,10 +6308,10 @@ private:
     *******************************************************************************/
     void assembleGlobalAdjointRHS(Plato::LocalScalarFunctionInc& aCriterion,
                                   const Plato::ScalarVector& aControls,
-                                  const Plato::AdjointStateData& aCurrentStates,
-                                  const Plato::AdjointStateData& aPreviousStates,
+                                  const Plato::StateData& aCurrentStates,
+                                  const Plato::StateData& aPreviousStates,
                                   const Plato::ScalarArray3D& aInvLocalJacobianT,
-                                  const Plato::AdjointData& aAdjointData)
+                                  const Plato::AdjointProblemStates& aAdjointStates)
     {
         // Compute partial derivative of objective with respect to current global states
         auto tDfDu = aCriterion.gradient_u(aCurrentStates.mCurrentGlobalState, aCurrentStates.mPreviousGlobalState,
@@ -6333,13 +6330,13 @@ private:
             Plato::update_2Dview(tAlpha, tDfDup, tBeta, tDfDu);
 
             // Compute projected pressure gradient contribution to global adjoint rhs, i.e. DpDu_{k+1}^T * gamma_{k+1}
-            auto tProjPressGradAdjointRHS = this->computeProjPressGradAdjointRHS(aControls, aPreviousStates, aAdjointData);
+            auto tProjPressGradAdjointRHS = this->computeProjPressGradAdjointRHS(aControls, aPreviousStates, aAdjointStates);
             Plato::axpy_2Dview<mNumGlobalDofsPerNode, mPressureDofOffset>(tAlpha, tProjPressGradAdjointRHS, tDfDu);
             
             // Compute global residual contribution to global adjoint RHS, i.e. DrDu_{k+1}^T * lambda_{k+1}
             auto tNumCells = mGlobalResidualEq->numCells();
             Plato::ScalarMultiVector tPrevLambda("Previous Global Adjoint Workset", tNumCells, mNumGlobalDofsPerCell);
-            mWorksetBase.worksetState(aAdjointData.mPreviousGlobalAdjoint, tPrevLambda);
+            mWorksetBase.worksetState(aAdjointStates.mPreviousGlobalAdjoint, tPrevLambda);
             auto tDrDup = mGlobalResidualEq->gradient_up(aPreviousStates.mCurrentGlobalState, aPreviousStates.mPreviousGlobalState,
                                                          aPreviousStates.mCurrentLocalState , aPreviousStates.mPreviousLocalState,
                                                          aPreviousStates.mProjectedPressGrad, aControls, aCurrentStates.mCurrentStepIndex);
@@ -6347,7 +6344,7 @@ private:
             
             // Compute local residual contribution to global adjoint RHS, i.e. DhDu_{k+1}^T * mu_{k+1}
             Plato::ScalarMultiVector tPrevMu("Previous Local Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
-            mWorksetBase.worksetLocalState(aAdjointData.mPreviousLocalAdjoint, tPrevMu);
+            mWorksetBase.worksetLocalState(aAdjointStates.mPreviousLocalAdjoint, tPrevMu);
             auto tDhDup = mLocalResidualEq->gradient_up(aPreviousStates.mCurrentGlobalState, aPreviousStates.mPreviousGlobalState,
                                                         aPreviousStates.mCurrentLocalState , aPreviousStates.mPreviousLocalState,
                                                         aControls, aCurrentStates.mCurrentStepIndex);
@@ -6356,7 +6353,7 @@ private:
 
         // Compute and add local contribution to global adjoint rhs, i.e. tDfDu_k - F_k^{local}
         auto tLocalStateAdjointRHS =
-            this->computeLocalAdjointRHS(aCriterion, aControls, aCurrentStates, aPreviousStates, aInvLocalJacobianT, aAdjointData);
+            this->computeLocalAdjointRHS(aCriterion, aControls, aCurrentStates, aPreviousStates, aInvLocalJacobianT, aAdjointStates);
         const Plato::Scalar  tAlpha = -1.0; const Plato::Scalar tBeta = 1.0;
         Plato::update_2Dview(tAlpha, tLocalStateAdjointRHS, tBeta, tDfDu);
 
