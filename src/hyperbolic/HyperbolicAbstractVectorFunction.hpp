@@ -9,9 +9,12 @@
 namespace Plato
 {
 
+namespace Hyperbolic
+{
+
 /******************************************************************************/
 template<typename EvaluationType>
-class AbstractVectorFunctionHyperbolic
+class AbstractVectorFunction
 /******************************************************************************/
 {
 protected:
@@ -23,7 +26,7 @@ protected:
 public:
     /******************************************************************************/
     explicit 
-    AbstractVectorFunctionHyperbolic(
+    AbstractVectorFunction(
         Omega_h::Mesh& aMesh, 
         Omega_h::MeshSets& aMeshSets,
         Plato::DataMap& aDataMap,
@@ -36,7 +39,7 @@ public:
     {
     }
     /******************************************************************************/
-    virtual ~AbstractVectorFunctionHyperbolic()
+    virtual ~AbstractVectorFunction()
     /******************************************************************************/
     {
     }
@@ -77,6 +80,8 @@ public:
              Plato::Scalar aTimeStep = 0.0) const = 0;
     /******************************************************************************/
 };
+
+} // namespace Hyperbolic
 
 } // namespace Plato
 

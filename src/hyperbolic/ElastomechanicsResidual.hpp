@@ -20,17 +20,16 @@
 #include "PlatoAbstractProblem.hpp"
 #include "LinearElasticMaterial.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
-#include "hyperbolic/VectorFunctionHyperbolic.hpp"
+
 #include "hyperbolic/Newmark.hpp"
 #include "hyperbolic/InertialContent.hpp"
-
-#include "ExpInstMacros.hpp"
+#include "hyperbolic/HyperbolicVectorFunction.hpp"
 
 /******************************************************************************/
 template<typename EvaluationType, typename IndicatorFunctionType>
 class TransientMechanicsResidual :
   public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
-  public Plato::AbstractVectorFunctionHyperbolic<EvaluationType>
+  public Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>
 /******************************************************************************/
 {
     static constexpr Plato::OrdinalType SpaceDim = EvaluationType::SpatialDim;
@@ -40,9 +39,9 @@ class TransientMechanicsResidual :
     using Plato::SimplexMechanics<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexMechanics<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::AbstractVectorFunctionHyperbolic<EvaluationType>::mMesh;
-    using Plato::AbstractVectorFunctionHyperbolic<EvaluationType>::mDataMap;
-    using Plato::AbstractVectorFunctionHyperbolic<EvaluationType>::mMeshSets;
+    using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mDataMap;
+    using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
     using DisplacementScalarType = typename EvaluationType::DisplacementScalarType;
     using VelocityScalarType     = typename EvaluationType::VelocityScalarType;
@@ -71,7 +70,7 @@ class TransientMechanicsResidual :
       Plato::DataMap& aDataMap,
       Teuchos::ParameterList& aProblemParams,
       Teuchos::ParameterList& aPenaltyParams) :
-     Plato::AbstractVectorFunctionHyperbolic<EvaluationType>(aMesh, aMeshSets, aDataMap,
+     Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap,
         {"Displacement X", "Displacement Y", "Displacement Z"}),
      mIndicatorFunction(aPenaltyParams),
      mApplyStressWeighting(mIndicatorFunction),

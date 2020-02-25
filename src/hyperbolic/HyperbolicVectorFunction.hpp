@@ -8,9 +8,12 @@
 
 #include "../../src/WorksetBase.hpp"
 #include "HyperbolicSimplexFadTypes.hpp"
-#include "AbstractVectorFunctionHyperbolic.hpp"
+#include "HyperbolicAbstractVectorFunction.hpp"
 
 namespace Plato
+{
+
+namespace Hyperbolic
 {
 
 /******************************************************************************/
@@ -26,7 +29,7 @@ namespace Plato
 */
 /******************************************************************************/
 template<typename PhysicsT>
-class VectorFunctionHyperbolic : public Plato::WorksetBase<PhysicsT>
+class VectorFunction : public Plato::WorksetBase<PhysicsT>
 {
   private:
     using Plato::WorksetBase<PhysicsT>::mNumDofsPerCell;
@@ -49,12 +52,12 @@ class VectorFunctionHyperbolic : public Plato::WorksetBase<PhysicsT>
 
     static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mNumSpatialDims*mNumNodesPerCell;
 
-    std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<Residual>>  mVectorFunctionResidual;
-    std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<GradientU>> mVectorFunctionGradientU;
-    std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<GradientV>> mVectorFunctionGradientV;
-    std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<GradientA>> mVectorFunctionGradientA;
-    std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<GradientX>> mVectorFunctionGradientX;
-    std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<GradientZ>> mVectorFunctionGradientZ;
+    std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<Residual>>  mVectorFunctionResidual;
+    std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientU>> mVectorFunctionGradientU;
+    std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientV>> mVectorFunctionGradientV;
+    std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientA>> mVectorFunctionGradientA;
+    std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientX>> mVectorFunctionGradientX;
+    std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientZ>> mVectorFunctionGradientZ;
 
     Plato::DataMap& mDataMap;
 
@@ -70,7 +73,7 @@ class VectorFunctionHyperbolic : public Plato::WorksetBase<PhysicsT>
     * @param [in] aProblemType problem type 
     *
     ******************************************************************************/
-    VectorFunctionHyperbolic(Omega_h::Mesh& aMesh,
+    VectorFunction(Omega_h::Mesh& aMesh,
                    Omega_h::MeshSets& aMeshSets,
                    Plato::DataMap& aDataMap,
                    Teuchos::ParameterList& aParamList,
@@ -95,7 +98,7 @@ class VectorFunctionHyperbolic : public Plato::WorksetBase<PhysicsT>
     * @param [in] aDataMap problem-specific data map 
     *
     ******************************************************************************/
-    VectorFunctionHyperbolic(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
+    VectorFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
             Plato::WorksetBase<PhysicsT>(aMesh),
             mVectorFunctionResidual(),
             mVectorFunctionGradientU(),
@@ -114,8 +117,8 @@ class VectorFunctionHyperbolic : public Plato::WorksetBase<PhysicsT>
     * @param [in] aGradientU gradient evaluator
     *
     ******************************************************************************/
-    void allocateResidual(const std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<Residual>>& aResidual,
-                          const std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<GradientU>>& aGradientU)
+    void allocateResidual(const std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<Residual>>& aResidual,
+                          const std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientU>>& aGradientU)
     {
         mVectorFunctionResidual  = aResidual;
         mVectorFunctionGradientU = aGradientU;
@@ -127,7 +130,7 @@ class VectorFunctionHyperbolic : public Plato::WorksetBase<PhysicsT>
     * @param [in] aGradientZ partial derivative with respect to control evaluator
     *
     ******************************************************************************/
-    void allocateGradientZ(const std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<GradientZ>>& aGradientZ)
+    void allocateGradientZ(const std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientZ>>& aGradientZ)
     {
         mVectorFunctionGradientZ = aGradientZ; 
     }
@@ -138,7 +141,7 @@ class VectorFunctionHyperbolic : public Plato::WorksetBase<PhysicsT>
     * @param [in] GradientX partial derivative with respect to configuration evaluator
     *
     ******************************************************************************/
-    void allocateGradientX(const std::shared_ptr<Plato::AbstractVectorFunctionHyperbolic<GradientX>>& aGradientX)
+    void allocateGradientX(const std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientX>>& aGradientX)
     {
         mVectorFunctionGradientX = aGradientX; 
     }
@@ -549,8 +552,9 @@ class VectorFunctionHyperbolic : public Plato::WorksetBase<PhysicsT>
 
       return (tJacobianMat);
     }
-};
-// class VectorFunctionHyperbolic
+}; // class VectorFunction
+
+} // namespace Hyperbolic
 
 } // namespace Plato
 

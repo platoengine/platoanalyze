@@ -34,6 +34,8 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     alg/ParallelComm.cpp 
     alg/AmgXConfigs.cpp 
     ScalarFunctionBaseFactory.cpp 
+    hyperbolic/HyperbolicScalarFunctionFactory.cpp
+    hyperbolic/HyperbolicPhysicsScalarFunction.cpp
     WeightedSumFunction.cpp 
     PhysicsScalarFunction.cpp 
     TensileEnergyDensity.cpp 
