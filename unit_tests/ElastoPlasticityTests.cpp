@@ -4549,6 +4549,7 @@ private:
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual*/
     Plato::Scalar mDispControlConstant;           /*!< current pseudo time step */
+    Plato::Scalar mCurrentNormStopTolerance;      /*!< current residual norm stopping tolerance - avoids unneccessary solves */
     Plato::Scalar mNewtonRaphsonStopTolerance;    /*!< Newton-Raphson stopping tolerance*/
     Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
 
@@ -4595,6 +4596,7 @@ public:
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
+            mCurrentNormStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 1e-10)),
             mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-6)),
             mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Expansion Multiplier", 2)),
             mGlobalResidual("Global Residual", mGlobalResidualEq->size()),
@@ -4624,6 +4626,7 @@ public:
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
+            mCurrentNormStopTolerance(1e-10),
             mNewtonRaphsonStopTolerance(1e-6),
             mNumPseudoTimeStepMultiplier(2),
             mGlobalResidual("Global Residual", aMesh.nverts() * mNumGlobalDofsPerNode),
@@ -5298,7 +5301,6 @@ private:
         this->updateDispControlConstant(aStateData);
         Plato::update(1.0, aStateData.mPreviousLocalState, 0.0, aStateData.mCurrentLocalState);
         Plato::update(1.0, aStateData.mPreviousGlobalState, 0.0, aStateData.mCurrentGlobalState);
-        //Plato::print(aStateData.mCurrentGlobalState, "Initial Guess - U_0");
     }
 
     /***************************************************************************//**
@@ -5344,7 +5346,7 @@ private:
             Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
             
             const bool tStoppingCriteriaMet = this->checkNewtonRaphsonStoppingCriterion(tOutputData);
-            if(tStoppingCriteriaMet == true || mNewtonIteration >= mMaxNumNewtonIter)
+            if(tStoppingCriteriaMet == true || mNewtonIteration >= mMaxNumNewtonIter || tOutputData.mCurrentNorm < mCurrentNormStopTolerance)
             {
                 tNewtonRaphsonConverged = true;
                 break;
@@ -5721,7 +5723,6 @@ private:
             auto tDfDz = aCriterion.gradient_z(tCurrentGlobalState, tPreviousGlobalState,
                                                tCurrentLocalState, tPreviousLocalState, 
                                                aControls, tCurrentStepIndex);
-            //Plato::print_array_2D(tDfDz, "DfDz");
             mWorksetBase.assembleScalarGradientZ(tDfDz, aTotalGradient);
         }
     }
@@ -5904,39 +5905,28 @@ private:
 
         // add global adjoint contribution to total gradient, i.e. DfDz += (DrDz)^T * lambda
         Plato::ScalarMultiVector tCurrentLambda("Current Global State Adjoint", tNumCells, mNumGlobalDofsPerCell);
-        //Plato::print(aAdjointData.mCurrentGlobalAdjoint, "lambda_k");
         mWorksetBase.worksetState(aAdjointStates.mCurrentGlobalAdjoint, tCurrentLambda);
         auto tDrDz = mGlobalResidualEq->gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aStateData.mProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
         const Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 0.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDrDz, tCurrentLambda, tBeta, tGradientControl);
-        //Plato::print_array_2D(tGradientControl, "DrDz^{T}*lambda_k");
 
         // add projected pressure gradient adjoint contribution to total gradient, i.e. DfDz += (DpDz)^T * gamma
         Plato::ScalarMultiVector tCurrentGamma("Current Projected Pressure Gradient Adjoint", tNumCells, mNumPressGradDofsPerCell);
-        //Plato::print(aAdjointData.mProjPressGradAdjoint, "gamma_k");
         mWorksetBase.worksetNodeState(aAdjointStates.mProjPressGradAdjoint, tCurrentGamma);
         auto tDpDz = mProjectionEq->gradient_z_workset(aStateData.mProjectedPressGrad, mPressure,
                                                        aControls, aStateData.mCurrentStepIndex);
         tBeta = 1.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDpDz, tCurrentGamma, tBeta, tGradientControl);
-        //Plato::print_array_2D(tGradientControl, "DrDz^{T}*lambda_k + DpDz^{T}*gamma_k");
 
         // compute local adjoint contribution to total gradient, i.e. (DhDz)^T * mu
         Plato::ScalarMultiVector tCurrentMu("Current Local State Adjoint", tNumCells, mNumLocalDofsPerCell);
-        //Plato::print(aAdjointData.mCurrentLocalAdjoint, "mu_k");
         mWorksetBase.worksetLocalState(aAdjointStates.mCurrentLocalAdjoint, tCurrentMu);
         auto tDhDz = mLocalResidualEq->gradient_z(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
                                                   aControls, aStateData.mCurrentStepIndex);
         Plato::matrix_times_vector_workset("T", tAlpha, tDhDz, tCurrentMu, tBeta, tGradientControl);
-        //Plato::print_array_3D(tDhDz, "DhDz");
-        //Plato::print_array_2D(tGradientControl, "DrDz^{T}*lambda_k + DpDz^{T}*gamma_k + DhDz^{T}*mu_k");
-        
-        //Plato::ScalarMultiVector tDummy("Gradient WRT Control", tNumCells, mNumNodesPerCell);
-        //Plato::matrix_times_vector_workset("T", tAlpha, tDhDz, tCurrentMu, tBeta, tDummy);
-        //Plato::print_array_2D(tDummy, "DhDz^{T}*mu_k");
 
         mWorksetBase.assembleScalarGradientZ(tGradientControl, aTotalGradient);
     }
@@ -6051,7 +6041,6 @@ private:
 
         Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointStates.mProjPressGradAdjoint);
         Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointStates.mProjPressGradAdjoint, tResidual);
-        //Plato::print(aAdjointData.mProjPressGradAdjoint, "Gamma_k");
     }
 
     /***************************************************************************//**
@@ -6133,7 +6122,6 @@ private:
         Plato::ScalarMultiVector tCurrentMu("Current Local Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
         Plato::matrix_times_vector_workset("T", tAlpha, aInvLocalJacobianT, tDfDc, tBeta, tCurrentMu);
         Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tCurrentMu, aAdjointStates.mCurrentLocalAdjoint);
-        //Plato::print(aAdjointData.mCurrentLocalAdjoint, "mu_{k}");
     }
 
     /***************************************************************************//**
@@ -6160,7 +6148,6 @@ private:
         // Solve for lambda_k = (K_{tangent})_k^{-T} * F_k^{adjoint}
         Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointStates.mCurrentGlobalAdjoint);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointStates.mCurrentGlobalAdjoint, mGlobalResidual, mUseAbsoluteTolerance);
-        //Plato::print(aAdjointData.mCurrentGlobalAdjoint, "Lambda_k");
     }
 
     /***************************************************************************//**
@@ -9533,225 +9520,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPlasticityProblem_
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveValue_2D)
-{
-    // 1. DEFINE PROBLEM
-    constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 3;
-    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
-    Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
-
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-      "<ParameterList name='Plato Problem'>                                                     \n"
-      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
-      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'        type='string'  value='My Maximize Plastic Work'/>   \n"
-      "  <ParameterList name='Material Model'>                                                  \n"
-      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
-      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
-      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Plasticity Model'>                                                \n"
-      "    <ParameterList name='J2 Plasticity'>                                                 \n"
-      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
-      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
-      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
-      "    <ParameterList name='Penalty Function'>                                              \n"
-      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='20'/>             \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='20'/>             \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
-      "  </ParameterList>                                                                       \n"
-      "</ParameterList>                                                                         \n"
-    );
-
-    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
-    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
-
-    // 2. Get Dirichlet Boundary Conditions
-    Plato::OrdinalType tDispDofX = 0;
-    Plato::OrdinalType tDispDofY = 1;
-    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
-    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
-    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
-
-    // 3. Set Dirichlet Boundary Conditions
-    Plato::Scalar tValueToSet = 0;
-    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
-    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
-    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        tDirichletValues(aIndex) = tValueToSet;
-        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
-    }, "set dirichlet values and indices");
-
-    auto tOffset = tDirichletIndicesBoundaryX0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
-    }, "set dirichlet values and indices");
-
-    tValueToSet = 6e-4;
-    tOffset += tDirichletIndicesBoundaryY0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
-    }, "set dirichlet values and indices");
-    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
-
-    // 4. Evaluate Objective Function
-    auto tNumVertices = tMesh->nverts();
-    Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls);
-    auto tObjectiveFunctionValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
-
-    // 5. Test Results
-    constexpr Plato::Scalar tTolerance = 1e-4;
-    TEST_FLOATING_EQUALITY(tObjectiveFunctionValue, -0.16819, tTolerance);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-}
-
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveValue_3D)
-{
-    // 1. DEFINE PROBLEM
-    constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 3;
-    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
-    Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
-
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-      "<ParameterList name='Plato Problem'>                                                     \n"
-      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
-      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'        type='string'  value='My Maximize Plastic Work'/>   \n"
-      "  <ParameterList name='Material Model'>                                                  \n"
-      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
-      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
-      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Plasticity Model'>                                                \n"
-      "    <ParameterList name='J2 Plasticity'>                                                 \n"
-      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
-      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
-      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
-      "    <ParameterList name='Penalty Function'>                                              \n"
-      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='25'/>             \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='25'/>             \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
-      "  </ParameterList>                                                                       \n"
-      "</ParameterList>                                                                         \n"
-    );
-
-    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
-    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
-    tPlasticityProblem.useAbsoluteTolerance();
-
-    // 2. Get Dirichlet Boundary Conditions
-    Plato::OrdinalType tDispDofX = 0;
-    Plato::OrdinalType tDispDofY = 1;
-    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
-    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
-    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
-
-    // 3. Set Dirichlet Boundary Conditions
-    Plato::Scalar tValueToSet = 0;
-    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
-    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
-    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        tDirichletValues(aIndex) = tValueToSet;
-        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
-    }, "set dirichlet values/indices");
-
-    auto tOffset = tDirichletIndicesBoundaryX0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
-    }, "set dirichlet values/indices");
-
-    tValueToSet = 6e-4;
-    tOffset += tDirichletIndicesBoundaryY0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
-    }, "set dirichlet values/indices");
-    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
-
-    // 4. Evaluate Objective Function
-    auto tNumVertices = tMesh->nverts();
-    Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls);
-    auto tObjectiveFunctionValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
-
-    // 5. Test Results
-    constexpr Plato::Scalar tTolerance = 1e-4;
-    TEST_FLOATING_EQUALITY(tObjectiveFunctionValue, -0.00518257, tTolerance);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-}
-
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintValue_2D)
 {
     // 1. DEFINE PROBLEM
@@ -9973,215 +9741,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintValue_3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ_2D)
-{
-    // 1. DEFINE PROBLEM
-    constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
-    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
-    Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
-
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-      "<ParameterList name='Plato Problem'>                                                     \n"
-      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
-      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'         type='string'  value='My Maximize Plastic Work'/>  \n"
-      "  <ParameterList name='Material Model'>                                                  \n"
-      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
-      "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
-      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
-      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Plasticity Model'>                                                \n"
-      "    <ParameterList name='J2 Plasticity'>                                                 \n"
-      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
-      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
-      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
-      "    <ParameterList name='Penalty Function'>                                              \n"
-      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
-      "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
-      "  </ParameterList>                                                                       \n"
-      "</ParameterList>                                                                         \n"
-    );
-
-    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
-    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
-
-    // 2. Get Dirichlet Boundary Conditions
-    Plato::OrdinalType tDispDofX = 0;
-    Plato::OrdinalType tDispDofY = 1;
-    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
-    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
-    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
-
-    // 3. Set Dirichlet Boundary Conditions
-    Plato::Scalar tValueToSet = 0;
-    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
-    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
-    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        tDirichletValues(aIndex) = tValueToSet;
-        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
-    }, "set dirichlet values and indices");
-
-    auto tOffset = tDirichletIndicesBoundaryX0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
-    }, "set dirichlet values and indices");
-
-    tValueToSet = 2e-3;
-    tOffset += tDirichletIndicesBoundaryY0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
-    }, "set dirichlet values and indices");
-    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
-
-    // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
-    const Plato::Scalar tUpperBound = 1e-9;
-    TEST_ASSERT(tApproxError < tUpperBound);
-}
-
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ_3D)
-{
-    // 1. DEFINE PROBLEM
-    constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
-    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
-    Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
-
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-      "<ParameterList name='Plato Problem'>                                                     \n"
-      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
-      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'         type='string'  value='My Maximize Plastic Work'/>  \n"
-      "  <ParameterList name='Material Model'>                                                  \n"
-      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
-      "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
-      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
-      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Plasticity Model'>                                                \n"
-      "    <ParameterList name='J2 Plasticity'>                                                 \n"
-      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
-      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
-      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
-      "    <ParameterList name='Penalty Function'>                                              \n"
-      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
-      "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='Newton-Raphson'>                                                  \n"
-      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
-      "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
-      "  </ParameterList>                                                                       \n"
-      "</ParameterList>                                                                         \n"
-    );
-
-    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
-    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
-
-    // 2. Get Dirichlet Boundary Conditions
-    Plato::OrdinalType tDispDofX = 0;
-    Plato::OrdinalType tDispDofY = 1;
-    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
-    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
-    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
-
-    // 3. Set Dirichlet Boundary Conditions
-    Plato::Scalar tValueToSet = 0;
-    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
-    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
-    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        tDirichletValues(aIndex) = tValueToSet;
-        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
-    }, "set dirichlet values and indices");
-
-    auto tOffset = tDirichletIndicesBoundaryX0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
-    }, "set dirichlet values and indices");
-
-    tValueToSet = 2e-3;
-    tOffset += tDirichletIndicesBoundaryY0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
-    }, "set dirichlet values and indices");
-    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
-
-    // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
-    const Plato::Scalar tUpperBound = 1e-9;
-    TEST_ASSERT(tApproxError < tUpperBound);
-}
-
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -10282,10 +9842,343 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveGradient_2D)
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::fill(1.0, tControls);
+
+    constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
-    //Plato::print_array_2D(tSolution, "Solution");
+    auto tObjValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
+    TEST_FLOATING_EQUALITY(tObjValue, 0.0, tTolerance);
+
     auto tObjGrad = tPlasticityProblem.objectiveGradient(tControls, tSolution);
-    //Plato::print(tObjGrad, "ObjGrad");
+    Plato::print(tObjGrad, "tObjGrad");
 }
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ_2D)
+{
+    // 1. DEFINE PROBLEM
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 6;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
+      "  <Parameter name='Objective'         type='string'  value='My Maximize Plastic Work'/>  \n"
+      "  <ParameterList name='Material Model'>                                                  \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
+      "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Plasticity Model'>                                                \n"
+      "    <ParameterList name='J2 Plasticity'>                                                 \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
+      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
+      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
+      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
+      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
+      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
+      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
+      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
+
+    // 2. Get Dirichlet Boundary Conditions
+    Plato::OrdinalType tDispDofX = 0;
+    Plato::OrdinalType tDispDofY = 1;
+    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+
+    // 3. Set Dirichlet Boundary Conditions
+    Plato::Scalar tValueToSet = 0;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
+    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
+    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tDirichletValues(aIndex) = tValueToSet;
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
+    }, "set dirichlet values and indices");
+
+    auto tOffset = tDirichletIndicesBoundaryX0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 2e-3;
+    tOffset += tDirichletIndicesBoundaryY0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
+    }, "set dirichlet values and indices");
+    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
+
+    // 4. TEST PARTIAL DERIVATIVE
+    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    const Plato::Scalar tUpperBound = 1e-6;
+    TEST_ASSERT(tApproxError < tUpperBound);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
+{
+    // 1. DEFINE PROBLEM
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
+      "  <Parameter name='Objective'         type='string'  value='My Maximize Plastic Work'/>  \n"
+      "  <ParameterList name='Material Model'>                                                  \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
+      "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Plasticity Model'>                                                \n"
+      "    <ParameterList name='J2 Plasticity'>                                                 \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
+      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
+      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
+      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
+      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
+      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
+      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
+      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
+
+    // 2. Get Dirichlet Boundary Conditions
+    Plato::OrdinalType tDispDofX = 0;
+    Plato::OrdinalType tDispDofY = 1;
+    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+
+    // 3. Set Dirichlet Boundary Conditions
+    Plato::Scalar tValueToSet = 0;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
+    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
+    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tDirichletValues(aIndex) = tValueToSet;
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
+    }, "set dirichlet values and indices");
+
+    auto tOffset = tDirichletIndicesBoundaryX0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 1e-3;
+    tOffset += tDirichletIndicesBoundaryY0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
+    }, "set dirichlet values and indices");
+    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
+
+    // 4. Evaluate Objective Function
+    auto tNumVertices = tMesh->nverts();
+    Plato::ScalarVector tControls("Controls", tNumVertices);
+    Plato::fill(1.0, tControls);
+
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tSolution = tPlasticityProblem.solution(tControls);
+    auto tObjValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
+    TEST_FLOATING_EQUALITY(tObjValue, -1.186053e-03, tTolerance);
+
+    auto tObjGrad = tPlasticityProblem.objectiveGradient(tControls, tSolution);
+    std::vector<Plato::Scalar> tGold = {-7.625093e-03, -3.844014e-04, 1.185204e-03, 9.157816e-04, 6.634342e-04, -7.625093e-03, -9.473731e-03, -8.156473e-03};
+    auto tHostGrad = Kokkos::create_mirror(tObjGrad);
+    Kokkos::deep_copy(tHostGrad, tObjGrad);
+    TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
+    for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
+    {
+        TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ_3D)
+{
+    // 1. DEFINE PROBLEM
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 6;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
+      "  <Parameter name='Objective'         type='string'  value='My Maximize Plastic Work'/>  \n"
+      "  <ParameterList name='Material Model'>                                                  \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
+      "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Plasticity Model'>                                                \n"
+      "    <ParameterList name='J2 Plasticity'>                                                 \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
+      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
+      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
+      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
+      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
+      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
+      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
+      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
+
+    // 2. Get Dirichlet Boundary Conditions
+    Plato::OrdinalType tDispDofX = 0;
+    Plato::OrdinalType tDispDofY = 1;
+    Plato::OrdinalType tDispDofZ = 2;
+    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    auto tDirichletIndicesBoundaryX0_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryX1_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+
+    // 3. Set Dirichlet Boundary Conditions
+    Plato::Scalar tValueToSet = 0;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0_Xdof.size() + tDirichletIndicesBoundaryY0_Ydof.size() + tDirichletIndicesBoundaryX1_Xdof.size();
+    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
+    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0_Xdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tDirichletValues(aIndex) = tValueToSet;
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0_Xdof(aIndex);
+    }, "set dirichlet values and indices");
+
+    auto tOffset = tDirichletIndicesBoundaryX0_Xdof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0_Ydof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0_Ydof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 1e-3;
+    tOffset += tDirichletIndicesBoundaryY0_Ydof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1_Xdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1_Xdof(aIndex);
+    }, "set dirichlet values and indices");
+    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
+
+    // 4. TEST PARTIAL DERIVATIVE
+    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    constexpr Plato::Scalar tUpperBound = 1e-6;
+    TEST_ASSERT(tApproxError < tUpperBound);
+}
+
 
 }
