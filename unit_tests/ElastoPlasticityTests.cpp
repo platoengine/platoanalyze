@@ -4486,53 +4486,6 @@ void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOutputDat
 }
 // function print_newton_raphson_diagnostics_header
 
-/***************************************************************************//**
- * \brief Set Dirichlet degrees of freedom to user defined values
- * \param [in]     aDirichletDofs   list of local Dirichlet degrees of freedom indices
- * \param [in]     aDirichletValues list of local Dirichlet values
- * \param [in/out] aState           state vector
- * \param [in]     aMultiplier      multiplier for continuation
-*******************************************************************************/
-inline void set_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs,
-                               const Plato::ScalarVector & aDirichletValues,
-                               Plato::ScalarVector & aState,
-                               Plato::Scalar aMultiplier = 1.0)
-{
-    auto tNumDirichletDofs = aDirichletDofs.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
-    {
-        auto tLocalDofIndex = aDirichletDofs[aDofOrdinal];
-        aState(tLocalDofIndex) = aMultiplier * aDirichletValues(aDofOrdinal);
-    },"set Dirichlet values");
-}
-// function set_dirichlet_dofs
-
-/***************************************************************************//**
- * \brief Subtract Dirichlet boundary conditions from output vector.
- * \param [in]     aDirichletDofs   list of local Dirichlet degrees of freedom indices
- * \param [in]     aDirichletValues list of local Dirichlet values
- * \param [in/out] aOutput          output vector
- * \param [in]     aMultiplier      multiplier, e.g. displacement control constant in Newton-Raphson iterations
-*******************************************************************************/
-inline void subtract_dirichlet_dofs(const Plato::LocalOrdinalVector & aDirichletDofs,
-                                    const Plato::ScalarVector & aDirichletValues,
-                                    Plato::ScalarVector & aOutput,
-                                    Plato::Scalar aMultiplier = 1.0)
-{
-    auto tNumDirichletDofs = aDirichletDofs.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDirichletDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aDofOrdinal)
-    {
-        auto tLocalDofIndex = aDirichletDofs[aDofOrdinal];
-        aOutput(tLocalDofIndex) -= aMultiplier * aDirichletValues(aDofOrdinal);
-    },"set Dirichlet values");
-}
-// function subtract_dirichlet_dofs
-
-
-
-
-
-
 
 
 
@@ -5573,16 +5526,10 @@ private:
     void updateGlobalStates(const Plato::ScalarVector &aControls,
                             Plato::ForwardProblemStateData &aStateData)
     {
-        // solve global system of equations
+        const Plato::Scalar tAlpha = 1.0;
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual, mUseAbsoluteTolerance);
-
-        // update global state
-        const Plato::Scalar tAlpha = 1.0;
-        //Plato::print(aStateData.mDeltaGlobalState, "Delta(U)");
         Plato::update(tAlpha, aStateData.mDeltaGlobalState, tAlpha, aStateData.mCurrentGlobalState);
-        //Plato::set_dirichlet_dofs(mDirichletDofs, mDirichletValues, aStateData.mCurrentGlobalState, mDispControlConstant);
-        //Plato::print(aStateData.mCurrentGlobalState, "U^{k+1} = U_0^{k} + Delta(U)^k");
     }
 
     /***************************************************************************//**
