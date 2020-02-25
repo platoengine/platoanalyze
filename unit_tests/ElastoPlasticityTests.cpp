@@ -737,7 +737,6 @@ public:
      * \param [in]     aCurrentGlobalState  current global state ( i.e. state at the n-th time step (\f$ t^{n} \f$) )
      * \param [in]     aPreviousGlobalState previous global state ( i.e. state at the n-th minus one time step (\f$ t^{n-1} \f$) )
      * \param [in]     aCurrentLocalState   current local state ( i.e. state at the n-th time step (\f$ t^{n} \f$) )
-     * \param [in]     aFutureLocalState    future global state ( i.e. state at the n-th plus one time step (\f$ t^{n+1} \f$) )
      * \param [in]     aPreviousLocalState  previous local state ( i.e. state at the n-th minus one time step (\f$ t^{n-1} \f$) )
      * \param [in]     aControls            current set of design variables
      * \param [in]     aConfig              set of configuration variables, i.e. coordinates per cell
@@ -749,7 +748,6 @@ public:
     evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType> &aCurrentGlobalState,
              const Plato::ScalarMultiVectorT<typename EvaluationType::PrevStateScalarType> &aPreviousGlobalState,
              const Plato::ScalarMultiVectorT<typename EvaluationType::LocalStateScalarType> &aCurrentLocalState,
-             const Plato::ScalarMultiVectorT<Plato::Scalar> &aFutureLocalState,
              const Plato::ScalarMultiVectorT<typename EvaluationType::PrevLocalStateScalarType> &aPreviousLocalState,
              const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType> &aControls,
              const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType> &aConfig,
@@ -1933,8 +1931,6 @@ private:
     using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType;     /*!< local state variables automatic differentiation type */
     using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;         /*!< global state variables automatic differentiation type */
 
-    Plato::OrdinalType mNumPseudoTimeSteps;                                        /*!< maximum number of pseudo time steps */
-
     Plato::Scalar mElasticBulkModulus;                                             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;                                            /*!< elastic shear modulus */
     Plato::Scalar mElasticPropertiesPenaltySIMP;                                   /*!< SIMP penalty for elastic properties */
@@ -1960,7 +1956,6 @@ public:
                         Teuchos::ParameterList& aInputParams,
                         std::string& aName) :
             Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
-            mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Initial Num. Pseudo Time Steps", 5)),
             mElasticBulkModulus(-1.0),
             mElasticShearModulus(-1.0),
             mElasticPropertiesPenaltySIMP(3),
@@ -1983,7 +1978,6 @@ public:
                         Plato::DataMap & aDataMap,
                         std::string aName = "") :
             Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
-            mNumPseudoTimeSteps(5),
             mElasticBulkModulus(1.0),
             mElasticShearModulus(1.0),
             mElasticPropertiesPenaltySIMP(3),
@@ -2004,7 +1998,6 @@ public:
      * \param [in] aCurrentGlobalState  current global states
      * \param [in] aPreviousGlobalState previous global states
      * \param [in] aCurrentLocalState   current local states
-     * \param [in] aFutureLocalState    future global states
      * \param [in] aPreviousLocalState  previous global states
      * \param [in] aControls            control variables
      * \param [in] aConfig              configuration variables
@@ -2014,54 +2007,11 @@ public:
     void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
                   const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
                   const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
-                  const Plato::ScalarMultiVectorT<Plato::Scalar> &aFutureLocalState,
                   const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPreviousLocalState,
                   const Plato::ScalarMultiVectorT<ControlT> &aControls,
                   const Plato::ScalarArray3DT<ConfigT> &aConfig,
                   const Plato::ScalarVectorT<ResultT> &aResult,
                   Plato::Scalar aTimeStep = 0.0)
-    {
-        this->updateNumPseudoTimeSteps();
-        //auto tFinalPseudoTimeStep = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
-        //if(static_cast<Plato::OrdinalType>(aTimeStep) != tFinalPseudoTimeStep)
-        //{
-/*
-            this->evaluateIntermediateStep(aCurrentGlobalState, 
-                                           aCurrentLocalState,
-                                           //aFutureLocalState, 
-                                           aPreviousLocalState,
-                                           aControls, 
-                                           aConfig, 
-                                           aResult);
-*/
-        //}
-        //else
-        //{
-            //printf("FINAL STEP EVALUATION\n");
-            //Plato::print_array_2D(aPreviousLocalState, "prev local state");
-            this->evaluateFinalStep(aCurrentGlobalState, aCurrentLocalState,
-                                    aPreviousLocalState, aControls,
-                                    aConfig, aResult);
-        //}
-    }
-
-    /***************************************************************************//**
-     * \brief Evaluates maximize plastic work criterion at final time step
-     *
-     * \param [in] aCurrentGlobalState current global states
-     * \param [in] aCurrentLocalState  current local states
-     * \param [in] aPreviousLocalState previous local states
-     * \param [in] aControls           control variables
-     * \param [in] aConfig             configuration variables
-     * \param [in] aResult             output container
-     *
-    *******************************************************************************/
-    void evaluateFinalStep(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
-                           const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
-                           const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPreviousLocalState,
-                           const Plato::ScalarMultiVectorT<ControlT> &aControls,
-                           const Plato::ScalarArray3DT<ConfigT> &aConfig,
-                           const Plato::ScalarVectorT<ResultT> &aResult)
     {
         using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
 
@@ -2080,9 +2030,6 @@ public:
         Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
        
-        Plato::ScalarMultiVectorT<LocalStateT> tCurrentPlasticStrain("current plastic strain", tNumCells, mNumStressTerms);
-        Plato::ScalarMultiVectorT<PrevLocalStateT> tPreviousPlasticStrain("previous plastic strain", tNumCells, mNumStressTerms);
-
         // transfer member data to device
         auto tElasticBulkModulus = mElasticBulkModulus;
         auto tElasticShearModulus = mElasticShearModulus;
@@ -2097,10 +2044,6 @@ public:
 
             // compute plastic strain misfit
             tJ2PlasticityUtils.computePlasticStrainMisfit(aCellOrdinal, aCurrentLocalState, aPreviousLocalState, tPlasticStrainMisfit);
-            for(int i = 0; i < mNumStressTerms; i++){
-                tCurrentPlasticStrain(aCellOrdinal,i) = aCurrentLocalState(aCellOrdinal,2+i);
-                tPreviousPlasticStrain(aCellOrdinal,i) = aPreviousLocalState(aCellOrdinal,2+i);
-            }
 
             // compute current elastic strain
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
@@ -2118,109 +2061,12 @@ public:
 
             // compute double dot product
             const Plato::Scalar tMultiplier = -0.5;
-            //tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tPlasticStrainMisfit, aResult);
-            //tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tCurrentCauchyStress, aResult);
-            //tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tCurrentPlasticStrain, aResult);
-            tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tPreviousPlasticStrain, aResult);
-            //tComputeDoubleDotProduct(aCellOrdinal, tPreviousPlasticStrain, tPreviousPlasticStrain, aResult);
-            //tComputeDoubleDotProduct(aCellOrdinal, tCurrentPlasticStrain, tCurrentPlasticStrain, aResult);
-            aResult(aCellOrdinal) *= (tMultiplier * tElasticPropertiesPenalty * tCellVolume(aCellOrdinal));
-        }, "maximize plastic work criterion - final step");
-    }
-
-    /***************************************************************************//**
-     * \brief Evaluates maximize plastic work criterion at intermediate time steps, i.e.
-     *   time steps not associated with the final time step.
-     *
-     * \param [in] aCurrentGlobalState  current global states
-     * \param [in] aFutureGlobalState   future global states
-     * \param [in] aPreviousGlobalState previous global states
-     * \param [in] aCurrentLocalState   current local states
-     * \param [in] aControls            current control variables
-     * \param [in] aConfig              configuration variables
-     * \param [in] aResult              output container
-    *******************************************************************************/
-    void evaluateIntermediateStep(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
-                                  const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
-//                                  const Plato::ScalarMultiVectorT<Plato::Scalar> &aFutureLocalState,
-                                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousLocalState,
-                                  const Plato::ScalarMultiVectorT<ControlT> &aControls,
-                                  const Plato::ScalarArray3DT<ConfigT> &aConfig,
-                                  const Plato::ScalarVectorT<ResultT> &aResult)
-    {
-        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
-
-        // allocate functors used to evaluate criterion
-        Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
-        Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
-        Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
-
-        // allocate local containers used to evaluate criterion
-        auto tNumCells = this->getMesh().nelems();
-        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
-        Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mNumStressTerms);
-        Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mNumStressTerms);
-        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mNumStressTerms);
-        Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
-        //Plato::ScalarMultiVectorT<LocalStateT> tCurrentPlasticStrain("current plastic strain", tNumCells, mNumStressTerms);
-
-        // transfer member data to device
-        auto tElasticBulkModulus = mElasticBulkModulus;
-        auto tElasticShearModulus = mElasticShearModulus;
-
-        auto tQuadratureWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
-        {
-            // compute configuration gradients
-            tComputeGradient(aCellOrdinal, tConfigurationGradient, aConfig, tCellVolume);
-            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
-
-            // compute plastic strain misfit
-            //tJ2PlasticityUtils.computePlasticStrainMisfit(aCellOrdinal, aFutureLocalState, aPreviousLocalState, tPlasticStrainMisfit);
-            tJ2PlasticityUtils.computePlasticStrainMisfit(aCellOrdinal, aCurrentLocalState, aPreviousLocalState, tPlasticStrainMisfit);
-            //for(int i = 0; i < mNumStressTerms; i++){
-            //    tCurrentPlasticStrain(aCellOrdinal,i) = aCurrentLocalState(aCellOrdinal, 2+i);
-            //}
-
-            // compute current elastic strain
-            tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
-                                                        tBasisFunctions, tConfigurationGradient, tCurrentElasticStrain);
-
-            // compute cell penalty and penalized elastic properties
-            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
-            ControlT tElasticPropertiesPenalty = tPenaltyFunction(tDensity);
-            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
-            ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
-
-            // compute current Cauchy stress
-            tJ2PlasticityUtils.computeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus,
-                                                   tCurrentElasticStrain, tCurrentCauchyStress);
-
-            // compute double dot product
-            const Plato::Scalar tMultipier = -0.5;
             tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tPlasticStrainMisfit, aResult);
-            //tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tCurrentCauchyStress, aResult);
-            //tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tCurrentPlasticStrain, aResult);
-            aResult(aCellOrdinal) *=  (tMultipier * tCellVolume(aCellOrdinal));
-        }, "maximize plastic work criterion - intermediate step");
+            aResult(aCellOrdinal) *= (tMultiplier * tElasticPropertiesPenalty * tCellVolume(aCellOrdinal));
+        }, "maximize plastic work criterion");
     }
 
 private:
-    /***************************************************************************//**
-     * \brief Update maximum number of pseudo time steps. Keep default value if
-     * Newton-Raphson solver converges, else, store new value since Newton-Raphson
-     * solver did not converge. The new value is updated in PlasticityProblem.
-    *******************************************************************************/
-    void updateNumPseudoTimeSteps()
-    {
-        auto tSearch = mDataMap.mScalarValues.find("NumPseudoTimeSteps");
-        mNumPseudoTimeSteps = tSearch != mDataMap.mScalarValues.end() ? tSearch->second : mNumPseudoTimeSteps;
-    }
-
-
     /**********************************************************************//**
      * \brief Parse elastic material properties
      * \param [in] aProblemParams input XML data, i.e. parameter list
@@ -3662,7 +3508,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -3671,7 +3516,6 @@ public:
     virtual Plato::Scalar value(const Plato::ScalarVector & aCurrentGlobalState,
                                 const Plato::ScalarVector & aPreviousGlobalState,
                                 const Plato::ScalarVector & aCurrentLocalState,
-                                const Plato::ScalarVector & aFutureLocalState,
                                 const Plato::ScalarVector & aPreviousLocalState,
                                 const Plato::ScalarVector & aControls,
                                 Plato::Scalar aTimeStep = 0.0) const = 0;
@@ -3681,7 +3525,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -3690,7 +3533,6 @@ public:
     virtual Plato::ScalarMultiVector gradient_z(const Plato::ScalarVector & aCurrentGlobalState,
                                                 const Plato::ScalarVector & aPreviousGlobalState,
                                                 const Plato::ScalarVector & aCurrentLocalState,
-                                                const Plato::ScalarVector & aFutureLocalState,
                                                 const Plato::ScalarVector & aPreviousLocalState,
                                                 const Plato::ScalarVector & aControls,
                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
@@ -3700,7 +3542,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -3709,7 +3550,6 @@ public:
     virtual Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aCurrentGlobalState,
                                                 const Plato::ScalarVector & aPreviousGlobalState,
                                                 const Plato::ScalarVector & aCurrentLocalState,
-                                                const Plato::ScalarVector & aFutureLocalState,
                                                 const Plato::ScalarVector & aPreviousLocalState,
                                                 const Plato::ScalarVector & aControls,
                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
@@ -3719,7 +3559,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -3728,7 +3567,6 @@ public:
     virtual Plato::ScalarMultiVector gradient_up(const Plato::ScalarVector & aCurrentGlobalState,
                                                  const Plato::ScalarVector & aPreviousGlobalState,
                                                  const Plato::ScalarVector & aCurrentLocalState,
-                                                 const Plato::ScalarVector & aFutureLocalState,
                                                  const Plato::ScalarVector & aPreviousLocalState,
                                                  const Plato::ScalarVector & aControls,
                                                  Plato::Scalar aTimeStep = 0.0) const = 0;
@@ -3738,7 +3576,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -3747,7 +3584,6 @@ public:
     virtual Plato::ScalarMultiVector gradient_c(const Plato::ScalarVector & aCurrentGlobalState,
                                                 const Plato::ScalarVector & aPreviousGlobalState,
                                                 const Plato::ScalarVector & aCurrentLocalState,
-                                                const Plato::ScalarVector & aFutureLocalState,
                                                 const Plato::ScalarVector & aPreviousLocalState,
                                                 const Plato::ScalarVector & aControls,
                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
@@ -3757,7 +3593,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -3766,7 +3601,6 @@ public:
     virtual Plato::ScalarMultiVector gradient_cp(const Plato::ScalarVector & aCurrentGlobalState,
                                                  const Plato::ScalarVector & aPreviousGlobalState,
                                                  const Plato::ScalarVector & aCurrentLocalState,
-                                                 const Plato::ScalarVector & aFutureLocalState,
                                                  const Plato::ScalarVector & aPreviousLocalState,
                                                  const Plato::ScalarVector & aControls,
                                                  Plato::Scalar aTimeStep = 0.0) const = 0;
@@ -3776,7 +3610,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -3785,7 +3618,6 @@ public:
     virtual Plato::ScalarMultiVector gradient_x(const Plato::ScalarVector & aCurrentGlobalState,
                                                 const Plato::ScalarVector & aPreviousGlobalState,
                                                 const Plato::ScalarVector & aCurrentLocalState,
-                                                const Plato::ScalarVector & aFutureLocalState,
                                                 const Plato::ScalarVector & aPreviousLocalState,
                                                 const Plato::ScalarVector & aControls,
                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
@@ -3976,7 +3808,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -3985,7 +3816,6 @@ public:
     Plato::Scalar value(const Plato::ScalarVector & aCurrentGlobalState,
                         const Plato::ScalarVector & aPreviousGlobalState,
                         const Plato::ScalarVector & aCurrentLocalState,
-                        const Plato::ScalarVector & aFutureLocalState,
                         const Plato::ScalarVector & aPreviousLocalState,
                         const Plato::ScalarVector & aControls,
                         Plato::Scalar aTimeStep = 0.0) const override
@@ -4006,10 +3836,6 @@ public:
         using CurrentLocalStateScalar = typename Residual::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
-
-        // set workset of future local states
-        Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
         // set workset of previous local states
         using PreviousLocalStateScalar = typename Residual::PrevLocalStateScalarType;
@@ -4032,9 +3858,8 @@ public:
 
         // evaluate function
         mScalarFuncValue->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                   tCurrentLocalStateWS, tFutureLocalStateWS,
-                                   tPreviousLocalStateWS, tControlWS, tConfigWS,
-                                   tResultWS, aTimeStep);
+                                   tCurrentLocalStateWS, tPreviousLocalStateWS, 
+                                   tControlWS, tConfigWS, tResultWS, aTimeStep);
 
         // sum across elements
         auto tCriterionValue = Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
@@ -4048,7 +3873,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -4057,7 +3881,6 @@ public:
     Plato::ScalarMultiVector gradient_z(const Plato::ScalarVector & aCurrentGlobalState,
                                         const Plato::ScalarVector & aPreviousGlobalState,
                                         const Plato::ScalarVector & aCurrentLocalState,
-                                        const Plato::ScalarVector & aFutureLocalState,
                                         const Plato::ScalarVector & aPreviousLocalState,
                                         const Plato::ScalarVector & aControls,
                                         Plato::Scalar aTimeStep = 0.0) const override
@@ -4078,10 +3901,6 @@ public:
         using CurrentLocalStateScalar = typename GradientZ::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
-
-        // set workset of future local states
-        Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
         // set workset of previous local states
         using PreviousLocalStateScalar = typename GradientZ::PrevLocalStateScalarType;
@@ -4104,9 +3923,8 @@ public:
 
         // evaluate function
         mScalarFuncPartialZ->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                      tCurrentLocalStateWS, tFutureLocalStateWS,
-                                      tPreviousLocalStateWS, tControlWS, tConfigWS,
-                                      tResultWS, aTimeStep);
+                                      tCurrentLocalStateWS, tPreviousLocalStateWS, 
+                                      tControlWS, tConfigWS, tResultWS, aTimeStep);
 
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtControl("criterion partial wrt control", tNumCells, mNumNodesPerCell);
@@ -4120,7 +3938,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -4129,7 +3946,6 @@ public:
     Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aCurrentGlobalState,
                                         const Plato::ScalarVector & aPreviousGlobalState,
                                         const Plato::ScalarVector & aCurrentLocalState,
-                                        const Plato::ScalarVector & aFutureLocalState,
                                         const Plato::ScalarVector & aPreviousLocalState,
                                         const Plato::ScalarVector & aControls,
                                         Plato::Scalar aTimeStep = 0.0) const override
@@ -4150,10 +3966,6 @@ public:
         using CurrentLocalStateScalar = typename GlobalJacobian::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
-
-        // set workset of future local states
-        Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
         // set workset of previous local states
         using PreviousLocalStateScalar = typename GlobalJacobian::PrevLocalStateScalarType;
@@ -4176,9 +3988,8 @@ public:
 
         // evaluate function
         mScalarFuncPartialU->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                      tCurrentLocalStateWS, tFutureLocalStateWS,
-                                      tPreviousLocalStateWS, tControlWS, tConfigWS,
-                                      tResultWS, aTimeStep);
+                                      tCurrentLocalStateWS, tPreviousLocalStateWS, 
+                                      tControlWS, tConfigWS, tResultWS, aTimeStep);
 
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtGlobalStates("criterion partial wrt global states", tNumCells, mNumGlobalDofsPerCell);
@@ -4192,7 +4003,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -4201,7 +4011,6 @@ public:
     Plato::ScalarMultiVector gradient_up(const Plato::ScalarVector & aCurrentGlobalState,
                                          const Plato::ScalarVector & aPreviousGlobalState,
                                          const Plato::ScalarVector & aCurrentLocalState,
-                                         const Plato::ScalarVector & aFutureLocalState,
                                          const Plato::ScalarVector & aPreviousLocalState,
                                          const Plato::ScalarVector & aControls,
                                          Plato::Scalar aTimeStep = 0.0) const override
@@ -4222,10 +4031,6 @@ public:
         using CurrentLocalStateScalar = typename GlobalJacobianP::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
-
-        // set workset of future local states
-        Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
         // set workset of previous local states
         using PreviousLocalStateScalar = typename GlobalJacobianP::PrevLocalStateScalarType;
@@ -4248,9 +4053,8 @@ public:
 
         // evaluate function
         mScalarFuncPartialUp->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                       tCurrentLocalStateWS, tFutureLocalStateWS,
-                                       tPreviousLocalStateWS, tControlWS, tConfigWS,
-                                       tResultWS, aTimeStep);
+                                       tCurrentLocalStateWS, tPreviousLocalStateWS, 
+                                       tControlWS, tConfigWS, tResultWS, aTimeStep);
 
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtPrevGlobalState("partial wrt previous global states", tNumCells, mNumGlobalDofsPerCell);
@@ -4264,7 +4068,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -4273,7 +4076,6 @@ public:
     Plato::ScalarMultiVector gradient_c(const Plato::ScalarVector & aCurrentGlobalState,
                                         const Plato::ScalarVector & aPreviousGlobalState,
                                         const Plato::ScalarVector & aCurrentLocalState,
-                                        const Plato::ScalarVector & aFutureLocalState,
                                         const Plato::ScalarVector & aPreviousLocalState,
                                         const Plato::ScalarVector & aControls,
                                         Plato::Scalar aTimeStep = 0.0) const override
@@ -4294,10 +4096,6 @@ public:
         using CurrentLocalStateScalar = typename LocalJacobian::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
-
-        // set workset of future local states
-        Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
         // set workset of previous local states
         using PreviousLocalStateScalar = typename LocalJacobian::PrevLocalStateScalarType;
@@ -4320,9 +4118,8 @@ public:
 
         // evaluate function
         mScalarFuncPartialC->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                      tCurrentLocalStateWS, tFutureLocalStateWS,
-                                      tPreviousLocalStateWS, tControlWS, tConfigWS,
-                                      tResultWS, aTimeStep);
+                                      tCurrentLocalStateWS, tPreviousLocalStateWS, 
+                                      tControlWS, tConfigWS, tResultWS, aTimeStep);
 
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtLocalStates("criterion partial wrt local states", tNumCells, mNumLocalDofsPerCell);
@@ -4336,7 +4133,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -4345,7 +4141,6 @@ public:
     Plato::ScalarMultiVector gradient_cp(const Plato::ScalarVector & aCurrentGlobalState,
                                          const Plato::ScalarVector & aPreviousGlobalState,
                                          const Plato::ScalarVector & aCurrentLocalState,
-                                         const Plato::ScalarVector & aFutureLocalState,
                                          const Plato::ScalarVector & aPreviousLocalState,
                                          const Plato::ScalarVector & aControls,
                                          Plato::Scalar aTimeStep = 0.0) const override
@@ -4366,10 +4161,6 @@ public:
         using CurrentLocalStateScalar = typename LocalJacobianP::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
-
-        // set workset of future local states
-        Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
         // set workset of previous local states
         using PreviousLocalStateScalar = typename LocalJacobianP::PrevLocalStateScalarType;
@@ -4392,9 +4183,8 @@ public:
 
         // evaluate function
         mScalarFuncPartialCp->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                       tCurrentLocalStateWS, tFutureLocalStateWS,
-                                       tPreviousLocalStateWS, tControlWS, tConfigWS,
-                                       tResultWS, aTimeStep);
+                                       tCurrentLocalStateWS, tPreviousLocalStateWS, 
+                                       tControlWS, tConfigWS, tResultWS, aTimeStep);
 
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtPrevLocalStates("partial wrt previous local states", tNumCells, mNumLocalDofsPerCell);
@@ -4408,7 +4198,6 @@ public:
      * \param [in] aCurrentGlobalState   global states at time step i (i.e. current)
      * \param [in] aPreviousGlobalState  global states at time step i-1 (i.e. previous)
      * \param [in] aCurrentLocalState    local states at time step i (i.e. current)
-     * \param [in] aFutureLocalState     local states at time step i+1 (i.e. future)
      * \param [in] aPreviousLocalState   local states at time step i-1 (i.e. previous)
      * \param [in] aControls             set of controls, i.e. design variables
      * \param [in] aTimeStep             current time step increment
@@ -4417,7 +4206,6 @@ public:
     Plato::ScalarMultiVector gradient_x(const Plato::ScalarVector & aCurrentGlobalState,
                                         const Plato::ScalarVector & aPreviousGlobalState,
                                         const Plato::ScalarVector & aCurrentLocalState,
-                                        const Plato::ScalarVector & aFutureLocalState,
                                         const Plato::ScalarVector & aPreviousLocalState,
                                         const Plato::ScalarVector & aControls,
                                         Plato::Scalar aTimeStep = 0.0) const override
@@ -4438,10 +4226,6 @@ public:
         using CurrentLocalStateScalar = typename GradientX::LocalStateScalarType;
         Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
         mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
-
-        // set workset of future local states
-        Plato::ScalarMultiVectorT<Plato::Scalar> tFutureLocalStateWS("future local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aFutureLocalState, tFutureLocalStateWS);
 
         // set workset of previous local states
         using PreviousLocalStateScalar = typename GradientX::PrevLocalStateScalarType;
@@ -4464,9 +4248,8 @@ public:
 
         // evaluate function
         mScalarFuncPartialX->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                      tCurrentLocalStateWS, tFutureLocalStateWS,
-                                      tPreviousLocalStateWS, tControlWS, tConfigWS,
-                                      tResultWS, aTimeStep);
+                                      tCurrentLocalStateWS, tPreviousLocalStateWS, 
+                                      tControlWS, tConfigWS, tResultWS, aTimeStep);
 
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtConfiguration("criterion partial wrt configuration", tNumCells, mNumSpatialDims);
@@ -4666,7 +4449,6 @@ struct AdjointStateData
 {
     Plato::OrdinalType mCurrentStepIndex;      /*!< current time step index */
 
-    Plato::ScalarVector mFutureLocalState;     /*!< future local state */
     Plato::ScalarVector mCurrentLocalState;    /*!< current local state */
     Plato::ScalarVector mPreviousLocalState;   /*!< previous local state */
 
@@ -5607,7 +5389,6 @@ private:
     *******************************************************************************/
     void resizeStateContainers()
     {
-        mDataMap.mScalarValues["NumPseudoTimeSteps"] = mNumPseudoTimeSteps;
         mPseudoTimeStep = 1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps));
         mLocalStates = Plato::ScalarMultiVector("Local States", mNumPseudoTimeSteps, mLocalResidualEq->size());
         mGlobalStates = Plato::ScalarMultiVector("Global States", mNumPseudoTimeSteps, mGlobalResidualEq->size());
@@ -6029,29 +5810,6 @@ private:
     }
 
     /***************************************************************************//**
-     * \brief Get future current time step index
-     * \param [in]     aStates           states at each time step
-     * \param [in/out] aOutput           future state
-    *******************************************************************************/
-    void getFutureState(const Plato::OrdinalType & aCurrentStepIndex,
-                        const Plato::ScalarMultiVector & aStates,
-                        Plato::ScalarVector & aOutput) const
-    {
-        Plato::ScalarVector tOutput;
-        auto tFutureStepIndex = aCurrentStepIndex + static_cast<Plato::OrdinalType>(1);
-        if(tFutureStepIndex != mNumPseudoTimeSteps)
-        {
-            aOutput = Kokkos::subview(aStates, tFutureStepIndex, Kokkos::ALL());
-        }
-        else
-        {
-            auto tLength = aStates.extent(1);
-            aOutput = Plato::ScalarVector("Future State", tLength);
-            Plato::fill(0.0, aOutput);
-        }
-    }
-
-    /***************************************************************************//**
      * \brief Get previous state
      * \param [in]     aCurrentStepIndex current time step index
      * \param [in]     aStates           states at each time step
@@ -6087,8 +5845,6 @@ private:
                                     const Plato::ScalarMultiVector & aLocalState,
                                     const Plato::ScalarVector & aControls)
     {
-
-        Plato::ScalarVector tFutureLocalState;
         Plato::ScalarVector tPreviousLocalState;
         Plato::ScalarVector tPreviousGlobalState;
 
@@ -6100,14 +5856,12 @@ private:
             auto tCurrentGlobalState = Kokkos::subview(aGlobalState, tCurrentStepIndex, Kokkos::ALL());
 
             // SET PREVIOUS AND FUTURE STATES
-            this->getFutureState(tCurrentStepIndex, aLocalState, tFutureLocalState);
             this->getPreviousState(tCurrentStepIndex, aLocalState, tPreviousLocalState);
             this->getPreviousState(tCurrentStepIndex, aGlobalState, tPreviousGlobalState);
 
             tOutput += aCriterion.value(tCurrentGlobalState, tPreviousGlobalState,
-                                        tCurrentLocalState, tFutureLocalState,
-                                        tPreviousLocalState, aControls,
-                                        tCurrentStepIndex);
+                                        tCurrentLocalState, tPreviousLocalState, 
+                                        aControls, tCurrentStepIndex);
         }
 
         return tOutput;
@@ -6124,7 +5878,6 @@ private:
                                         const Plato::ScalarVector & aControls,
                                         Plato::ScalarVector & aTotalGradient)
     {
-        Plato::ScalarVector tFutureLocalState;
         Plato::ScalarVector tPreviousLocalState;
         Plato::ScalarVector tPreviousGlobalState;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
@@ -6132,14 +5885,13 @@ private:
             auto tCurrentLocalState = Kokkos::subview(mLocalStates, tCurrentStepIndex, Kokkos::ALL());
             auto tCurrentGlobalState = Kokkos::subview(mGlobalStates, tCurrentStepIndex, Kokkos::ALL());
 
-            // SET PREVIOUS AND FUTURE LOCAL STATES
-            this->getFutureState(tCurrentStepIndex, mLocalStates, tFutureLocalState);
+            // SET PREVIOUS LOCAL STATES
             this->getPreviousState(tCurrentStepIndex, mLocalStates, tPreviousLocalState);
             this->getPreviousState(tCurrentStepIndex, mGlobalStates, tPreviousGlobalState);
 
             auto tDfDz = aCriterion.gradient_z(tCurrentGlobalState, tPreviousGlobalState,
-                                               tCurrentLocalState, tFutureLocalState,
-                                               tPreviousLocalState, aControls, tCurrentStepIndex);
+                                               tCurrentLocalState, tPreviousLocalState, 
+                                               aControls, tCurrentStepIndex);
             //Plato::print_array_2D(tDfDz, "DfDz");
             mWorksetBase.assembleScalarGradientZ(tDfDz, aTotalGradient);
         }
@@ -6156,7 +5908,6 @@ private:
                                         const Plato::ScalarVector & aControls,
                                         Plato::ScalarVector & aTotalGradient)
     {
-        Plato::ScalarVector tFutureLocalState;
         Plato::ScalarVector tPreviousLocalState;
         Plato::ScalarVector tPreviousGlobalState;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
@@ -6165,13 +5916,12 @@ private:
             auto tCurrentGlobalState = Kokkos::subview(mGlobalStates, tCurrentStepIndex, Kokkos::ALL());
 
             // SET PREVIOUS AND FUTURE LOCAL STATES
-            this->getFutureState(tCurrentStepIndex, mLocalStates, tFutureLocalState);
             this->getPreviousState(tCurrentStepIndex, mLocalStates, tPreviousLocalState);
             this->getPreviousState(tCurrentStepIndex, mGlobalStates, tPreviousGlobalState);
 
             auto tDfDX = aCriterion.gradient_x(tCurrentGlobalState, tPreviousGlobalState,
-                                               tCurrentLocalState, tFutureLocalState,
-                                               tPreviousLocalState, aControls, tCurrentStepIndex);
+                                               tCurrentLocalState, tPreviousLocalState, 
+                                               aControls, tCurrentStepIndex);
             mWorksetBase.assembleVectorGradientX(tDfDX, aTotalGradient);
         }
     }
@@ -6273,24 +6023,13 @@ private:
     {
         // GET CURRENT STATE
         aStateData.mCurrentLocalState = Kokkos::subview(mLocalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
-        //Plato::print(aStateData.mCurrentLocalState, "current state");
         aStateData.mCurrentGlobalState = Kokkos::subview(mGlobalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
         aStateData.mProjectedPressGrad = Kokkos::subview(mProjectedPressGrad, aStateData.mCurrentStepIndex, Kokkos::ALL());
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mPressure);
 
-        // GET FUTURE STATE. RECALL, BACKWARD INTEGRATION IS DONE IN THE ADJOINT PROBLEM. HENCE,
-        // THE FUTURE TIME STEP INDEX IS DENOTED BY t=i-1 IF THE CURRENT TIME STEP IS t=i.
-        //this->getPreviousState(aStateData.mCurrentStepIndex, mLocalStates, aStateData.mFutureLocalState);
-        this->getFutureState(aStateData.mCurrentStepIndex, mLocalStates, aStateData.mFutureLocalState);
-        //Plato::print(aStateData.mFutureLocalState, "future state");
-
-        // GET PREVIOUS STATE. RECALL, BACKWARD INTEGRATION IS DONE IN THE ADJOINT PROBLEM. HENCE,
-        // THE PREVIOUS TIME STEP INDEX IS DENOTED BY t=i+1 IF THE CURRENT TIME STEP IS t=i.
-        //this->getFutureState(aStateData.mCurrentStepIndex, mLocalStates, aStateData.mPreviousLocalState);
-        //this->getFutureState(aStateData.mCurrentStepIndex, mGlobalStates, aStateData.mPreviousGlobalState);
+        // GET PREVIOUS STATE. 
         this->getPreviousState(aStateData.mCurrentStepIndex, mLocalStates, aStateData.mPreviousLocalState);
         this->getPreviousState(aStateData.mCurrentStepIndex, mGlobalStates, aStateData.mPreviousGlobalState);
-        //Plato::print(aStateData.mPreviousLocalState, "previous state");
     }
 
     /***************************************************************************//**
@@ -6520,9 +6259,8 @@ private:
     {
         // Compute DfDc_{k}
         auto tDfDc = aCriterion.gradient_c(aCurrentStates.mCurrentGlobalState, aCurrentStates.mPreviousGlobalState,
-                                           aCurrentStates.mCurrentLocalState, aCurrentStates.mFutureLocalState,
-                                           aCurrentStates.mPreviousLocalState, aControls, aCurrentStates.mCurrentStepIndex);
-        //Plato::print_array_2D(tDfDc, "DfDc");
+                                           aCurrentStates.mCurrentLocalState, aCurrentStates.mPreviousLocalState, 
+                                           aControls, aCurrentStates.mCurrentStepIndex);
 
         // Compute DfDc_k + ( DrDc_k^T * lambda_k )
         auto tNumCells = mLocalResidualEq->numCells();
@@ -6533,7 +6271,6 @@ private:
                                                   aCurrentStates.mProjectedPressGrad, aControls, aCurrentStates.mCurrentStepIndex);
         Plato::Scalar tAlpha = 1.0; Plato::Scalar tBeta = 1.0;
         Plato::matrix_times_vector_workset("T", tAlpha, tDrDc, tCurrentLambda, tBeta, tDfDc);
-        //Plato::print_array_2D(tDfDc, "DfDc + drdc^T * lambda_{k+1}");
 
         auto tFinalStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aCurrentStates.mCurrentStepIndex != tFinalStepIndex)
@@ -6541,8 +6278,8 @@ private:
             // Compute DfDc_k + ( DrDc_k^T * lambda_k ) + DfDc_{k+1}
             const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 1.0;
             auto tDfDcp = aCriterion.gradient_cp(aPreviousStates.mCurrentGlobalState, aPreviousStates.mPreviousGlobalState,
-                                                 aPreviousStates.mCurrentLocalState, aPreviousStates.mFutureLocalState,
-                                                 aPreviousStates.mPreviousLocalState, aControls, aCurrentStates.mCurrentStepIndex);
+                                                 aPreviousStates.mCurrentLocalState, aPreviousStates.mPreviousLocalState, 
+                                                 aControls, aCurrentStates.mCurrentStepIndex);
             Plato::update_2Dview(tAlpha, tDfDcp, tBeta, tDfDc);
 
             // Compute DfDc_k + ( DrDc_k^T * lambda_k ) + DfDc_{k+1} + ( DhDc_{k+1}^T * mu_{k+1} )
@@ -6649,8 +6386,8 @@ private:
     {
         // Compute partial derivative of objective with respect to current local states
         auto tDfDc = aCriterion.gradient_c(aCurrentStates.mCurrentGlobalState, aCurrentStates.mPreviousGlobalState,
-                                           aCurrentStates.mCurrentLocalState, aCurrentStates.mFutureLocalState,
-                                           aCurrentStates.mPreviousLocalState, aControls, aCurrentStates.mCurrentStepIndex);
+                                           aCurrentStates.mCurrentLocalState, aCurrentStates.mPreviousLocalState, 
+                                           aControls, aCurrentStates.mCurrentStepIndex);
 
         auto tFinalStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aCurrentStates.mCurrentStepIndex != tFinalStepIndex)
@@ -6658,8 +6395,8 @@ private:
             // Compute DfDx_k + DfDc_{k+1}, where k denotes the time step index
             const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 1.0;
             auto tDfDcp = aCriterion.gradient_cp(aPreviousStates.mCurrentGlobalState, aPreviousStates.mPreviousGlobalState,
-                                                 aPreviousStates.mCurrentLocalState, aPreviousStates.mFutureLocalState,
-                                                 aPreviousStates.mPreviousLocalState, aControls, aCurrentStates.mCurrentStepIndex);
+                                                 aPreviousStates.mCurrentLocalState, aPreviousStates.mPreviousLocalState, 
+                                                 aControls, aCurrentStates.mCurrentStepIndex);
             Plato::update_2Dview(tAlpha, tDfDcp, tBeta, tDfDc);
 
             // Compute DfDc_k + DfDc_{k+1} + ( DhDc_{k+1}^T * mu_{k+1} )
@@ -6749,8 +6486,8 @@ private:
     {
         // Compute partial derivative of objective with respect to current global states
         auto tDfDu = aCriterion.gradient_u(aCurrentStates.mCurrentGlobalState, aCurrentStates.mPreviousGlobalState,
-                                           aCurrentStates.mCurrentLocalState, aCurrentStates.mFutureLocalState,
-                                           aCurrentStates.mPreviousLocalState, aControls, aCurrentStates.mCurrentStepIndex);
+                                           aCurrentStates.mCurrentLocalState, aCurrentStates.mPreviousLocalState, 
+                                           aControls, aCurrentStates.mCurrentStepIndex);
 
         // Compute previous adjoint states contribution to global adjoint rhs
         auto tFinalStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
@@ -6759,8 +6496,8 @@ private:
             // Compute partial derivative of objective with respect to previous global states, i.e. DfDu_{k+1}
             const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 1.0;
             auto tDfDup = aCriterion.gradient_up(aPreviousStates.mCurrentGlobalState, aPreviousStates.mPreviousGlobalState,
-                                                 aPreviousStates.mCurrentLocalState, aPreviousStates.mFutureLocalState,
-                                                 aPreviousStates.mPreviousLocalState, aControls, aCurrentStates.mCurrentStepIndex);
+                                                 aPreviousStates.mCurrentLocalState, aPreviousStates.mPreviousLocalState, 
+                                                 aControls, aCurrentStates.mCurrentStepIndex);
             Plato::update_2Dview(tAlpha, tDfDup, tBeta, tDfDu);
 
             // Compute projected pressure gradient contribution to global adjoint rhs, i.e. DpDu_{k+1}^T * gamma_{k+1}
@@ -6888,7 +6625,6 @@ public:
     Plato::ScalarVector mPresssure;
     Plato::ScalarVector mPrevLocalState;
     Plato::ScalarVector mPrevGlobalState;
-    Plato::ScalarVector mFutureLocalState;
     Plato::ScalarVector mCurrentLocalState;
     Plato::ScalarVector mCurrentGlobalState;
 
@@ -6897,7 +6633,6 @@ public:
             mPresssure(Plato::ScalarVector("Pressure", aNumVerts * SimplexPhysics::mNumNodeStatePerNode)),
             mPrevLocalState(Plato::ScalarVector("Previous Local State", aNumCells * SimplexPhysics::mNumLocalDofsPerCell)),
             mPrevGlobalState(Plato::ScalarVector("Previous Global State", aNumVerts * SimplexPhysics::mNumDofsPerNode)),
-            mFutureLocalState(Plato::ScalarVector("Future Local State", aNumCells * SimplexPhysics::mNumLocalDofsPerCell)),
             mCurrentLocalState(Plato::ScalarVector("Current Local State", aNumCells * SimplexPhysics::mNumLocalDofsPerCell)),
             mCurrentGlobalState(Plato::ScalarVector("Current Global State", aNumVerts * SimplexPhysics::mNumDofsPerNode))
     {
@@ -6926,11 +6661,6 @@ private:
         auto tHostPrevGlobalState = Kokkos::create_mirror(mPrevGlobalState);
         Plato::random(1, 5, tHostPrevGlobalState);
         Kokkos::deep_copy(mPrevGlobalState, tHostPrevGlobalState);
-
-        // Create future local state workset
-        auto tHostFutureLocalState = Kokkos::create_mirror(mFutureLocalState);
-        Plato::random(0.2, 0.6, tHostFutureLocalState);
-        Kokkos::deep_copy(mFutureLocalState, tHostFutureLocalState);
 
         auto tHostCurrentLocalState = Kokkos::create_mirror(mCurrentLocalState);
         Plato::random(1.0, 2.0, tHostCurrentLocalState);
@@ -7048,8 +6778,8 @@ test_partial_local_scalar_func_wrt_control
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::DiagnosticDataPlasticity<SimplexPhysics> tData(tNumVerts, tNumCells);
     auto tPartialZ = aScalarFunc->gradient_z(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                             tData.mCurrentLocalState, tData.mFutureLocalState,
-                                             tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                             tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                             tData.mControl, aTimeStep);
 
     Plato::WorksetBase<SimplexPhysics> tWorksetBase(aMesh);
     Plato::ScalarVector tAssembledPartialZ("assembled partial control", tNumVerts);
@@ -7076,23 +6806,23 @@ test_partial_local_scalar_func_wrt_control
         Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
         Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
         Plato::Scalar tValuePlus1Eps = aScalarFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                                          tData.mCurrentLocalState, tData.mFutureLocalState,
-                                                          tData.mPrevLocalState, tTrialControl, aTimeStep);
+                                                          tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                                          tTrialControl, aTimeStep);
         Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
         Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
         Plato::Scalar tValueMinus1Eps = aScalarFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                                           tData.mCurrentLocalState, tData.mFutureLocalState,
-                                                           tData.mPrevLocalState, tTrialControl, aTimeStep);
+                                                           tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                                           tTrialControl, aTimeStep);
         Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
         Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         Plato::Scalar tValuePlus2Eps = aScalarFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                                          tData.mCurrentLocalState, tData.mFutureLocalState,
-                                                          tData.mPrevLocalState, tTrialControl, aTimeStep);
+                                                          tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                                          tTrialControl, aTimeStep);
         Plato::update(1.0, tData.mControl, 0.0, tTrialControl);
         Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         Plato::Scalar tValueMinus2Eps = aScalarFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                                           tData.mCurrentLocalState, tData.mFutureLocalState,
-                                                           tData.mPrevLocalState, tTrialControl, aTimeStep);
+                                                           tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                                           tTrialControl, aTimeStep);
 
         Plato::Scalar tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
                 - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
@@ -7122,8 +6852,8 @@ test_partial_local_scalar_func_wrt_current_global_state
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::DiagnosticDataPlasticity<SimplexPhysics> tData(tNumVerts, tNumCells);
     auto tPartialU = aScalarFunc->gradient_u(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                             tData.mCurrentLocalState, tData.mFutureLocalState,
-                                             tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                             tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                             tData.mControl, aTimeStep);
 
     const auto tTotalNumGlobalDofs = tNumVerts * SimplexPhysics::mNumDofsPerNode;
     Plato::ScalarVector tAssembledPartialU("assembled partial current global state", tTotalNumGlobalDofs);
@@ -7151,26 +6881,26 @@ test_partial_local_scalar_func_wrt_current_global_state
         Plato::update(1.0, tData.mCurrentGlobalState, 0.0, tTrialCurrentGlobalState);
         Plato::update(tEpsilon, tStep, 1.0, tTrialCurrentGlobalState);
         auto tValuePlus1Eps = aScalarFunc->value(tTrialCurrentGlobalState, tData.mPrevGlobalState,
-                                                 tData.mCurrentLocalState, tData.mFutureLocalState,
-                                                 tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                                 tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                                 tData.mControl, aTimeStep);
 
         Plato::update(1.0, tData.mCurrentGlobalState, 0.0, tTrialCurrentGlobalState);
         Plato::update(-tEpsilon, tStep, 1.0, tTrialCurrentGlobalState);
         auto tValueMinus1Eps = aScalarFunc->value(tTrialCurrentGlobalState, tData.mPrevGlobalState,
-                                                  tData.mCurrentLocalState, tData.mFutureLocalState,
-                                                  tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                                  tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                                  tData.mControl, aTimeStep);
 
         Plato::update(1.0, tData.mCurrentGlobalState, 0.0, tTrialCurrentGlobalState);
         Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialCurrentGlobalState);
         auto tValuePlus2Eps = aScalarFunc->value(tTrialCurrentGlobalState, tData.mPrevGlobalState,
-                                                 tData.mCurrentLocalState, tData.mFutureLocalState,
-                                                 tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                                 tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                                 tData.mControl, aTimeStep);
 
         Plato::update(1.0, tData.mCurrentGlobalState, 0.0, tTrialCurrentGlobalState);
         Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialCurrentGlobalState);
         auto tValueMinus2Eps = aScalarFunc->value(tTrialCurrentGlobalState, tData.mPrevGlobalState,
-                                                  tData.mCurrentLocalState, tData.mFutureLocalState,
-                                                  tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                                  tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                                  tData.mControl, aTimeStep);
 
         auto tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
                 - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
@@ -7200,8 +6930,8 @@ test_partial_local_scalar_func_wrt_current_local_state
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::DiagnosticDataPlasticity<SimplexPhysics> tData(tNumVerts, tNumCells);
     auto tPartialC = aScalarFunc->gradient_c(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                             tData.mCurrentLocalState, tData.mFutureLocalState,
-                                             tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                             tData.mCurrentLocalState, tData.mPrevLocalState, 
+                                             tData.mControl, aTimeStep);
 
     const auto tTotalNumLocalDofs = tNumCells * SimplexPhysics::mNumLocalDofsPerCell;
     Plato::ScalarVector tAssembledPartialC("assembled partial current local state", tTotalNumLocalDofs);
@@ -7229,26 +6959,26 @@ test_partial_local_scalar_func_wrt_current_local_state
         Plato::update(1.0, tData.mCurrentLocalState, 0.0, tTrialCurrentLocalState);
         Plato::update(tEpsilon, tStep, 1.0, tTrialCurrentLocalState);
         auto tValuePlus1Eps = aScalarFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                                 tTrialCurrentLocalState, tData.mFutureLocalState,
-                                                 tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                                 tTrialCurrentLocalState, tData.mPrevLocalState, 
+                                                 tData.mControl, aTimeStep);
 
         Plato::update(1.0, tData.mCurrentLocalState, 0.0, tTrialCurrentLocalState);
         Plato::update(-tEpsilon, tStep, 1.0, tTrialCurrentLocalState);
         auto tValueMinus1Eps = aScalarFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                                  tTrialCurrentLocalState, tData.mFutureLocalState,
-                                                  tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                                  tTrialCurrentLocalState, tData.mPrevLocalState, 
+                                                  tData.mControl, aTimeStep);
 
         Plato::update(1.0, tData.mCurrentLocalState, 0.0, tTrialCurrentLocalState);
         Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialCurrentLocalState);
         auto tValuePlus2Eps = aScalarFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                                 tTrialCurrentLocalState, tData.mFutureLocalState,
-                                                 tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                                 tTrialCurrentLocalState, tData.mPrevLocalState, 
+                                                 tData.mControl, aTimeStep);
 
         Plato::update(1.0, tData.mCurrentLocalState, 0.0, tTrialCurrentLocalState);
         Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialCurrentLocalState);
         auto tValueMinus2Eps = aScalarFunc->value(tData.mCurrentGlobalState, tData.mPrevGlobalState,
-                                                  tTrialCurrentLocalState, tData.mFutureLocalState,
-                                                  tData.mPrevLocalState, tData.mControl, aTimeStep);
+                                                  tTrialCurrentLocalState, tData.mPrevLocalState, 
+                                                  tData.mControl, aTimeStep);
 
         auto tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
                 - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
