@@ -6517,7 +6517,7 @@ private:
 
 
 template<class PlatoProblem>
-inline void test_objective_grad_wrt_control(PlatoProblem & aProblem, Omega_h::Mesh & aMesh)
+inline Plato::Scalar test_objective_grad_wrt_control(PlatoProblem & aProblem, Omega_h::Mesh & aMesh)
 {
     // Allocate Data
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
@@ -6540,43 +6540,48 @@ inline void test_objective_grad_wrt_control(PlatoProblem & aProblem, Omega_h::Me
 
     constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
     constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
-    Plato::ScalarVector tTrialControl = Plato::ScalarVector("Trial Control", tNumVerts);
+    auto tTrialControl = Plato::ScalarVector("Trial Control", tNumVerts);
 
+    std::vector<Plato::Scalar> tFiniteDiffApproxError;
     for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
     {
-        Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
+        auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
 
         // four point finite difference approximation
         Plato::update(1.0, tControls, 0.0, tTrialControl);
         Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
-        Plato::Scalar tValuePlus1Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
+        auto tValuePlus1Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
         Plato::update(1.0, tControls, 0.0, tTrialControl);
         Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
-        Plato::Scalar tValueMinus1Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
+        auto tValueMinus1Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
         Plato::update(1.0, tControls, 0.0, tTrialControl);
         Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
-        Plato::Scalar tValuePlus2Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
+        auto tValuePlus2Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
         Plato::update(1.0, tControls, 0.0, tTrialControl);
         Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
-        Plato::Scalar tValueMinus2Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
+        auto tValueMinus2Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
-        Plato::Scalar tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
+        auto tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
                 - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
-        Plato::Scalar tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
-        Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
-        Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStep);
+        auto tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
+        auto tFiniteDiffAppx = tNumerator / tDenominator;
+        auto tAppxError = abs(tFiniteDiffAppx - tGradientDotStep);
+        tFiniteDiffApproxError.push_back(tAppxError);
 
         tOutput << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
             << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
     }
     std::cout << tOutput.str().c_str();
+    
+    const auto tMinError = *std::min_element(tFiniteDiffApproxError.begin(), tFiniteDiffApproxError.end());
+    return tMinError;
 }
 
 
@@ -10114,7 +10119,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    const Plato::Scalar tUpperBound = 1e-9;
+    TEST_ASSERT(tApproxError < tUpperBound);
 }
 
 
