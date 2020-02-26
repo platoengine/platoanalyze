@@ -6513,7 +6513,7 @@ inline Plato::Scalar test_objective_grad_wrt_control(PlatoProblem & aProblem, Om
 
     Plato::ScalarVector tStep = Plato::ScalarVector("Step", tNumVerts);
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.025, 0.075, tHostStep);
+    Plato::random(0.025, 0.05, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
 
     // Compute gradient
@@ -9961,7 +9961,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -10004,11 +10004,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='8'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Stopping Tolerance' type='double' value='1e-10'/>                   \n"
       "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
@@ -10020,37 +10021,57 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
     // 2. Get Dirichlet Boundary Conditions
     Plato::OrdinalType tDispDofX = 0;
     Plato::OrdinalType tDispDofY = 1;
+    Plato::OrdinalType tDispDofZ = 2;
     constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
-    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
-    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryX0_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryX1_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryY1_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "y1", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryZ0_Zdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "z0", tNumDofsPerNode, tDispDofZ);
 
     // 3. Set Dirichlet Boundary Conditions
     Plato::Scalar tValueToSet = 0;
-    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0_Xdof.size() + tDirichletIndicesBoundaryX1_Xdof.size()
+        + tDirichletIndicesBoundaryY0_Ydof.size() + tDirichletIndicesBoundaryY1_Ydof.size() + tDirichletIndicesBoundaryZ0_Zdof.size();
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
     Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0_Xdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         tDirichletValues(aIndex) = tValueToSet;
-        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0_Xdof(aIndex);
     }, "set dirichlet values and indices");
 
-    auto tOffset = tDirichletIndicesBoundaryX0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    auto tOffset = tDirichletIndicesBoundaryX0_Xdof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0_Ydof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         auto tIndex = tOffset + aIndex;
         tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0_Ydof(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 1e-3;
-    tOffset += tDirichletIndicesBoundaryY0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    tOffset += tDirichletIndicesBoundaryY0_Ydof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY1_Ydof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         auto tIndex = tOffset + aIndex;
         tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY1_Ydof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tOffset += tDirichletIndicesBoundaryY1_Ydof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryZ0_Zdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryZ0_Zdof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 2e-3;
+    tOffset += tDirichletIndicesBoundaryZ0_Zdof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1_Xdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1_Xdof(aIndex);
     }, "set dirichlet values and indices");
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
@@ -10062,10 +10083,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tObjValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
-    TEST_FLOATING_EQUALITY(tObjValue, -1.186053e-03, tTolerance);
+    TEST_FLOATING_EQUALITY(tObjValue, -5.394823e-01, tTolerance);
 
     auto tObjGrad = tPlasticityProblem.objectiveGradient(tControls, tSolution);
-    std::vector<Plato::Scalar> tGold = {-7.625093e-03, -3.844014e-04, 1.185204e-03, 9.157816e-04, 6.634342e-04, -7.625093e-03, -9.473731e-03, -8.156473e-03};
+    std::vector<Plato::Scalar> tGold = 
+        {-8.694180e-02, -1.159224e-01, -2.898060e-02, -1.738836e-01, -5.796120e-02, -2.898060e-02, -5.796120e-02, -2.898060e-02, -1.159224e-01,
+         -1.738836e-01, -5.796120e-02, -2.898060e-02, -5.796120e-02, -3.477672e-01, -1.738836e-01, -1.159224e-01, -1.738836e-01, -1.159224e-01,
+         -8.694180e-02, -1.159224e-01, -1.738836e-01, -1.738836e-01, -5.796120e-02, -2.898060e-02, -5.796120e-02, -1.159224e-01, -2.898060e-02  };
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
@@ -10123,11 +10147,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='8'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Stopping Tolerance' type='double' value='1e-10'/>                   \n"
       "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
       "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
@@ -10141,13 +10166,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     Plato::OrdinalType tDispDofY = 1;
     Plato::OrdinalType tDispDofZ = 2;
     constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    auto tDirichletIndicesBoundaryX0_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
-    auto tDirichletIndicesBoundaryY0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
-    auto tDirichletIndicesBoundaryX1_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryX0_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryX1_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryY1_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "y1", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryZ0_Zdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "z0", tNumDofsPerNode, tDispDofZ);
 
     // 3. Set Dirichlet Boundary Conditions
     Plato::Scalar tValueToSet = 0;
-    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0_Xdof.size() + tDirichletIndicesBoundaryY0_Ydof.size() + tDirichletIndicesBoundaryX1_Xdof.size();
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0_Xdof.size() + tDirichletIndicesBoundaryX1_Xdof.size() 
+        + tDirichletIndicesBoundaryY0_Ydof.size() + tDirichletIndicesBoundaryY1_Ydof.size() + tDirichletIndicesBoundaryZ0_Zdof.size();
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
     Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0_Xdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
@@ -10164,8 +10192,24 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0_Ydof(aIndex);
     }, "set dirichlet values and indices");
 
-    tValueToSet = 1e-3;
     tOffset += tDirichletIndicesBoundaryY0_Ydof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY1_Ydof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY1_Ydof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tOffset += tDirichletIndicesBoundaryY1_Ydof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryZ0_Zdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryZ0_Zdof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 2e-3;
+    tOffset += tDirichletIndicesBoundaryZ0_Zdof.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1_Xdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         auto tIndex = tOffset + aIndex;
