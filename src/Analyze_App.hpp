@@ -273,7 +273,7 @@ public:
             if(tIterator == mValuesMap.end())
             {
                 std::stringstream ss;
-                ss << "Attempted to import SharedValue ('" << aName << "') that doesn't exist.";
+                ss << "Attempted to export SharedValue ('" << aName << "') that doesn't exist.";
                 throw Plato::ParsingException(ss.str());
             }
             std::vector<Plato::Scalar>& tValues = tIterator->second;
