@@ -25,6 +25,7 @@ signature?
 
 namespace Plato
 {
+
     template<typename SimplexPhysics>
     class HyperbolicProblem: public Plato::AbstractProblem
     {
@@ -39,6 +40,8 @@ namespace Plato
 
         Plato::OrdinalType mNumSteps;
         Plato::Scalar      mTimeStep;
+
+        bool mSaveState;
 
         std::shared_ptr<const Plato::ScalarFunctionBase> mConstraint;
         std::shared_ptr<const Plato::Hyperbolic::ScalarFunctionBase> mObjective;
@@ -73,6 +76,7 @@ namespace Plato
             mNewmarkIntegrator    (aParamList.sublist("Time Integration")),
             mNumSteps     (aParamList.sublist("Time Integration").get<int>("Number Time Steps")),
             mTimeStep     (aParamList.sublist("Time Integration").get<Plato::Scalar>("Time Step")),
+            mSaveState    (aParamList.sublist("Hyperbolic").isType<Teuchos::Array<std::string>>("Plottable")),
             mConstraint   (nullptr),
             mObjective    (nullptr),
             mResidual     ("MyResidual", mEqualityConstraint.size()),
@@ -168,6 +172,14 @@ namespace Plato
         )
         /******************************************************************************/
         {
+
+            mDataMap.clearStates();
+            Plato::ScalarVector tDisplacementInit = Kokkos::subview(mDisplacement, /*StepIndex=*/0, Kokkos::ALL());
+            Plato::ScalarVector tVelocityInit     = Kokkos::subview(mVelocity,     /*StepIndex=*/0, Kokkos::ALL());
+            Plato::ScalarVector tAccelerationInit = Kokkos::subview(mAcceleration, /*StepIndex=*/0, Kokkos::ALL());
+            mResidual  = mEqualityConstraint.value(tDisplacementInit, tVelocityInit, tAccelerationInit, aControl, mTimeStep);
+            mDataMap.saveState();
+   
             for(Plato::OrdinalType tStepIndex = 1; tStepIndex < mNumSteps; tStepIndex++) {
               Plato::ScalarVector tDisplacementPrev = Kokkos::subview(mDisplacement, tStepIndex-1, Kokkos::ALL());
               Plato::ScalarVector tVelocityPrev     = Kokkos::subview(mVelocity,     tStepIndex-1, Kokkos::ALL());
@@ -240,11 +252,16 @@ namespace Plato
               // add displacement increment
               Plato::axpy(1.0, tDeltaD, tDisplacement);
 
-              // evaluate at new state
-              mResidual  = mEqualityConstraint.value(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
+              if ( mSaveState )
+              {
+                // evaluate at new state
+                mResidual  = mEqualityConstraint.value(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
+                mDataMap.saveState();
+              }
             }
             return mDisplacement;
         }
+
         /******************************************************************************/
         Plato::Scalar constraintValue(
           const Plato::ScalarVector & aControl,

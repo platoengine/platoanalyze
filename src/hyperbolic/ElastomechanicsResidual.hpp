@@ -189,6 +189,7 @@ class TransientMechanicsResidual :
       }, "Compute Residual");
 
       if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, tStress, "stress");
+      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, tStress, "strain");
 
       if( mBodyLoads != nullptr )
       {
