@@ -143,11 +143,12 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
   TEST_FLOATING_EQUALITY( tObjectiveValue, tObjectiveValue_gold, 1e-13);
 
 
-  // test objectiveValue
-  //
-  tObjectiveValue = tHyperbolicProblem->objectiveValue(tControl, tDisplacements);
+  /*********************************************************
+   Test HyperbolicProblem::objectiveValue(aControl, aState);
+   *********************************************************/
 
-  // TODO: test tObjectiveValue
+  tObjectiveValue = tHyperbolicProblem->objectiveValue(tControl, tDisplacements);
+  TEST_FLOATING_EQUALITY( tObjectiveValue, tObjectiveValue_gold, 1e-13);
 
 
   /*****************************************************
@@ -157,25 +158,30 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
   auto tObjectiveGradient = tHyperbolicProblem->objectiveGradient(tControl);
 
 
-  // test objectiveGradient
-  //
+  /**************************************************************
+   The gradients below are verified with FD check elsewhere. The
+   calls below are to catch any signals that may be thrown.
+   **************************************************************/
+
+  /************************************************************
+   Call HyperbolicProblem::objectiveGradient(aControl, aState);
+   ************************************************************/
+
   tObjectiveGradient = tHyperbolicProblem->objectiveGradient(tControl, tDisplacements);
 
-  // TODO: test tObjectiveGradient
 
+  /*****************************************************
+   Call HyperbolicProblem::objectiveGradientX(aControl);
+   *****************************************************/
 
-  // test objectiveGradientX
-  //
   auto tObjectiveGradientX = tHyperbolicProblem->objectiveGradientX(tControl);
 
-  // TODO: test tObjectiveGradientX
 
+  /************************************************************
+   Call HyperbolicProblem::objectiveGradientX(aControl, aState);
+   ************************************************************/
 
-  // test objectiveGradientX
-  //
   tObjectiveGradientX = tHyperbolicProblem->objectiveGradientX(tControl, tDisplacements);
-
-  // TODO: test tObjectiveGradientX
 
 
 
@@ -183,42 +189,30 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
   //
   auto tConstraintValue = tHyperbolicProblem->constraintValue(tControl);
 
-  // TODO: test tConstraintValue
-
 
   // test constraintValue
   //
   tConstraintValue = tHyperbolicProblem->constraintValue(tControl, tDisplacements);
-
-  // TODO: test tConstraintValue
 
 
   // test constraintGradient
   //
   auto tConstraintGradient = tHyperbolicProblem->constraintGradient(tControl);
 
-  // TODO: test tConstraintGradient
-
 
   // test constraintGradient
   //
   tConstraintGradient = tHyperbolicProblem->constraintGradient(tControl, tDisplacements);
-
-  // TODO: test tConstraintGradient
 
 
   // test constraintGradientX
   //
   auto tConstraintGradientX = tHyperbolicProblem->constraintGradientX(tControl);
 
-  // TODO: test tConstraintGradientX
-
 
   // test constraintGradientX
   //
   tConstraintGradientX = tHyperbolicProblem->constraintGradientX(tControl, tDisplacements);
-
-  // TODO: test tConstraintGradientX
 
 }
 
