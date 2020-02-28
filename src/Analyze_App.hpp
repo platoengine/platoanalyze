@@ -221,6 +221,20 @@ public:
         std::vector<Plato::Scalar>& tValues = tIterator->second;
         tValues.resize(aSharedData.size());
         aSharedData.getData(tValues);
+        std::stringstream ss;
+        ss << "Importing Scalar Value: " << aName << std::endl;
+        ss << "[ ";
+        const int tMaxDisplay = 5;
+        int tNumValues = tValues.size();
+        int tNumDisplay = tNumValues < tMaxDisplay ? tNumValues : tMaxDisplay;
+        for( int i=0; i<tNumDisplay; i++) ss << tValues[i] << " ";
+        if(tNumValues > tMaxDisplay) ss << " ... ";
+        ss << "]" << std::endl;
+        #ifdef PLATO_CONSOLE
+        Plato::Console::Status(ss.str());
+        #else
+        std::cout << ss.str();
+        #endif
     }
 
     /******************************************************************************//**
@@ -279,6 +293,16 @@ public:
             std::vector<Plato::Scalar>& tValues = tIterator->second;
             tValues.resize(aSharedField.size());
             aSharedField.setData(tValues);
+            std::stringstream ss;
+            ss << "Exporting Scalar Value: " << aName << std::endl;
+            ss << "[ ";
+            for( auto val : tValues ) ss << val << " ";
+            ss << "]" << std::endl;
+            #ifdef PLATO_CONSOLE
+            Plato::Console::Status(ss.str());
+            #else
+            std::cout << ss.str();
+            #endif
         }
     }
 

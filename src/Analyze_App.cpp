@@ -1,8 +1,14 @@
 #include <Omega_h_file.hpp>
 
+//#define PLATO_CONSOLE
+
 #include "Analyze_App.hpp"
 #include "AnalyzeOutput.hpp"
 #include <PlatoProblemFactory.hpp>
+
+#ifdef PLATO_CONSOLE
+#include <Plato_Console.hpp>
+#endif
 
 /******************************************************************************/
 MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
@@ -435,7 +441,13 @@ void MPMD_App::ComputeConstraint::operator()()
   mMyApp->mConstraintValue      = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
   mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mState);
 
-  std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  std::stringstream ss;
+  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+#ifdef PLATO_CONSOLE
+  Plato::Console::Status(ss.str());
+#else
+  std::cout << ss.str();
+#endif
 }
 
 /******************************************************************************/
