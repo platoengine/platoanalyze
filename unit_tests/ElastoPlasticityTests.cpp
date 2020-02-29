@@ -68,6 +68,7 @@
 
 #include "BLAS2.hpp"
 #include "BLAS3.hpp"
+#include "StrainDivergence.hpp"
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
@@ -136,16 +137,17 @@ public:
 
     /***************************************************************************//**
      *
-     * \brief Evaluate the stabilized residual equation
+     * \brief Evaluate stabilized residual
      *
-     * \param [in] aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
-     * \param [in] aGlobalStatePrev previous global state ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
-     * \param [in] aLocalState current local state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
-     * \param [in] aLocalStatePrev previous local state ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
-     * \param [in] aPressureGrad current pressure gradient ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
-     * \param [in] aControls design variables
-     * \param [in/out] aResult residual evaluation
-     * \param [in] aTimeStep current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
+     * \param [in]     aGlobalState     current global state ( i.e. global state at time step n )
+     * \param [in]     aGlobalStatePrev previous global state ( i.e. global state at time step n-1 )
+     * \param [in]     aLocalState      current local state ( i.e. local state at time step n )
+     * \param [in]     aLocalStatePrev  previous local state ( i.e. local state at time step n-1 )
+     * \param [in]     aPressureGrad    current pressure gradient ( i.e. projected pressure gradient at time step n-1 )
+     * \param [in]     aControls        set of design variables
+     * \param [in]     aConfig          set of configuration variables (cell node coordinates)
+     * \param [in/out] aResult          residual evaluation
+     * \param [in]     aTimeStep        current time step, default = 0.0
      *
     *******************************************************************************/
     virtual void
@@ -174,9 +176,9 @@ public:
 /***************************************************************************//**
  *
  * \brief Abstract scalar function interface for Partial Differential Equations
- *   (PDEs) with history dependent states.
+ *   (PDEs) with path dependent global and local states.
  *
- * \tparam EvaluationType determines the automatic differentiation type use to
+ * \tparam EvaluationType determines the automatic differentiation type used to
  *   evaluate the scalar function (e.g. Value, GradientZ, GradientX, etc.)
  *
 *******************************************************************************/
@@ -245,12 +247,12 @@ public:
      *
      * \brief Evaluate the scalar function with local path-dependent states.
      *
-     * \param [in]     aCurrentGlobalState  current global state ( i.e. state at the n-th time step (\f$ t^{n} \f$) )
-     * \param [in]     aPreviousGlobalState previous global state ( i.e. state at the n-th minus one time step (\f$ t^{n-1} \f$) )
-     * \param [in]     aCurrentLocalState   current local state ( i.e. state at the n-th time step (\f$ t^{n} \f$) )
-     * \param [in]     aPreviousLocalState  previous local state ( i.e. state at the n-th minus one time step (\f$ t^{n-1} \f$) )
+     * \param [in]     aCurrentGlobalState  current global state ( i.e. state at time step n (\f$ t^{n} \f$) )
+     * \param [in]     aPreviousGlobalState previous global state ( i.e. state at time step n-1 (\f$ t^{n-1} \f$) )
+     * \param [in]     aCurrentLocalState   current local state ( i.e. state at time step n (\f$ t^{n} \f$) )
+     * \param [in]     aPreviousLocalState  previous local state ( i.e. state at time step n-1 (\f$ t^{n-1} \f$) )
      * \param [in]     aControls            current set of design variables
-     * \param [in]     aConfig              set of configuration variables, i.e. coordinates per cell
+     * \param [in]     aConfig              configuration variables, i.e. cell node coordinates
      * \param [in/out] aResult              scalar function value per cell
      * \param [in]     aTimeStep            current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
      *
@@ -405,116 +407,7 @@ Plato::Scalar parse_poissons_ratio(Teuchos::ParameterList & aParamList)
 
 
 
-/***************************************************************************//**
- *
- * \brief Apply the divergence operator to the strain tensor, i.e.
- *   /f$ \div\cdot\epsilon /f$, where /f$ \epsilon /f$ denotes the strain tensor.
- * Used in Stabilized elasto- and thermo-plasticity problems
- *
- * \tparam SpaceDim spatial dimensions
- *
-*******************************************************************************/
-template<Plato::OrdinalType SpaceDim>
-class StrainDivergence
-{
-public:
-    /***************************************************************************//**
-     * \brief Constructor
-    *******************************************************************************/
-    StrainDivergence(){}
 
-    /***************************************************************************//**
-     * \brief Destructor
-    *******************************************************************************/
-    ~StrainDivergence(){}
-
-    /***************************************************************************//**
-     *
-     * \brief Apply the divergence operator to the strain tensor.
-     *
-     * \tparam StrainType POD type for 2-D Kokkos::View
-     * \tparam ResultType POD type for 1-D Kokkos::View
-     *
-     * \param [in] aCellOrdinal cell ordinal, i.e. index
-     * \param [in] aStrain      strain tensor
-     * \param [in] aOutput      strain tensor divergence
-     *
-    *******************************************************************************/
-    template<typename StrainType, typename ResultType>
-    DEVICE_TYPE inline void
-    operator()(const Plato::OrdinalType & aCellOrdinal,
-               const Plato::ScalarMultiVectorT<StrainType> & aStrain,
-               const Plato::ScalarVectorT<ResultType> & aOutput) const;
-};
-// class StrainDivergence
-
-/***************************************************************************//**
- *
- * \brief Specialization for 3-D applications.
- *
- * \tparam StrainType POD type for 2-D Kokkos::View
- * \tparam ResultType POD type for 1-D Kokkos::View
- *
- * \param [in] aCellOrdinal cell ordinal, i.e. index
- * \param [in] aStrain      strain tensor
- * \param [in] aOutput      strain tensor divergence
- *
-*******************************************************************************/
-template<>
-template<typename StrainType, typename ResultType>
-DEVICE_TYPE inline void
-StrainDivergence <3>::operator()(const Plato::OrdinalType & aCellOrdinal,
-                                 const Plato::ScalarMultiVectorT<StrainType> & aStrain,
-                                 const Plato::ScalarVectorT<ResultType> & aOutput) const
-{
-    aOutput(aCellOrdinal) = aStrain(aCellOrdinal, 0) + aStrain(aCellOrdinal, 1) + aStrain(aCellOrdinal, 2);
-}
-
-/***************************************************************************//**
- *
- * \brief Specialization for 2-D applications. Plane Strain formulation, i.e.
- *   out-of-plane strain (e_33) is zero.
- *
- * \tparam StrainType POD type for 2-D Kokkos::View
- * \tparam ResultType POD type for 1-D Kokkos::View
- *
- * \param [in] aCellOrdinal cell ordinal, i.e. index
- * \param [in] aStrain      strain tensor
- * \param [in] aOutput      strain tensor divergence
- *
-*******************************************************************************/
-template<>
-template<typename StrainType, typename ResultType>
-DEVICE_TYPE inline void
-StrainDivergence <2>::operator()(const Plato::OrdinalType & aCellOrdinal,
-                                 const Plato::ScalarMultiVectorT<StrainType> & aStrain,
-                                 const Plato::ScalarVectorT<ResultType> & aOutput) const
-{
-    aOutput(aCellOrdinal) = aStrain(aCellOrdinal, 0)  // e^{elastic}_{11}
-                          + aStrain(aCellOrdinal, 1); // e^{elastic}_{22}
-}
-
-/***************************************************************************//**
- *
- * \brief Specialization for 1-D applications.
- *
- * \tparam StrainType POD type for 2-D Kokkos::View
- * \tparam ResultType POD type for 1-D Kokkos::View
- *
- * \param [in] aCellOrdinal cell ordinal, i.e. index
- * \param [in] aStrain      strain tensor
- * \param [in] aOutput      strain tensor divergence
- *
-*******************************************************************************/
-template<>
-template<typename StrainType, typename ResultType>
-DEVICE_TYPE inline void
-StrainDivergence <1>::operator()(const Plato::OrdinalType & aCellOrdinal,
-                                 const Plato::ScalarMultiVectorT<StrainType> & aStrain,
-                                 const Plato::ScalarVectorT<ResultType> & aOutput) const
-{
-    aOutput(aCellOrdinal) = aStrain(aCellOrdinal, 0);
-}
 
 
 
