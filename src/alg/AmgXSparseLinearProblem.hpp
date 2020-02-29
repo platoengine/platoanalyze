@@ -50,7 +50,7 @@ inline std::string get_config_string(bool aUseAbsoluteTolerance = false, Plato::
     }
     else
     {
-        tConfigString = Plato::configurationString("pcg_noprec", tTolerance, tMaxIters, aUseAbsoluteTolerance);
+        tConfigString = Plato::configurationString("default", tTolerance, tMaxIters, aUseAbsoluteTolerance);
     }
 
     return tConfigString;
