@@ -382,7 +382,7 @@ public:
         mDirichletValuesMultiplier = aInput;
     }
 
-    void appendLocalEquation(const std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> & aInput)
+    void appendLocalEquation(const std::shared_ptr<Plato::LocalVectorFunctionInc<LocalPhysicsT>> & aInput)
     {
         mLocalEquation = aInput;
     }
