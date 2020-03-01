@@ -13,9 +13,10 @@ namespace Plato
 
 /***************************************************************************//**
  *
- * \brief Apply the divergence operator to the strain tensor, i.e.
- *   /f$ \div\cdot\epsilon /f$, where /f$ \epsilon /f$ denotes the strain tensor.
- * Used in Stabilized elasto- and thermo-plasticity problems
+ * \brief Apply divergence operator to the strain tensor, i.e.
+ *            /f$ \div\cdot\epsilon /f$,
+ *   where /f$ \epsilon /f$ denotes the strain tensor.  Used in stabilized
+ *   elasto- and thermo-plasticity problems.
  *
  * \tparam SpaceDim spatial dimensions
  *
