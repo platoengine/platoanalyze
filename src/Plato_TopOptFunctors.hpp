@@ -62,4 +62,26 @@ cell_density(const Plato::OrdinalType & aCellOrdinal,
 }
 // function cell_density
 
+/***************************************************************************//**
+ * \brief Apply penalty, i.e. density penalty, to 2-D view
+ *
+ * \tparam Length      number of data entries for a given cell
+ * \tparam ControlType penalty, as a Scalar
+ * \tparam ResultType  multi-vector, as a 3-D Kokkos::View
+ *
+ * \param [in]     aCellOrdinal cell ordinal, i.e. index
+ * \param [in]     aPenalty     material penalty
+ * \param [in/out] aOutput      physical quantity to be penalized
+*******************************************************************************/
+template<Plato::OrdinalType Length, typename ControlType, typename ResultType>
+DEVICE_TYPE inline void
+apply_penalty(const Plato::OrdinalType aCellOrdinal, const ControlType & aPenalty, const Plato::ScalarMultiVectorT<ResultType> & aOutput)
+{
+    for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
+    {
+        aOutput(aCellOrdinal, tIndex) *= aPenalty;
+    }
+}
+// function apply_penalty
+
 } // namespace Plato
