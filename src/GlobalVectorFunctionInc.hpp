@@ -843,6 +843,15 @@ public:
     ***************************************************************************/
     ~GlobalVectorFunctionInc(){ return; }
 
+    /***************************************************************************//**
+     * \brief Return reference to Omega_h mesh database
+     * \return Omega_h mesh database
+    *******************************************************************************/
+    Omega_h::Mesh& getMesh() const
+    {
+        return (mGlobalResidual->getMesh());
+    }
+
     /***********************************************************************//**
      * \brief Append interface for the evaluation of the global vector function residual.
      * \param [in] aInput] global vector function interface
