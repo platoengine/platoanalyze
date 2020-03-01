@@ -69,9 +69,8 @@
 #include "BLAS2.hpp"
 #include "BLAS3.hpp"
 #include "StrainDivergence.hpp"
-#include "ComputeStabilization.hpp"
-
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
+#include "../src/ComputeStabilization.hpp"
 
 namespace Plato
 {
