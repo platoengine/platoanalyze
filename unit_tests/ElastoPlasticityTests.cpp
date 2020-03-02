@@ -1001,11 +1001,7 @@ private:
             this->updateForwardState(tCurrentStates);
             this->updateAdjointState(tAdjointStates);
 
-            mAdjointSolver->updateInverseLocalJacobian(aControls, tCurrentStates, tAdjointStates.mInvLocalJacT);
-            mAdjointSolver->updateProjPressGradAdjointVars(aControls, tCurrentStates, tAdjointStates);
-            mAdjointSolver->updateGlobalAdjointVars(aControls, tCurrentStates, tPreviousStates, tAdjointStates);
-            mAdjointSolver->updateLocalAdjointVars(aControls, tCurrentStates, tPreviousStates, tAdjointStates);
-
+            mAdjointSolver->updateAdjointVariables(aControls, tCurrentStates, tPreviousStates, tAdjointStates);
             mAdjointSolver->addContributionFromPDE(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
         }
     }
