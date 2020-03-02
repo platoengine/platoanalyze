@@ -7,7 +7,7 @@
 #pragma once
 
 #include "BLAS2.hpp"
-#include "BLAS.hpp"
+#include "BLAS3.hpp"
 #include "ParseTools.hpp"
 #include "Plato_Solve.hpp"
 #include "ApplyConstraints.hpp"
