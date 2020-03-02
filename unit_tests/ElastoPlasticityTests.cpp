@@ -563,11 +563,11 @@ public:
             THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
+        mAdjointSolver->appendScalarFunction(mObjective);
+
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarVector tTotalDerivative("Total Derivative", tNumNodes);
-        // PDE constraint contribution to the total gradient with respect to control dofs
-        this->backwardTimeIntegration(Plato::PartialDerivative::CONTROL, *mObjective, aControls, tTotalDerivative);
-        // Design criterion contribution to the total gradient with respect to control dofs
+        this->backwardTimeIntegration(Plato::PartialDerivative::CONTROL, aControls, tTotalDerivative);
         this->addCriterionPartialDerivativeZ(*mObjective, aControls, tTotalDerivative);
 
         return (tTotalDerivative);
@@ -616,10 +616,10 @@ public:
             THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
+        mAdjointSolver->appendScalarFunction(mObjective);
+
         Plato::ScalarVector tTotalDerivative("Total Derivative", mNumConfigDofsPerCell);
-        // PDE constraint contribution to the total gradient with respect to configuration dofs
-        this->backwardTimeIntegration(Plato::PartialDerivative::CONFIGURATION, *mObjective, aControls, tTotalDerivative);
-        // Design criterion contribution to the total gradient with respect to configuration dofs
+        this->backwardTimeIntegration(Plato::PartialDerivative::CONFIGURATION, aControls, tTotalDerivative);
         this->addCriterionPartialDerivativeX(*mObjective, aControls, tTotalDerivative);
 
         return (tTotalDerivative);
@@ -668,11 +668,11 @@ public:
             THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
 
+        mAdjointSolver->appendScalarFunction(mConstraint);
+
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarVector tTotalDerivative("Total Derivative", tNumNodes);
-        // PDE constraint contribution to the total gradient with respect to control dofs
-        this->backwardTimeIntegration(Plato::PartialDerivative::CONTROL, *mConstraint, aControls, tTotalDerivative);
-        // Design criterion contribution to the total gradient with respect to control dofs
+        this->backwardTimeIntegration(Plato::PartialDerivative::CONTROL, aControls, tTotalDerivative);
         this->addCriterionPartialDerivativeZ(*mConstraint, aControls, tTotalDerivative);
 
         return (tTotalDerivative);
@@ -720,11 +720,11 @@ public:
         {
             THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
+ 
+        mAdjointSolver->appendScalarFunction(mConstraint);
 
         Plato::ScalarVector tTotalDerivative("Total Derivative", mNumConfigDofsPerCell);
-        // PDE constraint contribution to the total gradient with respect to configuration dofs
-        this->backwardTimeIntegration(Plato::PartialDerivative::CONFIGURATION, *mConstraint, aControls, tTotalDerivative);
-        // Design criterion contribution to the total gradient with respect to configuration dofs
+        this->backwardTimeIntegration(Plato::PartialDerivative::CONFIGURATION, aControls, tTotalDerivative);
         this->addCriterionPartialDerivativeX(*mConstraint, aControls, tTotalDerivative);
     
         return (tTotalDerivative);
@@ -972,12 +972,10 @@ private:
      * \brief Perform backward time integration and add Partial Differential Equation
      * (PDE) contribution to total gradient.
      * \param [in]     aType      partial derivative type
-     * \param [in]     aCriterion criterion scalar function interface
      * \param [in]     aControls current controls, e.g. design variables
      * \param [in/out] aOutput   total derivative of criterion with respect to controls
     *******************************************************************************/
     void backwardTimeIntegration(const Plato::PartialDerivative::derivative_t & aType,
-                                 Plato::LocalScalarFunctionInc & aCriterion,
                                  const Plato::ScalarVector & aControls,
                                  Plato::ScalarVector aTotalDerivative)
     {
@@ -1005,8 +1003,8 @@ private:
 
             mAdjointSolver->updateInverseLocalJacobian(aControls, tCurrentStates, tInvLocalJacT);
             mAdjointSolver->updateProjPressGradAdjointVars(aControls, tCurrentStates, tAdjointStates);
-            mAdjointSolver->updateGlobalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacT, tAdjointStates);
-            mAdjointSolver->updateLocalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacT, tAdjointStates);
+            mAdjointSolver->updateGlobalAdjointVars(aControls, tCurrentStates, tPreviousStates, tInvLocalJacT, tAdjointStates);
+            mAdjointSolver->updateLocalAdjointVars(aControls, tCurrentStates, tPreviousStates, tInvLocalJacT, tAdjointStates);
             mAdjointSolver->addPartialDiffEquationContribution(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
         }
     }
