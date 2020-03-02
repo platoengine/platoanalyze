@@ -1413,6 +1413,7 @@ private:
         auto tNumCells = mLocalResidualEq->numCells();
         tStateData.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalResidualEq->size());
 
+/*
         auto tMesh = mGlobalResidualEq->getMesh();
         Plato::NewtonRaphsonSolver<PhysicsT> tSolver(tMesh);
         tSolver.appendDirichletDofs(mDirichletDofs);
@@ -1420,6 +1421,7 @@ private:
         tSolver.appendLocalEquation(mLocalResidualEq);
         tSolver.appendGlobalEquation(mGlobalResidualEq);
         tSolver.setDirichletValuesMultiplier(mPseudoTimeStep);
+*/
 
         bool tToleranceSatisfied = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
@@ -1431,8 +1433,8 @@ private:
             this->cacheStateData(tStateData);
 
             // update local and global states
-            //bool tNewtonRaphsonConverged = this->solveNewtonRaphson(aControls, tStateData);
-            bool tNewtonRaphsonConverged = tSolver.solve(aControls, tStateData);
+            bool tNewtonRaphsonConverged = this->solveNewtonRaphson(aControls, tStateData);
+            //bool tNewtonRaphsonConverged = tSolver.solve(aControls, tStateData);
 
             if(tNewtonRaphsonConverged == false)
             {
