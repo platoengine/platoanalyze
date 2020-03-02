@@ -1936,12 +1936,17 @@ private:
      * \param [in] aStateData state data manager
      * \param [in] aZeroEntries flag - zero all entries in current states (default = false)
     *******************************************************************************/
-    void updateStateData(Plato::ForwardStates &aStateData)
+    void updateStateData(Plato::ForwardStates & aStateData)
     {
         // GET CURRENT STATE
         aStateData.mCurrentLocalState = Kokkos::subview(mLocalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
         aStateData.mCurrentGlobalState = Kokkos::subview(mGlobalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
         aStateData.mProjectedPressGrad = Kokkos::subview(mProjectedPressGrad, aStateData.mCurrentStepIndex, Kokkos::ALL());
+        if(aStateData.mPressure.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            auto tNumVerts = mGlobalEquation->getMesh().nverts();
+            aStateData.mPressure = Plato::ScalarVector("Current Pressure Field", tNumVerts);
+        }
         Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, aStateData.mPressure);
 
         // GET PREVIOUS STATE. 
