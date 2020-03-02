@@ -1005,7 +1005,8 @@ private:
             mAdjointSolver->updateProjPressGradAdjointVars(aControls, tCurrentStates, tAdjointStates);
             mAdjointSolver->updateGlobalAdjointVars(aControls, tCurrentStates, tPreviousStates, tAdjointStates);
             mAdjointSolver->updateLocalAdjointVars(aControls, tCurrentStates, tPreviousStates, tAdjointStates);
-            mAdjointSolver->addPartialDiffEquationContribution(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
+
+            mAdjointSolver->addContributionFromPDE(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
         }
     }
 

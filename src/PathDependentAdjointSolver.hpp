@@ -814,16 +814,34 @@ public:
     }
 
     /***************************************************************************//**
+     * \brief Update path-dependent adjoint variables.
+     * \param [in]     aControls          1D view of current control variables, i.e. design variables
+     * \param [in]     aCurrentStateVars  C++ structure that holds current state variables
+     * \param [in]     aPreviousStateVars C++ structure that holds previous state variables
+     * \param [in/out] aAdjointVars       C++ structure that holds current adjoint variables
+    *******************************************************************************/
+    void updateAdjointVariables(const Plato::ScalarVector & aControls,
+                                const Plato::ForwardStates & aCurrentStateVars,
+                                const Plato::ForwardStates & aPreviousStateVars,
+                                Plato::AdjointStates & aAdjointVars)
+    {
+        this->updateInverseLocalJacobian(aControls, aCurrentStateVars, aAdjointVars.mInvLocalJacT);
+        this->updateProjPressGradAdjointVars(aControls, aCurrentStateVars, aAdjointVars);
+        this->updateGlobalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
+        this->updateLocalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
+    }
+
+    /***************************************************************************//**
      * \brief Add contribution from partial differential equation to total derivative.
      * \param [in]     aControls    1D view of control variables, i.e. design variables
      * \param [in]     aStateVars   C++ structure that holds current state variables
      * \param [in]     aAdjointVars C++ structure that holds current adjoint variables
      * \param [in/out] aOutput      total derivative
     *******************************************************************************/
-    void addPartialDiffEquationContribution(const Plato::ScalarVector &aControls,
-                                            const Plato::ForwardStates &aStateVars,
-                                            const Plato::AdjointStates &aAdjointVars,
-                                            Plato::ScalarVector &aOutput)
+    void addContributionFromPDE(const Plato::ScalarVector &aControls,
+                                const Plato::ForwardStates &aStateVars,
+                                const Plato::AdjointStates &aAdjointVars,
+                                Plato::ScalarVector &aOutput)
     {
         switch(aStateVars.mPartialDerivativeType)
         {
