@@ -25,6 +25,7 @@
 #include <iomanip>
 #include <iostream>
 
+#include "NewtonRaphsonSolver.hpp"
 #include "MaximizePlasticWork.hpp"
 #include "GlobalVectorFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
@@ -93,23 +94,7 @@ namespace Plato
 
 
 
-struct NewtonRaphson
-{
-    enum stop_t
-    {
-        DID_NOT_CONVERGE = 0,
-        MAX_NUMBER_ITERATIONS = 1,
-        RELATIVE_NORM_TOLERANCE = 2,
-        CURRENT_NORM_TOLERANCE = 3,
-    };
 
-    enum measure_t
-    {
-        RESIDUAL_NORM = 0,
-        DISPLACEMENT_NORM = 1,
-        RELATIVE_RESIDUAL_NORM = 2,
-    };
-};
 
 struct PartialDerivative
 {
@@ -119,25 +104,6 @@ struct PartialDerivative
         CONFIGURATION = 1,
     };
 };
-
-/***************************************************************************//**
- * \brief Data structure used to solve forward problem in Plasticity Problem class.
- * The Plasticity Problem interface is responsible of evaluating the system of
- * forward and adjoint equations as well as assembling the total gradient with
- * respect to the variables of interest, e.g. design variables & configurations.
-*******************************************************************************/
-struct ForwardProblemStates
-{
-    Plato::OrdinalType mCurrentStepIndex;      /*!< current time step index */
-
-    Plato::ScalarVector mDeltaGlobalState;     /*!< global state increment */
-    Plato::ScalarVector mCurrentLocalState;    /*!< current local state */
-    Plato::ScalarVector mPreviousLocalState;   /*!< previous local state */
-    Plato::ScalarVector mCurrentGlobalState;   /*!< current global state */
-    Plato::ScalarVector mPreviousGlobalState;  /*!< previous global state */
-    Plato::ScalarVector mProjectedPressGrad;   /*!< current projected pressure gradient */
-};
-// struct StateData
 
 /***************************************************************************//**
  * \brief Data structure used to solve adjoint problem in Plasticity Problem class.
@@ -186,489 +152,30 @@ struct AdjointProblemStates
     Plato::ScalarVector mPreviousLocalAdjoint;         /*!< previous local adjoint */
     Plato::ScalarVector mCurrentGlobalAdjoint;         /*!< current global adjoint */
     Plato::ScalarVector mPreviousGlobalAdjoint;        /*!< previous global adjoint */
-    Plato::ScalarVector mProjPressGradAdjoint;  /*!< projected pressure adjoint */
+    Plato::ScalarVector mProjPressGradAdjoint;         /*!< projected pressure adjoint */
     Plato::ScalarVector mPreviousProjPressGradAdjoint; /*!< projected pressure adjoint */
 };
 // struct AdjointProblemStates
 
-struct NewtonRaphsonOutputData
-{
-    bool mWriteOutput;              /*!< flag: true = write output; false = do not write output */
-    Plato::Scalar mCurrentNorm;     /*!< current norm */
-    Plato::Scalar mRelativeNorm;    /*!< relative norm */
-    Plato::Scalar mReferenceNorm;   /*!< reference norm */
-
-    Plato::OrdinalType mCurrentIteration;             /*!< current Newton-Raphson solver iteration */
-    Plato::NewtonRaphson::stop_t mStopingCriterion;   /*!< stopping criterion */
-    Plato::NewtonRaphson::measure_t mStoppingMeasure; /*!< stopping criterion measure */
-
-    NewtonRaphsonOutputData() :
-        mWriteOutput(true),
-        mCurrentNorm(1.0),
-        mReferenceNorm(0.0),
-        mRelativeNorm(1.0),
-        mCurrentIteration(0),
-        mStopingCriterion(Plato::NewtonRaphson::DID_NOT_CONVERGE),
-        mStoppingMeasure(Plato::NewtonRaphson::RESIDUAL_NORM)
-    {}
-};
-// struct NewtonRaphsonOutputData
-
-
-
-
-
-
-
-
-/******************************************************************************//**
- * \brief Write a brief sentence explaining why Newton-Raphson algorithm stop.
- * \param [in] aStopCriterion stopping criterion flag
- * \param [in,out] aOutput string with brief description
-**********************************************************************************/
-inline void print_newton_raphson_stop_criterion(const Plato::NewtonRaphsonOutputData & aOutputData, std::ofstream &aOutputFile)
-{
-    if(aOutputData.mWriteOutput == false)
-    {
-        return;
-    }
-
-    if(aOutputFile.is_open() == false)
-    {
-        THROWERR("Newton-Raphson solver diagnostic file is closed.")
-    }
-
-    switch(aOutputData.mStopingCriterion)
-    {
-        case Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS:
-        {
-            aOutputFile << "\n\n****** Newton-Raphson solver stopping due to exceeding maximum number of iterations. ******\n\n";
-            break;
-        }
-        case Plato::NewtonRaphson::RELATIVE_NORM_TOLERANCE:
-        {
-            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to relative norm tolerance being met. ******\n\n";
-            break;
-        }
-        case Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE:
-        {
-            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to current norm tolerance being met. ******\n\n";
-            break;
-        }
-        case Plato::NewtonRaphson::DID_NOT_CONVERGE:
-        {
-            aOutputFile << "\n\n****** Newton-Raphson algorithm did not converge. ******\n\n";
-            break;
-        }
-        default:
-        {
-            aOutputFile << "\n\n****** ERROR: Optimization algorithm stopping due to undefined behavior. ******\n\n";
-            break;
-        }
-    }
-}
-// function print_newton_raphson_stop_criterion
-
-inline void print_newton_raphson_diagnostics(const Plato::NewtonRaphsonOutputData & aOutputData, std::ofstream &aOutputFile)
-{
-    if(aOutputData.mWriteOutput == false)
-    {
-        return;
-    }
-
-    if(aOutputFile.is_open() == false)
-    {
-        THROWERR("Newton-Raphson solver diagnostic file is closed.")
-    }
-
-    aOutputFile << std::scientific << std::setprecision(6) << aOutputData.mCurrentIteration << std::setw(20)
-        << aOutputData.mCurrentNorm << std::setw(20) << aOutputData.mRelativeNorm << "\n" << std::flush;
-}
-// function print_newton_raphson_diagnostics
-
-inline void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOutputData &aOutputData, std::ofstream &aOutputFile)
-{
-    if(aOutputData.mWriteOutput == false)
-    {
-        return;
-    }
-
-    if(aOutputFile.is_open() == false)
-    {
-        THROWERR("Newton-Raphson solver diagnostic file is closed.")
-    }
-
-    aOutputFile << std::scientific << std::setprecision(6) << std::right << "Iter" << std::setw(13)
-        << "Norm" << std::setw(22) << "Relative" "\n" << std::flush;
-}
-// function print_newton_raphson_diagnostics_header
-
-inline void compute_relative_residual_norm_criterion(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
-{
-    if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
-    {
-        aOutputData.mReferenceNorm = Plato::norm(aResidual);
-        aOutputData.mCurrentNorm = aOutputData.mReferenceNorm;
-    }
-    else
-    {
-        aOutputData.mCurrentNorm = Plato::norm(aResidual);
-        aOutputData.mRelativeNorm = std::abs(aOutputData.mCurrentNorm - aOutputData.mReferenceNorm);
-        aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
-    }
-}
-
-
-
-
-
-
-
-
-template<typename PhysicsT>
-class NewtonRaphsonSolver
-{
-private:
-    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;           /*!< spatial dimensions*/
-    static constexpr auto mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;     /*!< number of global degrees of freedom per node*/
-    static constexpr auto mNumGlobalDofsPerNode = PhysicsT::mNumDofsPerNode;     /*!< number of global degrees of freedom per node*/
-    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell; /*!< number of local degrees of freedom per cell (i.e. element)*/
-
-    using LocalPhysicsT = typename Plato::Plasticity<mNumSpatialDims>;
-    std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;    /*!< global state residual interface */
-    std::shared_ptr<Plato::LocalVectorFunctionInc<LocalPhysicsT>> mLocalEquation; /*!< local state residual interface*/
-
-    Plato::WorksetBase<Plato::SimplexPlasticity<mNumSpatialDims>> mWorksetBase;     /*!< interface for assembly routines */
-
-    Plato::Scalar mStoppingTolerance;            /*!< stopping tolerance*/
-    Plato::Scalar mDirichletValuesMultiplier;
-    Plato::Scalar mCurrentResidualNormTolerance; /*!< current residual norm stopping tolerance - avoids unnecessary solves */
-
-    Plato::OrdinalType mMaxNumSolverIter;  /*!< maximum number of iterations */
-    Plato::OrdinalType mCurrentSolverIter; /*!< current number of iterations */
-
-    Plato::ScalarVector mDirichletValues;     /*!< Dirichlet boundary conditions values */
-    Plato::LocalOrdinalVector mDirichletDofs; /*!< Dirichlet boundary conditions degrees of freedom */
-
-    bool mUseAbsoluteTolerance;   /*!< use absolute stopping tolerance flag */
-    bool mWriteSolverDiagnostics; /*!< write solver diagnostics flag */
-
-    std::ofstream mSolverDiagnosticsFile; /*!< output solver diagnostics */
-
-public:
-    NewtonRaphsonSolver(Omega_h::Mesh& aMesh, Teuchos::ParameterList& aInputs) :
-        mWorksetBase(aMesh),
-        mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-6)),
-        mDirichletValuesMultiplier(1),
-        mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 1e-10)),
-        mMaxNumSolverIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Newton-Raphson", "Maximum Number Iterations", 10)),
-        mCurrentSolverIter(0),
-        mUseAbsoluteTolerance(false),
-        mWriteSolverDiagnostics(true)
-    {
-        this->openDiagnosticsFile();
-        auto tInitialNumTimeSteps = Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20);
-        mDirichletValuesMultiplier = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(tInitialNumTimeSteps);
-    }
-
-    explicit NewtonRaphsonSolver(Omega_h::Mesh& aMesh) :
-        mWorksetBase(aMesh),
-        mStoppingTolerance(1e-6),
-        mDirichletValuesMultiplier(1),
-        mCurrentResidualNormTolerance(1e-10),
-        mMaxNumSolverIter(20),
-        mCurrentSolverIter(0),
-        mUseAbsoluteTolerance(false),
-        mWriteSolverDiagnostics(true)
-    {
-        this->openDiagnosticsFile();
-    }
-
-    ~NewtonRaphsonSolver()
-    {
-        this->closeDiagnosticsFile();
-    }
-
-    void setDirichletValuesMultiplier(const Plato::Scalar & aInput)
-    {
-        mDirichletValuesMultiplier = aInput;
-    }
-
-    void appendLocalEquation(const std::shared_ptr<Plato::LocalVectorFunctionInc<LocalPhysicsT>> & aInput)
-    {
-        mLocalEquation = aInput;
-    }
-
-    void appendGlobalEquation(const std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> & aInput)
-    {
-        mGlobalEquation = aInput;
-    }
-
-    void appendDirichletValues(const Plato::ScalarVector & aInput)
-    {
-        mDirichletValues = aInput;
-    }
-
-    void appendDirichletDofs(const Plato::LocalOrdinalVector & aInput)
-    {
-        mDirichletDofs = aInput;
-    }
-
-    void appendOutputMessage(const std::stringstream & aInput)
-    {
-        mSolverDiagnosticsFile << aInput.str().c_str();
-    }
-
-    void openDiagnosticsFile()
-    {
-        if (mWriteSolverDiagnostics == false)
-        {
-            return;
-        }
-
-        mSolverDiagnosticsFile.open("plato_analyze_newton_raphson_diagnostics.txt");
-    }
-
-    void closeDiagnosticsFile()
-    {
-        if (mWriteSolverDiagnostics == false)
-        {
-            return;
-        }
-
-        mSolverDiagnosticsFile.close();
-    }
-
-    void updateInverseLocalJacobian(const Plato::ScalarVector & aControls,
-                                    const Plato::ForwardProblemStates & aStates,
-                                    Plato::ScalarArray3D& aInvLocalJacobianT)
-    {
-        auto tNumCells = mLocalEquation->numCells();
-        auto tDhDc = mLocalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
-                                                  aStates.mCurrentLocalState , aStates.mPreviousLocalState,
-                                                  aControls, aStates.mCurrentStepIndex);
-        Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, aInvLocalJacobianT);
-    }
-
-    void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aResidual)
-    {
-        Plato::ScalarVector tDispControlledDirichletValues("Dirichlet Values", mDirichletValues.size());
-        Plato::fill(0.0, tDispControlledDirichletValues);
-        if(mCurrentSolverIter == static_cast<Plato::OrdinalType>(0))
-        {
-            Plato::update(mDirichletValuesMultiplier, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
-        }
-
-        if(aMatrix->isBlockMatrix())
-        {
-            Plato::applyBlockConstraints<mNumGlobalDofsPerNode>(aMatrix, aResidual, mDirichletDofs, tDispControlledDirichletValues);
-        }
-        else
-        {
-            Plato::applyConstraints<mNumGlobalDofsPerNode>(aMatrix, aResidual, mDirichletDofs, tDispControlledDirichletValues);
-        }
-    }
-
-    void updateGlobalStates(Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
-                            Plato::ScalarVector aResidual,
-                            Plato::ForwardProblemStates &aStates)
-    {
-        const Plato::Scalar tAlpha = 1.0;
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aStates.mDeltaGlobalState);
-        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(aMatrix, aStates.mDeltaGlobalState, aResidual, mUseAbsoluteTolerance);
-        Plato::update(tAlpha, aStates.mDeltaGlobalState, tAlpha, aStates.mCurrentGlobalState);
-    }
-
-    Plato::ScalarArray3D computeSchurComplement(const Plato::ScalarVector & aControls,
-                                                const ForwardProblemStates & aStates,
-                                                const Plato::ScalarArray3D & aInvLocalJacobianT)
-    {
-        // Compute cell Jacobian of the local residual with respect to the current global state WorkSet (WS)
-        auto tDhDu = mLocalEquation->gradient_u(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
-                                                 aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                 aControls, aStates.mCurrentStepIndex);
-
-        // Compute cell C = (dH/dc)^{-1}*dH/du, where H is the local residual, c are the local states and u are the global states
-        Plato::Scalar tBeta = 0.0;
-        const Plato::Scalar tAlpha = 1.0;
-        auto tNumCells = mLocalEquation->numCells();
-        Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDc times DhDu", tNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::multiply_matrix_workset(tNumCells, tAlpha, aInvLocalJacobianT, tDhDu, tBeta, tInvDhDcTimesDhDu);
-
-        // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
-        auto tDrDc = mGlobalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
-                                                  aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                  aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
-
-        // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
-        // R is the global residual, c are the local states and u are the global states
-        Plato::ScalarArray3D tSchurComplement("Schur Complement", tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::multiply_matrix_workset(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tSchurComplement);
-
-        return tSchurComplement;
-    }
-
-    Teuchos::RCP<Plato::CrsMatrixType>
-    assembleTangentMatrix(const Plato::ScalarVector & aControls,
-                          const Plato::ForwardProblemStates & aStates,
-                          const Plato::ScalarArray3D& aInvLocalJacobianT)
-    {
-        // Compute cell Schur Complement, i.e. dR/dc * (dH/dc)^{-1} * dH/du, where H is the local
-        // residual, R is the global residual, c are the local states and u are the global states
-        auto tSchurComplement = this->computeSchurComplement(aControls, aStates, aInvLocalJacobianT);
-
-        // Compute cell Jacobian of the global residual with respect to the current global state WorkSet (WS)
-        auto tDrDu = mGlobalEquation->gradient_u(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
-                                                   aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                   aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
-
-        // Add cell Schur complement to dR/du, where R is the global residual and u are the global states
-        const Plato::Scalar tBeta = 1.0;
-        const Plato::Scalar tAlpha = -1.0;
-        auto tNumCells = mGlobalEquation->numCells();
-        Plato::update_array_3D(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
-
-        // Assemble full Jacobian
-        auto tMesh = mGlobalEquation->getMesh();
-        auto tGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumGlobalDofsPerNode>(&tMesh);
-        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode> tGlobalJacEntryOrdinal(tGlobalJacobian, &tMesh);
-        auto tJacEntries = tGlobalJacobian->entries();
-        Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell, tGlobalJacEntryOrdinal, tDrDu, tJacEntries);
-
-        return tGlobalJacobian;
-    }
-
-    Plato::ScalarVector assembleResidual(const Plato::ScalarVector & aControls,
-                                         const Plato::ForwardProblemStates & aStates,
-                                         const Plato::ScalarArray3D& aInvLocalJacobianT)
-    {
-        auto tGlobalResidual =
-            mGlobalEquation->value(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
-                                     aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                     aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
-
-        // compute local residual workset (WS)
-        auto tLocalResidualWS =
-                mLocalEquation->valueWorkSet(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
-                                               aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                               aControls, aStates.mCurrentStepIndex);
-
-        // compute inv(DhDc)*h, where h is the local residual and DhDc is the local jacobian
-        auto tNumCells = mLocalEquation->numCells();
-        const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 0.0;
-        Plato::ScalarMultiVector tInvLocalJacTimesLocalRes("InvLocalJacTimesLocalRes", tNumCells, mNumLocalDofsPerCell);
-        Plato::matrix_times_vector_workset("N", tAlpha, aInvLocalJacobianT, tLocalResidualWS, tBeta, tInvLocalJacTimesLocalRes);
-
-        // compute DrDc*inv(DhDc)*h
-        Plato::ScalarMultiVector tLocalResidualTerm("LocalResidualTerm", tNumCells, mNumGlobalDofsPerCell);
-        auto tDrDc = mGlobalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
-                                                   aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                                   aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
-        Plato::matrix_times_vector_workset("N", tAlpha, tDrDc, tInvLocalJacTimesLocalRes, tBeta, tLocalResidualTerm);
-
-        // assemble local residual contribution
-        const auto tNumNodes = mGlobalEquation->numNodes();
-        const auto tTotalNumDofs = mNumGlobalDofsPerNode * tNumNodes;
-        Plato::ScalarVector  tLocalResidualContribution("Assembled Local Residual", tTotalNumDofs);
-        mWorksetBase.assembleResidual(tLocalResidualTerm, tLocalResidualContribution);
-
-        // add local residual contribution to global residual, i.e. r - DrDc*inv(DhDc)*h
-        Plato::axpy(static_cast<Plato::Scalar>(-1.0), tLocalResidualContribution, tGlobalResidual);
-
-        return (tGlobalResidual);
-    }
-
-    void initializeSolver(Plato::ForwardProblemStates & aStates)
-    {
-        mCurrentSolverIter = 0;
-        Plato::update(1.0, aStates.mPreviousLocalState, 0.0, aStates.mCurrentLocalState);
-        Plato::update(1.0, aStates.mPreviousGlobalState, 0.0, aStates.mCurrentGlobalState);
-    }
-
-    bool checkStoppingCriterion(Plato::NewtonRaphsonOutputData & aOutputData)
-    {
-        bool tStop = false;
-
-        if(aOutputData.mRelativeNorm < mStoppingTolerance)
-        {
-            tStop = true;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::RELATIVE_NORM_TOLERANCE;
-        }
-        else if(aOutputData.mCurrentNorm < mCurrentResidualNormTolerance)
-        {
-            tStop = true;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE;
-        }
-        else if(aOutputData.mCurrentIteration >= mMaxNumSolverIter)
-        {
-            tStop = true;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
-        }
-
-        return (tStop);
-    }
-
-    /***************************************************************************//**
-     * \brief Solve Newton-Raphson problem
-     * \param [in] aControls           1-D view of controls, e.g. design variables
-     * \param [in] aStateData         data manager with current and previous state data
-     * \param [in] aInvLocalJacobianT 3-D container for inverse Jacobian
-     * \return flag used to indicate if the Newton-Raphson solver converged
-    *******************************************************************************/
-    bool solve(const Plato::ScalarVector & aControls, Plato::ForwardProblemStates & aStates)
-    {
-        bool tNewtonRaphsonConverged = false;
-        Plato::NewtonRaphsonOutputData tOutputData;
-        auto tNumCells = mLocalEquation->numCells();
-        Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-
-        tOutputData.mWriteOutput = mWriteSolverDiagnostics;
-        Plato::print_newton_raphson_diagnostics_header(tOutputData, mSolverDiagnosticsFile);
-
-        this->initializeSolver(aStates);
-        while(true)
-        {
-            tOutputData.mCurrentIteration = mCurrentSolverIter;
-
-            // update inverse of local Jacobian -> store in tInvLocalJacobianT
-            this->updateInverseLocalJacobian(aControls, aStates, tInvLocalJacobianT);
-
-            // assemble residual
-            auto tGlobalResidual = this->assembleResidual(aControls, aStates, tInvLocalJacobianT);
-            Plato::scale(static_cast<Plato::Scalar>(-1.0), tGlobalResidual);
-
-            // assemble tangent stiffness matrix
-            auto tGlobalJacobian = this->assembleTangentMatrix(aControls, aStates, tInvLocalJacobianT);
-
-            // apply Dirichlet boundary conditions
-            this->applyConstraints(tGlobalJacobian, tGlobalResidual);
-
-            // check convergence
-            Plato::compute_relative_residual_norm_criterion(tGlobalResidual, tOutputData);
-            Plato::print_newton_raphson_diagnostics(tOutputData, mSolverDiagnosticsFile);
-
-            const bool tStop = this->checkStoppingCriterion(tOutputData);
-            if(tStop == true)
-            {
-                tNewtonRaphsonConverged = true;
-                break;
-            }
-
-            // update global states
-            this->updateGlobalStates(tGlobalJacobian, tGlobalResidual, aStates);
-
-            // update local states
-            mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
-                                               aStates.mCurrentLocalState, aStates.mPreviousLocalState,
-                                               aControls, aStates.mCurrentStepIndex);
-            mCurrentSolverIter++;
-        }
-
-        Plato::print_newton_raphson_stop_criterion(tOutputData, mSolverDiagnosticsFile);
-
-        return (tNewtonRaphsonConverged);
-    }
-};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1323,7 +830,7 @@ private:
     *******************************************************************************/
     bool solveForwardProblem(const Plato::ScalarVector & aControls)
     {
-        Plato::ForwardProblemStates tStateData;
+        Plato::CurrentStates tStateData;
         auto tNumCells = mLocalResidualEq->numCells();
         tStateData.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalResidualEq->size());
 
@@ -1446,7 +953,7 @@ private:
      * \param [in/out] aStateData data manager with current and previous global and local state data
     *******************************************************************************/
     void updateProjectedPressureGradient(const Plato::ScalarVector &aControls,
-                                         Plato::ForwardProblemStates &aStateData)
+                                         Plato::CurrentStates &aStateData)
     {
         Plato::OrdinalType tNextStepIndex = aStateData.mCurrentStepIndex + static_cast<Plato::OrdinalType>(1);
         if(tNextStepIndex >= mNumPseudoTimeSteps)
@@ -1471,7 +978,7 @@ private:
      * \param [in]     aStateData  state data
      * \param [in\out] aOutputData Newton-Raphson solver output data
     *******************************************************************************/
-    void computeDisplacementNorm(const Plato::ForwardProblemStates &aStateData, Plato::NewtonRaphsonOutputData & aOutputData)
+    void computeDisplacementNorm(const Plato::CurrentStates &aStateData, Plato::NewtonRaphsonOutputData & aOutputData)
     {
         if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
         {
@@ -1710,7 +1217,7 @@ private:
      * \param [in] aStateData state data manager
      * \param [in] aZeroEntries flag - zero all entries in current states (default = false)
     *******************************************************************************/
-    void cacheStateData(Plato::ForwardProblemStates &aStateData)
+    void cacheStateData(Plato::CurrentStates &aStateData)
     {
         // GET CURRENT STATE
         aStateData.mCurrentLocalState = Kokkos::subview(mLocalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
