@@ -709,7 +709,6 @@ private:
     std::shared_ptr<Plato::LocalScalarFunctionInc> mObjective;  /*!< objective constraint interface*/
     std::shared_ptr<Plato::LocalScalarFunctionInc> mConstraint; /*!< constraint constraint interface*/
 
-    Plato::OrdinalType mMaxNumAmgxIter;           /*!< maximum number of AMGX iterations */
     Plato::OrdinalType mNewtonIteration;          /*!< current Newton-Raphson iteration */
     Plato::OrdinalType mMaxNumNewtonIter;         /*!< maximum number of Newton-Raphson iterations*/
     Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps*/
@@ -759,7 +758,6 @@ public:
             mConstraint(nullptr),
             mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
             mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
-            mMaxNumAmgxIter(500),
             mNewtonIteration(0),
             mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Maximum Number Iterations", 10)),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
@@ -789,7 +787,6 @@ public:
             mConstraint(nullptr),
             mNumPseudoTimeSteps(20),
             mMaxNumPseudoTimeSteps(80),
-            mMaxNumAmgxIter(500),
             mNewtonIteration(0),
             mMaxNumNewtonIter(10),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
@@ -841,15 +838,6 @@ public:
     void useAbsoluteTolerance()
     {
         mUseAbsoluteTolerance = true;
-    }
-
-    /***************************************************************************//**
-     * \brief Set maximum number of AMGX Solver iterations
-     * \param [in] aInput maximum number of AMGX Solver iterations
-    *******************************************************************************/
-    void setMaxNumAmgxIterations(Plato::OrdinalType & aInput)
-    {
-        mMaxNumAmgxIter = aInput;
     }
 
     /***************************************************************************//**
