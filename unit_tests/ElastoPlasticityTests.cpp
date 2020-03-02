@@ -986,7 +986,7 @@ private:
         Plato::ForwardStates tCurrentStates(aType);
         Plato::ForwardStates tPreviousStates(aType);
         Plato::AdjointStates tAdjointStates(mGlobalEquation->size(), mLocalEquation->size(), mProjectionEquation->size());
-        Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
+        Plato::ScalarArray3D tInvLocalJacT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
         this->initializeAdjointSolver();
 
@@ -1003,10 +1003,10 @@ private:
             this->updateForwardState(tCurrentStates);
             this->updateAdjointState(tAdjointStates);
 
-            mAdjointSolver->updateInverseLocalJacobian(aControls, tCurrentStates, tInvLocalJacobianT);
+            mAdjointSolver->updateInverseLocalJacobian(aControls, tCurrentStates, tInvLocalJacT);
             mAdjointSolver->updateProjPressGradAdjointVars(aControls, tCurrentStates, tAdjointStates);
-            mAdjointSolver->updateGlobalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
-            mAdjointSolver->updateLocalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
+            mAdjointSolver->updateGlobalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacT, tAdjointStates);
+            mAdjointSolver->updateLocalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacT, tAdjointStates);
             mAdjointSolver->addPartialDiffEquationContribution(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
         }
     }
