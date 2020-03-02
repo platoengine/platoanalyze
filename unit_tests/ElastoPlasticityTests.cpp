@@ -99,7 +99,8 @@ struct NewtonRaphson
     {
         DID_NOT_CONVERGE = 0,
         MAX_NUMBER_ITERATIONS = 1,
-        NORM_TOLERANCE = 2,
+        RELATIVE_NORM_TOLERANCE = 2,
+        CURRENT_NORM_TOLERANCE = 3,
     };
 
     enum measure_t
@@ -244,9 +245,14 @@ inline void print_newton_raphson_stop_criterion(const Plato::NewtonRaphsonOutput
             aOutputFile << "\n\n****** Newton-Raphson solver stopping due to exceeding maximum number of iterations. ******\n\n";
             break;
         }
-        case Plato::NewtonRaphson::NORM_TOLERANCE:
+        case Plato::NewtonRaphson::RELATIVE_NORM_TOLERANCE:
         {
-            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to norm tolerance being met. ******\n\n";
+            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to relative norm tolerance being met. ******\n\n";
+            break;
+        }
+        case Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE:
+        {
+            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to current norm tolerance being met. ******\n\n";
             break;
         }
         case Plato::NewtonRaphson::DID_NOT_CONVERGE:
@@ -297,7 +303,7 @@ inline void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOu
 }
 // function print_newton_raphson_diagnostics_header
 
-inline void compute_residual_norm(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
+inline void compute_relative_residual_norm_criterion(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
 {
     if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
     {
@@ -586,11 +592,16 @@ public:
         if(aOutputData.mRelativeNorm < mStoppingTolerance)
         {
             tStop = true;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::NORM_TOLERANCE;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::RELATIVE_NORM_TOLERANCE;
         }
-        else if(aOutputData.mCurrentIteration == mMaxNumSolverIter)
+        else if(aOutputData.mCurrentNorm < mCurrentResidualNormTolerance)
         {
-            tStop = false;
+            tStop = true;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE;
+        }
+        else if(aOutputData.mCurrentIteration >= mMaxNumSolverIter)
+        {
+            tStop = true;
             aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
         }
 
@@ -633,13 +644,11 @@ public:
             this->applyConstraints(tGlobalJacobian, tGlobalResidual);
 
             // check convergence
-            Plato::compute_residual_norm(tGlobalResidual, tOutputData);
+            Plato::compute_relative_residual_norm_criterion(tGlobalResidual, tOutputData);
             Plato::print_newton_raphson_diagnostics(tOutputData, mSolverDiagnosticsFile);
 
-            const bool tSecondaryStoppingCriteriaMet =
-                mCurrentSolverIter >= mMaxNumSolverIter || tOutputData.mCurrentNorm < mCurrentResidualNormTolerance;
-            const bool tPrimaryStoppingCriteriaMet = this->checkStoppingCriterion(tOutputData);
-            if(tPrimaryStoppingCriteriaMet == true || tSecondaryStoppingCriteriaMet)
+            const bool tStop = this->checkStoppingCriterion(tOutputData);
+            if(tStop == true)
             {
                 tNewtonRaphsonConverged = true;
                 break;
