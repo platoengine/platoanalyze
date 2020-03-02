@@ -96,6 +96,8 @@ struct AdjointStates
     Plato::ScalarVector mPreviousGlobalAdjoint;        /*!< previous global adjoint */
     Plato::ScalarVector mProjPressGradAdjoint;         /*!< projected pressure adjoint */
     Plato::ScalarVector mPreviousProjPressGradAdjoint; /*!< projected pressure adjoint */
+
+    Plato::ScalarArray3D mInvLocalJacT;                /*!< inverse of local Jacobian with respect to local states */
 };
 // struct AdjointStates
 
@@ -242,14 +244,12 @@ private:
      * \param [in] aControls      design variables
      * \param [in] aCurStateVars  C++ structure that holds the current set of state variables
      * \param [in] aPrevStateVars C++ structure that holds the previous set of state variables
-     * \param [in] aInvLocalJac   inverse of local Jacobian cell matrices
      * \param [in] aAdjointVars   C++ structure that holds the current set of adjoint variables
     *******************************************************************************/
     Plato::ScalarMultiVector
     computeLocalAdjointRHS(const Plato::ScalarVector &aControls,
                            const Plato::ForwardStates &aCurStateVars,
                            const Plato::ForwardStates &aPrevStateVars,
-                           const Plato::ScalarArray3D &aInvLocalJac,
                            const Plato::AdjointStates & aAdjointVars)
     {
         // Compute partial derivative of objective with respect to current local states
@@ -289,7 +289,7 @@ private:
         auto tNumCells = mLocalEquation->numCells();
         const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 0.0;
         Plato::ScalarMultiVector tLocalStateWorkSet("InvLocalJacobianTimesLocalVec", tNumCells, mNumLocalDofsPerCell);
-        Plato::matrix_times_vector_workset("T", tAlpha, aInvLocalJac, tDfDc, tBeta, tLocalStateWorkSet);
+        Plato::matrix_times_vector_workset("T", tAlpha, aAdjointVars.mInvLocalJacT, tDfDc, tBeta, tLocalStateWorkSet);
 
         // Compute local RHS <- tDhDu_k^T * { Inv(tDhDc_k^T) * [ DfDc_k + DfDc_{k+1} + ( DhDc_{k+1}^T * mu_{k+1} ) + ( DrDc_{k+1}^T * lambda_{k+1} ) }
         auto tDhDu = mLocalEquation->gradient_u(aCurStateVars.mCurrentGlobalState, aCurStateVars.mPreviousGlobalState,
@@ -358,14 +358,12 @@ private:
      * \param [in] aControls      1D view of control variables, i.e. design variables
      * \param [in] aCurStateVars  C++ structure that holds the current set of state variables
      * \param [in] aPrevStateVars C++ structure that holds the previous set of state variables
-     * \param [in] aInvLocalJac   inverse of transpose local Jacobian wrt local states
      * \param [in] aAdjointVars   C++ structure that holds the current set of adjoint variables
     *******************************************************************************/
     Plato::ScalarVector
     assembleGlobalAdjointRHS(const Plato::ScalarVector & aControls,
                              const Plato::ForwardStates & aCurStateVars,
                              const Plato::ForwardStates & aPrevStateVars,
-                             const Plato::ScalarArray3D & aInvLocalJac,
                              const Plato::AdjointStates & aAdjointVars)
     {
         // Compute partial derivative of objective with respect to current global states
@@ -407,8 +405,7 @@ private:
         }
 
         // Compute and add local contribution to global adjoint rhs, i.e. tDfDu_k - F_k^{local}
-        auto tLocalStateAdjointRHS = this->computeLocalAdjointRHS(aControls, aCurStateVars, aPrevStateVars, 
-                                                                  aInvLocalJac, aAdjointVars);
+        auto tLocalStateAdjointRHS = this->computeLocalAdjointRHS(aControls, aCurStateVars, aPrevStateVars, aAdjointVars);
         const Plato::Scalar  tAlpha = -1.0; const Plato::Scalar tBeta = 1.0;
         Plato::update_array_2D(tAlpha, tLocalStateAdjointRHS, tBeta, tDfDu);
 
@@ -716,21 +713,18 @@ public:
      * \param [in]     aControls      1D view of control variables, i.e. design variables
      * \param [in]     aCurStateVars  C++ structure that holds current state variables
      * \param [in]     aPrevStateVars C++ structure that holds previous state variables
-     * \param [in]     aInvLocalJac   inverse of transpose local Jacobian wrt local states
      * \param [in\out] aAdjointVars   C++ structure that holds current adjoint variables
     *******************************************************************************/
     void updateGlobalAdjointVars(const Plato::ScalarVector & aControls,
                                  const Plato::ForwardStates & aCurStateVars,
                                  const Plato::ForwardStates & aPrevStateVars,
-                                 const Plato::ScalarArray3D & aInvLocalJac,
                                  Plato::AdjointStates & aAdjointVars)
     {
         // Assemble Jacobian
-        auto tJacobian = this->assembleTangentMatrix(aControls, aCurStateVars, aInvLocalJac);
+        auto tJacobian = this->assembleTangentMatrix(aControls, aCurStateVars, aAdjointVars.mInvLocalJacT);
 
         // Assemble residual
-        auto tResidual = this->assembleGlobalAdjointRHS(aControls, aCurStateVars, aPrevStateVars, 
-                                                        aInvLocalJac, aAdjointVars);
+        auto tResidual = this->assembleGlobalAdjointRHS(aControls, aCurStateVars, aPrevStateVars, aAdjointVars);
 
         // Apply Dirichlet conditions for adjoint problem
         this->applyConstraints(tJacobian, tResidual);
@@ -762,13 +756,11 @@ public:
      * \param [in]     aControls      1D view of control variables, i.e. design variables
      * \param [in]     aCurStateVars  C++ structure that holds current state variables
      * \param [in]     aPrevStateVars C++ structure that holds previous state variables
-     * \param [in]     aInvLocalJac   inverse of transpose local Jacobian wrt local states
      * \param [in/out] aAdjointVars   C++ structure that holds current adjoint variables
     *******************************************************************************/
     void updateLocalAdjointVars(const Plato::ScalarVector & aControls,
                                 const Plato::ForwardStates& aCurStateVars,
                                 const Plato::ForwardStates& aPrevStateVars,
-                                const Plato::ScalarArray3D& aInvLocalJac,
                                 Plato::AdjointStates & aAdjointVars)
     {
         // Compute DfDc_{k}
@@ -816,7 +808,7 @@ public:
         // Solve for current local adjoint variables, i.e. mu_k = -Inv(tDhDc_k^T) * RHS_{local}
         tAlpha = -1.0; tBeta = 0.0;
         Plato::ScalarMultiVector tCurrentMu("Current Local Adjoint Workset", tNumCells, mNumLocalDofsPerCell);
-        Plato::matrix_times_vector_workset("T", tAlpha, aInvLocalJac, tDfDc, tBeta, tCurrentMu);
+        Plato::matrix_times_vector_workset("T", tAlpha, aAdjointVars.mInvLocalJacT, tDfDc, tBeta, tCurrentMu);
         Plato::flatten_vector_workset<mNumLocalDofsPerCell>(tNumCells, tCurrentMu, aAdjointVars.mCurrentLocalAdjoint);
     }
 
