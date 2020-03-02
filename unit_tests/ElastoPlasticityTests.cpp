@@ -451,7 +451,8 @@ private:
         Plato::update_array_2D(tAlpha, tLocalStateAdjointRHS, tBeta, tDfDu);
 
         // Assemble -( DfDu_k + DfDup + (DpDup_T * gamma_{k+1}) - F_k^{local} )
-        Plato::ScalarVector tGlobalResidual("global adjoint residual");
+        auto tNumGlobalAdjointVars = mGlobalEquation->size();
+        Plato::ScalarVector tGlobalResidual("global adjoint residual", tNumGlobalAdjointVars);
         Plato::fill(static_cast<Plato::Scalar>(0), tGlobalResidual);
         mWorksetBase.assembleVectorGradientU(tDfDu, tGlobalResidual);
         Plato::scale(static_cast<Plato::Scalar>(-1), tGlobalResidual);
@@ -595,10 +596,12 @@ private:
 
 public:
     PathDependentAdjointProblem(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs) :
+        mWorksetBase(aMesh),
         mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20))
     {}
 
     explicit PathDependentAdjointProblem(Omega_h::Mesh & aMesh) :
+        mWorksetBase(aMesh),
         mNumPseudoTimeSteps(20)
     {}
 
@@ -631,7 +634,7 @@ public:
      * \brief Append projection system of equation interface
      * \param [in] aInput projection system of equation interface
     *******************************************************************************/
-    void appendProjectionEquation(const std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> & aInput)
+    void appendProjectionEquation(const std::shared_ptr<Plato::VectorFunctionVMS<ProjectorT>> & aInput)
     {
         mProjectionEquation = aInput;
     }
@@ -1862,6 +1865,14 @@ private:
         Plato::AdjointStates tAdjointStates(mGlobalEquation->size(), mLocalEquation->size(), mProjectionEquation->size());
         Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
+        auto tMesh = mGlobalEquation->getMesh();
+        Plato::PathDependentAdjointProblem<PhysicsT> tAdjointProblem(tMesh);
+        tAdjointProblem.appendDirichletDofs(mDirichletDofs);
+        tAdjointProblem.appendLocalEquation(mLocalEquation);
+        tAdjointProblem.appendGlobalEquation(mGlobalEquation);
+        tAdjointProblem.appendProjectionEquation(mProjectionEquation);
+        tAdjointProblem.setNumPseudoTimeSteps(mNumPseudoTimeSteps);
+
         // outer loop for pseudo time steps
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         for(tCurrentStates.mCurrentStepIndex = tLastStepIndex; tCurrentStates.mCurrentStepIndex >= 0; tCurrentStates.mCurrentStepIndex--)
@@ -1869,18 +1880,23 @@ private:
             tPreviousStates.mCurrentStepIndex = tCurrentStates.mCurrentStepIndex + 1;
             if(tPreviousStates.mCurrentStepIndex < mNumPseudoTimeSteps)
             {
-                this->updateStateData(tPreviousStates);
+                this->updateForwardState(tPreviousStates);
             }
 
-            this->updateStateData(tCurrentStates);
-            this->updateAdjointData(tAdjointStates);
-            this->updateInverseLocalJacobian(aControls, tCurrentStates, tInvLocalJacobianT);
+            this->updateForwardState(tCurrentStates);
+            this->updateAdjointState(tAdjointStates);
 
-            this->updateProjPressGradAdjointVars(aControls, tCurrentStates, tAdjointStates);
-            this->updateGlobalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
-            this->updateLocalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
-
-            this->updatePartialDerivativePDE(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
+            //this->updateInverseLocalJacobian(aControls, tCurrentStates, tInvLocalJacobianT);
+            //this->updateProjPressGradAdjointVars(aControls, tCurrentStates, tAdjointStates);
+            //this->updateGlobalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
+            //this->updateLocalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
+            //this->updatePartialDerivativePDE(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
+           
+            tAdjointProblem.updateInverseLocalJacobian(aControls, tCurrentStates, tInvLocalJacobianT);
+            tAdjointProblem.updateProjPressGradAdjointVars(aControls, tCurrentStates, tAdjointStates);
+            tAdjointProblem.updateGlobalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
+            tAdjointProblem.updateLocalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
+            tAdjointProblem.updatePartialDerivativePDE(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
         }
     }
 
@@ -1936,7 +1952,7 @@ private:
      * \param [in] aStateData state data manager
      * \param [in] aZeroEntries flag - zero all entries in current states (default = false)
     *******************************************************************************/
-    void updateStateData(Plato::ForwardStates & aStateData)
+    void updateForwardState(Plato::ForwardStates & aStateData)
     {
         // GET CURRENT STATE
         aStateData.mCurrentLocalState = Kokkos::subview(mLocalStates, aStateData.mCurrentStepIndex, Kokkos::ALL());
@@ -1958,7 +1974,7 @@ private:
      * \brief Update adjoint data for time step n, i.e. current time step:
      * \param [in] aAdjointData adjoint data manager
     *******************************************************************************/
-    void updateAdjointData(Plato::AdjointStates& aAdjointStates)
+    void updateAdjointState(Plato::AdjointStates& aAdjointStates)
     {
         // NOTE: CURRENT ADJOINT VARIABLES ARE UPDATED AT SOLVE TIME. THERE IS NO NEED TO SET THEM TO ZERO HERE.
         const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 0.0;
