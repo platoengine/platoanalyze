@@ -125,14 +125,15 @@ private:
 
     using LocalPhysicsT = typename Plato::Plasticity<mNumSpatialDims>;
     using ProjectorT  = typename Plato::Projection<mNumSpatialDims, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
+
     std::shared_ptr<Plato::LocalScalarFunctionInc> mCriterion;                    /*!< local criterion interface */ 
     std::shared_ptr<Plato::VectorFunctionVMS<ProjectorT>> mProjectionEquation;    /*!< global pressure gradient projection interface */
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;    /*!< global equality constraint interface */
     std::shared_ptr<Plato::LocalVectorFunctionInc<LocalPhysicsT>> mLocalEquation; /*!< local equality constraint interface */
+
     Plato::WorksetBase<Plato::SimplexPlasticity<mNumSpatialDims>> mWorksetBase;   /*!< interface for assembly routines */
 
     Plato::OrdinalType mNumPseudoTimeSteps;   /*!< current number of pseudo time steps*/
-
     Plato::LocalOrdinalVector mDirichletDofs; /*!< Dirichlet boundary conditions degrees of freedom */
 
 private:
