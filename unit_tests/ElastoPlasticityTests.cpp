@@ -163,7 +163,7 @@ struct AdjointStates
 
 
 template<typename PhysicsT>
-class PathDependentAdjointProblem
+class PathDependentAdjointSolver
 {
 private:
     static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;                /*!< spatial dimensions */
@@ -595,17 +595,17 @@ private:
     }
 
 public:
-    PathDependentAdjointProblem(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs) :
+    PathDependentAdjointSolver(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs) :
         mWorksetBase(aMesh),
         mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20))
     {}
 
-    explicit PathDependentAdjointProblem(Omega_h::Mesh & aMesh) :
+    explicit PathDependentAdjointSolver(Omega_h::Mesh & aMesh) :
         mWorksetBase(aMesh),
         mNumPseudoTimeSteps(20)
     {}
 
-    ~PathDependentAdjointProblem(){}
+    ~PathDependentAdjointSolver(){}
 
     void setNumPseudoTimeSteps(const Plato::OrdinalType & aInput)
     {
@@ -948,7 +948,8 @@ private:
 
     Plato::WorksetBase<Plato::SimplexPlasticity<mNumSpatialDims>> mWorksetBase; /*!< assembly routine interface */
 
-    std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver; /*!< Newton-Raphson solve interface */
+    std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver;        /*!< Newton-Raphson solve interface */
+    std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
     std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal */
 
 // public functions
@@ -978,7 +979,8 @@ public:
             mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalEquation->size()),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEquation->size()),
             mWorksetBase(aMesh),
-            mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs))
+            mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs)),
+            mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs))
     {
         this->initialize(aMesh, aMeshSets, aInputs);
     }
@@ -1002,7 +1004,8 @@ public:
             mGlobalStates("Global States", mNumPseudoTimeSteps, aMesh.nverts() * mNumGlobalDofsPerNode),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, aMesh.nverts() * mNumPressGradDofsPerNode),
             mWorksetBase(aMesh),
-            mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh))
+            mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh)),
+            mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh))
     {
         mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumGlobalDofsPerNode>(&aMesh);
         mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
@@ -1846,6 +1849,15 @@ private:
         }
     }
 
+    void initializeAdjointSolver()
+    {
+        mAdjointSolver->appendDirichletDofs(mDirichletDofs);
+        mAdjointSolver->appendLocalEquation(mLocalEquation);
+        mAdjointSolver->appendGlobalEquation(mGlobalEquation);
+        mAdjointSolver->appendProjectionEquation(mProjectionEquation);
+        mAdjointSolver->setNumPseudoTimeSteps(mNumPseudoTimeSteps);
+    }
+
     /***************************************************************************//**
      * \brief Add contribution from partial differential equation (PDE) constraint
      *   to the total derivative of the criterion, i.e. scalar function.
@@ -1865,13 +1877,7 @@ private:
         Plato::AdjointStates tAdjointStates(mGlobalEquation->size(), mLocalEquation->size(), mProjectionEquation->size());
         Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
-        auto tMesh = mGlobalEquation->getMesh();
-        Plato::PathDependentAdjointProblem<PhysicsT> tAdjointProblem(tMesh);
-        tAdjointProblem.appendDirichletDofs(mDirichletDofs);
-        tAdjointProblem.appendLocalEquation(mLocalEquation);
-        tAdjointProblem.appendGlobalEquation(mGlobalEquation);
-        tAdjointProblem.appendProjectionEquation(mProjectionEquation);
-        tAdjointProblem.setNumPseudoTimeSteps(mNumPseudoTimeSteps);
+        this->initializeAdjointSolver();
 
         // outer loop for pseudo time steps
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
@@ -1892,11 +1898,11 @@ private:
             //this->updateLocalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
             //this->updatePartialDerivativePDE(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
            
-            tAdjointProblem.updateInverseLocalJacobian(aControls, tCurrentStates, tInvLocalJacobianT);
-            tAdjointProblem.updateProjPressGradAdjointVars(aControls, tCurrentStates, tAdjointStates);
-            tAdjointProblem.updateGlobalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
-            tAdjointProblem.updateLocalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
-            tAdjointProblem.updatePartialDerivativePDE(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
+            mAdjointSolver->updateInverseLocalJacobian(aControls, tCurrentStates, tInvLocalJacobianT);
+            mAdjointSolver->updateProjPressGradAdjointVars(aControls, tCurrentStates, tAdjointStates);
+            mAdjointSolver->updateGlobalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
+            mAdjointSolver->updateLocalAdjointVars(aCriterion, aControls, tCurrentStates, tPreviousStates, tInvLocalJacobianT, tAdjointStates);
+            mAdjointSolver->updatePartialDerivativePDE(aControls, tCurrentStates, tAdjointStates, aTotalDerivative);
         }
     }
 
