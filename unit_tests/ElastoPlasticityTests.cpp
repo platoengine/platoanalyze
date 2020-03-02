@@ -408,6 +408,11 @@ public:
         mDirichletDofs = aInput;
     }
 
+    void appendOutputMessage(const std::stringstream & aInput)
+    {
+        mSolverDiagnosticsFile << aInput.str().c_str();
+    }
+
     void openDiagnosticsFile()
     {
         if (mWriteSolverDiagnostics == false)
@@ -675,14 +680,10 @@ public:
 
 
 /***************************************************************************//**
- * \brief Plasticity problem manager, which is responsible for performance
- * criteria evaluations and
+ * \brief Plasticity problem manager.  This interface is responsible for the 
+ * evaluation of the criteriai, sensitivities and residual evaluations.
  *
  * \tparam PhysicsT physics type, e.g. Plato::InfinitesimalStrainPlasticity
- *
- * \param [in] aMesh mesh database
- * \param [in] aMeshSets side sets database
- * \param [in] aInputParams input parameters database
 *******************************************************************************/
 template<typename PhysicsT>
 class PlasticityProblem : public Plato::AbstractProblem
@@ -709,8 +710,6 @@ private:
     std::shared_ptr<Plato::LocalScalarFunctionInc> mObjective;  /*!< objective constraint interface*/
     std::shared_ptr<Plato::LocalScalarFunctionInc> mConstraint; /*!< constraint constraint interface*/
 
-    Plato::OrdinalType mNewtonIteration;          /*!< current Newton-Raphson iteration */
-    Plato::OrdinalType mMaxNumNewtonIter;         /*!< maximum number of Newton-Raphson iterations*/
     Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps*/
     Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps*/
 
@@ -718,7 +717,6 @@ private:
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual*/
     Plato::Scalar mDispControlConstant;           /*!< current pseudo time step */
     Plato::Scalar mCurrentNormStopTolerance;      /*!< current residual norm stopping tolerance - avoids unnecessary solves */
-    Plato::Scalar mNewtonRaphsonStopTolerance;    /*!< Newton-Raphson stopping tolerance*/
     Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
 
     Plato::ScalarVector mGlobalResidual;          /*!< global residual */
@@ -734,13 +732,9 @@ private:
     Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions*/
 
     Plato::WorksetBase<Plato::SimplexPlasticity<mNumSpatialDims>> mWorksetBase; /*!< assembly routine interface */
+
+    std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver; /*!< Newton-Raphson solve interface */
     std::shared_ptr<Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode>> mGlobalJacEntryOrdinal; /*!< global Jacobian matrix entry ordinal */
-
-    bool mUseAbsoluteTolerance;                    /*!< use absolute stopping tolerance */
-    bool mWriteNewtonRaphsonDiagnostics;           /*!< flag to enable Newton-Raphson solver diagnostics (default=false) */
-
-    std::ofstream mNewtonRaphsonDiagnosticsFile;      /*!< output string stream with diagnostics */
-    Plato::NewtonRaphson::measure_t mStoppingMeasure; /*!< stop measure for newton-raphson solver */
 
 // public functions
 public:
@@ -748,35 +742,30 @@ public:
      * \brief PLATO Plasticity Problem constructor
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
-     * \param [in] aInputParams input parameters database
+     * \param [in] aInputs input parameters database
     *******************************************************************************/
-    PlasticityProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams) :
-            mLocalResidualEq(std::make_shared<Plato::LocalVectorFunctionInc<Plato::Plasticity<mNumSpatialDims>>>(aMesh, aMeshSets, mDataMap, aInputParams)),
-            mGlobalResidualEq(std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint"))),
-            mProjectionEq(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection"))),
+    PlasticityProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputs) :
+            mLocalResidualEq(std::make_shared<Plato::LocalVectorFunctionInc<Plato::Plasticity<mNumSpatialDims>>>(aMesh, aMeshSets, mDataMap, aInputs)),
+            mGlobalResidualEq(std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(aMesh, aMeshSets, mDataMap, aInputs, aInputs.get<std::string>("PDE Constraint"))),
+            mProjectionEq(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(aMesh, aMeshSets, mDataMap, aInputs, std::string("State Gradient Projection"))),
             mObjective(nullptr),
             mConstraint(nullptr),
-            mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
-            mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
-            mNewtonIteration(0),
-            mMaxNumNewtonIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputParams, "Newton-Raphson", "Maximum Number Iterations", 10)),
+            mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
+            mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
-            mCurrentNormStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 1e-10)),
-            mNewtonRaphsonStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Newton-Raphson", "Stopping Tolerance", 1e-6)),
-            mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Expansion Multiplier", 2)),
+            mCurrentNormStopTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 1e-10)),
+            mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "Expansion Multiplier", 2)),
             mGlobalResidual("Global Residual", mGlobalResidualEq->size()),
             mPressure("Previous Pressure Field", aMesh.nverts()),
             mLocalStates("Local States", mNumPseudoTimeSteps, mLocalResidualEq->size()),
             mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalResidualEq->size()),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEq->size()),
             mWorksetBase(aMesh),
-            mUseAbsoluteTolerance(false),
-            mWriteNewtonRaphsonDiagnostics(Plato::ParseTools::getSubParam<bool>(aInputParams, "Newton-Raphson", "Output Diagnostics", true)),
-            mStoppingMeasure(Plato::NewtonRaphson::RESIDUAL_NORM)
+            mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs))
     {
-        this->initialize(aMesh, aMeshSets, aInputParams);
+        this->initialize(aMesh, aMeshSets, aInputs);
     }
 
     explicit PlasticityProblem(Omega_h::Mesh& aMesh) :
@@ -787,13 +776,10 @@ public:
             mConstraint(nullptr),
             mNumPseudoTimeSteps(20),
             mMaxNumPseudoTimeSteps(80),
-            mNewtonIteration(0),
-            mMaxNumNewtonIter(10),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
             mCurrentNormStopTolerance(1e-10),
-            mNewtonRaphsonStopTolerance(1e-6),
             mNumPseudoTimeStepMultiplier(2),
             mGlobalResidual("Global Residual", aMesh.nverts() * mNumGlobalDofsPerNode),
             mPressure("Pressure Field", aMesh.nverts()),
@@ -801,9 +787,7 @@ public:
             mGlobalStates("Global States", mNumPseudoTimeSteps, aMesh.nverts() * mNumGlobalDofsPerNode),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, aMesh.nverts() * mNumPressGradDofsPerNode),
             mWorksetBase(aMesh),
-            mUseAbsoluteTolerance(false),
-            mWriteNewtonRaphsonDiagnostics(true),
-            mStoppingMeasure(Plato::NewtonRaphson::RESIDUAL_NORM)
+            mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh))
     {
         mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumGlobalDofsPerNode>(&aMesh);
         mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
@@ -814,7 +798,6 @@ public:
     *******************************************************************************/
     virtual ~PlasticityProblem()
     {
-        this->closeNewtonRaphsonDiagnosticsFile();
     }
 
     void appendObjective(const std::shared_ptr<Plato::LocalScalarFunctionInc>& aObjective) 
@@ -833,26 +816,18 @@ public:
     }
 
     /***************************************************************************//**
-     * \brief Use absolute tolerance in Newton-Raphson solver
-    *******************************************************************************/
-    void useAbsoluteTolerance()
-    {
-        mUseAbsoluteTolerance = true;
-    }
-
-    /***************************************************************************//**
      * \brief Read essential (Dirichlet) boundary conditions from the Exodus file.
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
-     * \param [in] aInputParams input parameters database
+     * \param [in] aInputs input parameters database
     *******************************************************************************/
-    void readEssentialBoundaryConditions(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    void readEssentialBoundaryConditions(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputs)
     {
-        if(aInputParams.isSublist("Essential Boundary Conditions") == false)
+        if(aInputs.isSublist("Essential Boundary Conditions") == false)
         {
             THROWERR("ESSENTIAL BOUNDARY CONDITIONS SUBLIST IS NOT DEFINED IN THE INPUT FILE")
         }
-        Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputParams.sublist("Essential Boundary Conditions", false));
+        Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputs.sublist("Essential Boundary Conditions", false));
         tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);
     }
 
@@ -917,24 +892,7 @@ public:
      * \param [in] aMatrix Compressed Row Storage (CRS) matrix
      * \param [in] aVector 1D view of Right-Hand-Side forces
     *******************************************************************************/
-    void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
-    {
-        Plato::ScalarVector tDispControlledDirichletValues("Dirichlet Values", mDirichletValues.size());
-        Plato::fill(0.0, tDispControlledDirichletValues);
-        if(mNewtonIteration == static_cast<Plato::OrdinalType>(0))
-        {
-            Plato::update(mPseudoTimeStep, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
-        }
-
-        if(aMatrix->isBlockMatrix())
-        {
-            Plato::applyBlockConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, tDispControlledDirichletValues);
-        }
-        else
-        {
-            Plato::applyConstraints<mNumGlobalDofsPerNode>(aMatrix, aVector, mDirichletDofs, tDispControlledDirichletValues);
-        }
-    }
+    void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector) {return;}
 
     /***************************************************************************//**
      * \brief Fill right-hand-side vector values
@@ -976,7 +934,9 @@ public:
             tGlobalStateComputed = this->solveForwardProblem(aControls);
             if (tGlobalStateComputed == true)
             {
-                mNewtonRaphsonDiagnosticsFile << "\n**** Successful Forward Solve ****\n";
+                std::stringstream tMsg;
+                tMsg << "\n**** Forward Solve Was Successful ****\n";
+                mNewtonSolver->appendOutputMessage(tMsg);
                 break;
             }
             else
@@ -1316,66 +1276,10 @@ private:
     *******************************************************************************/
     void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
-        this->openNewtonRaphsonDiagnosticsFile();
-        this->setNewtonRaphsonStopMeasure(aInputParams);
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
         this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
         mGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumGlobalDofsPerNode>(&aMesh);
         mGlobalJacEntryOrdinal = std::make_shared<Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode>>(mGlobalJacobian, &aMesh);
-    }
-
-    /***************************************************************************//**
-     * \brief Set stopping mesure for Newton-Raphson solver.
-    *******************************************************************************/
-    void setNewtonRaphsonStopMeasure(Teuchos::ParameterList& aInputParams)
-    {
-        auto tMeasure = Plato::ParseTools::getSubParam<std::string>(aInputParams, "Newton-Raphson", "Stop Measure", "residual");
-        std::transform(tMeasure.begin(), tMeasure.end(), tMeasure.begin(),[](unsigned char aInput){ return std::tolower(aInput); });
-        if(tMeasure.compare("residual") == 0)
-        {
-            mStoppingMeasure = Plato::NewtonRaphson::RESIDUAL_NORM;
-        }
-        else if(tMeasure.compare("displacement") == 0)
-        {
-            mStoppingMeasure = Plato::NewtonRaphson::DISPLACEMENT_NORM;
-        }
-        else if(tMeasure.compare("relative residual") == 0)
-        {
-            mStoppingMeasure = Plato::NewtonRaphson::RELATIVE_RESIDUAL_NORM;
-        }
-        else
-        {
-            std::stringstream tMsg;
-            tMsg << "Stop Measure '" <<  tMeasure.c_str() << "' is NOT Defined. "
-                    << "Options are: 1) residual or 2) displacement.";
-            THROWERR(tMsg.str());
-        }
-    }
-
-    /***************************************************************************//**
-     * \brief Open diagnostic file for Newton-Raphson solver
-    *******************************************************************************/
-    void openNewtonRaphsonDiagnosticsFile()
-    {
-        if (mWriteNewtonRaphsonDiagnostics == false)
-        {
-            return;
-        }
-
-        mNewtonRaphsonDiagnosticsFile.open("plato_analyze_newton_raphson_diagnostics.txt");
-    }
-
-    /******************************************************************************//**
-     * @brief Close diagnostic file for Newton-Raphson solver
-    **********************************************************************************/
-    void closeNewtonRaphsonDiagnosticsFile()
-    {
-        if (mWriteNewtonRaphsonDiagnostics == false)
-        {
-            return;
-        }
-
-        mNewtonRaphsonDiagnosticsFile.close();
     }
 
     /***************************************************************************//**
@@ -1390,6 +1294,19 @@ private:
         mProjectedPressGrad = Plato::ScalarMultiVector("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEq->size());
     }
 
+    void initializeNewtonSolver()
+    {
+        mNewtonSolver->setDirichletValuesMultiplier(mPseudoTimeStep);
+
+        mNewtonSolver->appendDirichletDofs(mDirichletDofs);
+        mNewtonSolver->appendDirichletValues(mDirichletValues);
+
+        mNewtonSolver->appendLocalEquation(mLocalResidualEq);
+        mNewtonSolver->appendGlobalEquation(mGlobalResidualEq);
+
+        mDataMap.mScalarValues["LoadControlConstant"] = mPseudoTimeStep;
+    }
+
     /***************************************************************************//**
      * \brief Solve forward problem
      * \param [in] aControls 1-D view of controls, e.g. design variables
@@ -1401,34 +1318,29 @@ private:
         auto tNumCells = mLocalResidualEq->numCells();
         tStateData.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalResidualEq->size());
 
-/*
-        auto tMesh = mGlobalResidualEq->getMesh();
-        Plato::NewtonRaphsonSolver<PhysicsT> tSolver(tMesh);
-        tSolver.appendDirichletDofs(mDirichletDofs);
-        tSolver.appendDirichletValues(mDirichletValues);
-        tSolver.appendLocalEquation(mLocalResidualEq);
-        tSolver.appendGlobalEquation(mGlobalResidualEq);
-        tSolver.setDirichletValuesMultiplier(mPseudoTimeStep);
-*/
+        this->initializeNewtonSolver();
 
         bool tToleranceSatisfied = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
         {
-            mNewtonRaphsonDiagnosticsFile << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1)
-                << ", TOTAL TIME = " << mPseudoTimeStep * static_cast<Plato::Scalar>(tCurrentStepIndex + 1) << "\n";
+            std::stringstream tMsg;
+            tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << ", TOTAL TIME = "
+                << mPseudoTimeStep * static_cast<Plato::Scalar>(tCurrentStepIndex + 1) << "\n";
+            mNewtonSolver->appendOutputMessage(tMsg);
 
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
             this->cacheStateData(tStateData);
 
             // update local and global states
-            bool tNewtonRaphsonConverged = this->solveNewtonRaphson(aControls, tStateData);
-            //bool tNewtonRaphsonConverged = tSolver.solve(aControls, tStateData);
+            bool tNewtonRaphsonConverged = mNewtonSolver->solve(aControls, tStateData);
 
             if(tNewtonRaphsonConverged == false)
             {
-                mNewtonRaphsonDiagnosticsFile << "**** Newton-Raphson Solver did not converge at time step #"
+                std::stringstream tMsg;
+                tMsg << "**** Newton-Raphson Solver did not converge at time step #"
                     << tCurrentStepIndex << ".  Number of pseudo time steps will be increased to "
                     << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mNumPseudoTimeStepMultiplier) << ". ****\n\n";
+                mNewtonSolver->appendOutputMessage(tMsg);
                 return tToleranceSatisfied;
             }
 
@@ -1438,126 +1350,6 @@ private:
 
         tToleranceSatisfied = true;
         return tToleranceSatisfied;
-    }
-
-    /***************************************************************************//**
-     * \brief Initialize Newton-Raphson solver
-     * \param [in] aStateData data manager with current and previous state data
-    *******************************************************************************/
-    void initializeNewtonRaphsonSolver(Plato::ForwardProblemStates &aStateData)
-    {
-        mDataMap.mScalarValues["LoadControlConstant"] = mPseudoTimeStep;
-        Plato::update(1.0, aStateData.mPreviousLocalState, 0.0, aStateData.mCurrentLocalState);
-        Plato::update(1.0, aStateData.mPreviousGlobalState, 0.0, aStateData.mCurrentGlobalState);
-    }
-
-    /***************************************************************************//**
-     * \brief Solve Newton-Raphson problem
-     * \param [in] aControls           1-D view of controls, e.g. design variables
-     * \param [in] aStateData         data manager with current and previous state data
-     * \param [in] aInvLocalJacobianT 3-D container for inverse Jacobian
-     * \return flag used to indicate if the Newton-Raphson solver converged
-    *******************************************************************************/
-    bool solveNewtonRaphson(const Plato::ScalarVector &aControls,
-                            Plato::ForwardProblemStates &aStateData)
-    {
-        bool tNewtonRaphsonConverged = false;
-        Plato::NewtonRaphsonOutputData tOutputData;
-        auto tNumCells = mLocalResidualEq->numCells();
-        Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
-
-        tOutputData.mWriteOutput = mWriteNewtonRaphsonDiagnostics;
-        Plato::print_newton_raphson_diagnostics_header(tOutputData, mNewtonRaphsonDiagnosticsFile);
-
-        mNewtonIteration = 0;
-        this->initializeNewtonRaphsonSolver(aStateData);
-        
-        while(true)
-        {
-            tOutputData.mCurrentIteration = mNewtonIteration;
-
-            // update inverse of local Jacobian -> store in tInvLocalJacobianT
-            this->updateInverseLocalJacobian(aControls, aStateData, tInvLocalJacobianT);
-
-            // assemble residual
-            this->assembleResidual(aControls, aStateData, tInvLocalJacobianT);
-            Plato::scale(static_cast<Plato::Scalar>(-1.0), mGlobalResidual);
-
-            // assemble tangent stiffness matrix
-            this->assembleTangentMatrix(aControls, aStateData, tInvLocalJacobianT);
-
-            // apply Dirichlet boundary conditions
-            this->applyConstraints(mGlobalJacobian, mGlobalResidual);
-
-            // check convergence
-            this->computeStoppingCriterion(aStateData, tOutputData);
-            Plato::print_newton_raphson_diagnostics(tOutputData, mNewtonRaphsonDiagnosticsFile);
-            
-            const bool tStoppingCriteriaMet = this->checkNewtonRaphsonStoppingCriterion(tOutputData);
-            if(tStoppingCriteriaMet == true || mNewtonIteration >= mMaxNumNewtonIter || tOutputData.mCurrentNorm < mCurrentNormStopTolerance)
-            {
-                tNewtonRaphsonConverged = true;
-                break;
-            }
-
-            // update global states
-            this->updateGlobalStates(aControls, aStateData);
-
-            // update local states
-            mLocalResidualEq->updateLocalState(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                               aControls, aStateData.mCurrentStepIndex);
-            mNewtonIteration++;
-        }
-
-        Plato::print_newton_raphson_stop_criterion(tOutputData, mNewtonRaphsonDiagnosticsFile);
-        
-        return (tNewtonRaphsonConverged);
-    }
-
-    /***************************************************************************//**
-     * \brief Assemble residual vector
-     * \param [in] aControls          1-D view of controls, e.g. design variables
-     * \param [in] aStateData         data manager with current and previous state data
-     * \param [in] aInvLocalJacobianT 3-D container for inverse Jacobian
-    *******************************************************************************/
-    void assembleResidual(const Plato::ScalarVector & aControls,
-                          const Plato::ForwardProblemStates & aStateData,
-                          const Plato::ScalarArray3D& aInvLocalJacobianT)
-    {
-
-        // compute internal forces
-        mGlobalResidual = mGlobalResidualEq->value(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                   aStateData.mProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
-
-        // compute local residual workset (WS)
-        auto tLocalResidualWS =
-                mLocalResidualEq->valueWorkSet(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                               aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                               aControls, aStateData.mCurrentStepIndex);
-
-        // compute inv(DhDc)*h, where h is the local residual and DhDc is the local jacobian
-        auto tNumCells = mLocalResidualEq->numCells();
-        const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 0.0;
-        Plato::ScalarMultiVector tInvLocalJacTimesLocalRes("InvLocalJacTimesLocalRes", tNumCells, mNumLocalDofsPerCell);
-        Plato::matrix_times_vector_workset("N", tAlpha, aInvLocalJacobianT, tLocalResidualWS, tBeta, tInvLocalJacTimesLocalRes);
-
-        // compute DrDc*inv(DhDc)*h
-        Plato::ScalarMultiVector tLocalResidualTerm("LocalResidualTerm", tNumCells, mNumGlobalDofsPerCell);
-        auto tDrDc = mGlobalResidualEq->gradient_c(aStateData.mCurrentGlobalState, aStateData.mPreviousGlobalState,
-                                                   aStateData.mCurrentLocalState, aStateData.mPreviousLocalState,
-                                                   aStateData.mProjectedPressGrad, aControls, aStateData.mCurrentStepIndex);
-        Plato::matrix_times_vector_workset("N", tAlpha, tDrDc, tInvLocalJacTimesLocalRes, tBeta, tLocalResidualTerm);
-
-        // assemble local residual contribution
-        const auto tNumNodes = mGlobalResidualEq->numNodes();
-        const auto tTotalNumDofs = mNumGlobalDofsPerNode * tNumNodes;
-        Plato::ScalarVector  tLocalResidualContribution("Assembled Local Residual", tTotalNumDofs);
-        mWorksetBase.assembleResidual(tLocalResidualTerm, tLocalResidualContribution);
-
-        // add local residual contribution to global residual, i.e. r - DrDc*inv(DhDc)*h
-        Plato::axpy(static_cast<Plato::Scalar>(-1.0), tLocalResidualContribution, mGlobalResidual);
     }
 
     /***************************************************************************//**
@@ -1665,21 +1457,6 @@ private:
     }
 
     /***************************************************************************//**
-     * \brief Update global and local states after a new trial state is computed by
-     *   the Newton-Raphson solver.
-     * \param [in] aControls  1-D view of controls, e.g. design variables
-     * \param [in] aStateData data manager with current and previous state data
-    *******************************************************************************/
-    void updateGlobalStates(const Plato::ScalarVector &aControls,
-                            Plato::ForwardProblemStates &aStateData)
-    {
-        const Plato::Scalar tAlpha = 1.0;
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mDeltaGlobalState);
-        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aStateData.mDeltaGlobalState, mGlobalResidual, mUseAbsoluteTolerance);
-        Plato::update(tAlpha, aStateData.mDeltaGlobalState, tAlpha, aStateData.mCurrentGlobalState);
-    }
-
-    /***************************************************************************//**
      * \brief Compute displacement norm,
      * \f$ \frac{\Vert \delta{u}_{i}^{T}\delta{u}_i \Vert}{\Vert \Delta{u}_0^{T}\Delta{u}_0 \Vert} \f$
      * \param [in]     aStateData  state data
@@ -1736,57 +1513,6 @@ private:
             aOutputData.mRelativeNorm = aOutputData.mCurrentNorm /
                     (aOutputData.mReferenceNorm + std::numeric_limits<Plato::Scalar>::epsilon());
         }
-    }
-
-    /***************************************************************************//**
-     * \brief Compute current relative norm of residual vector, i.e.
-     *     \f$ \frac{\Vert R_{i} \Vert}{\Vert R_{i=0} \Vert} \f$
-     * \param [in] aOutputData Newton-Raphson solver output data
-    *******************************************************************************/
-    void computeStoppingCriterion(const Plato::ForwardProblemStates &aStateData,
-                                  Plato::NewtonRaphsonOutputData & aOutputData)
-    {
-        switch(aOutputData.mStoppingMeasure)
-        {
-            case Plato::NewtonRaphson::RESIDUAL_NORM:
-            {
-                this->computeResidualNorm(aOutputData);
-                break;
-            }
-            case Plato::NewtonRaphson::DISPLACEMENT_NORM:
-            {
-                this->computeDisplacementNorm(aStateData, aOutputData);
-                break;
-            }
-            case Plato::NewtonRaphson::RELATIVE_RESIDUAL_NORM:
-            {
-                this->computeRelativeResidualNorm(aOutputData);
-                break;
-            }
-        }
-    }
-
-    /***************************************************************************//**
-     * \brief Check Newton-Raphson solver convergence criterion
-     * \param [in] aOutputData Newton-Raphson solver output data
-     * \return boolean flag, indicates if Newton-Raphson solver converged
-    *******************************************************************************/
-    bool checkNewtonRaphsonStoppingCriterion(Plato::NewtonRaphsonOutputData & aOutputData)
-    {
-        bool tStop = false;
-
-        if(aOutputData.mRelativeNorm < mNewtonRaphsonStopTolerance)
-        {
-            tStop = true;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::NORM_TOLERANCE;
-        }
-        else if(aOutputData.mCurrentIteration == mMaxNumNewtonIter)
-        {
-            tStop = false;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
-        }
-
-        return (tStop);
     }
 
     /***************************************************************************//**
@@ -2296,7 +2022,7 @@ private:
         this->applyAdjointConstraints(mGlobalJacobian, mGlobalResidual);
         // Solve for lambda_k = (K_{tangent})_k^{-T} * F_k^{adjoint}
         Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointStates.mCurrentGlobalAdjoint);
-        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointStates.mCurrentGlobalAdjoint, mGlobalResidual, mUseAbsoluteTolerance);
+        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(mGlobalJacobian, aAdjointStates.mCurrentGlobalAdjoint, mGlobalResidual, false);
     }
 
     /***************************************************************************//**
@@ -5055,7 +4781,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPlasticityProblem_
 
     using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
     Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
-    tPlasticityProblem.useAbsoluteTolerance();
 
     // 2. Get Dirichlet Boundary Conditions
     Plato::OrdinalType tDispDofX = 0;
@@ -5297,7 +5022,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintValue_3D)
 
     using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
     Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
-    tPlasticityProblem.useAbsoluteTolerance();
 
     // 2. Get Dirichlet Boundary Conditions
     Plato::OrdinalType tDispDofX = 0;
