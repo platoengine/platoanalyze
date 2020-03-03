@@ -47,7 +47,7 @@ inline Plato::Scalar compute_bulk_modulus(const Plato::Scalar & aElasticModulus,
  * \param [in] aParamList input parameter list
  * \return elastic modulus
 *******************************************************************************/
-Plato::Scalar parse_elastic_modulus(Teuchos::ParameterList & aParamList)
+inline Plato::Scalar parse_elastic_modulus(Teuchos::ParameterList & aParamList)
 {
     if(aParamList.isParameter("Youngs Modulus"))
     {
@@ -66,7 +66,7 @@ Plato::Scalar parse_elastic_modulus(Teuchos::ParameterList & aParamList)
  * \param [in] aParamList input parameter list
  * \return Poisson's ratio
 *******************************************************************************/
-Plato::Scalar parse_poissons_ratio(Teuchos::ParameterList & aParamList)
+inline Plato::Scalar parse_poissons_ratio(Teuchos::ParameterList & aParamList)
 {
     if(aParamList.isParameter("Poissons Ratio"))
     {
