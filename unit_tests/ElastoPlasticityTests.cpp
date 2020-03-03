@@ -1247,61 +1247,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual2D_Elastic)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPartialMaximizePlasticWorkWrtControl_2D)
-{
-    constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
-    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
-    Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
-
-    // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
-    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
-
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "    </ParameterList>                                                                    \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='My Maximize Plastic Work'>                                       \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>                      \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/>\n"
-    "    <ParameterList name='Penalty Function'>                                             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
-    "      <Parameter name='Exponent' type='double' value='3.0'/>                            \n"
-    "      <Parameter name='Minimum Value' type='double' value='1.0e-3'/>                    \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
-
-    // TEST INTERMEDIATE TIME STEP GRADIENT
-    printf("\nINTERMEDIATE TIME STEP");
-    std::string tFuncName = "My Maximize Plastic Work";
-    std::shared_ptr<Plato::LocalScalarFunctionInc> tScalarFunc =
-        std::make_shared<Plato::BasicLocalScalarFunctionInc<PhysicsT>>(*tMesh, tMeshSets, tDataMap, *tParamList, tFuncName);
-    Plato::test_partial_local_scalar_func_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh);
-
-    // TEST FINAL TIME STEP GRADIENT
-    printf("\nFINAL TIME STEP");
-    const Plato::Scalar tTimeStepIndex = 39; // default value is 40 time steps
-    Plato::test_partial_local_scalar_func_wrt_control<PhysicsT::SimplexT>(tScalarFunc, *tMesh, tTimeStepIndex);
-}
-
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPlasticityProblem_2D)
 {
     // 1. DEFINE PROBLEM
