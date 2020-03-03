@@ -11,6 +11,7 @@
 #include "CellForcing.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
+#include "ImplicitFunctors.hpp"
 
 namespace Plato
 {
