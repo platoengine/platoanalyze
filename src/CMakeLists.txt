@@ -50,8 +50,11 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     J2PlasticityLocalResidual.cpp 
     LocalVectorFunctionInc.cpp 
     NewtonRaphsonSolver.cpp 
+    PathDependentAdjointSolver.cpp 
     GlobalVectorFunctionInc.cpp 
+    PathDependentScalarFunctionFactory.cpp 
     BasicLocalScalarFunctionInc.cpp 
+    PlasticityProblem.cpp 
     InfinitesimalStrainPlasticityResidual.cpp 
     MaximizePlasticWork.cpp)
 

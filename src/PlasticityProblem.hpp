@@ -973,3 +973,12 @@ private:
 
 }
 // namespace Plato
+
+#ifdef PLATOANALYZE_2D
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<3>>;
+#endif
+

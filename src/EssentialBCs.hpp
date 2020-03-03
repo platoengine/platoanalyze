@@ -4,7 +4,9 @@
 #include <sstream>
 
 #include <Omega_h_assoc.hpp>
+#include <Teuchos_ParameterList.hpp>
 
+#include "AnalyzeMacros.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato
@@ -34,10 +36,10 @@ public:
 
     /*!
      \brief Get the ordinals/values of the constrained nodeset.
-     @param aMeshSets Omega_h mesh sets that contains the constrained nodeset.
-     @param bcDofs Ordinal list to which the constrained dofs will be added.
-     @param bcValues Value list to which the constrained value will be added.
-     @param offset Starting location in bcDofs/bcValues where constrained dofs/values will be added.
+     \param aMeshSets Omega_h mesh sets that contains the constrained nodeset.
+     \param bcDofs Ordinal list to which the constrained dofs will be added.
+     \param bcValues Value list to which the constrained value will be added.
+     \param offset Starting location in bcDofs/bcValues where constrained dofs/values will be added.
      */
     void get(const Omega_h::MeshSets& aMeshSets, LocalOrdinalVector& bcDofs, ScalarVector& bcValues, OrdinalType offset);
 
@@ -90,9 +92,9 @@ public :
 
     /*!
      \brief Get ordinals and values for constraints.
-     @param mesh Omega_h mesh that contains the constrained nodesets.
-     @param bcDofs Ordinals of all constrained dofs.
-     @param bcValues Values of all constrained dofs.
+     \param mesh Omega_h mesh that contains the constrained nodesets.
+     \param bcDofs Ordinals of all constrained dofs.
+     \param bcValues Values of all constrained dofs.
      */
     void get( const Omega_h::MeshSets& aMeshSets,
             LocalOrdinalVector& bcDofs,

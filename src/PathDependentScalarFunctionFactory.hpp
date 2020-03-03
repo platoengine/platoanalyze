@@ -7,6 +7,7 @@
 #pragma once
 
 #include "BasicLocalScalarFunctionInc.hpp"
+#include "InfinitesimalStrainPlasticity.hpp"
 
 namespace Plato
 {
@@ -62,7 +63,15 @@ public:
         }
     }
 };
-// class ScalarFunctionBaseFactory
+// class PathDependentScalarFunctionFactory
 
 }
 // namespace Plato
+
+#ifdef PLATOANALYZE_2D
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<3>>;
+#endif
