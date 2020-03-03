@@ -227,5 +227,27 @@ private:
 };
 // class MaximizePlasticWork
 
+#ifdef PLATOANALYZE_2D
+extern template class Plato::MaximizePlasticWork<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::MaximizePlasticWork<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::MaximizePlasticWork<Plato::JacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::MaximizePlasticWork<Plato::JacobianNTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::MaximizePlasticWork<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::MaximizePlasticWork<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::MaximizePlasticWork<Plato::GradientXTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::MaximizePlasticWork<Plato::GradientZTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::MaximizePlasticWork<Plato::ResidualTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::MaximizePlasticWork<Plato::JacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::MaximizePlasticWork<Plato::JacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::MaximizePlasticWork<Plato::JacobianNTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::MaximizePlasticWork<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::MaximizePlasticWork<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::MaximizePlasticWork<Plato::GradientXTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::MaximizePlasticWork<Plato::GradientZTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>;
+#endif
+
 }
 // namespace Plato
