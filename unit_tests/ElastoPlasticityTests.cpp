@@ -4,154 +4,19 @@
  *  Created on: Sep 30, 2019
  */
 
-
-
-#include "ApplyWeighting.hpp"
-#include "EllipticProblem.hpp"
-#include "PhysicsScalarFunction.hpp"
-#include "AbstractScalarFunction.hpp"
-
-
-
 #include "Teuchos_UnitTestHarness.hpp"
 
 #include "PlatoTestHelpers.hpp"
 #include "PlatoUtilities.hpp"
-
-#include <memory>
-#include <limits>
-#include <cctype>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-
-
 #include "PlasticityProblem.hpp"
-
-#include "MaximizePlasticWork.hpp"
-#include "GlobalVectorFunctionInc.hpp"
-#include "InfinitesimalStrainPlasticity.hpp"
-#include "DoubleDotProduct2ndOrderTensor.hpp"
-#include "PathDependentScalarFunctionFactory.hpp"
-#include "InfinitesimalStrainPlasticityResidual.hpp"
-
-#include "Simplex.hpp"
-#include "Kinetics.hpp"
-#include "ParseTools.hpp"
-
-#include "Projection.hpp"
-#include "WorksetBase.hpp"
-#include "EssentialBCs.hpp"
-
-
-#include "SimplexFadTypes.hpp"
-
-
-#include "VectorFunctionVMS.hpp"
-#include "PlatoStaticsTypes.hpp"
 #include "Plato_Diagnostics.hpp"
-#include "ScalarFunctionBase.hpp"
-
-#include "StabilizedMechanics.hpp"
-#include "PlatoAbstractProblem.hpp"
-#include "Plato_TopOptFunctors.hpp"
-
-#include "LinearElasticMaterial.hpp"
-#include "ScalarFunctionIncBase.hpp"
-
-#include "LocalVectorFunctionInc.hpp"
-
-#include "LinearTetCubRuleDegreeOne.hpp"
-
-
-#include "Plato_Solve.hpp"
-#include "ApplyConstraints.hpp"
-#include "ScalarFunctionBaseFactory.hpp"
-#include "ScalarFunctionIncBaseFactory.hpp"
-
-#include "BLAS2.hpp"
-#include "BLAS3.hpp"
+#include "SimplexStabilizedMechanics.hpp"
+#include "StabilizedElastostaticResidual.hpp"
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
 namespace Plato
 {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 template<typename SimplexPhysics>
 struct DiagnosticDataPlasticity

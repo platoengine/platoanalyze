@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include "EssentialBCs.hpp"
 #include "NewtonRaphsonSolver.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "PathDependentAdjointSolver.hpp"

@@ -9,6 +9,7 @@
 #include "BLAS2.hpp"
 #include "BLAS3.hpp"
 #include "ParseTools.hpp"
+#include "Projection.hpp"
 #include "VectorFunctionVMS.hpp"
 #include "LocalScalarFunctionInc.hpp"
 #include "LocalVectorFunctionInc.hpp"
