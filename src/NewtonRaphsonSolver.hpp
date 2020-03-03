@@ -14,6 +14,7 @@
 #include "NewtonRaphsonUtilities.hpp"
 #include "LocalVectorFunctionInc.hpp"
 #include "GlobalVectorFunctionInc.hpp"
+#include "InfinitesimalStrainPlasticity.hpp"
 
 namespace Plato
 {
@@ -493,3 +494,12 @@ public:
 
 }
 // namespace Plato
+
+#ifdef PLATOANALYZE_2D
+extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainPlasticity<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainPlasticity<3>>;
+#endif
+

@@ -1,6 +1,7 @@
 #ifndef PLATO_PARSE_TOOLS
 #define PLATO_PARSE_TOOLS
 
+#include <Teuchos_ParameterList.hpp>
 
 namespace Plato {
 
