@@ -49,6 +49,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     PhysicsScalarFunctionInc.cpp 
     J2PlasticityLocalResidual.cpp 
     LocalVectorFunctionInc.cpp 
+    GlobalVectorFunctionInc.cpp 
     BasicLocalScalarFunctionInc.cpp 
     InfinitesimalStrainPlasticityResidual.cpp 
     MaximizePlasticWork.cpp)

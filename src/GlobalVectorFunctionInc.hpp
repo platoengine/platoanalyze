@@ -8,6 +8,7 @@
 
 #include "WorksetBase.hpp"
 #include "SimplexFadTypes.hpp"
+#include "InfinitesimalStrainPlasticity.hpp"
 #include "AbstractGlobalVectorFunctionInc.hpp"
 
 namespace Plato
@@ -1252,3 +1253,12 @@ public:
 
 }
 // namespace Plato
+
+#ifdef PLATOANALYZE_2D
+extern template class Plato::GlobalVectorFunctionInc<Plato::InfinitesimalStrainPlasticity<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::GlobalVectorFunctionInc<Plato::InfinitesimalStrainPlasticity<3>>;
+#endif
+
