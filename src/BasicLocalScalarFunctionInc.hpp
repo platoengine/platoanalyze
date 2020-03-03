@@ -9,6 +9,7 @@
 #include "WorksetBase.hpp"
 #include "SimplexFadTypes.hpp"
 #include "LocalScalarFunctionInc.hpp"
+#include "InfinitesimalStrainPlasticity.hpp"
 #include "AbstractLocalScalarFunctionInc.hpp"
 
 namespace Plato
@@ -702,3 +703,12 @@ private:
 
 }
 // namespace Plato
+
+#ifdef PLATOANALYZE_2D
+extern template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<2>>;
+#endif
+
+#ifdef PLATOANALYZE_3D
+extern template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<3>>;
+#endif
+
