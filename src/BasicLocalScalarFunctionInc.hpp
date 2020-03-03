@@ -711,4 +711,3 @@ extern template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStr
 #ifdef PLATOANALYZE_3D
 extern template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<3>>;
 #endif
-
