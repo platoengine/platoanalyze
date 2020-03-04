@@ -1234,8 +1234,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual2D_Elastic)
     auto tHostElastoPlasticityResidual = Kokkos::create_mirror(tElastoPlasticityResidual);
     Kokkos::deep_copy(tHostElastoPlasticityResidual, tElastoPlasticityResidual);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{-0.310897, -0.0961538462, 0.2003656347, 0.214744, -0.0224359, -0.3967844462,  0.0961538462, 0.11859, 0.0297521448},
-         {0.125, 0.0576923077, -0.0853066085, -0.0673077, 0.1057692308, 5.45966e-07,  -0.0576923077, -0.1634615385, 0.0853060625}};
+        {{-0.3108974359, -0.1923076923, 0.2003656347, 0.1185897436, 0.0737179487, -0.3967844462, 0.1923076923, 0.1185897436, 0.0297521448},
+         {0.125, 0.1153846154, -0.0853066085, -0.0096153846, 0.0480769231, 5.45966e-07,  -0.1153846154, -0.1634615385, 0.0853060625}};
     for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
     {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
