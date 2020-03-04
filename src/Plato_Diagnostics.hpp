@@ -94,6 +94,83 @@ inline Plato::Scalar test_objective_grad_wrt_control(PlatoProblem & aProblem, Om
 }
 // function test_objective_grad_wrt_control
 
+
+/******************************************************************************//**
+ * \brief Test partial derivative of constraint function with respect to the controls
+ * \param [in] aProblem Plato problem interface
+ * \param [in] aMesh    Omega_H mesh database
+ * return minimum finite difference error
+**********************************************************************************/
+template<class PlatoProblem>
+inline Plato::Scalar test_constraint_grad_wrt_control(PlatoProblem & aProblem, Omega_h::Mesh & aMesh)
+{
+    // Allocate Data
+    const Plato::OrdinalType tNumVerts = aMesh.nverts();
+    Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
+    Plato::fill(0.5, tControls);
+
+    Plato::ScalarVector tStep = Plato::ScalarVector("Step", tNumVerts);
+    auto tHostStep = Kokkos::create_mirror(tStep);
+    Plato::random(0.025, 0.05, tHostStep);
+    Kokkos::deep_copy(tStep, tHostStep);
+
+    // Compute gradient
+    auto tGlobalStates = aProblem.solution(tControls);
+    auto tConstraintGradZ = aProblem.constraintGradient(tControls, tGlobalStates);
+    auto tGradientDotStep = Plato::dot(tConstraintGradZ, tStep);
+
+    std::ostringstream tOutput;
+    tOutput << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
+        << std::setw(18) << "FD Approx" << std::setw(20) << "abs(Error)" << "\n";
+
+    constexpr Plato::OrdinalType tSuperscriptLowerBound = 1;
+    constexpr Plato::OrdinalType tSuperscriptUpperBound = 6;
+    auto tTrialControl = Plato::ScalarVector("Trial Control", tNumVerts);
+
+    std::vector<Plato::Scalar> tFiniteDiffApproxError;
+    for(Plato::OrdinalType tIndex = tSuperscriptLowerBound; tIndex <= tSuperscriptUpperBound; tIndex++)
+    {
+        auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
+
+        // four point finite difference approximation
+        Plato::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
+        tGlobalStates = aProblem.solution(tTrialControl);
+        auto tValuePlus1Eps = aProblem.constraintValue(tTrialControl, tGlobalStates);
+
+        Plato::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
+        tGlobalStates = aProblem.solution(tTrialControl);
+        auto tValueMinus1Eps = aProblem.constraintValue(tTrialControl, tGlobalStates);
+
+        Plato::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        tGlobalStates = aProblem.solution(tTrialControl);
+        auto tValuePlus2Eps = aProblem.constraintValue(tTrialControl, tGlobalStates);
+
+        Plato::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        tGlobalStates = aProblem.solution(tTrialControl);
+        auto tValueMinus2Eps = aProblem.constraintValue(tTrialControl, tGlobalStates);
+
+        auto tNumerator = -tValuePlus2Eps + static_cast<Plato::Scalar>(8.) * tValuePlus1Eps
+                - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
+        auto tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
+        auto tFiniteDiffAppx = tNumerator / tDenominator;
+        auto tAppxError = abs(tFiniteDiffAppx - tGradientDotStep);
+        tFiniteDiffApproxError.push_back(tAppxError);
+
+        tOutput << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
+            << tGradientDotStep << std::setw(19) << tFiniteDiffAppx << std::setw(19) << tAppxError << "\n";
+    }
+    std::cout << tOutput.str().c_str();
+
+    const auto tMinError = *std::min_element(tFiniteDiffApproxError.begin(), tFiniteDiffApproxError.end());
+    return tMinError;
+}
+// function test_constraint_grad_wrt_control
+
+
 /******************************************************************************//**
  * \brief Test partial derivative with respect to the control variables
  * \param [in] aMesh mesh database
