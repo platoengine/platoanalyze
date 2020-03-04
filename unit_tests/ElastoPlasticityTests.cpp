@@ -1492,7 +1492,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPlasticitySolution
     Plato::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
 
-    constexpr Plato::Scalar tTolerance = 1e-4;
+    constexpr Plato::Scalar tTolerance = 1e-2;
     auto tHostSolution = Kokkos::create_mirror(tSolution);
     Kokkos::deep_copy(tHostSolution, tSolution);
     std::vector<std::vector<Plato::Scalar>> tGold = 
