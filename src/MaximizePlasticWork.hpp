@@ -181,7 +181,7 @@ public:
                                                    tCurrentElasticStrain, tCurrentCauchyStress);
 
             // compute double dot product
-            const Plato::Scalar tMultiplier = -0.5;
+            const Plato::Scalar tMultiplier = 0.5;
             tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tPlasticStrainMisfit, aResult);
             aResult(aCellOrdinal) *= (tMultiplier * tElasticPropertiesPenalty * tCellVolume(aCellOrdinal));
         }, "maximize plastic work criterion");

@@ -47,9 +47,8 @@ private:
     std::shared_ptr<Plato::AbstractScalarFunction<GradientX>> mScalarFunctionGradientX; /*!< scalar function value partial wrt configuration */
     std::shared_ptr<Plato::AbstractScalarFunction<GradientZ>> mScalarFunctionGradientZ; /*!< scalar function value partial wrt controls */
 
-    Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
-
-    std::string mFunctionName;/*!< User defined function name */
+    Plato::DataMap& mDataMap;   /*!< output data map */
+    std::string mFunctionName;  /*!< User defined function name */
 
 // private access functions
 private:
@@ -64,7 +63,8 @@ private:
         typename PhysicsT::FunctionFactory tFactory;
 
         auto tProblemDefault = aInputParams.sublist(mFunctionName);
-        auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", ""); // Must be a hardcoded type name (e.g. Volume)
+        // tFunctionType must be the hard-coded type name (e.g. Volume)
+        auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
 
         mScalarFunctionValue =
             tFactory.template createScalarFunction<Residual>(

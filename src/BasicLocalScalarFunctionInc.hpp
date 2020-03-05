@@ -49,9 +49,10 @@ private:
     static constexpr auto mNumNodeStatePerCell = PhysicsT::SimplexT::mNumNodeStatePerCell; /*!< number of pressure gradient degrees of freedom per cell (i.e. element) */
     static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;      /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
 
-    Plato::DataMap& mDataMap;                  /*!< output data map */
-    std::string mFunctionName;                 /*!< User defined function name */
-    Plato::WorksetBase<PhysicsT> mWorksetBase; /*!< assembly routine interface */
+    Plato::DataMap& mDataMap;                   /*!< output data map */
+    Plato::Scalar mMultiplier;                  /*!< scalar function multipliers */
+    std::string mFunctionName;                  /*!< user defined function name */
+    Plato::WorksetBase<PhysicsT> mWorksetBase;  /*!< assembly routine interface */
 
     std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<Residual>>        mScalarFuncValue;            /*!< value function */
     std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GradientZ>>       mPartialControls;            /*!< partial derivative wrt controls */
@@ -77,6 +78,7 @@ public:
                                 Teuchos::ParameterList& aInputParams,
                                 std::string& aName) :
             mDataMap(aDataMap),
+            mMultiplier(1.0),
             mFunctionName(aName),
             mWorksetBase(aMesh)
     {
@@ -91,6 +93,7 @@ public:
     **********************************************************************************/
     BasicLocalScalarFunctionInc(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap, std::string aName = "") :
             mDataMap(aDataMap),
+            mMultiplier(1.0),
             mFunctionName(aName),
             mWorksetBase(aMesh)
     {
@@ -100,6 +103,15 @@ public:
      * \brief Destructor
     *******************************************************************************/
     virtual ~BasicLocalScalarFunctionInc(){}
+
+    /***************************************************************************//**
+     * \brief Return scalar function name
+     * \return user defined function name
+    *******************************************************************************/
+    void setScalarFunctionMultiplier(const Plato::Scalar & aInput)
+    {
+        mMultiplier = aInput;
+    }
 
     /***************************************************************************//**
      * \brief Return scalar function name
@@ -239,6 +251,7 @@ public:
 
         // sum across elements
         auto tCriterionValue = Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
+        tCriterionValue = mMultiplier * tCriterionValue;
         mDataMap.mScalarValues[mScalarFuncValue->getName()] = tCriterionValue;
 
         return (tCriterionValue);
@@ -305,6 +318,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtControl("criterion partial wrt control", tNumCells, mNumNodesPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumNodesPerCell>(tResultWS, tCriterionPartialWrtControl);
+        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtControl);
 
         return tCriterionPartialWrtControl;
     }
@@ -370,6 +384,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtGlobalStates("criterion partial wrt global states", tNumCells, mNumGlobalDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tResultWS, tCriterionPartialWrtGlobalStates);
+        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtGlobalStates);
 
         return (tCriterionPartialWrtGlobalStates);
     }
@@ -435,6 +450,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtPrevGlobalState("partial wrt previous global states", tNumCells, mNumGlobalDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tResultWS, tCriterionPartialWrtPrevGlobalState);
+        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtPrevGlobalState);
 
         return (tCriterionPartialWrtPrevGlobalState);
     }
@@ -500,6 +516,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtLocalStates("criterion partial wrt local states", tNumCells, mNumLocalDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tResultWS, tCriterionPartialWrtLocalStates);
+        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtLocalStates);
 
         return tCriterionPartialWrtLocalStates;
     }
@@ -565,6 +582,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtPrevLocalStates("partial wrt previous local states", tNumCells, mNumLocalDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tResultWS, tCriterionPartialWrtPrevLocalStates);
+        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtPrevLocalStates);
 
         return tCriterionPartialWrtPrevLocalStates;
     }
@@ -630,6 +648,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtConfiguration("criterion partial wrt configuration", tNumCells, mNumSpatialDims);
         Plato::transform_ad_type_to_pod_2Dview<mNumSpatialDims>(tResultWS, tCriterionPartialWrtConfiguration);
+        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtConfiguration);
 
         return tCriterionPartialWrtConfiguration;
     }
@@ -665,10 +684,11 @@ private:
                     Teuchos::ParameterList & aInputParams)
     {
         typename PhysicsT::FunctionFactory tFactory;
-        auto tProblemDefault = aInputParams.sublist(mFunctionName);
+        auto tInputData = aInputParams.sublist(mFunctionName);
 
         // FunctionType must be a hard-coded function type in Plato Analyze (e.g. Volume)
-        auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
+        auto tFunctionType = tInputData.get<std::string>("Scalar Function Type", "");
+        mMultiplier = tInputData.get<Plato::Scalar>("Multiplier", "1.0");
 
         mScalarFuncValue =
             tFactory.template createLocalScalarFunctionInc<Residual>(

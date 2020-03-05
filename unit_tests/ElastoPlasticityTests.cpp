@@ -17,6 +17,13 @@
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
+namespace Plato
+{
+
+
+
+}
+
 
 namespace ElastoPlasticityTest
 {
@@ -105,7 +112,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill3DView_Error)
     TEST_THROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill3DView)
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill_3D_View)
 {
     // PREPARE DATA
     constexpr Plato::OrdinalType tNumRows = 14;
@@ -134,6 +142,62 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill3DView)
         }
     }
 }
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill_2D_View)
+{
+    // PREPARE DATA
+    constexpr Plato::OrdinalType tNumRows = 14;
+    constexpr Plato::OrdinalType tNumCols = 14;
+    Plato::ScalarMultiVector tA("Matrix A", tNumRows, tNumCols);
+
+    // CALL FUNCTION
+    constexpr Plato::Scalar tAlpha = 2.0;
+    TEST_NOTHROW( (Plato::fill_array_2D(tAlpha, tA)) );
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tGold = 2.0;
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostA = Kokkos::create_mirror(tA);
+    Kokkos::deep_copy(tHostA, tA);
+    for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+    {
+        for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+        {
+            //printf("(%d,%d,%d) = %f\n", aCellOrdinal, tRowIndex, tColIndex, tHostA(tCellIndex, tRowIndex, tColIndex));
+            TEST_FLOATING_EQUALITY(tHostA(tRowIndex, tColIndex), tGold, tTolerance);
+        }
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_scale_2D_View)
+{
+    // PREPARE DATA
+    constexpr Plato::OrdinalType tNumRows = 14;
+    constexpr Plato::OrdinalType tNumCols = 14;
+    Plato::ScalarMultiVector tA("Matrix A", tNumRows, tNumCols);
+
+    // CALL FUNCTION
+    constexpr Plato::Scalar tAlpha = 2.0;
+    TEST_NOTHROW( (Plato::fill_array_2D(tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::scale_array_2D(tAlpha, tA)) );
+
+    // TEST RESULTS
+    constexpr Plato::Scalar tGold = 4.0;
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostA = Kokkos::create_mirror(tA);
+    Kokkos::deep_copy(tHostA, tA);
+    for(Plato::OrdinalType tRowIndex = 0; tRowIndex < tNumRows; tRowIndex++)
+    {
+        for(Plato::OrdinalType tColIndex = 0; tColIndex < tNumCols; tColIndex++)
+        {
+            //printf("(%d,%d,%d) = %f\n", aCellOrdinal, tRowIndex, tColIndex, tHostA(tCellIndex, tRowIndex, tColIndex));
+            TEST_FLOATING_EQUALITY(tHostA(tRowIndex, tColIndex), tGold, tTolerance);
+        }
+    }
+}
+
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateMatrixWorkset_Error)
 {
@@ -1182,12 +1246,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPlasticitySolution
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
-      "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
       "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -1303,12 +1361,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPlasticitySolution
       "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
-      "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -1484,6 +1536,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
       "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
       "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
       "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
       "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
@@ -1604,6 +1657,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
       "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
       "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
       "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
       "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
@@ -1709,6 +1763,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
       "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
       "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
       "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
       "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
@@ -1853,6 +1908,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
       "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
       "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
       "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
       "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
@@ -1979,6 +2035,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
       "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
       "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
       "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
       "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
@@ -2099,6 +2156,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
       "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
       "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
       "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
@@ -2204,6 +2262,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
       "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
       "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
       "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
       "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
@@ -2348,6 +2407,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "  <ParameterList name='My Maximize Plastic Work'>                                        \n"
       "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
       "    <Parameter name='Scalar Function Type' type='string' value='Maximize Plastic Work'/> \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
       "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
