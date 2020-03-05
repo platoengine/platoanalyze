@@ -4,6 +4,7 @@
 #include <Omega_h_matrix.hpp>
 #include <Teuchos_ParameterList.hpp>
 
+#include "AnalyzeMacros.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato
@@ -21,27 +22,63 @@ protected:
     static constexpr auto mNumVoigtTerms = (SpatialDim == 3) ? 6 : ((SpatialDim == 2) ? 3 : (((SpatialDim == 1) ? 1 : 0)));
     static_assert(mNumVoigtTerms, "SpatialDim must be 1, 2, or 3.");
 
-    Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffness;
-    Omega_h::Vector<mNumVoigtTerms> mReferenceStrain;
-    Plato::Scalar mPressureScaling;
-
+    Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffness; /*!< fourth-order material stiffness tensor */
+    Omega_h::Vector<mNumVoigtTerms> mReferenceStrain;               /*!< reference second-order strain tensor, e.g. microstructure strains */
+    Plato::Scalar mCellDensity;                                     /*!< volumetric mass density */
+    Plato::Scalar mPressureScaling;                                 /*!< pressure scaling for stabilized mechanics */
+    
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+    *******************************************************************************/
     LinearElasticMaterial();
-    LinearElasticMaterial(const Teuchos::ParameterList &paramList);
+
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aParamList input parameters list
+    *******************************************************************************/
+    LinearElasticMaterial(const Teuchos::ParameterList &aParamList);
+ 
+    /***************************************************************************//**
+     * \brief Return volumetric mass density
+     * \return volumetric mass density
+    *******************************************************************************/
+    decltype(mCellDensity) getMassDensity() const 
+    {
+        return mCellDensity;
+    }
+
+    /***************************************************************************//**
+     * \brief Return fourth-order material stiffness tensor
+     * \return fourth-order material stiffness tensor
+    *******************************************************************************/
     decltype(mCellStiffness) getStiffnessMatrix() const
     {
         return mCellStiffness;
     }
+
+    /***************************************************************************//**
+     * \brief Return pressure scaling for stabilized mechanics
+     * \return pressure scaling for stabilized mechanics
+    *******************************************************************************/
     decltype(mPressureScaling) getPressureScaling() const
     {
         return mPressureScaling;
     }
+
+    /***************************************************************************//**
+     * \brief Return reference second-order strain tensor
+     * \return reference second-order strain tensor
+    *******************************************************************************/
     decltype(mReferenceStrain) getReferenceStrain() const
     {
         return mReferenceStrain;
     }
 
 private:
+    /***************************************************************************//**
+     * \brief Initialize member data
+    *******************************************************************************/
     void initialize();
 };
 
@@ -114,8 +151,22 @@ private:
 
 /******************************************************************************/
 /*!
- \brief Factory for creating material models
- */
+  \brief Derived class for cubic linear elastic material model
+*/
+template<int SpatialDim>
+class CubicLinearElasticMaterial : public LinearElasticMaterial<SpatialDim>
+/******************************************************************************/
+{
+  public:
+    CubicLinearElasticMaterial(const Teuchos::ParameterList& paramList);
+    virtual ~CubicLinearElasticMaterial(){}
+};
+// class CubicLinearElasticMaterial
+
+/******************************************************************************/
+/*!
+  \brief Factory for creating material models
+*/
 template<int SpatialDim>
 class ElasticModelFactory
 /******************************************************************************/
@@ -129,6 +180,8 @@ public:
 private:
     const Teuchos::ParameterList &mParamList;
 };
+// class ElasticModelFactory
+
 /******************************************************************************/
 template<int SpatialDim>
 Teuchos::RCP<LinearElasticMaterial<SpatialDim>> ElasticModelFactory<SpatialDim>::create()
@@ -140,7 +193,16 @@ Teuchos::RCP<LinearElasticMaterial<SpatialDim>> ElasticModelFactory<SpatialDim>:
     {
         return Teuchos::rcp(new Plato::IsotropicLinearElasticMaterial<SpatialDim>(modelParamList.sublist("Isotropic Linear Elastic")));
     }
-    return Teuchos::RCP < Plato::LinearElasticMaterial < SpatialDim >> (nullptr);
+    else
+    if( modelParamList.isSublist("Cubic Linear Elastic") )
+    {
+        return Teuchos::rcp(new Plato::CubicLinearElasticMaterial<SpatialDim>(modelParamList.sublist("Cubic Linear Elastic")));
+    }
+    else
+    {
+        THROWERR("Input Material Model is NOT Defined.");
+    }
+    return Teuchos::RCP<Plato::LinearElasticMaterial<SpatialDim>>(nullptr);
 }
 
 } // namespace Plato

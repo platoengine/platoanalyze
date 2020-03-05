@@ -221,6 +221,20 @@ public:
         std::vector<Plato::Scalar>& tValues = tIterator->second;
         tValues.resize(aSharedData.size());
         aSharedData.getData(tValues);
+        std::stringstream ss;
+        ss << "Importing Scalar Value: " << aName << std::endl;
+        ss << "[ ";
+        const int tMaxDisplay = 5;
+        int tNumValues = tValues.size();
+        int tNumDisplay = tNumValues < tMaxDisplay ? tNumValues : tMaxDisplay;
+        for( int i=0; i<tNumDisplay; i++) ss << tValues[i] << " ";
+        if(tNumValues > tMaxDisplay) ss << " ... ";
+        ss << "]" << std::endl;
+        #ifdef PLATO_CONSOLE
+        Plato::Console::Status(ss.str());
+        #else
+        std::cout << ss.str();
+        #endif
     }
 
     /******************************************************************************//**
@@ -273,12 +287,22 @@ public:
             if(tIterator == mValuesMap.end())
             {
                 std::stringstream ss;
-                ss << "Attempted to import SharedValue ('" << aName << "') that doesn't exist.";
+                ss << "Attempted to export SharedValue ('" << aName << "') that doesn't exist.";
                 throw Plato::ParsingException(ss.str());
             }
             std::vector<Plato::Scalar>& tValues = tIterator->second;
             tValues.resize(aSharedField.size());
             aSharedField.setData(tValues);
+            std::stringstream ss;
+            ss << "Exporting Scalar Value: " << aName << std::endl;
+            ss << "[ ";
+            for( auto val : tValues ) ss << val << " ";
+            ss << "]" << std::endl;
+            #ifdef PLATO_CONSOLE
+            Plato::Console::Status(ss.str());
+            #else
+            std::cout << ss.str();
+            #endif
         }
     }
 
@@ -367,22 +391,22 @@ public:
         }
         else if(aName == "Solution X")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
+            const Plato::OrdinalType tTIME_STEP_INDEX = mState.extent(0)-1;
+            auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Y")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
+            const Plato::OrdinalType tTIME_STEP_INDEX = mState.extent(0)-1;
+            auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Z")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
+            const Plato::OrdinalType tTIME_STEP_INDEX = mState.extent(0)-1;
+            auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
@@ -532,6 +556,9 @@ private:
     public:
         ComputeSolution(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        bool mWriteNativeOutput;
+        std::string mVizFilePath;
     };
     friend class ComputeSolution;
     /******************************************************************************/

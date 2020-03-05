@@ -1,7 +1,14 @@
 #include <Omega_h_file.hpp>
 
-#include <Analyze_App.hpp>
+//#define PLATO_CONSOLE
+
+#include "Analyze_App.hpp"
+#include "AnalyzeOutput.hpp"
 #include <PlatoProblemFactory.hpp>
+
+#ifdef PLATO_CONSOLE
+#include <Plato_Console.hpp>
+#endif
 
 /******************************************************************************/
 MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
@@ -46,7 +53,7 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
           else
           if( tPointArrayDims == 2 )
               mMLS[tPointArrayName] = std::make_shared<MLSstruct>(MLSstruct({Plato::any(Plato::Geometry::MovingLeastSquares<2,Plato::Scalar>(*tPointArrayInput)),2}));
-          else 
+          else
           if( tPointArrayDims == 3 )
               mMLS[tPointArrayName] = std::make_shared<MLSstruct>(MLSstruct({Plato::any(Plato::Geometry::MovingLeastSquares<3,Plato::Scalar>(*tPointArrayInput)),3}));
       }
@@ -55,7 +62,7 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
 #endif // PLATO_GEOMETRY
   }
 }
- 
+
 /******************************************************************************/
 void
 MPMD_App::
@@ -143,7 +150,7 @@ void MPMD_App::initialize()
       mProblemDefinitions[strProblem] = newProblem;
     }
   }
-  
+
 
   // parse Operation definition
   //
@@ -154,14 +161,14 @@ void MPMD_App::initialize()
     std::string tStrProblem  = Plato::Get::String(tOperationNode,"ProblemDefinition",mDefaultProblem->name);
 
     auto opDef = mProblemDefinitions[tStrProblem];
-  
+
     if(tStrFunction == "ComputeSolution"){
       mOperationMap[tStrName] = new ComputeSolution(this, tOperationNode, opDef);
-    } else 
+    } else
 
     if(tStrFunction == "Reinitialize"){
       mOperationMap[tStrName] = new Reinitialize(this, tOperationNode, opDef);
-    } else 
+    } else
 
     if(tStrFunction == "UpdateProblem"){
       mOperationMap[tStrName] = new UpdateProblem(this, tOperationNode, opDef);
@@ -169,41 +176,41 @@ void MPMD_App::initialize()
 
     if(tStrFunction == "ComputeObjective"){
       mOperationMap[tStrName] = new ComputeObjective(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeObjectiveX"){
       mOperationMap[tStrName] = new ComputeObjectiveX(this, tOperationNode, opDef);
     } else 
     if(tStrFunction == "ComputeObjectiveValue"){
       mOperationMap[tStrName] = new ComputeObjectiveValue(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeObjectiveGradient"){
       mOperationMap[tStrName] = new ComputeObjectiveGradient(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeObjectiveGradientX"){
       mOperationMap[tStrName] = new ComputeObjectiveGradientX(this, tOperationNode, opDef);
     } else 
 
     if(tStrFunction == "ComputeConstraint"){
       mOperationMap[tStrName] = new ComputeConstraint(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeConstraintX"){
       mOperationMap[tStrName] = new ComputeConstraintX(this, tOperationNode, opDef);
     } else 
     if(tStrFunction == "ComputeConstraintValue"){
       mOperationMap[tStrName] = new ComputeConstraintValue(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeConstraintGradient"){
       mOperationMap[tStrName] = new ComputeConstraintGradient(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeConstraintGradientX"){
       mOperationMap[tStrName] = new ComputeConstraintGradientX(this, tOperationNode, opDef);
     } else 
     if(tStrFunction == "WriteOutput"){
       mOperationMap[tStrName] = new WriteOutput(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeFiniteDifference"){
       mOperationMap[tStrName] = new ComputeFiniteDifference(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeMLSField"){
   #ifdef PLATO_GEOMETRY
       auto tMLSName = Plato::Get::String(tOperationNode,"MLSName");
@@ -224,7 +231,7 @@ void MPMD_App::initialize()
   #else
       throw Plato::ParsingException("MPMD_App was not compiled with ComputeMLSField enabled.  Turn on 'PLATO_GEOMETRY' option and rebuild.");
   #endif // PLATO_GEOMETRY
-    } else 
+    } else
     if(tStrFunction == "ComputePerturbedMLSField"){
   #ifdef PLATO_GEOMETRY
       auto tMLSName = Plato::Get::String(tOperationNode,"MLSName");
@@ -296,7 +303,7 @@ LocalOp(MPMD_App* aMyApp, Plato::InputData& aOperationNode, Teuchos::RCP<Problem
     auto tName   = Plato::Get::String(pNode, "ArgumentName");
     auto tTarget = Plato::Get::String(pNode, "Target");
     auto tValue  = Plato::Get::Double(pNode, "InitialValue");
-    
+
     if( mParameters.count(tName) )
     {
       Plato::ParsingException pe("ArgumentNames must be unique.");
@@ -319,7 +326,7 @@ updateParameters(std::string aName, Plato::Scalar aValue)
     ss << "Attempted to update a parameter ('" << aName << "') that wasn't defined for this operation";
     Plato::ParsingException pe(ss.str());
     throw pe;
-  } 
+  }
   else
   {
     auto it = mParameters.find(aName);
@@ -434,7 +441,13 @@ void MPMD_App::ComputeConstraint::operator()()
   mMyApp->mConstraintValue      = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
   mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mGlobalState);
 
-  std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  std::stringstream ss;
+  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+#ifdef PLATO_CONSOLE
+  Plato::Console::Status(ss.str());
+#else
+  std::cout << ss.str();
+#endif
 }
 
 /******************************************************************************/
@@ -504,8 +517,21 @@ void MPMD_App::ComputeConstraintGradientX::operator()()
 /******************************************************************************/
 MPMD_App::ComputeSolution::
 ComputeSolution(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
-        LocalOp(aMyApp, aOpNode, aOpDef)
+        LocalOp(aMyApp, aOpNode, aOpDef),
+        mWriteNativeOutput(false),
+        mVizFilePath("")
 {
+    auto tOutputNode = aOpNode.getByName<Plato::InputData>("WriteOutput");
+    if ( tOutputNode.size() == 1 )
+    {
+        mWriteNativeOutput = true;
+        std::string tDefaultDirectory = "out_vtk";
+        mVizFilePath = Plato::Get::String(tOutputNode[0], "Directory", tDefaultDirectory);
+    } else
+    if ( tOutputNode.size() > 1 )
+    {
+        throw Plato::ParsingException("More than one WriteOutput block specified.");
+    }
 }
 /******************************************************************************/
 
@@ -514,6 +540,13 @@ void MPMD_App::ComputeSolution::operator()()
 /******************************************************************************/
 {
   mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
+
+  // optionally, write solution
+  if ( mWriteNativeOutput )
+  {
+    auto tStateDataMap = mMyApp->mProblem->getDataMap();
+    Plato::write(mDef->params, mVizFilePath, mMyApp->mGlobalState, mMyApp->mControl, tStateDataMap, mMyApp->mMesh);
+  }
 }
 
 /******************************************************************************/
@@ -569,7 +602,7 @@ ComputeFiniteDifference(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RC
         mStrPerturbedValue("Perturbed Value"),
         mStrGradient("Gradient")
 /******************************************************************************/
-{ 
+{
     aMyApp->mValuesMap[mStrInitialValue] = std::vector<Plato::Scalar>();
     aMyApp->mValuesMap[mStrPerturbedValue] = std::vector<Plato::Scalar>();
 
@@ -580,9 +613,9 @@ ComputeFiniteDifference(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RC
 }
 
 /******************************************************************************/
-void MPMD_App::ComputeFiniteDifference::operator()() 
+void MPMD_App::ComputeFiniteDifference::operator()()
 /******************************************************************************/
-{ 
+{
     int tIndex=0;
     Plato::Scalar tDelta=0.0;
     if( mParameters.count("Perturbed Index") )
@@ -698,9 +731,9 @@ split( const std::string& aInputString, const char aDelimiter )
   return tTokens;
 }
 /******************************************************************************/
-void 
-parseInline( Teuchos::ParameterList& params, 
-             const std::string& target, 
+void
+parseInline( Teuchos::ParameterList& params,
+             const std::string& target,
              Plato::Scalar value )
 /******************************************************************************/
 {
@@ -713,7 +746,7 @@ parseInline( Teuchos::ParameterList& params,
 
 /******************************************************************************/
 Teuchos::ParameterList&
-getInnerList( Teuchos::ParameterList& params, 
+getInnerList( Teuchos::ParameterList& params,
               std::vector<std::string>& tokens)
 /******************************************************************************/
 {
@@ -724,15 +757,15 @@ getInnerList( Teuchos::ParameterList& params,
       std::string listName = token.substr(1,token.size()-2);
       tokens.erase(tokens.begin());
       return getInnerList( params.sublist(listName, /*must exist=*/true), tokens );
-    } 
-    else 
+    }
+    else
     {
       return params;
     }
 }
 /******************************************************************************/
 void
-setParameterValue( Teuchos::ParameterList& params, 
+setParameterValue( Teuchos::ParameterList& params,
                    std::vector<std::string> tokens, Plato::Scalar value)
 /******************************************************************************/
 {

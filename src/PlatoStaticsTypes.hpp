@@ -10,6 +10,7 @@
 #include <map>
 
 #include "alg/CrsMatrix.hpp"
+#include "AnalyzeMacros.hpp"
 #include "PlatoTypes.hpp"
 
 namespace Plato
@@ -44,10 +45,49 @@ using HostScalarArray3D  = HostScalarArray3DT<Plato::Scalar>;
 
 struct DataMap
 {
-    std::map<std::string, Plato::Scalar> mScalarValues;
-    std::map<std::string, Plato::ScalarVector> scalarVectors;
-    std::map<std::string, Plato::ScalarMultiVector> scalarMultiVectors;
-    std::map<std::string, Plato::ScalarArray3D> scalarArray3Ds;
+  std::map<std::string, Plato::Scalar> mScalarValues;
+  std::map<std::string, Plato::ScalarVector> scalarVectors;
+  std::map<std::string, Plato::ScalarMultiVector> scalarMultiVectors;
+  std::map<std::string, Plato::ScalarArray3D> scalarArray3Ds;
+
+  std::vector<DataMap> stateDataMaps;
+
+  void clearStates()
+  {
+    stateDataMaps.clear();
+  }
+
+  void saveState()
+  {
+    stateDataMaps.push_back(getState());
+  }
+
+  DataMap getState() const
+  {
+    DataMap tState(*this);
+    tState.stateDataMaps.clear();
+    return tState;
+  }
+
+  DataMap getState(int aStateIndex) const
+  {
+    if ( stateDataMaps.size() == 0 )
+    {
+      return getState();
+    }
+    else 
+    {
+      auto tNumStates = stateDataMaps.size();
+      if ( aStateIndex < 0 || aStateIndex >= tNumStates )
+      {
+        THROWERR("Requested a state that doesn't exist");
+      }
+      else
+      {
+        return stateDataMaps[aStateIndex];
+      }
+    }
+  }
 };
 // struct DataMap
 
