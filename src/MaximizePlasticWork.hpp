@@ -83,6 +83,7 @@ public:
             mElasticPropertiesMinErsatzSIMP(1e-9),
             mCubatureRule()
     {
+        this->parsePenaltyModelParams(aInputParams);
         this->parseMaterialProperties(aInputParams);
     }
 
@@ -192,6 +193,27 @@ private:
      * \brief Parse elastic material properties
      * \param [in] aProblemParams input XML data, i.e. parameter list
     **************************************************************************/
+    void parsePenaltyModelParams(Teuchos::ParameterList &aProblemParams)
+    {
+        if(aInputParams.isSublist(mFunctionName) == false)
+        {
+            auto tInputData = aInputParams.sublist(mFunctionName);
+            mElasticPropertiesPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
+            mElasticPropertiesMinErsatzSIMP = tInputData.get<Plato::Scalar>("Minimum Value", 1.0e-9);
+        }
+        else
+        {
+            const auto tError = std::string("UNKNOWN USER DEFINED SCALAR FUNCTION SUBLIST '")
+                    + mFunctionName + "'. USER DEFINED SCALAR FUNCTION SUBLIST '" + mFunctionName
+                    + "' IS NOT DEFINED IN THE INPUT FILE.";
+            THROWERR(tError)
+        }
+    }
+
+    /**********************************************************************//**
+     * \brief Parse elastic material properties
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    **************************************************************************/
     void parseMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
         if(aProblemParams.isSublist("Material Model"))
@@ -200,7 +222,7 @@ private:
         }
         else
         {
-            THROWERR("'Material Model' sublist is not defined.")
+            THROWERR("'Material Model' SUBLIST IS NOT DEFINED.")
         }
     }
 

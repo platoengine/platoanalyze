@@ -684,13 +684,20 @@ private:
                     Omega_h::MeshSets& aMeshSets,
                     Teuchos::ParameterList & aInputParams)
     {
-        typename PhysicsT::FunctionFactory tFactory;
-        auto tInputData = aInputParams.sublist(mFunctionName);
+        if(aInputParams.isSublist(mFunctionName) == false)
+        {
+            const auto tError = std::string("UNKNOWN USER DEFINED SCALAR FUNCTION SUBLIST '")
+                    + mFunctionName + "'. USER DEFINED SCALAR FUNCTION SUBLIST '" + mFunctionName
+                    + "' IS NOT DEFINED IN THE INPUT FILE.";
+            THROWERR(tError)
+        }
 
+        auto tInputData = aInputParams.sublist(mFunctionName);
         // FunctionType must be a hard-coded function type in Plato Analyze (e.g. Volume)
-        auto tFunctionType = tInputData.get<std::string>("Scalar Function Type", "");
+        auto tFunctionType = tInputData.get<std::string>("Scalar Function Type", "UNDEFINED");
         mMultiplier = tInputData.get<Plato::Scalar>("Multiplier", 1.0);
 
+        typename PhysicsT::FunctionFactory tFactory;
         mScalarFuncValue =
             tFactory.template createLocalScalarFunctionInc<Residual>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
