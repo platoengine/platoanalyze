@@ -109,7 +109,7 @@ void driver(Omega_h::Library* aLibOmegaH,
     if(tSpaceDim == static_cast<Plato::OrdinalType>(3))
     {
         #ifdef PLATOANALYZE_3D
-        driver<3>(aLibOmegaH, aProblemSpec, aInputFilename, aVizFilePath);
+        driver<3>(aLibOmegaH, aInputData, aInputFilename, aVizFilePath);
         #else
         throw std::runtime_error("3D physics option is not compiled.");
         #endif
@@ -117,7 +117,7 @@ void driver(Omega_h::Library* aLibOmegaH,
     else if(tSpaceDim == static_cast<Plato::OrdinalType>(2))
     {
         #ifdef PLATOANALYZE_2D
-        driver<2>(aLibOmegaH, aProblemSpec, aInputFilename, aVizFilePath);
+        driver<2>(aLibOmegaH, aInputData, aInputFilename, aVizFilePath);
         #else
         throw std::runtime_error("2D physics option is not compiled.");
         #endif
@@ -125,7 +125,7 @@ void driver(Omega_h::Library* aLibOmegaH,
     else if(tSpaceDim == static_cast<Plato::OrdinalType>(1))
     {
         #ifdef PLATOANALYZE_1D
-        driver<1>(aLibOmegaH, aProblemSpec, aInputFilename, aVizFilePath);
+        driver<1>(aLibOmegaH, aInputData, aInputFilename, aVizFilePath);
         #else
         throw std::runtime_error("1D physics option is not compiled.");
         #endif
