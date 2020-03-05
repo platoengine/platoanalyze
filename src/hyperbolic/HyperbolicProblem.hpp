@@ -117,7 +117,7 @@ namespace Plato
             return SimplexPhysics::mNumDofsPerNode;
         }
         /******************************************************************************/
-        Plato::ScalarMultiVector getState()
+        Plato::ScalarMultiVector getGlobalState()
         /******************************************************************************/
         {
             return mDisplacement;
@@ -130,7 +130,7 @@ namespace Plato
             return mAdjoints_U;
         }
         /******************************************************************************/
-        void setState(const Plato::ScalarMultiVector & aStates)
+        void setGlobalState(const Plato::ScalarMultiVector & aStates)
         /******************************************************************************/
         {
             assert(aStates.extent(0) == mDisplacement.extent(0));

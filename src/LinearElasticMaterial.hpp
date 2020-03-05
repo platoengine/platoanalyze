@@ -202,7 +202,6 @@ Teuchos::RCP<LinearElasticMaterial<SpatialDim>> ElasticModelFactory<SpatialDim>:
     {
         THROWERR("Input Material Model is NOT Defined.");
     }
-    return Teuchos::RCP<Plato::LinearElasticMaterial<SpatialDim>>(nullptr);
 }
 
 } // namespace Plato
