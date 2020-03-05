@@ -218,11 +218,31 @@ public:
 
     /***************************************************************************//**
      * \brief Return 2D view of global state variables - (NumTimeSteps, TotalDofs)
-     * \return aGlobalState 2D view of global state variables
+     * \return 2D view of global state variables
     *******************************************************************************/
     Plato::ScalarMultiVector getGlobalState() override
     {
         return mGlobalStates;
+    }
+
+    /***************************************************************************//**
+     * \brief Set local state variables
+     * \param [in] aLocalState 2D view of local state variables, e.g. LS(NumTimeSteps, TotalDofs)
+    *******************************************************************************/
+    void setLocalState(const Plato::ScalarMultiVector & aLocalState) override
+    {
+        assert(aLocalState.extent(0) == mLocalStates.extent(0));
+        assert(aLocalState.extent(1) == mLocalStates.extent(1));
+        Kokkos::deep_copy(mLocalStates, aLocalState);
+    }
+
+    /***************************************************************************//**
+     * \brief Return 2D view of local state variables, e.g. LS(NumTimeSteps, TotalDofs)
+     * \return 2D view of global state variables
+    *******************************************************************************/
+    Plato::ScalarMultiVector getLocalState() override
+    {
+        return mLocalStates;
     }
 
     /***************************************************************************//**
