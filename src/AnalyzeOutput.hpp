@@ -80,16 +80,16 @@ inline void electromechanical_output(const std::string & aOutputFilePath,
     const Plato::OrdinalType tTIME_STEP_INDEX = 0;
     auto tSubView = Kokkos::subview(aState, tTIME_STEP_INDEX, Kokkos::ALL());
 
-    auto tNumDispPerNode = SpatialDim;
     auto tNumVertices = aMesh.nverts();
     auto tNumDisp = tNumVertices * SpatialDim;
+    constexpr auto tNumDispPerNode = SpatialDim;
     Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
-    auto tNumDofsPerNode = SpatialDim + static_cast<Plato::OrdinalType>(1);
+    constexpr auto tNumDofsPerNode = SpatialDim + static_cast<Plato::OrdinalType>(1);
     Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*tStride=*/0, tNumVertices, tSubView, tDisp);
 
     auto tNumPot = tNumVertices;
-    const Plato::OrdinalType tNumPotDofPerNode = 1;
     Omega_h::Write<Omega_h::Real> tPot(tNumPot, "Potential");
+    constexpr auto tNumPotDofPerNode = static_cast<Plato::OrdinalType>(1);
     Plato::copy<tNumDofsPerNode, tNumPotDofPerNode>(/*tStride=*/SpatialDim, tNumVertices, tSubView, tPot);
 
     const Plato::Scalar tRestartTime = 0.;
@@ -125,17 +125,17 @@ inline void stabilized_thermomechanical_output(const std::string & aOutputFilePa
         auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
 
         auto tNumVertices = aMesh.nverts();
-        auto tNumTempPerNode = static_cast<Plato::OrdinalType>(1);
         Omega_h::Write<Omega_h::Real> tTemp(tNumVertices, "Temperature");
-        auto tNumDofsPerNode = SpatialDim + static_cast<Plato::OrdinalType>(2);
+        constexpr auto tNumTempPerNode = static_cast<Plato::OrdinalType>(1);
+        constexpr auto tNumDofsPerNode = SpatialDim + static_cast<Plato::OrdinalType>(2);
         Plato::copy<tNumDofsPerNode, tNumTempPerNode> (/*tStride=*/ SpatialDim+1, tNumVertices, tSubView, tTemp);
 
-        auto tNumPressPerNode = static_cast<Plato::OrdinalType>(1);
         Omega_h::Write<Omega_h::Real> tPress(tNumVertices, "Pressure");
+        constexpr auto tNumPressPerNode = static_cast<Plato::OrdinalType>(1);
         Plato::copy<tNumDofsPerNode, tNumPressPerNode> (/*tStride=*/ SpatialDim, tNumVertices, tSubView, tPress);
 
-        auto tNumDispPerNode = SpatialDim;
         auto tNumDisp = tNumVertices * SpatialDim;
+        constexpr auto tNumDispPerNode = SpatialDim;
         Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
         Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*tStride=*/0, tNumVertices, tSubView, tDisp);
 
@@ -173,13 +173,13 @@ inline void thermomechanical_output(const std::string & aOutputFilePath,
         auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
 
         auto tNumVertices = aMesh.nverts();
-        auto tNumTempPerNode = static_cast<Plato::OrdinalType>(1);
         Omega_h::Write<Omega_h::Real> tTemp(tNumVertices, "Temperature");
-        auto tNumDofsPerNode = SpatialDim + static_cast<Plato::OrdinalType>(1);
+        constexpr auto tNumTempPerNode = static_cast<Plato::OrdinalType>(1);
+        constexpr auto tNumDofsPerNode = SpatialDim + static_cast<Plato::OrdinalType>(1);
         Plato::copy<tNumDofsPerNode, tNumTempPerNode> (/*tStride=*/ SpatialDim, tNumVertices, tSubView, tTemp);
 
-        auto tNumDispPerNode = SpatialDim;
         auto tNumDisp = tNumVertices * SpatialDim;
+        constexpr auto tNumDispPerNode = SpatialDim;
         Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
         Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*tStride=*/0, tNumVertices, tSubView, tDisp);
 
@@ -214,10 +214,10 @@ inline void mechanical_output(const std::string & aOutputFilePath,
     {
          auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
 
-         auto tNumDofsPerNode = SpatialDim;
-         auto tNumDispPerNode = SpatialDim;
          auto tNumVertices = aMesh.nverts();
          auto tNumDisp = tNumVertices * SpatialDim;
+         constexpr auto tNumDofsPerNode = SpatialDim;
+         constexpr auto tNumDispPerNode = SpatialDim;
          Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
          Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*stride=*/0, tNumVertices, tSubView, tDisp);
 
@@ -253,13 +253,13 @@ inline void stabilized_mechanical_output(const std::string & aOutputFilePath,
         auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
 
         auto tNumVertices = aMesh.nverts();
-        auto tNumPressPerNode = static_cast<Plato::OrdinalType>(1);
         Omega_h::Write<Omega_h::Real> tPress(tNumVertices, "Pressure");
-        auto tNumDofsPerNode = SpatialDim + static_cast<Plato::OrdinalType>(1);
+        constexpr auto tNumPressPerNode = static_cast<Plato::OrdinalType>(1);
+        constexpr auto tNumDofsPerNode = SpatialDim + static_cast<Plato::OrdinalType>(1);
         Plato::copy<tNumDofsPerNode, tNumPressPerNode> (/*tStride=*/ SpatialDim, tNumVertices, tSubView, tPress);
 
-        auto tNumDispPerNode = SpatialDim;
         auto tNumDisp = tNumVertices * SpatialDim;
+        constexpr auto tNumDispPerNode = SpatialDim;
         Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
         Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*tStride=*/0, tNumVertices, tSubView, tDisp);
 
@@ -299,8 +299,8 @@ inline void thermal_output(const std::string & aOutputFilePath,
         Omega_h::Write<Omega_h::Real> tTemp(tNumVertices, "Temperature");
 
         const Plato::OrdinalType tStride = 0;
-        auto tNumTempPerNode = static_cast<Plato::OrdinalType>(1);
-        auto tNumDofsPerNode = static_cast<Plato::OrdinalType>(1);
+        constexpr auto tNumTempPerNode = static_cast<Plato::OrdinalType>(1);
+        constexpr auto tNumDofsPerNode = static_cast<Plato::OrdinalType>(1);
         Plato::copy<tNumDofsPerNode, tNumTempPerNode>(tStride, tNumVertices, tSubView, tTemp);
 
         aMesh.add_tag(Omega_h::VERT, "Temperature", tNumTempPerNode, Omega_h::Reals(tTemp));
