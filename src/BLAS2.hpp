@@ -30,9 +30,9 @@ inline void fill_array_2D(typename XViewType::const_value_type& aAlpha, XViewTyp
 
     const Plato::OrdinalType tNumEntriesDim0 = aXvec.extent(0);
     const Plato::OrdinalType tNumEntriesDim1 = aXvec.extent(1);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumEntriesDim0), LAMBDA_EXPRESSION(const decltype(tNumEntriesDim0) & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumEntriesDim0), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(decltype(tNumEntriesDim0) tIndex = 0; tIndex < tNumEntriesDim1; tIndex++)
+        for(Plato::OrdinalType tIndex = 0; tIndex < tNumEntriesDim1; tIndex++)
         {
             aXvec(aCellOrdinal, tIndex) = aAlpha;
         }
@@ -59,9 +59,9 @@ inline void scale_array_2D(typename XViewType::const_value_type& aAlpha, XViewTy
 
     const Plato::OrdinalType tNumEntriesDim0 = aXvec.extent(0);
     const Plato::OrdinalType tNumEntriesDim1 = aXvec.extent(1);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumEntriesDim0), LAMBDA_EXPRESSION(const decltype(tNumEntriesDim0) & aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumEntriesDim0), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(decltype(tNumEntriesDim0) tIndex = 0; tIndex < tNumEntriesDim1; tIndex++)
+        for(Plato::OrdinalType tIndex = 0; tIndex < tNumEntriesDim1; tIndex++)
         {
             aXvec(aCellOrdinal, tIndex) = aAlpha * aXvec(aCellOrdinal, tIndex);
         }

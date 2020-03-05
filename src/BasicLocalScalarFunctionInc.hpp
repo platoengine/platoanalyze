@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "BLAS2.hpp"
 #include "WorksetBase.hpp"
 #include "SimplexFadTypes.hpp"
 #include "LocalScalarFunctionInc.hpp"
@@ -688,7 +689,7 @@ private:
 
         // FunctionType must be a hard-coded function type in Plato Analyze (e.g. Volume)
         auto tFunctionType = tInputData.get<std::string>("Scalar Function Type", "");
-        mMultiplier = tInputData.get<Plato::Scalar>("Multiplier", "1.0");
+        mMultiplier = tInputData.get<Plato::Scalar>("Multiplier", 1.0);
 
         mScalarFuncValue =
             tFactory.template createLocalScalarFunctionInc<Residual>(
