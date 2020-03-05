@@ -21,12 +21,12 @@
 #include "AnalyzeMacros.hpp"
 
 #include "Mechanics.hpp"
+#include "PlasticityProblem.hpp"
 #include "StabilizedMechanics.hpp"
 #include "Electromechanics.hpp"
 #include "Thermomechanics.hpp"
 #include "StabilizedThermomechanics.hpp"
 #include "hyperbolic/HyperbolicProblem.hpp"
-//#include "StructuralDynamics.hpp"
 //#include "StructuralDynamicsProblem.hpp"
 
 namespace Plato
@@ -66,9 +66,17 @@ public:
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
                 return tOutput;
             }
+            else 
             if(tProblemPDE == "Hyperbolic")
             {
                 return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+            }
+            else
+            if(tProblemPDE == "Infinite Strain Plasticity")
+            {
+                auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainPlasticity<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+                return tOutput;
             }
             else
             {
