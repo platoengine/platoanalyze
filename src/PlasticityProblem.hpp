@@ -20,7 +20,7 @@ namespace Plato
 
 /***************************************************************************//**
  * \brief Plasticity problem manager.  This interface is responsible for the
- * evaluation of the criteriai, sensitivities and residual evaluations.
+ * evaluation of the criteria value, criteria sensitivities, and residual.
  *
  * \tparam PhysicsT physics type, e.g. Plato::InfinitesimalStrainPlasticity
 *******************************************************************************/
