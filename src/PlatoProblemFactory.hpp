@@ -54,115 +54,115 @@ public:
                                                    Teuchos::ParameterList& aInputParams)
     {
 
-        auto tProblemSpecs = aInputParams.sublist("Plato Problem");
-        auto tProblemPhysics = tProblemSpecs.get < std::string > ("Physics");
-        auto tProblemPDE = tProblemSpecs.get < std::string > ("PDE Constraint");
+        auto tInputData = aInputParams.sublist("Plato Problem");
+        auto tPhysics = tInputData.get < std::string > ("Physics");
+        auto tPDE = tInputData.get < std::string > ("PDE Constraint");
 
-        if(tProblemPhysics == "Mechanical")
+        if(tPhysics == "Mechanical")
         {
-            if(tProblemPDE == "Elliptic")
+            if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+                auto tOutput = std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
             else 
-            if(tProblemPDE == "Hyperbolic")
+            if(tPDE == "Hyperbolic")
             {
-                return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
             }
             else
-            if(tProblemPDE == "Infinite Strain Plasticity")
+            if(tPDE == "Infinite Strain Plasticity")
             {
-                auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainPlasticity<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+                auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainPlasticity<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
             else
             {
                 std::stringstream ss;
-                ss << "Unknown PDE type (" << tProblemPDE << ") requested.";
+                ss << "Unknown PDE type (" << tPDE << ") requested.";
                 THROWERR(ss.str());
             }
         }
-        else if(tProblemPhysics == "Stabilized Mechanical")
+        else if(tPhysics == "Stabilized Mechanical")
         {
-            if(tProblemPDE == "Elliptic")
+            if(tPDE == "Elliptic")
             {
-                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
             }
             else
             {
                 std::stringstream tStringStream;
-                tStringStream << "Unknown PDE type (" << tProblemPDE << ") requested.";
+                tStringStream << "Unknown PDE type (" << tPDE << ") requested.";
                 THROWERR(tStringStream.str());
             }
         }
-        else if(tProblemPhysics == "Thermal")
+        else if(tPhysics == "Thermal")
         {
-            if(tProblemPDE == "Heat Equation")
+            if(tPDE == "Heat Equation")
             {
-                return std::make_shared < ParabolicProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < ParabolicProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData);
             }
-            else if(tProblemPDE == "Thermostatics")
+            else if(tPDE == "Thermostatics")
             {
-                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
             else
             {
                 std::stringstream tStringStream;
-                tStringStream << "Unknown PDE type (" << tProblemPDE << ") requested.";
+                tStringStream << "Unknown PDE type (" << tPDE << ") requested.";
                 THROWERR(tStringStream.str());
             }
         }
-        else if(tProblemPhysics == "StructuralDynamics")
+        else if(tPhysics == "StructuralDynamics")
         {
 //            return std::make_shared<Plato::StructuralDynamicsProblem<Plato::StructuralDynamics<SpatialDim>>>(aMesh, aMeshSets, tProblemSpecs);
         }
-        else if(tProblemPhysics == "Electromechanical")
+        else if(tPhysics == "Electromechanical")
         {
-            auto tOutput = std::make_shared < EllipticProblem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
-            tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+            auto tOutput = std::make_shared < EllipticProblem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+            tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
             return tOutput;
         }
-        else if(tProblemPhysics == "Stabilized Thermomechanical")
+        else if(tPhysics == "Stabilized Thermomechanical")
         {
-            if(tProblemPDE == "Elliptic")
+            if(tPDE == "Elliptic")
             {
-                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
             }
             else
             {
                 std::stringstream ss;
-                ss << "Unknown PDE type (" << tProblemPDE << ") requested.";
+                ss << "Unknown PDE type (" << tPDE << ") requested.";
                 THROWERR(ss.str());
             }
         }
-        else if(tProblemPhysics == "Thermomechanical")
+        else if(tPhysics == "Thermomechanical")
         {
-            if(tProblemPDE == "Parabolic")
+            if(tPDE == "Parabolic")
             {
-                return std::make_shared < ParabolicProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < ParabolicProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
             }
-            else if(tProblemPDE == "Elliptic")
+            else if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tProblemSpecs);
+                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
             else
             {
                 std::stringstream ss;
-                ss << "Unknown PDE type (" << tProblemPDE << ") requested.";
+                ss << "Unknown PDE type (" << tPDE << ") requested.";
                 THROWERR(ss.str());
             }
         }
         else
         {
             std::stringstream tStringStream;
-            tStringStream << "Unknown Physics type (" << tProblemPhysics << ") requested.";
+            tStringStream << "Unknown Physics type (" << tPhysics << ") requested.";
             THROWERR(tStringStream.str());
         }
 
