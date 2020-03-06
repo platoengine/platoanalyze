@@ -17,13 +17,6 @@
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
-namespace Plato
-{
-
-
-
-}
-
 
 namespace ElastoPlasticityTest
 {
