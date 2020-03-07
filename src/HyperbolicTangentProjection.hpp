@@ -72,15 +72,6 @@ public:
         mDenominator = tanh(mBetaTimesEta) + tanh(mBetaTimesOneMinusEta);
     }
 
-    /****************************************************************************//**
-     *
-     * \brief Destructor
-     *
-    *********************************************************************************/
-    virtual ~HyperbolicTangentProjection()
-    {
-    }
-
     //! Returns application of the hyperbolic tangent projection to input scalar.
     template<typename ScalarType>
     KOKKOS_INLINE_FUNCTION ScalarType apply(const ScalarType & aInput) const

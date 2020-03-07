@@ -45,15 +45,6 @@ public:
     {
     }
 
-    /****************************************************************************//**
-     *
-     * \brief Destructor
-     *
-    *********************************************************************************/
-    virtual ~HeavisideProjection()
-    {
-    }
-
     //! Returns application of the Heaviside function projection to input scalar.
     template<typename ScalarType>
     KOKKOS_INLINE_FUNCTION ScalarType apply(ScalarType aInput) const
