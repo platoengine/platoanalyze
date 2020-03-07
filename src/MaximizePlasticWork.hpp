@@ -198,9 +198,9 @@ private:
         auto tFunctionName = this->getName();
         if(aInputParams.isSublist(tFunctionName) == true)
         {
-            auto tInputData = aInputParams.sublist(tFunctionName);
-            //mElasticPropertiesPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
-            //mElasticPropertiesMinErsatzSIMP = tInputData.get<Plato::Scalar>("Minimum Value", 0.000000001);
+            Teuchos::ParameterList tInputData = aInputParams.sublist(tFunctionName);
+            mElasticPropertiesPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
+            mElasticPropertiesMinErsatzSIMP = tInputData.get<Plato::Scalar>("Minimum Value", 1e-9);
         }
         else
         {

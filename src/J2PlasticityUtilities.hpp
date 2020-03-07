@@ -27,11 +27,6 @@ class J2PlasticityUtilities
     {
     }
 
-    /**************************************************************************//**
-    * \brief Destructor
-    ******************************************************************************/
-    ~J2PlasticityUtilities(){}
-
     /******************************************************************************//**
      * \brief Update the plastic strain and backstress for a plastic step
      * \param [in] aCellOrdinal cell/element index

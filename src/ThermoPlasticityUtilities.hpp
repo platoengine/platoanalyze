@@ -34,11 +34,6 @@ class ThermoPlasticityUtilities
     {
     }
 
-    /**************************************************************************//**
-    * @brief Destructor
-    ******************************************************************************/
-    ~ThermoPlasticityUtilities(){}
-
     /******************************************************************************//**
      * @brief Compute the elastic strain by subtracting the plastic strain (and thermal strain) from the total strain
      * @param [in] aCellOrdinal cell/element index

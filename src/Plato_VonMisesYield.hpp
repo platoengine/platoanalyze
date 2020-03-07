@@ -24,11 +24,6 @@ public:
     VonMisesYield(){}
 
     /******************************************************************************//**
-     * \brief Destructor
-    **********************************************************************************/
-    ~VonMisesYield(){}
-
-    /******************************************************************************//**
      * \brief Compute Von Mises yield criterion
      * \param [in] aCellOrdinal cell/element index
      * \param [in] aCauchyStress 2D container of cell Cauchy stresses

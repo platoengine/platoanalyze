@@ -27,11 +27,6 @@ public:
     DoubleDotProduct2ndOrderTensor(){}
 
     /***************************************************************************//**
-     * \brief Destructor
-    *******************************************************************************/
-    ~DoubleDotProduct2ndOrderTensor(){}
-
-    /***************************************************************************//**
      * \brief Double dot product for 2nd order tensors, e.g. strain tensor, using
      *   Voigt notation.
      *
