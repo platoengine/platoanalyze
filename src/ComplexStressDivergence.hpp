@@ -47,10 +47,6 @@ public:
     }
 
     /******************************************************************************/
-    ~ComplexStressDivergence(){}
-    /******************************************************************************/
-
-    /******************************************************************************/
     template<typename ForcingScalarType, typename StressScalarType, typename GradientScalarType, typename VolumeScalarType>
     DEVICE_TYPE inline void
     operator()(const Plato::OrdinalType & aCellOrdinal,

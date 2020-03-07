@@ -26,7 +26,6 @@ class ComplexElasticEnergy
 {
 public:
     ComplexElasticEnergy(){}
-    ~ComplexElasticEnergy(){}
 
     template<typename OutputScalarType, typename Tensor1ScalarType, typename Tensor2ScalarType>
     DEVICE_TYPE inline void

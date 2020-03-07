@@ -7,7 +7,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Compute Eigenvalues
+ * \brief Compute Eigenvalues
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 class Eigenvalues
@@ -18,7 +18,7 @@ private:
 
 public:
 	/******************************************************************************//**
-     * @brief Constructor
+     * \brief Constructor
     **********************************************************************************/
     Eigenvalues(Plato::Scalar aTolerance = 1.0e-12, Plato::OrdinalType aMaxIterations = 20) :
     mTolerance(aTolerance),
@@ -27,13 +27,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Destructor
-    **********************************************************************************/
-    ~Eigenvalues(){}
-
-    /******************************************************************************//**
-     * @brief Set tolerance
-     * @param [in] aTolerance new tolerance for jacobi eigenvalue solver
+     * \brief Set tolerance
+     * \param [in] aTolerance new tolerance for jacobi eigenvalue solver
     **********************************************************************************/
     void setTolerance(const Plato::Scalar aTolerance)
     {
@@ -41,8 +36,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set maximum number of jacobi iterations
-     * @param [in] aMaxIterations maximum number of iterations for jacobi eigenvalue solver
+     * \brief Set maximum number of jacobi iterations
+     * \param [in] aMaxIterations maximum number of iterations for jacobi eigenvalue solver
     **********************************************************************************/
     void setMaxIterations(const Plato::Scalar aMaxIterations)
     {
@@ -50,11 +45,11 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Compute Eigenvalues
-     * @param [in] aCellOrdinal cell/element index
-     * @param [in] aVoigtTensor cell/element voigt tensor
-     * @param [in] aIsStrainType engineering factor - divide shear terms by 2
-     * @param [out] aEigenvalues cell/element tensor eigenvalues
+     * \brief Compute Eigenvalues
+     * \param [in] aCellOrdinal cell/element index
+     * \param [in] aVoigtTensor cell/element voigt tensor
+     * \param [in] aIsStrainType engineering factor - divide shear terms by 2
+     * \param [out] aEigenvalues cell/element tensor eigenvalues
     **********************************************************************************/
     template<typename InputType, typename ResultType>
     DEVICE_TYPE inline void
@@ -66,12 +61,12 @@ public:
 // class Eigenvalues
 
 /******************************************************************************//**
- * @brief Eigenvalues for 3D problems
+ * \brief Eigenvalues for 3D problems
  *
- * @param [in] aCellOrdinal cell/element local ordinal
- * @param [in] aVoigtTensor cell/element voigt tensor
- * @param [in] aIsStrainType engineering factor - divide shear terms by 2
- * @param [out] aEigenvalues cell/element tensor eigenvalues
+ * \param [in] aCellOrdinal cell/element local ordinal
+ * \param [in] aVoigtTensor cell/element voigt tensor
+ * \param [in] aIsStrainType engineering factor - divide shear terms by 2
+ * \param [out] aEigenvalues cell/element tensor eigenvalues
 **********************************************************************************/
 template<>
 template<typename InputType, typename ResultType>
@@ -208,12 +203,12 @@ Eigenvalues<3>::operator()(const Plato::OrdinalType & aCellOrdinal,
 }
 
 /******************************************************************************//**
- * @brief Eigenvalues for 2D problems
+ * \brief Eigenvalues for 2D problems
  *
- * @param [in] aCellOrdinal cell/element local ordinal
- * @param [in] aVoigtTensor cell/element voigt tensor
- * @param [in] aIsStrainType engineering factor - divide shear terms by 2
- * @param [out] aEigenvalues cell/element tensor eigenvalues
+ * \param [in] aCellOrdinal cell/element local ordinal
+ * \param [in] aVoigtTensor cell/element voigt tensor
+ * \param [in] aIsStrainType engineering factor - divide shear terms by 2
+ * \param [out] aEigenvalues cell/element tensor eigenvalues
 **********************************************************************************/
 template<>
 template<typename InputType, typename ResultType>
@@ -265,12 +260,12 @@ Eigenvalues<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
 }
 
 /******************************************************************************//**
- * @brief Eigenvalues for 1D problems
+ * \brief Eigenvalues for 1D problems
  *
- * @param [in] aCellOrdinal cell/element local ordinal
- * @param [in] aVoigtTensor cell/element voigt tensor
- * @param [in] aIsStrainType engineering factor - divide shear terms by 2
- * @param [out] aEigenvalues cell/element tensor eigenvalues
+ * \param [in] aCellOrdinal cell/element local ordinal
+ * \param [in] aVoigtTensor cell/element voigt tensor
+ * \param [in] aIsStrainType engineering factor - divide shear terms by 2
+ * \param [out] aEigenvalues cell/element tensor eigenvalues
 **********************************************************************************/
 template<>
 template<typename InputType, typename ResultType>

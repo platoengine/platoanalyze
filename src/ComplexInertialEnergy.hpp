@@ -30,9 +30,6 @@ public:
     {
         mOmegaTimesOmegaTimesDensity = aOmega * aOmega * aDensity;
     }
-    ~ComplexInertialEnergy()
-    {
-    }
 
     template<typename OutputScalarType, typename StateScalarType, typename VolumeScalarType>
     DEVICE_TYPE inline void operator()(const Plato::OrdinalType & aCellOrdinal,

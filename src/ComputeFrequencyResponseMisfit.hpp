@@ -37,12 +37,6 @@ public:
     }
 
     /*************************************************************************/
-    ~ComputeFrequencyResponseMisfit()
-    /*************************************************************************/
-    {
-    }
-
-    /*************************************************************************/
     template<typename StateScalarType, typename OutputScalarType>
     DEVICE_TYPE inline void
     operator()(const Plato::OrdinalType & aCellOrdinal,

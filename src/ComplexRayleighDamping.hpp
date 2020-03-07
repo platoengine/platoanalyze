@@ -60,10 +60,6 @@ public:
     }
 
     /******************************************************************************/
-    ~ComplexRayleighDamping(){}
-    /******************************************************************************/
-
-    /******************************************************************************/
     template<typename ElasticForceScalarType, typename InertialForceScalarType, typename DampingForceScalarType>
     DEVICE_TYPE inline void operator()(const Plato::OrdinalType & aCellOrdinal,
                                        const Plato::ScalarMultiVectorT<ElasticForceScalarType> & aElasticForces,

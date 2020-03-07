@@ -37,10 +37,6 @@ public:
     }
 
     /******************************************************************************/
-    ~ComplexLinearStress(){}
-    /******************************************************************************/
-
-    /******************************************************************************/
     template<typename StressScalarType, typename StrainScalarType>
     DEVICE_TYPE inline void
     operator()(const Plato::OrdinalType & aCellOrdinal,
