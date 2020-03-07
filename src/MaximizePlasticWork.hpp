@@ -191,20 +191,21 @@ public:
 private:
     /**********************************************************************//**
      * \brief Parse elastic material properties
-     * \param [in] aProblemParams input XML data, i.e. parameter list
+     * \param [in] aInputParams input XML data, i.e. parameter list
     **************************************************************************/
-    void parsePenaltyModelParams(Teuchos::ParameterList &aProblemParams)
+    void parsePenaltyModelParams(Teuchos::ParameterList &aInputParams)
     {
-        if(aInputParams.isSublist(mFunctionName) == false)
+        auto tFunctionName = this->getName();
+        if(aInputParams.isSublist(tFunctionName) == true)
         {
-            auto tInputData = aInputParams.sublist(mFunctionName);
-            mElasticPropertiesPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
-            mElasticPropertiesMinErsatzSIMP = tInputData.get<Plato::Scalar>("Minimum Value", 1.0e-9);
+            auto tInputData = aInputParams.sublist(tFunctionName);
+            //mElasticPropertiesPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
+            //mElasticPropertiesMinErsatzSIMP = tInputData.get<Plato::Scalar>("Minimum Value", 0.000000001);
         }
         else
         {
             const auto tError = std::string("UNKNOWN USER DEFINED SCALAR FUNCTION SUBLIST '")
-                    + mFunctionName + "'. USER DEFINED SCALAR FUNCTION SUBLIST '" + mFunctionName
+                    + tFunctionName + "'. USER DEFINED SCALAR FUNCTION SUBLIST '" + tFunctionName
                     + "' IS NOT DEFINED IN THE INPUT FILE.";
             THROWERR(tError)
         }
