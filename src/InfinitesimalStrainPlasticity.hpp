@@ -7,7 +7,7 @@
 #pragma once
 
 #include "Projection.hpp"
-#include "MaximizePlasticWork.hpp"
+#include "PlasticWorkCriterion.hpp"
 #include "InfinitesimalStrainPlasticityResidual.hpp"
 
 namespace Plato
@@ -80,10 +80,10 @@ struct FunctionFactory
                                  std::string aFuncType,
                                  std::string aFuncName)
     {
-        if(aFuncType == "Maximize Plastic Work")
+        if(aFuncType == "Plastic Work")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
-            return ( std::make_shared<Plato::MaximizePlasticWork<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+            return ( std::make_shared<Plato::PlasticWorkCriterion<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
         }
         else

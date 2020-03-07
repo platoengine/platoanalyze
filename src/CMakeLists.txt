@@ -58,7 +58,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     BasicLocalScalarFunctionInc.cpp 
     PlasticityProblem.cpp 
     InfinitesimalStrainPlasticityResidual.cpp 
-    MaximizePlasticWork.cpp)
+    PlasticWorkCriterion.cpp)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${Trilinos_INCLUDE_DIRS})

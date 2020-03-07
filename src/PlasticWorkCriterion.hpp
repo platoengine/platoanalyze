@@ -1,5 +1,5 @@
 /*
- * MaximizePlasticWork.hpp
+ * PlasticWorkCriterion.hpp
  *
  *  Created on: Feb 29, 2020
  */
@@ -22,21 +22,24 @@ namespace Plato
 {
 
 /***************************************************************************//**
- * \brief Approximate maximize plastic work criterion using trapezoid rule.
- *   The criterion is defined as:
+ * \brief Evaluate the plastic work criterion using a trapezoid rule.  The plastic
+ *   work criterion is given by:
  *
- *  /f$ f(u,c,z) =
- *    \frac{1}{2}\int_{\Omega}\sigma_{N}:(\epsilon_N^{p} - \epsilon_{N-1}^{p}
- *      d\Omega + \sum_{i=1}^{N-1}\frac{1}{2}\int_{\Omega}\sigma_{i} :
- *      (\epsilon_{i+1}^{p} - \epsilon_{i-1}^{p} d\Omega /f$
+ *  \f$ f(\phi,u_{k},u_{k-1},c_{k},c_{k-1}) = \frac{1}{2}\int_{\Omega}\sigma_{k} :
+ *       \left( \epsilon_{k}^{p} - \epsilon_{k-1}^{p} \right) d\Omega  \f$
  *
- * \tparam EvaluationType     evaluation type for scalar function, determines
- *                            which AD type is active
- * \tparam SimplexPhysicsType simplex physics type, determines values of
- *                            physics-based static parameters
+ * where \f$ \phi \f$ are the control variables, \f$ u \f$ are the global state
+ * variables, \f$ c \f$ are the local state variables, \f$ \epsilon^p \f$ is the
+ * plastic strain tensor, and \f$ \sigma \f$ is the Cauchy stress tensor.  The
+ * \f$ k-th \f$ index denotes the time stpe index.
+ *
+ * \tparam EvaluationType      evaluation type for scalar function, determines
+ *                             which AD type is active
+ * \tparam SimplexPhysicsType  simplex physics type, determines values of
+ *                             physics-based static parameters
 *******************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>
-class MaximizePlasticWork : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
+class PlasticWorkCriterion : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
 {
 // private member data
 private:
@@ -58,12 +61,10 @@ private:
     Plato::Scalar mElasticPropertiesMinErsatzSIMP;                                 /*!< SIMP min ersatz stiffness for elastic properties */
     Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule;                     /*!< simplex linear cubature rule */
 
-    using Plato::AbstractLocalScalarFunctionInc<EvaluationType>::mDataMap;      /*!< PLATO Analyze output database */
-
 // public access functions
 public:
     /***************************************************************************//**
-     * \brief Constructor of maximize total work criterion
+     * \brief Constructor for plastic work criterion
      *
      * \param [in] aMesh        mesh database
      * \param [in] aMeshSets    side sets database
@@ -71,7 +72,7 @@ public:
      * \param [in] aInputParams input parameters from XML file
      * \param [in] aName        scalar function name
     *******************************************************************************/
-    MaximizePlasticWork(Omega_h::Mesh& aMesh,
+    PlasticWorkCriterion(Omega_h::Mesh& aMesh,
                         Omega_h::MeshSets& aMeshSets,
                         Plato::DataMap & aDataMap,
                         Teuchos::ParameterList& aInputParams,
@@ -95,7 +96,7 @@ public:
      * \param [in] aDataMap     PLATO Analyze output data map side sets database
      * \param [in] aName        scalar function name
     *******************************************************************************/
-    MaximizePlasticWork(Omega_h::Mesh& aMesh,
+    PlasticWorkCriterion(Omega_h::Mesh& aMesh,
                         Omega_h::MeshSets& aMeshSets,
                         Plato::DataMap & aDataMap,
                         std::string aName = "") :
@@ -111,11 +112,10 @@ public:
     /***************************************************************************//**
      * \brief Destructor of maximize total work criterion
     *******************************************************************************/
-    virtual ~MaximizePlasticWork(){}
+    virtual ~PlasticWorkCriterion(){}
 
     /***************************************************************************//**
-     * \brief Evaluates maximize plastic work criterion.  AD evaluation type determines
-     * output/result value.
+     * \brief Evaluates plastic work criterion. FAD type determines output/result value.
      *
      * \param [in] aCurrentGlobalState  current global states
      * \param [in] aPreviousGlobalState previous global states
@@ -185,7 +185,7 @@ public:
             const Plato::Scalar tMultiplier = 0.5;
             tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tPlasticStrainMisfit, aResult);
             aResult(aCellOrdinal) *= (tMultiplier * tElasticPropertiesPenalty * tCellVolume(aCellOrdinal));
-        }, "maximize plastic work criterion");
+        }, "plastic work criterion");
     }
 
 private:
@@ -248,28 +248,28 @@ private:
         }
     }
 };
-// class MaximizePlasticWork
+// class PlasticWorkCriterion
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::MaximizePlasticWork<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::MaximizePlasticWork<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::MaximizePlasticWork<Plato::JacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::MaximizePlasticWork<Plato::JacobianNTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::MaximizePlasticWork<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::MaximizePlasticWork<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::MaximizePlasticWork<Plato::GradientXTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::MaximizePlasticWork<Plato::GradientZTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>;
+extern template class Plato::PlasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::JacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::JacobianNTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::GradientXTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::GradientZTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::MaximizePlasticWork<Plato::ResidualTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::MaximizePlasticWork<Plato::JacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::MaximizePlasticWork<Plato::JacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::MaximizePlasticWork<Plato::JacobianNTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::MaximizePlasticWork<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::MaximizePlasticWork<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::MaximizePlasticWork<Plato::GradientXTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::MaximizePlasticWork<Plato::GradientZTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>;
+extern template class Plato::PlasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::JacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::JacobianNTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::GradientXTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::PlasticWorkCriterion<Plato::GradientZTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>;
 #endif
 
 }
