@@ -6,8 +6,8 @@
 
 #pragma once
 
+#include "BasicLocalScalarFunction.hpp"
 #include "WeightedLocalScalarFunction.hpp"
-#include "BasicLocalScalarFunctionInc.hpp"
 
 namespace Plato
 {
@@ -34,7 +34,7 @@ PathDependentScalarFunctionFactory<PhysicsT>::create(Omega_h::Mesh& aMesh,
     auto tFunctionType = tProblemFunction.get < std::string > ("Type", "UNDEFINED");
     if(tFunctionType == "Scalar Function")
     {
-        return ( std::make_shared <Plato::BasicLocalScalarFunctionInc<PhysicsT>>
+        return ( std::make_shared <Plato::BasicLocalScalarFunction<PhysicsT>>
                 (aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName) );
     } else
     if(tFunctionType == "Weighted Sum")

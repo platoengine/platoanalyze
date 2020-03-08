@@ -1,5 +1,5 @@
 /*
- * BasicLocalScalarFunctionInc.hpp
+ * BasicLocalScalarFunction.hpp
  *
  *  Created on: Mar 1, 2020
  */
@@ -28,7 +28,7 @@ namespace Plato
  * time steps, respectively.
 *******************************************************************************/
 template<typename PhysicsT>
-class BasicLocalScalarFunctionInc : public Plato::LocalScalarFunctionInc
+class BasicLocalScalarFunction : public Plato::LocalScalarFunctionInc
 {
 // private member data
 private:
@@ -73,7 +73,7 @@ public:
      * /param [in] aInputParams input parameters database
      * /param [in] aName user defined function name
     **********************************************************************************/
-    BasicLocalScalarFunctionInc(Omega_h::Mesh& aMesh,
+    BasicLocalScalarFunction(Omega_h::Mesh& aMesh,
                                 Omega_h::MeshSets& aMeshSets,
                                 Plato::DataMap & aDataMap,
                                 Teuchos::ParameterList& aInputParams,
@@ -92,7 +92,7 @@ public:
      * /param [in] aDataMap PLATO Analyze output data map
      * /param [in] aName user defined function name
     **********************************************************************************/
-    BasicLocalScalarFunctionInc(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap, std::string aName = "") :
+    BasicLocalScalarFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap, std::string aName = "") :
             mDataMap(aDataMap),
             mMultiplier(1.0),
             mFunctionName(aName),
@@ -103,7 +103,7 @@ public:
     /***************************************************************************//**
      * \brief Destructor
     *******************************************************************************/
-    virtual ~BasicLocalScalarFunctionInc(){}
+    virtual ~BasicLocalScalarFunction(){}
 
     /***************************************************************************//**
      * \brief Return scalar function name
@@ -727,19 +727,19 @@ private:
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
     }
 };
-// class BasicLocalScalarFunctionInc
+// class BasicLocalScalarFunction
 
 }
 // namespace Plato
 
 #ifdef PLATOANALYZE_1D
-extern template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<1>>;
+extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainPlasticity<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::BasicLocalScalarFunction<Plato::InfinitesimalStrainPlasticity<3>>;
 #endif
