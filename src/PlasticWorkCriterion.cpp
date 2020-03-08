@@ -27,5 +27,3 @@ template class Plato::PlasticWorkCriterion<Plato::LocalJacobianPTypes<Plato::Sim
 template class Plato::PlasticWorkCriterion<Plato::GradientXTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
 template class Plato::PlasticWorkCriterion<Plato::GradientZTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>;
 #endif
-
-

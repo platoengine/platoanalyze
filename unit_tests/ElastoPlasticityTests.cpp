@@ -17,426 +17,6 @@
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
-namespace Plato
-{
-
-/******************************************************************************//**
- * \brief Compute the deviatoric strain, which is given by:
- *
- *    \f$ \epsilon_{ij}^{d} = \epsilon_{ij}^{e} - \epsilon_{kk}^{e}\delta_{ij}\f$
- *
- * where \f$ \epsilon_{ij}^{e} \f$ is the infinitesimal, i.e. elastic, strain tensor.
- *
- * \tparam SpaceDim spatial dimensions
- *
-**********************************************************************************/
-template<Plato::OrdinalType SpaceDim>
-class ComputeDeviatoricStrain
-{
-public:
-    /******************************************************************************//**
-     * \brief Compute the deviatoric strain
-     *
-     * \tparam ElasticStrainT    elastic strain tensor forward automatic differentiation (FAD) type
-     * \tparam DeviatoricStrainT deviatoric strain tensor FAD type
-     *
-     * \param [in]     aCellOrdinal       element index
-     * \param [in]     aElasticStrain     elastic strain tensor
-     * \param [in\out] aDeviatoricStrain  deviatoric strain tensor
-    **********************************************************************************/
-    template<typename ElasticStrainT, typename DeviatoricStrainT>
-    DEVICE_TYPE inline void operator()(const Plato::OrdinalType & aCellOrdinal,
-                                       const Plato::ScalarMultiVectorT<ElasticStrainT> & aElasticStrain,
-                                       const Plato::ScalarMultiVectorT<DeviatoricStrainT> & aDeviatoricStrain) const;
-};
-// class ComputeDeviatoricStrain
-
-template<>
-template<typename ElasticStrainT, typename DeviatoricStrainT>
-DEVICE_TYPE inline void
-ComputeDeviatoricStrain<3>::operator()(const Plato::OrdinalType & aCellOrdinal,
-                                       const Plato::ScalarMultiVectorT<ElasticStrainT> & aElasticStrain,
-                                       const Plato::ScalarMultiVectorT<DeviatoricStrainT> & aDeviatoricStrain) const
-{
-    ElasticStrainT tTraceOver3 = (aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
-            + aElasticStrain(aCellOrdinal, 2)) / static_cast<Plato::Scalar>(3.0);
-
-    aDeviatoricStrain(aCellOrdinal, 0) = aElasticStrain(aCellOrdinal, 0) - tTraceOver3;
-    aDeviatoricStrain(aCellOrdinal, 1) = aElasticStrain(aCellOrdinal, 1) - tTraceOver3;
-    aDeviatoricStrain(aCellOrdinal, 2) = aElasticStrain(aCellOrdinal, 2) - tTraceOver3;
-    aDeviatoricStrain(aCellOrdinal, 3) = aElasticStrain(aCellOrdinal, 3);
-    aDeviatoricStrain(aCellOrdinal, 4) = aElasticStrain(aCellOrdinal, 4);
-    aDeviatoricStrain(aCellOrdinal, 5) = aElasticStrain(aCellOrdinal, 5);
-}
-
-template<>
-template<typename ElasticStrainT, typename DeviatoricStrainT>
-DEVICE_TYPE inline void
-ComputeDeviatoricStrain<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
-                                       const Plato::ScalarMultiVectorT<ElasticStrainT> & aElasticStrain,
-                                       const Plato::ScalarMultiVectorT<DeviatoricStrainT> & aDeviatoricStrain) const
-{
-    ElasticStrainT tTraceOver3 = (aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
-            + aElasticStrain(aCellOrdinal, 3)) / static_cast<Plato::Scalar>(3.0);
-
-    aDeviatoricStrain(aCellOrdinal, 0) = aElasticStrain(aCellOrdinal, 0) - tTraceOver3;
-    aDeviatoricStrain(aCellOrdinal, 1) = aElasticStrain(aCellOrdinal, 1) - tTraceOver3;
-    aDeviatoricStrain(aCellOrdinal, 2) = aElasticStrain(aCellOrdinal, 2);
-    aDeviatoricStrain(aCellOrdinal, 3) = aElasticStrain(aCellOrdinal, 3) - tTraceOver3;
-}
-
-template<>
-template<typename ElasticStrainT, typename DeviatoricStrainT>
-DEVICE_TYPE inline void
-ComputeDeviatoricStrain<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
-                                       const Plato::ScalarMultiVectorT<ElasticStrainT> & aElasticStrain,
-                                       const Plato::ScalarMultiVectorT<DeviatoricStrainT> & aDeviatoricStrain) const
-{
-    ElasticStrainT tTraceOver3 = aElasticStrain(aCellOrdinal, 0) / static_cast<Plato::Scalar>(3.0);
-    aDeviatoricStrain(aCellOrdinal, 0) = aElasticStrain(aCellOrdinal, 0) - tTraceOver3;
-}
-
-
-/******************************************************************************//**
- * \brief Compute elastic work, which is given by:
- *
- *    \f$ w_e = \mu\epsilon_{ij}^{d}\epsilon_{ij}^{d} + \kappa\epsilon_{kk}^{2}\f$
- *
- * where \f$ w_e \f$ is the elastic work, \f$ \mu \f$ is the shear modulus,
- * \f$ \epsilon_{ij}^{d} \f$ is the infinitesimal deviatoric strain tensor,
- * \f$ \kappa \f$ is the bulk modulus, \f$ \epsilon_{kk} \f$ is the infinitesimal
- * volumetric strain.
- *
- * \tparam SpaceDim spatial dimensions
- *
-**********************************************************************************/
-template<Plato::OrdinalType SpaceDim>
-class ComputeElasticWork
-{
-public:
-    /******************************************************************************//**
-     * \brief Compute the elastic work
-     *
-     * \tparam OutputT           output forward automatic differentiation (FAD) type
-     * \tparam ElasticStrainT    elastic strain tensor FAD type
-     * \tparam DeviatoricStrainT deviatoric strain tensor FAD type
-     * \tparam ShearModulusT     shear modulus FAD type
-     * \tparam BulkModulusT      bulk modulus FAD type
-     *
-     * \param [in]     aCellOrdinal       element index
-     * \param [in]     aElasticStrain     elastic strain tensor
-     * \param [in\out] aDeviatoricStrain  deviatoric strain tensor
-    **********************************************************************************/
-    template<typename OutputT, typename ElasticStrainT, typename DeviatoricStrainT, typename ShearModulusT, typename BulkModulusT>
-    DEVICE_TYPE inline void 
-    operator()(const Plato::OrdinalType &aCellOrdinal,
-               const ShearModulusT &aShearModulus,
-               const BulkModulusT &aBulkModulus,
-               const Plato::ScalarMultiVectorT<ElasticStrainT> &aElasticStrain,
-               const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain,
-               const Plato::ScalarVectorT<OutputT> & aOutput) const;
-};
-
-template<>
-template<typename OutputT, typename ElasticStrainT, typename DeviatoricStrainT, typename ShearModulusT, typename BulkModulusT>
-DEVICE_TYPE inline void
-ComputeElasticWork<3>::operator()(const Plato::OrdinalType &aCellOrdinal,
-                                  const ShearModulusT &aShearModulus,
-                                  const BulkModulusT &aBulkModulus,
-                                  const Plato::ScalarMultiVectorT<ElasticStrainT> &aElasticStrain,
-                                  const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain,
-                                  const Plato::ScalarVectorT<OutputT> & aOutput) const
-{
-    // Volumetric strain contribution
-    ElasticStrainT tTrace = aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1) + aElasticStrain(aCellOrdinal, 2);
-    ElasticStrainT tTraceSquaredOver2 = ( tTrace * tTrace ) / static_cast<Plato::Scalar>(2.0);
-    OutputT tBulkModulusTimesTraceSquaredOver2 = aBulkModulus * tTraceSquaredOver2;
-
-    // Deviatoric strain contribution
-    DeviatoricStrainT tDeviatoricStrainSquared = ( aDeviatoricStrain(aCellOrdinal, 0) * aDeviatoricStrain(aCellOrdinal, 0) )
-        + ( aDeviatoricStrain(aCellOrdinal, 1) * aDeviatoricStrain(aCellOrdinal, 1) )
-        + ( aDeviatoricStrain(aCellOrdinal, 2) * aDeviatoricStrain(aCellOrdinal, 2) )
-        + static_cast<Plato::Scalar>(2) * ( aDeviatoricStrain(aCellOrdinal, 3) * aDeviatoricStrain(aCellOrdinal, 3) )
-        + static_cast<Plato::Scalar>(2) * ( aDeviatoricStrain(aCellOrdinal, 4) * aDeviatoricStrain(aCellOrdinal, 4) )
-        + static_cast<Plato::Scalar>(2) * ( aDeviatoricStrain(aCellOrdinal, 5) * aDeviatoricStrain(aCellOrdinal, 5) );
-    OutputT tShearModulusTimesDeviatoricStrainSquared = aShearModulus * tDeviatoricStrainSquared;
-
-    aOutput(aCellOrdinal) = tShearModulusTimesDeviatoricStrainSquared + tBulkModulusTimesTraceSquaredOver2;
-}
-
-template<>
-template<typename OutputT, typename ElasticStrainT, typename DeviatoricStrainT, typename ShearModulusT, typename BulkModulusT>
-DEVICE_TYPE inline void
-ComputeElasticWork<2>::operator()(const Plato::OrdinalType &aCellOrdinal,
-                                  const ShearModulusT &aShearModulus,
-                                  const BulkModulusT &aBulkModulus,
-                                  const Plato::ScalarMultiVectorT<ElasticStrainT> &aElasticStrain,
-                                  const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain,
-                                  const Plato::ScalarVectorT<OutputT> & aOutput) const
-{
-    // Volumetric strain contribution
-    ElasticStrainT tTrace = aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1) + aElasticStrain(aCellOrdinal, 3);
-    ElasticStrainT tTraceSquaredOver2 = ( tTrace * tTrace ) / static_cast<Plato::Scalar>(2.0);
-    OutputT tBulkModulusTimesTraceSquaredOver2 = aBulkModulus * tTraceSquaredOver2;
-
-    // Deviatoric strain contribution
-    DeviatoricStrainT tDeviatoricStrainSquared = ( aDeviatoricStrain(aCellOrdinal, 0) * aDeviatoricStrain(aCellOrdinal, 0) )
-        + ( aDeviatoricStrain(aCellOrdinal, 1) * aDeviatoricStrain(aCellOrdinal, 1) )
-        + ( aDeviatoricStrain(aCellOrdinal, 3) * aDeviatoricStrain(aCellOrdinal, 3) )
-        + static_cast<Plato::Scalar>(2) * ( aDeviatoricStrain(aCellOrdinal, 2) * aDeviatoricStrain(aCellOrdinal, 2) );
-    OutputT tShearModulusTimesDeviatoricStrainSquared = aShearModulus * tDeviatoricStrainSquared;
-
-    aOutput(aCellOrdinal) = tShearModulusTimesDeviatoricStrainSquared + tBulkModulusTimesTraceSquaredOver2;
-}
-
-template<>
-template<typename OutputT, typename ElasticStrainT, typename DeviatoricStrainT, typename ShearModulusT, typename BulkModulusT>
-DEVICE_TYPE inline void
-ComputeElasticWork<1>::operator()(const Plato::OrdinalType &aCellOrdinal,
-                                  const ShearModulusT &aShearModulus,
-                                  const BulkModulusT &aBulkModulus,
-                                  const Plato::ScalarMultiVectorT<ElasticStrainT> &aElasticStrain,
-                                  const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain,
-                                  const Plato::ScalarVectorT<OutputT> & aOutput) const
-{
-    // Volumetric strain contribution
-    ElasticStrainT tTrace = aElasticStrain(aCellOrdinal, 0);
-    ElasticStrainT tTraceSquaredOver2 = ( tTrace * tTrace ) / static_cast<Plato::Scalar>(2.0);
-    OutputT tBulkModulusTimesTraceSquaredOver2 = aBulkModulus * tTraceSquaredOver2;
-
-    // Deviatoric strain contribution
-    DeviatoricStrainT tDeviatoricStrainSquared = aDeviatoricStrain(aCellOrdinal, 0) * aDeviatoricStrain(aCellOrdinal, 0);
-    OutputT tShearModulusTimesDeviatoricStrainSquared = aShearModulus * tDeviatoricStrainSquared;
-
-    aOutput(aCellOrdinal) = tShearModulusTimesDeviatoricStrainSquared + tBulkModulusTimesTraceSquaredOver2;
-}
-
-/***************************************************************************//**
- * \brief Evaluate the elastic work criterion. The elastic work criterion is given by:
- *
- *  \f$ f(\phi,u_{n},c_{n}) =
- *          \mu\epsilon_{ij}^{d}\epsilon_{ij}^{d} + \kappa\epsilon_{kk}^{2}  \f$
- *
- * where \f$ \phi \f$ are the control variables, \f$ u \f$ are the global state
- * variables, \f$ c \f$ are the local state variables, \f$ \mu \f$ is the shear
- * modulus, \f$ \epsilon_{ij}^d \f$ is the deviatoric strain tensor, \f$ \kappa \f$
- * is the bulk modulus, and \f$ \epsilon_{kk} \f$ is the volumetric strain.  The
- * \f$ n-th \f$ index denotes the time stpe index and \f$ \{i,j,k\}\in(0,D) \f$,
- * where \f$ D \f$ is the spatial dimension.
- *
- * \tparam EvaluationType      evaluation type for scalar function, determines
- *                             which AD type is active
- * \tparam SimplexPhysicsType  simplex physics type, determines values of
- *                             physics-based static parameters
-*******************************************************************************/
-template<typename EvaluationType, typename SimplexPhysicsType>
-class ElasticWorkCriterion : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
-{
-// private member data
-private:
-    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;                  /*!< spatial dimensions */
-    static constexpr auto mNumStressTerms = SimplexPhysicsType::mNumStressTerms;   /*!< number of stress/strain components */
-    static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
-
-    using ResultT = typename EvaluationType::ResultScalarType;                     /*!< result variables automatic differentiation type */
-    using ConfigT = typename EvaluationType::ConfigScalarType;                     /*!< config variables automatic differentiation type */
-    using ControlT = typename EvaluationType::ControlScalarType;                   /*!< control variables automatic differentiation type */
-    using LocalStateT = typename EvaluationType::LocalStateScalarType;             /*!< local state variables automatic differentiation type */
-    using GlobalStateT = typename EvaluationType::StateScalarType;                 /*!< global state variables automatic differentiation type */
-    using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType;     /*!< local state variables automatic differentiation type */
-    using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;         /*!< global state variables automatic differentiation type */
-
-    Plato::Scalar mElasticBulkModulus;                                             /*!< elastic bulk modulus */
-    Plato::Scalar mElasticShearModulus;                                            /*!< elastic shear modulus */
-    Plato::Scalar mElasticPropertiesPenaltySIMP;                                   /*!< SIMP penalty for elastic properties */
-    Plato::Scalar mElasticPropertiesMinErsatzSIMP;                                 /*!< SIMP min ersatz stiffness for elastic properties */
-    Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule;                     /*!< simplex linear cubature rule */
-
-// public access functions
-public:
-    /***************************************************************************//**
-     * \brief Constructor for elastic work criterion
-     *
-     * \param [in] aMesh        mesh database
-     * \param [in] aMeshSets    side sets database
-     * \param [in] aDataMap     PLATO Analyze output data map side sets database
-     * \param [in] aInputParams input parameters from XML file
-     * \param [in] aName        scalar function name
-    *******************************************************************************/
-    ElasticWorkCriterion(Omega_h::Mesh& aMesh,
-                        Omega_h::MeshSets& aMeshSets,
-                        Plato::DataMap & aDataMap,
-                        Teuchos::ParameterList& aInputParams,
-                        std::string& aName) :
-            Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
-            mElasticBulkModulus(-1.0),
-            mElasticShearModulus(-1.0),
-            mElasticPropertiesPenaltySIMP(3),
-            mElasticPropertiesMinErsatzSIMP(1e-9),
-            mCubatureRule()
-    {
-        this->parsePenaltyModelParams(aInputParams);
-        this->parseMaterialProperties(aInputParams);
-    }
-
-    /***************************************************************************//**
-     * \brief Constructor for elastic work criterion
-     *
-     * \param [in] aMesh        mesh database
-     * \param [in] aMeshSets    side sets database
-     * \param [in] aDataMap     PLATO Analyze output data map side sets database
-     * \param [in] aName        scalar function name
-    *******************************************************************************/
-    ElasticWorkCriterion(Omega_h::Mesh& aMesh,
-                        Omega_h::MeshSets& aMeshSets,
-                        Plato::DataMap & aDataMap,
-                        std::string aName = "") :
-            Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
-            mElasticBulkModulus(1.0),
-            mElasticShearModulus(1.0),
-            mElasticPropertiesPenaltySIMP(3),
-            mElasticPropertiesMinErsatzSIMP(1e-9),
-            mCubatureRule()
-    {
-    }
-
-    /***************************************************************************//**
-     * \brief Destructor of maximize total work criterion
-    *******************************************************************************/
-    virtual ~ElasticWorkCriterion(){}
-
-
-    /***************************************************************************//**
-     * \brief Evaluates elastic work criterion. FAD type determines output/result value.
-     *
-     * \param [in] aCurrentGlobalState  current global states
-     * \param [in] aPreviousGlobalState previous global states
-     * \param [in] aCurrentLocalState   current local states
-     * \param [in] aPreviousLocalState  previous global states
-     * \param [in] aControls            control variables
-     * \param [in] aConfig              configuration variables
-     * \param [in] aResult              output container
-     * \param [in] aTimeStep            pseudo time step index
-    *******************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
-                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPreviousGlobalState,
-                  const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
-                  const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPreviousLocalState,
-                  const Plato::ScalarMultiVectorT<ControlT> &aControls,
-                  const Plato::ScalarArray3DT<ConfigT> &aConfig,
-                  const Plato::ScalarVectorT<ResultT> &aResult,
-                  Plato::Scalar aTimeStep = 0.0)
-    {
-        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
-
-        // allocate functors used to evaluate criterion
-        Plato::ComputeElasticWork<mSpaceDim> tComputeElasticWork;
-        Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::ComputeDeviatoricStrain<mSpaceDim> tComputeDeviatoricStrain;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
-        Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
-
-        // allocate local containers used to evaluate criterion
-        auto tNumCells = this->getMesh().nelems();
-        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
-        Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mNumStressTerms);
-        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mNumStressTerms);
-        Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
-        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentDeviatoricStrain("current deviatoric strain", tNumCells, mNumStressTerms);
-
-        // transfer member data to device
-        auto tElasticBulkModulus = mElasticBulkModulus;
-        auto tElasticShearModulus = mElasticShearModulus;
-
-        auto tQuadratureWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
-        {
-            // compute configuration gradients
-            tComputeGradient(aCellOrdinal, tConfigurationGradient, aConfig, tCellVolume);
-            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
-
-            // compute current elastic strain
-            tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
-                                                        tBasisFunctions, tConfigurationGradient, tCurrentElasticStrain);
-
-            // compute cell penalty and penalized elastic properties
-            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
-            ControlT tElasticPropertiesPenalty = tPenaltyFunction(tDensity);
-            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
-            ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
-
-            // Compute elastic work
-            tComputeDeviatoricStrain(aCellOrdinal, tCurrentElasticStrain, tCurrentDeviatoricStrain);
-            tComputeElasticWork(aCellOrdinal, tPenalizedShearModulus, tPenalizedBulkModulus,
-                                tCurrentElasticStrain, tCurrentDeviatoricStrain, aResult);
-        }, "elastic work criterion");
-    }
-
-private:
-    /**********************************************************************//**
-     * \brief Parse elastic material properties
-     * \param [in] aInputParams input XML data, i.e. parameter list
-    **************************************************************************/
-    void parsePenaltyModelParams(Teuchos::ParameterList &aInputParams)
-    {
-        auto tFunctionName = this->getName();
-        if(aInputParams.isSublist(tFunctionName) == true)
-        {
-            Teuchos::ParameterList tInputData = aInputParams.sublist(tFunctionName);
-            mElasticPropertiesPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
-            mElasticPropertiesMinErsatzSIMP = tInputData.get<Plato::Scalar>("Minimum Value", 1e-9);
-        }
-        else
-        {
-            const auto tError = std::string("UNKNOWN USER DEFINED SCALAR FUNCTION SUBLIST '")
-                    + tFunctionName + "'. USER DEFINED SCALAR FUNCTION SUBLIST '" + tFunctionName
-                    + "' IS NOT DEFINED IN THE INPUT FILE.";
-            THROWERR(tError)
-        }
-    }
-
-    /**********************************************************************//**
-     * \brief Parse elastic material properties
-     * \param [in] aProblemParams input XML data, i.e. parameter list
-    **************************************************************************/
-    void parseMaterialProperties(Teuchos::ParameterList &aProblemParams)
-    {
-        if(aProblemParams.isSublist("Material Model"))
-        {
-            this->parseIsotropicMaterialProperties(aProblemParams);
-        }
-        else
-        {
-            THROWERR("'Material Model' SUBLIST IS NOT DEFINED.")
-        }
-    }
-
-    /**********************************************************************//**
-     * \brief Parse isotropic material properties
-     * \param [in] aProblemParams input XML data, i.e. parameter list
-    **************************************************************************/
-    void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
-    {
-        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
-        if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
-        {
-            auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
-            auto tPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
-            auto tElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
-            mElasticBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
-            mElasticShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
-        }
-        else
-        {
-            THROWERR("'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
-        }
-    }
-};
-
-}
-// namespace Plato
-
 namespace ElastoPlasticityTest
 {
 
@@ -3069,6 +2649,239 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     // 3. Set Dirichlet Boundary Conditions
     Plato::Scalar tValueToSet = 0;
     auto tNumDirichletDofs = tDirichletIndicesBoundaryX0_Xdof.size() + tDirichletIndicesBoundaryX1_Xdof.size() 
+        + tDirichletIndicesBoundaryY0_Ydof.size() + tDirichletIndicesBoundaryY1_Ydof.size() + tDirichletIndicesBoundaryZ0_Zdof.size();
+    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
+    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0_Xdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tDirichletValues(aIndex) = tValueToSet;
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0_Xdof(aIndex);
+    }, "set dirichlet values and indices");
+
+    auto tOffset = tDirichletIndicesBoundaryX0_Xdof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0_Ydof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0_Ydof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tOffset += tDirichletIndicesBoundaryY0_Ydof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY1_Ydof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY1_Ydof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tOffset += tDirichletIndicesBoundaryY1_Ydof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryZ0_Zdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryZ0_Zdof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 2e-3;
+    tOffset += tDirichletIndicesBoundaryZ0_Zdof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1_Xdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1_Xdof(aIndex);
+    }, "set dirichlet values and indices");
+    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
+
+    // 4. TEST PARTIAL DERIVATIVE
+    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    constexpr Plato::Scalar tUpperBound = 1e-6;
+    TEST_ASSERT(tApproxError < tUpperBound);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriterion_GradientZ_2D)
+{
+    // 1. DEFINE PROBLEM
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 6;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
+      "  <Parameter name='Objective'         type='string'  value='My Elastic Work'/>           \n"
+      "  <ParameterList name='Material Model'>                                                  \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
+      "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Plasticity Model'>                                                \n"
+      "    <ParameterList name='J2 Plasticity'>                                                 \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
+      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
+      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
+      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
+      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='My Elastic Work'>                                                 \n"
+      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
+      "    <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>          \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
+      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
+      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
+
+    // 2. Get Dirichlet Boundary Conditions
+    Plato::OrdinalType tDispDofX = 0;
+    Plato::OrdinalType tDispDofY = 1;
+    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+
+    // 3. Set Dirichlet Boundary Conditions
+    Plato::Scalar tValueToSet = 0;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY0.size() + tDirichletIndicesBoundaryX1.size();
+    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
+    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tDirichletValues(aIndex) = tValueToSet;
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
+    }, "set dirichlet values and indices");
+
+    auto tOffset = tDirichletIndicesBoundaryX0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY0(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = 2e-3;
+    tOffset += tDirichletIndicesBoundaryY0.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1(aIndex);
+    }, "set dirichlet values and indices");
+    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
+
+    // 4. TEST PARTIAL DERIVATIVE
+    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    const Plato::Scalar tUpperBound = 1e-6;
+    TEST_ASSERT(tApproxError < tUpperBound);
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriterion_GradientZ_3D)
+{
+    // 1. DEFINE PROBLEM
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 6;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
+      "  <Parameter name='Objective'         type='string'  value='My Elastic Work'/>           \n"
+      "  <ParameterList name='Material Model'>                                                  \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
+      "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                      \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                    \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Plasticity Model'>                                                \n"
+      "    <ParameterList name='J2 Plasticity'>                                                 \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
+      "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
+      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
+      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
+      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
+      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='My Elastic Work'>                                                 \n"
+      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
+      "    <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>          \n"
+      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
+      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
+      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Stopping Tolerance' type='double' value='1e-10'/>                   \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
+
+    // 2. Get Dirichlet Boundary Conditions
+    Plato::OrdinalType tDispDofX = 0;
+    Plato::OrdinalType tDispDofY = 1;
+    Plato::OrdinalType tDispDofZ = 2;
+    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    auto tDirichletIndicesBoundaryX0_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryX1_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryY0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryY1_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "y1", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryZ0_Zdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "z0", tNumDofsPerNode, tDispDofZ);
+
+    // 3. Set Dirichlet Boundary Conditions
+    Plato::Scalar tValueToSet = 0;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0_Xdof.size() + tDirichletIndicesBoundaryX1_Xdof.size()
         + tDirichletIndicesBoundaryY0_Ydof.size() + tDirichletIndicesBoundaryY1_Ydof.size() + tDirichletIndicesBoundaryZ0_Zdof.size();
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
     Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);

@@ -1,7 +1,7 @@
 /*
- * PlasticWorkCriterion.hpp
+ * ElasticWorkCriterion.hpp
  *
- *  Created on: Feb 29, 2020
+ *  Created on: Mar 7, 2020
  */
 
 #pragma once
@@ -10,28 +10,29 @@
 #include "SimplexFadTypes.hpp"
 #include "ImplicitFunctors.hpp"
 #include "SimplexPlasticity.hpp"
+#include "ComputeElasticWork.hpp"
 #include "Plato_TopOptFunctors.hpp"
-#include "J2PlasticityUtilities.hpp"
-#include "LinearTetCubRuleDegreeOne.hpp"
+#include "ComputeDeviatoricStrain.hpp"
 #include "ThermoPlasticityUtilities.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 #include "IsotropicMaterialUtilities.hpp"
-#include "DoubleDotProduct2ndOrderTensor.hpp"
 #include "AbstractLocalScalarFunctionInc.hpp"
 
 namespace Plato
 {
 
 /***************************************************************************//**
- * \brief Evaluate the plastic work criterion using a trapezoid rule.  The plastic
- *   work criterion is given by:
+ * \brief Evaluate the elastic work criterion. The elastic work criterion is given by:
  *
- *  \f$ f(\phi,u_{k},u_{k-1},c_{k},c_{k-1}) = \frac{1}{2}\int_{\Omega}\sigma_{k} :
- *       \left( \epsilon_{k}^{p} - \epsilon_{k-1}^{p} \right) d\Omega  \f$
+ *  \f$ f(\phi,u_{n},c_{n}) =
+ *          \mu\epsilon_{ij}^{d}\epsilon_{ij}^{d} + \kappa\epsilon_{kk}^{2}  \f$
  *
  * where \f$ \phi \f$ are the control variables, \f$ u \f$ are the global state
- * variables, \f$ c \f$ are the local state variables, \f$ \epsilon^p \f$ is the
- * plastic strain tensor, and \f$ \sigma \f$ is the Cauchy stress tensor.  The
- * \f$ k-th \f$ index denotes the time stpe index.
+ * variables, \f$ c \f$ are the local state variables, \f$ \mu \f$ is the shear
+ * modulus, \f$ \epsilon_{ij}^d \f$ is the deviatoric strain tensor, \f$ \kappa \f$
+ * is the bulk modulus, and \f$ \epsilon_{kk} \f$ is the volumetric strain.  The
+ * \f$ n-th \f$ index denotes the time stpe index and \f$ \{i,j,k\}\in(0,D) \f$,
+ * where \f$ D \f$ is the spatial dimension.
  *
  * \tparam EvaluationType      evaluation type for scalar function, determines
  *                             which AD type is active
@@ -39,7 +40,7 @@ namespace Plato
  *                             physics-based static parameters
 *******************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>
-class PlasticWorkCriterion : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
+class ElasticWorkCriterion : public Plato::AbstractLocalScalarFunctionInc<EvaluationType>
 {
 // private member data
 private:
@@ -64,7 +65,7 @@ private:
 // public access functions
 public:
     /***************************************************************************//**
-     * \brief Constructor for plastic work criterion
+     * \brief Constructor for elastic work criterion
      *
      * \param [in] aMesh        mesh database
      * \param [in] aMeshSets    side sets database
@@ -72,7 +73,7 @@ public:
      * \param [in] aInputParams input parameters from XML file
      * \param [in] aName        scalar function name
     *******************************************************************************/
-    PlasticWorkCriterion(Omega_h::Mesh& aMesh,
+    ElasticWorkCriterion(Omega_h::Mesh& aMesh,
                          Omega_h::MeshSets& aMeshSets,
                          Plato::DataMap & aDataMap,
                          Teuchos::ParameterList& aInputParams,
@@ -89,14 +90,14 @@ public:
     }
 
     /***************************************************************************//**
-     * \brief Constructor of maximize total work criterion
+     * \brief Constructor for elastic work criterion
      *
      * \param [in] aMesh        mesh database
      * \param [in] aMeshSets    side sets database
      * \param [in] aDataMap     PLATO Analyze output data map side sets database
      * \param [in] aName        scalar function name
     *******************************************************************************/
-    PlasticWorkCriterion(Omega_h::Mesh& aMesh,
+    ElasticWorkCriterion(Omega_h::Mesh& aMesh,
                          Omega_h::MeshSets& aMeshSets,
                          Plato::DataMap & aDataMap,
                          std::string aName = "") :
@@ -112,10 +113,11 @@ public:
     /***************************************************************************//**
      * \brief Destructor of maximize total work criterion
     *******************************************************************************/
-    virtual ~PlasticWorkCriterion(){}
+    virtual ~ElasticWorkCriterion(){}
+
 
     /***************************************************************************//**
-     * \brief Evaluates plastic work criterion. FAD type determines output/result value.
+     * \brief Evaluates elastic work criterion. FAD type determines output/result value.
      *
      * \param [in] aCurrentGlobalState  current global states
      * \param [in] aPreviousGlobalState previous global states
@@ -138,19 +140,19 @@ public:
         using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
 
         // allocate functors used to evaluate criterion
+        Plato::ComputeElasticWork<mSpaceDim> tComputeElasticWork;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
-        Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
+        Plato::ComputeDeviatoricStrain<mSpaceDim> tComputeDeviatoricStrain;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
         Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
 
         // allocate local containers used to evaluate criterion
         auto tNumCells = this->getMesh().nelems();
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
-        Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
+        Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentDeviatoricStrain("current deviatoric strain", tNumCells, mNumStressTerms);
 
         // transfer member data to device
         auto tElasticBulkModulus = mElasticBulkModulus;
@@ -164,9 +166,6 @@ public:
             tComputeGradient(aCellOrdinal, tConfigurationGradient, aConfig, tCellVolume);
             tCellVolume(aCellOrdinal) *= tQuadratureWeight;
 
-            // compute plastic strain misfit
-            tJ2PlasticityUtils.computePlasticStrainMisfit(aCellOrdinal, aCurrentLocalState, aPreviousLocalState, tPlasticStrainMisfit);
-
             // compute current elastic strain
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
                                                         tBasisFunctions, tConfigurationGradient, tCurrentElasticStrain);
@@ -177,15 +176,11 @@ public:
             ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
 
-            // compute current Cauchy stress
-            tJ2PlasticityUtils.computeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus,
-                                                   tCurrentElasticStrain, tCurrentCauchyStress);
-
-            // compute double dot product
-            const Plato::Scalar tMultiplier = 0.5;
-            tComputeDoubleDotProduct(aCellOrdinal, tCurrentCauchyStress, tPlasticStrainMisfit, aResult);
-            aResult(aCellOrdinal) *= (tMultiplier * tElasticPropertiesPenalty * tCellVolume(aCellOrdinal));
-        }, "plastic work criterion");
+            // Compute elastic work
+            tComputeDeviatoricStrain(aCellOrdinal, tCurrentElasticStrain, tCurrentDeviatoricStrain);
+            tComputeElasticWork(aCellOrdinal, tPenalizedShearModulus, tPenalizedBulkModulus,
+                                tCurrentElasticStrain, tCurrentDeviatoricStrain, aResult);
+        }, "elastic work criterion");
     }
 
 private:
@@ -248,28 +243,28 @@ private:
         }
     }
 };
-// class PlasticWorkCriterion
+// class ElasticWorkCriterion
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::PlasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::JacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::JacobianNTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::GradientXTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::GradientZTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>;
+extern template class Plato::ElasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::JacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::JacobianNTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::GradientXTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::GradientZTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::PlasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::JacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::JacobianNTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::GradientXTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::GradientZTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>;
+extern template class Plato::ElasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::JacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::JacobianNTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::GradientXTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
+extern template class Plato::ElasticWorkCriterion<Plato::GradientZTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>;
 #endif
 
 }

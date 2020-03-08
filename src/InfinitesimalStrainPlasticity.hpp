@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Projection.hpp"
+#include "ElasticWorkCriterion.hpp"
 #include "PlasticWorkCriterion.hpp"
 #include "InfinitesimalStrainPlasticityResidual.hpp"
 
@@ -84,6 +85,12 @@ struct FunctionFactory
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
             return ( std::make_shared<Plato::PlasticWorkCriterion<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
+        } else
+        if(aFuncType == "Elastic Work")
+        {
+            constexpr auto tSpaceDim = EvaluationType::SpatialDim;
+            return ( std::make_shared<Plato::ElasticWorkCriterion<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
         }
         else
