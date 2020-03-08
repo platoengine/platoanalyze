@@ -425,17 +425,6 @@ public:
 }
 // namespace Plato
 
-#ifdef PLATOANALYZE_1D
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::ResidualTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianPTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianNTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::GradientXTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::GradientZTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>;
-#endif
-
 #ifdef PLATOANALYZE_2D
 extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
 extern template class Plato::InfinitesimalStrainPlasticityResidual<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \

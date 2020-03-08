@@ -250,17 +250,6 @@ private:
 };
 // class PlasticWorkCriterion
 
-#ifdef PLATOANALYZE_1D
-extern template class Plato::PlasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::JacobianPTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::JacobianNTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::GradientXTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
-extern template class Plato::PlasticWorkCriterion<Plato::GradientZTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>;
-#endif
-
 #ifdef PLATOANALYZE_2D
 extern template class Plato::PlasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
 extern template class Plato::PlasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
