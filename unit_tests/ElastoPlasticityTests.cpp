@@ -128,21 +128,24 @@ public:
      * \param [in\out] aDeviatoricStrain  deviatoric strain tensor
     **********************************************************************************/
     template<typename OutputT, typename ElasticStrainT, typename DeviatoricStrainT, typename ShearModulusT, typename BulkModulusT>
-    DEVICE_TYPE inline OutputT operator()(const Plato::OrdinalType &aCellOrdinal,
-                                          const ShearModulusT &aShearModulus,
-                                          const BulkModulusT &aBulkModulus,
-                                          const Plato::ScalarMultiVectorT<ElasticStrainT> &aElasticStrain,
-                                          const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain) const;
+    DEVICE_TYPE inline void 
+    operator()(const Plato::OrdinalType &aCellOrdinal,
+               const ShearModulusT &aShearModulus,
+               const BulkModulusT &aBulkModulus,
+               const Plato::ScalarMultiVectorT<ElasticStrainT> &aElasticStrain,
+               const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain,
+               const Plato::ScalarVectorT<OutputT> & aOutput) const;
 };
 
 template<>
 template<typename OutputT, typename ElasticStrainT, typename DeviatoricStrainT, typename ShearModulusT, typename BulkModulusT>
-DEVICE_TYPE inline OutputT
+DEVICE_TYPE inline void
 ComputeElasticWork<3>::operator()(const Plato::OrdinalType &aCellOrdinal,
                                   const ShearModulusT &aShearModulus,
                                   const BulkModulusT &aBulkModulus,
                                   const Plato::ScalarMultiVectorT<ElasticStrainT> &aElasticStrain,
-                                  const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain) const
+                                  const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain,
+                                  const Plato::ScalarVectorT<OutputT> & aOutput) const
 {
     // Volumetric strain contribution
     ElasticStrainT tTraceSquaredOver2 = ( ( aElasticStrain(aCellOrdinal, 0) * aElasticStrain(aCellOrdinal, 0) )
@@ -160,18 +163,18 @@ ComputeElasticWork<3>::operator()(const Plato::OrdinalType &aCellOrdinal,
         + static_cast<Plato::Scalar>(2) * ( aDeviatoricStrain(aCellOrdinal, 5) * aDeviatoricStrain(aCellOrdinal, 5) );
     OutputT tShearModulusTimesDeviatoricStrainSquared = aShearModulus * tDeviatoricStrainSquared;
 
-    OutputT tOutput = tShearModulusTimesDeviatoricStrainSquared + tBulkModulusTimesTraceSquaredOver2;
-    return tOutput;
+    aOutput(aCellOrdinal) = tShearModulusTimesDeviatoricStrainSquared + tBulkModulusTimesTraceSquaredOver2;
 }
 
 template<>
 template<typename OutputT, typename ElasticStrainT, typename DeviatoricStrainT, typename ShearModulusT, typename BulkModulusT>
-DEVICE_TYPE inline OutputT
+DEVICE_TYPE inline void
 ComputeElasticWork<2>::operator()(const Plato::OrdinalType &aCellOrdinal,
                                   const ShearModulusT &aShearModulus,
                                   const BulkModulusT &aBulkModulus,
                                   const Plato::ScalarMultiVectorT<ElasticStrainT> &aElasticStrain,
-                                  const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain) const
+                                  const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain,
+                                  const Plato::ScalarVectorT<OutputT> & aOutput) const
 {
     // Volumetric strain contribution
     ElasticStrainT tTraceSquaredOver2 = ( ( aElasticStrain(aCellOrdinal, 0) * aElasticStrain(aCellOrdinal, 0) )
@@ -187,18 +190,18 @@ ComputeElasticWork<2>::operator()(const Plato::OrdinalType &aCellOrdinal,
         + static_cast<Plato::Scalar>(2) * ( aDeviatoricStrain(aCellOrdinal, 2) * aDeviatoricStrain(aCellOrdinal, 2) );
     OutputT tShearModulusTimesDeviatoricStrainSquared = aShearModulus * tDeviatoricStrainSquared;
 
-    OutputT tOutput = tShearModulusTimesDeviatoricStrainSquared + tBulkModulusTimesTraceSquaredOver2;
-    return tOutput;
+    aOutput(aCellOrdinal) = tShearModulusTimesDeviatoricStrainSquared + tBulkModulusTimesTraceSquaredOver2;
 }
 
 template<>
 template<typename OutputT, typename ElasticStrainT, typename DeviatoricStrainT, typename ShearModulusT, typename BulkModulusT>
-DEVICE_TYPE inline OutputT
+DEVICE_TYPE inline void
 ComputeElasticWork<1>::operator()(const Plato::OrdinalType &aCellOrdinal,
                                   const ShearModulusT &aShearModulus,
                                   const BulkModulusT &aBulkModulus,
                                   const Plato::ScalarMultiVectorT<ElasticStrainT> &aElasticStrain,
-                                  const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain) const
+                                  const Plato::ScalarMultiVectorT<DeviatoricStrainT> &aDeviatoricStrain,
+                                  const Plato::ScalarVectorT<OutputT> & aOutput) const
 {
     // Volumetric strain contribution
     ElasticStrainT tTraceSquaredOver2 = ( aElasticStrain(aCellOrdinal, 0) * aElasticStrain(aCellOrdinal, 0) )
@@ -209,8 +212,7 @@ ComputeElasticWork<1>::operator()(const Plato::OrdinalType &aCellOrdinal,
     DeviatoricStrainT tDeviatoricStrainSquared = aDeviatoricStrain(aCellOrdinal, 0) * aDeviatoricStrain(aCellOrdinal, 0);
     OutputT tShearModulusTimesDeviatoricStrainSquared = aShearModulus * tDeviatoricStrainSquared;
 
-    OutputT tOutput = tShearModulusTimesDeviatoricStrainSquared + tBulkModulusTimesTraceSquaredOver2;
-    return tOutput;
+    aOutput(aCellOrdinal) = tShearModulusTimesDeviatoricStrainSquared + tBulkModulusTimesTraceSquaredOver2;
 }
 
 /***************************************************************************//**
@@ -370,8 +372,8 @@ public:
 
             // Compute elastic work
             tComputeDeviatoricStrain(aCellOrdinal, tCurrentElasticStrain, tCurrentDeviatoricStrain);
-            aResult(aCellOrdinal) = tComputeElasticWork(aCellOrdinal, tPenalizedShearModulus, tPenalizedBulkModulus,
-                                                        tCurrentElasticStrain, tCurrentDeviatoricStrain);
+            tComputeElasticWork(aCellOrdinal, tPenalizedShearModulus, tPenalizedBulkModulus,
+                                tCurrentElasticStrain, tCurrentDeviatoricStrain, aResult);
         }, "elastic work criterion");
     }
 
@@ -561,14 +563,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticWork_3D)
     Kokkos::deep_copy(tElasticStrain, tHostElasticStrain);
     Plato::ScalarMultiVector tDeviatoricStrain("elastic strain", tNumCells, tNumStrainTerms);
 
-    Plato::Scalar tBulkModulus = 2;
-    Plato::Scalar tShearModulus = 0.5;
+    constexpr Plato::Scalar tBulkModulus = 2;
+    constexpr Plato::Scalar tShearModulus = 0.5;
     Plato::ScalarVector tElasticWork("elastic work", tNumCells);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
         tComputeDeviatoricStrain(aCellIndex, tElasticStrain, tDeviatoricStrain);
-        tElasticWork(aCellIndex) = tComputeElasticWork(aCellIndex, tShearModulus, tBulkModulus, tElasticStrain, tDeviatoricStrain);
+        tComputeElasticWork(aCellIndex, tShearModulus, tBulkModulus, tElasticStrain, tDeviatoricStrain, tElasticWork);
     }, "test compute deviatoric strain functor");
 
     const Plato::Scalar tTolerance = 1e-4;
@@ -597,14 +599,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticWork_2D)
     Kokkos::deep_copy(tElasticStrain, tHostElasticStrain);
     Plato::ScalarMultiVector tDeviatoricStrain("elastic strain", tNumCells, tNumStrainTerms);
 
-    Plato::Scalar tBulkModulus = 2;
-    Plato::Scalar tShearModulus = 0.5;
+    constexpr Plato::Scalar tBulkModulus = 2;
+    constexpr Plato::Scalar tShearModulus = 0.5;
     Plato::ScalarVector tElasticWork("elastic work", tNumCells);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
         tComputeDeviatoricStrain(aCellIndex, tElasticStrain, tDeviatoricStrain);
-        tElasticWork(aCellIndex) = tComputeElasticWork(aCellIndex, tShearModulus, tBulkModulus, tElasticStrain, tDeviatoricStrain);
+        tComputeElasticWork(aCellIndex, tShearModulus, tBulkModulus, tElasticStrain, tDeviatoricStrain, tElasticWork);
     }, "test compute deviatoric strain functor");
 
     const Plato::Scalar tTolerance = 1e-4;
@@ -633,14 +635,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticWork_1D)
     Kokkos::deep_copy(tElasticStrain, tHostElasticStrain);
     Plato::ScalarMultiVector tDeviatoricStrain("elastic strain", tNumCells, tNumStrainTerms);
 
-    Plato::Scalar tBulkModulus = 2;
-    Plato::Scalar tShearModulus = 0.5;
+    constexpr Plato::Scalar tBulkModulus = 2;
+    constexpr Plato::Scalar tShearModulus = 0.5;
     Plato::ScalarVector tElasticWork("elastic work", tNumCells);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
         tComputeDeviatoricStrain(aCellIndex, tElasticStrain, tDeviatoricStrain);
-        tElasticWork(aCellIndex) = tComputeElasticWork(aCellIndex, tShearModulus, tBulkModulus, tElasticStrain, tDeviatoricStrain);
+        tComputeElasticWork(aCellIndex, tShearModulus, tBulkModulus, tElasticStrain, tDeviatoricStrain, tElasticWork);
     }, "test compute deviatoric strain functor");
 
     const Plato::Scalar tTolerance = 1e-4;
