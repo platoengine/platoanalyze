@@ -6,6 +6,10 @@
 
 #include "PlasticityProblem.hpp"
 
+#ifdef PLATOANALYZE_1D
+template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<1>>;
+#endif
+
 #ifdef PLATOANALYZE_2D
 template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<2>>;
 #endif

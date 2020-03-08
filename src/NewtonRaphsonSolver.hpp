@@ -495,6 +495,10 @@ public:
 }
 // namespace Plato
 
+#ifdef PLATOANALYZE_1D
+extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainPlasticity<1>>;
+#endif
+
 #ifdef PLATOANALYZE_2D
 extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainPlasticity<2>>;
 #endif
