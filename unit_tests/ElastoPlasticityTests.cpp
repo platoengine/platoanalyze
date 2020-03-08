@@ -148,10 +148,8 @@ ComputeElasticWork<3>::operator()(const Plato::OrdinalType &aCellOrdinal,
                                   const Plato::ScalarVectorT<OutputT> & aOutput) const
 {
     // Volumetric strain contribution
-    ElasticStrainT tTraceSquaredOver2 = ( ( aElasticStrain(aCellOrdinal, 0) * aElasticStrain(aCellOrdinal, 0) )
-        + ( aElasticStrain(aCellOrdinal, 1) * aElasticStrain(aCellOrdinal, 1) )
-        + ( aElasticStrain(aCellOrdinal, 2) * aElasticStrain(aCellOrdinal, 2) ) )
-            / static_cast<Plato::Scalar>(2.0);
+    ElasticStrainT tTrace = aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1) + aElasticStrain(aCellOrdinal, 2);
+    ElasticStrainT tTraceSquaredOver2 = ( tTrace * tTrace ) / static_cast<Plato::Scalar>(2.0);
     OutputT tBulkModulusTimesTraceSquaredOver2 = aBulkModulus * tTraceSquaredOver2;
 
     // Deviatoric strain contribution
@@ -177,10 +175,8 @@ ComputeElasticWork<2>::operator()(const Plato::OrdinalType &aCellOrdinal,
                                   const Plato::ScalarVectorT<OutputT> & aOutput) const
 {
     // Volumetric strain contribution
-    ElasticStrainT tTraceSquaredOver2 = ( ( aElasticStrain(aCellOrdinal, 0) * aElasticStrain(aCellOrdinal, 0) )
-        + ( aElasticStrain(aCellOrdinal, 1) * aElasticStrain(aCellOrdinal, 1) )
-        + ( aElasticStrain(aCellOrdinal, 3) * aElasticStrain(aCellOrdinal, 3) ) )
-            / static_cast<Plato::Scalar>(2.0);
+    ElasticStrainT tTrace = aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1) + aElasticStrain(aCellOrdinal, 3);
+    ElasticStrainT tTraceSquaredOver2 = ( tTrace * tTrace ) / static_cast<Plato::Scalar>(2.0);
     OutputT tBulkModulusTimesTraceSquaredOver2 = aBulkModulus * tTraceSquaredOver2;
 
     // Deviatoric strain contribution
@@ -204,8 +200,8 @@ ComputeElasticWork<1>::operator()(const Plato::OrdinalType &aCellOrdinal,
                                   const Plato::ScalarVectorT<OutputT> & aOutput) const
 {
     // Volumetric strain contribution
-    ElasticStrainT tTraceSquaredOver2 = ( aElasticStrain(aCellOrdinal, 0) * aElasticStrain(aCellOrdinal, 0) )
-            / static_cast<Plato::Scalar>(2.0);
+    ElasticStrainT tTrace = aElasticStrain(aCellOrdinal, 0);
+    ElasticStrainT tTraceSquaredOver2 = ( tTrace * tTrace ) / static_cast<Plato::Scalar>(2.0);
     OutputT tBulkModulusTimesTraceSquaredOver2 = aBulkModulus * tTraceSquaredOver2;
 
     // Deviatoric strain contribution
@@ -467,14 +463,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeDeviatoricStrai
     }, "test compute deviatoric strain functor");
 
     const Plato::Scalar tTolerance = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = { {-1.0, 0.0, 1.0, 4.0, 5.0, 6.0}, {-1.0, 0.0, 1.0, 10.0, 11.0, 12.0} };
     auto tHostDeviatoricStrain = Kokkos::create_mirror(tDeviatoricStrain);
     Kokkos::deep_copy(tHostDeviatoricStrain, tDeviatoricStrain);
     for (size_t tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for (size_t tDofIndex = 0; tDofIndex < tNumStrainTerms; tDofIndex++)
         {
-            printf("(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostDeviatoricStrain(tCellIndex, tDofIndex));
-            //TEST_FLOATING_EQUALITY(tHostDeviatoricStrain(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            //printf("(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostDeviatoricStrain(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostDeviatoricStrain(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
         }
     }
 }
@@ -500,14 +497,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeDeviatoricStrai
     }, "test compute deviatoric strain functor");
 
     const Plato::Scalar tTolerance = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = { {-1.333333, -0.333333, 3.0, 1.666667}, {-1.333333, -0.333333, 7.0, 1.666667} };
     auto tHostDeviatoricStrain = Kokkos::create_mirror(tDeviatoricStrain);
     Kokkos::deep_copy(tHostDeviatoricStrain, tDeviatoricStrain);
     for (size_t tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for (size_t tDofIndex = 0; tDofIndex < tNumStrainTerms; tDofIndex++)
         {
-            printf("(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostDeviatoricStrain(tCellIndex, tDofIndex));
-            //TEST_FLOATING_EQUALITY(tHostDeviatoricStrain(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            //printf("(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostDeviatoricStrain(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostDeviatoricStrain(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
         }
     }
 }
@@ -533,14 +531,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeDeviatoricStrai
     }, "test compute deviatoric strain functor");
 
     const Plato::Scalar tTolerance = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = { {0.666667}, {1.333333} };
     auto tHostDeviatoricStrain = Kokkos::create_mirror(tDeviatoricStrain);
     Kokkos::deep_copy(tHostDeviatoricStrain, tDeviatoricStrain);
     for (size_t tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for (size_t tDofIndex = 0; tDofIndex < tNumStrainTerms; tDofIndex++)
         {
-            printf("(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostDeviatoricStrain(tCellIndex, tDofIndex));
-            //TEST_FLOATING_EQUALITY(tHostDeviatoricStrain(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            //printf("(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostDeviatoricStrain(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostDeviatoricStrain(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
         }
     }
 }
@@ -574,12 +573,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticWork_3D)
     }, "test compute deviatoric strain functor");
 
     const Plato::Scalar tTolerance = 1e-4;
+    std::vector<Plato::Scalar> tGold = {114, 942};
     auto tHostElasticWork = Kokkos::create_mirror(tElasticWork);
     Kokkos::deep_copy(tHostElasticWork, tElasticWork);
     for (size_t tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
-        printf("(%d) = %f\n", tCellIndex, tHostElasticWork(tCellIndex));
-        //TEST_FLOATING_EQUALITY(tHostElasticWork(tCellIndex), tGold[tCellIndex], tTolerance);
+        //printf("(%d) = %f\n", tCellIndex, tHostElasticWork(tCellIndex));
+        TEST_FLOATING_EQUALITY(tHostElasticWork(tCellIndex), tGold[tCellIndex], tTolerance);
     }
 }
 
@@ -610,12 +610,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticWork_2D)
     }, "test compute deviatoric strain functor");
 
     const Plato::Scalar tTolerance = 1e-4;
+    std::vector<Plato::Scalar> tGold = {60.333333, 412.333333};
     auto tHostElasticWork = Kokkos::create_mirror(tElasticWork);
     Kokkos::deep_copy(tHostElasticWork, tElasticWork);
     for (size_t tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
-        printf("(%d) = %f\n", tCellIndex, tHostElasticWork(tCellIndex));
-        //TEST_FLOATING_EQUALITY(tHostElasticWork(tCellIndex), tGold[tCellIndex], tTolerance);
+        //printf("(%d) = %f\n", tCellIndex, tHostElasticWork(tCellIndex));
+        TEST_FLOATING_EQUALITY(tHostElasticWork(tCellIndex), tGold[tCellIndex], tTolerance);
     }
 }
 
@@ -646,12 +647,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticWork_1D)
     }, "test compute deviatoric strain functor");
 
     const Plato::Scalar tTolerance = 1e-4;
+    std::vector<Plato::Scalar> tGold = {1.222222, 4.888889};
     auto tHostElasticWork = Kokkos::create_mirror(tElasticWork);
     Kokkos::deep_copy(tHostElasticWork, tElasticWork);
     for (size_t tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
-        printf("(%d) = %f\n", tCellIndex, tHostElasticWork(tCellIndex));
-        //TEST_FLOATING_EQUALITY(tHostElasticWork(tCellIndex), tGold[tCellIndex], tTolerance);
+        //printf("(%d) = %f\n", tCellIndex, tHostElasticWork(tCellIndex));
+        TEST_FLOATING_EQUALITY(tHostElasticWork(tCellIndex), tGold[tCellIndex], tTolerance);
     }
 }
 
