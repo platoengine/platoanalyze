@@ -6,8 +6,15 @@
 
 #pragma once
 
-#include "WeightedLocalScalarFunction.hpp"
-#include "BasicLocalScalarFunctionInc.hpp"
+#include <memory>
+#include <string>
+
+#include <Omega_h_mesh.hpp>
+#include <Omega_h_assoc.hpp>
+
+#include <Teuchos_ParameterList.hpp>
+
+#include "LocalScalarFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
 
 namespace Plato
@@ -45,34 +52,16 @@ public:
            Omega_h::MeshSets& aMeshSets,
            Plato::DataMap & aDataMap,
            Teuchos::ParameterList& aInputParams,
-           std::string& aFunctionName)
-    {
-        auto tProblemFunction = aInputParams.sublist(aFunctionName);
-        auto tFunctionType = tProblemFunction.get < std::string > ("Type", "UNDEFINED");
-        if(tFunctionType == "Scalar Function")
-        {
-            return ( std::make_shared <Plato::BasicLocalScalarFunctionInc<PhysicsT>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName) );
-        } else
-        if(tFunctionType == "Weighted Sum")
-        {
-            return ( std::make_shared <Plato::WeightedLocalScalarFunction<PhysicsT>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName) );
-        }
-        else
-        {
-            const auto tError = std::string("UNKNOWN SCALAR FUNCTION '") + tFunctionType
-                    + "'. OBJECTIVE OR CONSTRAINT KEYWORD WITH NAME '" + aFunctionName
-                    + "' IS NOT DEFINED.  MOST LIKELY, SUBLIST '" + aFunctionName
-                    + "' IS NOT DEFINED IN THE INPUT FILE.";
-            THROWERR(tError);
-        }
-    }
+           std::string& aFunctionName);
 };
 // class PathDependentScalarFunctionFactory
 
 }
 // namespace Plato
+
+#ifdef PLATOANALYZE_1D
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<1>>;
+#endif
 
 #ifdef PLATOANALYZE_2D
 extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<2>>;

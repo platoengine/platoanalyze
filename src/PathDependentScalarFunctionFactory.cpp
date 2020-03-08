@@ -5,6 +5,11 @@
  */
 
 #include "PathDependentScalarFunctionFactory.hpp"
+#include "PathDependentScalarFunctionFactory_def.hpp"
+
+#ifdef PLATOANALYZE_1D
+template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<1>>;
+#endif
 
 #ifdef PLATOANALYZE_2D
 template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<2>>;
