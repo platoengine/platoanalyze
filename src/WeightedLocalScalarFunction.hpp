@@ -12,6 +12,7 @@
 #include "LocalScalarFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
 #include "AbstractLocalScalarFunctionInc.hpp"
+#include "PathDependentScalarFunctionFactory.hpp"
 
 namespace Plato
 {
