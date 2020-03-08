@@ -27,14 +27,16 @@ private:
     static constexpr auto mNumGlobalDofsPerCell = PhysicsT::SimplexT::mNumDofsPerCell;     /*!< number of global degrees of freedom per element */
     static constexpr auto mNumLocalDofsPerCell = PhysicsT::SimplexT::mNumLocalDofsPerCell; /*!< number of local degrees of freedom per element */
 
-    std::string mFunctionName; /*!< User defined function name */
+    std::string mWeigthedSumFunctionName;        /*!< User defined function name */
 
-    Plato::DataMap& mDataMap; /*!< output database */
-    Plato::WorksetBase<PhysicsT> mWorksetBase;  /*!< Assembly routine interface */
+    Plato::DataMap& mDataMap;                    /*!< output database */
+    Plato::WorksetBase<PhysicsT> mWorksetBase;   /*!< Assembly routine interface */
 
-    std::vector<std::string> mFunctionNames;   /*!< Vector of function names */
+    bool mWriteDiagnostics;                      /*!< write diagnostics to console */
+    std::vector<std::string> mFunctionNames;     /*!< Vector of function names */
     std::vector<Plato::Scalar> mFunctionWeights; /*!< Vector of function weights */
-    std::vector<std::shared_ptr<Plato::LocalScalarFunctionInc>> mLocalScalarFunctionContainer; /*!< Vector of ScalarFunctionBase objects */
+
+    std::vector<std::shared_ptr<Plato::LocalScalarFunctionInc>> mLocalScalarFunctionContainer; /*!< Vector of LocalScalarFunctionInc objects */
 
 private:
     /******************************************************************************//**
@@ -45,10 +47,10 @@ private:
                      Omega_h::MeshSets& aMeshSets,
                      Teuchos::ParameterList & aInputParams)
     {
-        if(aInputParams.isSublist(mFunctionName) == false)
+        if(aInputParams.isSublist(mWeigthedSumFunctionName) == false)
         {
             const auto tError = std::string("UNKNOWN USER DEFINED SCALAR FUNCTION SUBLIST '")
-                    + mFunctionName + "'. USER DEFINED SCALAR FUNCTION SUBLIST '" + mFunctionName
+                    + mWeigthedSumFunctionName + "'. USER DEFINED SCALAR FUNCTION SUBLIST '" + mWeigthedSumFunctionName
                     + "' IS NOT DEFINED IN THE INPUT FILE.";
             THROWERR(tError)
         }
@@ -57,16 +59,16 @@ private:
         mFunctionWeights.clear();
         mLocalScalarFunctionContainer.clear();
 
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tProblemFunctionName = aInputParams.sublist(mWeigthedSumFunctionName);
+        mWriteDiagnostics = tProblemFunctionName.get<bool>("Write Diagnostics", true);
         auto tFunctionNamesTeuchos = tProblemFunctionName.get<Teuchos::Array<std::string>>("Functions");
-        auto tFunctionWeightsTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
-
         auto tFunctionNames = tFunctionNamesTeuchos.toVector();
+        auto tFunctionWeightsTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
         auto tFunctionWeights = tFunctionWeightsTeuchos.toVector();
 
         if (tFunctionNames.size() != tFunctionWeights.size())
         {
-            const auto tErrorString = std::string("Number of 'Functions' in '") + mFunctionName
+            const auto tErrorString = std::string("Number of 'Functions' in '") + mWeigthedSumFunctionName
                 + "' parameter list does not equal the number of 'Weights'";
             THROWERR(tErrorString)
         }
@@ -95,7 +97,7 @@ public:
                                 Plato::DataMap &aDataMap,
                                 Teuchos::ParameterList &aInputParams,
                                 std::string &aName) :
-        mFunctionName(aName),
+        mWeigthedSumFunctionName(aName),
         mDataMap(aDataMap),
         mWorksetBase(aMesh)
     {
@@ -109,10 +111,24 @@ public:
     **********************************************************************************/
     WeightedLocalScalarFunction(Omega_h::Mesh &aMesh,
                                 Plato::DataMap &aDataMap) :
-        mFunctionName("Weighted Sum"),
+        mWeigthedSumFunctionName("Weighted Sum"),
+        mWriteDiagnostics(false),
         mDataMap(aDataMap),
         mWorksetBase(aMesh)
     {
+    }
+
+    /***************************************************************************//**
+     * \brief Destructor
+    *******************************************************************************/
+    virtual ~WeightedLocalScalarFunction(){}
+
+    /******************************************************************************//**
+     * \brief Write diagnostics to console (activate)
+    **********************************************************************************/
+    void writeDiagnostics()
+    {
+        mWriteDiagnostics = true;
     }
 
     /******************************************************************************//**
@@ -144,7 +160,7 @@ public:
 
     std::string name() const override
     {
-        return (mFunctionName);
+        return (mWeigthedSumFunctionName);
     }
 
     /******************************************************************************//**
@@ -199,16 +215,34 @@ public:
             THROWERR("DIMENSION MISMATCH: NUMBER OF LOCAL SCALAR FUNCTIONS DOES NOT MATCH THE NUMBER OF WEIGHTS")
         }
 
+        if(mWriteDiagnostics)
+        {
+            printf("\nTime Step = %f\n", aTimeStep);
+        }
+
         Plato::Scalar tResult = 0.0;
         for (Plato::OrdinalType tFunctionIndex = 0; tFunctionIndex < mLocalScalarFunctionContainer.size(); tFunctionIndex++)
         {
-            const Plato::Scalar tFunctionWeight = mFunctionWeights[tFunctionIndex];
-            const Plato::Scalar tFunctionValue =
-                mLocalScalarFunctionContainer[tFunctionIndex]->value(aCurrentGlobalState, aPreviousGlobalState,
-                                                                     aCurrentLocalState, aPreviousLocalState,
-                                                                     aControls, aTimeStep);
-            tResult += tFunctionWeight * tFunctionValue;
+            const auto tFunctionWeight = mFunctionWeights[tFunctionIndex];
+            const auto tFunctionValue = mLocalScalarFunctionContainer[tFunctionIndex]->value(aCurrentGlobalState, aPreviousGlobalState,
+                                                                                             aCurrentLocalState, aPreviousLocalState,
+                                                                                             aControls, aTimeStep);
+            const auto tMyFunctionValue = tFunctionWeight * tFunctionValue;
+
+            const auto tFunctionName = mFunctionNames[tFunctionIndex];
+            mDataMap.mScalarValues[tFunctionName] = tMyFunctionValue;
+            tResult += tMyFunctionValue;
+
+            if(mWriteDiagnostics)
+            {
+                printf("Scalar Function Name = %s \t Value = %f\n", tFunctionName.c_str(), tMyFunctionValue);
+            }
         }
+        if(mWriteDiagnostics)
+        {
+            printf("Weighted Sum Name = %s \t Value = %f\n", mWeigthedSumFunctionName.c_str(), tResult);
+        }
+
         return tResult;
     }
 
