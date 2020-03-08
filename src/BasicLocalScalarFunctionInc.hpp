@@ -732,6 +732,10 @@ private:
 }
 // namespace Plato
 
+#ifdef PLATOANALYZE_1D
+extern template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<1>>;
+#endif
+
 #ifdef PLATOANALYZE_2D
 extern template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<2>>;
 #endif
