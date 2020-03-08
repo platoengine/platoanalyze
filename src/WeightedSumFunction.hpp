@@ -17,7 +17,7 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * @brief Weighted sum function class \f$ F(x) = \sum_{i = 1}^{n} w_i * f_i(x) \f$
+ * \brief Weighted sum function class \f$ F(x) = \sum_{i = 1}^{n} w_i * f_i(x) \f$
  **********************************************************************************/
 template<typename PhysicsT>
 class WeightedSumFunction : public Plato::ScalarFunctionBase, public Plato::WorksetBase<PhysicsT>
@@ -43,8 +43,10 @@ private:
     std::string mFunctionName; /*!< User defined function name */
 
 	/******************************************************************************//**
-     * @brief Initialization of Weighted Sum Function
-     * @param [in] aInputParams input parameters database
+     * \brief Initialization of Weighted Sum Function
+     * \param [in] aMesh        mesh database
+     * \param [in] aMeshSets    side sets database
+     * \param [in] aInputParams input parameters database
     **********************************************************************************/
     void initialize (Omega_h::Mesh& aMesh, 
                      Omega_h::MeshSets& aMeshSets, 
@@ -82,12 +84,12 @@ private:
 
 public:
     /******************************************************************************//**
-     * @brief Primary weight sum function constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
-     * @param [in] aName user defined function name
+     * \brief Primary weight sum function constructor
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Engine and Analyze data map
+     * \param [in] aInputParams input parameters database
+     * \param [in] aName user defined function name
     **********************************************************************************/
     WeightedSumFunction(Omega_h::Mesh& aMesh,
                 Omega_h::MeshSets& aMeshSets,
@@ -102,9 +104,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Secondary weight sum function constructor, used for unit testing
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * \brief Secondary weight sum function constructor, used for unit testing
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
     **********************************************************************************/
     WeightedSumFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
             Plato::WorksetBase<PhysicsT>(aMesh),
@@ -114,8 +116,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Add function weight
-     * @param [in] aWeight function weight
+     * \brief Add function weight
+     * \param [in] aWeight function weight
     **********************************************************************************/
     void appendFunctionWeight(Plato::Scalar aWeight)
     {
@@ -123,8 +125,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Allocate scalar function base using the residual automatic differentiation type
-     * @param [in] aInput scalar function
+     * \brief Allocate scalar function base using the residual automatic differentiation type
+     * \param [in] aInput scalar function
     **********************************************************************************/
     void allocateScalarFunctionBase(const std::shared_ptr<Plato::ScalarFunctionBase>& aInput)
     {
@@ -132,9 +134,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
+     * \brief Update physics-based parameters within optimization iterations
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
      **********************************************************************************/
     void updateProblem(const Plato::ScalarVector & aState, const Plato::ScalarVector & aControl) const
     {
@@ -145,11 +147,11 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate weight sum function
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return scalar function evaluation
+     * \brief Evaluate weight sum function
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return scalar function evaluation
     **********************************************************************************/
     Plato::Scalar value(const Plato::ScalarVector & aState,
                         const Plato::ScalarVector & aControl,
@@ -168,11 +170,11 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the weight sum function with respect to (wrt) the configuration parameters
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the scalar function wrt the configuration parameters
+     * \brief Evaluate gradient of the weight sum function with respect to (wrt) the configuration parameters
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
     Plato::ScalarVector gradient_x(const Plato::ScalarVector & aState,
                                    const Plato::ScalarVector & aControl,
@@ -193,11 +195,11 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the weight sum function with respect to (wrt) the state variables
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the scalar function wrt the state variables
+     * \brief Evaluate gradient of the weight sum function with respect to (wrt) the state variables
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the scalar function wrt the state variables
     **********************************************************************************/
     Plato::ScalarVector gradient_u(const Plato::ScalarVector & aState,
                                    const Plato::ScalarVector & aControl,
@@ -218,11 +220,11 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the weight sum function with respect to (wrt) the control variables
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the scalar function wrt the control variables
+     * \brief Evaluate gradient of the weight sum function with respect to (wrt) the control variables
+     * \param [in] aState 1D view of state variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aTimeStep time step (default = 0.0)
+     * \return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
     Plato::ScalarVector gradient_z(const Plato::ScalarVector & aState,
                                    const Plato::ScalarVector & aControl,
@@ -243,8 +245,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Set user defined function name
-     * @param [in] function name
+     * \brief Set user defined function name
+     * \param [in] function name
     **********************************************************************************/
     void setFunctionName(const std::string aFunctionName)
     {
@@ -252,8 +254,8 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Return user defined function name
-     * @return User defined function name
+     * \brief Return user defined function name
+     * \return User defined function name
     **********************************************************************************/
     std::string name() const
     {

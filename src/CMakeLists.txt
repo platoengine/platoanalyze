@@ -57,6 +57,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     PathDependentScalarFunctionFactory.cpp 
     BasicLocalScalarFunctionInc.cpp 
     PlasticityProblem.cpp 
+    WeightedLocalScalarFunction.cpp 
     InfinitesimalStrainPlasticityResidual.cpp 
     ElasticWorkCriterion.cpp 
     PlasticWorkCriterion.cpp)

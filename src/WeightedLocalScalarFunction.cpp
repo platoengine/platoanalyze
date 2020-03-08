@@ -1,10 +1,14 @@
 /*
- * ElastoPlasticityTest.cpp
+ * WeightedLocalScalarFunction.cpp
  *
- *  Created on: Mar 3, 2020
+ *  Created on: Mar 8, 2020
  */
 
-#include "BasicLocalScalarFunctionInc.hpp"
+#include "WeightedLocalScalarFunction.hpp"
+
+#ifdef PLATOANALYZE_1D
+template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<1>>;
+#endif
 
 #ifdef PLATOANALYZE_2D
 template class Plato::BasicLocalScalarFunctionInc<Plato::InfinitesimalStrainPlasticity<2>>;

@@ -647,7 +647,7 @@ public:
                                         tControlWS, tConfigWS, tResultWS, aTimeStep);
 
         // convert AD types to POD types
-        Plato::ScalarMultiVector tCriterionPartialWrtConfiguration("criterion partial wrt configuration", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVector tCriterionPartialWrtConfiguration("criterion partial wrt configuration", tNumCells, mNumConfigDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumSpatialDims>(tResultWS, tCriterionPartialWrtConfiguration);
         Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtConfiguration);
 

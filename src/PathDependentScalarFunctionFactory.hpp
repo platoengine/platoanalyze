@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "WeightedLocalScalarFunction.hpp"
 #include "BasicLocalScalarFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
 
@@ -34,7 +35,7 @@ public:
      *  operators, e.g. value and sensitivities.
      * \param [in] aMesh         mesh database
      * \param [in] aMeshSets     side sets database
-     * \param [in] aDataMap      output data map for PLATO Analyze
+     * \param [in] aDataMap      output database
      * \param [in] aInputParams  problem inputs in XML file
      * \param [in] aFunctionName scalar function name, i.e. type
      * \return shared pointer to the interface of path-dependent scalar functions
@@ -51,6 +52,11 @@ public:
         if(tFunctionType == "Scalar Function")
         {
             return ( std::make_shared <Plato::BasicLocalScalarFunctionInc<PhysicsT>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName) );
+        } else
+        if(tFunctionType == "Weighted Sum")
+        {
+            return ( std::make_shared <Plato::WeightedLocalScalarFunction<PhysicsT>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName) );
         }
         else
