@@ -7,6 +7,17 @@
 #include "ElasticWorkCriterion.hpp"
 
 #ifdef PLATOANALYZE_2D
+template class Plato::ElasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
+template class Plato::ElasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
+template class Plato::ElasticWorkCriterion<Plato::JacobianPTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
+template class Plato::ElasticWorkCriterion<Plato::JacobianNTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
+template class Plato::ElasticWorkCriterion<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
+template class Plato::ElasticWorkCriterion<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
+template class Plato::ElasticWorkCriterion<Plato::GradientXTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>; \
+template class Plato::ElasticWorkCriterion<Plato::GradientZTypes<Plato::SimplexPlasticity<1>>, Plato::SimplexPlasticity<1>>;
+#endif
+
+#ifdef PLATOANALYZE_2D
 template class Plato::ElasticWorkCriterion<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
 template class Plato::ElasticWorkCriterion<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
 template class Plato::ElasticWorkCriterion<Plato::JacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
