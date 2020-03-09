@@ -35,7 +35,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_GetLocalStateData_2D)
         for (unsigned int tIndexJ = 0; tIndexJ < tNumLocalDofsPerCell; ++tIndexJ)
         {
             tHostCurrentLocalState(tIndexI, tIndexJ) = (tIndexI + 1.0) * (tIndexJ + 1.0);
-            printf("PrevLocalStates(%d,%d) = %f\n", i,j,tHostPrevLocalState(i, j));
+            printf("CurrentLocalState(%d,%d) = %f\n", tIndexI, tIndexJ, tHostCurrentLocalState(tIndexI, tIndexJ));
         }
     }
     Kokkos::deep_copy(tCurrentLocalState, tHostCurrentLocalState);
