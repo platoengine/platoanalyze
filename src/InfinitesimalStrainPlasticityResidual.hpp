@@ -361,6 +361,13 @@ public:
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
         Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
 
+        // output quantities
+        Plato::ScalarMultiVectorT<ResultT> tCauchyStress("cauchy stress", tNumCells, mNumStressTerms);
+        Plato::ScalarVectorT<LocalStateT> tAccumPlasticStrain("accumulated plastic strain", tNumCells);
+        Plato::ScalarVectorT<LocalStateT> tPlasticMultiplier("plastic multiplier increment", tNumCells);
+        Plato::ScalarMultiVectorT<LocalStateT> tPlasticStrain("plastic strain", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<LocalStateT> tBackStress("back-stress stress", tNumCells, mNumStressTerms);
+
         // Transfer elasticity parameters to device
         auto tNumDofsPerNode = mNumGlobalDofsPerNode;
         auto tPressureScaling = mPressureScaling;
@@ -413,10 +420,26 @@ public:
             tPressureDivergence (aCellOrdinal, aResult, tPressure, tConfigurationGradient, tCellVolume);
             tStabilizedDivergence (aCellOrdinal, aResult, tStabilization, tConfigurationGradient, tCellVolume, -1.0);
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
+
+            // prepare current output data
+            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
+            tJ2PlasticityUtils.computeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
+            tJ2PlasticityUtils.getPlasticMultiplierIncrement(aCellOrdinal, aCurrentLocalState, tPlasticMultiplier);
+            tJ2PlasticityUtils.getAccumulatedPlasticStrain(aCellOrdinal, aCurrentLocalState, tAccumPlasticStrain);
+            tJ2PlasticityUtils.getPlasticStrainTensor(aCellOrdinal, aCurrentLocalState, tPlasticStrain);
+            tJ2PlasticityUtils.getBackstressTensor(aCellOrdinal, aCurrentLocalState, tBackStress);
         }, "stabilized infinitesimal strain plasticity residual");
 
         this->addExternalForces(aCurrentGlobalState, aControls, aConfig, aResult);
+
+        // set current output data
+        this->outputData(tPlasticMultiplier, "plastic multiplier increment");
+        this->outputData(tAccumPlasticStrain, "accumulated plastic strain");
         this->outputData(tDeviatoricStress, "deviatoric stress");
+        this->outputData(tElasticStrain, "elastic strain");
+        this->outputData(tPlasticStrain, "plastic strain");
+        this->outputData(tBackStress, "backstress");
+        this->outputData(tCauchyStress, "stress");
         this->outputData(tPressure, "pressure");
     }
 };

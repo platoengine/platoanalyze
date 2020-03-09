@@ -203,6 +203,50 @@ class J2PlasticityUtilities
                 const Plato::ScalarMultiVectorT< LocalStateT >      & aLocalState,
                 const Plato::ScalarMultiVectorT< PrevLocalStateT >  & aPrevLocalState,
                 const Plato::ScalarMultiVectorT< ResultT >          & aResult ) const;
+
+    /******************************************************************************//**
+     * \brief Get the accumulated plastic strain from the current local state container
+     * \param [in]  aLocalStates        2D container of local state variables
+     * \param [out] aAccumPlasticStrain 2D container of accumulated plastic strains
+    **********************************************************************************/
+    template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+    DEVICE_TYPE inline void
+    getAccumulatedPlasticStrain(const Plato::OrdinalType & aCellOrdinal,
+                                const Plato::ScalarMultiVectorT< LocalStateT > & aLocalStates,
+                                const Plato::ScalarVectorT< LocalStateT > & aAccumPlasticStrain) const;
+
+    /******************************************************************************//**
+     * \brief Get the accumulated plastic strain from the current local state container
+     * \param [in]  aLocalStates       2D container of local state variables
+     * \param [out] aPlasticMultiplier 2D container of accumulated plastic strains
+    **********************************************************************************/
+    template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+    DEVICE_TYPE inline void
+    getPlasticMultiplierIncrement(const Plato::OrdinalType & aCellOrdinal,
+                                  const Plato::ScalarMultiVectorT< LocalStateT > & aLocalStates,
+                                  const Plato::ScalarVectorT< LocalStateT > & aPlasticMultiplier) const;
+
+    /******************************************************************************//**
+     * \brief Get the accumulated plastic strain from the current local state container
+     * \param [in]  aLocalStates    2D container of local state variables
+     * \param [out] aPlasticStrains 2D container of plastic strains
+    **********************************************************************************/
+    template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+    DEVICE_TYPE inline void
+    getPlasticStrainTensor(const Plato::OrdinalType & aCellOrdinal,
+                           const Plato::ScalarMultiVectorT< LocalStateT > & aLocalStates,
+                           const Plato::ScalarMultiVectorT< LocalStateT > & aPlasticStrains) const;
+
+    /******************************************************************************//**
+     * \brief Get the accumulated plastic strain from the current local state container
+     * \param [in]  aLocalStates  2D container of local state variables
+     * \param [out] aBackstresses 2D container of back-stresses
+    **********************************************************************************/
+    template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+    DEVICE_TYPE inline void
+    getBackstressTensor(const Plato::OrdinalType & aCellOrdinal,
+                        const Plato::ScalarMultiVectorT< LocalStateT > & aLocalStates,
+                        const Plato::ScalarMultiVectorT< LocalStateT > & aBackstresses) const;
 };
 // class J2PlasticityUtilities
 
@@ -830,6 +874,146 @@ class J2PlasticityUtilities
     aResult(aCellOrdinal,11) = aLocalState(aCellOrdinal,11) - aPrevLocalState(aCellOrdinal,11);
     aResult(aCellOrdinal,12) = aLocalState(aCellOrdinal,12) - aPrevLocalState(aCellOrdinal,12);
     aResult(aCellOrdinal,13) = aLocalState(aCellOrdinal,13) - aPrevLocalState(aCellOrdinal,13);
+  }
+
+  /*******************************************************************************************/
+  /*******************************************************************************************/
+
+  /******************************************************************************//**
+   * \brief Get accumulated plastic strain - 2D implementation
+  **********************************************************************************/
+  template<>
+  template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<2>::getAccumulatedPlasticStrain
+  (const Plato::OrdinalType & aCellOrdinal,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
+   const Plato::ScalarVectorT<LocalStateT> & aAccumPlasticStrain) const
+  {
+      aAccumPlasticStrain(aCellOrdinal) = aLocalState(aCellOrdinal, 0);
+  }
+
+  /******************************************************************************//**
+   * \brief Get accumulated plastic strain - 3D implementation
+  **********************************************************************************/
+  template<>
+  template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<3>::getAccumulatedPlasticStrain
+  (const Plato::OrdinalType & aCellOrdinal,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
+   const Plato::ScalarVectorT<LocalStateT> & aAccumPlasticStrain) const
+  {
+      aAccumPlasticStrain(aCellOrdinal) = aLocalState(aCellOrdinal, 0);
+  }
+
+  /*******************************************************************************************/
+  /*******************************************************************************************/
+
+  /******************************************************************************//**
+   * \brief Get plastic multiplier increment - 2D implementation
+  **********************************************************************************/
+  template<>
+  template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<2>::getPlasticMultiplierIncrement
+  (const Plato::OrdinalType & aCellOrdinal,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
+   const Plato::ScalarVectorT<LocalStateT> & aPlasticMultiplier) const
+  {
+      aPlasticMultiplier(aCellOrdinal) = aLocalState(aCellOrdinal, 1);
+  }
+
+  /******************************************************************************//**
+   * \brief Get plastic multiplier increment - 3D implementation
+  **********************************************************************************/
+  template<>
+  template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<3>::getPlasticMultiplierIncrement
+  (const Plato::OrdinalType & aCellOrdinal,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
+   const Plato::ScalarVectorT<LocalStateT> & aPlasticMultiplier) const
+  {
+      aPlasticMultiplier(aCellOrdinal) = aLocalState(aCellOrdinal, 1);
+  }
+
+  /*******************************************************************************************/
+  /*******************************************************************************************/
+
+  /******************************************************************************//**
+   * \brief Get plastic strain tensor - 2D implementation
+  **********************************************************************************/
+  template<>
+  template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<2>::getPlasticStrainTensor
+  (const Plato::OrdinalType & aCellOrdinal,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aPlasticStrains) const
+  {
+      aPlasticStrains(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 2);
+      aPlasticStrains(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 3);
+      aPlasticStrains(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4);
+      aPlasticStrains(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5);
+  }
+
+  /******************************************************************************//**
+   * \brief Get plastic strain tensor - 3D implementation
+  **********************************************************************************/
+  template<>
+  template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<3>::getPlasticStrainTensor
+  (const Plato::OrdinalType & aCellOrdinal,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aPlasticStrains) const
+  {
+      aPlasticStrains(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 2);
+      aPlasticStrains(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 3);
+      aPlasticStrains(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4);
+      aPlasticStrains(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5);
+      aPlasticStrains(aCellOrdinal, 6) = aLocalState(aCellOrdinal, 6);
+      aPlasticStrains(aCellOrdinal, 7) = aLocalState(aCellOrdinal, 7);
+  }
+
+  /*******************************************************************************************/
+  /*******************************************************************************************/
+
+  /******************************************************************************//**
+   * \brief Get plastic strain tensor - 2D implementation
+  **********************************************************************************/
+  template<>
+  template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<2>::getBackstressTensor
+  (const Plato::OrdinalType & aCellOrdinal,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aBackstresses) const
+  {
+      aBackstresses(aCellOrdinal, 6) = aLocalState(aCellOrdinal, 6);
+      aBackstresses(aCellOrdinal, 7) = aLocalState(aCellOrdinal, 7);
+      aBackstresses(aCellOrdinal, 8) = aLocalState(aCellOrdinal, 8);
+      aBackstresses(aCellOrdinal, 9) = aLocalState(aCellOrdinal, 9);
+  }
+
+  /******************************************************************************//**
+   * \brief Get plastic strain tensor - 3D implementation
+  **********************************************************************************/
+  template<>
+  template<typename LocalStateT, typename PrevLocalStateT, typename ResultT>
+  DEVICE_TYPE inline void
+  J2PlasticityUtilities<3>::getBackstressTensor
+  (const Plato::OrdinalType & aCellOrdinal,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
+   const Plato::ScalarMultiVectorT<LocalStateT> & aBackstresses) const
+  {
+      aBackstresses(aCellOrdinal, 8) = aLocalState(aCellOrdinal, 8);
+      aBackstresses(aCellOrdinal, 9) = aLocalState(aCellOrdinal, 9);
+      aBackstresses(aCellOrdinal, 10) = aLocalState(aCellOrdinal, 10);
+      aBackstresses(aCellOrdinal, 11) = aLocalState(aCellOrdinal, 11);
+      aBackstresses(aCellOrdinal, 12) = aLocalState(aCellOrdinal, 12);
+      aBackstresses(aCellOrdinal, 13) = aLocalState(aCellOrdinal, 13);
   }
 
 } // namespace Plato

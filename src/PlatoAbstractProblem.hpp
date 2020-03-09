@@ -203,8 +203,8 @@ public:
     objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)=0;
 
     /******************************************************************************//**
-     * \brief Return PLATO Analyze data map that enables import/export rights to PLATO Engine
-     * \return PLATO Analyze data map
+     * \brief Return output database that enables import/export rights to PLATO Engine
+     * \return PLATO Analyze output database
     **********************************************************************************/
     Plato::DataMap mDataMap;
     decltype(mDataMap)& getDataMap()

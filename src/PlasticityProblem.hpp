@@ -661,6 +661,8 @@ private:
     *******************************************************************************/
     bool solveForwardProblem(const Plato::ScalarVector & aControls)
     {
+        mDataMap.clearStates();
+
         Plato::CurrentStates tStateData;
         auto tNumCells = mLocalEquation->numCells();
         tStateData.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalEquation->size());
@@ -680,6 +682,7 @@ private:
 
             // update local and global states
             bool tNewtonRaphsonConverged = mNewtonSolver->solve(aControls, tStateData);
+            mDataMap.saveState();
 
             if(tNewtonRaphsonConverged == false)
             {
