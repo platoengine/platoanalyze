@@ -20,6 +20,72 @@ namespace PlasticityTests
 
 using namespace PlatoUtestHelpers;
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_GetLocalStateData_2D)
+{
+    // Prepare data
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tNumStressTerms = 4;
+    constexpr Plato::OrdinalType tNumLocalDofsPerCell = 10;
+
+    Plato::ScalarMultiVector tCurrentLocalState("previous local state", tNumCells, tNumLocalDofsPerCell);
+    auto tHostCurrentLocalState = Kokkos::create_mirror(tCurrentLocalState);
+    for (unsigned int tIndexI = 0; tIndexI < tNumCells; ++tIndexI)
+    {
+        for (unsigned int tIndexJ = 0; tIndexJ < tNumLocalDofsPerCell; ++tIndexJ)
+        {
+            tHostCurrentLocalState(tIndexI, tIndexJ) = (tIndexI + 1.0) * (tIndexJ + 1.0);
+            printf("PrevLocalStates(%d,%d) = %f\n", i,j,tHostPrevLocalState(i, j));
+        }
+    }
+    Kokkos::deep_copy(tCurrentLocalState, tHostCurrentLocalState);
+
+    // Run functions
+    Plato::J2PlasticityUtilities<tSpaceDim> tJ2PlasticityUtils;
+    Plato::ScalarVector tAccumPlasticStrain("accumulated plastic strain", tNumCells);
+    Plato::ScalarVector tPlasticMultiplier("plastic multiplier increment", tNumCells);
+    Plato::ScalarMultiVector tPlasticStrain("plastic strain", tNumCells, tNumStressTerms);
+    Plato::ScalarMultiVector tBackStress("back-stress stress", tNumCells, tNumStressTerms);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tJ2PlasticityUtils.getAccumulatedPlasticStrain(aCellOrdinal, tCurrentLocalState, tAccumPlasticStrain);
+        tJ2PlasticityUtils.getPlasticMultiplierIncrement(aCellOrdinal, tCurrentLocalState, tPlasticMultiplier);
+        tJ2PlasticityUtils.getPlasticStrainTensor(aCellOrdinal, tCurrentLocalState, tPlasticStrain);
+        tJ2PlasticityUtils.getBackstressTensor(aCellOrdinal, tCurrentLocalState, tBackStress);
+    }, "GetLocalStateData Unit Test");
+
+    // Check results
+    auto tHostBackStress = Kokkos::create_mirror(tBackStress);
+    Kokkos::deep_copy(tHostBackStress, tBackStress);
+    auto tHostPlasticStrain = Kokkos::create_mirror(tPlasticStrain);
+    Kokkos::deep_copy(tHostPlasticStrain, tPlasticStrain);
+    auto tHostPlasticMultiplier = Kokkos::create_mirror(tPlasticMultiplier);
+    Kokkos::deep_copy(tHostPlasticMultiplier, tPlasticMultiplier);
+    auto tHostAccumPlasticStrain = Kokkos::create_mirror(tAccumPlasticStrain);
+    Kokkos::deep_copy(tHostAccumPlasticStrain, tAccumPlasticStrain);
+
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector< Plato::Scalar > tPlasticMultiplierGold = { 0, 0 };
+    std::vector< Plato::Scalar > tAccumPlasticStrainGold = { 0, 0 };
+    std::vector< std::vector<Plato::Scalar> > tBackStressGold = { {0, 0, 0, 0}, {0, 0, 0, 0} };
+    std::vector< std::vector<Plato::Scalar> > tPlasticStrainGold = { {0, 0, 0, 0}, {0, 0, 0, 0} };
+    for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; ++tCellIndex)
+    {
+        //TEST_FLOATING_EQUALITY(tHostPlasticMultiplier(tCellIndex), tPlasticMultiplierGold[tCellIndex], tTolerance);
+        printf( "HostPlasticMultiplier(%d) = %f\n", tCellIndex, tHostPlasticMultiplier(tCellIndex) );
+        //TEST_FLOATING_EQUALITY(tHostAccumPlasticStrain(tCellIndex), tAccumPlasticStrainGold[tCellIndex], tTolerance);
+        printf( "HostAccumPlasticStrain(%d) = %f\n", tCellIndex, tHostAccumPlasticStrain(tCellIndex) );
+        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; ++tDofIndex)
+        {
+            //TEST_FLOATING_EQUALITY(tHostBackStress(tCellIndex, tDofIndex), tBackStressGold[tCellIndex][tDofIndex], tTolerance);
+            printf( "HostBackStress(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostBackStress(tCellIndex, tDofIndex) );
+            //TEST_FLOATING_EQUALITY(tHostPlasticStrain(tCellIndex, tDofIndex), tPlasticStrainGold[tCellIndex][tDofIndex], tTolerance);
+            printf( "HostPlasticStrain(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostPlasticStrain(tCellIndex, tDofIndex) );
+        }
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_UpdatePlasticStep2D)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
