@@ -90,9 +90,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_GetLocalStateData_3D)
 {
     // Prepare data
     constexpr Plato::OrdinalType tNumCells = 2;
-    constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tNumStressTerms = 4;
-    constexpr Plato::OrdinalType tNumLocalDofsPerCell = 10;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tNumStressTerms = 6;
+    constexpr Plato::OrdinalType tNumLocalDofsPerCell = 14;
 
     Plato::ScalarMultiVector tCurrentLocalState("previous local state", tNumCells, tNumLocalDofsPerCell);
     auto tHostCurrentLocalState = Kokkos::create_mirror(tCurrentLocalState);
