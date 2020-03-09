@@ -35,7 +35,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_GetLocalStateData_2D)
         for (unsigned int tIndexJ = 0; tIndexJ < tNumLocalDofsPerCell; ++tIndexJ)
         {
             tHostCurrentLocalState(tIndexI, tIndexJ) = (tIndexI + 1.0) * (tIndexJ + 1.0);
-            printf("CurrentLocalState(%d,%d) = %f\n", tIndexI, tIndexJ, tHostCurrentLocalState(tIndexI, tIndexJ));
+            //printf("CurrentLocalState(%d,%d) = %f\n", tIndexI, tIndexJ, tHostCurrentLocalState(tIndexI, tIndexJ));
         }
     }
     Kokkos::deep_copy(tCurrentLocalState, tHostCurrentLocalState);
@@ -66,22 +66,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_GetLocalStateData_2D)
     Kokkos::deep_copy(tHostAccumPlasticStrain, tAccumPlasticStrain);
 
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector< Plato::Scalar > tPlasticMultiplierGold = { 0, 0 };
-    std::vector< Plato::Scalar > tAccumPlasticStrainGold = { 0, 0 };
-    std::vector< std::vector<Plato::Scalar> > tBackStressGold = { {0, 0, 0, 0}, {0, 0, 0, 0} };
-    std::vector< std::vector<Plato::Scalar> > tPlasticStrainGold = { {0, 0, 0, 0}, {0, 0, 0, 0} };
+    std::vector< Plato::Scalar > tPlasticMultiplierGold = { 2.0, 4.0 };
+    std::vector< Plato::Scalar > tAccumPlasticStrainGold = { 1.0, 2.0 };
+    std::vector< std::vector<Plato::Scalar> > tPlasticStrainGold = { {3.0, 4.0, 5.0, 6.0}, {6.0, 8.0, 10.0, 12.0} };
+    std::vector< std::vector<Plato::Scalar> > tBackStressGold = { {7.0, 8.0, 9.0, 10.0}, {14.0, 16.0, 18.0, 20.0} };
     for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; ++tCellIndex)
     {
-        //TEST_FLOATING_EQUALITY(tHostPlasticMultiplier(tCellIndex), tPlasticMultiplierGold[tCellIndex], tTolerance);
-        printf( "HostPlasticMultiplier(%d) = %f\n", tCellIndex, tHostPlasticMultiplier(tCellIndex) );
-        //TEST_FLOATING_EQUALITY(tHostAccumPlasticStrain(tCellIndex), tAccumPlasticStrainGold[tCellIndex], tTolerance);
-        printf( "HostAccumPlasticStrain(%d) = %f\n", tCellIndex, tHostAccumPlasticStrain(tCellIndex) );
+        TEST_FLOATING_EQUALITY(tHostPlasticMultiplier(tCellIndex), tPlasticMultiplierGold[tCellIndex], tTolerance);
+        //printf( "HostPlasticMultiplier(%d) = %f\n", tCellIndex, tHostPlasticMultiplier(tCellIndex) );
+        TEST_FLOATING_EQUALITY(tHostAccumPlasticStrain(tCellIndex), tAccumPlasticStrainGold[tCellIndex], tTolerance);
+        //printf( "HostAccumPlasticStrain(%d) = %f\n", tCellIndex, tHostAccumPlasticStrain(tCellIndex) );
         for(Plato::OrdinalType tDofIndex = 0; tDofIndex < tNumStressTerms; ++tDofIndex)
         {
-            //TEST_FLOATING_EQUALITY(tHostBackStress(tCellIndex, tDofIndex), tBackStressGold[tCellIndex][tDofIndex], tTolerance);
-            printf( "HostBackStress(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostBackStress(tCellIndex, tDofIndex) );
-            //TEST_FLOATING_EQUALITY(tHostPlasticStrain(tCellIndex, tDofIndex), tPlasticStrainGold[tCellIndex][tDofIndex], tTolerance);
-            printf( "HostPlasticStrain(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostPlasticStrain(tCellIndex, tDofIndex) );
+            TEST_FLOATING_EQUALITY(tHostBackStress(tCellIndex, tDofIndex), tBackStressGold[tCellIndex][tDofIndex], tTolerance);
+            //printf( "HostBackStress(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostBackStress(tCellIndex, tDofIndex) );
+            TEST_FLOATING_EQUALITY(tHostPlasticStrain(tCellIndex, tDofIndex), tPlasticStrainGold[tCellIndex][tDofIndex], tTolerance);
+            //printf( "HostPlasticStrain(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostPlasticStrain(tCellIndex, tDofIndex) );
         }
     }
 }
