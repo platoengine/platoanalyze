@@ -76,7 +76,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_GetLocalStateData_2D)
         printf( "HostPlasticMultiplier(%d) = %f\n", tCellIndex, tHostPlasticMultiplier(tCellIndex) );
         //TEST_FLOATING_EQUALITY(tHostAccumPlasticStrain(tCellIndex), tAccumPlasticStrainGold[tCellIndex], tTolerance);
         printf( "HostAccumPlasticStrain(%d) = %f\n", tCellIndex, tHostAccumPlasticStrain(tCellIndex) );
-        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < tNumLocalDofsPerCell; ++tDofIndex)
+        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < tNumStressTerms; ++tDofIndex)
         {
             //TEST_FLOATING_EQUALITY(tHostBackStress(tCellIndex, tDofIndex), tBackStressGold[tCellIndex][tDofIndex], tTolerance);
             printf( "HostBackStress(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostBackStress(tCellIndex, tDofIndex) );
