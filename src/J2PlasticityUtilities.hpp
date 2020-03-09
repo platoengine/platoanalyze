@@ -952,10 +952,10 @@ class J2PlasticityUtilities
    const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
    const Plato::ScalarMultiVectorT<LocalStateT> & aPlasticStrains) const
   {
-      aPlasticStrains(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 2);
-      aPlasticStrains(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 3);
-      aPlasticStrains(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4);
-      aPlasticStrains(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5);
+      aPlasticStrains(aCellOrdinal, 0) = aLocalState(aCellOrdinal, 2);
+      aPlasticStrains(aCellOrdinal, 1) = aLocalState(aCellOrdinal, 3);
+      aPlasticStrains(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 4);
+      aPlasticStrains(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 5);
   }
 
   /******************************************************************************//**
@@ -969,12 +969,12 @@ class J2PlasticityUtilities
    const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
    const Plato::ScalarMultiVectorT<LocalStateT> & aPlasticStrains) const
   {
-      aPlasticStrains(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 2);
-      aPlasticStrains(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 3);
-      aPlasticStrains(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 4);
-      aPlasticStrains(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 5);
-      aPlasticStrains(aCellOrdinal, 6) = aLocalState(aCellOrdinal, 6);
-      aPlasticStrains(aCellOrdinal, 7) = aLocalState(aCellOrdinal, 7);
+      aPlasticStrains(aCellOrdinal, 0) = aLocalState(aCellOrdinal, 2);
+      aPlasticStrains(aCellOrdinal, 1) = aLocalState(aCellOrdinal, 3);
+      aPlasticStrains(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 4);
+      aPlasticStrains(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 5);
+      aPlasticStrains(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 6);
+      aPlasticStrains(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 7);
   }
 
   /*******************************************************************************************/
@@ -991,10 +991,10 @@ class J2PlasticityUtilities
    const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
    const Plato::ScalarMultiVectorT<LocalStateT> & aBackstresses) const
   {
-      aBackstresses(aCellOrdinal, 6) = aLocalState(aCellOrdinal, 6);
-      aBackstresses(aCellOrdinal, 7) = aLocalState(aCellOrdinal, 7);
-      aBackstresses(aCellOrdinal, 8) = aLocalState(aCellOrdinal, 8);
-      aBackstresses(aCellOrdinal, 9) = aLocalState(aCellOrdinal, 9);
+      aBackstresses(aCellOrdinal, 0) = aLocalState(aCellOrdinal, 6);
+      aBackstresses(aCellOrdinal, 1) = aLocalState(aCellOrdinal, 7);
+      aBackstresses(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 8);
+      aBackstresses(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 9);
   }
 
   /******************************************************************************//**
@@ -1008,12 +1008,12 @@ class J2PlasticityUtilities
    const Plato::ScalarMultiVectorT<LocalStateT> & aLocalState,
    const Plato::ScalarMultiVectorT<LocalStateT> & aBackstresses) const
   {
-      aBackstresses(aCellOrdinal, 8) = aLocalState(aCellOrdinal, 8);
-      aBackstresses(aCellOrdinal, 9) = aLocalState(aCellOrdinal, 9);
-      aBackstresses(aCellOrdinal, 10) = aLocalState(aCellOrdinal, 10);
-      aBackstresses(aCellOrdinal, 11) = aLocalState(aCellOrdinal, 11);
-      aBackstresses(aCellOrdinal, 12) = aLocalState(aCellOrdinal, 12);
-      aBackstresses(aCellOrdinal, 13) = aLocalState(aCellOrdinal, 13);
+      aBackstresses(aCellOrdinal, 0) = aLocalState(aCellOrdinal, 8);
+      aBackstresses(aCellOrdinal, 1) = aLocalState(aCellOrdinal, 9);
+      aBackstresses(aCellOrdinal, 2) = aLocalState(aCellOrdinal, 10);
+      aBackstresses(aCellOrdinal, 3) = aLocalState(aCellOrdinal, 11);
+      aBackstresses(aCellOrdinal, 4) = aLocalState(aCellOrdinal, 12);
+      aBackstresses(aCellOrdinal, 5) = aLocalState(aCellOrdinal, 13);
   }
 
 } // namespace Plato
