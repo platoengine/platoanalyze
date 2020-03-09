@@ -6,17 +6,18 @@
 
 #include "PlatoStaticsTypes.hpp"
 
-namespace Plato {
+namespace Plato
+{
 
 /******************************************************************************/
 /*!
   \brief Base class for Linear Elastic material models
 */
-  template<int SpatialDim>
+  template<Plato::OrdinalType SpatialDim>
   class LinearElasticMaterial
 /******************************************************************************/
 {
-  protected:
+protected:
     static constexpr auto mNumVoigtTerms = (SpatialDim == 3) ? 6 : 
                                            ((SpatialDim == 2) ? 3 :
                                           (((SpatialDim == 1) ? 1 : 0)));
@@ -27,7 +28,7 @@ namespace Plato {
     Plato::Scalar mCellDensity;
     Plato::Scalar mPressureScaling;
   
-  public:
+public:
     LinearElasticMaterial();
     LinearElasticMaterial(const Teuchos::ParameterList& paramList);
     decltype(mCellDensity)     getMassDensity()     const {return mCellDensity;}
@@ -40,24 +41,30 @@ namespace Plato {
 };
 
 /******************************************************************************/
-template<int SpatialDim>
+template<Plato::OrdinalType SpatialDim>
 void LinearElasticMaterial<SpatialDim>::
 initialize()
 /******************************************************************************/
 {
-  for(int i=0; i<mNumVoigtTerms; i++)
-    for(int j=0; j<mNumVoigtTerms; j++)
-      mCellStiffness(i,j) = 0.0;
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < mNumVoigtTerms; tIndexI++)
+    {
+        for(Plato::OrdinalType tIndexJ = 0; tIndexJ < mNumVoigtTerms; tIndexJ++)
+        {
+            mCellStiffness(tIndexI, tIndexJ) = 0.0;
+        }
+    }
 
-  mPressureScaling = 1.0;
+    mPressureScaling = 1.0;
 
-  for(int i=0; i<mNumVoigtTerms; i++)
-    mReferenceStrain(i) = 0.0;
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < mNumVoigtTerms; tIndexI++)
+    {
+        mReferenceStrain(tIndexI) = 0.0;
+    }
 }
 
 
 /******************************************************************************/
-template<int SpatialDim>
+template<Plato::OrdinalType SpatialDim>
 LinearElasticMaterial<SpatialDim>::
 LinearElasticMaterial()
 /******************************************************************************/
@@ -66,7 +73,7 @@ LinearElasticMaterial()
 }
 
 /******************************************************************************/
-template<int SpatialDim>
+template<Plato::OrdinalType SpatialDim>
 LinearElasticMaterial<SpatialDim>::
 LinearElasticMaterial(const Teuchos::ParameterList& paramList)
 /******************************************************************************/
@@ -86,16 +93,16 @@ LinearElasticMaterial(const Teuchos::ParameterList& paramList)
 /*!
   \brief Derived class for isotropic linear elastic material model
 */
-  template<int SpatialDim>
+  template<Plato::OrdinalType SpatialDim>
   class IsotropicLinearElasticMaterial : public LinearElasticMaterial<SpatialDim>
 /******************************************************************************/
 {
-  public:
-    IsotropicLinearElasticMaterial(const Teuchos::ParameterList& paramList);
+public:
+    IsotropicLinearElasticMaterial(const Teuchos::ParameterList& aParamList);
     IsotropicLinearElasticMaterial(const Plato::Scalar & aYoungsModulus, const Plato::Scalar & aPoissonsRatio);
     virtual ~IsotropicLinearElasticMaterial(){}
 
-  private:
+private:
     Plato::Scalar mPoissonsRatio;
     Plato::Scalar mYoungsModulus;
 };
@@ -105,13 +112,27 @@ LinearElasticMaterial(const Teuchos::ParameterList& paramList)
 /*!
   \brief Derived class for cubic linear elastic material model
 */
-  template<int SpatialDim>
+  template<Plato::OrdinalType SpatialDim>
   class CubicLinearElasticMaterial : public LinearElasticMaterial<SpatialDim>
 /******************************************************************************/
 {
   public:
-    CubicLinearElasticMaterial(const Teuchos::ParameterList& paramList);
+    CubicLinearElasticMaterial(const Teuchos::ParameterList& aParamList);
     virtual ~CubicLinearElasticMaterial(){}
+};
+// class CubicLinearElasticMaterial
+
+/******************************************************************************/
+/*!
+  \brief Derived class for custom linear elastic material models
+*/
+  template<Plato::OrdinalType SpatialDim>
+  class CustomLinearElasticMaterial : public LinearElasticMaterial<SpatialDim>
+/******************************************************************************/
+{
+public:
+    CustomLinearElasticMaterial(const Teuchos::ParameterList& aParamList);
+    virtual ~CustomLinearElasticMaterial(){}
 };
 // class CubicLinearElasticMaterial
 
@@ -119,33 +140,40 @@ LinearElasticMaterial(const Teuchos::ParameterList& paramList)
 /*!
   \brief Factory for creating material models
 */
-  template<int SpatialDim>
+  template<Plato::OrdinalType SpatialDim>
   class ElasticModelFactory
 /******************************************************************************/
 {
-  public:
-    ElasticModelFactory(const Teuchos::ParameterList& paramList) : mParamList(paramList) {}
+public:
+    ElasticModelFactory(const Teuchos::ParameterList& aParamList) :
+            mParamList(aParamList){}
     Teuchos::RCP<Plato::LinearElasticMaterial<SpatialDim>> create();
-  private:
+
+private:
     const Teuchos::ParameterList& mParamList;
 };
+
 /******************************************************************************/
-template<int SpatialDim>
+template<Plato::OrdinalType SpatialDim>
 Teuchos::RCP<LinearElasticMaterial<SpatialDim>>
 ElasticModelFactory<SpatialDim>::create()
 /******************************************************************************/
 {
-  auto modelParamList = mParamList.get<Teuchos::ParameterList>("Material Model");
+    auto tModelParamList = mParamList.get<Teuchos::ParameterList>("Material Model");
 
-  if( modelParamList.isSublist("Isotropic Linear Elastic") ){
-    return Teuchos::rcp(new Plato::IsotropicLinearElasticMaterial<SpatialDim>(modelParamList.sublist("Isotropic Linear Elastic")));
-  }
-  else
-  if( modelParamList.isSublist("Cubic Linear Elastic") )
-  {
-    return Teuchos::rcp(new Plato::CubicLinearElasticMaterial<SpatialDim>(modelParamList.sublist("Cubic Linear Elastic")));
-  }
-  return Teuchos::RCP<Plato::LinearElasticMaterial<SpatialDim>>(nullptr);
+    if(tModelParamList.isSublist("Isotropic Linear Elastic"))
+    {
+        return Teuchos::rcp(new Plato::IsotropicLinearElasticMaterial<SpatialDim>(tModelParamList.sublist("Isotropic Linear Elastic")));
+    }
+    else if(tModelParamList.isSublist("Cubic Linear Elastic"))
+    {
+        return Teuchos::rcp(new Plato::CubicLinearElasticMaterial<SpatialDim>(tModelParamList.sublist("Cubic Linear Elastic")));
+    }
+    else if(tModelParamList.isSublist("Custom Linear Elastic"))
+    {
+        return Teuchos::rcp(new Plato::CustomLinearElasticMaterial<SpatialDim>(tModelParamList.sublist("Custom Linear Elastic")));
+    }
+    return Teuchos::RCP<Plato::LinearElasticMaterial<SpatialDim>>(nullptr);
 }
 
 } // namespace Plato

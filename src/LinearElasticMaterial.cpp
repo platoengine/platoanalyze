@@ -1,6 +1,7 @@
 #include "LinearElasticMaterial.hpp"
 
-namespace Plato {
+namespace Plato
+{
 
 /******************************************************************************/
 template<>
@@ -11,20 +12,26 @@ LinearElasticMaterial<1>(paramList)
 {
     mPoissonsRatio = paramList.get<Plato::Scalar>("Poissons Ratio");
     mYoungsModulus = paramList.get<Plato::Scalar>("Youngs Modulus");
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
-    mCellStiffness(0,0)=c*(1.0-v);
+    auto tPoissonRatio = mPoissonsRatio;
+    auto tYoungsModulus = mYoungsModulus;
+    auto tCoeff = tYoungsModulus / ((1.0 + tPoissonRatio) * (1.0 - 2.0 * tPoissonRatio));
+    mCellStiffness(0, 0) = tCoeff * (1.0 - tPoissonRatio);
 
-    if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
-      mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
-    } else {
-      mPressureScaling = k / (3.0*(1.0-2.0*v));
+    if(paramList.isType<Plato::Scalar>("Pressure Scaling"))
+    {
+        mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
     }
-    if( paramList.isType<Plato::Scalar>("Mass Density") ){
-      mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
-    } else {
-      mCellDensity = 1.0;
+    else
+    {
+        mPressureScaling = tYoungsModulus / (3.0 * (1.0 - 2.0 * tPoissonRatio));
+    }
+    if(paramList.isType<Plato::Scalar>("Mass Density"))
+    {
+        mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
+    }
+    else
+    {
+        mCellDensity = 1.0;
     }
 }
 /******************************************************************************/
@@ -36,23 +43,31 @@ LinearElasticMaterial<2>(paramList)
 {
     mPoissonsRatio = paramList.get<Plato::Scalar>("Poissons Ratio");
     mYoungsModulus = paramList.get<Plato::Scalar>("Youngs Modulus");
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
+    auto tPoissonRatio = mPoissonsRatio;
+    auto tYoungsModulus = mYoungsModulus;
+    auto tCoeff = tYoungsModulus / ((1.0 + tPoissonRatio) * (1.0 - 2.0 * tPoissonRatio));
 
-    mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;
-    mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v);
-    mCellStiffness(2,2)=1.0/2.0*c*(1.0-2.0*v);
+    mCellStiffness(0, 0) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(0, 1) = tCoeff * tPoissonRatio;
+    mCellStiffness(1, 0) = tCoeff * tPoissonRatio;
+    mCellStiffness(1, 1) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(2, 2) = 1.0 / 2.0 * tCoeff * (1.0 - 2.0 * tPoissonRatio);
 
-    if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
-      mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
-    } else {
-      mPressureScaling = k / (3.0*(1.0-2.0*v));
+    if(paramList.isType<Plato::Scalar>("Pressure Scaling"))
+    {
+        mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
     }
-    if( paramList.isType<Plato::Scalar>("Mass Density") ){
-      mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
-    } else {
-      mCellDensity = 1.0;
+    else
+    {
+        mPressureScaling = tYoungsModulus / (3.0 * (1.0 - 2.0 * tPoissonRatio));
+    }
+    if(paramList.isType<Plato::Scalar>("Mass Density"))
+    {
+        mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
+    }
+    else
+    {
+        mCellDensity = 1.0;
     }
 }
 /******************************************************************************/
@@ -64,26 +79,38 @@ LinearElasticMaterial<3>(paramList)
 {
     mPoissonsRatio = paramList.get<Plato::Scalar>("Poissons Ratio");
     mYoungsModulus = paramList.get<Plato::Scalar>("Youngs Modulus");
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
+    auto tPoissonRatio = mPoissonsRatio;
+    auto tYoungsModulus = mYoungsModulus;
+    auto tCoeff = tYoungsModulus / ((1.0 + tPoissonRatio) * (1.0 - 2.0 * tPoissonRatio));
 
-    mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;       mCellStiffness(0,2)=c*v;
-    mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v); mCellStiffness(1,2)=c*v;
-    mCellStiffness(2,0)=c*v;       mCellStiffness(2,1)=c*v;       mCellStiffness(2,2)=c*(1.0-v);
-    mCellStiffness(3,3)=1.0/2.0*c*(1.0-2.0*v);
-    mCellStiffness(4,4)=1.0/2.0*c*(1.0-2.0*v);
-    mCellStiffness(5,5)=1.0/2.0*c*(1.0-2.0*v);
+    mCellStiffness(0, 0) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(0, 1) = tCoeff * tPoissonRatio;
+    mCellStiffness(0, 2) = tCoeff * tPoissonRatio;
+    mCellStiffness(1, 0) = tCoeff * tPoissonRatio;
+    mCellStiffness(1, 1) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(1, 2) = tCoeff * tPoissonRatio;
+    mCellStiffness(2, 0) = tCoeff * tPoissonRatio;
+    mCellStiffness(2, 1) = tCoeff * tPoissonRatio;
+    mCellStiffness(2, 2) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(3, 3) = 1.0 / 2.0 * tCoeff * (1.0 - 2.0 * tPoissonRatio);
+    mCellStiffness(4, 4) = 1.0 / 2.0 * tCoeff * (1.0 - 2.0 * tPoissonRatio);
+    mCellStiffness(5, 5) = 1.0 / 2.0 * tCoeff * (1.0 - 2.0 * tPoissonRatio);
 
-    if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
-      mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
-    } else {
-      mPressureScaling = k / (3.0*(1.0-2.0*v));
+    if(paramList.isType<Plato::Scalar>("Pressure Scaling"))
+    {
+        mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
     }
-    if( paramList.isType<Plato::Scalar>("Mass Density") ){
-      mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
-    } else {
-      mCellDensity = 1.0;
+    else
+    {
+        mPressureScaling = tYoungsModulus / (3.0 * (1.0 - 2.0 * tPoissonRatio));
+    }
+    if(paramList.isType<Plato::Scalar>("Mass Density"))
+    {
+        mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
+    }
+    else
+    {
+        mCellDensity = 1.0;
     }
 }
 
@@ -96,10 +123,10 @@ IsotropicLinearElasticMaterial(const Plato::Scalar & aYoungsModulus, const Plato
     mYoungsModulus(aYoungsModulus)
 /******************************************************************************/
 {
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
-    mCellStiffness(0,0)=c*(1.0-v);
+    auto tPoissonRatio = mPoissonsRatio;
+    auto tYoungsModulus = mYoungsModulus;
+    auto tCoeff = tYoungsModulus / ((1.0 + tPoissonRatio) * (1.0 - 2.0 * tPoissonRatio));
+    mCellStiffness(0, 0) = tCoeff * (1.0 - tPoissonRatio);
 }
 
 /******************************************************************************/
@@ -111,12 +138,14 @@ IsotropicLinearElasticMaterial(const Plato::Scalar & aYoungsModulus, const Plato
     mYoungsModulus(aYoungsModulus)
 /******************************************************************************/
 {
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
-    mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;
-    mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v);
-    mCellStiffness(2,2)=1.0/2.0*c*(1.0-2.0*v);
+    auto tPoissonRatio = mPoissonsRatio;
+    auto tYoungsModulus = mYoungsModulus;
+    auto tCoeff = tYoungsModulus / ((1.0 + tPoissonRatio) * (1.0 - 2.0 * tPoissonRatio));
+    mCellStiffness(0, 0) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(0, 1) = tCoeff * tPoissonRatio;
+    mCellStiffness(1, 0) = tCoeff * tPoissonRatio;
+    mCellStiffness(1, 1) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(2, 2) = 1.0 / 2.0 * tCoeff * (1.0 - 2.0 * tPoissonRatio);
 }
 /******************************************************************************/
 template<>
@@ -127,15 +156,21 @@ IsotropicLinearElasticMaterial(const Plato::Scalar & aYoungsModulus, const Plato
     mYoungsModulus(aYoungsModulus)
 /******************************************************************************/
 {
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
-    mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;       mCellStiffness(0,2)=c*v;
-    mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v); mCellStiffness(1,2)=c*v;
-    mCellStiffness(2,0)=c*v;       mCellStiffness(2,1)=c*v;       mCellStiffness(2,2)=c*(1.0-v);
-    mCellStiffness(3,3)=1.0/2.0*c*(1.0-2.0*v);
-    mCellStiffness(4,4)=1.0/2.0*c*(1.0-2.0*v);
-    mCellStiffness(5,5)=1.0/2.0*c*(1.0-2.0*v);
+    auto tPoissonRatio = mPoissonsRatio;
+    auto tYoungsModulus = mYoungsModulus;
+    auto tCoeff = tYoungsModulus / ((1.0 + tPoissonRatio) * (1.0 - 2.0 * tPoissonRatio));
+    mCellStiffness(0, 0) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(0, 1) = tCoeff * tPoissonRatio;
+    mCellStiffness(0, 2) = tCoeff * tPoissonRatio;
+    mCellStiffness(1, 0) = tCoeff * tPoissonRatio;
+    mCellStiffness(1, 1) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(1, 2) = tCoeff * tPoissonRatio;
+    mCellStiffness(2, 0) = tCoeff * tPoissonRatio;
+    mCellStiffness(2, 1) = tCoeff * tPoissonRatio;
+    mCellStiffness(2, 2) = tCoeff * (1.0 - tPoissonRatio);
+    mCellStiffness(3, 3) = 1.0 / 2.0 * tCoeff * (1.0 - 2.0 * tPoissonRatio);
+    mCellStiffness(4, 4) = 1.0 / 2.0 * tCoeff * (1.0 - 2.0 * tPoissonRatio);
+    mCellStiffness(5, 5) = 1.0 / 2.0 * tCoeff * (1.0 - 2.0 * tPoissonRatio);
 }
 
 /******************************************************************************/
@@ -145,8 +180,8 @@ CubicLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
 LinearElasticMaterial<1>(paramList)
 /******************************************************************************/
 {
-    Plato::Scalar C11   = paramList.get<Plato::Scalar>("C11");
-    mCellStiffness(0,0)=C11;
+    Plato::Scalar tC11 = paramList.get<Plato::Scalar>("C11");
+    mCellStiffness(0, 0) = tC11;
 
 /*
     if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
@@ -164,13 +199,15 @@ CubicLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
 LinearElasticMaterial<2>(paramList)
 /******************************************************************************/
 {
-    Plato::Scalar C11   = paramList.get<Plato::Scalar>("C11");
-    Plato::Scalar C12   = paramList.get<Plato::Scalar>("C12");
-    Plato::Scalar C44   = paramList.get<Plato::Scalar>("C44");
+    Plato::Scalar tC11 = paramList.get<Plato::Scalar>("C11");
+    Plato::Scalar tC12 = paramList.get<Plato::Scalar>("C12");
+    Plato::Scalar tC44 = paramList.get<Plato::Scalar>("C44");
 
-    mCellStiffness(0,0)=C11; mCellStiffness(0,1)=C12;
-    mCellStiffness(1,0)=C12; mCellStiffness(1,1)=C11;
-    mCellStiffness(2,2)=C44;
+    mCellStiffness(0, 0) = tC11;
+    mCellStiffness(0, 1) = tC12;
+    mCellStiffness(1, 0) = tC12;
+    mCellStiffness(1, 1) = tC11;
+    mCellStiffness(2, 2) = tC44;
 
 /*
     if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
@@ -188,16 +225,22 @@ CubicLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
 LinearElasticMaterial<3>(paramList)
 /******************************************************************************/
 {
-    Plato::Scalar C11   = paramList.get<Plato::Scalar>("C11");
-    Plato::Scalar C12   = paramList.get<Plato::Scalar>("C12");
-    Plato::Scalar C44   = paramList.get<Plato::Scalar>("C44");
+    Plato::Scalar tC11 = paramList.get<Plato::Scalar>("C11");
+    Plato::Scalar tC12 = paramList.get<Plato::Scalar>("C12");
+    Plato::Scalar tC44 = paramList.get<Plato::Scalar>("C44");
 
-    mCellStiffness(0,0)=C11; mCellStiffness(0,1)=C12; mCellStiffness(0,2)=C12;
-    mCellStiffness(1,0)=C12; mCellStiffness(1,1)=C11; mCellStiffness(1,2)=C12;
-    mCellStiffness(2,0)=C12; mCellStiffness(2,1)=C12; mCellStiffness(2,2)=C11;
-    mCellStiffness(3,3)=C44;
-    mCellStiffness(4,4)=C44;
-    mCellStiffness(5,5)=C44;
+    mCellStiffness(0, 0) = tC11;
+    mCellStiffness(0, 1) = tC12;
+    mCellStiffness(0, 2) = tC12;
+    mCellStiffness(1, 0) = tC12;
+    mCellStiffness(1, 1) = tC11;
+    mCellStiffness(1, 2) = tC12;
+    mCellStiffness(2, 0) = tC12;
+    mCellStiffness(2, 1) = tC12;
+    mCellStiffness(2, 2) = tC11;
+    mCellStiffness(3, 3) = tC44;
+    mCellStiffness(4, 4) = tC44;
+    mCellStiffness(5, 5) = tC44;
 
 /*
     if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
@@ -209,11 +252,31 @@ LinearElasticMaterial<3>(paramList)
 */
 }
 
+/******************************************************************************/
+template<>
+::Plato::CustomLinearElasticMaterial<1>::
+CustomLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
+LinearElasticMaterial<1>(paramList)
+/******************************************************************************/
+{
+}
 
+/******************************************************************************/
+template<>
+::Plato::CustomLinearElasticMaterial<2>::
+ CustomLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
+LinearElasticMaterial<2>(paramList)
+/******************************************************************************/
+{
+}
 
-
-
-
-
+/******************************************************************************/
+template<>
+::Plato::CustomLinearElasticMaterial<3>::
+ CustomLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
+LinearElasticMaterial<3>(paramList)
+/******************************************************************************/
+{
+}
 
 } // namespace Plato 
