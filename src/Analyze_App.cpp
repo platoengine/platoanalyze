@@ -145,8 +145,11 @@ createProblem(ProblemDefinition& aDefinition){
   mNumSolutionDofs = mProblem->getNumSolutionDofs();
 
   auto tNumLocalVals = mMesh.nverts();
-  Kokkos::resize(mControl, tNumLocalVals);
-  Kokkos::deep_copy(mControl, 1.0);
+  if(mControl.extent(0) != tNumLocalVals)
+  {
+    Kokkos::resize(mControl, tNumLocalVals);
+    Kokkos::deep_copy(mControl, 1.0);
+  }
 
   Kokkos::resize(mObjectiveGradientZ, tNumLocalVals);
   Kokkos::resize(mObjectiveGradientX, mNumSpatialDims*tNumLocalVals);
