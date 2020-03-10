@@ -75,7 +75,7 @@ class SharedValue : public SharedData
        SharedData(Plato::data::layout_t::SCALAR, size, initVal){}
 };
 
-} // end namespace 
+} // end namespace
 
 
 struct Analyze {
@@ -107,7 +107,7 @@ Analyze_initialize(Analyze* self)
 static PyObject *
 Analyze_importData(Analyze *self, PyObject *args, PyObject *kwds)
 {
-    // parse incoming arguments 
+    // parse incoming arguments
     //
     char *inputDataName;
     char *inputDataType;
@@ -148,7 +148,6 @@ Analyze_importData(Analyze *self, PyObject *args, PyObject *kwds)
     } else
     if( inType == "SCALAR" )
     {
-       
         std::vector<Plato::Scalar> vecData;
         if (PyList_Check(inputData))
         {
@@ -169,7 +168,7 @@ Analyze_importData(Analyze *self, PyObject *args, PyObject *kwds)
 static PyObject *
 Analyze_compute(Analyze *self, PyObject *args, PyObject *kwds)
 {
-    // parse incoming arguments 
+    // parse incoming arguments
     //
     char *operationName;
 
@@ -188,7 +187,7 @@ Analyze_compute(Analyze *self, PyObject *args, PyObject *kwds)
 static PyObject *
 Analyze_exportData(Analyze *self, PyObject *args, PyObject *kwds)
 {
-    // parse incoming arguments 
+    // parse incoming arguments
     //
     char *outputDataName;
     char *outputDataType;
@@ -278,7 +277,7 @@ static int
 Analyze_init(Analyze *self, PyObject *args, PyObject *kwds)
 {
 
-    // parse incoming arguments 
+    // parse incoming arguments
     //
     char *inputfileName;
     char *appfileName;
@@ -324,10 +323,10 @@ Analyze_init(Analyze *self, PyObject *args, PyObject *kwds)
 
     free(arg0); free(arg1); free(argv);
 
-    
+
 
     // increment the instance counter.  This is used to finalize mpi and kokkos
-    // when the last instance is deleted.  This will conflict with other modules 
+    // when the last instance is deleted.  This will conflict with other modules
     // if they're using mpi and/or kokkos.
     //
     self->mNumInstances++;
@@ -404,7 +403,7 @@ static PyTypeObject AnalyzeType = {
 #define PyMODINIT_FUNC void
 #endif
 PyMODINIT_FUNC
-initPlato(void) 
+initPlatoPython(void)
 {
     PyObject* m;
 
@@ -412,7 +411,7 @@ initPlato(void)
     if (PyType_Ready(&AnalyzeType) < 0)
         return;
 
-    m = Py_InitModule3("Plato", Plato_methods,
+    m = Py_InitModule3("PlatoPython", Plato_methods,
                        "Example module that creates an extension type.");
 
     Py_INCREF(&AnalyzeType);

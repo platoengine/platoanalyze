@@ -408,21 +408,21 @@ public:
         }
         else if(aName == "Solution X")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+            const Plato::OrdinalType tTIME_STEP_INDEX = mState.extent(0)-1;
             auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Y")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+            const Plato::OrdinalType tTIME_STEP_INDEX = mState.extent(0)-1;
             auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Z")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+            const Plato::OrdinalType tTIME_STEP_INDEX = mState.extent(0)-1;
             auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
@@ -576,6 +576,9 @@ private:
     public:
         ComputeSolution(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        bool mWriteNativeOutput;
+        std::string mVizFilePath;
     };
     friend class ComputeSolution;
     /******************************************************************************/
