@@ -83,9 +83,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_2D)
 
     Plato::ScalarArray3D tGold("gold", tNumCells, tNumEdges, tSpaceDim);
     auto tHostGold = Kokkos::create_mirror(tGold);
-    tHostGold(0,0,0) = 0.0; tHostGold(0,0,1) = -1.0; tHostGold(0,1,0) =  1.0; tHostGold(0,1,1) = 0.0; tHostGold(0,2,0) = -1.0/sqrt(2.0); tHostGold(0,2,1) =  1.0/sqrt(2.0);
-    tHostGold(1,0,0) = 0.0; tHostGold(1,0,1) =  1.0; tHostGold(1,1,0) = -1.0; tHostGold(1,1,1) = 0.0; tHostGold(1,2,0) =  1.0/sqrt(2.0); tHostGold(1,2,1) = -1.0/sqrt(2.0);
- 
+    // Edge ID One
+    tHostGold(0,0,0) = 0.0; tHostGold(0,0,1) = -1.0;
+    tHostGold(1,0,0) = 0.0; tHostGold(1,0,1) =  1.0;
+    // Edge ID Two
+    tHostGold(0,1,0) =  1.0; tHostGold(0,1,1) = 0.0;
+    tHostGold(1,1,0) = -1.0; tHostGold(1,1,1) = 0.0;
+    // Edge ID Three
+    auto tMu = 1.0/sqrt(2.0);
+    tHostGold(0,2,0) = -tMu; tHostGold(0,2,1) =  tMu;
+    tHostGold(1,2,0) =  tMu; tHostGold(1,2,1) = -tMu;
+
     const Plato::Scalar tTolerance = 1e-4;
     auto tHostNormalVectors = Kokkos::create_mirror(tNormalVectors);
     Kokkos::deep_copy(tHostNormalVectors, tNormalVectors);
@@ -142,8 +150,35 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
 
     Plato::ScalarArray3D tGold("gold", tNumCells, tNumFaces, tSpaceDim);
     auto tHostGold = Kokkos::create_mirror(tGold);
-    tHostGold(0,0,0) = 0.0; tHostGold(0,0,1) = -1.0; tHostGold(0,1,0) =  1.0; tHostGold(0,1,1) = 0.0; tHostGold(0,2,0) = -1.0/sqrt(2.0); tHostGold(0,2,1) =  1.0/sqrt(2.0);
-    tHostGold(1,0,0) = 0.0; tHostGold(1,0,1) =  1.0; tHostGold(1,1,0) = -1.0; tHostGold(1,1,1) = 0.0; tHostGold(1,2,0) =  1.0/sqrt(2.0); tHostGold(1,2,1) = -1.0/sqrt(2.0);
+    auto tMu = 1.0/sqrt(2.0);
+    // Face One
+    tHostGold(0,0,0) =  0.0; tHostGold(0,0,1) = 0.0; tHostGold(0,0,2) = -1.0;
+    tHostGold(1,0,0) = -1.0; tHostGold(1,0,1) = 0.0; tHostGold(1,0,2) =  0.0;
+    tHostGold(2,0,0) = -1.0; tHostGold(2,0,1) = 0.0; tHostGold(2,0,2) =  0.0;
+    tHostGold(3,0,0) = tMu;  tHostGold(3,0,1) = 0.0; tHostGold(3,0,2) =  tMu;
+    tHostGold(4,0,0) = 1.0;  tHostGold(4,0,1) = 0.0; tHostGold(4,0,2) =  0.0;
+    tHostGold(5,0,0) = 1.0;  tHostGold(5,0,1) = 0.0; tHostGold(5,0,2) =  0.0;
+    // Face Two
+    tHostGold(0,1,0) = tMu; tHostGold(0,1,1) = -tMu; tHostGold(0,1,2) =  0.0;
+    tHostGold(1,1,0) = tMu; tHostGold(1,1,1) =  0.0; tHostGold(1,1,2) = -tMu;
+    tHostGold(2,1,0) = 0.0; tHostGold(2,1,1) =  tMu; tHostGold(2,1,2) = -tMu;
+    tHostGold(3,1,0) = 0.0; tHostGold(3,1,1) = -1.0; tHostGold(3,1,2) =  0.0;
+    tHostGold(4,1,0) = 0.0; tHostGold(4,1,1) = -1.0; tHostGold(4,1,2) =  0.0;
+    tHostGold(5,1,0) = 0.0; tHostGold(5,1,1) = -tMu; tHostGold(5,1,2) =  tMu;
+    // Face Three
+    tHostGold(0,2,0) =  0.0; tHostGold(0,2,1) = 1.0; tHostGold(0,2,2) = 0.0;
+    tHostGold(1,2,0) =  0.0; tHostGold(1,2,1) = 1.0; tHostGold(1,2,2) = 0.0;
+    tHostGold(2,2,0) =  0.0; tHostGold(2,2,1) = 0.0; tHostGold(2,2,2) = 1.0;
+    tHostGold(3,2,0) =  0.0; tHostGold(3,2,1) = 0.0; tHostGold(3,2,2) = 1.0;
+    tHostGold(4,2,0) = -tMu; tHostGold(4,2,1) = 0.0; tHostGold(4,2,2) = tMu;
+    tHostGold(5,2,0) = -tMu; tHostGold(5,2,1) = tMu; tHostGold(5,2,2) = 0.0;
+    // Face Four
+    tHostGold(0,3,0) = -tMu; tHostGold(0,3,1) =  0.0; tHostGold(0,3,2) =  tMu;
+    tHostGold(1,3,0) =  0.0; tHostGold(1,3,1) = -tMu; tHostGold(1,3,2) =  tMu;
+    tHostGold(2,3,0) =  tMu; tHostGold(2,3,1) = -tMu; tHostGold(2,3,2) =  0.0;
+    tHostGold(3,3,0) = -tMu; tHostGold(3,3,1) =  tMu; tHostGold(3,3,2) =  0.0;
+    tHostGold(4,3,0) =  0.0; tHostGold(4,3,1) =  tMu; tHostGold(4,3,2) = -tMu;
+    tHostGold(5,3,0) =  0.0; tHostGold(5,3,1) =  0.0; tHostGold(5,3,2) = -1.0;
 
     const Plato::Scalar tTolerance = 1e-4;
     auto tHostNormalVectors = Kokkos::create_mirror(tNormalVectors);
