@@ -4,6 +4,8 @@
  *  Created on: Sep 30, 2019
  */
 
+#include <Omega_h_shape.hpp>
+
 #include "Teuchos_UnitTestHarness.hpp"
 
 #include "PlatoUtilities.hpp"
@@ -19,6 +21,38 @@
 
 namespace ElastoPlasticityTest
 {
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    auto tCoords = tMesh->coords();
+    auto tNumCells = tMesh->nelems();
+    auto tCell2Verts = tMesh->ask_elem_verts();
+    constexpr auto tNodesPerCell = tSpaceDim + 1;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
+        for( Plato::OrdinalType jNode=0; jNode < tNodesPerCell; jNode++)
+        {
+            const auto tVertexLocalID = tCell2Verts[aCellIndex * tNodesPerCell + jNode];
+            for( Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
+            {
+                tCellPoints[jNode][tDim] = tCoords[tVertexLocalID * tSpaceDim + tDim];
+            }
+        }
+
+        auto tNormal0 = Omega_h::get_side_vector(tCellPoints, 0);
+        printf("N0(x) = %f \t N0(y) = %f", tNormal0[0], tNormal0[1]);
+        auto tNormal1 = Omega_h::get_side_vector(tCellPoints, 1);
+        printf("N1(x) = %f \t N1(y) = %f", tNormal1[0], tNormal1[1]);
+        auto tNormal2 = Omega_h::get_side_vector(tCellPoints, 2);
+        printf("N2(x) = %f \t N2(y) = %f", tNormal2[0], tNormal2[1]);
+    }, "test get_side_vector function - returns normal vectors");
+}
 
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeDeviatoricStrain_3D)
