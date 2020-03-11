@@ -842,6 +842,26 @@ void ExpressionEvaluator::parse_expression( const char* expression )
       break;
     }
 
+    // Special case for a close parenthesis followed by an open
+    // parenthesis with no operand between. Which implies a multiply.
+    if( node.ID == OPEN_PARENTHESIS && previous.ID == CLOSE_PARENTHESIS)
+    {
+      NodeInfo multInfo = LeftAssociative;
+
+      Node multNode;
+      multNode.precedence = 3;
+      multNode.ID         = MULTIPLICATION;
+      multNode.parent     = nullptr;
+      multNode.right      = nullptr;
+      multNode.left       = nullptr;
+
+      // Add the implict multiplication node to the tree.
+      current = insert_node_item( current, multNode, multInfo );
+
+      // Prepare for the next iteration
+      previous = multNode;
+    }
+
     // Some error handling for numbers and variables to make sure
     // there is an operand in between.
     if( (node.ID    == OPEN_PARENTHESIS   || node.ID    == OPEN_ABS_BAR ||
