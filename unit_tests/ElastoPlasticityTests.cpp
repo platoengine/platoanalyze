@@ -19,6 +19,30 @@
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
+namespace Plato
+{
+
+Omega_h::Vector<2> get_unit_normal_vector(Omega_h::Few<Omega_h::Vector<2>, 3> aPoints, Omega_h::Int aEdgeID)
+{
+    auto tNormal = Omega_h::get_side_vector(aPoints, aEdgeID);
+    auto tMagnitude = sqrt(tNormal[0]*tNormal[0] + tNormal[1]*tNormal[1]);
+    tNormal[0] = tNormal[0] / tMagnitude;
+    tNormal[1] = tNormal[1] / tMagnitude;
+    return (tNormal);
+}
+
+Omega_h::Vector<3> get_unit_normal_vector(Omega_h::Few<Omega_h::Vector<3>, 4> aPoints, Omega_h::Int aEdgeID)
+{
+    auto tNormal = Omega_h::get_side_vector(aPoints, aEdgeID);
+    auto tMagnitude = sqrt(tNormal[0]*tNormal[0] + tNormal[1]*tNormal[1] + tNormal[2]*tNormal[2]);
+    tNormal[0] = tNormal[0] / tMagnitude;
+    tNormal[1] = tNormal[1] / tMagnitude;
+    tNormal[2] = tNormal[2] / tMagnitude;
+    return (tNormal);
+}
+
+}
+
 namespace ElastoPlasticityTest
 {
 
@@ -32,7 +56,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals)
     auto tCoords = tMesh->coords();
     auto tNumCells = tMesh->nelems();
     auto tCell2Verts = tMesh->ask_elem_verts();
+    constexpr auto tNumEdges = tSpaceDim + 1;
     constexpr auto tNodesPerCell = tSpaceDim + 1;
+    Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNumCells * tNumEdges> tNormalVec;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
         Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
@@ -45,12 +71,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals)
             }
         }
 
-        auto tNormal0 = Omega_h::get_side_vector(tCellPoints, 0);
-        printf("N0(x) = %f \t N0(y) = %f", tNormal0[0], tNormal0[1]);
-        auto tNormal1 = Omega_h::get_side_vector(tCellPoints, 1);
-        printf("N1(x) = %f \t N1(y) = %f", tNormal1[0], tNormal1[1]);
-        auto tNormal2 = Omega_h::get_side_vector(tCellPoints, 2);
-        printf("N2(x) = %f \t N2(y) = %f", tNormal2[0], tNormal2[1]);
+        auto tBaseIndex = aCellIndex * tNumEdges;
+        for(Plato::OrdinalType tIndex=0; tIndex < tNumEdges; tIndex++)
+        {
+            tNormalVec[tBaseIndex + tIndex] = Plato::get_unit_normal_vector(tCellPoints, tIndex);
+        }
     }, "test get_side_vector function - returns normal vectors");
 }
 
