@@ -120,7 +120,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
     auto tNumCells = tMesh->nelems();
     auto tCell2Verts = tMesh->ask_elem_verts();
 
-    printf("\n");
+    //printf("\n");
     constexpr auto tNumFaces = tSpaceDim + 1;
     constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tNormalVectors("normals", tNumCells, tNumFaces, tSpaceDim);
@@ -143,7 +143,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
             for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
             {
                 tNormalVectors(aCellIndex, tFaceIndex, tDim) = tNormalVec[tDim];
-                printf("N[%d][%d][%d] = %f\n", aCellIndex, tFaceIndex, tDim, tNormalVec[tDim]);
+                //printf("N[%d][%d][%d] = %f\n", aCellIndex, tFaceIndex, tDim, tNormalVec[tDim]);
             }
         }
     }, "test get_side_vector function - returns normal vectors");
@@ -155,7 +155,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
     tHostGold(0,0,0) =  0.0; tHostGold(0,0,1) = 0.0; tHostGold(0,0,2) = -1.0;
     tHostGold(1,0,0) = -1.0; tHostGold(1,0,1) = 0.0; tHostGold(1,0,2) =  0.0;
     tHostGold(2,0,0) = -1.0; tHostGold(2,0,1) = 0.0; tHostGold(2,0,2) =  0.0;
-    tHostGold(3,0,0) = tMu;  tHostGold(3,0,1) = 0.0; tHostGold(3,0,2) =  tMu;
+    tHostGold(3,0,0) = tMu;  tHostGold(3,0,1) = 0.0; tHostGold(3,0,2) = -tMu;
     tHostGold(4,0,0) = 1.0;  tHostGold(4,0,1) = 0.0; tHostGold(4,0,2) =  0.0;
     tHostGold(5,0,0) = 1.0;  tHostGold(5,0,1) = 0.0; tHostGold(5,0,2) =  0.0;
     // Face Two
@@ -189,7 +189,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
         {
             for(Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
             {
-                //TEST_FLOATING_EQUALITY(tHostNormalVectors(tCellIndex, tFaceIndex, tDim), tHostGold(tCellIndex, tFaceIndex, tDim), tTolerance);
+                TEST_FLOATING_EQUALITY(tHostNormalVectors(tCellIndex, tFaceIndex, tDim), tHostGold(tCellIndex, tFaceIndex, tDim), tTolerance);
             }
         }
     }
