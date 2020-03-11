@@ -12,20 +12,6 @@ namespace Plato
 {
 
 /******************************************************************************/
-  /*! Create a 1D Kokkos::View
-  
-    @param name Arbitrary descriptive name.
-    @param entryCount Number of elements in the returned Kokkos::View.
-  */
-template<class T>
-Omega_h::Write<T> getArray_Omega_h(std::string name, Plato::OrdinalType entryCount)
-/******************************************************************************/
-{
-  Kokkos::View<T*, Kokkos::LayoutRight, Plato::MemSpace> view(name, entryCount);
-  return Omega_h::Write<T>(view);
-} 
-
-/******************************************************************************/
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType DofsPerNode=1>
 class VectorEntryOrdinal
 {

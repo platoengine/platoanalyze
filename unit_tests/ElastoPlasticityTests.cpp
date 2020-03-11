@@ -19,25 +19,7 @@
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
-namespace Plato
-{
 
-inline void normalize(Omega_h::Vector<2> & aVector)
-{
-    auto tMagnitude = sqrt(aVector[0]*aVector[0] + aVector[1]*aVector[1]);
-    aVector[0] = aVector[0] / tMagnitude;
-    aVector[1] = aVector[1] / tMagnitude;
-}
-
-inline void normalize(Omega_h::Vector<3> & aVector)
-{
-    auto tMagnitude = sqrt( aVector[0]*aVector[0] + aVector[1]*aVector[1] + aVector[2]*aVector[2] );
-    aVector[0] = aVector[0] / tMagnitude;
-    aVector[1] = aVector[1] / tMagnitude;
-    aVector[2] = aVector[2] / tMagnitude;
-}
-
-}
 
 namespace ElastoPlasticityTest
 {
