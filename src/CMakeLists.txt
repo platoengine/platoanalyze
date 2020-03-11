@@ -5,6 +5,8 @@ configure_file(
 
 # file(GLOB_RECURSE ANALYZE_SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp 
+    CustomMaterial.cpp 
+    ExpressionEvaluator.cpp 
     Plato_AugLagStressCriterionGeneral.cpp 
     Plato_AugLagStressCriterion.cpp 
     Plato_StructuralMass.cpp 
