@@ -6,6 +6,8 @@
 
 #include "PlatoStaticsTypes.hpp"
 
+#include "CustomMaterial.hpp"
+
 namespace Plato
 {
 
@@ -18,7 +20,7 @@ namespace Plato
 /******************************************************************************/
 {
 protected:
-    static constexpr auto mNumVoigtTerms = (SpatialDim == 3) ? 6 : 
+    static constexpr auto mNumVoigtTerms = (SpatialDim == 3) ? 6 :
                                            ((SpatialDim == 2) ? 3 :
                                           (((SpatialDim == 1) ? 1 : 0)));
     static_assert(mNumVoigtTerms, "SpatialDim must be 1, 2, or 3.");
@@ -27,7 +29,7 @@ protected:
     Omega_h::Vector<mNumVoigtTerms> mReferenceStrain;
     Plato::Scalar mCellDensity;
     Plato::Scalar mPressureScaling;
-  
+
 public:
     LinearElasticMaterial();
     LinearElasticMaterial(const Teuchos::ParameterList& paramList);
@@ -127,7 +129,8 @@ private:
   \brief Derived class for custom linear elastic material models
 */
   template<Plato::OrdinalType SpatialDim>
-  class CustomLinearElasticMaterial : public LinearElasticMaterial<SpatialDim>
+  class CustomLinearElasticMaterial :
+    public LinearElasticMaterial<SpatialDim>, public CustomMaterial
 /******************************************************************************/
 {
 public:
