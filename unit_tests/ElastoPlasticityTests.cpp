@@ -22,23 +22,19 @@
 namespace Plato
 {
 
-Omega_h::Vector<2> get_unit_normal_vector(Omega_h::Few<Omega_h::Vector<2>, 3> aPoints, Omega_h::Int aEdgeID)
+inline void normalize(Omega_h::Vector<2> & aVector)
 {
-    auto tNormal = Omega_h::get_side_vector(aPoints, aEdgeID);
-    auto tMagnitude = sqrt(tNormal[0]*tNormal[0] + tNormal[1]*tNormal[1]);
-    tNormal[0] = tNormal[0] / tMagnitude;
-    tNormal[1] = tNormal[1] / tMagnitude;
-    return (tNormal);
+    auto tMagnitude = sqrt(aVector[0]*aVector[0] + aVector[1]*aVector[1]);
+    aVector[0] = aVector[0] / tMagnitude;
+    aVector[1] = aVector[1] / tMagnitude;
 }
 
-Omega_h::Vector<3> get_unit_normal_vector(Omega_h::Few<Omega_h::Vector<3>, 4> aPoints, Omega_h::Int aEdgeID)
+inline void normalize(Omega_h::Vector<3> & aVector)
 {
-    auto tNormal = Omega_h::get_side_vector(aPoints, aEdgeID);
-    auto tMagnitude = sqrt(tNormal[0]*tNormal[0] + tNormal[1]*tNormal[1] + tNormal[2]*tNormal[2]);
-    tNormal[0] = tNormal[0] / tMagnitude;
-    tNormal[1] = tNormal[1] / tMagnitude;
-    tNormal[2] = tNormal[2] / tMagnitude;
-    return (tNormal);
+    auto tMagnitude = sqrt( aVector[0]*aVector[0] + aVector[1]*aVector[1] + aVector[2]*aVector[2] );
+    aVector[0] = aVector[0] / tMagnitude;
+    aVector[1] = aVector[1] / tMagnitude;
+    aVector[2] = aVector[2] / tMagnitude;
 }
 
 }
@@ -56,9 +52,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals)
     auto tCoords = tMesh->coords();
     auto tNumCells = tMesh->nelems();
     auto tCell2Verts = tMesh->ask_elem_verts();
+
+    //printf("\n");
     constexpr auto tNumEdges = tSpaceDim + 1;
     constexpr auto tNodesPerCell = tSpaceDim + 1;
-    Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNumCells * tNumEdges> tNormalVec;
+    Plato::ScalarArray3D tNormalVectors("normals", tNumCells, tNumEdges, tSpaceDim);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
         Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
@@ -70,13 +68,37 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals)
                 tCellPoints[jNode][tDim] = tCoords[tVertexLocalID * tSpaceDim + tDim];
             }
         }
-
-        auto tBaseIndex = aCellIndex * tNumEdges;
-        for(Plato::OrdinalType tIndex=0; tIndex < tNumEdges; tIndex++)
+        
+        for(Plato::OrdinalType tEdgeIndex=0; tEdgeIndex < tNumEdges; tEdgeIndex++)
         {
-            tNormalVec[tBaseIndex + tIndex] = Plato::get_unit_normal_vector(tCellPoints, tIndex);
+            auto tNormalVec = Omega_h::get_side_vector(tCellPoints, tEdgeIndex);
+            Plato::normalize(tNormalVec);
+            for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
+            {
+                tNormalVectors(aCellIndex, tEdgeIndex, tDim) = tNormalVec[tDim];
+                //printf("N[%d][%d][%d] = %f\n", aCellIndex, tEdgeIndex, tDim, tNormalVec[tDim]);
+            }
         }
     }, "test get_side_vector function - returns normal vectors");
+
+    Plato::ScalarArray3D tGold("gold", tNumCells, tNumEdges, tSpaceDim);
+    auto tHostGold = Kokkos::create_mirror(tGold);
+    tHostGold(0,0,0) = 0.0; tHostGold(0,0,1) = -1.0; tHostGold(0,1,0) =  1.0; tHostGold(0,1,1) = 0.0; tHostGold(0,2,0) = -1.0/sqrt(2.0); tHostGold(0,2,1) =  1.0/sqrt(2.0);
+    tHostGold(1,0,0) = 0.0; tHostGold(1,0,1) =  1.0; tHostGold(1,1,0) = -1.0; tHostGold(1,1,1) = 0.0; tHostGold(1,2,0) =  1.0/sqrt(2.0); tHostGold(1,2,1) = -1.0/sqrt(2.0);
+ 
+    const Plato::Scalar tTolerance = 1e-4;
+    auto tHostNormalVectors = Kokkos::create_mirror(tNormalVectors);
+    Kokkos::deep_copy(tHostNormalVectors, tNormalVectors);
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tEdgeIndex=0; tEdgeIndex < tNumEdges; tEdgeIndex++)
+        {
+            for(Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
+            {
+                TEST_FLOATING_EQUALITY(tHostNormalVectors(tCellIndex, tEdgeIndex, tDim), tHostGold(tCellIndex, tEdgeIndex, tDim), tTolerance);
+            } 
+        }
+    }
 }
 
 
