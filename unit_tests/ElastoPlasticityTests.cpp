@@ -43,7 +43,7 @@ namespace ElastoPlasticityTest
 {
 
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
@@ -97,6 +97,124 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals)
             {
                 TEST_FLOATING_EQUALITY(tHostNormalVectors(tCellIndex, tEdgeIndex, tDim), tHostGold(tCellIndex, tEdgeIndex, tDim), tTolerance);
             } 
+        }
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    auto tCoords = tMesh->coords();
+    auto tNumCells = tMesh->nelems();
+    auto tCell2Verts = tMesh->ask_elem_verts();
+
+    //printf("\n");
+    constexpr auto tNumEdges = tSpaceDim + 1;
+    constexpr auto tNodesPerCell = tSpaceDim + 1;
+    Plato::ScalarArray3D tNormalVectors("normals", tNumCells, tNumEdges, tSpaceDim);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
+        for( Plato::OrdinalType jNode=0; jNode < tNodesPerCell; jNode++)
+        {
+            const auto tVertexLocalID = tCell2Verts[aCellIndex * tNodesPerCell + jNode];
+            for( Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
+            {
+                tCellPoints[jNode][tDim] = tCoords[tVertexLocalID * tSpaceDim + tDim];
+            }
+        }
+
+        for(Plato::OrdinalType tEdgeIndex=0; tEdgeIndex < tNumEdges; tEdgeIndex++)
+        {
+            auto tNormalVec = Omega_h::get_side_vector(tCellPoints, tEdgeIndex);
+            Plato::normalize(tNormalVec);
+            for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
+            {
+                tNormalVectors(aCellIndex, tEdgeIndex, tDim) = tNormalVec[tDim];
+                //printf("N[%d][%d][%d] = %f\n", aCellIndex, tEdgeIndex, tDim, tNormalVec[tDim]);
+            }
+        }
+    }, "test get_side_vector function - returns normal vectors");
+
+    Plato::ScalarArray3D tGold("gold", tNumCells, tNumEdges, tSpaceDim);
+    auto tHostGold = Kokkos::create_mirror(tGold);
+    tHostGold(0,0,0) = 0.0; tHostGold(0,0,1) = -1.0; tHostGold(0,1,0) =  1.0; tHostGold(0,1,1) = 0.0; tHostGold(0,2,0) = -1.0/sqrt(2.0); tHostGold(0,2,1) =  1.0/sqrt(2.0);
+    tHostGold(1,0,0) = 0.0; tHostGold(1,0,1) =  1.0; tHostGold(1,1,0) = -1.0; tHostGold(1,1,1) = 0.0; tHostGold(1,2,0) =  1.0/sqrt(2.0); tHostGold(1,2,1) = -1.0/sqrt(2.0);
+
+    const Plato::Scalar tTolerance = 1e-4;
+    auto tHostNormalVectors = Kokkos::create_mirror(tNormalVectors);
+    Kokkos::deep_copy(tHostNormalVectors, tNormalVectors);
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tEdgeIndex=0; tEdgeIndex < tNumEdges; tEdgeIndex++)
+        {
+            for(Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
+            {
+                TEST_FLOATING_EQUALITY(tHostNormalVectors(tCellIndex, tEdgeIndex, tDim), tHostGold(tCellIndex, tEdgeIndex, tDim), tTolerance);
+            }
+        }
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    auto tCoords = tMesh->coords();
+    auto tNumCells = tMesh->nelems();
+    auto tCell2Verts = tMesh->ask_elem_verts();
+
+    printf("\n");
+    constexpr auto tNumFaces = tSpaceDim + 1;
+    constexpr auto tNodesPerCell = tSpaceDim + 1;
+    Plato::ScalarArray3D tNormalVectors("normals", tNumCells, tNumFaces, tSpaceDim);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
+        for( Plato::OrdinalType tNodeIndex=0; tNodeIndex < tNodesPerCell; tNodeIndex++)
+        {
+            const auto tVertexLocalID = tCell2Verts[aCellIndex * tNodesPerCell + tNodeIndex];
+            for( Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
+            {
+                tCellPoints[tNodeIndex][tDim] = tCoords[tVertexLocalID * tSpaceDim + tDim];
+            }
+        }
+
+        for(Plato::OrdinalType tFaceIndex=0; tFaceIndex < tNumFaces; tFaceIndex++)
+        {
+            auto tNormalVec = Omega_h::get_side_vector(tCellPoints, tFaceIndex);
+            Plato::normalize(tNormalVec);
+            for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
+            {
+                tNormalVectors(aCellIndex, tFaceIndex, tDim) = tNormalVec[tDim];
+                printf("N[%d][%d][%d] = %f\n", aCellIndex, tFaceIndex, tDim, tNormalVec[tDim]);
+            }
+        }
+    }, "test get_side_vector function - returns normal vectors");
+
+    Plato::ScalarArray3D tGold("gold", tNumCells, tNumFaces, tSpaceDim);
+    auto tHostGold = Kokkos::create_mirror(tGold);
+    tHostGold(0,0,0) = 0.0; tHostGold(0,0,1) = -1.0; tHostGold(0,1,0) =  1.0; tHostGold(0,1,1) = 0.0; tHostGold(0,2,0) = -1.0/sqrt(2.0); tHostGold(0,2,1) =  1.0/sqrt(2.0);
+    tHostGold(1,0,0) = 0.0; tHostGold(1,0,1) =  1.0; tHostGold(1,1,0) = -1.0; tHostGold(1,1,1) = 0.0; tHostGold(1,2,0) =  1.0/sqrt(2.0); tHostGold(1,2,1) = -1.0/sqrt(2.0);
+
+    const Plato::Scalar tTolerance = 1e-4;
+    auto tHostNormalVectors = Kokkos::create_mirror(tNormalVectors);
+    Kokkos::deep_copy(tHostNormalVectors, tNormalVectors);
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tFaceIndex=0; tFaceIndex < tNumFaces; tFaceIndex++)
+        {
+            for(Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
+            {
+                //TEST_FLOATING_EQUALITY(tHostNormalVectors(tCellIndex, tFaceIndex, tDim), tHostGold(tCellIndex, tFaceIndex, tDim), tTolerance);
+            }
         }
     }
 }
