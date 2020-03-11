@@ -23,7 +23,17 @@ CustomMaterial::GetCustomExpressionValue( const Teuchos::ParameterList& paramLis
   else if( paramList.isType<std::string>("BingoFile") )
   {
     std::string bingoFile = paramList.get<std::string>( "BingoFile" );
-    int bingoEquation = paramList.get<Plato::OrdinalType>( "BingoEquation" );
+
+    int bingoEquation;
+
+    if( paramList.isType<Plato::OrdinalType>( "BingoEquation" ) )
+    {
+      bingoEquation = paramList.get<Plato::OrdinalType>( "BingoEquation" );
+    }
+    else
+    {
+      bingoEquation = 0;
+    }
 
     // Open the Bingoe file and find the equation(s)
     std::ifstream infile(bingoFile);
