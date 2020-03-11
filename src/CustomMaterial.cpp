@@ -101,16 +101,16 @@ CustomMaterial::GetCustomExpressionValue( const Teuchos::ParameterList& paramLis
 
   if( expEval.validate_expression_tree() == 0 )
   {
-    std::cout << "________________________________" << std::endl
-              << "expression : " << equationStr << std::endl;
-    std::cout << "________________________________" << std::endl;
+    // std::cout << "________________________________" << std::endl
+    //           << "expression : " << equationStr << std::endl;
+    // std::cout << "________________________________" << std::endl;
 
-    expEval.print_expression_tree( std::cout );
+    // expEval.print_expression_tree( std::cout );
 
     double result = expEval.evaluate_expression_tree();
 
-    std::cout << "________________________________" << std::endl
-              << "result = " << result << std::endl;
+    // std::cout << "________________________________" << std::endl
+    //           << "result = " << result << std::endl;
 
     expEval.delete_expression_tree();
 
