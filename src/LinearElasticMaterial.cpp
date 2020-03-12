@@ -270,6 +270,7 @@ CustomLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
     // Get the value for tCoeff from the custom equation in the XML file.
     auto tCoeff = GetCustomExpressionValue( paramList );
 
+    // Do everything as usual for a Linear Elastic Material
     mCellStiffness(0, 0) = tCoeff * (1.0 - tPoissonRatio);
 
     if(paramList.isType<Plato::Scalar>("Pressure Scaling"))
@@ -308,6 +309,7 @@ LinearElasticMaterial<2>(paramList), CustomMaterial(paramList)
     // Get the value for tCoeff from the custom equation in the XML file.
     auto tCoeff = GetCustomExpressionValue( paramList );
 
+    // Do everything as usual for a Linear Elastic Material
     mCellStiffness(0, 0) = tCoeff * (1.0 - tPoissonRatio);
     mCellStiffness(0, 1) = tCoeff * tPoissonRatio;
     mCellStiffness(1, 0) = tCoeff * tPoissonRatio;
@@ -350,6 +352,7 @@ LinearElasticMaterial<3>(paramList), CustomMaterial(paramList)
     // Get the value for tCoeff from the custom equation in the XML file.
     auto tCoeff = GetCustomExpressionValue( paramList );
 
+    // Do everything as usual for a Linear Elastic Material
     mCellStiffness(0, 0) = tCoeff * (1.0 - tPoissonRatio);
     mCellStiffness(0, 1) = tCoeff * tPoissonRatio;
     mCellStiffness(0, 2) = tCoeff * tPoissonRatio;
