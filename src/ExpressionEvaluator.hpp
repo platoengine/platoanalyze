@@ -82,25 +82,27 @@ public:
   ExpressionEvaluator( const Teuchos::ParameterList& paramList );
   ~ExpressionEvaluator();
 
-  void print_expression_tree( std::ostream &os );
+  void print_expression( std::ostream &os ) const;
 
-  void     delete_expression_tree();
-  double evaluate_expression_tree();
-  int    validate_expression_tree();
+  void     delete_expression();
+  double evaluate_expression() const;
+  int    validate_expression() const;
 
   void parse_expression( const char* expression );
 
 private:
-  std::string printNodeID( const Node* node, const bool descriptor );
-  void printNode( std::ostream &os, const Node* node, const int indent );
+  std::string printNodeID( const Node* node, const bool descriptor ) const;
+  void printNode( std::ostream &os, const Node* node, const int indent ) const;
 
-  void   deleteNode(         Node* node );
-  double evaluateNode( const Node* node );
-  NodeID validateNode( const Node* node );
+  void   deleteNode(         Node* node ) const;
+  double evaluateNode( const Node* node ) const;
+  NodeID validateNode( const Node* node ) const;
 
-  Node* insert_node_item( Node* current, const Node item, const NodeInfo info );
+  Node* insert_node_item(       Node* current,
+                          const Node item,
+                          const NodeInfo info ) const;
 
-  double factorial( double n );
+  double factorial( double n ) const;
 
   Teuchos::ParameterList mParamList;
 

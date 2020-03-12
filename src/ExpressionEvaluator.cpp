@@ -19,20 +19,22 @@
 namespace Plato
 {
 
-ExpressionEvaluator::ExpressionEvaluator( const Teuchos::ParameterList& paramList ) : mParamList( paramList )
+ExpressionEvaluator::ExpressionEvaluator(
+    const Teuchos::ParameterList& paramList ) : mParamList( paramList )
 {
 }
 
 ExpressionEvaluator::~ExpressionEvaluator()
 {
   if( mTree )
-    delete_expression_tree();
+    delete_expression();
 }
 
 // ************************************************************************* //
 // Print the current node's ID or its value/variable.
 std::string
-ExpressionEvaluator::printNodeID( const Node* node, const bool descriptor )
+ExpressionEvaluator::printNodeID( const Node* node,
+                                  const bool descriptor ) const
 {
   std::stringstream os;
 
@@ -103,7 +105,7 @@ ExpressionEvaluator::printNodeID( const Node* node, const bool descriptor )
 // Print the current node
 void ExpressionEvaluator::printNode(       std::ostream &os,
                                      const Node* node,
-                                     const int indent )
+                                     const int indent ) const
 {
   if( node == nullptr )
     return;
@@ -133,14 +135,14 @@ void ExpressionEvaluator::printNode(       std::ostream &os,
 
 // ************************************************************************* //
 // Print the current tree - helper function.
-void ExpressionEvaluator::print_expression_tree( std::ostream &os )
+void ExpressionEvaluator::print_expression( std::ostream &os ) const
 {
   printNode( os, mTree, 4 );
 }
 
 // ************************************************************************* //
 // Delete the current node.
-void ExpressionEvaluator::deleteNode( Node* node )
+void ExpressionEvaluator::deleteNode( Node* node ) const
 {
   if( node == nullptr )
     return;
@@ -153,7 +155,7 @@ void ExpressionEvaluator::deleteNode( Node* node )
 
 // ************************************************************************* //
 // Delete the current tree - helper function.
-void ExpressionEvaluator::delete_expression_tree()
+void ExpressionEvaluator::delete_expression()
 {
   deleteNode( mTree );
 
@@ -163,7 +165,7 @@ void ExpressionEvaluator::delete_expression_tree()
 // ************************************************************************* //
 // Validate the current node and it children.
 ExpressionEvaluator::NodeID
-ExpressionEvaluator::validateNode( const Node* node )
+ExpressionEvaluator::validateNode( const Node* node ) const
 {
   if( node == nullptr )
     return EMPTY_NODE;
@@ -291,7 +293,7 @@ ExpressionEvaluator::validateNode( const Node* node )
 // ************************************************************************* //
 // Validate the tree - helper function.
 int
-ExpressionEvaluator::validate_expression_tree()
+ExpressionEvaluator::validate_expression() const
 {
   // Return true if a non empty node is found.
   return (validateNode( mTree ) != ExpressionEvaluator::EMPTY_NODE);
@@ -299,7 +301,7 @@ ExpressionEvaluator::validate_expression_tree()
 
 // ************************************************************************* //
 // Helper factorial function
-double ExpressionEvaluator::factorial( double n )
+double ExpressionEvaluator::factorial( double n ) const
 {
   long ans = 1, m = (long) n;
 
@@ -311,7 +313,7 @@ double ExpressionEvaluator::factorial( double n )
 
 // ************************************************************************* //
 // Evaluate the current node.
-double ExpressionEvaluator::evaluateNode( const Node* node )
+double ExpressionEvaluator::evaluateNode( const Node* node ) const
 {
   if( node == nullptr )
     return 0;
@@ -355,7 +357,7 @@ double ExpressionEvaluator::evaluateNode( const Node* node )
 
 // ************************************************************************* //
 // Evaluate the tree - helper function.
-double ExpressionEvaluator::evaluate_expression_tree()
+double ExpressionEvaluator::evaluate_expression() const
 {
   return evaluateNode( mTree );
 }
@@ -365,7 +367,7 @@ double ExpressionEvaluator::evaluate_expression_tree()
 ExpressionEvaluator::Node*
 ExpressionEvaluator::insert_node_item(       Node* current,
                                        const Node item,
-                                       const NodeInfo info )
+                                       const NodeInfo info ) const
 {
   std::stringstream errorMsg;
 
@@ -469,11 +471,11 @@ ExpressionEvaluator::insert_node_item(       Node* current,
 // Parse the expression.
 void ExpressionEvaluator::parse_expression( const char* expression )
 {
+  if( mTree )
+    delete_expression();
+
   if( expression == nullptr )
     return;
-
-  if( mTree )
-    delete_expression_tree();
 
   std::stringstream errorMsg;
 
@@ -860,6 +862,8 @@ void ExpressionEvaluator::parse_expression( const char* expression )
 
       // Prepare for the next iteration
       previous = multNode;
+
+      // Now the open parenthesis node can be handled as usual.
     }
 
     // Some error handling for numbers and variables to make sure
