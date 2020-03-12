@@ -6,11 +6,238 @@
 #include "AnalyzeMacros.hpp"
 #include "ImplicitFunctors.hpp"
 #include "PlatoStaticsTypes.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 
 #include <Omega_h_assoc.hpp>
 #include <Teuchos_ParameterList.hpp>
 
-namespace Plato {
+namespace Plato 
+{
+
+inline Omega_h::LOs get_face_local_ordinals(const Omega_h::MeshSets& aMeshSets, const std::string& aSideSetName)
+{
+    auto& tSideSets = aMeshSets[Omega_h::SIDE_SET];
+    auto tSideSetMapIterator = tSideSets.find(aSideSetName);
+    if(tSideSetMapIterator == tSideSets.end())
+    {
+        std::ostringstream tMsg;
+        tMsg << "COULD NOT FIND SIDE SET WITH NAME = '" << aSideSetName.c_str()
+            << "'.  SIDE SET IS NOT DEFINED IN THE INPUT MESH FILE, I.E. EXODUS FILE.\n";
+        THROWERR(tMsg.str());
+    }
+    auto tFaceLids = (tSideSetMapIterator->second);
+    return tFaceLids;
+} 
+
+
+template<Plato::OrdinalType SpatialDim>
+class CreateFaceLocalNode2ElemLocalNodeIndexMap
+{
+public:
+    CreateFaceLocalNode2ElemLocalNodeIndexMap(){}
+
+    DEVICE_TYPE inline void operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const Plato::OrdinalType & aFaceOrdinal,
+     const Omega_h::LOs & aCell2Verts,
+     const Omega_h::LOs & aFace2Verts,
+     Plato::OrdinalType aLocalNodeOrd[SpatialDim]) const;
+};
+
+template<>
+DEVICE_TYPE inline void
+CreateFaceLocalNode2ElemLocalNodeIndexMap<1>::operator()
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::OrdinalType & aFaceOrdinal,
+ const Omega_h::LOs & aCell2Verts,
+ const Omega_h::LOs & aFace2Verts,
+ Plato::OrdinalType aLocalNodeOrd[1]) const
+{
+    Plato::OrdinalType tNodesPerFace = 1;
+    Plato::OrdinalType tNodesPerCell = 2;
+    for( Plato::OrdinalType tNodeI = 0; tNodeI < tNodesPerFace; tNodeI++)
+    {
+        for( Plato::OrdinalType tNodeJ = 0; tNodeJ < tNodesPerCell; tNodeJ++)
+        {
+            if( aFace2Verts[aFaceOrdinal*tNodesPerFace+tNodeI] == aCell2Verts[aCellOrdinal*tNodesPerCell + tNodeJ] )
+            {
+                aLocalNodeOrd[tNodeI] = tNodeJ;
+            }
+        }
+    } 
+}
+
+template<>
+DEVICE_TYPE inline void
+CreateFaceLocalNode2ElemLocalNodeIndexMap<2>::operator()
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::OrdinalType & aFaceOrdinal,
+ const Omega_h::LOs & aCell2Verts,
+ const Omega_h::LOs & aFace2Verts,
+ Plato::OrdinalType aLocalNodeOrd[2]) const
+{ 
+    Plato::OrdinalType tNodesPerFace = 2;
+    Plato::OrdinalType tNodesPerCell = 3;
+    for( Plato::OrdinalType tNodeI = 0; tNodeI < tNodesPerFace; tNodeI++)
+    {
+        for( Plato::OrdinalType tNodeJ = 0; tNodeJ < tNodesPerCell; tNodeJ++)
+        {
+            if( aFace2Verts[aFaceOrdinal*tNodesPerFace+tNodeI] == aCell2Verts[aCellOrdinal*tNodesPerCell + tNodeJ] )
+            {
+                aLocalNodeOrd[tNodeI] = tNodeJ;
+            }
+        }
+    }    
+}
+
+template<>
+DEVICE_TYPE inline void
+CreateFaceLocalNode2ElemLocalNodeIndexMap<3>::operator()
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::OrdinalType & aFaceOrdinal,
+ const Omega_h::LOs & aCell2Verts,
+ const Omega_h::LOs & aFace2Verts,
+ Plato::OrdinalType aLocalNodeOrd[3]) const
+{
+    Plato::OrdinalType tNodesPerFace = 3;
+    Plato::OrdinalType tNodesPerCell = 4;
+    for( Plato::OrdinalType tNodeI = 0; tNodeI < tNodesPerFace; tNodeI++)
+    {
+        for( Plato::OrdinalType tNodeJ = 0; tNodeJ < tNodesPerCell; tNodeJ++)
+        {
+            if( aFace2Verts[aFaceOrdinal*tNodesPerFace+tNodeI] == aCell2Verts[aCellOrdinal*tNodesPerCell + tNodeJ] )
+            {
+                aLocalNodeOrd[tNodeI] = tNodeJ;
+            }
+        }
+    }
+}
+
+
+template<Plato::OrdinalType SpatialDim>
+class ComputeSurfaceJacobians
+{
+public:
+    ComputeSurfaceJacobians(){}
+
+    template<typename ConfigScalarType, typename ResultScalarType>
+    DEVICE_TYPE inline void operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const Plato::OrdinalType & aFaceOrdinal,
+     const Plato::OrdinalType aLocalNodeOrd[SpatialDim],
+     const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
+     const Plato::ScalarArray3DT<ResultScalarType> & aJacobian) const;
+};
+
+template<>
+template<typename ConfigScalarType, typename ResultScalarType>
+DEVICE_TYPE inline void
+ComputeSurfaceJacobians<1>::operator()
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::OrdinalType aLocalNodeOrd[1],
+ const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
+ const Plato::ScalarArray3DT<ResultScalarType> & aJacobian) const
+{ return; }
+
+template<>
+template<typename ConfigScalarType, typename ResultScalarType>
+DEVICE_TYPE inline void
+ComputeSurfaceJacobians<2>::operator()
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::OrdinalType aLocalNodeOrd[2],
+ const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
+ const Plato::ScalarArray3DT<ResultScalarType> & aJacobian) const
+{ 
+    const Plato::OrdinalType tSpaceDim = 2; 
+    const Plato::OrdinalType tSpaceDimMinusOne = 1; 
+    for( Plato::OrdinalType tNode=0; tNode < tSpaceDimMinusOne; tNode++ )
+    {
+        for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++ )
+        {
+            aJacobian(aFaceOrdinal,tNode,tDim) =
+                aConfig(aCellOrdinal, aLocalNodeOrd[tNode], tDim) - aConfig(aCellOrdinal, aLocalNodeOrd[tSpaceDimMinusOne], tDim);
+        }
+    } 
+}
+
+template<>
+template<typename ConfigScalarType, typename ResultScalarType>
+DEVICE_TYPE inline void
+ComputeSurfaceJacobians<3>::operator()
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::OrdinalType aLocalNodeOrd[3],
+ const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
+ const Plato::ScalarArray3DT<ResultScalarType> & aJacobian) const
+{
+    const Plato::OrdinalType tSpaceDim = 3; 
+    const Plato::OrdinalType tSpaceDimMinusOne = 2; 
+    for( Plato::OrdinalType tNode=0; tNode < tSpaceDimMinusOne; tNode++ )
+    {
+        for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++ )
+        {
+            aJacobian(aFaceOrdinal,tNode,tDim) =
+                aConfig(aCellOrdinal, aLocalNodeOrd[tNode], tDim) - aConfig(aCellOrdinal, aLocalNodeOrd[tSpaceDimMinusOne], tDim);
+        }
+    }            
+}
+
+template<Plato::OrdinalType SpatialDim>
+class ComputeSurfaceIntegralWeight
+{
+public:
+    ComputeSurfaceIntegralWeight(){}
+
+    template<typename ConfigScalarType, typename ResultScalarType>
+    DEVICE_TYPE inline void operator()
+    (const Plato::OrdinalType & aFaceOrdinal,
+     const Plato::Scalar & aMultiplier,
+     const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian, 
+     ResultScalarType & aOutput) const;
+};
+
+template<>
+template<typename ConfigScalarType, typename ResultScalarType>
+DEVICE_TYPE inline void
+ComputeSurfaceIntegralWeight<1>::operator()
+(const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::Scalar & aMultiplier,
+ const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian, 
+ ResultScalarType & aOutput) const
+{
+    aOutput = aMultiplier;
+}
+
+template<>
+template<typename ConfigScalarType, typename ResultScalarType>
+DEVICE_TYPE inline void
+ComputeSurfaceIntegralWeight<2>::operator()
+(const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::Scalar & aMultiplier,
+ const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian, 
+ ResultScalarType & aOutput) const
+{   
+    auto tJ11 = aJacobian(aFaceOrdinal, 0, 0) * aJacobian(aFaceOrdinal, 0, 0); 
+    auto tJ12 = aJacobian(aFaceOrdinal, 0, 1) * aJacobian(aFaceOrdinal, 0, 1);
+    aOutput = aMultiplier * sqrt( tJ11 + tJ12 );
+}
+
+template<>
+template<typename ConfigScalarType, typename ResultScalarType>
+DEVICE_TYPE inline void
+ComputeSurfaceIntegralWeight<3>::operator()
+(const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::Scalar & aMultiplier,
+ const Plato::ScalarArray3DT<ConfigScalarType> & aJacobian,
+ ResultScalarType & aOutput) const
+{
+    auto tJ23 = aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,2) - aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,1);
+    auto tJ31 = aJacobian(aFaceOrdinal,0,2) * aJacobian(aFaceOrdinal,1,0) - aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,2);
+    auto tJ12 = aJacobian(aFaceOrdinal,0,0) * aJacobian(aFaceOrdinal,1,1) - aJacobian(aFaceOrdinal,0,1) * aJacobian(aFaceOrdinal,1,0);
+    aOutput = aMultiplier * sqrt(tJ23*tJ23 + tJ31*tJ31 + tJ12*tJ12);
+}
 
   /******************************************************************************/
   /*!
@@ -23,12 +250,14 @@ namespace Plato {
     const std::string mName;
     const std::string mSideSetName;
     Omega_h::Vector<NumDofs> mFlux;
+    Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule;
 
   public:
 
     NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(const std::string & aLoadName, Teuchos::ParameterList &aParam) :
       mName(aLoadName),
-      mSideSetName(aParam.get<std::string>("Sides"))
+      mSideSetName(aParam.get<std::string>("Sides")),
+      mCubatureRule()
       {
         auto tFlux = aParam.get<Teuchos::Array<Plato::Scalar>>("Vector");
         for(Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
@@ -134,21 +363,10 @@ namespace Plato {
                                                Plato::ScalarArray3DT    < ConfigScalarType> aConfig,
                                                Plato::ScalarMultiVectorT< ResultScalarType> aResult,
                                                Plato::Scalar aScale) const
-  /**************************************************************************/
   {
     // get sideset faces
-    auto& tSideSets = aMeshSets[Omega_h::SIDE_SET];
-    auto tSideSetMapIterator = tSideSets.find(this->mSideSetName);
-    if(tSideSetMapIterator == tSideSets.end())
-    {
-        std::ostringstream tMsg;
-        tMsg << "COULD NOT FIND SIDE SET WITH NAME = '" << this->mSideSetName.c_str()
-            << "'.  SIDE SET IS NOT DEFINED IN THE INPUT MESH FILE, I.E. EXODUS FILE.\n";
-        THROWERR(tMsg.str());
-    }
-    auto tFaceLids = (tSideSetMapIterator->second);
+    auto tFaceLids = Plato::get_face_local_ordinals(aMeshSets, this->mSideSetName);
     auto tNumFaces = tFaceLids.size();
-
 
     // get mesh vertices
     auto tFace2Verts = aMesh->ask_verts_of(SpatialDim-1);
@@ -158,12 +376,14 @@ namespace Plato {
     auto tFace2Elems_map   = tFace2eElems.a2ab;
     auto tFace2Elems_elems = tFace2eElems.ab2b;
 
-    auto tNodesPerFace = SpatialDim;
-    auto tNodesPerCell = SpatialDim+1;
-
+    Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
+    Plato::ComputeSurfaceIntegralWeight<SpatialDim> tComputeSurfaceIntegralWeight;
+    Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
     Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
 
     auto tFlux = mFlux;
+    auto tNodesPerFace = SpatialDim;
+    auto tCubatureWeight = mCubatureRule.getCubWeight();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceIndex)
     {
 
@@ -172,57 +392,25 @@ namespace Plato {
       // for each element that the face is connected to: (either 1 or 2)
       for( Plato::OrdinalType tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd )
       {
+          // create a map from face local node index to elem local node index
+          Plato::OrdinalType tLocalNodeOrd[SpatialDim];
+          auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
+          tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, aFaceIndex, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+        
+          ConfigScalarType tWeight(0.0);
+          auto tMultiplier = aScale / tCubatureWeight;
+          tComputeSurfaceJacobians(tCellOrdinal, aFaceIndex, tLocalNodeOrd, aConfig, tJacobian);
+          tComputeSurfaceIntegralWeight(aFaceIndex, tMultiplier, tJacobian, tWeight);
 
-        // create a map from face local node index to elem local node index
-        Plato::OrdinalType tLocalNodeOrd[SpatialDim];
-        auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
-        for( Plato::OrdinalType tNodeI=0; tNodeI<tNodesPerFace; tNodeI++)
-        {
-          for( Plato::OrdinalType tNodeJ=0; tNodeJ<tNodesPerCell; tNodeJ++)
+          // project into aResult workset
+          for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
           {
-            if( tFace2Verts[tFaceOrdinal*tNodesPerFace+tNodeI] == tCell2Verts[tCellOrdinal*tNodesPerCell + tNodeJ] )
-            {
-              tLocalNodeOrd[tNodeI] = tNodeJ;
-            }
+              for( Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
+              {
+                  auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
+                  aResult(tCellOrdinal,tCellDofOrdinal) += tWeight*tFlux[tDof];
+              }
           }
-        }
-
-        // compute jacobian from aConfig
-        for( Plato::OrdinalType tNode=0; tNode<SpatialDim-1; tNode++)
-        {
-          for( Plato::OrdinalType tDim=0; tDim<SpatialDim; tDim++)
-          {
-            tJacobian(aFaceIndex,tNode,tDim) =
-                    aConfig(tCellOrdinal, tLocalNodeOrd[tNode], tDim) - aConfig(tCellOrdinal, tLocalNodeOrd[SpatialDim-1], tDim);
-          }
-        }
-
-        ConfigScalarType tWeight(0.0);
-        if(SpatialDim==1)
-        {
-          tWeight = aScale;
-        } else
-        if(SpatialDim==2)
-        {
-          tWeight = aScale/2.0*sqrt(tJacobian(aFaceIndex,0,0)*tJacobian(aFaceIndex,0,0)+tJacobian(aFaceIndex,0,1)*tJacobian(aFaceIndex,0,1));
-        } else
-        if(SpatialDim==3)
-        {
-          auto tJ23 = tJacobian(aFaceIndex,0,1)*tJacobian(aFaceIndex,1,2)-tJacobian(aFaceIndex,0,2)*tJacobian(aFaceIndex,1,1);
-          auto tJ31 = tJacobian(aFaceIndex,0,2)*tJacobian(aFaceIndex,1,0)-tJacobian(aFaceIndex,0,0)*tJacobian(aFaceIndex,1,2);
-          auto tJ12 = tJacobian(aFaceIndex,0,0)*tJacobian(aFaceIndex,1,1)-tJacobian(aFaceIndex,0,1)*tJacobian(aFaceIndex,1,0);
-          tWeight = aScale/6.0*sqrt(tJ23*tJ23+tJ31*tJ31+tJ12*tJ12);
-        }
-
-        // project into aResult workset
-        for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
-        {
-          for( Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
-          {
-            auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
-            aResult(tCellOrdinal,tCellDofOrdinal) += tWeight*tFlux[tDof];
-          }
-        }
       }
 
     });
