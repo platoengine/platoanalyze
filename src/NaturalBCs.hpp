@@ -20,19 +20,21 @@ namespace Plato {
     class NaturalBC
   /******************************************************************************/
   {
-    const std::string    name;
-    const std::string ss_name;
+    const std::string mName;
+    const std::string mSideSetName;
     Omega_h::Vector<NumDofs> mFlux;
 
   public:
 
-    NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(const std::string &n, Teuchos::ParameterList &param) :
-      name(n),
-      ss_name(param.get<std::string>("Sides"))
+    NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(const std::string & aLoadName, Teuchos::ParameterList &aParam) :
+      mName(aLoadName),
+      mSideSetName(aParam.get<std::string>("Sides"))
       {
-        auto flux = param.get<Teuchos::Array<Plato::Scalar>>("Vector");
-        for(Plato::OrdinalType i=0; i<NumDofs; i++)
-          mFlux(i) = flux[i];
+        auto tFlux = aParam.get<Teuchos::Array<Plato::Scalar>>("Vector");
+        for(Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
+        {
+          mFlux(tDof) = tFlux[tDof];
+        }
       }
 
     ~NaturalBC(){}
@@ -70,10 +72,10 @@ namespace Plato {
               Plato::ScalarMultiVectorT<ControlScalarType>,
               Plato::ScalarArray3DT    < ConfigScalarType>,
               Plato::ScalarMultiVectorT< ResultScalarType>,
-              Plato::Scalar scale) const;
+              Plato::Scalar aScale) const;
 
     // ! Get sideset name
-    decltype(ss_name) const& get_ss_name() const { return ss_name; }
+    decltype(mSideSetName) const& get_ss_name() const { return mSideSetName; }
 
     // ! Get the user-specified flux.
     decltype(mFlux) get_value() const { return mFlux; }
@@ -90,7 +92,7 @@ namespace Plato {
   /******************************************************************************/
   {
   private:
-    std::vector<std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>>> BCs;
+    std::vector<std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>>> mBCs;
 
   public :
 
@@ -98,7 +100,7 @@ namespace Plato {
       \brief Constructor that parses and creates a vector of NaturalBC objects
       based on the ParameterList.
     */
-    NaturalBCs(Teuchos::ParameterList &params);
+    NaturalBCs(Teuchos::ParameterList &aParams);
 
     /*!
       \brief Get the contribution to the assembled forcing vector from the owned boundary conditions.
@@ -131,80 +133,94 @@ namespace Plato {
                                                Plato::ScalarMultiVectorT<ControlScalarType> aControl,
                                                Plato::ScalarArray3DT    < ConfigScalarType> aConfig,
                                                Plato::ScalarMultiVectorT< ResultScalarType> aResult,
-                                               Plato::Scalar scale) const
+                                               Plato::Scalar aScale) const
   /**************************************************************************/
   {
     // get sideset faces
-    auto& sidesets = aMeshSets[Omega_h::SIDE_SET];
-    auto ssIter = sidesets.find(this->ss_name);
-    if(ssIter == sidesets.end())
+    auto& tSideSets = aMeshSets[Omega_h::SIDE_SET];
+    auto tSideSetMapIterator = tSideSets.find(this->mSideSetName);
+    if(tSideSetMapIterator == tSideSets.end())
     {
         std::ostringstream tMsg;
-        tMsg << "COULD NOT FIND SIDE SET WITH NAME = '" << this->ss_name.c_str()
+        tMsg << "COULD NOT FIND SIDE SET WITH NAME = '" << this->mSideSetName.c_str()
             << "'.  SIDE SET IS NOT DEFINED IN THE INPUT MESH FILE, I.E. EXODUS FILE.\n";
         THROWERR(tMsg.str());
     }
-    auto faceLids = (ssIter->second);
-    auto numFaces = faceLids.size();
+    auto tFaceLids = (tSideSetMapIterator->second);
+    auto tNumFaces = tFaceLids.size();
 
 
     // get mesh vertices
-    auto face2verts = aMesh->ask_verts_of(SpatialDim-1);
-    auto cell2verts = aMesh->ask_elem_verts();
+    auto tFace2Verts = aMesh->ask_verts_of(SpatialDim-1);
+    auto tCell2Verts = aMesh->ask_elem_verts();
 
-    auto face2elems = aMesh->ask_up(SpatialDim - 1, SpatialDim);
-    auto face2elems_map   = face2elems.a2ab;
-    auto face2elems_elems = face2elems.ab2b;
+    auto tFace2eElems = aMesh->ask_up(SpatialDim - 1, SpatialDim);
+    auto tFace2Elems_map   = tFace2eElems.a2ab;
+    auto tFace2Elems_elems = tFace2eElems.ab2b;
 
-    auto nodesPerFace = SpatialDim;
-    auto nodesPerCell = SpatialDim+1;
+    auto tNodesPerFace = SpatialDim;
+    auto tNodesPerCell = SpatialDim+1;
 
-    Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", numFaces, SpatialDim-1, SpatialDim);
+    Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
 
-    auto flux = mFlux;
-    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0,numFaces), LAMBDA_EXPRESSION(Plato::OrdinalType iFace)
+    auto tFlux = mFlux;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceIndex)
     {
 
-      auto faceOrdinal = faceLids[iFace];
+      auto tFaceOrdinal = tFaceLids[aFaceIndex];
 
       // for each element that the face is connected to: (either 1 or 2)
-      for( Plato::OrdinalType localElemOrd = face2elems_map[faceOrdinal]; localElemOrd < face2elems_map[faceOrdinal+1]; ++localElemOrd ){
+      for( Plato::OrdinalType tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd )
+      {
 
         // create a map from face local node index to elem local node index
-        Plato::OrdinalType localNodeOrd[SpatialDim];
-        auto cellOrdinal = face2elems_elems[localElemOrd];
-        for( Plato::OrdinalType iNode=0; iNode<nodesPerFace; iNode++){
-          for( Plato::OrdinalType jNode=0; jNode<nodesPerCell; jNode++){
-            if( face2verts[faceOrdinal*nodesPerFace+iNode] == cell2verts[cellOrdinal*nodesPerCell + jNode] ) localNodeOrd[iNode] = jNode;
+        Plato::OrdinalType tLocalNodeOrd[SpatialDim];
+        auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
+        for( Plato::OrdinalType tNodeI=0; tNodeI<tNodesPerFace; tNodeI++)
+        {
+          for( Plato::OrdinalType tNodeJ=0; tNodeJ<tNodesPerCell; tNodeJ++)
+          {
+            if( tFace2Verts[tFaceOrdinal*tNodesPerFace+tNodeI] == tCell2Verts[tCellOrdinal*tNodesPerCell + tNodeJ] )
+            {
+              tLocalNodeOrd[tNodeI] = tNodeJ;
+            }
           }
         }
 
         // compute jacobian from aConfig
-        for( Plato::OrdinalType iNode=0; iNode<SpatialDim-1; iNode++){
-          for( Plato::OrdinalType iDim=0; iDim<SpatialDim; iDim++){
-            tJacobian(iFace,iNode,iDim) = aConfig(cellOrdinal, localNodeOrd[iNode], iDim)
-                                        - aConfig(cellOrdinal, localNodeOrd[SpatialDim-1], iDim);
+        for( Plato::OrdinalType tNode=0; tNode<SpatialDim-1; tNode++)
+        {
+          for( Plato::OrdinalType tDim=0; tDim<SpatialDim; tDim++)
+          {
+            tJacobian(aFaceIndex,tNode,tDim) =
+                    aConfig(tCellOrdinal, tLocalNodeOrd[tNode], tDim) - aConfig(tCellOrdinal, tLocalNodeOrd[SpatialDim-1], tDim);
           }
         }
-        ConfigScalarType weight(0.0);
-        if(SpatialDim==1){
-          weight=scale;
+
+        ConfigScalarType tWeight(0.0);
+        if(SpatialDim==1)
+        {
+          tWeight = aScale;
         } else
-        if(SpatialDim==2){
-          weight = scale/2.0*sqrt(tJacobian(iFace,0,0)*tJacobian(iFace,0,0)+tJacobian(iFace,0,1)*tJacobian(iFace,0,1));
+        if(SpatialDim==2)
+        {
+          tWeight = aScale/2.0*sqrt(tJacobian(aFaceIndex,0,0)*tJacobian(aFaceIndex,0,0)+tJacobian(aFaceIndex,0,1)*tJacobian(aFaceIndex,0,1));
         } else
-        if(SpatialDim==3){
-          auto a1 = tJacobian(iFace,0,1)*tJacobian(iFace,1,2)-tJacobian(iFace,0,2)*tJacobian(iFace,1,1);
-          auto a2 = tJacobian(iFace,0,2)*tJacobian(iFace,1,0)-tJacobian(iFace,0,0)*tJacobian(iFace,1,2);
-          auto a3 = tJacobian(iFace,0,0)*tJacobian(iFace,1,1)-tJacobian(iFace,0,1)*tJacobian(iFace,1,0);
-          weight = scale/6.0*sqrt(a1*a1+a2*a2+a3*a3);
+        if(SpatialDim==3)
+        {
+          auto tJ23 = tJacobian(aFaceIndex,0,1)*tJacobian(aFaceIndex,1,2)-tJacobian(aFaceIndex,0,2)*tJacobian(aFaceIndex,1,1);
+          auto tJ31 = tJacobian(aFaceIndex,0,2)*tJacobian(aFaceIndex,1,0)-tJacobian(aFaceIndex,0,0)*tJacobian(aFaceIndex,1,2);
+          auto tJ12 = tJacobian(aFaceIndex,0,0)*tJacobian(aFaceIndex,1,1)-tJacobian(aFaceIndex,0,1)*tJacobian(aFaceIndex,1,0);
+          tWeight = aScale/6.0*sqrt(tJ23*tJ23+tJ31*tJ31+tJ12*tJ12);
         }
 
         // project into aResult workset
-        for( Plato::OrdinalType iNode=0; iNode<nodesPerFace; iNode++){
-          for( Plato::OrdinalType iDof=0; iDof<NumDofs; iDof++){
-            auto cellDofOrdinal = localNodeOrd[iNode] * DofsPerNode + iDof + DofOffset;
-            aResult(cellOrdinal,cellDofOrdinal) += weight*flux[iDof];
+        for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
+        {
+          for( Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
+          {
+            auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
+            aResult(tCellOrdinal,tCellDofOrdinal) += tWeight*tFlux[tDof];
           }
         }
       }
@@ -214,61 +230,61 @@ namespace Plato {
 
   /****************************************************************************/
   template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
-  NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::NaturalBCs(Teuchos::ParameterList &params) : BCs()
+  NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::NaturalBCs(Teuchos::ParameterList &aParams) : mBCs()
   /****************************************************************************/
   {
-    for (Teuchos::ParameterList::ConstIterator i = params.begin(); i != params.end(); ++i) {
-      const Teuchos::ParameterEntry &entry = params.entry(i);
-      const std::string             &name  = params.name(i);
+    for (Teuchos::ParameterList::ConstIterator tItr = aParams.begin(); tItr != aParams.end(); ++tItr) {
+      const Teuchos::ParameterEntry &tEntry = aParams.entry(tItr);
+      const std::string             &tName  = aParams.name(tItr);
 
-      TEUCHOS_TEST_FOR_EXCEPTION(!entry.isList(),
+      TEUCHOS_TEST_FOR_EXCEPTION(!tEntry.isList(),
          std::logic_error,
          "Parameter in Boundary Conditions block not valid.  Expect lists only.");
 
-      Teuchos::ParameterList& sublist = params.sublist(name);
-      const std::string type = sublist.get<std::string>("Type");
-      std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>> bc;
-      if ("Uniform" == type) {
-        bool b_Values = sublist.isType<Teuchos::Array<Plato::Scalar>>("Values");
-        bool b_Value  = sublist.isType<Plato::Scalar>("Value");
-        if ( b_Values && b_Value ) {
+      Teuchos::ParameterList& tSubList = aParams.sublist(tName);
+      const std::string tType = tSubList.get<std::string>("Type");
+      std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>> tBC;
+      if ("Uniform" == tType) {
+        bool tBC_Values = tSubList.isType<Teuchos::Array<Plato::Scalar>>("Values");
+        bool tBC_Value  = tSubList.isType<Plato::Scalar>("Value");
+        if ( tBC_Values && tBC_Value ) {
           TEUCHOS_TEST_FOR_EXCEPTION(true,
              std::logic_error,
              " Natural Boundary Condition: provide EITHER 'Values' OR 'Value' Parameter.");
         } else
-        if ( b_Values ) {
-          auto values = sublist.get<Teuchos::Array<Plato::Scalar>>("Values");
-          sublist.set("Vector", values);
+        if ( tBC_Values ) {
+          auto tValues = tSubList.get<Teuchos::Array<Plato::Scalar>>("Values");
+          tSubList.set("Vector", tValues);
         } else
-        if ( b_Value ) {
-          Teuchos::Array<Plato::Scalar> fluxVector(NumDofs, 0.0);
-          auto value = sublist.get<Plato::Scalar>("Value");
-          fluxVector[0] = value;
-          sublist.set("Vector", fluxVector);
+        if ( tBC_Value ) {
+          Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, 0.0);
+          auto tValue = tSubList.get<Plato::Scalar>("Value");
+          tFluxVector[0] = tValue;
+          tSubList.set("Vector", tFluxVector);
         } else {
           TEUCHOS_TEST_FOR_EXCEPTION(true,
              std::logic_error,
              " Natural Boundary Condition: provide either 'Values' or 'Value' Parameter.");
         }
-        bc.reset(new NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(name, sublist));
+        tBC.reset(new NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(tName, tSubList));
       }
-      else if ("Uniform Component" == type){
-        Teuchos::Array<Plato::Scalar> fluxVector(NumDofs, 0.0);
-        auto fluxComponent = sublist.get<std::string>("Component");
-        auto value = sublist.get<Plato::Scalar>("Value");
-        if( (fluxComponent == "x" || fluxComponent == "X") ) fluxVector[0] = value;
+      else if ("Uniform Component" == tType){
+        Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, 0.0);
+        auto tFluxComponent = tSubList.get<std::string>("Component");
+        auto tValue = tSubList.get<Plato::Scalar>("Value");
+        if( (tFluxComponent == "x" || tFluxComponent == "X") ) tFluxVector[0] = tValue;
         else
-        if( (fluxComponent == "y" || fluxComponent == "Y") && DofsPerNode > 1 ) fluxVector[1] = value;
+        if( (tFluxComponent == "y" || tFluxComponent == "Y") && DofsPerNode > 1 ) tFluxVector[1] = tValue;
         else
-        if( (fluxComponent == "z" || fluxComponent == "Z") && DofsPerNode > 2 ) fluxVector[2] = value;
-        sublist.set("Vector", fluxVector);
-        bc.reset(new NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(name, sublist));
+        if( (tFluxComponent == "z" || tFluxComponent == "Z") && DofsPerNode > 2 ) tFluxVector[2] = tValue;
+        tSubList.set("Vector", tFluxVector);
+        tBC.reset(new NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(tName, tSubList));
       } else {
         TEUCHOS_TEST_FOR_EXCEPTION(true,
            std::logic_error,
            " Natural Boundary Condition type invalid");
       }
-      BCs.push_back(bc);
+      mBCs.push_back(tBC);
     }
   }
 
@@ -290,7 +306,7 @@ namespace Plato {
        Plato::Scalar aScale) const
   /**************************************************************************/
   {
-    for (const auto &bc : BCs){
+    for (const auto &bc : mBCs){
       bc->get(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
     }
   }
