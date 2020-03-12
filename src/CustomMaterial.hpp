@@ -3,6 +3,8 @@
 
 #include <Teuchos_ParameterList.hpp>
 
+#include <cstdarg>
+
 namespace Plato
 {
 
@@ -18,7 +20,14 @@ public:
     virtual ~CustomMaterial() {}
 
 protected:
-    virtual double GetCustomExpressionValue( const Teuchos::ParameterList& paramList);
+    virtual double GetCustomExpressionValue(
+        const Teuchos::ParameterList& paramList,
+        const std::string name ) const;
+
+    virtual double GetCustomExpressionValue(
+        const Teuchos::ParameterList& paramList,
+        int equationIndex = -1,
+        std::string equationName = std::string("Equation") ) const;
 };
 // class CustomMaterial
 
