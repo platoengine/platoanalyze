@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include "AnalyzeMacros.hpp"
+#include "OmegaHUtilities.hpp"
 #include "ImplicitFunctors.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
@@ -14,28 +15,30 @@
 namespace Plato 
 {
 
-inline Omega_h::LOs get_face_local_ordinals(const Omega_h::MeshSets& aMeshSets, const std::string& aSideSetName)
-{
-    auto& tSideSets = aMeshSets[Omega_h::SIDE_SET];
-    auto tSideSetMapIterator = tSideSets.find(aSideSetName);
-    if(tSideSetMapIterator == tSideSets.end())
-    {
-        std::ostringstream tMsg;
-        tMsg << "COULD NOT FIND SIDE SET WITH NAME = '" << aSideSetName.c_str()
-            << "'.  SIDE SET IS NOT DEFINED IN THE INPUT MESH FILE, I.E. EXODUS FILE.\n";
-        THROWERR(tMsg.str());
-    }
-    auto tFaceLids = (tSideSetMapIterator->second);
-    return tFaceLids;
-} 
-
-
+/***************************************************************************//**
+ * \brief Create face local node index to element local node index map
+ *
+ * \tparam SpatialDim  spatial dimensions
+ *
+*******************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 class CreateFaceLocalNode2ElemLocalNodeIndexMap
 {
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+    *******************************************************************************/
     CreateFaceLocalNode2ElemLocalNodeIndexMap(){}
 
+    /***************************************************************************//**
+     * \brief Return face local node index to element local node index map
+     *
+     * \param [in]  aCellOrdinal    cell ordinal
+     * \param [in]  aFaceOrdinal    face ordinal
+     * \param [in]  aCell2Verts     cell to vertices map
+     * \param [in]  aFace2Verts     face to vertices map
+     * \param [out] aLocalNodeOrd   face local node index to element local node index map
+    *******************************************************************************/
     DEVICE_TYPE inline void operator()
     (const Plato::OrdinalType & aCellOrdinal,
      const Plato::OrdinalType & aFaceOrdinal,
@@ -44,6 +47,9 @@ public:
      Plato::OrdinalType aLocalNodeOrd[SpatialDim]) const;
 };
 
+/***************************************************************************//**
+ * \brief Return face local node index to element local node index map (1-D specialization)
+*******************************************************************************/
 template<>
 DEVICE_TYPE inline void
 CreateFaceLocalNode2ElemLocalNodeIndexMap<1>::operator()
@@ -67,6 +73,9 @@ CreateFaceLocalNode2ElemLocalNodeIndexMap<1>::operator()
     } 
 }
 
+/***************************************************************************//**
+ * \brief Return face local node index to element local node index map (2-D specialization)
+*******************************************************************************/
 template<>
 DEVICE_TYPE inline void
 CreateFaceLocalNode2ElemLocalNodeIndexMap<2>::operator()
@@ -90,6 +99,9 @@ CreateFaceLocalNode2ElemLocalNodeIndexMap<2>::operator()
     }    
 }
 
+/***************************************************************************//**
+ * \brief Return face local node index to element local node index map (3-D specialization)
+*******************************************************************************/
 template<>
 DEVICE_TYPE inline void
 CreateFaceLocalNode2ElemLocalNodeIndexMap<3>::operator()
@@ -113,13 +125,34 @@ CreateFaceLocalNode2ElemLocalNodeIndexMap<3>::operator()
     }
 }
 
-
+/***************************************************************************//**
+ * \brief Compute surface Jacobians needed for surface integrals.
+ *
+ * \tparam SpatialDim  spatial dimensions
+ *
+*******************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 class ComputeSurfaceJacobians
 {
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+    *******************************************************************************/
     ComputeSurfaceJacobians(){}
 
+    /***************************************************************************//**
+     * \brief Compute surface Jacobians.
+     *
+     * \tparam ConfigScalarType configuration forward automatically differentiation (FAD) type
+     * \tparam ResultScalarType output FAD type
+     *
+     * \param [in]  aCellOrdinal   cell ordinal
+     * \param [in]  aFaceOrdinal   face ordinal
+     * \param [in]  aLocalNodeOrd  face local node index to element local node index map
+     * \param [in]  aConfig        cell to vertices map
+     * \param [out] aJacobian      surface Jacobians
+     *
+    *******************************************************************************/
     template<typename ConfigScalarType, typename ResultScalarType>
     DEVICE_TYPE inline void operator()
     (const Plato::OrdinalType & aCellOrdinal,
@@ -129,6 +162,9 @@ public:
      const Plato::ScalarArray3DT<ResultScalarType> & aJacobian) const;
 };
 
+/***************************************************************************//**
+ * \brief Compute surface Jacobians (1-D specialization)
+*******************************************************************************/
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
@@ -140,6 +176,9 @@ ComputeSurfaceJacobians<1>::operator()
  const Plato::ScalarArray3DT<ResultScalarType> & aJacobian) const
 { return; }
 
+/***************************************************************************//**
+ * \brief Compute surface Jacobians (2-D specialization)
+*******************************************************************************/
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
@@ -162,6 +201,9 @@ ComputeSurfaceJacobians<2>::operator()
     } 
 }
 
+/***************************************************************************//**
+ * \brief Compute surface Jacobians (3-D specialization)
+*******************************************************************************/
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
@@ -184,12 +226,34 @@ ComputeSurfaceJacobians<3>::operator()
     }            
 }
 
+
+/***************************************************************************//**
+ * \brief Compute cubature weight for surface integrals.
+ *
+ * \tparam SpatialDim  spatial dimensions
+ *
+*******************************************************************************/
 template<Plato::OrdinalType SpatialDim>
 class ComputeSurfaceIntegralWeight
 {
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+    *******************************************************************************/
     ComputeSurfaceIntegralWeight(){}
 
+    /***************************************************************************//**
+     * \brief Compute cubature weight for surface integrals.
+     *
+     * \tparam ConfigScalarType configuration forward automatically differentiation (FAD) type
+     * \tparam ResultScalarType output FAD type
+     *
+     * \param [in]  aFaceOrdinal  face ordinal
+     * \param [in]  aMultiplier   scalar multiplier
+     * \param [in]  aJacobian     surface Jacobians
+     * \param [out] aJacobian     cubature weight
+     *
+    *******************************************************************************/
     template<typename ConfigScalarType, typename ResultScalarType>
     DEVICE_TYPE inline void operator()
     (const Plato::OrdinalType & aFaceOrdinal,
@@ -198,6 +262,9 @@ public:
      ResultScalarType & aOutput) const;
 };
 
+/***************************************************************************//**
+ * \brief Compute cubature weight for surface integrals (1-D specialization)
+*******************************************************************************/
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
@@ -210,6 +277,9 @@ ComputeSurfaceIntegralWeight<1>::operator()
     aOutput = aMultiplier;
 }
 
+/***************************************************************************//**
+ * \brief Compute cubature weight for surface integrals (2-D specialization)
+*******************************************************************************/
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
@@ -224,6 +294,9 @@ ComputeSurfaceIntegralWeight<2>::operator()
     aOutput = aMultiplier * sqrt( tJ11 + tJ12 );
 }
 
+/***************************************************************************//**
+ * \brief Compute cubature weight for surface integrals (3-D specialization)
+*******************************************************************************/
 template<>
 template<typename ConfigScalarType, typename ResultScalarType>
 DEVICE_TYPE inline void
@@ -396,7 +469,7 @@ ComputeSurfaceIntegralWeight<3>::operator()
           Plato::OrdinalType tLocalNodeOrd[SpatialDim];
           auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
           tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, aFaceIndex, tCell2Verts, tFace2Verts, tLocalNodeOrd);
-        
+
           ConfigScalarType tWeight(0.0);
           auto tMultiplier = aScale / tCubatureWeight;
           tComputeSurfaceJacobians(tCellOrdinal, aFaceIndex, tLocalNodeOrd, aConfig, tJacobian);

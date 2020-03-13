@@ -13,6 +13,31 @@
 namespace Plato
 {
 
+/***************************************************************************//**
+ * \brief Return face local ordinals for each element on the requested side set
+ *
+ * \param [in] aMeshSets    Omega_h side set database
+ * \param [in] aSideSetName Exodus side set name
+ *
+ * \return face local ordinals
+ *
+*******************************************************************************/
+inline Omega_h::LOs get_face_local_ordinals(const Omega_h::MeshSets& aMeshSets, const std::string& aSideSetName)
+{
+    auto& tSideSets = aMeshSets[Omega_h::SIDE_SET];
+    auto tSideSetMapIterator = tSideSets.find(aSideSetName);
+    if(tSideSetMapIterator == tSideSets.end())
+    {
+        std::ostringstream tMsg;
+        tMsg << "COULD NOT FIND SIDE SET WITH NAME = '" << aSideSetName.c_str()
+            << "'.  SIDE SET IS NOT DEFINED IN THE INPUT MESH FILE, I.E. EXODUS FILE.\n";
+        THROWERR(tMsg.str());
+    }
+    auto tFaceLids = (tSideSetMapIterator->second);
+    return tFaceLids;
+}
+// function get_face_local_ordinals
+
 /******************************************************************************//**
 * \brief Return normalized vector : 2-D specialization
 *
