@@ -11,6 +11,9 @@
 namespace Plato
 {
 
+#define REPORT(msg) \
+        std::cout << std::string("\n\nANALYZE REPORT: ") + msg + "\n\n";
+
 #define WARNING(msg) \
         std::cout << std::string("\n\nFILE: ") + __FILE__ \
         + std::string("\nFUNCTION: ") + __PRETTY_FUNCTION__ \

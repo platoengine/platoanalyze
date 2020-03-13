@@ -312,6 +312,7 @@ ComputeSurfaceIntegralWeight<3>::operator()
     aOutput = aMultiplier * sqrt(tJ23*tJ23 + tJ31*tJ31 + tJ12*tJ12);
 }
 
+
   /******************************************************************************/
   /*!
     \brief Class for natural boundary conditions.
@@ -396,6 +397,9 @@ ComputeSurfaceIntegralWeight<3>::operator()
   private:
     std::vector<std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>>> mBCs;
 
+    void setUniformNaturalBC(const std::string & aName, Teuchos::ParameterList &aSubList);
+    void setUniformComponentNaturalBC(const std::string & aName, Teuchos::ParameterList &aSubList);
+
   public :
 
     /*!
@@ -420,7 +424,7 @@ ComputeSurfaceIntegralWeight<3>::operator()
               Plato::ScalarMultiVectorT<ControlScalarType>,
               Plato::ScalarArray3DT    < ConfigScalarType>,
               Plato::ScalarMultiVectorT< ResultScalarType>,
-              Plato::Scalar scale = 1.0) const;
+              Plato::Scalar aScale = 1.0) const;
   };
 
   /**************************************************************************/
@@ -489,23 +493,89 @@ ComputeSurfaceIntegralWeight<3>::operator()
     });
   }
 
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
+void NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
+(const std::string & aName, Teuchos::ParameterList &aSubList)
+{
+    bool tBC_Value = aSubList.isType<Plato::Scalar>("Value");
+    bool tBC_Values = aSubList.isType<Teuchos::Array<Plato::Scalar>>("Values");
+
+    const std::string tType = aSubList.get < std::string > ("Type");
+    std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>> tBC;
+    if (tBC_Values && tBC_Value)
+    {
+        THROWERR("Natural Boundary Condition: provide EITHER 'Values' OR 'Value' Parameter.")
+    }
+    else if (tBC_Values)
+    {
+        auto tValues = aSubList.get<Teuchos::Array<Plato::Scalar>>("Values");
+        aSubList.set("Vector", tValues);
+    }
+    else if (tBC_Value)
+    {
+        Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, 0.0);
+        auto tValue = aSubList.get<Plato::Scalar>("Value");
+        tFluxVector[0] = tValue;
+        aSubList.set("Vector", tFluxVector);
+    }
+    else
+    {
+        THROWERR("Natural Boundary Condition: provide either 'Values' or 'Value' Parameter.")
+    }
+    tBC = std::make_shared<Plato::NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>(aName, aSubList));
+}
+
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
+void NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformComponentNaturalBC
+(const std::string & aName, Teuchos::ParameterList &aSubList)
+{
+    auto tValue = aSubList.get<Plato::Scalar>("Value");
+    Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, 0.0);
+    auto tFluxComponent = aSubList.get<std::string>("Component");
+    std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>> tBC;
+
+    if( (tFluxComponent == "x" || tFluxComponent == "X") )
+    {
+        tFluxVector[0] = tValue;
+    }
+    else
+    if( (tFluxComponent == "y" || tFluxComponent == "Y") && DofsPerNode > 1 )
+    {
+        tFluxVector[1] = tValue;
+    }
+    else
+    if( (tFluxComponent == "z" || tFluxComponent == "Z") && DofsPerNode > 2 )
+    {
+        tFluxVector[2] = tValue;
+    }
+    aSubList.set("Vector", tFluxVector);
+    tBC = std::make_shared<Plato::NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>(aName, aSubList));
+}
+
+  /****************************************************************************/
+
   /****************************************************************************/
   template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
   NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::NaturalBCs(Teuchos::ParameterList &aParams) : mBCs()
   /****************************************************************************/
   {
-    for (Teuchos::ParameterList::ConstIterator tItr = aParams.begin(); tItr != aParams.end(); ++tItr) {
+    for (Teuchos::ParameterList::ConstIterator tItr = aParams.begin(); tItr != aParams.end(); ++tItr)
+    {
       const Teuchos::ParameterEntry &tEntry = aParams.entry(tItr);
       const std::string             &tName  = aParams.name(tItr);
 
-      TEUCHOS_TEST_FOR_EXCEPTION(!tEntry.isList(),
-         std::logic_error,
-         "Parameter in Boundary Conditions block not valid.  Expect lists only.");
+      if(!tEntry.isList())
+      {
+          THROWERR("Parameter in Boundary Conditions block not valid.  Expect lists only.")
+      }
 
       Teuchos::ParameterList& tSubList = aParams.sublist(tName);
       const std::string tType = tSubList.get<std::string>("Type");
       std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>> tBC;
-      if ("Uniform" == tType) {
+      if ("Uniform" == tType)
+      {
+          this->setUniformNaturalBC(tName, tSubList);
+          /*
         bool tBC_Values = tSubList.isType<Teuchos::Array<Plato::Scalar>>("Values");
         bool tBC_Value  = tSubList.isType<Plato::Scalar>("Value");
         if ( tBC_Values && tBC_Value ) {
@@ -528,8 +598,12 @@ ComputeSurfaceIntegralWeight<3>::operator()
              " Natural Boundary Condition: provide either 'Values' or 'Value' Parameter.");
         }
         tBC.reset(new NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(tName, tSubList));
+        */
       }
-      else if ("Uniform Component" == tType){
+      else if ("Uniform Component" == tType)
+      {
+          this->setUniformComponentNaturalBC(tName, tSubList);
+          /*
         Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, 0.0);
         auto tFluxComponent = tSubList.get<std::string>("Component");
         auto tValue = tSubList.get<Plato::Scalar>("Value");
@@ -540,10 +614,11 @@ ComputeSurfaceIntegralWeight<3>::operator()
         if( (tFluxComponent == "z" || tFluxComponent == "Z") && DofsPerNode > 2 ) tFluxVector[2] = tValue;
         tSubList.set("Vector", tFluxVector);
         tBC.reset(new NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(tName, tSubList));
-      } else {
-        TEUCHOS_TEST_FOR_EXCEPTION(true,
-           std::logic_error,
-           " Natural Boundary Condition type invalid");
+        */
+      }
+      else
+      {
+          THROWERR("Natural Boundary Condition type invalid")
       }
       mBCs.push_back(tBC);
     }
@@ -565,11 +640,11 @@ ComputeSurfaceIntegralWeight<3>::operator()
        Plato::ScalarArray3DT    < ConfigScalarType> aConfig,
        Plato::ScalarMultiVectorT< ResultScalarType> aResult,
        Plato::Scalar aScale) const
-  /**************************************************************************/
   {
-    for (const auto &bc : mBCs){
-      bc->get(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
-    }
+      for (const auto &tMyBC : mBCs)
+      {
+          tMyBC->get(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+      }
   }
 
 
