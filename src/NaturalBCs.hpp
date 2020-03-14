@@ -681,7 +681,6 @@ mBCs()
             THROWERR(tMsg.str().c_str())
         }
 
-        Teuchos::ParameterList &tSubList = aParams.sublist(tName);
         const std::string tType = tSubList.get<std::string>("Type");
         std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>> tBC;
         if ("Uniform" == tType)
