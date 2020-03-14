@@ -397,8 +397,11 @@ ComputeSurfaceIntegralWeight<3>::operator()
   private:
     std::vector<std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>>> mBCs;
 
-    void setUniformNaturalBC(const std::string & aName, Teuchos::ParameterList &aSubList);
-    void setUniformComponentNaturalBC(const std::string & aName, Teuchos::ParameterList &aSubList);
+    std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
+    setUniformNaturalBC(const std::string & aName, Teuchos::ParameterList &aSubList);
+
+    std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
+    setUniformComponentNaturalBC(const std::string & aName, Teuchos::ParameterList &aSubList);
 
   public :
 
@@ -494,7 +497,8 @@ ComputeSurfaceIntegralWeight<3>::operator()
   }
 
 template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
-void NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
+std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
+NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
 (const std::string & aName, Teuchos::ParameterList &aSubList)
 {
     bool tBC_Value = aSubList.isType<Plato::Scalar>("Value");
@@ -526,7 +530,8 @@ void NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalB
 }
 
 template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
-void NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformComponentNaturalBC
+std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
+NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformComponentNaturalBC
 (const std::string & aName, Teuchos::ParameterList &aSubList)
 {
     auto tValue = aSubList.get<Plato::Scalar>("Value");
@@ -575,11 +580,11 @@ mBCs()
         std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>> tBC;
         if ("Uniform" == tType)
         {
-            this->setUniformNaturalBC(tName, tSubList);
+            tBC = this->setUniformNaturalBC(tName, tSubList);
         }
         else if ("Uniform Component" == tType)
         {
-            this->setUniformComponentNaturalBC(tName, tSubList);
+            tBC = this->setUniformComponentNaturalBC(tName, tSubList);
         }
         else
         {
