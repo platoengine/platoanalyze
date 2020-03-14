@@ -312,6 +312,102 @@ ComputeSurfaceIntegralWeight<3>::operator()
     aOutput = aMultiplier * sqrt(tJ23*tJ23 + tJ31*tJ31 + tJ12*tJ12);
 }
 
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs=SpatialDim, Plato::OrdinalType DofsPerNode=NumDofs, Plato::OrdinalType DofOffset=0>
+class SurfaceLoadIntegral
+{
+private:
+    const std::string mSideSetName;
+    Omega_h::Vector<NumDofs> mFlux;
+    Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule;
+
+public:
+    SurfaceLoadIntegral(const std::string & aSideSetName, Omega_h::Vector<NumDofs>& aFlux);
+
+    template<typename StateScalarType,
+             typename ControlScalarType,
+             typename ConfigScalarType,
+             typename ResultScalarType>
+    void evaluate(Omega_h::Mesh* aMesh,
+                  Omega_h::MeshSets &aMeshSets,
+                  Plato::ScalarMultiVectorT<  StateScalarType>& aState,
+                  Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
+                  Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
+                  Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
+                  Plato::Scalar aScale) const;
+};
+
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
+SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::SurfaceLoadIntegral
+(const std::string & aSideSetName, Omega_h::Vector<NumDofs>& aFlux) :
+    mSideSetName(aSideSetName),
+    mFlux(aFlux)
+{}
+
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
+template<typename StateScalarType,
+         typename ControlScalarType,
+         typename ConfigScalarType,
+         typename ResultScalarType>
+void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::evaluate
+(Omega_h::Mesh* aMesh,
+ Omega_h::MeshSets &aMeshSets,
+ Plato::ScalarMultiVectorT<  StateScalarType>& aState,
+ Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
+ Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
+ Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
+ Plato::Scalar aScale) const
+{
+    // get sideset faces
+    auto tFaceLids = Plato::get_face_local_ordinals(aMeshSets, mSideSetName);
+    auto tNumFaces = tFaceLids.size();
+
+    // get mesh vertices
+    auto tFace2Verts = aMesh->ask_verts_of(SpatialDim-1);
+    auto tCell2Verts = aMesh->ask_elem_verts();
+
+    auto tFace2eElems = aMesh->ask_up(SpatialDim - 1, SpatialDim);
+    auto tFace2Elems_map   = tFace2eElems.a2ab;
+    auto tFace2Elems_elems = tFace2eElems.ab2b;
+
+    Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
+    Plato::ComputeSurfaceIntegralWeight<SpatialDim> tComputeSurfaceIntegralWeight;
+    Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
+    Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
+
+    auto tFlux = mFlux;
+    auto tNodesPerFace = SpatialDim;
+    auto tCubatureWeight = mCubatureRule.getCubWeight();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceIndex)
+    {
+
+      auto tFaceOrdinal = tFaceLids[aFaceIndex];
+
+      // for each element that the face is connected to: (either 1 or 2)
+      for( Plato::OrdinalType tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd )
+      {
+          // create a map from face local node index to elem local node index
+          Plato::OrdinalType tLocalNodeOrd[SpatialDim];
+          auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
+          tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, aFaceIndex, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+
+          ConfigScalarType tWeight(0.0);
+          auto tMultiplier = aScale / tCubatureWeight;
+          tComputeSurfaceJacobians(tCellOrdinal, aFaceIndex, tLocalNodeOrd, aConfig, tJacobian);
+          tComputeSurfaceIntegralWeight(aFaceIndex, tMultiplier, tJacobian, tWeight);
+
+          // project into aResult workset
+          for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
+          {
+              for( Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
+              {
+                  auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
+                  aResult(tCellOrdinal,tCellDofOrdinal) += tWeight*tFlux[tDof];
+              }
+          }
+      }
+    }, "surface load integral");
+}
+
 /******************************************************************************/
 /*!
   \brief Class for natural boundary conditions.
@@ -326,29 +422,15 @@ private:
     const std::string mType;
     const std::string mSideSetName;
     Omega_h::Vector<NumDofs> mFlux;
-    Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule;
-
-// private functions
-private:
-    template<typename StateScalarType,
-             typename ControlScalarType,
-             typename ConfigScalarType,
-             typename ResultScalarType>
-    void evaluateSurfaceLoad(Omega_h::Mesh* aMesh,
-                             const Omega_h::MeshSets& aMeshSets,
-                             Plato::ScalarMultiVectorT<  StateScalarType>& aState,
-                             Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
-                             Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
-                             Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
-                             Plato::Scalar aScale) const;
+    //Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule;
 
 // public functions
 public:
     NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(const std::string & aLoadName, Teuchos::ParameterList &aParam) :
         mName(aLoadName),
         mType(aParam.get<std::string>("Type")),
-        mSideSetName(aParam.get<std::string>("Sides")),
-        mCubatureRule()
+        mSideSetName(aParam.get<std::string>("Sides"))
+        //mCubatureRule()
     {
         auto tFlux = aParam.get<Teuchos::Array<Plato::Scalar>>("Vector");
         for(Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
@@ -453,72 +535,6 @@ template<typename StateScalarType,
          typename ControlScalarType,
          typename ConfigScalarType,
          typename ResultScalarType>
-void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::evaluateSurfaceLoad
-(Omega_h::Mesh* aMesh,
- const Omega_h::MeshSets& aMeshSets,
- Plato::ScalarMultiVectorT<  StateScalarType>& aState,
- Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
- Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
- Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
- Plato::Scalar aScale) const
-{
-    // get sideset faces
-    auto tFaceLids = Plato::get_face_local_ordinals(aMeshSets, this->mSideSetName);
-    auto tNumFaces = tFaceLids.size();
-
-    // get mesh vertices
-    auto tFace2Verts = aMesh->ask_verts_of(SpatialDim-1);
-    auto tCell2Verts = aMesh->ask_elem_verts();
-
-    auto tFace2eElems = aMesh->ask_up(SpatialDim - 1, SpatialDim);
-    auto tFace2Elems_map   = tFace2eElems.a2ab;
-    auto tFace2Elems_elems = tFace2eElems.ab2b;
-
-    Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
-    Plato::ComputeSurfaceIntegralWeight<SpatialDim> tComputeSurfaceIntegralWeight;
-    Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
-    Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
-
-    auto tFlux = mFlux;
-    auto tNodesPerFace = SpatialDim;
-    auto tCubatureWeight = mCubatureRule.getCubWeight();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceIndex)
-    {
-
-      auto tFaceOrdinal = tFaceLids[aFaceIndex];
-
-      // for each element that the face is connected to: (either 1 or 2)
-      for( Plato::OrdinalType tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd )
-      {
-          // create a map from face local node index to elem local node index
-          Plato::OrdinalType tLocalNodeOrd[SpatialDim];
-          auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
-          tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, aFaceIndex, tCell2Verts, tFace2Verts, tLocalNodeOrd);
-
-          ConfigScalarType tWeight(0.0);
-          auto tMultiplier = aScale / tCubatureWeight;
-          tComputeSurfaceJacobians(tCellOrdinal, aFaceIndex, tLocalNodeOrd, aConfig, tJacobian);
-          tComputeSurfaceIntegralWeight(aFaceIndex, tMultiplier, tJacobian, tWeight);
-
-          // project into aResult workset
-          for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
-          {
-              for( Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
-              {
-                  auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
-                  aResult(tCellOrdinal,tCellDofOrdinal) += tWeight*tFlux[tDof];
-              }
-          }
-      }
-    }, "surface load integral");
-}
-
-/**************************************************************************/
-template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
-template<typename StateScalarType,
-         typename ControlScalarType,
-         typename ConfigScalarType,
-         typename ResultScalarType>
 void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
 (Omega_h::Mesh* aMesh,
  const Omega_h::MeshSets& aMeshSets,
@@ -528,7 +544,8 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
  Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
  Plato::Scalar aScale) const
 {
-    this->evaluateSurfaceLoad(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+    Plato::SurfaceLoadIntegral<SpatialDim, NumDofs, DofsPerNode, DofOffset> tLoad(mSideSetName, mFlux);
+    tLoad.evaluate(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
     /*
     // get sideset faces
     auto tFaceLids = Plato::get_face_local_ordinals(aMeshSets, this->mSideSetName);
