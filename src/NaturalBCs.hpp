@@ -764,28 +764,6 @@ void NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::appendNaturalBC
         }
     }
     mBCs.push_back(tBC);
-
-    /*
-    if ("Uniform" == tType)
-    {
-        tBC = this->setUniformNaturalBC(aName, aSubList);
-    }
-    else if ("Uniform Pressure" == tType)
-    {
-        tBC = this->setUniformPressureNaturalBC(aName, aSubList);
-    }
-    else if ("Uniform Component" == tType)
-    {
-        tBC = this->setUniformComponentNaturalBC(aName, aSubList);
-    }
-    else
-    {
-        std::stringstream tMsg;
-        tMsg << "Natural Boundary Condition Type '" << tType.c_str() << "' is NOT supported.";
-        THROWERR(tMsg.str().c_str())
-    }
-    mBCs.push_back(tBC);
-    */
 }
 
 /***************************************************************************//**
