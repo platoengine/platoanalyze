@@ -1,5 +1,4 @@
-#ifndef NATURAL_BC_HPP
-#define NATURAL_BC_HPP
+#pragma once
 
 #include <sstream>
 
@@ -358,10 +357,10 @@ public:
              typename ResultScalarType>
     void operator()(Omega_h::Mesh* aMesh,
                     const Omega_h::MeshSets &aMeshSets,
-                    Plato::ScalarMultiVectorT<  StateScalarType>& aState,
-                    Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
-                    Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
-                    Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
+                    const Plato::ScalarMultiVectorT<  StateScalarType>& aState,
+                    const Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
+                    const Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
+                    const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
                     Plato::Scalar aScale) const;
 };
 
@@ -380,10 +379,10 @@ template<typename StateScalarType,
 void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()
 (Omega_h::Mesh* aMesh,
  const Omega_h::MeshSets &aMeshSets,
- Plato::ScalarMultiVectorT<  StateScalarType>& aState,
- Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
- Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
- Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
+ const Plato::ScalarMultiVectorT<  StateScalarType>& aState,
+ const Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
+ const Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
+ const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
  Plato::Scalar aScale) const
 {
     // get sideset faces
@@ -516,10 +515,10 @@ public:
              typename ResultScalarType>
     void get(Omega_h::Mesh* aMesh,
              const Omega_h::MeshSets& aMeshSets,
-             Plato::ScalarMultiVectorT<  StateScalarType>,
-             Plato::ScalarMultiVectorT<ControlScalarType>,
-             Plato::ScalarArray3DT    < ConfigScalarType>,
-             Plato::ScalarMultiVectorT< ResultScalarType>,
+             const Plato::ScalarMultiVectorT<  StateScalarType>&,
+             const Plato::ScalarMultiVectorT<ControlScalarType>&,
+             const Plato::ScalarArray3DT    < ConfigScalarType>&,
+             const Plato::ScalarMultiVectorT< ResultScalarType>&,
              Plato::Scalar aScale) const;
 
     /***************************************************************************//**
@@ -609,10 +608,10 @@ public :
              typename ResultScalarType>
     void get( Omega_h::Mesh* aMesh,
               const Omega_h::MeshSets& aMeshSets,
-              Plato::ScalarMultiVectorT<  StateScalarType>,
-              Plato::ScalarMultiVectorT<ControlScalarType>,
-              Plato::ScalarArray3DT    < ConfigScalarType>,
-              Plato::ScalarMultiVectorT< ResultScalarType>,
+              const Plato::ScalarMultiVectorT<  StateScalarType>&,
+              const Plato::ScalarMultiVectorT<ControlScalarType>&,
+              const Plato::ScalarArray3DT    < ConfigScalarType>&,
+              const Plato::ScalarMultiVectorT< ResultScalarType>&,
               Plato::Scalar aScale = 1.0) const;
 };
 
@@ -627,10 +626,10 @@ template<typename StateScalarType,
 void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
 (Omega_h::Mesh* aMesh,
  const Omega_h::MeshSets& aMeshSets,
- Plato::ScalarMultiVectorT<  StateScalarType> aState,
- Plato::ScalarMultiVectorT<ControlScalarType> aControl,
- Plato::ScalarArray3DT    < ConfigScalarType> aConfig,
- Plato::ScalarMultiVectorT< ResultScalarType> aResult,
+ const Plato::ScalarMultiVectorT<  StateScalarType>& aState,
+ const Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
+ const Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
+ const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
  Plato::Scalar aScale) const
 {
     Plato::SurfaceLoadIntegral<SpatialDim, NumDofs, DofsPerNode, DofOffset> tSurfaceLoad(mSideSetName, mFlux);
@@ -792,10 +791,10 @@ template<typename StateScalarType,
          typename ResultScalarType>
 void NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(Omega_h::Mesh* aMesh,
      const Omega_h::MeshSets& aMeshSets,
-     Plato::ScalarMultiVectorT<  StateScalarType> aState,
-     Plato::ScalarMultiVectorT<ControlScalarType> aControl,
-     Plato::ScalarArray3DT    < ConfigScalarType> aConfig,
-     Plato::ScalarMultiVectorT< ResultScalarType> aResult,
+     const Plato::ScalarMultiVectorT<  StateScalarType>& aState,
+     const Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
+     const Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
+     const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
      Plato::Scalar aScale) const
 {
     for (const auto &tMyBC : mBCs)
@@ -806,6 +805,4 @@ void NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(Omega_h::Mesh* aM
 
 }
 // namespace Plato
-
-#endif
 
