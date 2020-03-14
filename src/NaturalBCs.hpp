@@ -357,7 +357,7 @@ public:
              typename ConfigScalarType,
              typename ResultScalarType>
     void operator()(Omega_h::Mesh* aMesh,
-                    Omega_h::MeshSets &aMeshSets,
+                    const Omega_h::MeshSets &aMeshSets,
                     Plato::ScalarMultiVectorT<  StateScalarType>& aState,
                     Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
                     Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
@@ -379,7 +379,7 @@ template<typename StateScalarType,
          typename ResultScalarType>
 void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()
 (Omega_h::Mesh* aMesh,
- Omega_h::MeshSets &aMeshSets,
+ const Omega_h::MeshSets &aMeshSets,
  Plato::ScalarMultiVectorT<  StateScalarType>& aState,
  Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
  Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
