@@ -326,14 +326,14 @@ class SurfaceLoadIntegral
 {
 private:
     const std::string mSideSetName;
-    Omega_h::Vector<NumDofs> mFlux;
+    const Omega_h::Vector<NumDofs> mFlux;
     Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule;
 
 public:
     /******************************************************************************//**
      * \brief Constructor
      **********************************************************************************/
-    SurfaceLoadIntegral(const std::string & aSideSetName, Omega_h::Vector<NumDofs>& aFlux);
+    SurfaceLoadIntegral(const std::string & aSideSetName, const Omega_h::Vector<NumDofs>& aFlux);
 
     /***************************************************************************//**
      * \brief Evaluate natural boundary condition surface integrals.
@@ -367,7 +367,7 @@ public:
 
 template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
 SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::SurfaceLoadIntegral
-(const std::string & aSideSetName, Omega_h::Vector<NumDofs>& aFlux) :
+(const std::string & aSideSetName, const Omega_h::Vector<NumDofs>& aFlux) :
     mSideSetName(aSideSetName),
     mFlux(aFlux)
 {}
@@ -633,6 +633,9 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
  Plato::ScalarMultiVectorT< ResultScalarType> aResult,
  Plato::Scalar aScale) const
 {
+    Plato::SurfaceLoadIntegral<SpatialDim, NumDofs, DofsPerNode, DofOffset> tSurfaceLoad(mSideSetName, mFlux);
+    tSurfaceLoad(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+/*
     // get sideset faces
     auto tFaceLids = Plato::get_face_local_ordinals(aMeshSets, this->mSideSetName);
     auto tNumFaces = tFaceLids.size();
@@ -682,6 +685,7 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
             }
         }
     }, "surface load integral");
+*/
 }
 
 /***************************************************************************//**
