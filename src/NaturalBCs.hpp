@@ -15,6 +15,47 @@ namespace Plato
 {
 
 /***************************************************************************//**
+ * \brief Natural boundary condition type ENUM
+*******************************************************************************/
+struct Neumann
+{
+    enum bc_t
+    {
+        UNDEFINED = 0,
+        UNIFORM = 1,
+        UNIFORM_PRESSURE = 2,
+        UNIFORM_COMPONENT = 3,
+    };
+};
+
+/***************************************************************************//**
+ * \brief Return natural boundary condition type
+ * \param [in] aType natural boundary condition type string
+ * \return natural boundary condition type enum
+*******************************************************************************/
+inline Plato::Neumann::bc_t natural_boundary_condition_type(const std::string& aType)
+{
+    if(aType == "Uniform")
+    {
+        return Plato::Neumann::UNIFORM;
+    }
+    else if(aType == "Uniform Pressure")
+    {
+        return Plato::Neumann::UNIFORM_PRESSURE;
+    }
+    else if(aType == "Uniform Component")
+    {
+        return Plato::Neumann::UNIFORM_COMPONENT;
+    }
+    else
+    {
+        std::stringstream tMsg;
+        tMsg << "Natural Boundary Condition: 'Type' Parameter Keyword: '" << aType.c_str() << "' is not supported.";
+        THROWERR(tMsg.str().c_str())
+    }
+}
+
+/***************************************************************************//**
  * \brief Create face local node index to element local node index map
  *
  * \tparam SpatialDim  spatial dimensions
@@ -524,16 +565,28 @@ public:
              Plato::Scalar aScale) const;
 
     /***************************************************************************//**
+     * \brief Return natural boundary condition sublist name
+     * \return sublist name
+    *******************************************************************************/
+    decltype(mName) const& getSubListName() const { return mName; }
+
+    /***************************************************************************//**
      * \brief Return side set name for this natural boundary condition
      * \return side set name
     *******************************************************************************/
-    decltype(mSideSetName) const& get_ss_name() const { return mSideSetName; }
+    decltype(mSideSetName) const& getSideSetName() const { return mSideSetName; }
 
     /***************************************************************************//**
      * \brief Return force vector for this natural boundary condition
      * \return force vector values
     *******************************************************************************/
-    decltype(mFlux) get_value() const { return mFlux; }
+    decltype(mFlux) getValues() const { return mFlux; }
+
+    /***************************************************************************//**
+     * \brief Return natural boundary condition type
+     * \return natural boundary condition type
+    *******************************************************************************/
+    decltype(mType) getType() const { return mType; }
 };
 
 
@@ -653,8 +706,27 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
  const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
  Plato::Scalar aScale) const
 {
-    Plato::SurfaceLoadIntegral<SpatialDim, NumDofs, DofsPerNode, DofOffset> tSurfaceLoad(mSideSetName, mFlux);
-    tSurfaceLoad(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+    auto tType = Plato::natural_boundary_condition_type(mType);
+    switch(tType)
+    {
+        case Plato::Neumann::UNIFORM:
+        case Plato::Neumann::UNIFORM_COMPONENT:
+        {
+            Plato::SurfaceLoadIntegral<SpatialDim, NumDofs, DofsPerNode, DofOffset> tSurfaceLoad(mSideSetName, mFlux);
+            tSurfaceLoad(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+            break;
+        }
+        case Plato::Neumann::UNIFORM_PRESSURE:
+        {
+            break;
+        }
+        default:
+        {
+            std::stringstream tMsg;
+            tMsg << "Natural Boundary Condition Type '" << mType.c_str() << "' is NOT supported.";
+            THROWERR(tMsg.str().c_str())
+        }
+    }
 }
 
 /***************************************************************************//**
@@ -664,8 +736,36 @@ template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::Ordin
 void NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::appendNaturalBC
 (const std::string & aName, Teuchos::ParameterList &aSubList)
 {
-    const std::string tType = aSubList.get<std::string>("Type");
+    const auto tType = aSubList.get<std::string>("Type");
+    const auto tNeumannType = Plato::natural_boundary_condition_type(tType);
     std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>> tBC;
+    switch(tNeumannType)
+    {
+        case Plato::Neumann::UNIFORM:
+        {
+            tBC = this->setUniformNaturalBC(aName, aSubList);
+            break;
+        }
+        case Plato::Neumann::UNIFORM_PRESSURE:
+        {
+            tBC = this->setUniformPressureNaturalBC(aName, aSubList);
+            break;
+        }
+        case Plato::Neumann::UNIFORM_COMPONENT:
+        {
+            tBC = this->setUniformComponentNaturalBC(aName, aSubList);
+            break;
+        }
+        default:
+        {
+            std::stringstream tMsg;
+            tMsg << "Natural Boundary Condition Type '" << tType.c_str() << "' is NOT supported.";
+            THROWERR(tMsg.str().c_str())
+        }
+    }
+    mBCs.push_back(tBC);
+
+    /*
     if ("Uniform" == tType)
     {
         tBC = this->setUniformNaturalBC(aName, aSubList);
@@ -685,6 +785,7 @@ void NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::appendNaturalBC
         THROWERR(tMsg.str().c_str())
     }
     mBCs.push_back(tBC);
+    */
 }
 
 /***************************************************************************//**
@@ -698,7 +799,7 @@ NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
     bool tBC_Value = aSubList.isType<Plato::Scalar>("Value");
     bool tBC_Values = aSubList.isType<Teuchos::Array<Plato::Scalar>>("Values");
 
-    const std::string tType = aSubList.get < std::string > ("Type");
+    const auto tType = aSubList.get < std::string > ("Type");
     std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>> tBC;
     if (tBC_Values && tBC_Value)
     {
