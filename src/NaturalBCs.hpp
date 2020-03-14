@@ -312,6 +312,29 @@ ComputeSurfaceIntegralWeight<3>::operator()
     aOutput = aMultiplier * sqrt(tJ23*tJ23 + tJ31*tJ31 + tJ12*tJ12);
 }
 
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs=SpatialDim, Plato::OrdinalType DofsPerNode=NumDofs, Plato::OrdinalType DofOffset=0>
+class SurfaceLoadIntegral
+{
+private:
+    const std::string mSideSetName;
+    Omega_h::Vector<NumDofs> mFlux;
+    Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule;
+
+public:
+    SurfaceLoadIntegral(const std::string & aSideSetName, Omega_h::Vector<NumDofs>& aFlux);
+
+    template<typename StateScalarType,
+             typename ControlScalarType,
+             typename ConfigScalarType,
+             typename ResultScalarType>
+    void operator()(Omega_h::Mesh* aMesh,
+                    Omega_h::MeshSets &aMeshSets,
+                    Plato::ScalarMultiVectorT<  StateScalarType>& aState,
+                    Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
+                    Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
+                    Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
+                    Plato::Scalar aScale) const;
+};
 
 /******************************************************************************/
 /*!
