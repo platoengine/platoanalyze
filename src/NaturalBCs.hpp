@@ -313,110 +313,168 @@ ComputeSurfaceIntegralWeight<3>::operator()
 }
 
 
-  /******************************************************************************/
-  /*!
-    \brief Class for natural boundary conditions.
-  */
-    template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs=SpatialDim, Plato::OrdinalType DofsPerNode=NumDofs, Plato::OrdinalType DofOffset=0>
-    class NaturalBC
-  /******************************************************************************/
-  {
-    const std::string mName;
-    const std::string mSideSetName;
-    Omega_h::Vector<NumDofs> mFlux;
-    Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule;
+/******************************************************************************/
+/*!
+  \brief Class for natural boundary conditions.
+*/
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs=SpatialDim, Plato::OrdinalType DofsPerNode=NumDofs, Plato::OrdinalType DofOffset=0>
+class NaturalBC
+/******************************************************************************/
+{
+    const std::string mName;         /*!< user-defined load sublist name */
+    const std::string mSideSetName;  /*!< side set name */
+    Omega_h::Vector<NumDofs> mFlux;  /*!< force vector values */
 
-  public:
+    Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule; /*!< linear cubature rule */
 
+public:
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aLoadName user-defined name for natural boundary condition sublist
+     * \param [in] aParam    load sublist input parameters
+    *******************************************************************************/
     NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(const std::string & aLoadName, Teuchos::ParameterList &aParam) :
-      mName(aLoadName),
-      mSideSetName(aParam.get<std::string>("Sides")),
-      mCubatureRule()
-      {
+        mName(aLoadName),
+        mSideSetName(aParam.get<std::string>("Sides")),
+        mCubatureRule()
+    {
         auto tFlux = aParam.get<Teuchos::Array<Plato::Scalar>>("Vector");
         for(Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
         {
-          mFlux(tDof) = tFlux[tDof];
+            mFlux(tDof) = tFlux[tDof];
         }
-      }
+    }
 
+    /***************************************************************************//**
+     * \brief Destructor
+    *******************************************************************************/
     ~NaturalBC(){}
 
-    /*!
-      \brief Get the contribution to the assembled forcing vector.
-      @param aMesh Omega_h mesh that contains sidesets.
-      @param aMeshSets Omega_h mesh sets that contains sideset information.
-      @param aResult Assembled vector to which the boundary terms will be added.
-
-      The boundary terms are integrated on the parameterized surface, \f$\phi(\xi,\psi)\f$, according to:
-      \f{eqnarray*}{
-          \phi(\xi,\psi)=
-            \left\{
-             \begin{array}{ccc}
-               N_I\left(\xi,\psi\right) x_I &
-               N_I\left(\xi,\psi\right) y_I &
-               N_I\left(\xi,\psi\right) z_I
-             \end{array}
-            \right\} \\
-          f^{el}_{Ii} = \int_{\partial\Omega_{\xi}} N_I\left(\xi,\psi\right) t_i
-                \left|\left|
-                  \frac{\partial\phi}{\partial\xi} \times \frac{\partial\phi}{\partial\psi}
-                \right|\right| d\xi d\psi
-      \f}
-    */
-
+    /***************************************************************************//**
+     * \brief Get the contribution to the assembled forcing vector.
+     *
+     * \tparam StateScalarType   state forward automatically differentiated (FAD) type
+     * \tparam ControlScalarType control FAD type
+     * \tparam ConfigScalarType  configuration FAD type
+     * \tparam ResultScalarType  result FAD type
+     *
+     * \param [in]  aMesh     Omega_h mesh database.
+     * \param [in]  aMeshSets Omega_h side set database.
+     * \param [in]  aState    2-D view of state variables.
+     * \param [in]  aControl  2-D view of control variables.
+     * \param [in]  aConfig   3-D view of configuration variables.
+     * \param [out] aResult   Assembled vector to which the boundary terms will be added
+     * \param [in]  aScale    scalar multiplier
+     *
+     * The boundary terms are integrated on the parameterized surface, \f$\phi(\xi,\psi)\f$, according to:
+     *  \f{eqnarray*}{
+     *    \phi(\xi,\psi)=
+     *       \left\{
+     *        \begin{array}{ccc}
+     *          N_I\left(\xi,\psi\right) x_I &
+     *          N_I\left(\xi,\psi\right) y_I &
+     *          N_I\left(\xi,\psi\right) z_I
+     *        \end{array}
+     *       \right\} \\
+     *     f^{el}_{Ii} = \int_{\partial\Omega_{\xi}} N_I\left(\xi,\psi\right) t_i
+     *          \left|\left|
+     *            \frac{\partial\phi}{\partial\xi} \times \frac{\partial\phi}{\partial\psi}
+     *          \right|\right| d\xi d\psi
+     * \f}
+    *******************************************************************************/
     template<typename StateScalarType,
              typename ControlScalarType,
              typename ConfigScalarType,
              typename ResultScalarType>
-    void get( Omega_h::Mesh* aMesh,
-              const Omega_h::MeshSets& aMeshSets,
-              Plato::ScalarMultiVectorT<  StateScalarType>,
-              Plato::ScalarMultiVectorT<ControlScalarType>,
-              Plato::ScalarArray3DT    < ConfigScalarType>,
-              Plato::ScalarMultiVectorT< ResultScalarType>,
-              Plato::Scalar aScale) const;
+    void get(Omega_h::Mesh* aMesh,
+             const Omega_h::MeshSets& aMeshSets,
+             Plato::ScalarMultiVectorT<  StateScalarType>,
+             Plato::ScalarMultiVectorT<ControlScalarType>,
+             Plato::ScalarArray3DT    < ConfigScalarType>,
+             Plato::ScalarMultiVectorT< ResultScalarType>,
+             Plato::Scalar aScale) const;
 
-    // ! Get sideset name
+    /***************************************************************************//**
+     * \brief Return side set name for this natural boundary condition
+     * \return side set name
+    *******************************************************************************/
     decltype(mSideSetName) const& get_ss_name() const { return mSideSetName; }
 
-    // ! Get the user-specified flux.
+    /***************************************************************************//**
+     * \brief Return force vector for this natural boundary condition
+     * \return force vector values
+    *******************************************************************************/
     decltype(mFlux) get_value() const { return mFlux; }
+};
 
-  };
 
-
-  /******************************************************************************/
-  /*!
-    \brief Owner class that contains a vector of NaturalBC objects.
-  */
-  template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs=SpatialDim, Plato::OrdinalType DofsPerNode=NumDofs, Plato::OrdinalType DofOffset=0>
-  class NaturalBCs
-  /******************************************************************************/
-  {
-  private:
+/***************************************************************************//**
+ * \brief Owner class that contains a vector of NaturalBC objects.
+ *
+ * \tparam SpatialDim   spatial dimension
+ * \tparam NumDofs      number degrees of freedom per natural boundary condition force vector
+ * \tparam DofsPerNode  number degrees of freedom per node
+ * \tparam DofOffset    degrees of freedom offset
+ *
+*******************************************************************************/
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs=SpatialDim, Plato::OrdinalType DofsPerNode=NumDofs, Plato::OrdinalType DofOffset=0>
+class NaturalBCs
+{
+// private member data
+private:
+    /*!< list of natural boundary condition */
     std::vector<std::shared_ptr<NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>>> mBCs;
 
+// private functions
+private:
+    /***************************************************************************//**
+     * \brief Return natural boundary condition type: uniform .
+     *
+     * \param  [in] aName    user-defined name for natural boundary condition sublist
+     * \param  [in] aSubList natural boundary condition parameter sublist
+     *
+     * \return shared pointer to an uniform natural boundary condition
+    *******************************************************************************/
     std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
     setUniformNaturalBC(const std::string & aName, Teuchos::ParameterList &aSubList);
 
+    /***************************************************************************//**
+     * \brief Return natural boundary condition type: uniform component .
+     *
+     * \param  [in] aName    user-defined name for natural boundary condition sublist
+     * \param  [in] aSubList natural boundary condition parameter sublist
+     *
+     * \return shared pointer to an uniform component natural boundary condition
+    *******************************************************************************/
     std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
     setUniformComponentNaturalBC(const std::string & aName, Teuchos::ParameterList &aSubList);
 
-  public :
-
-    /*!
-      \brief Constructor that parses and creates a vector of NaturalBC objects
-      based on the ParameterList.
-    */
+// public functions
+public :
+    /***************************************************************************//**
+     * \brief Constructor that parses and creates a vector of NaturalBC objects.
+     * \param [in] aParams input parameter list
+    *******************************************************************************/
     NaturalBCs(Teuchos::ParameterList &aParams);
 
-    /*!
-      \brief Get the contribution to the assembled forcing vector from the owned boundary conditions.
-      @param aMesh Omega_h mesh that contains sidesets.
-      @param aMeshSets Omega_h mesh sets that contains sideset information.
-      @param aResult Assembled vector to which the boundary terms will be added.
-    */
+    /***************************************************************************//**
+     * \brief Get the contribution to the assembled forcing vector from the owned
+     * boundary conditions.
+     *
+     * \tparam StateScalarType   state forward automatically differentiated (FAD) type
+     * \tparam ControlScalarType control FAD type
+     * \tparam ConfigScalarType  configuration FAD type
+     * \tparam ResultScalarType  result FAD type
+     *
+     * \param [in]  aMesh     Omega_h mesh database.
+     * \param [in]  aMeshSets Omega_h side set database.
+     * \param [in]  aState    2-D view of state variables.
+     * \param [in]  aControl  2-D view of control variables.
+     * \param [in]  aConfig   3-D view of configuration variables.
+     * \param [out] aResult   Assembled vector to which the boundary terms will be added
+     * \param [in]  aScale    scalar multiplier
+     *
+    *******************************************************************************/
     template<typename StateScalarType,
              typename ControlScalarType,
              typename ConfigScalarType,
@@ -428,22 +486,25 @@ ComputeSurfaceIntegralWeight<3>::operator()
               Plato::ScalarArray3DT    < ConfigScalarType>,
               Plato::ScalarMultiVectorT< ResultScalarType>,
               Plato::Scalar aScale = 1.0) const;
-  };
+};
 
-  /**************************************************************************/
-  template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
-  template<typename StateScalarType,
-           typename ControlScalarType,
-           typename ConfigScalarType,
-           typename ResultScalarType>
-  void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get( Omega_h::Mesh* aMesh,
-                                               const Omega_h::MeshSets& aMeshSets,
-                                               Plato::ScalarMultiVectorT<  StateScalarType> aState,
-                                               Plato::ScalarMultiVectorT<ControlScalarType> aControl,
-                                               Plato::ScalarArray3DT    < ConfigScalarType> aConfig,
-                                               Plato::ScalarMultiVectorT< ResultScalarType> aResult,
-                                               Plato::Scalar aScale) const
-  {
+/***************************************************************************//**
+ * \brief NaturalBC::get function definition
+*******************************************************************************/
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
+template<typename StateScalarType,
+         typename ControlScalarType,
+         typename ConfigScalarType,
+         typename ResultScalarType>
+void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
+(Omega_h::Mesh* aMesh,
+ const Omega_h::MeshSets& aMeshSets,
+ Plato::ScalarMultiVectorT<  StateScalarType> aState,
+ Plato::ScalarMultiVectorT<ControlScalarType> aControl,
+ Plato::ScalarArray3DT    < ConfigScalarType> aConfig,
+ Plato::ScalarMultiVectorT< ResultScalarType> aResult,
+ Plato::Scalar aScale) const
+{
     // get sideset faces
     auto tFaceLids = Plato::get_face_local_ordinals(aMeshSets, this->mSideSetName);
     auto tNumFaces = tFaceLids.size();
@@ -467,35 +528,37 @@ ComputeSurfaceIntegralWeight<3>::operator()
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceIndex)
     {
 
-      auto tFaceOrdinal = tFaceLids[aFaceIndex];
+        auto tFaceOrdinal = tFaceLids[aFaceIndex];
 
-      // for each element that the face is connected to: (either 1 or 2)
-      for( Plato::OrdinalType tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd )
-      {
-          // create a map from face local node index to elem local node index
-          Plato::OrdinalType tLocalNodeOrd[SpatialDim];
-          auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
-          tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, aFaceIndex, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+        // for each element that the face is connected to: (either 1 or 2)
+        for( Plato::OrdinalType tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd )
+        {
+            // create a map from face local node index to elem local node index
+            Plato::OrdinalType tLocalNodeOrd[SpatialDim];
+            auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
+            tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, aFaceIndex, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
-          ConfigScalarType tWeight(0.0);
-          auto tMultiplier = aScale / tCubatureWeight;
-          tComputeSurfaceJacobians(tCellOrdinal, aFaceIndex, tLocalNodeOrd, aConfig, tJacobian);
-          tComputeSurfaceIntegralWeight(aFaceIndex, tMultiplier, tJacobian, tWeight);
+            ConfigScalarType tWeight(0.0);
+            auto tMultiplier = aScale / tCubatureWeight;
+            tComputeSurfaceJacobians(tCellOrdinal, aFaceIndex, tLocalNodeOrd, aConfig, tJacobian);
+            tComputeSurfaceIntegralWeight(aFaceIndex, tMultiplier, tJacobian, tWeight);
 
-          // project into aResult workset
-          for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
-          {
-              for( Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
-              {
-                  auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
-                  aResult(tCellOrdinal,tCellDofOrdinal) += tWeight*tFlux[tDof];
-              }
-          }
-      }
+            // project into aResult workset
+            for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
+            {
+                for( Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
+                {
+                    auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
+                    aResult(tCellOrdinal,tCellDofOrdinal) += tWeight*tFlux[tDof];
+                }
+            }
+        }
+    }, "surface load integral");
+}
 
-    });
-  }
-
+/***************************************************************************//**
+ * \brief NaturalBC::setUniformNaturalBC function definition
+*******************************************************************************/
 template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
 std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
 NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
@@ -537,6 +600,9 @@ NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
     return tBC;
 }
 
+/***************************************************************************//**
+ * \brief NaturalBC::setUniformComponentNaturalBC function definition
+*******************************************************************************/
 template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
 std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
 NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformComponentNaturalBC
@@ -590,13 +656,12 @@ NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformComponentNatu
     return tBC;
 }
 
-/****************************************************************************/
-
-/****************************************************************************/
+/***************************************************************************//**
+ * \brief NaturalBCs Constructor definition
+*******************************************************************************/
 template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
 NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::NaturalBCs(Teuchos::ParameterList &aParams) :
 mBCs()
-/****************************************************************************/
 {
     for (Teuchos::ParameterList::ConstIterator tItr = aParams.begin(); tItr != aParams.end(); ++tItr)
     {
@@ -637,31 +702,30 @@ mBCs()
     }
 }
 
-  /**************************************************************************/
-  /*!
-    \brief Add the boundary load to the result workset
-  */
-  template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
-  template<typename StateScalarType,
-           typename ControlScalarType,
-           typename ConfigScalarType,
-           typename ResultScalarType>
-  void NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(Omega_h::Mesh* aMesh,
-       const Omega_h::MeshSets& aMeshSets,
-       Plato::ScalarMultiVectorT<  StateScalarType> aState,
-       Plato::ScalarMultiVectorT<ControlScalarType> aControl,
-       Plato::ScalarArray3DT    < ConfigScalarType> aConfig,
-       Plato::ScalarMultiVectorT< ResultScalarType> aResult,
-       Plato::Scalar aScale) const
-  {
-      for (const auto &tMyBC : mBCs)
-      {
-          tMyBC->get(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
-      }
-  }
+/***************************************************************************//**
+ * \brief NaturalBCs::get function definition
+*******************************************************************************/
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::OrdinalType DofsPerNode, Plato::OrdinalType DofOffset>
+template<typename StateScalarType,
+         typename ControlScalarType,
+         typename ConfigScalarType,
+         typename ResultScalarType>
+void NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(Omega_h::Mesh* aMesh,
+     const Omega_h::MeshSets& aMeshSets,
+     Plato::ScalarMultiVectorT<  StateScalarType> aState,
+     Plato::ScalarMultiVectorT<ControlScalarType> aControl,
+     Plato::ScalarArray3DT    < ConfigScalarType> aConfig,
+     Plato::ScalarMultiVectorT< ResultScalarType> aResult,
+     Plato::Scalar aScale) const
+{
+    for (const auto &tMyBC : mBCs)
+    {
+        tMyBC->get(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+    }
+}
 
-
-} // end namespace Plato 
+}
+// namespace Plato
 
 #endif
 
