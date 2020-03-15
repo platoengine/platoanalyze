@@ -473,7 +473,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
           tComputeSurfaceIntegralWeight(aFaceIndex, tMultiplier, tJacobian, tWeight);
 
           // compute unit normal vector
-          auto tCellPoints = Plato::local_element_coords(tCellOrdinal, tCoords, tCell2Verts);
+          auto tCellPoints = Plato::local_element_coords<SpatialDim>(tCellOrdinal, tCoords, tCell2Verts);
           auto tUnitNormalVec = Plato::unit_normal_vector(tFaceOrdinal, tCellPoints);
 
           // project into aResult workset

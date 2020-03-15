@@ -14,103 +14,34 @@ namespace Plato
 {
 
 /***************************************************************************//**
- * \brief 1-D specialization: Return local element/cell coordinates, i.e.
- * coordinates for each node.
+ * \brief Return local element/cell coordinates, i.e. coordinates for each node.
  *
  * \param [in] aCellOrdinal cell ordinal
  * \param [in] aCoords      mesh coordinates
  * \param [in] aCell2Verts  cell to local vertex id map
  *
- * \return node coordinates for element with ordinal: aCellOrdinal
+ * \return node coordinates for a single element
  *
 *******************************************************************************/
-inline Omega_h::Few< Omega_h::Vector<1>, 2> local_element_coords
+template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NodesPerCell = SpatialDim + 1>
+inline Omega_h::Few< Omega_h::Vector<SpatialDim>, NodesPerCell> local_element_coords
 (const Plato::OrdinalType & aCellOrdinal,
  const Omega_h::Reals & aCoords,
  const Omega_h::LOs & aCell2Verts)
 {
-    const Plato::OrdinalType tSpaceDim = 1;
-    const Plato::OrdinalType tNodesPerCell = 2;
-    Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
-
-    for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
+    Omega_h::Few<Omega_h::Vector<SpatialDim>, NodesPerCell> tCellCoords;
+    for (Plato::OrdinalType jNode = 0; jNode < NodesPerCell; jNode++)
     {
-        const auto tVertexLocalID = aCell2Verts[aCellOrdinal * tNodesPerCell + jNode];
-        for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
+        const auto tVertexLocalID = aCell2Verts[aCellOrdinal * NodesPerCell + jNode];
+        for (Plato::OrdinalType tDim = 0; tDim < SpatialDim; tDim++)
         {
-            tCellPoints[jNode][tDim] = aCoords[tVertexLocalID * tSpaceDim + tDim];
+            tCellCoords[jNode][tDim] = aCoords[tVertexLocalID * SpatialDim + tDim];
         }
     }
 
-    return tCellPoints;
+    return tCellCoords;
 }
-// local_element_coords : 1-D
-
-/***************************************************************************//**
- * \brief 2-D specialization: Return local element/cell coordinates, i.e.
- * coordinates for each node.
- *
- * \param [in] aCellOrdinal cell ordinal
- * \param [in] aCoords      mesh coordinates
- * \param [in] aCell2Verts  cell to local vertex id map
- *
- * \return node coordinates for element with ordinal: aCellOrdinal
- *
-*******************************************************************************/
-inline Omega_h::Few< Omega_h::Vector<2>, 3> local_element_coords
-(const Plato::OrdinalType & aCellOrdinal,
- const Omega_h::Reals & aCoords,
- const Omega_h::LOs & aCell2Verts)
-{
-    const Plato::OrdinalType tSpaceDim = 2;
-    const Plato::OrdinalType tNodesPerCell = 3;
-    Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
-
-    for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
-    {
-        const auto tVertexLocalID = aCell2Verts[aCellOrdinal * tNodesPerCell + jNode];
-        for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
-        {
-            tCellPoints[jNode][tDim] = aCoords[tVertexLocalID * tSpaceDim + tDim];
-        }
-    }
-
-    return tCellPoints;
-}
-// local_element_coords : 2-D
-
-/***************************************************************************//**
- * \brief 3-D specialization: Return local element/cell coordinates, i.e.
- * coordinates for each node.
- *
- * \param [in] aCellOrdinal cell ordinal
- * \param [in] aCoords      mesh coordinates
- * \param [in] aCell2Verts  cell to local vertex id map
- *
- * \return node coordinates for element with ordinal: aCellOrdinal
- *
-*******************************************************************************/
-inline Omega_h::Few< Omega_h::Vector<3>, 4> local_element_coords
-(const Plato::OrdinalType & aCellOrdinal,
- const Omega_h::Reals & aCoords,
- const Omega_h::LOs & aCell2Verts)
-{
-    const Plato::OrdinalType tSpaceDim = 3;
-    const Plato::OrdinalType tNodesPerCell = 4;
-    Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
-
-    for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
-    {
-        const auto tVertexLocalID = aCell2Verts[aCellOrdinal * tNodesPerCell + jNode];
-        for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
-        {
-            tCellPoints[jNode][tDim] = aCoords[tVertexLocalID * tSpaceDim + tDim];
-        }
-    }
-
-    return tCellPoints;
-}
-// local_element_coords : 3-D
+// local_element_coords
 
 /***************************************************************************//**
  * \brief Return face local ordinals for each element on the requested side set

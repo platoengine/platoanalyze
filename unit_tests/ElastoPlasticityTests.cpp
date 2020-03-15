@@ -40,7 +40,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
     Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
-        auto tCellPoints = Plato::local_element_coords(aCellIndex, tCoords, tCell2Verts);
+        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords, tCell2Verts);
         for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
