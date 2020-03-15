@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <Omega_h_few.hpp>
 #include <Omega_h_shape.hpp>
 
 #include "PlatoTypes.hpp"
