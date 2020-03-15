@@ -249,20 +249,20 @@ private:
                            const Plato::ScalarArray3DT<ConfigT> &aConfig,
                            const Plato::ScalarMultiVectorT<ResultT> &aResult)
     {
+        auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
+        if(tSearch == mDataMap.mScalarValues.end())
+        {
+            THROWERR("'Load Control Constant' is NOT defined in data map.")
+        }
+        auto tLoadControlConstant = static_cast<Plato::Scalar>(-1) * tSearch->second;
+
         if (mBodyLoads != nullptr)
         {
-            Plato::Scalar tMultiplier = -1.0;
-            mBodyLoads->get(mMesh, aGlobalState, aControl, aResult, tMultiplier);
+            mBodyLoads->get(mMesh, aGlobalState, aControl, aResult, tLoadControlConstant);
         }
 
         if( mNeumannLoads != nullptr )
         {
-            auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
-            if(tSearch == mDataMap.mScalarValues.end())
-            {
-                THROWERR("Requested 'Load Control Constant' is NOT Defined.")
-            }
-            auto tLoadControlConstant = static_cast<Plato::Scalar>(-1) * tSearch->second;
             mNeumannLoads->get( &mMesh, mMeshSets, aGlobalState, aControl, aConfig, aResult, tLoadControlConstant );
         }
     }
