@@ -35,7 +35,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
     auto tNumCells = tMesh->nelems();
     auto tCell2Verts = tMesh->ask_elem_verts();
 
-    printf("\n");
+    //printf("\n");
     constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
@@ -45,12 +45,29 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
             {
-                tCellCoords(jNode, tDim) = tCellPoints[jNode][tDim];
-                printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellCoords[jNode][tDim]);
+                tCellCoords(aCellIndex, jNode, tDim) = tCellPoints[jNode][tDim];
+                //printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellPoints[jNode][tDim]);
             }
         }
-
     }, "test local_element_coords function - return cell coordinates");
+
+    Plato::ScalarArray3D tGold("gold", tNumCells, tNodesPerCell, tSpaceDim);
+    auto tHostGold = Kokkos::create_mirror(tGold);
+    tHostGold(0,0,0) = 0.0; tHostGold(0,1,0) = 1.0;
+
+    const Plato::Scalar tTolerance = 1e-4;
+    auto tHostCellCoords = Kokkos::create_mirror(tCellCoords);
+    Kokkos::deep_copy(tHostCellCoords, tCellCoords);
+    for(Plato::OrdinalType tCell=0; tCell < tNumCells; tCell++)
+    {
+        for(Plato::OrdinalType tNode=0; tNode < tNodesPerCell; tNode++)
+        {
+            for(Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
+            {
+                TEST_FLOATING_EQUALITY(tHostCellCoords(tCell, tNode, tDim), tHostGold(tCell, tNode, tDim), tTolerance);
+            }
+        }
+    }
 }
 
 
@@ -64,7 +81,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_2D)
     auto tNumCells = tMesh->nelems();
     auto tCell2Verts = tMesh->ask_elem_verts();
 
-    printf("\n");
+    //printf("\n");
     constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
@@ -74,12 +91,30 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_2D)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
             {
-                tCellCoords(jNode, tDim)= tCellPoints[jNode][tDim];
-                printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellCoords[jNode][tDim]);
+                tCellCoords(aCellIndex, jNode, tDim)= tCellPoints[jNode][tDim];
+                //printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellPoints[jNode][tDim]);
             }
         }
-
     }, "test local_element_coords function - returns cell coordinates");
+
+    Plato::ScalarArray3D tGold("gold", tNumCells, tNodesPerCell, tSpaceDim);
+    auto tHostGold = Kokkos::create_mirror(tGold);
+    tHostGold(0,0,0) = 0.0; tHostGold(0,0,1) = 0.0; tHostGold(0,1,0) = 1.0; tHostGold(0,1,1) = 0.0; tHostGold(0,2,0) = 1.0; tHostGold(0,2,1) = 1.0;
+    tHostGold(1,0,0) = 1.0; tHostGold(1,0,1) = 1.0; tHostGold(1,1,0) = 0.0; tHostGold(1,1,1) = 1.0; tHostGold(1,2,0) = 0.0; tHostGold(1,2,1) = 0.0;
+
+    const Plato::Scalar tTolerance = 1e-4;
+    auto tHostCellCoords = Kokkos::create_mirror(tCellCoords);
+    Kokkos::deep_copy(tHostCellCoords, tCellCoords);
+    for(Plato::OrdinalType tCell=0; tCell < tNumCells; tCell++)
+    {
+        for(Plato::OrdinalType tNode=0; tNode < tNodesPerCell; tNode++)
+        {
+            for(Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
+            {
+                TEST_FLOATING_EQUALITY(tHostCellCoords(tCell, tNode, tDim), tHostGold(tCell, tNode, tDim), tTolerance);
+            }
+        }
+    }
 }
 
 
@@ -93,7 +128,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_3D)
     auto tNumCells = tMesh->nelems();
     auto tCell2Verts = tMesh->ask_elem_verts();
 
-    printf("\n");
+    //printf("\n");
     constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
@@ -103,12 +138,58 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_3D)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
             {
-                tCellCoords(jNode, tDim) = tCellPoints[jNode][tDim];
-                printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellCoords[jNode][tDim]);
+                tCellCoords(aCellIndex, jNode, tDim) = tCellPoints[jNode][tDim];
+                //printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellPoints[jNode][tDim]);
             }
         }
-
     }, "test local_element_coords function - returns cell coordinates");
+
+    Plato::ScalarArray3D tGold("gold", tNumCells, tNodesPerCell, tSpaceDim);
+    auto tHostGold = Kokkos::create_mirror(tGold);
+    // ELEM ONE
+    tHostGold(0,0,0) = 0.0; tHostGold(0,0,1) = 0.0; tHostGold(0,0,2) = 0.0; 
+    tHostGold(0,1,0) = 1.0; tHostGold(0,1,1) = 1.0; tHostGold(0,1,2) = 0.0;
+    tHostGold(0,2,0) = 0.0; tHostGold(0,2,1) = 1.0; tHostGold(0,2,2) = 0.0;
+    tHostGold(0,3,0) = 1.0; tHostGold(0,3,1) = 1.0; tHostGold(0,3,2) = 1.0;
+    // ELEM TWO
+    tHostGold(1,0,0) = 0.0; tHostGold(1,0,1) = 0.0; tHostGold(1,0,2) = 0.0; 
+    tHostGold(1,1,0) = 0.0; tHostGold(1,1,1) = 1.0; tHostGold(1,1,2) = 0.0;
+    tHostGold(1,2,0) = 0.0; tHostGold(1,2,1) = 1.0; tHostGold(1,2,2) = 1.0;
+    tHostGold(1,3,0) = 1.0; tHostGold(1,3,1) = 1.0; tHostGold(1,3,2) = 1.0;
+    // ELEM THREE
+    tHostGold(2,0,0) = 0.0; tHostGold(2,0,1) = 0.0; tHostGold(2,0,2) = 0.0; 
+    tHostGold(2,1,0) = 0.0; tHostGold(2,1,1) = 1.0; tHostGold(2,1,2) = 1.0;
+    tHostGold(2,2,0) = 0.0; tHostGold(2,2,1) = 0.0; tHostGold(2,2,2) = 1.0;
+    tHostGold(2,3,0) = 1.0; tHostGold(2,3,1) = 1.0; tHostGold(2,3,2) = 1.0;
+    // ELEM FOUR
+    tHostGold(3,0,0) = 0.0; tHostGold(3,0,1) = 0.0; tHostGold(3,0,2) = 0.0; 
+    tHostGold(3,1,0) = 1.0; tHostGold(3,1,1) = 0.0; tHostGold(3,1,2) = 1.0;
+    tHostGold(3,2,0) = 1.0; tHostGold(3,2,1) = 1.0; tHostGold(3,2,2) = 1.0;
+    tHostGold(3,3,0) = 0.0; tHostGold(3,3,1) = 0.0; tHostGold(3,3,2) = 1.0;
+    // ELEM FIVE
+    tHostGold(4,0,0) = 1.0; tHostGold(4,0,1) = 0.0; tHostGold(4,0,2) = 0.0; 
+    tHostGold(4,1,0) = 1.0; tHostGold(4,1,1) = 0.0; tHostGold(4,1,2) = 1.0;
+    tHostGold(4,2,0) = 1.0; tHostGold(4,2,1) = 1.0; tHostGold(4,2,2) = 1.0;
+    tHostGold(4,3,0) = 0.0; tHostGold(4,3,1) = 0.0; tHostGold(4,3,2) = 0.0;
+    // ELEM SIX
+    tHostGold(5,0,0) = 1.0; tHostGold(5,0,1) = 0.0; tHostGold(5,0,2) = 0.0; 
+    tHostGold(5,1,0) = 1.0; tHostGold(5,1,1) = 1.0; tHostGold(5,1,2) = 1.0;
+    tHostGold(5,2,0) = 1.0; tHostGold(5,2,1) = 1.0; tHostGold(5,2,2) = 0.0;
+    tHostGold(5,3,0) = 0.0; tHostGold(5,3,1) = 0.0; tHostGold(5,3,2) = 0.0;
+
+    const Plato::Scalar tTolerance = 1e-4;
+    auto tHostCellCoords = Kokkos::create_mirror(tCellCoords);
+    Kokkos::deep_copy(tHostCellCoords, tCellCoords);
+    for(Plato::OrdinalType tCell=0; tCell < tNumCells; tCell++)
+    {
+        for(Plato::OrdinalType tNode=0; tNode < tNodesPerCell; tNode++)
+        {
+            for(Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
+            {
+                TEST_FLOATING_EQUALITY(tHostCellCoords(tCell, tNode, tDim), tHostGold(tCell, tNode, tDim), tTolerance);
+            }
+        }
+    }
 }
 
 
