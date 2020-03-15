@@ -9,7 +9,7 @@
 #include <Omega_h_shape.hpp>
 
 #include "PlatoTypes.hpp"
-#include "PlatoLambda.hpp"
+#include "alg/PlatoLambda.hpp"
 
 namespace Plato
 {
