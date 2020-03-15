@@ -9,6 +9,7 @@
 #include <Omega_h_shape.hpp>
 
 #include "PlatoTypes.hpp"
+#include "PlatoLambda.hpp"
 
 namespace Plato
 {
@@ -24,7 +25,7 @@ namespace Plato
  *
 *******************************************************************************/
 template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NodesPerCell = SpatialDim + 1>
-DEVICE_TYPE inline Omega_h::Few< Omega_h::Vector<SpatialDim>, NodesPerCell> local_element_coords
+DEVICE_TYPE inline Omega_h::Few< Omega_h::Vector<SpatialDim>, NodesPerCell > local_element_coords
 (const Plato::OrdinalType & aCellOrdinal,
  const Omega_h::Reals & aCoords,
  const Omega_h::LOs & aCell2Verts)
