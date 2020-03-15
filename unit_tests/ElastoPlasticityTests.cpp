@@ -25,6 +25,93 @@ namespace ElastoPlasticityTest
 {
 
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 1;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    auto tCoords = tMesh->coords();
+    auto tNumCells = tMesh->nelems();
+    auto tCell2Verts = tMesh->ask_elem_verts();
+
+    printf("\n");
+    constexpr auto tNodesPerCell = tSpaceDim + 1;
+    Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        auto tCellPoints = Plato::local_element_coords(aCellIndex, tCoords, tCell2Verts);
+        for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
+        {
+            for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
+            {
+                tCellCoords[jNode][tDim] = tCellPoints[jNode][tDim];
+                printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellCoords[jNode][tDim]);
+            }
+        }
+
+    }, "test local_element_coords function - return cell coordinates");
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    auto tCoords = tMesh->coords();
+    auto tNumCells = tMesh->nelems();
+    auto tCell2Verts = tMesh->ask_elem_verts();
+
+    printf("\n");
+    constexpr auto tNodesPerCell = tSpaceDim + 1;
+    Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        auto tCellPoints = Plato::local_element_coords(aCellIndex, tCoords, tCell2Verts);
+        for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
+        {
+            for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
+            {
+                tCellCoords[jNode][tDim] = tCellPoints[jNode][tDim];
+                printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellCoords[jNode][tDim]);
+            }
+        }
+
+    }, "test local_element_coords function - returns cell coordinates");
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    auto tCoords = tMesh->coords();
+    auto tNumCells = tMesh->nelems();
+    auto tCell2Verts = tMesh->ask_elem_verts();
+
+    printf("\n");
+    constexpr auto tNodesPerCell = tSpaceDim + 1;
+    Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
+    {
+        auto tCellPoints = Plato::local_element_coords(aCellIndex, tCoords, tCell2Verts);
+        for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
+        {
+            for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
+            {
+                tCellCoords[jNode][tDim] = tCellPoints[jNode][tDim];
+                printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellCoords[jNode][tDim]);
+            }
+        }
+
+    }, "test local_element_coords function - returns cell coordinates");
+}
+
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
