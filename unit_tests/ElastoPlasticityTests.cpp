@@ -45,7 +45,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
             {
-                tCellCoords[jNode][tDim] = tCellPoints[jNode][tDim];
+                tCellCoords(jNode, tDim) = tCellPoints[jNode][tDim];
                 printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellCoords[jNode][tDim]);
             }
         }
@@ -74,7 +74,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_2D)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
             {
-                tCellCoords[jNode][tDim] = tCellPoints[jNode][tDim];
+                tCellCoords(jNode, tDim)= tCellPoints[jNode][tDim];
                 printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellCoords[jNode][tDim]);
             }
         }
@@ -103,7 +103,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_3D)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
             {
-                tCellCoords[jNode][tDim] = tCellPoints[jNode][tDim];
+                tCellCoords(jNode, tDim) = tCellPoints[jNode][tDim];
                 printf("Coords[%d][%d][%d] = %f\n", aCellIndex, jNode, tDim, tCellCoords[jNode][tDim]);
             }
         }
