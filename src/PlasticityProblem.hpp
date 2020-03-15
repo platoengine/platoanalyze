@@ -644,14 +644,13 @@ private:
     void initializeNewtonSolver()
     {
         mNewtonSolver->setDirichletValuesMultiplier(mPseudoTimeStep);
+        mDataMap.mScalarValues["LoadControlConstant"] = mPseudoTimeStep;
 
         mNewtonSolver->appendDirichletDofs(mDirichletDofs);
         mNewtonSolver->appendDirichletValues(mDirichletValues);
 
         mNewtonSolver->appendLocalEquation(mLocalEquation);
         mNewtonSolver->appendGlobalEquation(mGlobalEquation);
-
-        mDataMap.mScalarValues["LoadControlConstant"] = mPseudoTimeStep;
     }
 
     /***************************************************************************//**
