@@ -140,8 +140,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_2D)
         
         for(Plato::OrdinalType tEdgeIndex=0; tEdgeIndex < tNumEdges; tEdgeIndex++)
         {
-            auto tNormalVec = Omega_h::get_side_vector(tCellPoints, tEdgeIndex);
-            Plato::normalize(tNormalVec);
+            auto tNormalVec = Plato::unit_normal_vector(tEdgeIndex, tCellPoints);
             for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
             {
                 tNormalVectors(aCellIndex, tEdgeIndex, tDim) = tNormalVec[tDim];
@@ -207,8 +206,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
 
         for(Plato::OrdinalType tFaceIndex=0; tFaceIndex < tNumFaces; tFaceIndex++)
         {
-            auto tNormalVec = Omega_h::get_side_vector(tCellPoints, tFaceIndex);
-            Plato::normalize(tNormalVec);
+            auto tNormalVec = Plato::unit_normal_vector(tFaceIndex, tCellPoints);
             for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
             {
                 tNormalVectors(aCellIndex, tFaceIndex, tDim) = tNormalVec[tDim];
