@@ -70,10 +70,17 @@ void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::M
         aProblem.print(std::cout);
     }
 
+    
     auto tOutput_viz = aProblem.get<std::string>("Output Viz");
+    if(aProblem.isParameter("Input Mesh") == false)
+    {
+        std::stringstream tMsg;
+        tMsg << "Input File Error: 'Input Mesh' Parameter Keyword is NOT defined.";
+        THROWERR(tMsg.str().c_str())
+    }
     auto tInput_mesh = aProblem.get<std::string>("Input Mesh");
 
-    auto physicsString = aProblem.get<std::string>("Physics", "Default");
+    auto physicsString = aProblem.get<std::string>("Physics", "Plato Driver");
     if(aProblem.get<bool>("Query"))
     {
         if(comm::rank(aMachine) == 0)
@@ -85,7 +92,7 @@ void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::M
                       << "]" << " PU[" << threads_per_core << "] }" << std::endl;
         }
 #if defined(KOKKOS_HAVE_CUDA)
-        Plato::run_cuda_query(machine);
+        Plato::run_cuda_query(aMachine);
 #endif
     }
     else
@@ -96,7 +103,11 @@ void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::M
         }
         else
         {
-            THROWERR("Unrecognized Physics " << physicsString);
+            std::stringstream tMsg;
+            tMsg << "Input File Error: 'Physics' Parameter Keyword is NOT defined. " 
+                << "The 'Physics' Parameter Keyword is set to " << physicsString.c_str() 
+                << ". The 'Physics' Parameter Keyword should be set to 'Plato Driver'.";
+            THROWERR(tMsg.str().c_str())
         }
     }
 }
