@@ -172,7 +172,7 @@ public:
     {
         if(aInputs.isSublist("Essential Boundary Conditions") == false)
         {
-            THROWERR("ESSENTIAL BOUNDARY CONDITIONS SUBLIST IS NOT DEFINED IN THE INPUT FILE")
+            REPORT("Plasticity Problem: Essential Boundary Conditions are not defined for this problem.")
         }
         Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputs.sublist("Essential Boundary Conditions", false));
         tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);
@@ -188,7 +188,7 @@ public:
         if(aDirichletDofs.size() != aDirichletValues.size())
         {
             std::ostringstream tError;
-            tError << "DIMENSION MISMATCH: THE NUMBER OF ELEMENTS IN INPUT DOFS AND VALUES ARRAY DO NOT MATCH."
+            tError << "PLASTICITY PROBLEM: DIMENSION MISMATCH: THE NUMBER OF ELEMENTS IN INPUT DOFS AND VALUES ARRAY DO NOT MATCH."
                 << "DOFS SIZE = " << aDirichletDofs.size() << " AND VALUES SIZE = " << aDirichletValues.size();
             THROWERR(tError.str())
         }
@@ -251,7 +251,7 @@ public:
     *******************************************************************************/
     Plato::ScalarMultiVector getAdjoint() override
     {
-        THROWERR("ADJOINT MEMBER DATA IS NOT DEFINED");
+        THROWERR("PLASTICITY PROBLEM: ADJOINT MEMBER DATA IS NOT DEFINED");
     }
 
     /***************************************************************************//**
@@ -292,7 +292,7 @@ public:
         // 4. HOW WILL OUTPUT DATA BE PRESENTED TO THE USERS, WE CANNOT SEND TIME-DEPENDENT DATA THROUGH THE ENGINE.
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("INPUT CONTROL VECTOR IS EMPTY.")
+            THROWERR("PLASTICITY PROBLEM: INPUT CONTROL VECTOR IS EMPTY.")
         }
 
         bool tGlobalStateComputed = false;
@@ -331,15 +331,15 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nGLOBAL STATE 2D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
         if(mObjective == nullptr)
         {
-            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
         auto tOutput = this->evaluateCriterion(*mObjective, aGlobalState, mLocalStates, aControls);
@@ -356,11 +356,11 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(mObjective == nullptr)
         {
-            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
         auto tOutput = this->evaluateCriterion(*mObjective, mGlobalStates, mLocalStates, aControls);
@@ -379,15 +379,15 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nGLOBAL STATE 2D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
         if(mConstraint == nullptr)
         {
-            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
         auto tOutput = this->evaluateCriterion(*mConstraint, mGlobalStates, mLocalStates, aControls);
@@ -404,11 +404,11 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(mConstraint == nullptr)
         {
-            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
         auto tOutput = this->evaluateCriterion(*mConstraint, mGlobalStates, mLocalStates, aControls);
@@ -425,11 +425,11 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(mObjective == nullptr)
         {
-            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
         auto tTotalDerivative = this->objectiveGradient(aControls, mGlobalStates);
@@ -448,15 +448,15 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nGLOBAL STATE 2D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
         if(mObjective == nullptr)
         {
-            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
         mAdjointSolver->appendScalarFunction(mObjective);
@@ -478,11 +478,11 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(mObjective == nullptr)
         {
-            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
         auto tTotalDerivative = this->objectiveGradientX(aControls, mGlobalStates);
@@ -501,15 +501,15 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nGLOBAL STATE 2D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
         if(mObjective == nullptr)
         {
-            THROWERR("\nOBJECTIVE PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
         mAdjointSolver->appendScalarFunction(mObjective);
@@ -530,11 +530,11 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(mConstraint == nullptr)
         {
-            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
         auto tTotalDerivative = this->constraintGradient(aControls, mGlobalStates);
@@ -553,15 +553,15 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nGLOBAL STATE 2D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
         if(mConstraint == nullptr)
         {
-            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
         mAdjointSolver->appendScalarFunction(mConstraint);
@@ -583,11 +583,11 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(mConstraint == nullptr)
         {
-            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
+            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
         auto tTotalDerivative = this->constraintGradientX(aControls, mGlobalStates);
@@ -606,15 +606,15 @@ public:
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
         if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            THROWERR("\nGLOBAL STATE 2D VIEW IS EMPTY.\n");
+            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
         if(mConstraint == nullptr)
         {
-            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
+           THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
         mAdjointSolver->appendScalarFunction(mConstraint);
@@ -967,7 +967,7 @@ private:
         }
         else
         {
-            WARNING("OBJECTIVE FUNCTION IS DISABLED FOR THIS PROBLEM")
+            REPORT("Plasticity Problem: Objective Function is disabled for this problem.")
         }
     }
 
@@ -987,7 +987,7 @@ private:
         }
         else
         {
-            WARNING("CONSTRAINT IS DISABLED FOR THIS PROBLEM")
+            REPORT("Plasticity Problem: Constraint function is disabled for this problem.")
         }
     }
 };
