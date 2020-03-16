@@ -122,6 +122,11 @@ void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()
     auto tFlux = mFlux;
     auto tNodesPerFace = SpatialDim;
     auto tCubatureWeight = mCubatureRule.getCubWeight();
+    if(std::isfinite(tCubatureWeight) == false)
+    {
+        THROWERR("Natural Boundary Condition: A non-finite cubature weight was detected.")
+    }
+
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceIndex)
     {
 
