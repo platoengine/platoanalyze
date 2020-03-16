@@ -79,7 +79,8 @@ template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::Ordin
 SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::SurfaceLoadIntegral
 (const std::string & aSideSetName, const Omega_h::Vector<NumDofs>& aFlux) :
     mSideSetName(aSideSetName),
-    mFlux(aFlux)
+    mFlux(aFlux),
+    mCubatureRule()
 {
 }
 // class SurfaceLoadIntegral::SurfaceLoadIntegral

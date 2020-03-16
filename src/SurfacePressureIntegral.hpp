@@ -79,7 +79,8 @@ template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs, Plato::Ordin
 SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::SurfacePressureIntegral
 (const std::string & aSideSetName, const Omega_h::Vector<NumDofs>& aFlux) :
     mSideSetName(aSideSetName),
-    mFlux(aFlux)
+    mFlux(aFlux),
+    mCubatureRule()
 {
 }
 // class SurfacePressureIntegral::SurfacePressureIntegral
@@ -101,6 +102,11 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
  const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
  Plato::Scalar aScale) const
 {
+    if(mCubatureRule == nullptr || mCubatureRule)
+    {
+        THROWERR("Natural Boundary Condition: Cubature rule pointer is NULL.");
+    }
+
     // get sideset faces
     auto tFaceLids = Plato::get_face_local_ordinals(aMeshSets, mSideSetName);
     auto tNumFaces = tFaceLids.size();
