@@ -34,7 +34,6 @@
 // ************************************************************************
 //@HEADER
 
-
 #include <cstdlib>
 
 #include <Teuchos_ParameterList.hpp>
@@ -46,60 +45,60 @@
 #include "alg/ErrorHandling.hpp"
 #include "PlatoDriver.hpp"
 
-namespace Plato {
+namespace Plato
+{
 
 #if defined(KOKKOS_HAVE_CUDA)
-void run_cuda_query(comm::Machine machine) {
-  const size_t comm_rank = comm::rank(machine);
-  std::cout << "P" << comm_rank
-            << ": Cuda device_count = " << Kokkos::Cuda::detect_device_count()
-            << std::endl;
+void run_cuda_query(comm::Machine machine)
+{
+    const size_t comm_rank = comm::rank(machine);
+    std::cout << "P" << comm_rank
+    << ": Cuda device_count = " << Kokkos::Cuda::detect_device_count()
+    << std::endl;
 }
 #endif
 
-void run(
-    Omega_h::Library*       lib_osh,
-    Teuchos::ParameterList& problem,
-    comm::Machine           machine) {
-  if (comm::rank(machine) == 0) {
-
-    std::cout << "\nRunning Plato Analyze version " 
-              << version_major << "." 
-              << version_minor << "." 
-              << version_patch << std::endl;
-
-    std::cout << "\n\nparameter list:" << std::endl;
-    problem.print(std::cout);
-
-  }
-
-  auto output_viz = problem.get<std::string>("Output Viz");
-  auto input_mesh = problem.get<std::string>("Input Mesh");
-
-  auto physicsString = problem.get<std::string>("Physics", "Default");
-  if (problem.get<bool>("Query")) {
-    if (comm::rank(machine) == 0) {
-      const unsigned numa_count = Kokkos::hwloc::get_available_numa_count();
-      const unsigned cores_per_numa =
-          Kokkos::hwloc::get_available_cores_per_numa();
-      const unsigned threads_per_core =
-          Kokkos::hwloc::get_available_threads_per_core();
-      std::cout << "P" << comm::rank(machine) << ": hwloc { NUMA[" << numa_count
-                << "]"
-                << " CORE[" << cores_per_numa << "]"
-                << " PU[" << threads_per_core << "] }" << std::endl;
-    }
-#if defined(KOKKOS_HAVE_CUDA)
-    Plato::run_cuda_query(machine);
-#endif
-  } else {
-    if(physicsString == "Plato Driver"){
-      ::Plato::driver(lib_osh, problem, input_mesh, output_viz);
-    } else
+void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::Machine aMachine)
+{
+    if(comm::rank(aMachine) == 0)
     {
-      PLATO_THROW_IF(true, "Unrecognized Physics " << physicsString);
+
+        std::cout << "\nRunning Plato Analyze version " << version_major << "."
+                << version_minor << "." << version_patch << std::endl;
+
+        std::cout << "\n\nparameter list:" << std::endl;
+        aProblem.print(std::cout);
     }
-  }
+
+    auto tOutput_viz = aProblem.get<std::string>("Output Viz");
+    auto tInput_mesh = aProblem.get<std::string>("Input Mesh");
+
+    auto physicsString = aProblem.get<std::string>("Physics", "Default");
+    if(aProblem.get<bool>("Query"))
+    {
+        if(comm::rank(aMachine) == 0)
+        {
+            const unsigned numa_count = Kokkos::hwloc::get_available_numa_count();
+            const unsigned cores_per_numa = Kokkos::hwloc::get_available_cores_per_numa();
+            const unsigned threads_per_core = Kokkos::hwloc::get_available_threads_per_core();
+            std::cout << "P" << comm::rank(aMachine) << ": hwloc { NUMA[" << numa_count << "]" << " CORE[" << cores_per_numa
+                      << "]" << " PU[" << threads_per_core << "] }" << std::endl;
+        }
+#if defined(KOKKOS_HAVE_CUDA)
+        Plato::run_cuda_query(machine);
+#endif
+    }
+    else
+    {
+        if(physicsString == "Plato Driver")
+        {
+            ::Plato::driver(aOmegaHLib, aProblem, tInput_mesh, tOutput_viz);
+        }
+        else
+        {
+            THROWERR("Unrecognized Physics " << physicsString);
+        }
+    }
 }
 }
 //----------------------------------------------------------------------------

@@ -47,29 +47,30 @@
 #include "alg/ParseInput.hpp"
 #include "alg/Run.hpp"
 
-int main(int argc, char** argv) {
+int main(int aArgc, char** aArgv) {
   Plato::enable_floating_point_exceptions();
 
-  Plato::comm::Machine machine(&argc, &argv);
+  Plato::comm::Machine tMachine(&aArgc, &aArgv);
 
-  Kokkos::initialize(argc, argv);
+  Kokkos::initialize(aArgc, aArgv);
 
-  Omega_h::Library lib_osh(&argc, &argv);
+  Omega_h::Library tOmegaHLib(&aArgc, &aArgv);
 
-  Teuchos::Time time_main("Total Time", true);
+  Teuchos::Time tTimeMng("Total Time", true);
 
-  Teuchos::ParameterList problem =
-      Plato::input_file_parsing(argc, argv, machine);
+  Teuchos::ParameterList tProblem =
+      Plato::input_file_parsing(aArgc, aArgv, tMachine);
 
-  int  returnCode = EXIT_SUCCESS;
-  bool success = true;
+  bool tSuccess = true;
+  int tReturnCode = EXIT_SUCCESS;
 
-  try {
-    Plato::run(&lib_osh, problem, machine);
+  try
+  {
+    Plato::run(&tOmegaHLib, tProblem, tMachine);
   }
-  PLATO_CATCH_STATEMENTS(true, success);
+  PLATO_CATCH_STATEMENTS(true, tSuccess);
 
-  if (!success) returnCode = EXIT_FAILURE;
+  if (!tSuccess) tReturnCode = EXIT_FAILURE;
 
-  return returnCode;
+  return tReturnCode;
 }
