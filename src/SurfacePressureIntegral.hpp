@@ -128,10 +128,10 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
         THROWERR("Natural Boundary Condition: A non-finite cubature weight was detected.")
     }
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceIndex)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
     {
 
-      auto tFaceOrdinal = tFaceLids[aFaceIndex];
+      auto tFaceOrdinal = tFaceLids[aFaceI];
 
       // for each element that the face is connected to: (either 1 or 2)
       for( Plato::OrdinalType tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd )
@@ -139,12 +139,12 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
           // create a map from face local node index to elem local node index
           Plato::OrdinalType tLocalNodeOrd[SpatialDim];
           auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
-          tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, aFaceIndex, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+          tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
           ConfigScalarType tWeight(0.0);
           auto tMultiplier = aScale / tCubatureWeight;
-          tComputeSurfaceJacobians(tCellOrdinal, aFaceIndex, tLocalNodeOrd, aConfig, tJacobian);
-          tComputeSurfaceIntegralWeight(aFaceIndex, tMultiplier, tJacobian, tWeight);
+          tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
+          tComputeSurfaceIntegralWeight(aFaceI, tMultiplier, tJacobian, tWeight);
 
           // compute unit normal vector
           auto tCellPoints = Plato::local_element_coords<SpatialDim>(tCellOrdinal, tCoords, tCell2Verts);
