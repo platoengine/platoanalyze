@@ -206,7 +206,7 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
         default:
         {
             std::stringstream tMsg;
-            tMsg << "Natural Boundary Condition Type '" << mType.c_str() << "' is NOT supported.";
+            tMsg << "Natural Boundary Condition: Natural Boundary Condition Type '" << mType.c_str() << "' is NOT supported.";
             THROWERR(tMsg.str().c_str())
         }
     }

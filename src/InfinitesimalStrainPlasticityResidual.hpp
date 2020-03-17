@@ -122,7 +122,7 @@ private:
         }
         else
         {
-            THROWERR("'Infinite Strain Plasticity' sublist is not defined in XML input file.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Infinite Strain Plasticity' sublist is not defined in XML input file.")
         }
     }
 
@@ -144,7 +144,7 @@ private:
         }
         else
         {
-            THROWERR("'Infinite Strain Plasticity' sublist is not defined in XML input file.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Infinite Strain Plasticity' sublist is not defined in XML input file.")
         }
     }
 
@@ -157,12 +157,14 @@ private:
         // Parse body loads
         if (aProblemParams.isSublist("Body Loads"))
         {
+            REPORT("Infinitesimal Strain Plasticity Residual: 'Body Loads' will be included in the residual calculation.")
             mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
         }
 
         // Parse Neumman loads
         if(aProblemParams.isSublist("Natural Boundary Conditions"))
         {
+            REPORT("Infinitesimal Strain Plasticity Residual: 'Natural Boundary Conditions' will be included in the residual calculation.")
             mNeumannLoads =
                     std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
         }
@@ -180,7 +182,7 @@ private:
         }
         else
         {
-            THROWERR("'Material Model' sublist is not defined.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Material Model' sublist is not defined.")
         }
     }
 
@@ -202,7 +204,7 @@ private:
         }
         else
         {
-            THROWERR("'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
         }
     }
 
@@ -252,7 +254,7 @@ private:
         auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
         if(tSearch == mDataMap.mScalarValues.end())
         {
-            THROWERR("'Load Control Constant' is NOT defined in data map.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Load Control Constant' is NOT defined in data map.")
         }
         auto tLoadControlConstant = static_cast<Plato::Scalar>(-1) * tSearch->second;
 

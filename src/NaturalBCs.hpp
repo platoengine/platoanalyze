@@ -280,7 +280,7 @@ mBCs()
         const Teuchos::ParameterEntry &tEntry = aParams.entry(tItr);
         if (!tEntry.isList())
         {
-            THROWERR("Parameter in Boundary Conditions block not valid.  Expect lists only.")
+            THROWERR("Natural Boundary Condition: Parameter in Boundary Conditions block not valid.  Expect lists only.")
         }
 
         const std::string &tName = aParams.name(tItr);

@@ -8,6 +8,7 @@
 #define SRC_PLATO_PLATOSTATICSTYPES_HPP_
 
 #include <map>
+#include <vector>
 
 #include "alg/CrsMatrix.hpp"
 #include "AnalyzeMacros.hpp"

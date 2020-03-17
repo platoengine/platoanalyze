@@ -12,7 +12,7 @@ namespace Plato
 {
 
 #define REPORT(msg) \
-        std::cout << std::string("\n\nANALYZE REPORT: ") + msg + "\n\n";
+        std::cout << std::string("\nANALYZE REPORT: ") + msg + "\n";
 
 #define WARNING(msg) \
         std::cout << std::string("\n\nFILE: ") + __FILE__ \
