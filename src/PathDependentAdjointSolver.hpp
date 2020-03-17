@@ -11,6 +11,7 @@
 #include "ParseTools.hpp"
 #include "Projection.hpp"
 #include "Plato_Solve.hpp"
+#include "AnalyzeMacros.hpp"
 #include "ApplyConstraints.hpp"
 #include "VectorFunctionVMS.hpp"
 #include "LocalScalarFunctionInc.hpp"
@@ -433,10 +434,8 @@ private:
     {
         if(mDirichletDofs.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            std::stringstream tMsg;
-            tMsg << "Path Dependent Adjoint Problem: Dirichlet boundary conditions are not used in this problem."
-                    << "Adjoint Linear System of Equations will not be modified."
-            REPORT(tMsg.str().c_str())
+            /* Path Dependent Adjoint Problem: Dirichlet boundary conditions are not used in this problem.
+               Adjoint Linear System of Equations will not be modified. */
             return;
         }
 

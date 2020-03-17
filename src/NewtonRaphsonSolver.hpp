@@ -10,6 +10,7 @@
 #include "BLAS3.hpp"
 #include "ParseTools.hpp"
 #include "Plato_Solve.hpp"
+#include "AnalyzeMacros.hpp"
 #include "ApplyConstraints.hpp"
 #include "NewtonRaphsonUtilities.hpp"
 #include "LocalVectorFunctionInc.hpp"
@@ -112,10 +113,8 @@ private:
     {
         if(mDirichletValues.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            std::stringstream tMsg;
-            tMsg << "Newton Raphson Solver: Dirichlet boundary conditions are not used in this problem."
-                    << "Linear System of Equations will not be modified."
-            REPORT(tMsg.str().c_str())
+            /* Newton Raphson Solver: Dirichlet boundary conditions are not used in this problem.
+               Linear System of Equations will not be modified. */
             return;
         }
 
