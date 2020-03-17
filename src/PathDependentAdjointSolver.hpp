@@ -431,6 +431,15 @@ private:
     *******************************************************************************/
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
+        if(mDirichletDofs.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            std::stringstream tMsg;
+            tMsg << "Path Dependent Adjoint Problem: Dirichlet boundary conditions are not used in this problem."
+                    << "Adjoint Linear System of Equations will not be modified."
+            REPORT(tMsg.str().c_str())
+            return;
+        }
+
         Plato::ScalarVector tDirichletValues("Dirichlet Values", mDirichletDofs.size());
         Plato::scale(static_cast<Plato::Scalar>(0.0), tDirichletValues);
 

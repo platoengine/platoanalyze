@@ -110,6 +110,15 @@ private:
     *******************************************************************************/
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aResidual)
     {
+        if(mDirichletValues.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            std::stringstream tMsg;
+            tMsg << "Newton Raphson Solver: Dirichlet boundary conditions are not used in this problem."
+                    << "Linear System of Equations will not be modified."
+            REPORT(tMsg.str().c_str())
+            return;
+        }
+
         Plato::ScalarVector tDispControlledDirichletValues("Dirichlet Values", mDirichletValues.size());
         Plato::fill(0.0, tDispControlledDirichletValues);
         if(mCurrentSolverIter == static_cast<Plato::OrdinalType>(0))
