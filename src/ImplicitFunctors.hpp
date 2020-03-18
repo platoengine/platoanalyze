@@ -42,19 +42,18 @@ class NodeCoordinate
     const Omega_h::Reals mCoords;
 
   public:
-    NodeCoordinate(
-      Omega_h::Mesh* mesh ) : 
-      mCells2nodes(mesh->ask_elem_verts()),
-      mCoords(mesh->coords()) { }
+    NodeCoordinate(Omega_h::Mesh* aMesh) :
+      mCells2nodes(aMesh->ask_elem_verts()),
+      mCoords(aMesh->coords()) { }
 
     DEVICE_TYPE
     inline
     Plato::Scalar
-    operator()(Plato::OrdinalType cellOrdinal, Plato::OrdinalType nodeOrdinal, Plato::OrdinalType dofOrdinal) const
+    operator()(Plato::OrdinalType aCellOrdinal, Plato::OrdinalType aNodeOrdinal, Plato::OrdinalType aDimOrdinal) const
     {
-        Plato::OrdinalType vertexNumber = mCells2nodes[cellOrdinal*(SpaceDim+1) + nodeOrdinal];
-        Plato::Scalar coord = mCoords[vertexNumber * SpaceDim + dofOrdinal];
-        return coord;
+        const Plato::OrdinalType tVertexNumber = mCells2nodes[aCellOrdinal*(SpaceDim+1) + aNodeOrdinal];
+        const Plato::Scalar tCoord = mCoords[tVertexNumber * SpaceDim + aDimOrdinal];
+        return tCoord;
     }
 };
 /******************************************************************************/

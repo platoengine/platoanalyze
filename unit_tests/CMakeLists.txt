@@ -187,6 +187,33 @@ add_test(NAME runPlasticityUnitTests COMMAND ${ES_MPI_TEST})
   add_test(NAME runElastoPlasticityUnitTests COMMAND ${ES_MPI_TEST})
 #end: ElastoPlasticityTests unit test
 
+#begin: OmegaHUtilitiesTests unit test
+  set(OmegaHUtilitiesTests_SOURCES
+    OmegaHUtilitiesTests.cpp
+    PlatoTestHelpers.cpp
+    PlatoUnitTestMain.cpp
+  )
+
+  set(OmegaHUtilitiesTests_HEADERS
+    PlatoTestHelpers.hpp
+  )
+
+  add_executable(OmegaHUtilitiesTests
+    ${OmegaHUtilitiesTests_SOURCES}
+    ${OmegaHUtilitiesTests_HEADERS}
+  )
+
+  target_link_libraries(OmegaHUtilitiesTests 
+    analyzelib
+    ${Trilinos_LIBRARIES} 
+    ${Trilinos_TPL_LIBRARIES} 
+    )
+  target_include_directories(OmegaHUtilitiesTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/OmegaHUtilitiesUnitTests)
+  add_test(NAME runOmegaHUtilitiesUnitTests COMMAND ${ES_MPI_TEST})
+#end: OmegaHUtilitiesTests unit test
+
 #begin: PlatoMathHelpers unit test
 set(PlatoMathHelpers_SOURCES
   PlatoMathHelpersTest.cpp
