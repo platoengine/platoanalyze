@@ -21,13 +21,13 @@ inline Omega_h::LO get_face_ordinal
  const Plato::OrdinalType& aFaceOrdinal,
  const Omega_h::LOs& aElem2FaceMap)
 {
-    Omega_h::LO tOut = -1;
+    Omega_h::LO tOut = -100;
     auto tNumFacesPerCell = SpaceDim + 1;
     for(Plato::OrdinalType tFace = 0; tFace < tNumFacesPerCell; tFace++)
     {
         if(aElem2FaceMap[aCellOrdinal*tNumFacesPerCell+tFace] == aFaceOrdinal)
         {
-            tOut = tFace;
+            return tFace;
         }
     }
     return (tOut);
@@ -45,11 +45,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaHGrapsh)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
-    auto tNumFacesPerCell = tSpaceDim + 1
+    auto tNumFacesPerCell = tSpaceDim + 1;
     auto tElem2FaceMap = tMesh->ask_down(tSpaceDim,tSpaceDim-1);
-    Plato::OrdinalType tCellOrdinal = 0;
-    Plato::OrdinalType tFaceOrdinal = 0;
-    TEST_EQUALITY(-1, Plato::get_face_ordinal<tSpaceDim>(tCellOrdinal, tFaceOrdinal, tElem2FaceMap));
+    TEST_EQUALITY(0, Plato::get_face_ordinal<tSpaceDim>(0 /*cell*/, 0 /*face*/, tElem2FaceMap.ab2b));
+    TEST_EQUALITY(1, Plato::get_face_ordinal<tSpaceDim>(0 /*cell*/, 4 /*face*/, tElem2FaceMap.ab2b));
+    TEST_EQUALITY(2, Plato::get_face_ordinal<tSpaceDim>(0 /*cell*/, 1 /*face*/, tElem2FaceMap.ab2b));
+    TEST_EQUALITY(0, Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 3 /*face*/, tElem2FaceMap.ab2b));
+    TEST_EQUALITY(1, Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 2 /*face*/, tElem2FaceMap.ab2b));
+    TEST_EQUALITY(2, Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 1 /*face*/, tElem2FaceMap.ab2b));
+    TEST_EQUALITY(-100, Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 4 /*face*/, tElem2FaceMap.ab2b));
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
