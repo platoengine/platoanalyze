@@ -18,6 +18,38 @@ namespace Plato
 {
 
 /***************************************************************************//**
+ * \brief Return the local identifiers/ordinals associated with this element face.
+ * Here, local is used in the context of domain decomposition.  Therefore, the
+ * identifiers/ordinals are local to the subdomain.  Return -100 if the element
+ * ordinal is not found.  The Analyze Error Macros can be used since they rely on
+ * C++ standard functions on the the host.
+ *
+ * \param [in] aCellOrdinal  element ordinal
+ * \param [in] aFaceOrdinal  face ordinal
+ * \param [in] aElem2FaceMap element-to-face map
+ *
+ * \return local identifiers/ordinals associated with this element face.
+ *
+*******************************************************************************/
+template<Plato::OrdinalType SpaceDim>
+inline Omega_h::LO get_face_ordinal
+(const Plato::OrdinalType& aCellOrdinal,
+ const Plato::OrdinalType& aFaceOrdinal,
+ const Omega_h::LOs& aElem2FaceMap)
+{
+    Omega_h::LO tOut = -100;
+    auto tNumFacesPerCell = SpaceDim + 1;
+    for(Plato::OrdinalType tFace = 0; tFace < tNumFacesPerCell; tFace++)
+    {
+        if(aElem2FaceMap[aCellOrdinal*tNumFacesPerCell+tFace] == aFaceOrdinal)
+        {
+            return tFace;
+        }
+    }
+    return (tOut);
+}
+
+/***************************************************************************//**
  * \brief Return local element/cell coordinates, i.e. coordinates for each node.
  *
  * \param [in] aCellOrdinal cell ordinal

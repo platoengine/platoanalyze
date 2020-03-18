@@ -12,29 +12,6 @@
 #include "PlatoTestHelpers.hpp"
 
 
-namespace Plato
-{
-
-template<Plato::OrdinalType SpaceDim>
-inline Omega_h::LO get_face_ordinal
-(const Plato::OrdinalType& aCellOrdinal,
- const Plato::OrdinalType& aFaceOrdinal,
- const Omega_h::LOs& aElem2FaceMap)
-{
-    Omega_h::LO tOut = -100;
-    auto tNumFacesPerCell = SpaceDim + 1;
-    for(Plato::OrdinalType tFace = 0; tFace < tNumFacesPerCell; tFace++)
-    {
-        if(aElem2FaceMap[aCellOrdinal*tNumFacesPerCell+tFace] == aFaceOrdinal)
-        {
-            return tFace;
-        }
-    }
-    return (tOut);
-}
-
-}
-
 namespace OmegaHUtilitiesTests
 {
 
