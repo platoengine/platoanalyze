@@ -8,6 +8,7 @@
 
 #include <Omega_h_few.hpp>
 #include <Omega_h_shape.hpp>
+#include <Omega_h_assoc.hpp>
 
 #include "PlatoTypes.hpp"
 #include "alg/PlatoLambda.hpp"
