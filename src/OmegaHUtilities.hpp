@@ -150,15 +150,20 @@ inline void normalize(Omega_h::Vector<3> & aVector)
 /******************************************************************************//**
 * \brief Return unit normal vector : 1-D specialization
 *
-* \param [in/out] aVector  Omega_H vector
+* \param [in] aCellOrdinal  cell ordinal, i.e. subdomain element ordinal
+* \param [in] aFaceOrdinal  face ordinal, i.e. \f$ i\in\{0,n_{f}\} \f$, where \f$ n_f \f$ is the number of faces on the element.
+* \param [in] aCoords       node coordinates
 *
 * \return unit normal vector
 *
 **********************************************************************************/
 inline Omega_h::Vector<1> unit_normal_vector
-(const Omega_h::LO & aFaceOrdinal, const Omega_h::Few< Omega_h::Vector<1>, 2> & aCellPoints)
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::NodeCoordinate<1> & aCoords)
 {
-    auto tNormalVec = Omega_h::get_side_vector(aCellPoints, aFaceOrdinal);
+    auto tCellPoints = Plato::local_element_coords<1>(aCellOrdinal, aCoords);
+    auto tNormalVec = Omega_h::get_side_vector(tCellPoints, aFaceOrdinal);
     Plato::normalize(tNormalVec);
     return tNormalVec;
 }
@@ -167,15 +172,20 @@ inline Omega_h::Vector<1> unit_normal_vector
 /******************************************************************************//**
 * \brief Return unit normal vector : 2-D specialization
 *
-* \param [in/out] aVector  Omega_H vector
+* \param [in] aCellOrdinal  cell ordinal, i.e. subdomain element ordinal
+* \param [in] aFaceOrdinal  face ordinal, i.e. \f$ i\in\{0,n_{f}\} \f$, where \f$ n_f \f$ is the number of faces on the element.
+* \param [in] aCoords       node coordinates
 *
 * \return unit normal vector
 *
 **********************************************************************************/
 inline Omega_h::Vector<2> unit_normal_vector
-(const Omega_h::LO & aFaceOrdinal, const Omega_h::Few< Omega_h::Vector<2>, 3> & aCellPoints)
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::NodeCoordinate<2> & aCoords)
 {
-    auto tNormalVec = Omega_h::get_side_vector(aCellPoints, aFaceOrdinal);
+    auto tCellPoints = Plato::local_element_coords<2>(aCellOrdinal, aCoords);
+    auto tNormalVec = Omega_h::get_side_vector(tCellPoints, aFaceOrdinal);
     Plato::normalize(tNormalVec);
     return tNormalVec;
 }
@@ -184,15 +194,20 @@ inline Omega_h::Vector<2> unit_normal_vector
 /******************************************************************************//**
 * \brief Return unit normal vector : 3-D specialization
 *
-* \param [in/out] aVector  Omega_H vector
+* \param [in] aCellOrdinal  cell ordinal, i.e. subdomain element ordinal
+* \param [in] aFaceOrdinal  face ordinal, i.e. \f$ i\in\{0,n_{f}\} \f$, where \f$ n_f \f$ is the number of faces on the element.
+* \param [in] aCoords       node coordinates
 *
 * \return unit normal vector
 *
 **********************************************************************************/
 inline Omega_h::Vector<3> unit_normal_vector
-(const Omega_h::LO & aFaceOrdinal, const Omega_h::Few< Omega_h::Vector<3>, 4> & aCellPoints)
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::OrdinalType & aFaceOrdinal,
+ const Plato::NodeCoordinate<3> & aCoords)
 {
-    auto tNormalVec = Omega_h::get_side_vector(aCellPoints, aFaceOrdinal);
+    auto tCellPoints = Plato::local_element_coords<3>(aCellOrdinal, aCoords);
+    auto tNormalVec = Omega_h::get_side_vector(tCellPoints, aFaceOrdinal);
     Plato::normalize(tNormalVec);
     return tNormalVec;
 }

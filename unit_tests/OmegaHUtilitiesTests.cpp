@@ -213,11 +213,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_2D)
     Plato::NodeCoordinate<tSpaceDim> tCoords(tMesh.getRawPtr());
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
-        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords);
-
         for(Plato::OrdinalType tEdgeIndex=0; tEdgeIndex < tNumEdges; tEdgeIndex++)
         {
-            auto tNormalVec = Plato::unit_normal_vector(tEdgeIndex, tCellPoints);
+            auto tNormalVec = Plato::unit_normal_vector(aCellIndex, tEdgeIndex, tCoords);
             for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
             {
                 tNormalVectors(aCellIndex, tEdgeIndex, tDim) = tNormalVec[tDim];
@@ -270,11 +268,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
     Plato::NodeCoordinate<tSpaceDim> tCoords(tMesh.getRawPtr());
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
-        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords);
-
         for(Plato::OrdinalType tFaceIndex=0; tFaceIndex < tNumFaces; tFaceIndex++)
         {
-            auto tNormalVec = Plato::unit_normal_vector(tFaceIndex, tCellPoints);
+            auto tNormalVec = Plato::unit_normal_vector(aCellIndex, tFaceIndex, tCoords);
             for( Plato::OrdinalType tDim=0; tDim < tSpaceDim; tDim++)
             {
                 tNormalVectors(aCellIndex, tFaceIndex, tDim) = tNormalVec[tDim];
