@@ -25,6 +25,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaHGrapsh)
     auto tNumEdges = tElem2FaceMap.ab2b.size();
     auto tNumSourceNodes = tElem2FaceMap.a2ab.size() - 1;
     printf("Num Edges = %d\n", tNumEdges);
+    for(Omega_h::LO i = 0; i < tNumEdges; ++i)
+    {
+        printf("edge index=%d, b=%d", i, tElem2FaceMap.ab2b[i]);
+    }
+
     printf("Num Source Nodes = %d\n", tNumSourceNodes);
 
     for (Omega_h::LO a = 0; a < tNumSourceNodes; ++a)
