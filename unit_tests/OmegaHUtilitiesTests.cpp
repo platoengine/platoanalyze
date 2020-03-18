@@ -15,6 +15,28 @@ namespace OmegaHUtilitiesTests
 {
 
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaHGrapsh)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    auto tElem2FaceMap = tMesh->ask_down(3,2);
+    auto tNumEdges = tElem2FaceMap.ab2b.size();
+    auto tNumSourceNodes = tElem2FaceMap.a2ab.size() - 1;
+    printf("Num Edges = %d\n", tNumEdges);
+    printf("Num Source Nodes = %d\n", tNumSourceNodes);
+
+    for (Omega_h::LO a = 0; a < tNumSourceNodes; ++a)
+    {
+      for (auto ab = tElem2FaceMap.a2ab[a]; ab < tElem2FaceMap.a2ab[a + 1]; ++ab)
+      {
+          auto b = tElem2FaceMap.ab2b[ab];
+          printf("a index=%d, ab index=%d, b=%d", a, ab, b);
+      }
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 1;
