@@ -118,7 +118,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
     auto tFace2Elems_map   = tFace2eElems.a2ab;
     auto tFace2Elems_elems = tFace2eElems.ab2b;
 
-    // get elem to face map
+    // get element to face map
     auto tElem2Faces = aMesh->ask_down(SpatialDim, SpatialDim - 1).ab2b;
 
     Plato::NodeCoordinate<SpatialDim> tCoords(aMesh);
