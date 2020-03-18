@@ -32,7 +32,7 @@ namespace Plato
  *
 *******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
-inline Omega_h::LO get_face_ordinal
+DEVICE_TYPE inline Omega_h::LO get_face_ordinal
 (const Plato::OrdinalType& aCellOrdinal,
  const Plato::OrdinalType& aFaceOrdinal,
  const Omega_h::LOs& aElem2FaceMap)
@@ -111,7 +111,7 @@ inline Omega_h::LOs get_face_ordinals(const Omega_h::MeshSets& aMeshSets, const 
 * \return normalized vector
 *
 **********************************************************************************/
-inline void normalize(Omega_h::Vector<1> & aVector) { return; }
+DEVICE_TYPE inline void normalize(Omega_h::Vector<1> & aVector) { return; }
 // function normalize - 1D
 
 /******************************************************************************//**
@@ -122,7 +122,7 @@ inline void normalize(Omega_h::Vector<1> & aVector) { return; }
 * \return normalized vector
 *
 **********************************************************************************/
-inline void normalize(Omega_h::Vector<2> & aVector)
+DEVICE_TYPE inline void normalize(Omega_h::Vector<2> & aVector)
 {
     auto tMagnitude = sqrt(aVector[0]*aVector[0] + aVector[1]*aVector[1]);
     aVector[0] = aVector[0] / tMagnitude;
@@ -138,7 +138,7 @@ inline void normalize(Omega_h::Vector<2> & aVector)
 * \return normalized vector
 *
 **********************************************************************************/
-inline void normalize(Omega_h::Vector<3> & aVector)
+DEVICE_TYPE inline void normalize(Omega_h::Vector<3> & aVector)
 {
     auto tMagnitude = sqrt( aVector[0]*aVector[0] + aVector[1]*aVector[1] + aVector[2]*aVector[2] );
     aVector[0] = aVector[0] / tMagnitude;
@@ -157,7 +157,7 @@ inline void normalize(Omega_h::Vector<3> & aVector)
 * \return unit normal vector
 *
 **********************************************************************************/
-inline Omega_h::Vector<1> unit_normal_vector
+DEVICE_TYPE inline Omega_h::Vector<1> unit_normal_vector
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::OrdinalType & aFaceOrdinal,
  const Plato::NodeCoordinate<1> & aCoords)
@@ -179,7 +179,7 @@ inline Omega_h::Vector<1> unit_normal_vector
 * \return unit normal vector
 *
 **********************************************************************************/
-inline Omega_h::Vector<2> unit_normal_vector
+DEVICE_TYPE inline Omega_h::Vector<2> unit_normal_vector
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::OrdinalType & aFaceOrdinal,
  const Plato::NodeCoordinate<2> & aCoords)
@@ -201,7 +201,7 @@ inline Omega_h::Vector<2> unit_normal_vector
 * \return unit normal vector
 *
 **********************************************************************************/
-inline Omega_h::Vector<3> unit_normal_vector
+DEVICE_TYPE inline Omega_h::Vector<3> unit_normal_vector
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::OrdinalType & aFaceOrdinal,
  const Plato::NodeCoordinate<3> & aCoords)
