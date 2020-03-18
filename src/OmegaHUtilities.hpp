@@ -160,6 +160,7 @@ inline Omega_h::Vector<3> unit_normal_vector
 (const Omega_h::LO & aFaceOrdinal, const Omega_h::Few< Omega_h::Vector<3>, 4> & aCellPoints)
 {
     auto tNormalVec = Omega_h::get_side_vector(aCellPoints, aFaceOrdinal);
+    printf("NVEC[0] = %e, NVEC[1] = %e, NVEC[2] = %e\n", tNormalVec[0], tNormalVec[1], tNormalVec[2]);
     Plato::normalize(tNormalVec);
     return tNormalVec;
 }
