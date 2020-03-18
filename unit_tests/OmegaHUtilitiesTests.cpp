@@ -12,6 +12,29 @@
 #include "PlatoTestHelpers.hpp"
 
 
+namespace Plato
+{
+
+template<Plato::OrdinalType SpaceDim>
+inline Omega_h::LO get_face_ordinal
+(const Plato::OrdinalType& aCellOrdinal,
+ const Plato::OrdinalType& aFaceOrdinal,
+ const Omega_h::LOs& aElem2FaceMap)
+{
+    Omega_h::LO tOut = -1;
+    auto tNumFacesPerCell = SpaceDim + 1;
+    for(Plato::OrdinalType tFace = 0; tFace < tNumFacesPerCell; tFace++)
+    {
+        if(aElem2FaceMap[aCellOrdinal*tNumFacesPerCell+tFace] == aFaceOrdinal)
+        {
+            tOut = tFace;
+        }
+    }
+    return (tOut);
+}
+
+}
+
 namespace OmegaHUtilitiesTests
 {
 
@@ -24,34 +47,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaHGrapsh)
 
     auto tNumFacesPerCell = tSpaceDim + 1
     auto tElem2FaceMap = tMesh->ask_down(tSpaceDim,tSpaceDim-1);
-    for(Plato::OrdinalType tCell = 0; tCell < tMesh->nelems(); tCell++)
-    {
-        for(Plato::OrdinalType tFace = 0; tFace < tNumFacesPerCell; tFace++)
-        {
-            auto tFaceID = tElem2FaceMap.ab2b[tCell*tNumFacesPerCell+tFace];
-            printf("Cell=%d, Face[%d]=%d\n", tCell, tFace, tFaceID);
-
-        }
-    }
-
-    auto tNumEdges = tElem2FaceMap.ab2b.size();
-    auto tNumSourceNodes = tElem2FaceMap.a2ab.size() - 1;
-    printf("Num Edges = %d\n", tNumEdges);
-    for(Omega_h::LO i = 0; i < tNumEdges; ++i)
-    {
-        printf("edge index=%d, b=%d\n", i, tElem2FaceMap.ab2b[i]);
-    }
-
-    printf("Num Source Nodes = %d\n", tNumSourceNodes);
-
-    for (Omega_h::LO a = 0; a < tNumSourceNodes; ++a)
-    {
-      for (auto ab = tElem2FaceMap.a2ab[a]; ab < tElem2FaceMap.a2ab[a + 1]; ++ab)
-      {
-          auto b = tElem2FaceMap.ab2b[ab];
-          printf("a index=%d, ab index=%d, b=%d", a, ab, b);
-      }
-    }
+    Plato::OrdinalType tCellOrdinal = 0;
+    Plato::OrdinalType tFaceOrdinal = 0;
+    TEST_EQUALITY(-1, Plato::get_face_ordinal<tSpaceDim>(tCellOrdinal, tFaceOrdinal, tElem2FaceMap));
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)

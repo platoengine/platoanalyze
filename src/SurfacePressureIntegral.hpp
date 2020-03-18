@@ -105,7 +105,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
 {
     printf("START: SurfacePressureIntegral::operator()");
     // get sideset faces
-    auto tFaceLids = Plato::get_face_local_ordinals(aMeshSets, mSideSetName);
+    auto tFaceLids = Plato::get_face_ordinals(aMeshSets, mSideSetName);
     auto tNumFaces = tFaceLids.size();
     printf("NumFaces=%d\n",tNumFaces);
 
