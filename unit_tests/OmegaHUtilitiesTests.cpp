@@ -11,17 +11,29 @@
 #include "ImplicitFunctors.hpp"
 #include "PlatoTestHelpers.hpp"
 
+
 namespace OmegaHUtilitiesTests
 {
 
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaHGrapsh)
 {
-    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
-    auto tElem2FaceMap = tMesh->ask_down(3,2);
+    auto tNumFacesPerCell = tSpaceDim + 1
+    auto tElem2FaceMap = tMesh->ask_down(tSpaceDim,tSpaceDim-1);
+    for(Plato::OrdinalType tCell = 0; tCell < tMesh->nelems(); tCell++)
+    {
+        for(Plato::OrdinalType tFace = 0; tFace < tNumFacesPerCell; tFace++)
+        {
+            auto tFaceID = tElem2FaceMap.ab2b[tCell*tNumFacesPerCell+tFace];
+            printf("Cell=%d, Face[%d]=%d\n", tCell, tFace, tFaceID);
+
+        }
+    }
+
     auto tNumEdges = tElem2FaceMap.ab2b.size();
     auto tNumSourceNodes = tElem2FaceMap.a2ab.size() - 1;
     printf("Num Edges = %d\n", tNumEdges);
