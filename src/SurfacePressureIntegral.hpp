@@ -105,17 +105,21 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
 {
     printf("START: SurfacePressureIntegral::operator()");
     // get sideset faces
-    auto tFaceLids = Plato::get_face_ordinals(aMeshSets, mSideSetName);
-    auto tNumFaces = tFaceLids.size();
+    auto tFaceLocalOrdinals = Plato::get_face_ordinals(aMeshSets, mSideSetName);
+    auto tNumFaces = tFaceLocalOrdinals.size();
     printf("NumFaces=%d\n",tNumFaces);
 
     // get mesh vertices
     auto tFace2Verts = aMesh->ask_verts_of(SpatialDim-1);
     auto tCell2Verts = aMesh->ask_elem_verts();
 
+    // get face to element graph
     auto tFace2eElems = aMesh->ask_up(SpatialDim - 1, SpatialDim);
     auto tFace2Elems_map   = tFace2eElems.a2ab;
     auto tFace2Elems_elems = tFace2eElems.ab2b;
+
+    // get elem to face map
+    auto tElem2Faces = aMesh->ask_down(SpatialDim, SpatialDim - 1).ab2b;
 
     Plato::NodeCoordinate<SpatialDim> tCoords(aMesh);
     Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
@@ -136,28 +140,26 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
     {
 
-      auto tFaceOrdinal = tFaceLids[aFaceI];
+      auto tFaceOrdinal = tFaceLocalOrdinals[aFaceI];
 
       // for each element that the face is connected to: (either 1 or 2)
-      for( Plato::OrdinalType tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd )
+      for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal+1]; ++tElem )
       {
           // create a map from face local node index to elem local node index
           Plato::OrdinalType tLocalNodeOrd[SpatialDim];
-          auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
-
-          printf("Face Index=%d, LocalFaceID=%d, LocalElemOrd=%d, CellOrdinal=%d\n", aFaceI, tFaceOrdinal, tLocalElemOrd, tCellOrdinal);
+          auto tCellOrdinal = tFace2Elems_elems[tElem];
           tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
-          printf("Face Index=%d, LocalFaceID=%d, LocalElemOrd=%d, CellOrdinal=%d, NODE[0]=%d, NODE[1]=%d, NODE[2]=%d\n", aFaceI, tFaceOrdinal, tLocalElemOrd, tCellOrdinal, tLocalNodeOrd[0], tLocalNodeOrd[1], tLocalNodeOrd[2]);
 
           ConfigScalarType tWeight(0.0);
           tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
           tComputeSurfaceIntegralWeight(aFaceI, tMultiplier, tJacobian, tWeight);
-          printf("Face Index=%d, LocalFaceID=%d, LocalElemOrd=%d\n", aFaceI, tFaceOrdinal, tLocalElemOrd);
 
           // compute unit normal vector
           auto tCellPoints = Plato::local_element_coords<SpatialDim>(tCellOrdinal, tCoords);
-          auto tUnitNormalVec = Plato::unit_normal_vector(tFaceOrdinal, tCellPoints);
-          printf("Face Index=%d, LocalFaceID=%d, LocalElemOrd=%d, N[0]=%e, N[1]=%e, N[2]=%e\n", aFaceI, tFaceOrdinal, tLocalElemOrd, tUnitNormalVec(0), tUnitNormalVec(1), tUnitNormalVec(2));
+          auto tElemFaceOrdinal = Plato::get_face_ordinal<SpatialDim>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
+          printf("Face Index=%d, Face Ordinal=%d, CellOrdinal=%d, Local Face Ordinal=%d\n", aFaceI, tFaceOrdinal, tCellOrdinal, tElemFaceOrdinal);
+          auto tUnitNormalVec = Plato::unit_normal_vector(tElemFaceOrdinal, tCellPoints);
+          printf("Face Index=%d, LocalFaceID=%d, LocalElemOrd=%d, N[0]=%e, N[1]=%e, N[2]=%e\n", aFaceI, tFaceOrdinal, tElem, tUnitNormalVec(0), tUnitNormalVec(1), tUnitNormalVec(2));
 
           // project into aResult workset
           for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
