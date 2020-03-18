@@ -43,7 +43,9 @@ DEVICE_TYPE inline Omega_h::Few< Omega_h::Vector<SpatialDim>, NodesPerCell > loc
 // local_element_coords
 
 /***************************************************************************//**
- * \brief Return face local ordinals for each element on the requested side set
+ * \brief Return face local identifiers/ordinals for each element on the requested
+ * side set. Here, local is used in the context of domain decomposition.  Therefore,
+ * the identifiers/ordinals are local to the subdomain.
  *
  * \param [in] aMeshSets    Omega_h side set database
  * \param [in] aSideSetName Exodus side set name
