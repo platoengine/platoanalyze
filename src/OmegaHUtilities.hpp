@@ -11,6 +11,7 @@
 
 #include "PlatoTypes.hpp"
 #include "alg/PlatoLambda.hpp"
+#include "ImplicitFunctors.hpp"
 
 namespace Plato
 {
