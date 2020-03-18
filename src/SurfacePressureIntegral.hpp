@@ -157,9 +157,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
           // compute unit normal vector
           auto tCellPoints = Plato::local_element_coords<SpatialDim>(tCellOrdinal, tCoords);
           auto tElemFaceOrdinal = Plato::get_face_ordinal<SpatialDim>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
-          printf("Face Index=%d, Face Ordinal=%d, CellOrdinal=%d, Local Face Ordinal=%d\n", aFaceI, tFaceOrdinal, tCellOrdinal, tElemFaceOrdinal);
           auto tUnitNormalVec = Plato::unit_normal_vector(tElemFaceOrdinal, tCellPoints);
-          printf("Face Index=%d, LocalFaceID=%d, LocalElemOrd=%d, N[0]=%e, N[1]=%e, N[2]=%e\n", aFaceI, tFaceOrdinal, tElem, tUnitNormalVec(0), tUnitNormalVec(1), tUnitNormalVec(2));
 
           // project into aResult workset
           for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++)
