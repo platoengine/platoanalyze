@@ -11,6 +11,7 @@
 #include <Omega_h_vector.hpp>
 
 #include "OmegaHUtilities.hpp"
+#include "ImplicitFunctors.hpp"
 #include "NaturalBCUtilities.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
@@ -107,7 +108,6 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
     auto tNumFaces = tFaceLids.size();
 
     // get mesh vertices
-    auto tCoords = aMesh->coords();
     auto tFace2Verts = aMesh->ask_verts_of(SpatialDim-1);
     auto tCell2Verts = aMesh->ask_elem_verts();
 
@@ -115,6 +115,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
     auto tFace2Elems_map   = tFace2eElems.a2ab;
     auto tFace2Elems_elems = tFace2eElems.ab2b;
 
+    Plato::NodeCoordinate<SpatialDim> tCoords(aMesh);
     Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
     Plato::ComputeSurfaceIntegralWeight<SpatialDim> tComputeSurfaceIntegralWeight;
     Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
@@ -147,7 +148,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
           tComputeSurfaceIntegralWeight(aFaceI, tMultiplier, tJacobian, tWeight);
 
           // compute unit normal vector
-          auto tCellPoints = Plato::local_element_coords<SpatialDim>(tCellOrdinal, tCoords, tCell2Verts);
+          auto tCellPoints = Plato::local_element_coords<SpatialDim>(tCellOrdinal, tCoords);
           auto tUnitNormalVec = Plato::unit_normal_vector(tFaceOrdinal, tCellPoints);
 
           // project into aResult workset

@@ -27,17 +27,14 @@ namespace Plato
 *******************************************************************************/
 template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NodesPerCell = SpatialDim + 1>
 DEVICE_TYPE inline Omega_h::Few< Omega_h::Vector<SpatialDim>, NodesPerCell > local_element_coords
-(const Plato::OrdinalType & aCellOrdinal,
- const Omega_h::Reals & aCoords,
- const Omega_h::LOs & aCell2Verts)
+(const Plato::OrdinalType & aCellOrdinal, const Plato::NodeCoordinate<SpatialDim> & aCoords)
 {
     Omega_h::Few<Omega_h::Vector<SpatialDim>, NodesPerCell> tCellCoords;
-    for (Plato::OrdinalType jNode = 0; jNode < NodesPerCell; jNode++)
+    for (Plato::OrdinalType tNode = 0; tNode < NodesPerCell; tNode++)
     {
-        const auto tVertexLocalID = aCell2Verts[aCellOrdinal * NodesPerCell + jNode];
         for (Plato::OrdinalType tDim = 0; tDim < SpatialDim; tDim++)
         {
-            tCellCoords[jNode][tDim] = aCoords[tVertexLocalID * SpatialDim + tDim];
+            tCellCoords[tNode][tDim] = aCoords(aCellOrdinal, tNode, tDim);
         }
     }
 

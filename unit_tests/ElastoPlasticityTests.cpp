@@ -31,16 +31,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
-    auto tCoords = tMesh->coords();
-    auto tNumCells = tMesh->nelems();
-    auto tCell2Verts = tMesh->ask_elem_verts();
-
     //printf("\n");
+    auto tNumCells = tMesh->nelems();
     constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
+
+    Plato::NodeCoordinate<tSpaceDim> tCoords(*tMesh);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
-        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords, tCell2Verts);
+        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords);
         for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
@@ -77,16 +76,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
-    auto tCoords = tMesh->coords();
-    auto tNumCells = tMesh->nelems();
-    auto tCell2Verts = tMesh->ask_elem_verts();
-
     //printf("\n");
+    auto tNumCells = tMesh->nelems();
     constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
+
+    Plato::NodeCoordinate<tSpaceDim> tCoords(*tMesh);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
-        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords, tCell2Verts);
+        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords);
         for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
@@ -124,16 +122,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
-    auto tCoords = tMesh->coords();
-    auto tNumCells = tMesh->nelems();
-    auto tCell2Verts = tMesh->ask_elem_verts();
-
     //printf("\n");
+    auto tNumCells = tMesh->nelems();
     constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tCellCoords("normals", tNumCells, tNodesPerCell, tSpaceDim);
+
+    Plato::NodeCoordinate<tSpaceDim> tCoords(*tMesh);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
-        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords, tCell2Verts);
+        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords);
         for (Plato::OrdinalType jNode = 0; jNode < tNodesPerCell; jNode++)
         {
             for (Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
@@ -199,26 +196,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
-    auto tCoords = tMesh->coords();
-    auto tNumCells = tMesh->nelems();
-    auto tCell2Verts = tMesh->ask_elem_verts();
-
     //printf("\n");
+    auto tNumCells = tMesh->nelems();
     constexpr auto tNumEdges = tSpaceDim + 1;
     constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tNormalVectors("normals", tNumCells, tNumEdges, tSpaceDim);
+
+    Plato::NodeCoordinate<tSpaceDim> tCoords(*tMesh);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
-        Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
-        for( Plato::OrdinalType jNode=0; jNode < tNodesPerCell; jNode++)
-        {
-            const auto tVertexLocalID = tCell2Verts[aCellIndex * tNodesPerCell + jNode];
-            for( Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
-            {
-                tCellPoints[jNode][tDim] = tCoords[tVertexLocalID * tSpaceDim + tDim];
-            }
-        }
-        
+        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords);
+
         for(Plato::OrdinalType tEdgeIndex=0; tEdgeIndex < tNumEdges; tEdgeIndex++)
         {
             auto tNormalVec = Plato::unit_normal_vector(tEdgeIndex, tCellPoints);
@@ -265,25 +253,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
-    auto tCoords = tMesh->coords();
-    auto tNumCells = tMesh->nelems();
-    auto tCell2Verts = tMesh->ask_elem_verts();
-
     //printf("\n");
+    auto tNumCells = tMesh->nelems();
     constexpr auto tNumFaces = tSpaceDim + 1;
     constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tNormalVectors("normals", tNumCells, tNumFaces, tSpaceDim);
+
+    Plato::NodeCoordinate<tSpaceDim> tCoords(*tMesh);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellIndex)
     {
-        Omega_h::Few<Omega_h::Vector<tSpaceDim>, tNodesPerCell> tCellPoints;
-        for( Plato::OrdinalType tNodeIndex=0; tNodeIndex < tNodesPerCell; tNodeIndex++)
-        {
-            const auto tVertexLocalID = tCell2Verts[aCellIndex * tNodesPerCell + tNodeIndex];
-            for( Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
-            {
-                tCellPoints[tNodeIndex][tDim] = tCoords[tVertexLocalID * tSpaceDim + tDim];
-            }
-        }
+        auto tCellPoints = Plato::local_element_coords<tSpaceDim>(aCellIndex, tCoords);
 
         for(Plato::OrdinalType tFaceIndex=0; tFaceIndex < tNumFaces; tFaceIndex++)
         {
