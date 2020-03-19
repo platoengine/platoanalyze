@@ -79,12 +79,11 @@ public:
         {
             for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < mNumNodesPerCell; tNodeIndex++)
             {
-                Plato::OrdinalType localOrdinal = tNodeIndex * NumDofsPerNode + tDimIndexI + DofOffset;
+                Plato::OrdinalType tLocalOrdinal = tNodeIndex * NumDofsPerNode + tDimIndexI + DofOffset;
                 for(Plato::OrdinalType tDimIndexJ = 0; tDimIndexJ < SpaceDim; tDimIndexJ++)
                 {
-                    aOutput(aCellOrdinal, localOrdinal) += aScale * aCellVolume(aCellOrdinal)
-                                                           * aStress(aCellOrdinal, mVoigt[tDimIndexI][tDimIndexJ])
-                                                           * aGradient(aCellOrdinal, tNodeIndex, tDimIndexJ);
+                    aOutput(aCellOrdinal, tLocalOrdinal) +=
+                        aScale * aCellVolume(aCellOrdinal) * aStress(aCellOrdinal, mVoigt[tDimIndexI][tDimIndexJ]) * aGradient(aCellOrdinal, tNodeIndex, tDimIndexJ);
                 }
             }
         }

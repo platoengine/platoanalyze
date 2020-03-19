@@ -440,8 +440,8 @@ public:
         this->outputData(tDeviatoricStress, "deviatoric stress");
         this->outputData(tElasticStrain, "elastic strain");
         this->outputData(tPlasticStrain, "plastic strain");
+        this->outputData(tCauchyStress, "elastic stress");
         this->outputData(tBackStress, "backstress");
-        this->outputData(tCauchyStress, "stress");
         this->outputData(tPressure, "pressure");
     }
 };
