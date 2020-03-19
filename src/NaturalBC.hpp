@@ -187,6 +187,7 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
  const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
  Plato::Scalar aScale) const
 {
+    /*
     auto tType = Plato::natural_boundary_condition_type(mType);
     switch(tType)
     {
@@ -210,6 +211,76 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
             THROWERR(tMsg.str().c_str())
         }
     }
+    */
+    // get sideset faces
+    auto& sidesets = aMeshSets[Omega_h::SIDE_SET];
+    auto ssIter = sidesets.find(this->mSideSetName);
+    auto faceLids = (ssIter->second);
+    auto numFaces = faceLids.size();
+
+
+    // get mesh vertices
+    auto face2verts = aMesh->ask_verts_of(SpatialDim-1);
+    auto cell2verts = aMesh->ask_elem_verts();
+
+    auto face2elems = aMesh->ask_up(SpatialDim - 1, SpatialDim);
+    auto face2elems_map   = face2elems.a2ab;
+    auto face2elems_elems = face2elems.ab2b;
+
+    auto nodesPerFace = SpatialDim;
+    auto nodesPerCell = SpatialDim+1;
+
+    Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", numFaces, SpatialDim-1, SpatialDim);
+
+    auto flux = mFlux;
+    Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numFaces), LAMBDA_EXPRESSION(int iFace)
+    {
+
+      auto faceOrdinal = faceLids[iFace];
+
+      // for each element that the face is connected to: (either 1 or 2)
+      for( int localElemOrd = face2elems_map[faceOrdinal]; localElemOrd < face2elems_map[faceOrdinal+1]; ++localElemOrd ){
+
+        // create a map from face local node index to elem local node index
+        int localNodeOrd[SpatialDim];
+        auto cellOrdinal = face2elems_elems[localElemOrd];
+        for( int iNode=0; iNode<nodesPerFace; iNode++){
+          for( int jNode=0; jNode<nodesPerCell; jNode++){
+            if( face2verts[faceOrdinal*nodesPerFace+iNode] == cell2verts[cellOrdinal*nodesPerCell + jNode] ) localNodeOrd[iNode] = jNode;
+          }
+        }
+
+        // compute jacobian from aConfig
+        for( int iNode=0; iNode<SpatialDim-1; iNode++){
+          for( int iDim=0; iDim<SpatialDim; iDim++){
+            tJacobian(iFace,iNode,iDim) = aConfig(cellOrdinal, localNodeOrd[iNode], iDim)
+                                        - aConfig(cellOrdinal, localNodeOrd[SpatialDim-1], iDim);
+          }
+        }
+        ConfigScalarType weight(0.0);
+        if(SpatialDim==1){
+          weight=aScale;
+        } else
+        if(SpatialDim==2){
+          weight = aScale/2.0*sqrt(tJacobian(iFace,0,0)*tJacobian(iFace,0,0)+tJacobian(iFace,0,1)*tJacobian(iFace,0,1));
+        } else
+        if(SpatialDim==3){
+          auto a1 = tJacobian(iFace,0,1)*tJacobian(iFace,1,2)-tJacobian(iFace,0,2)*tJacobian(iFace,1,1);
+          auto a2 = tJacobian(iFace,0,2)*tJacobian(iFace,1,0)-tJacobian(iFace,0,0)*tJacobian(iFace,1,2);
+          auto a3 = tJacobian(iFace,0,0)*tJacobian(iFace,1,1)-tJacobian(iFace,0,1)*tJacobian(iFace,1,0);
+          weight = aScale/6.0*sqrt(a1*a1+a2*a2+a3*a3);
+        }
+
+        // project into aResult workset
+        for( int iNode=0; iNode<nodesPerFace; iNode++){
+          for( int iDof=0; iDof<NumDofs; iDof++){
+            auto cellDofOrdinal = localNodeOrd[iNode] * DofsPerNode + iDof + DofOffset;
+            aResult(cellOrdinal,cellDofOrdinal) += weight*flux[iDof];
+          }
+        }
+      }
+
+    });
 }
 // class NaturalBC::get
 
