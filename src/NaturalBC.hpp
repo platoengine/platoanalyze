@@ -223,8 +223,8 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
 
 
     // get mesh vertices
-    auto tFace2verts = aMesh->ask_verts_of(SpatialDim-1);
-    auto tCell2verts = aMesh->ask_elem_verts();
+    auto tFace2Verts = aMesh->ask_verts_of(SpatialDim-1);
+    auto tCell2Verts = aMesh->ask_elem_verts();
 
     auto tFace2Elems = aMesh->ask_up(SpatialDim - 1, SpatialDim);
     auto tFace2Elems_map   = tFace2Elems.a2ab;
@@ -233,6 +233,7 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
     auto tNodesPerFace = SpatialDim;
     auto tNodesPerCell = SpatialDim+1;
 
+    Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
     Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
 
     auto flux = mFlux;
@@ -247,11 +248,14 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
         // create a map from face local node index to elem local node index
         int tLocalNodeOrd[SpatialDim];
         auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
+        /*
         for( int iNode=0; iNode<tNodesPerFace; iNode++){
           for( int jNode=0; jNode<tNodesPerCell; jNode++){
-            if( tFace2verts[tFaceOrdinal*tNodesPerFace+iNode] == tCell2verts[tCellOrdinal*tNodesPerCell + jNode] ) tLocalNodeOrd[iNode] = jNode;
+            if( tFace2Verts[tFaceOrdinal*tNodesPerFace+iNode] == tCell2Verts[tCellOrdinal*tNodesPerCell + jNode] ) tLocalNodeOrd[iNode] = jNode;
           }
         }
+        */
+        tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
         // compute jacobian from aConfig
         for( int iNode=0; iNode<SpatialDim-1; iNode++){
