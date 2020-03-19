@@ -19,18 +19,33 @@ namespace OmegaHUtilitiesTests
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaHGrapsh)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tNumFaces = 6;
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
-    auto tNumFacesPerCell = tSpaceDim + 1;
+    auto tNumCells = tMesh->nelems();
     auto tElem2FaceMap = tMesh->ask_down(tSpaceDim,tSpaceDim-1);
-    TEST_EQUALITY(0, Plato::get_face_ordinal<tSpaceDim>(0 /*cell*/, 0 /*face*/, tElem2FaceMap.ab2b));
-    TEST_EQUALITY(1, Plato::get_face_ordinal<tSpaceDim>(0 /*cell*/, 4 /*face*/, tElem2FaceMap.ab2b));
-    TEST_EQUALITY(2, Plato::get_face_ordinal<tSpaceDim>(0 /*cell*/, 1 /*face*/, tElem2FaceMap.ab2b));
-    TEST_EQUALITY(0, Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 3 /*face*/, tElem2FaceMap.ab2b));
-    TEST_EQUALITY(1, Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 2 /*face*/, tElem2FaceMap.ab2b));
-    TEST_EQUALITY(2, Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 1 /*face*/, tElem2FaceMap.ab2b));
-    TEST_EQUALITY(-100, Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 4 /*face*/, tElem2FaceMap.ab2b));
+    Plato::ScalarVector tResults("face ordinals", tNumFaces + 1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tResults(0) = Plato::get_face_ordinal<tSpaceDim>(0 /*cell*/, 0 /*face*/, tElem2FaceMap.ab2b);
+        tResults(1) = Plato::get_face_ordinal<tSpaceDim>(0 /*cell*/, 4 /*face*/, tElem2FaceMap.ab2b);
+        tResults(2) = Plato::get_face_ordinal<tSpaceDim>(0 /*cell*/, 1 /*face*/, tElem2FaceMap.ab2b);
+        tResults(3) = Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 3 /*face*/, tElem2FaceMap.ab2b);
+        tResults(4) = Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 2 /*face*/, tElem2FaceMap.ab2b);
+        tResults(5) = Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 1 /*face*/, tElem2FaceMap.ab2b);
+        tResults(6) = Plato::get_face_ordinal<tSpaceDim>(1 /*cell*/, 4 /*face*/, tElem2FaceMap.ab2b);
+    }, "test get_face_ordinal");
+
+    auto tHostResults = Kokkos::create_mirror(tResults);
+    Kokkos::deep_copy(tHostResults, tResults);
+    TEST_EQUALITY(0,    tHostResults(0));
+    TEST_EQUALITY(1,    tHostResults(1));
+    TEST_EQUALITY(2,    tHostResults(2));
+    TEST_EQUALITY(0,    tHostResults(3));
+    TEST_EQUALITY(1,    tHostResults(4));
+    TEST_EQUALITY(2,    tHostResults(5));
+    TEST_EQUALITY(-100, tHostResults(6));
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
@@ -207,7 +222,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_2D)
     //printf("\n");
     auto tNumCells = tMesh->nelems();
     constexpr auto tNumEdges = tSpaceDim + 1;
-    constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tNormalVectors("normals", tNumCells, tNumEdges, tSpaceDim);
 
     Plato::NodeCoordinate<tSpaceDim> tCoords(tMesh.getRawPtr());
@@ -262,7 +276,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeNormals_3D)
     //printf("\n");
     auto tNumCells = tMesh->nelems();
     constexpr auto tNumFaces = tSpaceDim + 1;
-    constexpr auto tNodesPerCell = tSpaceDim + 1;
     Plato::ScalarArray3D tNormalVectors("normals", tNumCells, tNumFaces, tSpaceDim);
 
     Plato::NodeCoordinate<tSpaceDim> tCoords(tMesh.getRawPtr());
