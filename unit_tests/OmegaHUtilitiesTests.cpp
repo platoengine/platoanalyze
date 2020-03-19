@@ -48,6 +48,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaHGrapsh)
     TEST_EQUALITY(-100, tHostResults(6));
 }
 
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalElementCoords_1D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 1;

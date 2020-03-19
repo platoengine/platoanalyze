@@ -103,11 +103,9 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
  const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
  Plato::Scalar aScale) const
 {
-    printf("START: SurfacePressureIntegral::operator()");
     // get sideset faces
     auto tFaceLocalOrdinals = Plato::get_face_ordinals(aMeshSets, mSideSetName);
     auto tNumFaces = tFaceLocalOrdinals.size();
-    printf("NumFaces=%d\n",tNumFaces);
 
     // get mesh vertices
     auto tFace2Verts = aMesh->ask_verts_of(SpatialDim-1);
@@ -169,7 +167,6 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
           }
       }
     }, "surface pressure integral");
-    printf("END: SurfacePressureIntegral::operator()");
 }
 // class SurfacePressureIntegral::operator()
 
