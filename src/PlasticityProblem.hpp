@@ -172,7 +172,7 @@ public:
     {
         if(aInputs.isSublist("Essential Boundary Conditions") == false)
         {
-            REPORT("Plasticity Problem: Essential Boundary Conditions are not defined for this problem.")
+            THROWERR("Plasticity Problem: Essential Boundary Conditions are not defined for this problem.")
         }
         Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputs.sublist("Essential Boundary Conditions", false));
         tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);

@@ -434,9 +434,7 @@ private:
     {
         if(mDirichletDofs.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            /* Path Dependent Adjoint Problem: Dirichlet boundary conditions are not used in this problem.
-               Adjoint Linear System of Equations will not be modified. */
-            return;
+            THROWERR("Path-Dependent Adjoint Solver: Essential Boundary Conditions are empty.")
         }
 
         Plato::ScalarVector tDirichletValues("Dirichlet Values", mDirichletDofs.size());

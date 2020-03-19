@@ -113,9 +113,7 @@ private:
     {
         if(mDirichletValues.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            /* Newton Raphson Solver: Dirichlet boundary conditions are not used in this problem.
-               Linear System of Equations will not be modified. */
-            return;
+            THROWERR("Newton-Raphson Solver: Essential Boundary Conditions are empty.")
         }
 
         Plato::ScalarVector tDispControlledDirichletValues("Dirichlet Values", mDirichletValues.size());
