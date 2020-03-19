@@ -181,7 +181,7 @@ NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
     {
         std::stringstream tMsg;
         tMsg << "Natural Boundary Condition: Uniform Boundary Condition in Parameter Sublist: '"
-            << aName.c_str() << "' was NOT parsed.";
+            << aName.c_str() << "' was NOT parsed. Check input Parameter Keywords.";
         THROWERR(tMsg.str().c_str())
     }
 
