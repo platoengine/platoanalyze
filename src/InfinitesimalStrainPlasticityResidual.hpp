@@ -157,14 +157,12 @@ private:
         // Parse body loads
         if (aProblemParams.isSublist("Body Loads"))
         {
-            REPORT("Infinitesimal Strain Plasticity Residual: 'Body Loads' will be included in the residual calculation.")
             mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
         }
 
         // Parse Neumman loads
         if(aProblemParams.isSublist("Natural Boundary Conditions"))
         {
-            REPORT("Infinitesimal Strain Plasticity Residual: 'Natural Boundary Conditions' will be included in the residual calculation.")
             mNeumannLoads =
                     std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
         }
