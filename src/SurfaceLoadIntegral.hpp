@@ -126,6 +126,7 @@ void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()
     {
         THROWERR("Natural Boundary Condition: A non-finite cubature weight was detected.")
     }
+    auto tMultiplier = aScale * tCubatureWeight;
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
     {
@@ -141,7 +142,6 @@ void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()
           tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
           ConfigScalarType tWeight(0.0);
-          auto tMultiplier = aScale * tCubatureWeight;
           tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
           tComputeSurfaceIntegralWeight(aFaceI, tMultiplier, tJacobian, tWeight);
 
