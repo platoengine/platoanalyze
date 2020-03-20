@@ -133,7 +133,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
     {
         THROWERR("Surface Pressure Integral: A non-finite cubature weight was detected.")
     }
-    auto tMultiplier = aScale / tCubatureWeight;
+    auto tMultiplier = aScale * tCubatureWeight;
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
     {

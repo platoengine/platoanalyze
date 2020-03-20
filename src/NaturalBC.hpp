@@ -252,7 +252,7 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
         tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
         ConfigScalarType tWeight(0.0);
-        auto tMultiplier = aScale / tCubatureWeight;
+        auto tMultiplier = aScale * tCubatureWeight;
         tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
         tComputeSurfaceIntegralWeight(aFaceI, tMultiplier, tJacobian, tWeight);
 
