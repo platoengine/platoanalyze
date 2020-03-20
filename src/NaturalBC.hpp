@@ -224,13 +224,20 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
     auto tFace2Elems_map   = tFace2Elems.a2ab;
     auto tFace2Elems_elems = tFace2Elems.ab2b;
 
-
+    Plato::LinearTetCubRuleDegreeOne<SpatialDim> tCubatureRule;
     Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
+    Plato::ComputeSurfaceIntegralWeight<SpatialDim> tComputeSurfaceIntegralWeight;
     Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
     Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
 
     auto tFlux = mFlux;
     auto tNodesPerFace = SpatialDim;
+    auto tCubatureWeight = tCubatureRule.getCubWeight();
+    if(std::isfinite(tCubatureWeight) == false)
+    {
+        THROWERR("Natural Boundary Condition: A non-finite cubature weight was detected.")
+    }
+
     Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumFaces), LAMBDA_EXPRESSION(int aFaceI)
     {
 
@@ -239,22 +246,17 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
       // for each element that the face is connected to: (either 1 or 2)
       for( int tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd ){
 
-        // create a map from face local node index to elem local node index
+        // create a map from face local node index to element local node index
         int tLocalNodeOrd[SpatialDim];
         auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
         tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
-        // compute jacobian from aConfig
-        tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
-        /*
-        for( int iNode=0; iNode<SpatialDim-1; iNode++){
-          for( int iDim=0; iDim<SpatialDim; iDim++){
-            tJacobian(aFaceI,iNode,iDim) = aConfig(tCellOrdinal, tLocalNodeOrd[iNode], iDim)
-                                        - aConfig(tCellOrdinal, tLocalNodeOrd[SpatialDim-1], iDim);
-          }
-        }
-        */
         ConfigScalarType tWeight(0.0);
+        auto tMultiplier = aScale / tCubatureWeight;
+        tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
+        tComputeSurfaceIntegralWeight(aFaceI, tMultiplier, tJacobian, tWeight);
+
+        /*
         if(SpatialDim==1){
           tWeight=aScale;
         } else
@@ -267,6 +269,7 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
           auto a3 = tJacobian(aFaceI,0,0)*tJacobian(aFaceI,1,1)-tJacobian(aFaceI,0,1)*tJacobian(aFaceI,1,0);
           tWeight = aScale/6.0*sqrt(a1*a1+a2*a2+a3*a3);
         }
+        */
 
         // project into aResult workset
         for( int iNode=0; iNode<tNodesPerFace; iNode++){
@@ -277,7 +280,7 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
         }
       }
 
-    });
+    }, "surface load integral");
 }
 // class NaturalBC::get
 
