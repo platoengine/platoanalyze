@@ -213,14 +213,8 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
     }
     */
     // get sideset faces
-    /*
-    auto& sidesets = aMeshSets[Omega_h::SIDE_SET];
-    auto ssIter = sidesets.find(this->mSideSetName);
-    auto tFaceLids = (ssIter->second);
-    */
     auto tFaceLids = Plato::get_face_ordinals(aMeshSets, mSideSetName);
     auto tNumFaces = tFaceLids.size();
-
 
     // get mesh vertices
     auto tFace2Verts = aMesh->ask_verts_of(SpatialDim-1);
@@ -230,17 +224,17 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
     auto tFace2Elems_map   = tFace2Elems.a2ab;
     auto tFace2Elems_elems = tFace2Elems.ab2b;
 
-    auto tNodesPerFace = SpatialDim;
-    auto tNodesPerCell = SpatialDim+1;
 
+    Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
     Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
     Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
 
-    auto flux = mFlux;
-    Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumFaces), LAMBDA_EXPRESSION(int iFace)
+    auto tFlux = mFlux;
+    auto tNodesPerFace = SpatialDim;
+    Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumFaces), LAMBDA_EXPRESSION(int aFaceI)
     {
 
-      auto tFaceOrdinal = tFaceLids[iFace];
+      auto tFaceOrdinal = tFaceLids[aFaceI];
 
       // for each element that the face is connected to: (either 1 or 2)
       for( int tLocalElemOrd = tFace2Elems_map[tFaceOrdinal]; tLocalElemOrd < tFace2Elems_map[tFaceOrdinal+1]; ++tLocalElemOrd ){
@@ -248,41 +242,37 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
         // create a map from face local node index to elem local node index
         int tLocalNodeOrd[SpatialDim];
         auto tCellOrdinal = tFace2Elems_elems[tLocalElemOrd];
-        /*
-        for( int iNode=0; iNode<tNodesPerFace; iNode++){
-          for( int jNode=0; jNode<tNodesPerCell; jNode++){
-            if( tFace2Verts[tFaceOrdinal*tNodesPerFace+iNode] == tCell2Verts[tCellOrdinal*tNodesPerCell + jNode] ) tLocalNodeOrd[iNode] = jNode;
-          }
-        }
-        */
         tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
         // compute jacobian from aConfig
+        tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
+        /*
         for( int iNode=0; iNode<SpatialDim-1; iNode++){
           for( int iDim=0; iDim<SpatialDim; iDim++){
-            tJacobian(iFace,iNode,iDim) = aConfig(tCellOrdinal, tLocalNodeOrd[iNode], iDim)
+            tJacobian(aFaceI,iNode,iDim) = aConfig(tCellOrdinal, tLocalNodeOrd[iNode], iDim)
                                         - aConfig(tCellOrdinal, tLocalNodeOrd[SpatialDim-1], iDim);
           }
         }
-        ConfigScalarType weight(0.0);
+        */
+        ConfigScalarType tWeight(0.0);
         if(SpatialDim==1){
-          weight=aScale;
+          tWeight=aScale;
         } else
         if(SpatialDim==2){
-          weight = aScale/2.0*sqrt(tJacobian(iFace,0,0)*tJacobian(iFace,0,0)+tJacobian(iFace,0,1)*tJacobian(iFace,0,1));
+          tWeight = aScale/2.0*sqrt(tJacobian(aFaceI,0,0)*tJacobian(aFaceI,0,0)+tJacobian(aFaceI,0,1)*tJacobian(aFaceI,0,1));
         } else
         if(SpatialDim==3){
-          auto a1 = tJacobian(iFace,0,1)*tJacobian(iFace,1,2)-tJacobian(iFace,0,2)*tJacobian(iFace,1,1);
-          auto a2 = tJacobian(iFace,0,2)*tJacobian(iFace,1,0)-tJacobian(iFace,0,0)*tJacobian(iFace,1,2);
-          auto a3 = tJacobian(iFace,0,0)*tJacobian(iFace,1,1)-tJacobian(iFace,0,1)*tJacobian(iFace,1,0);
-          weight = aScale/6.0*sqrt(a1*a1+a2*a2+a3*a3);
+          auto a1 = tJacobian(aFaceI,0,1)*tJacobian(aFaceI,1,2)-tJacobian(aFaceI,0,2)*tJacobian(aFaceI,1,1);
+          auto a2 = tJacobian(aFaceI,0,2)*tJacobian(aFaceI,1,0)-tJacobian(aFaceI,0,0)*tJacobian(aFaceI,1,2);
+          auto a3 = tJacobian(aFaceI,0,0)*tJacobian(aFaceI,1,1)-tJacobian(aFaceI,0,1)*tJacobian(aFaceI,1,0);
+          tWeight = aScale/6.0*sqrt(a1*a1+a2*a2+a3*a3);
         }
 
         // project into aResult workset
         for( int iNode=0; iNode<tNodesPerFace; iNode++){
           for( int iDof=0; iDof<NumDofs; iDof++){
             auto cellDofOrdinal = tLocalNodeOrd[iNode] * DofsPerNode + iDof + DofOffset;
-            aResult(tCellOrdinal,cellDofOrdinal) += weight*flux[iDof];
+            aResult(tCellOrdinal,cellDofOrdinal) += tWeight*tFlux[iDof];
           }
         }
       }
