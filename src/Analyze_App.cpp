@@ -5,6 +5,7 @@
 #include "Analyze_App.hpp"
 #include "AnalyzeOutput.hpp"
 #include <PlatoProblemFactory.hpp>
+#include <Plato_Console.hpp>
 
 #ifdef PLATO_CONSOLE
 #include <Plato_Console.hpp>
@@ -34,6 +35,27 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
 
   this->createProblem(*mDefaultProblem);
 
+
+  // parse/create the ESP instance(s)
+  auto tESPInputs = mInputData.getByName<Plato::InputData>("ESP");
+  for(auto tESPInput=tESPInputs.begin(); tESPInput!=tESPInputs.end(); ++tESPInput)
+  {
+#ifdef PLATO_ESP
+      auto tESPName = Plato::Get::String(*tESPInput,"Name");
+      if( mESP.count(tESPName) != 0 )
+      {
+          throw Plato::ParsingException("ESP names must be unique.");
+      }
+      else
+      {
+          auto tModelFileName = Plato::Get::String(*tESPInput,"ModelFileName");
+          auto tTessFileName = Plato::Get::String(*tESPInput,"TessFileName");
+          mESP[tESPName] = std::make_shared<ESPType>(tModelFileName, tTessFileName);
+      }
+#else
+      throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+#endif // PLATO_ESP
+  }
 
   // parse/create the MLS PointArrays
   auto tPointArrayInputs = mInputData.getByName<Plato::InputData>("PointArray");
@@ -122,6 +144,17 @@ createProblem(ProblemDefinition& aDefinition){
   mState           = mProblem->getState();
   mNumSolutionDofs = mProblem->getNumSolutionDofs();
 
+  auto tNumLocalVals = mMesh.nverts();
+  if(mControl.extent(0) != tNumLocalVals)
+  {
+    Kokkos::resize(mControl, tNumLocalVals);
+    Kokkos::deep_copy(mControl, 1.0);
+  }
+
+  Kokkos::resize(mObjectiveGradientZ, tNumLocalVals);
+  Kokkos::resize(mObjectiveGradientX, mNumSpatialDims*tNumLocalVals);
+
+
   aDefinition.modified = false;
 }
 
@@ -133,6 +166,7 @@ void MPMD_App::initialize()
   auto tNumLocalVals = mMesh.nverts();
 
   mControl    = Plato::ScalarVector("control", tNumLocalVals);
+  Kokkos::deep_copy(mControl, 1.0);
 
   mObjectiveGradientZ = Plato::ScalarVector("objective_gradient_z", tNumLocalVals);
   mObjectiveGradientX = Plato::ScalarVector("objective_gradient_x", mNumSpatialDims*tNumLocalVals);
@@ -170,6 +204,10 @@ void MPMD_App::initialize()
       mOperationMap[tStrName] = new Reinitialize(this, tOperationNode, opDef);
     } else
 
+    if(tStrFunction == "ReinitializeESP"){
+      mOperationMap[tStrName] = new ReinitializeESP(this, tOperationNode, opDef);
+    } else 
+
     if(tStrFunction == "UpdateProblem"){
       mOperationMap[tStrName] = new UpdateProblem(this, tOperationNode, opDef);
     } else
@@ -180,6 +218,9 @@ void MPMD_App::initialize()
     if(tStrFunction == "ComputeObjectiveX"){
       mOperationMap[tStrName] = new ComputeObjectiveX(this, tOperationNode, opDef);
     } else 
+    if(tStrFunction == "ComputeObjectiveP"){
+      mOperationMap[tStrName] = new ComputeObjectiveP(this, tOperationNode, opDef);
+    } else 
     if(tStrFunction == "ComputeObjectiveValue"){
       mOperationMap[tStrName] = new ComputeObjectiveValue(this, tOperationNode, opDef);
     } else
@@ -189,12 +230,20 @@ void MPMD_App::initialize()
     if(tStrFunction == "ComputeObjectiveGradientX"){
       mOperationMap[tStrName] = new ComputeObjectiveGradientX(this, tOperationNode, opDef);
     } else 
-
+    if(tStrFunction == "MapObjectiveGradientX"){
+      mOperationMap[tStrName] = new MapObjectiveGradientX(this, tOperationNode, opDef);
+    } else 
+    if(tStrFunction == "ComputeObjectiveGradientP"){
+      mOperationMap[tStrName] = new ComputeObjectiveGradientP(this, tOperationNode, opDef);
+    } else 
     if(tStrFunction == "ComputeConstraint"){
       mOperationMap[tStrName] = new ComputeConstraint(this, tOperationNode, opDef);
     } else
     if(tStrFunction == "ComputeConstraintX"){
       mOperationMap[tStrName] = new ComputeConstraintX(this, tOperationNode, opDef);
+    } else 
+    if(tStrFunction == "ComputeConstraintP"){
+      mOperationMap[tStrName] = new ComputeConstraintP(this, tOperationNode, opDef);
     } else 
     if(tStrFunction == "ComputeConstraintValue"){
       mOperationMap[tStrName] = new ComputeConstraintValue(this, tOperationNode, opDef);
@@ -204,6 +253,12 @@ void MPMD_App::initialize()
     } else
     if(tStrFunction == "ComputeConstraintGradientX"){
       mOperationMap[tStrName] = new ComputeConstraintGradientX(this, tOperationNode, opDef);
+    } else 
+    if(tStrFunction == "MapConstraintGradientX"){
+      mOperationMap[tStrName] = new MapConstraintGradientX(this, tOperationNode, opDef);
+    } else 
+    if(tStrFunction == "ComputeConstraintGradientP"){
+      mOperationMap[tStrName] = new ComputeConstraintGradientP(this, tOperationNode, opDef);
     } else 
     if(tStrFunction == "WriteOutput"){
       mOperationMap[tStrName] = new WriteOutput(this, tOperationNode, opDef);
@@ -255,6 +310,30 @@ void MPMD_App::initialize()
     }
   }
 }
+/******************************************************************************/
+void
+MPMD_App::mapToParameters(std::shared_ptr<ESPType> aESP,
+                       std::vector<Plato::Scalar>& aGradientP,
+                               Plato::ScalarVector aGradientX)
+/******************************************************************************/
+#ifdef PLATO_ESP
+{
+    // ESP currently resides on the Host, so create host mirrors
+    auto tGradientX_Host = Kokkos::create_mirror_view(aGradientX);
+    Kokkos::deep_copy(tGradientX_Host, aGradientX);
+
+    int tNumParams = aGradientP.size();
+    for (int iParam=0; iParam<tNumParams; iParam++)
+    {
+        aGradientP[iParam] = aESP->sensitivity(iParam, tGradientX_Host);
+    }
+}
+#else
+{
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP. Turn on 'PLATO_ESP' option and rebuild.");
+}
+#endif
+
 
 /******************************************************************************/
 MPMD_App::LocalOp*
@@ -313,6 +392,35 @@ LocalOp(MPMD_App* aMyApp, Plato::InputData& aOperationNode, Teuchos::RCP<Problem
     mParameters[tName] = Teuchos::rcp(new Parameter(tName, tTarget, tValue));
   }
 }
+
+/******************************************************************************/
+MPMD_App::OnChangeOp::
+OnChangeOp(MPMD_App* aMyApp, Plato::InputData& aNode) :
+    mStrParameters("Parameters"),
+    mConditional(false)
+/******************************************************************************/
+{
+    aMyApp->mValuesMap[mStrParameters] = std::vector<Plato::Scalar>();
+    mConditional = Plato::Get::Bool(aNode, "OnChange", false);
+}
+
+/******************************************************************************/
+MPMD_App::ESP_Op::
+ESP_Op(MPMD_App* aMyApp, Plato::InputData& aNode)
+/******************************************************************************/
+{
+  #ifdef PLATO_ESP
+    mESPName = Plato::Get::String(aNode,"ESPName");
+    auto& tESP = aMyApp->mESP;
+    if( tESP.count(mESPName) == 0 )
+    {
+        throw Plato::ParsingException("Requested ESP model that doesn't exist.");
+    }
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
+}
+
 
 /******************************************************************************/
 void
@@ -378,6 +486,37 @@ void MPMD_App::ComputeObjectiveX::operator()()
   mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
 }
 
+/******************************************************************************/
+MPMD_App::ComputeObjectiveP::
+ComputeObjectiveP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
+        LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Objective Gradient")
+{
+  #ifdef PLATO_ESP
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
+}
+/******************************************************************************/
+void MPMD_App::ComputeObjectiveP::operator()()
+/******************************************************************************/
+{
+  #ifdef PLATO_ESP
+    mMyApp->mState = mMyApp->mProblem->solution(mMyApp->mControl);
+
+    auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
+
+    mMyApp->mObjectiveValue     = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mState);
+    mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
+
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mapToParameters(tESP, tGradP, mMyApp->mObjectiveGradientX);
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
+}
+
 
 /******************************************************************************/
 MPMD_App::ComputeObjectiveValue::
@@ -427,10 +566,77 @@ void MPMD_App::ComputeObjectiveGradientX::operator()()
 }
 
 /******************************************************************************/
+MPMD_App::MapObjectiveGradientX::
+MapObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
+        LocalOp(aMyApp, aOpNode, aOpDef), mStrOutputName("Objective Sensitivity")
+{
+    for( auto tInputNode : aOpNode.getByName<Plato::InputData>("Input") )
+    {
+        auto tName = Plato::Get::String(tInputNode, "ArgumentName");
+        mStrInputNames.push_back(tName);
+        mMyApp->mValuesMap[tName] = std::vector<Plato::Scalar>();
+    }
+    mMyApp->mValuesMap[mStrOutputName] = std::vector<Plato::Scalar>(mStrInputNames.size());
+}
+/******************************************************************************/
+
+/******************************************************************************/
+void MPMD_App::MapObjectiveGradientX::operator()()
+/******************************************************************************/
+{
+    auto tDfDX = Kokkos::create_mirror_view(mMyApp->mObjectiveGradientX);
+    Kokkos::deep_copy(tDfDX, mMyApp->mObjectiveGradientX);
+
+    auto& tOutputVector = mMyApp->mValuesMap[mStrOutputName];
+    int tEntryIndex = 0;
+    for( const auto& tInputName : mStrInputNames )
+    {
+        Plato::Scalar tValue(0.0);
+        const auto& tDXDp = mMyApp->mValuesMap[tInputName];
+        auto tNumData = tDXDp.size();
+        for( int i=0; i<tNumData; i++)
+        {
+            tValue += tDfDX[i]*tDXDp[i];
+        }
+        tOutputVector[tEntryIndex++] = tValue;
+    }
+}
+
+/******************************************************************************/
+MPMD_App::ComputeObjectiveGradientP::
+ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
+        LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Objective Gradient")
+{
+  #ifdef PLATO_ESP
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
+}
+/******************************************************************************/
+
+/******************************************************************************/
+void MPMD_App::ComputeObjectiveGradientP::operator()()
+/******************************************************************************/
+{
+  #ifdef PLATO_ESP
+    auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
+    mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
+
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mapToParameters(tESP, tGradP, mMyApp->mObjectiveGradientX);
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
+}
+
+/******************************************************************************/
 MPMD_App::ComputeConstraint::
 ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
         LocalOp(aMyApp, aOpNode, aOpDef)
 {
+    mTarget = Plato::Get::Double(aOpNode, "Target");
 }
 /******************************************************************************/
 
@@ -438,32 +644,74 @@ ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
 void MPMD_App::ComputeConstraint::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintValue      = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mConstraintValue  = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mConstraintValue -= mTarget;
+
   mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mState);
 
   std::stringstream ss;
   ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
-#ifdef PLATO_CONSOLE
   Plato::Console::Status(ss.str());
-#else
-  std::cout << ss.str();
-#endif
 }
 
 /******************************************************************************/
 MPMD_App::ComputeConstraintX::
 ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aOpNode, 
-                  Teuchos::RCP<ProblemDefinition> aOpDef) : LocalOp(aMyApp, aOpNode, aOpDef) { }
+                  Teuchos::RCP<ProblemDefinition> aOpDef) : LocalOp(aMyApp, aOpNode, aOpDef)
 /******************************************************************************/
+{
+    mTarget = Plato::Get::Double(aOpNode, "Target");
+}
 
 /******************************************************************************/
 void MPMD_App::ComputeConstraintX::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintValue      = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mConstraintValue  = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
+  mMyApp->mConstraintValue -= mTarget;
+
   mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
 
-  std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  std::stringstream ss;
+  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  Plato::Console::Status(ss.str());
+}
+
+/******************************************************************************/
+MPMD_App::ComputeConstraintP::
+ComputeConstraintP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
+LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Constraint Gradient")
+/******************************************************************************/
+{
+  #ifdef PLATO_ESP
+    mTarget = Plato::Get::Double(aOpNode, "Target");
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
+}
+
+/******************************************************************************/
+void MPMD_App::ComputeConstraintP::operator()()
+/******************************************************************************/
+{
+  #ifdef PLATO_ESP
+    auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
+    mMyApp->mConstraintValue  = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
+    mMyApp->mConstraintValue -= mTarget;
+
+    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
+
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mapToParameters(tESP, tGradP, mMyApp->mConstraintGradientX);
+
+    std::stringstream ss;
+    ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+    Plato::Console::Status(ss.str());
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
 }
 
 
@@ -471,26 +719,30 @@ void MPMD_App::ComputeConstraintX::operator()()
 MPMD_App::ComputeConstraintValue::
 ComputeConstraintValue(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
         LocalOp(aMyApp, aOpNode, aOpDef)
-{
-}
 /******************************************************************************/
+{
+    mTarget = Plato::Get::Double(aOpNode, "Target");
+}
 
 /******************************************************************************/
 void MPMD_App::ComputeConstraintValue::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl,mMyApp->mState);
+  mMyApp->mConstraintValue  = mMyApp->mProblem->constraintValue(mMyApp->mControl,mMyApp->mState);
+  mMyApp->mConstraintValue -= mTarget;
 
-  std::cout << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  std::stringstream ss;
+  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+  Plato::Console::Status(ss.str());
 }
 
 /******************************************************************************/
 MPMD_App::ComputeConstraintGradient::
 ComputeConstraintGradient(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
         LocalOp(aMyApp, aOpNode, aOpDef)
+/******************************************************************************/
 {
 }
-/******************************************************************************/
 
 /******************************************************************************/
 void MPMD_App::ComputeConstraintGradient::operator()()
@@ -503,15 +755,81 @@ void MPMD_App::ComputeConstraintGradient::operator()()
 MPMD_App::ComputeConstraintGradientX::
 ComputeConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
         LocalOp(aMyApp, aOpNode, aOpDef)
+/******************************************************************************/
 {
 }
-/******************************************************************************/
 
 /******************************************************************************/
 void MPMD_App::ComputeConstraintGradientX::operator()()
 /******************************************************************************/
 {
   mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
+}
+
+/******************************************************************************/
+MPMD_App::MapConstraintGradientX::
+MapConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
+        LocalOp(aMyApp, aOpNode, aOpDef), mStrOutputName("Constraint Sensitivity")
+/******************************************************************************/
+{
+    for( auto tInputNode : aOpNode.getByName<Plato::InputData>("Input") )
+    {
+        auto tName = Plato::Get::String(tInputNode, "ArgumentName");
+        mStrInputNames.push_back(tName);
+        mMyApp->mValuesMap[tName] = std::vector<Plato::Scalar>();
+    }
+    mMyApp->mValuesMap[mStrOutputName] = std::vector<Plato::Scalar>(mStrInputNames.size());
+}
+
+/******************************************************************************/
+void MPMD_App::MapConstraintGradientX::operator()()
+/******************************************************************************/
+{
+    auto tDgDX = Kokkos::create_mirror_view(mMyApp->mConstraintGradientX);
+    Kokkos::deep_copy(tDgDX, mMyApp->mConstraintGradientX);
+
+    auto& tOutputVector = mMyApp->mValuesMap[mStrOutputName];
+    int tEntryIndex = 0;
+    for( const auto& tInputName : mStrInputNames )
+    {
+        Plato::Scalar tValue(0.0);
+        const auto& tDXDp = mMyApp->mValuesMap[tInputName];
+        auto tNumData = tDXDp.size();
+        for( int i=0; i<tNumData; i++)
+        {
+            tValue += tDgDX[i]*tDXDp[i];
+        }
+        tOutputVector[tEntryIndex++] = tValue;
+    }
+}
+
+/******************************************************************************/
+MPMD_App::ComputeConstraintGradientP::
+ComputeConstraintGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
+        LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Constraint Gradient")
+{
+  #ifdef PLATO_ESP
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
+}
+/******************************************************************************/
+
+/******************************************************************************/
+void MPMD_App::ComputeConstraintGradientP::operator()()
+/******************************************************************************/
+{
+  #ifdef PLATO_ESP
+    auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
+    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
+
+    auto tESP = mMyApp->mESP[mESPName];
+    mMyApp->mapToParameters(tESP, tGradP, mMyApp->mConstraintGradientX);
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
 }
 
 /******************************************************************************/
@@ -554,7 +872,8 @@ void MPMD_App::ComputeSolution::operator()()
 /******************************************************************************/
 MPMD_App::Reinitialize::
 Reinitialize(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
-        LocalOp(aMyApp, aOpNode, aOpDef)
+        LocalOp(aMyApp, aOpNode, aOpDef),
+        OnChangeOp (aMyApp, aOpNode)
 {
 }
 /******************************************************************************/
@@ -563,10 +882,79 @@ Reinitialize(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDe
 void MPMD_App::Reinitialize::operator()()
 /******************************************************************************/
 {
-  auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
-  mMyApp->createProblem(*def);
+    auto& tInputState = mMyApp->mValuesMap[mStrParameters];
+    if ( hasChanged(tInputState) )
+    {
+        Plato::Console::Status("Operation: Reinitialize -- Recomputing Problem");
+        auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
+        mMyApp->createProblem(*def);
+    }
+    else
+    {
+        Plato::Console::Status("Operation: Reinitialize -- Not recomputing Problem");
+    }
 }
 
+/******************************************************************************/
+MPMD_App::ReinitializeESP::
+ReinitializeESP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
+        LocalOp    (aMyApp, aOpNode, aOpDef), 
+        ESP_Op     (aMyApp, aOpNode),
+        OnChangeOp (aMyApp, aOpNode)
+{
+}
+/******************************************************************************/
+
+/******************************************************************************/
+void MPMD_App::ReinitializeESP::operator()()
+/******************************************************************************/
+{
+  #ifdef PLATO_ESP
+    auto& tInputState = mMyApp->mValuesMap[mStrParameters];
+    if ( hasChanged(tInputState) )
+    {
+        Plato::Console::Status("Operation: ReinitializeESP -- Recomputing Problem");
+        auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
+        auto& tESP = mMyApp->mESP[mESPName];
+        auto tModelFileName = tESP->getModelFileName();
+        auto tTessFileName  = tESP->getTessFileName();
+        tESP.reset( new ESPType(tModelFileName, tTessFileName) );
+        mMyApp->createProblem(*def);
+    }
+    else
+    {
+        Plato::Console::Status("Operation: ReinitializeESP -- Not recomputing Problem");
+    }
+  #else
+    throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
+  #endif
+}
+
+/******************************************************************************/
+bool MPMD_App::OnChangeOp::hasChanged(const std::vector<Plato::Scalar>& aInputState)
+/******************************************************************************/
+{
+    if ( mConditional )
+    {
+        if( mLocalState.size() == 0 )
+        {
+            // update on first call
+            mLocalState = aInputState;
+            return true;
+        }
+
+        if( mLocalState == aInputState )
+        {
+            return false;
+        }
+        else
+        {
+            mLocalState = aInputState;
+            return true;
+        }
+    }
+    return true;
+}
 
 /******************************************************************************/
 MPMD_App::UpdateProblem::
