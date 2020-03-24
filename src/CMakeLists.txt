@@ -13,6 +13,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     ElasticModelFactory.cpp 
     LinearElasticMaterial.cpp 
     CubicLinearElasticMaterial.cpp 
+    CustomLinearElasticMaterial.cpp 
     LinearElectroelasticMaterial.cpp 
     IsotropicLinearElasticMaterial.cpp 
     OrthotropicLinearElasticMaterial.cpp 

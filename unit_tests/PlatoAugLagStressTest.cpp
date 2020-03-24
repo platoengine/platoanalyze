@@ -9,6 +9,7 @@
 #include "PlatoTestHelpers.hpp"
 
 #include "Plato_Diagnostics.hpp"
+#include "IsotropicLinearElasticMaterial.hpp"
 #include "Plato_AugLagStressCriterion.hpp"
 #include "Plato_AugLagStressCriterionGeneral.hpp"
 #include "ScalarFunctionBase.hpp"
