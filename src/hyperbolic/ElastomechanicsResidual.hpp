@@ -18,7 +18,7 @@
 #include "ScalarFunctionBase.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "PlatoAbstractProblem.hpp"
-#include "LinearElasticMaterial.hpp"
+#include "ElastomechanicsResidual.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
 #include "hyperbolic/Newmark.hpp"

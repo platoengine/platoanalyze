@@ -7,7 +7,7 @@
 #include "ApplyWeighting.hpp"
 #include "Strain.hpp"
 #include "LinearStress.hpp"
-#include "LinearElasticMaterial.hpp"
+#include "ElasticModelFactory.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ToMap.hpp"
 #include "Simp.hpp"
