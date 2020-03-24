@@ -1,11 +1,8 @@
 #include <Omega_h_file.hpp>
 
-//#define PLATO_CONSOLE
-
 #include "Analyze_App.hpp"
 #include "AnalyzeOutput.hpp"
 #include <PlatoProblemFactory.hpp>
-#include <Plato_Console.hpp>
 
 #ifdef PLATO_CONSOLE
 #include <Plato_Console.hpp>
@@ -651,7 +648,9 @@ void MPMD_App::ComputeConstraint::operator()()
 
   std::stringstream ss;
   ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+#ifdef PLATO_CONSOLE
   Plato::Console::Status(ss.str());
+#endif
 }
 
 /******************************************************************************/
@@ -674,7 +673,9 @@ void MPMD_App::ComputeConstraintX::operator()()
 
   std::stringstream ss;
   ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+#ifdef PLATO_CONSOLE
   Plato::Console::Status(ss.str());
+#endif
 }
 
 /******************************************************************************/
@@ -708,7 +709,9 @@ void MPMD_App::ComputeConstraintP::operator()()
 
     std::stringstream ss;
     ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+#ifdef PLATO_CONSOLE
     Plato::Console::Status(ss.str());
+#endif
   #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
   #endif
@@ -733,7 +736,9 @@ void MPMD_App::ComputeConstraintValue::operator()()
 
   std::stringstream ss;
   ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+#ifdef PLATO_CONSOLE
   Plato::Console::Status(ss.str());
+#endif
 }
 
 /******************************************************************************/
@@ -885,13 +890,17 @@ void MPMD_App::Reinitialize::operator()()
     auto& tInputState = mMyApp->mValuesMap[mStrParameters];
     if ( hasChanged(tInputState) )
     {
+#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: Reinitialize -- Recomputing Problem");
+#endif
         auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
         mMyApp->createProblem(*def);
     }
     else
     {
+#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: Reinitialize -- Not recomputing Problem");
+#endif
     }
 }
 
@@ -913,7 +922,9 @@ void MPMD_App::ReinitializeESP::operator()()
     auto& tInputState = mMyApp->mValuesMap[mStrParameters];
     if ( hasChanged(tInputState) )
     {
+#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: ReinitializeESP -- Recomputing Problem");
+#endif
         auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
         auto& tESP = mMyApp->mESP[mESPName];
         auto tModelFileName = tESP->getModelFileName();
@@ -923,7 +934,9 @@ void MPMD_App::ReinitializeESP::operator()()
     }
     else
     {
+#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: ReinitializeESP -- Not recomputing Problem");
+#endif
     }
   #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");

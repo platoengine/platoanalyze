@@ -145,8 +145,8 @@ set(LinearMaterialModelTests_HEADERS
 )
 
 add_executable(LinearMaterialModelUnitTests
-  ${PlasticityTest_SOURCES}
-  ${PlasticityTest_HEADERS}
+  ${LinearMaterialModelTests_SOURCES}
+  ${LinearMaterialModelTests_HEADERS}
 )
 
 target_link_libraries(LinearMaterialModelUnitTests 

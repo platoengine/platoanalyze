@@ -10,9 +10,6 @@
 #include <Omega_h_assoc.hpp>
 #include <Omega_h_teuchos.hpp>
 
-// #include <matrix_container.hpp>
-// #include <communicator.hpp>
-
 #include <Plato_InputData.hpp>
 #include <Plato_Application.hpp>
 #include <Plato_Exceptions.hpp>
@@ -256,7 +253,10 @@ public:
         for( int i=0; i<tNumDisplay; i++) ss << tValues[i] << " ";
         if(tNumValues > tMaxDisplay) ss << " ... ";
         ss << "]" << std::endl;
+
+#ifdef PLATO_CONSOLE
         Plato::Console::Status(ss.str());
+#endif
     }
 
     /******************************************************************************//**
@@ -320,7 +320,10 @@ public:
             ss << "[ ";
             for( auto val : tValues ) ss << val << " ";
             ss << "]" << std::endl;
+
+#ifdef PLATO_CONSOLE
             Plato::Console::Status(ss.str());
+#endif
         }
     }
 

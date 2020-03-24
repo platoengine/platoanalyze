@@ -56,15 +56,6 @@ public:
 
 
 template<>
-void Plato::OrthotropicLinearElasticMaterial<3>::setMaterialModel
-(const Teuchos::ParameterList& aParamList)
-{
-    this->checkOrthoMaterialInputs(aParamList);
-    this->checkOrthoMaterialStability(aParamList);
-    this->setOrthoMaterialModel(aParamList);
-}
-
-template<>
 void Plato::OrthotropicLinearElasticMaterial<3>::checkOrthoMaterialStability
 (const Teuchos::ParameterList& aParamList)
 {
@@ -220,7 +211,7 @@ template<>
 void Plato::OrthotropicLinearElasticMaterial<3>::setOrthoMaterialModel
 (const Teuchos::ParameterList& aParamList)
 {
-    mCellDensity = aParamList.get<Plato::Scalar>("Mass Density", 1.0);
+    mCellDensity = aParamList.isParameter("Mass Density") ? aParamList.get<Plato::Scalar>("Mass Density") : 1.0;
 
     auto tYoungsModulusX = aParamList.get<Plato::Scalar>("Youngs Modulus X");
     auto tYoungsModulusY = aParamList.get<Plato::Scalar>("Youngs Modulus Y");
@@ -235,25 +226,25 @@ void Plato::OrthotropicLinearElasticMaterial<3>::setOrthoMaterialModel
     auto tPoissonRatioYX = tPoissonRatioXY * (tYoungsModulusY / tYoungsModulusX);
     auto tPoissonRatioZX = tPoissonRatioXZ * (tYoungsModulusZ / tYoungsModulusX);
     auto tPoissonRatioZY = tPoissonRatioYZ * (tYoungsModulusZ / tYoungsModulusY);
-    auto tDetComplianceMat = static_cast<Plato::Scalar>(1.0) - (tPoissonRatioXY * tPoissonRatioYX)
+    auto tDeterminantComplianceMat = static_cast<Plato::Scalar>(1.0) - (tPoissonRatioXY * tPoissonRatioYX)
             - (tPoissonRatioYZ * tPoissonRatioZY) - (tPoissonRatioXZ * tPoissonRatioZX)
             - static_cast<Plato::Scalar>(2.0) * (tPoissonRatioYX * tPoissonRatioZY * tPoissonRatioXZ);
-    auto tDelta = tDetComplianceMat / (tYoungsModulusX * tYoungsModulusY * tYoungsModulusZ);
+    auto tDelta = tDeterminantComplianceMat / (tYoungsModulusX * tYoungsModulusY * tYoungsModulusZ);
 
     // Row One
-    auto tDenominator1 = tYoungsModulusY * tYoungsModulusZ * tDetComplianceMat;
+    auto tDenominator1 = tYoungsModulusY * tYoungsModulusZ * tDelta;
     mCellStiffness(0,0) = (static_cast<Plato::Scalar>(1.0) - (tPoissonRatioYZ * tPoissonRatioZY)) / tDenominator1;
     mCellStiffness(0,1) = (tPoissonRatioYX + (tPoissonRatioZX * tPoissonRatioYZ)) / tDenominator1;
     mCellStiffness(0,2) = (tPoissonRatioZX + (tPoissonRatioYX * tPoissonRatioZY)) / tDenominator1;
 
     // Row Two
-    auto tDenominator2 = tYoungsModulusZ * tYoungsModulusX * tDetComplianceMat;
+    auto tDenominator2 = tYoungsModulusZ * tYoungsModulusX * tDelta;
     mCellStiffness(1,0) = mCellStiffness(0,1);
     mCellStiffness(1,1) = (static_cast<Plato::Scalar>(1.0) - (tPoissonRatioZX * tPoissonRatioXZ)) / tDenominator2;
     mCellStiffness(1,2) = (tPoissonRatioZY + (tPoissonRatioZX * tPoissonRatioXY)) / tDenominator2;
 
     // Row Three
-    auto tDenominator3 = tYoungsModulusX * tYoungsModulusY * tDetComplianceMat;
+    auto tDenominator3 = tYoungsModulusX * tYoungsModulusY * tDelta;
     mCellStiffness(2,0) = mCellStiffness(0,2);
     mCellStiffness(2,1) = mCellStiffness(1,2);
     mCellStiffness(2,2) = (static_cast<Plato::Scalar>(1.0) - (tPoissonRatioXY * tPoissonRatioYX)) / tDenominator3;
@@ -268,6 +259,15 @@ template<>
 Plato::OrthotropicLinearElasticMaterial<3>::
 OrthotropicLinearElasticMaterial(const Teuchos::ParameterList& aParamList) :
      Plato::LinearElasticMaterial<3>(aParamList)
+{
+    this->checkOrthoMaterialInputs(aParamList);
+    this->checkOrthoMaterialStability(aParamList);
+    this->setOrthoMaterialModel(aParamList);
+}
+
+template<>
+void Plato::OrthotropicLinearElasticMaterial<3>::setMaterialModel
+(const Teuchos::ParameterList& aParamList)
 {
     this->checkOrthoMaterialInputs(aParamList);
     this->checkOrthoMaterialStability(aParamList);
@@ -319,15 +319,6 @@ void Plato::OrthotropicLinearElasticMaterial<2>::checkOrthoMaterialStability
 }
 
 template<>
-void Plato::OrthotropicLinearElasticMaterial<2>::setMaterialModel
-(const Teuchos::ParameterList& aParamList)
-{
-    this->checkOrthoMaterialInputs(aParamList);
-    this->checkOrthoMaterialStability(aParamList);
-    this->setOrthoMaterialModel(aParamList);
-}
-
-template<>
 void Plato::OrthotropicLinearElasticMaterial<2>::checkOrthoMaterialInputs
 (const Teuchos::ParameterList& aParamList)
 {
@@ -352,7 +343,7 @@ template<>
 void Plato::OrthotropicLinearElasticMaterial<2>::setOrthoMaterialModel
 (const Teuchos::ParameterList& aParamList)
 {
-    mCellDensity = aParamList.get<Plato::Scalar>("Mass Density", 1.0);
+    mCellDensity = aParamList.isParameter("Mass Density") ? aParamList.get<Plato::Scalar>("Mass Density") : 1.0;
 
     auto tYoungsModulusX = aParamList.get<Plato::Scalar>("Youngs Modulus X");
     auto tYoungsModulusY = aParamList.get<Plato::Scalar>("Youngs Modulus Y");
@@ -378,7 +369,7 @@ OrthotropicLinearElasticMaterial(const Teuchos::ParameterList& aParamList) :
 }
 
 template<>
-void Plato::OrthotropicLinearElasticMaterial<1>::setMaterialModel
+void Plato::OrthotropicLinearElasticMaterial<2>::setMaterialModel
 (const Teuchos::ParameterList& aParamList)
 {
     this->checkOrthoMaterialInputs(aParamList);
@@ -395,18 +386,20 @@ template<>
 void Plato::OrthotropicLinearElasticMaterial<1>::checkOrthoMaterialInputs
 (const Teuchos::ParameterList& aParamList)
 {
-    if(aParamList.isParameter("Poissons Ratio") == false)
+    if(aParamList.isParameter("Poissons Ratio") == false){
         THROWERR("OrthotropicLinearElasticMaterial 1D: Parameter Keyword 'Poissons Ratio' is not defined.")
+    }
 
-    if(aParamList.isParameter("Youngs Modulus") == false)
+    if(aParamList.isParameter("Youngs Modulus") == false){
         THROWERR("OrthotropicLinearElasticMaterial 1D: Parameter Keyword 'Youngs Modulus' is not defined.")
+    }
 }
 
 template<>
 void Plato::OrthotropicLinearElasticMaterial<1>::setOrthoMaterialModel
 (const Teuchos::ParameterList& aParamList)
 {
-    mCellDensity = aParamList.get<Plato::Scalar>("Mass Density", 1.0);
+    mCellDensity = aParamList.isParameter("Mass Density") ? aParamList.get<Plato::Scalar>("Mass Density") : 1.0;
 
     auto tPoissonRatio = aParamList.get<Plato::Scalar>("Poissons Ratio");
     auto tYoungsModulus = aParamList.get<Plato::Scalar>("Youngs Modulus");
@@ -419,6 +412,15 @@ template<>
 Plato::OrthotropicLinearElasticMaterial<1>::
 OrthotropicLinearElasticMaterial(const Teuchos::ParameterList& aParamList) :
      Plato::LinearElasticMaterial<1>(aParamList)
+{
+    this->checkOrthoMaterialInputs(aParamList);
+    this->checkOrthoMaterialStability(aParamList);
+    this->setOrthoMaterialModel(aParamList);
+}
+
+template<>
+void Plato::OrthotropicLinearElasticMaterial<1>::setMaterialModel
+(const Teuchos::ParameterList& aParamList)
 {
     this->checkOrthoMaterialInputs(aParamList);
     this->checkOrthoMaterialStability(aParamList);
@@ -442,20 +444,20 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic1D)
     );
 
     constexpr Plato::OrdinalType tSpaceDim = 1;
-    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat(tParams);
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat(*tParams);
     auto tStiffMatrix = tOrthoMat.getStiffnessMatrix();
     const Plato::Scalar tTolerance = 1e-4;
-    TEST_FLOATING_EQUALITY(1.9230769, tStiffMatrix(0,0), tTolerance);
+    TEST_FLOATING_EQUALITY(1.3461538, tStiffMatrix(0,0), tTolerance);
 }
 
 TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic1D_PoissonRatioKeyword_Error)
 {
     Teuchos::RCP<Teuchos::ParameterList> tParams =
       Teuchos::getParametersFromXmlString(
-      "    <ParameterList name='Orthotropic Linear Elastic'>                 \n"
-      "      <Parameter  name='Poisson's Ratio' type='double' value='0.3'/>  \n"
-      "      <Parameter  name='Youngs Modulus' type='double' value='1.0'/>   \n"
-      "    </ParameterList>                                                  \n"
+      "<ParameterList name='Orthotropic Linear Elastic'>                 \n"
+      "  <Parameter  name='Poissons Rtio' type='double' value='0.3'/>  \n"
+      "  <Parameter  name='Youngs Modulus' type='double' value='1.0'/>   \n"
+      "</ParameterList>                                                  \n"
     );
 
     constexpr Plato::OrdinalType tSpaceDim = 1;
@@ -469,7 +471,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic1D_YoungModulusKeyword_E
       Teuchos::getParametersFromXmlString(
       "    <ParameterList name='Orthotropic Linear Elastic'>                 \n"
       "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>   \n"
-      "      <Parameter  name='Young's Modulus' type='double' value='1.0'/>  \n"
+      "      <Parameter  name='Youngs Moulus' type='double' value='1.0'/>  \n"
       "    </ParameterList>                                                  \n"
     );
 
@@ -486,12 +488,12 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic2D)
       "      <Parameter  name='Poissons Ratio XY' type='double' value='0.3'/>  \n"
       "      <Parameter  name='Shear Modulus XY' type='double' value='0.3'/>   \n"
       "      <Parameter  name='Youngs Modulus X' type='double' value='1.0'/>   \n"
-      "      <Parameter  name='Youngs Modulus Y' type='double' value='1.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='0.8'/>   \n"
       "    </ParameterList>                                                    \n"
     );
 
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat(tParams);
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat(*tParams);
     auto tStiffMatrix = tOrthoMat.getStiffnessMatrix();
     const Plato::Scalar tTolerance = 1e-4;
     TEST_FLOATING_EQUALITY(1.0775862, tStiffMatrix(0,0), tTolerance);
@@ -510,7 +512,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic2D_PoissonRatioKeyword_E
     Teuchos::RCP<Teuchos::ParameterList> tParams =
       Teuchos::getParametersFromXmlString(
       "    <ParameterList name='Orthotropic Linear Elastic'>                   \n"
-      "      <Parameter  name='Poisson's Ratio XY' type='double' value='0.3'/> \n"
+      "      <Parameter  name='Poissos Ratio XY' type='double' value='0.3'/> \n"
       "      <Parameter  name='Shear Modulus XY' type='double' value='0.3'/>   \n"
       "      <Parameter  name='Youngs Modulus X' type='double' value='1.0'/>   \n"
       "      <Parameter  name='Youngs Modulus Y' type='double' value='1.0'/>   \n"
@@ -642,7 +644,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D)
     );
 
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat(tParams);
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat(*tParams);
     auto tStiffMatrix = tOrthoMat.getStiffnessMatrix();
     const Plato::Scalar tTolerance = 1e-4;
     TEST_FLOATING_EQUALITY(128.942, tStiffMatrix(0,0), tTolerance);
