@@ -12,6 +12,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     Plato_StructuralMass.cpp 
     LinearElasticMaterial.cpp 
     LinearElectroelasticMaterial.cpp 
+    OrthotropicLinearElasticMaterial.cpp 
     LinearThermoelasticMaterial.cpp 
     HeatEquationResidual.cpp 
     TransientThermomechResidual.cpp 
