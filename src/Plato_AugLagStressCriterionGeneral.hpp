@@ -9,7 +9,7 @@
 #include <algorithm>
 
 #include "ImplicitFunctors.hpp"
-#include "LinearElasticMaterial.hpp"
+#include "ElasticModelFactory.hpp"
 
 #include "Simp.hpp"
 #include "ToMap.hpp"
