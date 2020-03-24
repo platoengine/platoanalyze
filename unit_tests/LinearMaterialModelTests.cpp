@@ -133,8 +133,8 @@ void Plato::OrthotropicLinearElasticMaterial<3>::checkOrthoMaterialStability
         THROWERR(tMsg.str().c_str())
     }
 
+    auto tPoissonRatioYX = tPoissonRatioXY * (tYoungsModulusY / tYoungsModulusX);
     auto tSqrtYoungsModulusYOverYoungsModulusX = sqrt(tYoungsModulusY / tYoungsModulusX);
-    auto tPoissonRatioYX = tPoissonRatioXY * tSqrtYoungsModulusYOverYoungsModulusX;
     if(abs(tPoissonRatioYX) > tSqrtYoungsModulusYOverYoungsModulusX)
     {
         std::stringstream tMsg;
@@ -144,8 +144,8 @@ void Plato::OrthotropicLinearElasticMaterial<3>::checkOrthoMaterialStability
         THROWERR(tMsg.str().c_str())
     }
 
+    auto tPoissonRatioZY = tPoissonRatioYZ * (tYoungsModulusZ / tYoungsModulusY);
     auto tSqrtYoungsModulusZOverYoungsModulusY = sqrt(tYoungsModulusZ / tYoungsModulusY);
-    auto tPoissonRatioZY = tPoissonRatioYZ * tSqrtYoungsModulusZOverYoungsModulusY;
     if(abs(tPoissonRatioZY) > tSqrtYoungsModulusZOverYoungsModulusY)
     {
         std::stringstream tMsg;
@@ -155,8 +155,8 @@ void Plato::OrthotropicLinearElasticMaterial<3>::checkOrthoMaterialStability
         THROWERR(tMsg.str().c_str())
     }
 
+    auto tPoissonRatioZX = tPoissonRatioXZ * (tYoungsModulusZ / tYoungsModulusX);
     auto tSqrtYoungsModulusZOverYoungsModulusX = sqrt(tYoungsModulusZ / tYoungsModulusX);
-    auto tPoissonRatioZX = tPoissonRatioXZ * tSqrtYoungsModulusZOverYoungsModulusX;
     if(abs(tPoissonRatioZX) > tSqrtYoungsModulusZOverYoungsModulusX)
     {
         std::stringstream tMsg;
@@ -232,9 +232,9 @@ void Plato::OrthotropicLinearElasticMaterial<3>::setOrthoMaterialModel
     auto tPoissonRatioXZ = aParamList.get<Plato::Scalar>("Poissons Ratio XZ");
     auto tPoissonRatioYZ = aParamList.get<Plato::Scalar>("Poissons Ratio YZ");
 
-    auto tPoissonRatioYX = tPoissonRatioXY * sqrt(tYoungsModulusY / tYoungsModulusX);
-    auto tPoissonRatioZX = tPoissonRatioXZ * sqrt(tYoungsModulusZ / tYoungsModulusX);
-    auto tPoissonRatioZY = tPoissonRatioYZ * sqrt(tYoungsModulusZ / tYoungsModulusY);
+    auto tPoissonRatioYX = tPoissonRatioXY * (tYoungsModulusY / tYoungsModulusX);
+    auto tPoissonRatioZX = tPoissonRatioXZ * (tYoungsModulusZ / tYoungsModulusX);
+    auto tPoissonRatioZY = tPoissonRatioYZ * (tYoungsModulusZ / tYoungsModulusY);
     auto tDetComplianceMat = static_cast<Plato::Scalar>(1.0) - (tPoissonRatioXY * tPoissonRatioYX)
             - (tPoissonRatioYZ * tPoissonRatioZY) - (tPoissonRatioXZ * tPoissonRatioZX)
             - static_cast<Plato::Scalar>(2.0) * (tPoissonRatioYX * tPoissonRatioZY * tPoissonRatioXZ);
@@ -306,8 +306,8 @@ void Plato::OrthotropicLinearElasticMaterial<2>::checkOrthoMaterialStability
         THROWERR(tMsg.str().c_str())
     }
 
+    auto tPoissonRatioYX = tPoissonRatioXY * (tYoungsModulusY / tYoungsModulusX);
     auto tSqrtYoungsModulusYOverYoungsModulusX = sqrt(tYoungsModulusY / tYoungsModulusX);
-    auto tPoissonRatioYX = tPoissonRatioXY * tSqrtYoungsModulusYOverYoungsModulusX;
     if(abs(tPoissonRatioYX) > tSqrtYoungsModulusYOverYoungsModulusX)
     {
         std::stringstream tMsg;
@@ -359,7 +359,7 @@ void Plato::OrthotropicLinearElasticMaterial<2>::setOrthoMaterialModel
     auto tShearModulusXY = aParamList.get<Plato::Scalar>("Shear Modulus XY");
     auto tPoissonRatioXY = aParamList.get<Plato::Scalar>("Poissons Ratio XY");
 
-    auto tPoissonRatioYX = tPoissonRatioXY * sqrt(tYoungsModulusY / tYoungsModulusX);
+    auto tPoissonRatioYX = tPoissonRatioXY * (tYoungsModulusY / tYoungsModulusX);
     mCellStiffness(0,0) = tYoungsModulusX / (static_cast<Plato::Scalar>(1.0) - (tPoissonRatioXY * tPoissonRatioYX));
     mCellStiffness(0,1) = (tPoissonRatioXY * tYoungsModulusY) / (static_cast<Plato::Scalar>(1.0) - (tPoissonRatioXY * tPoissonRatioYX));
     mCellStiffness(1,0) = (tPoissonRatioXY * tYoungsModulusY) / (static_cast<Plato::Scalar>(1.0) - (tPoissonRatioXY * tPoissonRatioYX));
@@ -444,8 +444,8 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic1D)
     constexpr Plato::OrdinalType tSpaceDim = 1;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat(tParams);
     auto tStiffMatrix = tOrthoMat.getStiffnessMatrix();
-    const Plato::Scalar tTolerance = 1e-6;
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(0,0), tTolerance);
+    const Plato::Scalar tTolerance = 1e-4;
+    TEST_FLOATING_EQUALITY(1.9230769, tStiffMatrix(0,0), tTolerance);
 }
 
 TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic1D_PoissonRatioKeyword_Error)
@@ -493,16 +493,16 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic2D)
     constexpr Plato::OrdinalType tSpaceDim = 2;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat(tParams);
     auto tStiffMatrix = tOrthoMat.getStiffnessMatrix();
-    const Plato::Scalar tTolerance = 1e-6;
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(0,0), tTolerance);
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(0,1), tTolerance);
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(0,2), tTolerance);
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(1,0), tTolerance);
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(1,1), tTolerance);
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(1,2), tTolerance);
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(2,0), tTolerance);
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(2,1), tTolerance);
-    TEST_FLOATING_EQUALITY(0.0, tStiffMatrix(2,2), tTolerance);
+    const Plato::Scalar tTolerance = 1e-4;
+    TEST_FLOATING_EQUALITY(1.0775862, tStiffMatrix(0,0), tTolerance);
+    TEST_FLOATING_EQUALITY(0.2586206, tStiffMatrix(0,1), tTolerance);
+    TEST_FLOATING_EQUALITY(0.0,       tStiffMatrix(0,2), tTolerance);
+    TEST_FLOATING_EQUALITY(0.2586206, tStiffMatrix(1,0), tTolerance);
+    TEST_FLOATING_EQUALITY(0.8620689, tStiffMatrix(1,1), tTolerance);
+    TEST_FLOATING_EQUALITY(0.0,       tStiffMatrix(1,2), tTolerance);
+    TEST_FLOATING_EQUALITY(0.0,       tStiffMatrix(2,0), tTolerance);
+    TEST_FLOATING_EQUALITY(0.0,       tStiffMatrix(2,1), tTolerance);
+    TEST_FLOATING_EQUALITY(0.3,       tStiffMatrix(2,2), tTolerance);
 }
 
 TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic2D_PoissonRatioKeyword_Error)
@@ -641,10 +641,10 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D)
       "    </ParameterList>                                                     \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat(tParams);
     auto tStiffMatrix = tOrthoMat.getStiffnessMatrix();
-    const Plato::Scalar tTolerance = 1e-6;
+    const Plato::Scalar tTolerance = 1e-4;
     TEST_FLOATING_EQUALITY(128.942, tStiffMatrix(0,0), tTolerance);
     TEST_FLOATING_EQUALITY(5.253,   tStiffMatrix(0,1), tTolerance);
     TEST_FLOATING_EQUALITY(5.253,   tStiffMatrix(0,2), tTolerance);
@@ -705,7 +705,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_YoungsModulusXKeyword
       "</ParameterList>                                                         \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
     TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
 }
@@ -727,7 +727,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_YoungsModulusYKeyword
       "    </ParameterList>                                                     \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
     TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
 }
@@ -749,7 +749,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_YoungsModulusZKeyword
       "    </ParameterList>                                                     \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
     TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
 }
@@ -771,7 +771,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_ShearModulusYZKeyword
       "    </ParameterList>                                                     \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
     TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
 }
@@ -793,7 +793,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_ShearModulusXZKeyword
       "    </ParameterList>                                                     \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
     TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
 }
@@ -815,7 +815,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_ShearModulusXYKeyword
       "    </ParameterList>                                                     \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
     TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
 }
@@ -837,7 +837,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_PoissonsRatioXYKeywor
       "    </ParameterList>                                                     \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
     TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
 }
@@ -859,7 +859,7 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_PoissonsRatioXZKeywor
       "    </ParameterList>                                                     \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
     TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
 }
@@ -881,12 +881,210 @@ TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_PoissonsRatioYZKeywor
       "    </ParameterList>                                                     \n"
     );
 
-    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
     Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
     TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
 }
 
 // TODO: Stability Conditions - Unit Tests
+
+TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_YoungsModulusXCondition_Error)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+      Teuchos::getParametersFromXmlString(
+      "    <ParameterList name='Orthotropic Linear Elastic'>                    \n"
+      "      <Parameter  name='Poissons Ratio XY' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Ratio XZ' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Rati YZ' type='double' value='0.40'/>   \n"
+      "      <Parameter  name='Shear Modulus XY' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus XZ' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus YZ' type='double' value='3.928'/>  \n"
+      "      <Parameter  name='Youngs Modulus X' type='double' value='-126.0'/>  \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='11.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Z' type='double' value='11.0'/>   \n"
+      "    </ParameterList>                                                     \n"
+    );
+
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
+    TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
+}
+
+TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_YoungsModulusYCondition_Error)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+      Teuchos::getParametersFromXmlString(
+      "    <ParameterList name='Orthotropic Linear Elastic'>                    \n"
+      "      <Parameter  name='Poissons Ratio XY' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Ratio XZ' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Rati YZ' type='double' value='0.40'/>   \n"
+      "      <Parameter  name='Shear Modulus XY' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus XZ' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus YZ' type='double' value='3.928'/>  \n"
+      "      <Parameter  name='Youngs Modulus X' type='double' value='126.0'/>  \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='-11.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Z' type='double' value='11.0'/>   \n"
+      "    </ParameterList>                                                     \n"
+    );
+
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
+    TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
+}
+
+TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_YoungsModulusZCondition_Error)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+      Teuchos::getParametersFromXmlString(
+      "    <ParameterList name='Orthotropic Linear Elastic'>                    \n"
+      "      <Parameter  name='Poissons Ratio XY' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Ratio XZ' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Rati YZ' type='double' value='0.40'/>   \n"
+      "      <Parameter  name='Shear Modulus XY' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus XZ' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus YZ' type='double' value='3.928'/>  \n"
+      "      <Parameter  name='Youngs Modulus X' type='double' value='126.0'/>  \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='11.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Z' type='double' value='-11.0'/>   \n"
+      "    </ParameterList>                                                     \n"
+    );
+
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
+    TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
+}
+
+TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_ShearModulusXYCondition_Error)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+      Teuchos::getParametersFromXmlString(
+      "    <ParameterList name='Orthotropic Linear Elastic'>                    \n"
+      "      <Parameter  name='Poissons Ratio XY' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Ratio XZ' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Rati YZ' type='double' value='0.40'/>   \n"
+      "      <Parameter  name='Shear Modulus XY' type='double' value='-6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus XZ' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus YZ' type='double' value='3.928'/>  \n"
+      "      <Parameter  name='Youngs Modulus X' type='double' value='126.0'/>  \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='11.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Z' type='double' value='11.0'/>   \n"
+      "    </ParameterList>                                                     \n"
+    );
+
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
+    TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
+}
+
+TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_ShearModulusXZCondition_Error)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+      Teuchos::getParametersFromXmlString(
+      "    <ParameterList name='Orthotropic Linear Elastic'>                    \n"
+      "      <Parameter  name='Poissons Ratio XY' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Ratio XZ' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Rati YZ' type='double' value='0.40'/>   \n"
+      "      <Parameter  name='Shear Modulus XY' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus XZ' type='double' value='-6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus YZ' type='double' value='3.928'/>  \n"
+      "      <Parameter  name='Youngs Modulus X' type='double' value='126.0'/>  \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='11.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Z' type='double' value='11.0'/>   \n"
+      "    </ParameterList>                                                     \n"
+    );
+
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
+    TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
+}
+
+TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_ShearModulusYZCondition_Error)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+      Teuchos::getParametersFromXmlString(
+      "    <ParameterList name='Orthotropic Linear Elastic'>                    \n"
+      "      <Parameter  name='Poissons Ratio XY' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Ratio XZ' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Rati YZ' type='double' value='0.40'/>   \n"
+      "      <Parameter  name='Shear Modulus XY' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus XZ' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus YZ' type='double' value='-3.928'/>  \n"
+      "      <Parameter  name='Youngs Modulus X' type='double' value='126.0'/>  \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='11.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Z' type='double' value='11.0'/>   \n"
+      "    </ParameterList>                                                     \n"
+    );
+
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
+    TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
+}
+
+TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_PoissonRationXYCondition_Error)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+      Teuchos::getParametersFromXmlString(
+      "    <ParameterList name='Orthotropic Linear Elastic'>                    \n"
+      "      <Parameter  name='Poissons Ratio XY' type='double' value='3.40'/>  \n"
+      "      <Parameter  name='Poissons Ratio XZ' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Rati YZ' type='double' value='0.40'/>   \n"
+      "      <Parameter  name='Shear Modulus XY' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus XZ' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus YZ' type='double' value='3.928'/>  \n"
+      "      <Parameter  name='Youngs Modulus X' type='double' value='126.0'/>  \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='11.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Z' type='double' value='11.0'/>  \n"
+      "    </ParameterList>                                                     \n"
+    );
+
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
+    TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
+}
+
+TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_PoissonRationXZCondition_Error)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+      Teuchos::getParametersFromXmlString(
+      "    <ParameterList name='Orthotropic Linear Elastic'>                    \n"
+      "      <Parameter  name='Poissons Ratio XY' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Ratio XZ' type='double' value='3.40'/>  \n"
+      "      <Parameter  name='Poissons Rati YZ' type='double' value='0.40'/>   \n"
+      "      <Parameter  name='Shear Modulus XY' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus XZ' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus YZ' type='double' value='3.928'/>  \n"
+      "      <Parameter  name='Youngs Modulus X' type='double' value='126.0'/>  \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='11.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Z' type='double' value='11.0'/>  \n"
+      "    </ParameterList>                                                     \n"
+    );
+
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
+    TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
+}
+
+TEUCHOS_UNIT_TEST(LinearElasticMaterialTest, Orthotropic3D_PoissonRationYZCondition_Error)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+      Teuchos::getParametersFromXmlString(
+      "    <ParameterList name='Orthotropic Linear Elastic'>                    \n"
+      "      <Parameter  name='Poissons Ratio XY' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Ratio XZ' type='double' value='0.28'/>  \n"
+      "      <Parameter  name='Poissons Rati YZ' type='double' value='2.0'/>   \n"
+      "      <Parameter  name='Shear Modulus XY' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus XZ' type='double' value='6.60'/>   \n"
+      "      <Parameter  name='Shear Modulus YZ' type='double' value='3.928'/>  \n"
+      "      <Parameter  name='Youngs Modulus X' type='double' value='126.0'/>  \n"
+      "      <Parameter  name='Youngs Modulus Y' type='double' value='11.0'/>   \n"
+      "      <Parameter  name='Youngs Modulus Z' type='double' value='11.0'/>  \n"
+      "    </ParameterList>                                                     \n"
+    );
+
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    Plato::OrthotropicLinearElasticMaterial<tSpaceDim> tOrthoMat;
+    TEST_THROW(tOrthoMat.setMaterialModel(*tParams), std::runtime_error);
+}
 
 }
 // namespace OrthotropicLinearElasticMaterialTest
