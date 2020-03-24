@@ -15,6 +15,7 @@
 #include "NaturalBCs.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ElasticModelFactory.hpp"
+#include "IsotropicLinearElasticMaterial.hpp"
 
 #include "StateValues.hpp"
 #include "ApplyPenalty.hpp"

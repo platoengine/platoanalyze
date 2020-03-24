@@ -26,6 +26,7 @@
 #include "SimplexStructuralDynamics.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "AdjointComplexRayleighDamping.hpp"
+#include "IsotropicLinearElasticMaterial.hpp"
 #include "StructuralDynamicsCellResidual.hpp"
 
 namespace Plato
