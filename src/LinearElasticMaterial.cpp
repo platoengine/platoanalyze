@@ -25,6 +25,13 @@ void LinearElasticMaterial<1>::initialize()
 }
 
 template<>
+void LinearElasticMaterial<1>::setReferenceStrainTensor(const Teuchos::ParameterList& aParamList)
+{
+    if(aParamList.isType<Plato::Scalar>("e11"))
+        mReferenceStrain(0) = aParamList.get<Plato::Scalar>("e11");
+}
+
+template<>
 LinearElasticMaterial<1>::LinearElasticMaterial() :
         mCellDensity(1.0),
         mPressureScaling(1.0)
@@ -39,13 +46,6 @@ LinearElasticMaterial<1>::LinearElasticMaterial(const Teuchos::ParameterList& aP
 {
     this->initialize();
     this->setReferenceStrainTensor(aParamList);
-}
-
-template<>
-void LinearElasticMaterial<1>::setReferenceStrainTensor(const Teuchos::ParameterList& aParamList)
-{
-    if(aParamList.isType<Plato::Scalar>("e11"))
-        mReferenceStrain(0) = aParamList.get<Plato::Scalar>("e11");
 }
 
 //*********************************************************************************
@@ -70,6 +70,17 @@ void LinearElasticMaterial<2>::initialize()
 }
 
 template<>
+void LinearElasticMaterial<2>::setReferenceStrainTensor(const Teuchos::ParameterList& aParamList)
+{
+    if(aParamList.isType<Plato::Scalar>("e11"))
+        mReferenceStrain(0) = aParamList.get<Plato::Scalar>("e11");
+    if(aParamList.isType<Plato::Scalar>("e22"))
+        mReferenceStrain(1) = aParamList.get<Plato::Scalar>("e22");
+    if(aParamList.isType<Plato::Scalar>("e12"))
+        mReferenceStrain(2) = aParamList.get<Plato::Scalar>("e12");
+}
+
+template<>
 LinearElasticMaterial<2>::LinearElasticMaterial() :
         mCellDensity(1.0),
         mPressureScaling(1.0)
@@ -86,16 +97,6 @@ LinearElasticMaterial<2>::LinearElasticMaterial(const Teuchos::ParameterList& aP
     this->setReferenceStrainTensor(aParamList);
 }
 
-template<>
-void LinearElasticMaterial<2>::setReferenceStrainTensor(const Teuchos::ParameterList& aParamList)
-{
-    if(aParamList.isType<Plato::Scalar>("e11"))
-        mReferenceStrain(0) = aParamList.get<Plato::Scalar>("e11");
-    if(aParamList.isType<Plato::Scalar>("e22"))
-        mReferenceStrain(1) = aParamList.get<Plato::Scalar>("e22");
-    if(aParamList.isType<Plato::Scalar>("e12"))
-        mReferenceStrain(2) = aParamList.get<Plato::Scalar>("e12");
-}
 
 //*********************************************************************************
 //**************************** NEXT: 3D Implementation ****************************
@@ -119,23 +120,6 @@ void LinearElasticMaterial<3>::initialize()
 }
 
 template<>
-LinearElasticMaterial<3>::LinearElasticMaterial() :
-        mCellDensity(1.0),
-        mPressureScaling(1.0)
-{
-    this->initialize();
-}
-
-template<>
-LinearElasticMaterial<3>::LinearElasticMaterial(const Teuchos::ParameterList& aParamList) :
-        mCellDensity(1.0),
-        mPressureScaling(1.0)
-{
-    this->initialize();
-    this->setReferenceStrainTensor(aParamList);
-}
-
-template<>
 void LinearElasticMaterial<3>::setReferenceStrainTensor(const Teuchos::ParameterList& aParamList)
 {
     if(aParamList.isType<Plato::Scalar>("e11"))
@@ -150,6 +134,23 @@ void LinearElasticMaterial<3>::setReferenceStrainTensor(const Teuchos::Parameter
         mReferenceStrain(4) = aParamList.get<Plato::Scalar>("e13");
     if(aParamList.isType<Plato::Scalar>("e12"))
         mReferenceStrain(5) = aParamList.get<Plato::Scalar>("e12");
+}
+
+template<>
+LinearElasticMaterial<3>::LinearElasticMaterial() :
+        mCellDensity(1.0),
+        mPressureScaling(1.0)
+{
+    this->initialize();
+}
+
+template<>
+LinearElasticMaterial<3>::LinearElasticMaterial(const Teuchos::ParameterList& aParamList) :
+        mCellDensity(1.0),
+        mPressureScaling(1.0)
+{
+    this->initialize();
+    this->setReferenceStrainTensor(aParamList);
 }
 
 } // namespace Plato
