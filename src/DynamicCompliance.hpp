@@ -29,6 +29,7 @@
 #include "AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "SimplexStructuralDynamics.hpp"
+#include "IsotropicLinearElasticMaterial.hpp"
 
 namespace Plato
 {
