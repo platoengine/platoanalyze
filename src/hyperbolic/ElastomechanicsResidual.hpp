@@ -16,6 +16,7 @@
 #include "ApplyConstraints.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "ScalarFunctionBase.hpp"
+#include "ElasticModelFactory.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "ElastomechanicsResidual.hpp"
