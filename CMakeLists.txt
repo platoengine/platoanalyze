@@ -27,11 +27,6 @@ MESSAGE("   Trilinos_CXX_COMPILER = ${Trilinos_CXX_COMPILER}")
 MESSAGE("   Trilinos_CXX_COMPILER_FLAGS = ${Trilinos_CXX_COMPILER_FLAGS}")
 MESSAGE("End of Trilinos details\n")
 
-# Important: We want to set the compilers and build flags from the Trilinos build. We do not need to check for valid compilers
-# etc here in the Plato Analyze build, as it has already been done in the Trilinos build. So, we force the compilers here
-# to be the same as the Trilinos build. We need the project statement after we force the compilers, or the compiler testing
-# will occur.
-
 set(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER})
 set(CMAKE_C_COMPILER ${Trilinos_C_COMPILER})
 set(CMAKE_Fortran_COMPILER ${Trilinos_Fortran_COMPILER})
@@ -269,6 +264,10 @@ if (PLATOANALYZE_ENABLE_MPMD)
     find_library(PLATO_GEOMETRY_COGENT_LIB NAMES PlatoGeometryCogent PATHS ${PLATOENGINE_PREFIX}/lib)
     find_package(Pamgen REQUIRED)
     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_MLS_LIB} ${PLATO_GEOMETRY_COGENT_LIB} pamgen)
+    message("Before search: ${CMAKE_CXX_FLAGS}")
+    string(REPLACE "--std=c++11" "--std=c++14" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    message("After search: ${CMAKE_CXX_FLAGS}")
+    find_package(ArborX REQUIRED)
   endif()
 
   option(PLATOANALYZE_ENABLE_ESP "Enable ESP" OFF)

@@ -35,6 +35,23 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
 
   this->createProblem(*mDefaultProblem);
 
+  // parse/create the MeshMap instance
+  auto tMeshMapInputs = mInputData.getByName<Plato::InputData>("MeshMap");
+  if( tMeshMapInputs.size() > 1 )
+  {
+      THROWERR("Multiple MeshMap blocks found.");
+  }
+  else
+  if( tMeshMapInputs.size() == 0 )
+  {
+      mMeshMap = nullptr;
+  }
+  else
+  {
+      auto tMeshMapInput = tMeshMapInputs[0];
+      Plato::Geometry::MeshMapFactory<double> tMeshMapFactory;
+      mMeshMap = tMeshMapFactory.create(mMesh, tMeshMapInput);
+  }
 
   // parse/create the ESP instance(s)
   auto tESPInputs = mInputData.getByName<Plato::InputData>("ESP");
@@ -206,7 +223,7 @@ void MPMD_App::initialize()
 
     if(tStrFunction == "ReinitializeESP"){
       mOperationMap[tStrName] = new ReinitializeESP(this, tOperationNode, opDef);
-    } else 
+    } else
 
     if(tStrFunction == "UpdateProblem"){
       mOperationMap[tStrName] = new UpdateProblem(this, tOperationNode, opDef);
@@ -217,10 +234,10 @@ void MPMD_App::initialize()
     } else
     if(tStrFunction == "ComputeObjectiveX"){
       mOperationMap[tStrName] = new ComputeObjectiveX(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeObjectiveP"){
       mOperationMap[tStrName] = new ComputeObjectiveP(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeObjectiveValue"){
       mOperationMap[tStrName] = new ComputeObjectiveValue(this, tOperationNode, opDef);
     } else
@@ -229,22 +246,22 @@ void MPMD_App::initialize()
     } else
     if(tStrFunction == "ComputeObjectiveGradientX"){
       mOperationMap[tStrName] = new ComputeObjectiveGradientX(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "MapObjectiveGradientX"){
       mOperationMap[tStrName] = new MapObjectiveGradientX(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeObjectiveGradientP"){
       mOperationMap[tStrName] = new ComputeObjectiveGradientP(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeConstraint"){
       mOperationMap[tStrName] = new ComputeConstraint(this, tOperationNode, opDef);
     } else
     if(tStrFunction == "ComputeConstraintX"){
       mOperationMap[tStrName] = new ComputeConstraintX(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeConstraintP"){
       mOperationMap[tStrName] = new ComputeConstraintP(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeConstraintValue"){
       mOperationMap[tStrName] = new ComputeConstraintValue(this, tOperationNode, opDef);
     } else
@@ -253,13 +270,13 @@ void MPMD_App::initialize()
     } else
     if(tStrFunction == "ComputeConstraintGradientX"){
       mOperationMap[tStrName] = new ComputeConstraintGradientX(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "MapConstraintGradientX"){
       mOperationMap[tStrName] = new MapConstraintGradientX(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "ComputeConstraintGradientP"){
       mOperationMap[tStrName] = new ComputeConstraintGradientP(this, tOperationNode, opDef);
-    } else 
+    } else
     if(tStrFunction == "WriteOutput"){
       mOperationMap[tStrName] = new WriteOutput(this, tOperationNode, opDef);
     } else
@@ -656,7 +673,7 @@ void MPMD_App::ComputeConstraint::operator()()
 
 /******************************************************************************/
 MPMD_App::ComputeConstraintX::
-ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aOpNode, 
+ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aOpNode,
                   Teuchos::RCP<ProblemDefinition> aOpDef) : LocalOp(aMyApp, aOpNode, aOpDef)
 /******************************************************************************/
 {
@@ -898,7 +915,7 @@ void MPMD_App::Reinitialize::operator()()
 /******************************************************************************/
 MPMD_App::ReinitializeESP::
 ReinitializeESP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
-        LocalOp    (aMyApp, aOpNode, aOpDef), 
+        LocalOp    (aMyApp, aOpNode, aOpDef),
         ESP_Op     (aMyApp, aOpNode),
         OnChangeOp (aMyApp, aOpNode)
 {

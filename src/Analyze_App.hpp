@@ -10,9 +10,6 @@
 #include <Omega_h_assoc.hpp>
 #include <Omega_h_teuchos.hpp>
 
-// #include <matrix_container.hpp>
-// #include <communicator.hpp>
-
 #include <Plato_InputData.hpp>
 #include <Plato_Application.hpp>
 #include <Plato_Exceptions.hpp>
@@ -31,6 +28,14 @@
 #ifdef PLATO_GEOMETRY
 #include "Plato_MLS.hpp"
 #endif
+
+#ifdef PLATO_GEOMETRY
+  #include "Plato_MeshMap.hpp"
+  typedef Plato::Geometry::AbstractMeshMap<Plato::Scalar> MeshMapType;
+#else
+  typedef int MeshMapType;
+#endif
+
 
 #ifdef PLATO_ESP
 #include "Plato_ESP.hpp"
@@ -201,6 +206,12 @@ public:
         if(aName == "Topology")
         {
             this->copyFieldIntoAnalyze(mControl, aSharedField);
+            if(mMeshMap != nullptr)
+            {
+                Plato::ScalarVector tMappedControl("mapped", mControl.extent(0));;
+                mMeshMap->apply(mControl, tMappedControl);
+                Kokkos::deep_copy(mControl, tMappedControl);
+            }
         }
         else if(aName == "Solution")
         {
@@ -365,10 +376,22 @@ public:
     {
         if(aName == "Objective Gradient")
         {
+            if(mMeshMap != nullptr)
+            {
+                Plato::ScalarVector tObjectiveGradientZ("unmapped", tObjectiveGradientZ.extent(0));
+                mMeshMap->applyT(mObjectiveGradientZ, tObjectiveGradientZ);
+                Kokkos::deep_copy(mObjectiveGradientZ, tObjectiveGradientZ);
+            }
             this->copyFieldFromAnalyze(mObjectiveGradientZ, aSharedField);
         }
         else if(aName == "Constraint Gradient")
         {
+            if(mMeshMap != nullptr)
+            {
+                Plato::ScalarVector tConstraintGradientZ("unmapped", tConstraintGradientZ.extent(0));
+                mMeshMap->applyT(mConstraintGradientZ, tConstraintGradientZ);
+                Kokkos::deep_copy(mConstraintGradientZ, tConstraintGradientZ);
+            }
             this->copyFieldFromAnalyze(mConstraintGradientZ, aSharedField);
         }
         else if(aName == "Adjoint")
@@ -557,6 +580,8 @@ private:
 
     std::map<std::string,std::shared_ptr<ESPType>> mESP;
     void mapToParameters(std::shared_ptr<ESPType> aESP, std::vector<Plato::Scalar>& mGradientP, Plato::ScalarVector mGradientX);
+
+    std::shared_ptr<MeshMapType> mMeshMap;
 
 #ifdef PLATO_GEOMETRY
     struct MLSstruct
