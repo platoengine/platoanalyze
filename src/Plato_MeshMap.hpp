@@ -79,6 +79,15 @@ struct BoundingBoxes
   int N;
 };
 
+struct Spheres
+{
+  double *d_x;
+  double *d_y;
+  double *d_z;
+  double *d_r;
+  int N;
+};
+
 struct Points
 {
   double *d_x;
@@ -99,11 +108,32 @@ template <>
 struct Access<Plato::Geometry::BoundingBoxes, PrimitivesTag>
 {
   inline static std::size_t size(Plato::Geometry::BoundingBoxes const &boxes) { return boxes.N; }
-  KOKKOS_INLINE_FUNCTION static Box get(Plato::Geometry::BoundingBoxes const &boxes,
-                                          std::size_t i)
+  KOKKOS_INLINE_FUNCTION static Box get(Plato::Geometry::BoundingBoxes const &boxes, std::size_t i)
   {
     return {{boxes.d_x0[i], boxes.d_y0[i], boxes.d_z0[i]},
             {boxes.d_x1[i], boxes.d_y1[i], boxes.d_z1[i]}};
+  }
+  using memory_space = Plato::Geometry::MemSpace;
+};
+
+template <>
+struct Access<Plato::Geometry::Points, PrimitivesTag>
+{
+  inline static std::size_t size(Plato::Geometry::Points const &points) { return points.N; }
+  KOKKOS_INLINE_FUNCTION static Point get(Plato::Geometry::Points const &points, std::size_t i)
+  {
+    return {{points.d_x[i], points.d_y[i], points.d_z[i]}};
+  }
+  using memory_space = Plato::Geometry::MemSpace;
+};
+
+template <>
+struct Access<Plato::Geometry::Spheres, PredicatesTag>
+{
+  inline static std::size_t size(Plato::Geometry::Spheres const &d) { return d.N; }
+  KOKKOS_INLINE_FUNCTION static auto get(Plato::Geometry::Spheres const &d, std::size_t i)
+  {
+    return intersects(Sphere{{{d.d_x[i], d.d_y[i], d.d_z[i]}}, d.d_r[i]});
   }
   using memory_space = Plato::Geometry::MemSpace;
 };
@@ -170,7 +200,7 @@ struct SymmetryPlane : public MathMapBase<VectorArrayType>
         mNormal[Dim::Z] = Plato::Get::Double(tNormalInput, "Z");
     }
     DEVICE_TYPE inline void
-    operator()( OrdinalType aOrdinal, VectorArrayType aInValue, VectorArrayType aOutValue ) const 
+    operator()( OrdinalType aOrdinal, VectorArrayType aInValue, VectorArrayType aOutValue ) const
     {
         ScalarType tProjVal = 0.0;
         tProjVal += (aInValue(Dim::X, aOrdinal) - mOrigin[Dim::X]) * mNormal[Dim::X];
@@ -201,9 +231,9 @@ struct EnclosingElement
     EnclosingElement(Omega_h::Mesh& aMesh) :
       mCells2Nodes(aMesh.ask_elem_verts()),
       mCoords(aMesh.coords()) {}
-   
+
     DEVICE_TYPE inline bool
-    operator()( OrdinalType aElemOrdinal, OrdinalType aNodeOrdinal, VectorArrayType aLocations ) const 
+    operator()( OrdinalType aElemOrdinal, OrdinalType aNodeOrdinal, VectorArrayType aLocations ) const
     {
         bool tRetVal = true;
 
@@ -220,7 +250,7 @@ struct EnclosingElement
             ScalarType X1=mCoords[i1*cSpaceDim+Dim::X], Y1=mCoords[i1*cSpaceDim+Dim::Y], Z1=mCoords[i1*cSpaceDim+Dim::Z];
             ScalarType X2=mCoords[i2*cSpaceDim+Dim::X], Y2=mCoords[i2*cSpaceDim+Dim::Y], Z2=mCoords[i2*cSpaceDim+Dim::Z];
             ScalarType X3=mCoords[i3*cSpaceDim+Dim::X], Y3=mCoords[i3*cSpaceDim+Dim::Y], Z3=mCoords[i3*cSpaceDim+Dim::Z];
-        
+
             // get input point values
             ScalarType PX=aLocations(Dim::X,aNodeOrdinal),
                        PY=aLocations(Dim::Y,aNodeOrdinal),
@@ -255,7 +285,7 @@ struct GetBasis
     GetBasis(Omega_h::Mesh& aMesh) :
       mCells2Nodes(aMesh.ask_elem_verts()),
       mCoords(aMesh.coords()) {}
-   
+
     DEVICE_TYPE inline void
     operator()(
       VectorArrayT aLocations,
@@ -263,7 +293,7 @@ struct GetBasis
       int          aElemOrdinal,
       OrdinalType  aEntryOrdinal,
       OrdinalArray aColumnMap,
-      ScalarArrayT aEntries) const 
+      ScalarArrayT aEntries) const
     {
         // get vertex indices
         OrdinalType i0 = mCells2Nodes[aElemOrdinal*cNVertsPerElem  ];
@@ -276,7 +306,7 @@ struct GetBasis
         ScalarType X1=mCoords[i1*cSpaceDim+Dim::X], Y1=mCoords[i1*cSpaceDim+Dim::Y], Z1=mCoords[i1*cSpaceDim+Dim::Z];
         ScalarType X2=mCoords[i2*cSpaceDim+Dim::X], Y2=mCoords[i2*cSpaceDim+Dim::Y], Z2=mCoords[i2*cSpaceDim+Dim::Z];
         ScalarType X3=mCoords[i3*cSpaceDim+Dim::X], Y3=mCoords[i3*cSpaceDim+Dim::Y], Z3=mCoords[i3*cSpaceDim+Dim::Z];
-        
+
         ScalarType a11=X0-X3, a12=X1-X3, a13=X2-X3;
         ScalarType a21=Y0-Y3, a22=Y1-Y3, a23=Y2-Y3;
         ScalarType a31=Z0-Z3, a32=Z1-Z3, a33=Z2-Z3;
@@ -338,15 +368,19 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
         OrdinalType mNumRows;
         OrdinalType mNumCols;
     };
-    
+
 
   private:
     MathMapType mMathMap;
     SparseMatrix mMatrix;
+    std::shared_ptr<SparseMatrix> mFilter;
+    bool mFilterFirst;
 
   public:
-    MeshMap(Omega_h::Mesh& aMesh, const Plato::InputData& aInput) :
-      mMathMap(aInput.get<Plato::InputData>("LinearMap"))
+    MeshMap(Omega_h::Mesh& aMesh, Plato::InputData& aInput) :
+      mMathMap(aInput.get<Plato::InputData>("LinearMap")),
+      mFilter(nullptr),
+      mFilterFirst(Plato::Get::Bool(aInput, "FilterFirst", /*default=*/ true))
     {
         // compute mapped values
         //
@@ -360,14 +394,128 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
         //
         ArrayT<int> tParentElements("mapped mask", tNVerts);
         findParentElements(aMesh, tVertexLocations, tMappedVertexLocations, tParentElements);
-        
+
 
         // conduct search and populate crs matrix
         //
         setMatrixValues(aMesh, tParentElements, tMappedVertexLocations, mMatrix);
+
+        // build filter if requested
+        //
+        auto tFilterSpec = aInput.get_add<Plato::InputData>("Filter");
+        mFilter = createFilter(tFilterSpec, tVertexLocations);
     }
 
-    void 
+    inline void
+    createLinearFilter(ScalarType aRadius, SparseMatrix& aMatrix, VectorArrayType aLocations)
+    {
+        // conduct search
+        //
+        auto d_x = Kokkos::subview(aLocations, (size_t)Dim::X, Kokkos::ALL());
+        auto d_y = Kokkos::subview(aLocations, (size_t)Dim::Y, Kokkos::ALL());
+        auto d_z = Kokkos::subview(aLocations, (size_t)Dim::Z, Kokkos::ALL());
+        decltype(d_x) d_r("radii", d_x.size());
+        Kokkos::deep_copy(d_r, aRadius);
+
+        ArborX::BVH<DeviceType>
+          bvh{Points{d_x.data(), d_y.data(), d_z.data(), (int)d_x.size()}};
+
+        Kokkos::View<int*, DeviceType> tIndices("indices", 0), tOffset("offset", 0);
+        bvh.query(Spheres{d_x.data(), d_y.data(), d_z.data(), d_r.data(), (int)d_x.size()}, tIndices, tOffset);
+
+        // create matrix entries
+        //
+        setLinearFilterMatrixValues(aRadius, aMatrix, aLocations, tIndices, tOffset);
+    }
+
+    inline void
+    setLinearFilterMatrixValues(
+      ScalarType aRadius,
+      SparseMatrix& aMatrix,
+      VectorArrayType aLocations,
+      Kokkos::View<int*, DeviceType> aIndices,
+      Kokkos::View<int*, DeviceType> aOffset)
+    {
+        aMatrix.mNumRows = aLocations.extent(1);
+        aMatrix.mNumCols = aLocations.extent(1);
+
+        // determine rowmap
+        auto tNumRows = aMatrix.mNumRows;
+        OrdinalArray tRowMap("row map", tNumRows+1);
+        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalType>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalType iRowOrdinal)
+        {
+            tRowMap(iRowOrdinal) = aOffset(iRowOrdinal+1) - aOffset(iRowOrdinal);
+        }, "nonzeros");
+
+        OrdinalType tNumEntries(0);
+        Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalType>(0,tNumRows+1),
+        KOKKOS_LAMBDA (const OrdinalType& iOrdinal, OrdinalType& aUpdate, const bool& tIsFinal)
+        {
+            const OrdinalType tVal = tRowMap(iOrdinal);
+            if( tIsFinal )
+            {
+              tRowMap(iOrdinal) = aUpdate;
+            }
+            aUpdate += tVal;
+        }, tNumEntries);
+        aMatrix.mRowMap = tRowMap;
+
+        // determine column map and entries
+        auto tRadius = aRadius;
+        OrdinalArray tColMap("row map", tNumEntries);
+        ScalarArray tEntries("entries", tNumEntries);
+        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalType>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalType iRowOrdinal)
+        {
+            auto iMatrixEntryOrdinal = tRowMap(iRowOrdinal);
+            auto x = aLocations(Dim::X, iRowOrdinal);
+            auto y = aLocations(Dim::Y, iRowOrdinal);
+            auto z = aLocations(Dim::Z, iRowOrdinal);
+            decltype(x) tTotalWeight(0.0);
+            for( int iOffset=aOffset(iRowOrdinal); iOffset<aOffset(iRowOrdinal+1); iOffset++ )
+            {
+                auto iVertOrdinal = aIndices(iOffset);
+                tColMap(iMatrixEntryOrdinal) = iVertOrdinal;
+                auto dx = x - aLocations(Dim::X, iVertOrdinal);
+                auto dy = y - aLocations(Dim::Y, iVertOrdinal);
+                auto dz = z - aLocations(Dim::Z, iVertOrdinal);
+                auto d2 = dx*dx + dy*dy + dz*dz;
+                auto tDistance = (d2 > 0.0) ? sqrt(d2) : 0.0;
+                auto tEntry = tRadius - tDistance;
+                tTotalWeight += tEntry;
+                tEntries(iMatrixEntryOrdinal++) = tRadius - tDistance;
+            }
+            iMatrixEntryOrdinal = tRowMap(iRowOrdinal);
+            for( int iOffset=aOffset(iRowOrdinal); iOffset<aOffset(iRowOrdinal+1); iOffset++ )
+            {
+                tEntries(iMatrixEntryOrdinal++) /= tTotalWeight;
+            }
+        }, "colmap and entries");
+        aMatrix.mColMap = tColMap;
+        aMatrix.mEntries = tEntries;
+    }
+
+    inline std::shared_ptr<SparseMatrix>
+    createFilter(Plato::InputData aFilterSpec, VectorArrayType aLocations)
+    {
+        auto tRetMatrix = std::make_shared<SparseMatrix>();
+        auto tFilterType = Plato::Get::String(aFilterSpec, "Type", /*to_upper=*/ true);
+        if( tFilterType == "LINEAR" )
+        {
+            auto tFilterRadius = Plato::Get::Double(aFilterSpec, "Radius");
+            if( tFilterRadius <= 0.0 )
+            {
+                throw Plato::ParsingException("Filter 'Radius' must be greater than zero.");
+            }
+            createLinearFilter(tFilterRadius, *tRetMatrix, aLocations);
+        }
+        else
+        {
+            tRetMatrix = nullptr;
+        }
+        return tRetMatrix;
+    }
+
+    void
     findParentElements(
       Omega_h::Mesh& aMesh,
       VectorArrayType aLocations,
@@ -391,8 +539,8 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
             for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
             {
                 OrdinalType tVertIndex = tCells2Nodes[iCellOrdinal*tNVertsPerElem];
-                tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim]; 
-                tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim]; 
+                tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
+                tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
             }
             // loop on remaining nodes to find min
             for(OrdinalType iVert=1; iVert<tNVertsPerElem; ++iVert)
@@ -402,12 +550,12 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
                 {
                     if( tMin(iDim, iCellOrdinal) > tCoords[tVertIndex*cSpaceDim+iDim] )
                     {
-                        tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim]; 
+                        tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
                     }
                     else
                     if( tMax(iDim, iCellOrdinal) < tCoords[tVertIndex*cSpaceDim+iDim] )
                     {
-                        tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim]; 
+                        tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
                     }
                 }
             }
@@ -466,8 +614,8 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
     void setMatrixValues(Omega_h::Mesh& aMesh, ArrayT<int> aParentElements, VectorArrayType aLocation, SparseMatrix& aMatrix)
     {
         auto tNVerts = aMesh.nverts();
-        mMatrix.mNumRows = tNVerts;
-        mMatrix.mNumCols = tNVerts;
+        aMatrix.mNumRows = tNVerts;
+        aMatrix.mNumCols = tNVerts;
 
         // determine rowmap
         auto tNumRows = aMatrix.mNumRows;
@@ -490,10 +638,10 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
         }, "nonzeros");
 
         OrdinalType tNumEntries(0);
-        Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalType>(0,tNumRows+1), 
+        Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalType>(0,tNumRows+1),
         KOKKOS_LAMBDA (const OrdinalType& iOrdinal, OrdinalType& aUpdate, const bool& tIsFinal)
         {
-            const OrdinalType tVal = tRowMap(iOrdinal); 
+            const OrdinalType tVal = tRowMap(iOrdinal);
             if( tIsFinal )
             {
               tRowMap(iOrdinal) = aUpdate;
@@ -519,7 +667,7 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
             {
                 tGetBasis(aLocation, iRowOrdinal, iElemOrdinal, iEntryOrdinal, tColMap, tEntries);
             }
-        
+
         }, "colmap and entries");
         mMatrix.mColMap = tColMap;
         mMatrix.mEntries = tEntries;
@@ -539,7 +687,7 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
                 aNumNonzeros++;
             }
         }, tNumCols);
- 
+
         SparseMatrix tMatrix;
         tMatrix.mNumRows = tNumRows;
         tMatrix.mNumCols = tNumCols;
@@ -578,7 +726,7 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
         {
             for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
             {
-                aLocations(iDim, iOrdinal) = tCoords[iOrdinal*cSpaceDim+iDim]; 
+                aLocations(iDim, iOrdinal) = tCoords[iOrdinal*cSpaceDim+iDim];
             }
             tMathMap(iOrdinal, aLocations, aMappedLocations);
         }, "get verts and apply map");
@@ -605,9 +753,42 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Ve
     *******************************************************************************/
     void apply(const ScalarArray & aInput, ScalarArray aOutput)
     {
-        auto tRowMap = mMatrix.mRowMap;
-        auto tColMap = mMatrix.mColMap;
-        auto tEntries = mMatrix.mEntries;
+        if( mFilter != nullptr )
+        {
+            if( mFilterFirst )
+            {
+                matvec(*mFilter, aInput, aOutput);
+                matvec(mMatrix, aOutput);
+            }
+            else
+            {
+                matvec(mMatrix, aInput, aOutput);
+                matvec(*mFilter, aOutput);
+            }
+        }
+        else
+        {
+            matvec(mMatrix, aInput, aOutput);
+        }
+    }
+
+    /***************************************************************************//**
+    *
+    * @brief Matrix times vector
+    *
+    *******************************************************************************/
+    void matvec(const SparseMatrix & aMatrix, const ScalarArray & aInput)
+    {
+        ScalarArray tOutput("output vector", aInput.extent(0));
+        Kokkos::deep_copy(tOutput, aInput);
+        matvec(aMatrix, aInput, tOutput);
+        Kokkos::deep_copy(aInput, tOutput);
+    }
+    void matvec(const SparseMatrix & aMatrix, const ScalarArray & aInput, ScalarArray aOutput)
+    {
+        auto tRowMap = aMatrix.mRowMap;
+        auto tColMap = aMatrix.mColMap;
+        auto tEntries = aMatrix.mEntries;
         auto tNumRows = tRowMap.size() - 1;
 
         using ScalarT = typename VectorArrayType::value_type;
@@ -674,7 +855,7 @@ struct MeshMapFactory
 
         auto tLinearMapInput = tLinearMapInputs[0];
         auto tLinearMapType = Plato::Get::String(tLinearMapInput, "Type");
- 
+
         if(tLinearMapType == "SymmetryPlane")
         {
             return std::make_shared<Plato::Geometry::MeshMap<SymmetryPlane<VectorArrayType>>>(aMesh, aInput);

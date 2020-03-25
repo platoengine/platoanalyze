@@ -28,8 +28,8 @@ namespace PlatoTestMeshMap
 
     // create input for SymmetryPlane
     //
-    double rx = 0.1, ry = 0.2, rz = 0.3; 
-    double nx = 0.0, ny = 0.0, nz = 1.0; 
+    double rx = 0.1, ry = 0.2, rz = 0.3;
+    double nx = 0.0, ny = 0.0, nz = 1.0;
 
     std::stringstream input;
     input << "<LinearMap>";
@@ -69,7 +69,7 @@ namespace PlatoTestMeshMap
     tXin_host(0,0) = p0_X; tXin_host(1,0) = p0_Y; tXin_host(2,0) = p0_Z;
     tXin_host(0,1) = p1_X; tXin_host(1,1) = p1_Y; tXin_host(2,1) = p1_Z;
     Kokkos::deep_copy(tXin, tXin_host);
-    
+
     // map from input to output
     //
     Kokkos::parallel_for(Kokkos::RangePolicy<int>(0, tNumVals), LAMBDA_EXPRESSION(int aOrdinal)
@@ -93,20 +93,20 @@ namespace PlatoTestMeshMap
 
 
 /******************************************************************************/
-/*! 
+/*!
   \brief Enforce symmetry on a linear field on an asymmetric tet mesh.
 
   The linear tet mesh, while asymmetric, can approximate the symmetrized linear
   field accurately.  The test constructs a MeshMap with a SymmetryPlane:
 
-    f(p(z)) = p(z)  if z >= 0
-              p(-z) if z < 0
+    f(p(z)) = p(z)   if z >= 0.5
+              p(1-z) if z < 0.5
 
-  then constructs a field p(z) = z in {-0.5,0.5} and applies the MeshMap, f(p)
+  then constructs a field p(z) = z in {0.0,1.0} and applies the MeshMap, f(p)
 
   test passes if:
-    f(p(z)) == p(z) for z > 0.0 
-    f(p(z)) ==-p(z) for z < 0.0 
+    f(p(z)) == z   for z > 0.5
+    f(p(z)) == 1-z for z < 0.5
 */
 /******************************************************************************/
 
@@ -115,8 +115,8 @@ namespace PlatoTestMeshMap
 
     // create input for MeshMap
     //
-    double rx = 0.0, ry = 0.0, rz = 0.5; 
-    double nx = 0.0, ny = 0.0, nz = 1.0; 
+    double rx = 0.0, ry = 0.0, rz = 0.5;
+    double nx = 0.0, ny = 0.0, nz = 1.0;
 
     std::stringstream input;
     input << "<MeshMap>";
@@ -152,7 +152,7 @@ namespace PlatoTestMeshMap
 
     auto tCoords = tMesh->coords();
     auto tNVerts = tMesh->nverts();
-    
+
     auto tDim = tMesh->dim();
     Kokkos::View<double*, MemSpace> tInField("not symmetric", tNVerts);
     using OrdinalType = typename Kokkos::View<double*, MemSpace>::size_type;
@@ -194,3 +194,87 @@ namespace PlatoTestMeshMap
   }
 }
 
+/******************************************************************************/
+/*!
+  \brief Enforce symmetry on a uniform field on an asymmetric tet mesh.
+
+  The test constructs a MeshMap with a SymmetryPlane:
+
+    f(p(z)) = p(z)   if z >= 0.5
+              p(1-z) if z < 0.5
+
+  then constructs a field p(z) = 1 in {-0.5,0.5} and applies the MeshMap, f(p),
+  as well as a linear filter, F.
+
+  test passes if:
+    F(f(p(z))) == 1 for all z
+*/
+/******************************************************************************/
+
+  TEUCHOS_UNIT_TEST(PlatoTestMeshMap, MeshMapWFilter)
+  {
+
+    // create input for MeshMap
+    //
+    double rx = 0.0, ry = 0.0, rz = 0.5;
+    double nx = 0.0, ny = 0.0, nz = 1.0;
+
+    std::stringstream input;
+    input << "<MeshMap>";
+    input << "  <Filter>";
+    input << "    <Type>Linear</Type>";
+    input << "    <Radius>0.25</Radius>";
+    input << "  </Filter>";
+    input << "  <LinearMap>";
+    input << "    <Type>SymmetryPlane</Type>";
+    input << "    <Origin>";
+    input << "      <X>" << rx << "</X>";
+    input << "      <Y>" << ry << "</Y>";
+    input << "      <Z>" << rz << "</Z>";
+    input << "    </Origin>";
+    input << "    <Normal>";
+    input << "      <X>" << nx << "</X>";
+    input << "      <Y>" << ny << "</Y>";
+    input << "      <Z>" << nz << "</Z>";
+    input << "    </Normal>";
+    input << "  </LinearMap>";
+    input << "</MeshMap>";
+
+    Plato::Parser* parser = new Plato::PugiParser();
+    auto tInputData = parser->parseString(input.str());
+    delete parser;
+
+    // create MeshMap from input
+    //
+    auto tMeshMapParams = tInputData.get<Plato::InputData>("MeshMap");
+
+    constexpr int cMeshWidth=5;
+    constexpr int cSpaceDim=3;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(cSpaceDim, cMeshWidth);
+
+    Plato::Geometry::MeshMapFactory<double> tMeshMapFactory;
+    auto tMeshMap = tMeshMapFactory.create(*tMesh, tMeshMapParams);
+
+    auto tCoords = tMesh->coords();
+    auto tNVerts = tMesh->nverts();
+
+    auto tDim = tMesh->dim();
+    Kokkos::View<double*, MemSpace> tInField("uniform", tNVerts);
+    Kokkos::View<double*, MemSpace> tOutField("also uniform", tNVerts);
+    Kokkos::deep_copy(tInField, 1.0);
+
+    tMeshMap->apply(tInField, tOutField);
+
+    auto tOutField_host = Kokkos::create_mirror_view(tOutField);
+    Kokkos::deep_copy(tOutField_host, tOutField);
+
+    auto tInField_host = Kokkos::create_mirror_view(tInField);
+    Kokkos::deep_copy(tInField_host, tInField);
+
+    double tol_double = 1e-12;
+    using OrdinalType = typename Kokkos::View<double*, MemSpace>::size_type;
+    for(OrdinalType i=0; i<tNVerts; i++)
+    {
+        TEST_FLOATING_EQUALITY(1.0, tOutField_host(i), tol_double);
+    }
+  }
