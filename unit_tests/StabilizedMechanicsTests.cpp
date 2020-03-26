@@ -12,6 +12,23 @@
 #include "PlatoTestHelpers.hpp"
 #include "EllipticVMSProblem.hpp"
 
+namespace Plato
+{
+
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumDofsPerNode>
+inline void output_vtk_node_field(const Plato::Scalar aTime,
+                                  const Plato::ScalarVector& aData,
+                                  const std::string& aName,
+                                  Omega_h::Mesh& aMesh,
+                                  Omega_h::vtk::Writer& aOutput)
+{
+    aMesh.add_tag(Omega_h::VERT, aName.c_str(), NumDofsPerNode, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(aData)));
+    auto tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpaceDim);
+    aOutput.write(static_cast<Omega_h::Real>(aTime), tTags);
+}
+
+}
+
 
 namespace StabilizedMechanicsTests
 {
@@ -114,9 +131,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     Plato::print(tSubViewT1, "solution t=1");
 
     Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer("SolutionMesh", tMesh.getRawPtr(), tSpaceDim);
+    for(Plato::OrdinalType tTime = 0; tTime < tSolution.dimension_0(); tTime++)
+    {
+        auto tSubView = Kokkos::subview(tSolution, tTime, Kokkos::ALL());
+        Plato::output_vtk_node_field<tSpaceDim, tNumDofsPerNode>(tTime, tSubView, "State", *tMesh, tWriter);
+    }
+    /*
     tMesh->add_tag(Omega_h::VERT, "State", tNumDofsPerNode, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tSubViewT1)));
     auto tTags = Omega_h::vtk::get_all_vtk_tags(tMesh.getRawPtr(), tSpaceDim);
     tWriter.write(static_cast<Omega_h::Real>(1), tTags);
+    */
 }
 
 
