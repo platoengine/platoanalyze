@@ -8,7 +8,7 @@
 
 #include "PlatoUtilities.hpp"
 #include "PlatoTestHelpers.hpp"
-#include "Plato_Diagnostics.hpp"
+#include "src/Plato_Diagnostics.hpp"
 
 #include "PlasticityProblem.hpp"
 #include "Plato_Diagnostics.hpp"

@@ -106,6 +106,33 @@ build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/AugLagStressUnit
 add_test(NAME runAugLagStressUnitTests COMMAND ${ES_MPI_TEST})
 #end: AugLagStressTest unit test
 
+#begin: StabilizedMechanicsUnitTests
+set(StabilizedMechanicsTests_SOURCES
+  StabilizedMechanicsTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(StabilizedMechanicsTests_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(StabilizedMechanicsUnitTests
+  ${StabilizedMechanicsTests_SOURCES}
+  ${StabilizedMechanicsTests_HEADERS}
+)
+
+target_link_libraries(StabilizedMechanicsUnitTests 
+  analyzelib
+  ${Trilinos_LIBRARIES} 
+  ${Trilinos_TPL_LIBRARIES} 
+  )
+target_include_directories(StabilizedMechanicsUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/StabilizedMechanicsUnitTests)
+add_test(NAME runStabilizedMechanicsUnitTests COMMAND ${ES_MPI_TEST})
+#end: StabilizedMechanicsUnitTests
+
 #begin: MassPropertiesTest unit test
 set(MassPropertiesTest_SOURCES
   MassPropertiesTests.cpp
