@@ -114,7 +114,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     Plato::print(tSubViewT1, "solution t=1");
 
     Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer("SolutionMesh", tMesh.getRawPtr(), tSpaceDim);
-    tMesh->add_tag(Omega_h::VERT, "State", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tSubViewT1)));
+    tMesh->add_tag(Omega_h::VERT, "State", tNumDofsPerNode, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tSubViewT1)));
     auto tTags = Omega_h::vtk::get_all_vtk_tags(tMesh.getRawPtr(), tSpaceDim);
     tWriter.write(static_cast<Omega_h::Real>(1), tTags);
 }
