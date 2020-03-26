@@ -28,30 +28,30 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
-      "<ParameterList name='Plato Problem'>                                              \n"
-        "<Parameter name='Physics'         type='string'  value='Stabilized Mechanical/> \n"
-        "<Parameter name='PDE Constraint'  type='string'  value='Elliptic'/>             \n"
-        "<ParameterList name='Elliptic'>                                                 \n"
-          "<ParameterList name='Penalty Function'>                                       \n"
-            "<Parameter name='Type' type='string' value='SIMP'/>                         \n"
-            "<Parameter name='Exponent' type='double' value='3.0'/>                      \n"
-            "<Parameter name='Minimum Value' type='double' value='1.0e-9'/>              \n"
-          "</ParameterList>                                                              \n"
-        "</ParameterList>                                                                \n"
-        "<ParameterList name='Time Stepping'>                                            \n"
-          "<Parameter name='Number Time Steps' type='int' value='4'/>                    \n"
-          "<Parameter name='Time Step' type='double' value='1.0'/>                       \n"
-        "</ParameterList>                                                                \n"
-        "<ParameterList name='Newton Iteration'>                                         \n"
-          "<Parameter name='Number Iterations' type'int' value='3'/>                     \n"
-        "</ParameterList>                                                                \n"
-        "<ParameterList name='Material Model'>                                           \n"
-          "<ParameterList name'Isotropic Linear Elastic'>                                \n"
-            "<Parameter  name='Poissons Ratio' type='double' value='0.35'/>              \n"
-            "<Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>            \n"
-          "</ParameterList>                                                              \n"
-        "</ParameterList>                                                                \n"
-    "</ParameterList>                                                                    \n"
+      "<ParameterList name='Plato Problem'>                                               \n"
+        "<Parameter name='Physics'         type='string'  value='Stabilized Mechanical'/> \n"
+        "<Parameter name='PDE Constraint'  type='string'  value='Elliptic'/>              \n"
+        "<ParameterList name='Elliptic'>                                                  \n"
+          "<ParameterList name='Penalty Function'>                                        \n"
+            "<Parameter name='Type' type='string' value='SIMP'/>                          \n"
+            "<Parameter name='Exponent' type='double' value='3.0'/>                       \n"
+            "<Parameter name='Minimum Value' type='double' value='1.0e-9'/>               \n"
+          "</ParameterList>                                                               \n"
+        "</ParameterList>                                                                 \n"
+        "<ParameterList name='Time Stepping'>                                             \n"
+          "<Parameter name='Number Time Steps' type='int' value='2'/>                     \n"
+          "<Parameter name='Time Step' type='double' value='1.0'/>                        \n"
+        "</ParameterList>                                                                 \n"
+        "<ParameterList name='Newton Iteration'>                                          \n"
+          "<Parameter name='Number Iterations' type='int' value='3'/>                      \n"
+        "</ParameterList>                                                                 \n"
+        "<ParameterList name='Material Model'>                                            \n"
+          "<ParameterList name='Isotropic Linear Elastic'>                                 \n"
+            "<Parameter  name='Poissons Ratio' type='double' value='0.35'/>               \n"
+            "<Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>             \n"
+          "</ParameterList>                                                               \n"
+        "</ParameterList>                                                                 \n"
+    "</ParameterList>                                                                     \n"
     );
 
     using PhysicsT = Plato::StabilizedMechanics<tSpaceDim>;
@@ -110,7 +110,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::fill(1.0, tControls);
     auto tSolution = tEllipticVMSProblem.solution(tControls);
-    Plato::print_array_2D(tSolution, "solution");
+    auto tSolutionTimeStep1 = Kokkos::subview(tSolution, 1, Kokkos::ALL());
+    Plato::print(tSolutionTimeStep1, "solution t=1");
 }
 
 
