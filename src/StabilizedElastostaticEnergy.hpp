@@ -12,7 +12,7 @@
 #include "InterpolateFromNodal.hpp"
 #include "AbstractScalarFunctionInc.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
-#include "LinearElasticMaterial.hpp"
+#include "ElasticModelFactory.hpp"
 #include "ToMap.hpp"
 #include "ExpInstMacros.hpp"
 

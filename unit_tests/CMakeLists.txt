@@ -133,6 +133,33 @@ build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/MassPropertiesUn
 add_test(NAME runMassPropertiesUnitTests COMMAND ${ES_MPI_TEST})
 #end: MassPropertiesTest unit test
 
+#begin: LinearMaterialModelTests unit test
+set(LinearMaterialModelTests_SOURCES
+  LinearMaterialModelTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(LinearMaterialModelTests_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(LinearMaterialModelUnitTests
+  ${LinearMaterialModelTests_SOURCES}
+  ${LinearMaterialModelTests_HEADERS}
+)
+
+target_link_libraries(LinearMaterialModelUnitTests 
+  analyzelib
+  ${Trilinos_LIBRARIES} 
+  ${Trilinos_TPL_LIBRARIES} 
+  )
+target_include_directories(LinearMaterialModelUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/LinearMaterialModelUnitTests)
+add_test(NAME runLinearMaterialModelUnitTests COMMAND ${ES_MPI_TEST})
+#end: LinearMaterialModelTests unit test
+
 #begin: PlasticityTests unit test
 set(PlasticityTest_SOURCES
   PlasticityTests.cpp

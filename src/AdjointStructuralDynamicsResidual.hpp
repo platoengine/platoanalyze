@@ -20,12 +20,13 @@
 #include "ImplicitFunctors.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "ComplexLinearStress.hpp"
-#include "LinearElasticMaterial.hpp"
+#include "ElasticModelFactory.hpp"
 #include "AbstractVectorFunction.hpp"
 #include "ComplexStressDivergence.hpp"
 #include "SimplexStructuralDynamics.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "AdjointComplexRayleighDamping.hpp"
+#include "IsotropicLinearElasticMaterial.hpp"
 #include "StructuralDynamicsCellResidual.hpp"
 
 namespace Plato

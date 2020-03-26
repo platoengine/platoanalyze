@@ -15,7 +15,6 @@
 
 #include "PlatoStaticsTypes.hpp"
 #include "ImplicitFunctors.hpp"
-#include "LinearElasticMaterial.hpp"
 
 #ifdef HAVE_AMGX
 #include "alg/AmgXSparseLinearProblem.hpp"

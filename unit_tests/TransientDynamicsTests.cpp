@@ -22,7 +22,6 @@
 #include "ScalarFunctionBase.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "PlatoAbstractProblem.hpp"
-#include "LinearElasticMaterial.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "hyperbolic/HyperbolicVectorFunction.hpp"
 #include "hyperbolic/HyperbolicPhysicsScalarFunction.hpp"

@@ -148,7 +148,6 @@ Analyze_importData(Analyze *self, PyObject *args, PyObject *kwds)
     } else
     if( inType == "SCALAR" )
     {
-
         std::vector<Plato::Scalar> vecData;
         if (PyList_Check(inputData))
         {
@@ -192,8 +191,9 @@ Analyze_exportData(Analyze *self, PyObject *args, PyObject *kwds)
     //
     char *outputDataName;
     char *outputDataType;
+    int tNumValues(1);
 
-    if (! PyArg_ParseTuple(args, "ss", &outputDataName, &outputDataType) )
+    if (! PyArg_ParseTuple(args, "ss|i", &outputDataName, &outputDataType, &tNumValues) )
     {
         return Py_BuildValue("i", -1);
     }
@@ -220,11 +220,18 @@ Analyze_exportData(Analyze *self, PyObject *args, PyObject *kwds)
     } else
     if( outType == "SCALAR" )
     {
-        PlatoPython::SharedValue outData(1);
+        PlatoPython::SharedValue outData(tNumValues);
         self->mMPMDApp->exportDataT(outName, outData);
-        std::vector<Plato::Scalar> vecData(1);
+        std::vector<Plato::Scalar> vecData(tNumValues);
         outData.getData(vecData);
-        return PyFloat_FromDouble(vecData[0]);
+        if (tNumValues == 1)
+        {
+            return PyFloat_FromDouble(vecData[0]);
+        }
+        else
+        {
+            return list_from_double_vector(vecData);
+        }
     }
     return Py_BuildValue("i", 1);
 }

@@ -8,7 +8,7 @@
 #include "ImplicitFunctors.hpp"
 #include <Teuchos_ParameterList.hpp>
 #include "SimplexFadTypes.hpp"
-#include "LinearElasticMaterial.hpp"
+#include "ElasticModelFactory.hpp"
 #include "ExpInstMacros.hpp"
 
 namespace Plato

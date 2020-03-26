@@ -23,12 +23,13 @@
 #include "ImplicitFunctors.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "ComplexLinearStress.hpp"
+#include "ElasticModelFactory.hpp"
 #include "ComplexElasticEnergy.hpp"
-#include "LinearElasticMaterial.hpp"
 #include "ComplexInertialEnergy.hpp"
 #include "AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "SimplexStructuralDynamics.hpp"
+#include "IsotropicLinearElasticMaterial.hpp"
 
 namespace Plato
 {

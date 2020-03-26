@@ -6,7 +6,7 @@
 #include "ScalarProduct.hpp"
 #include "ApplyWeighting.hpp"
 #include "Strain.hpp"
-#include "LinearElasticMaterial.hpp"
+#include "ElasticModelFactory.hpp"
 #include "ImplicitFunctors.hpp"
 #include "HomogenizedStress.hpp"
 #include "AbstractScalarFunction.hpp"

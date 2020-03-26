@@ -19,7 +19,7 @@
 #include "ToMap.hpp"
 #include "Plato_VonMisesYield.hpp"
 
-#include "LinearElasticMaterial.hpp"
+#include "ElasticModelFactory.hpp"
 #include "NaturalBCs.hpp"
 #include "BodyLoads.hpp"
 

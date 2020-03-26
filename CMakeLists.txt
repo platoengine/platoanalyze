@@ -237,6 +237,7 @@ if (PLATOANALYZE_ENABLE_MPMD)
       ${PLATO_ANALYZE_LIB}
       ${PLATO_PARSER_LIB}
       ${PLATO_EXCEPTIONS_LIB}
+      ${PLATO_CONSOLE_LIB}
       aztecoo
       epetra
       intrepid
@@ -247,10 +248,9 @@ if (PLATOANALYZE_ENABLE_MPMD)
       exodus
      )
 
-   add_library( Analyze_App src/Analyze_App.cpp )
+  add_library( Analyze_App src/Analyze_App.cpp )
   target_include_directories(Analyze_App PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
   target_include_directories(Analyze_App PRIVATE "${PLATOENGINE_PREFIX}/include")
-  target_link_libraries(Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
   if( CMAKE_INSTALL_PREFIX )
     install( TARGETS Analyze_App DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
   endif()
@@ -271,6 +271,18 @@ if (PLATOANALYZE_ENABLE_MPMD)
     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_MLS_LIB} ${PLATO_GEOMETRY_COGENT_LIB} pamgen)
   endif()
 
+  option(PLATOANALYZE_ENABLE_ESP "Enable ESP" OFF)
+  if (PLATOANALYZE_ENABLE_ESP)
+    find_library(PLATO_GEOMETRY_ESP_LIB NAMES PlatoGeometryESP PATHS ${PLATOENGINE_PREFIX}/lib)
+    find_library(ESP_LIB NAMES egads PATHS ${ESP_LIB_DIR})
+    find_library(OCSM_LIB NAMES ocsm PATHS ${ESP_LIB_DIR})
+    message("adding define: -DPLATO_ESP")
+    add_definitions(-DPLATO_ESP)
+    include_directories( ${ESP_INC_DIR} )
+    set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_ESP_LIB} ${OCSM_LIB} ${ESP_LIB} ${OCSM_LIB})
+  endif()
+
+  target_link_libraries(Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
   target_link_libraries(analyze_MPMD Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
 
   option(PLATOANALYZE_ENABLE_PYTHON "Enable the Plato Python interface" OFF)
