@@ -7,6 +7,7 @@
 #pragma once
 
 #include <Omega_h_few.hpp>
+#include <Omega_h_file.hpp>
 #include <Omega_h_shape.hpp>
 #include <Omega_h_assoc.hpp>
 
@@ -229,6 +230,29 @@ Omega_h::Write<T> create_omega_h_write_array(std::string aName, Plato::OrdinalTy
   return Omega_h::Write<T>(view);
 }
 // function create_omega_h_write_array
+
+/******************************************************************************//**
+* \brief Output node field to vtk file - convenient for visualization
+*
+* \param [in] aTime    time step
+* \param [in] aData    output data
+* \param [in] aName    output data name
+* \param [in] aMesh    mesh database
+* \param [in] aOutput  omega_h - vtk output interface
+*
+**********************************************************************************/
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumDofsPerNode>
+inline void output_vtk_node_field(const Plato::Scalar aTime,
+                                  const Plato::ScalarVector& aData,
+                                  const std::string& aName,
+                                  Omega_h::Mesh& aMesh,
+                                  Omega_h::vtk::Writer& aOutput)
+{
+    aMesh.add_tag(Omega_h::VERT, aName.c_str(), NumDofsPerNode, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(aData)));
+    auto tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpaceDim);
+    aOutput.write(static_cast<Omega_h::Real>(aTime), tTags);
+}
+// function output_vtk_node_field
 
 }
 // namespace Plato
