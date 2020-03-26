@@ -110,8 +110,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::fill(1.0, tControls);
     auto tSolution = tEllipticVMSProblem.solution(tControls);
-    auto tSolutionTimeStep1 = Kokkos::subview(tSolution, 1, Kokkos::ALL());
-    Plato::print(tSolutionTimeStep1, "solution t=1");
+    auto tSubViewT1 = Kokkos::subview(tSolution, 1, Kokkos::ALL());
+    Plato::print(tSubViewT1, "solution t=1");
+
+    Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer("SolutionMesh", tMesh.getRawPtr(), tSpaceDim);
+    tMesh->add_tag(Omega_h::VERT, "State", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tSubViewT1)));
+    auto tTags = Omega_h::vtk::get_all_vtk_tags(tMesh.getRawPtr(), tSpaceDim);
+    tWriter.write(static_cast<Omega_h::Real>(1), tTags);
 }
 
 
