@@ -43,7 +43,7 @@ private:
     std::shared_ptr<const Plato::ScalarFunctionBase>    mConstraint; /*!< constraint constraint interface */
     std::shared_ptr<const Plato::ScalarFunctionIncBase> mObjective;  /*!< objective constraint interface */
 
-    Plato::OrdinalType mNumSteps, mNumNewtonSteps;
+    Plato::OrdinalType mNumSteps, mNumNewtonSteps, mCurrentNewtonStep;
     Plato::Scalar mTimeStep;
 
     Plato::ScalarVector      mResidual;
@@ -72,9 +72,10 @@ public:
     EllipticVMSProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams) :
             mEqualityConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
             mStateProjection(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
-            mNumSteps      (Plato::ParseTools::getSubParam<int>   (aInputParams, "Time Stepping", "Number Time Steps",    1  )),
+            mNumSteps      (Plato::ParseTools::getSubParam<int>   (aInputParams, "Time Stepping", "Number Time Steps",    2  )),
             mTimeStep      (Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Time Step",     1.0)),
             mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Number Iterations", 2  )),
+            mCurrentNewtonStep(0),
             mConstraint(nullptr),
             mObjective(nullptr),
             mResidual("MyResidual", mEqualityConstraint.size()),
@@ -167,13 +168,50 @@ public:
     **********************************************************************************/
     void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
+        if(mBcValues.size() <= static_cast<Plato::OrdinalType>(0))
+        { THROWERR("Elliptic VMS Problem: Essential Boundary Conditions Values array is empty.") }
+
+        if(mBcDofs.size() <= static_cast<Plato::OrdinalType>(0))
+        { THROWERR("Elliptic VMS Problem: Essential Boundary Conditions Dofs array is empty.") }
+
+        Plato::ScalarVector tBcValues("Dirichlet Values", mBcValues.size());
+        Plato::fill(0.0, tBcValues);
+        if(mCurrentNewtonStep == static_cast<Plato::OrdinalType>(0))
+        { Plato::update(static_cast<Plato::Scalar>(1.), mBcValues, static_cast<Plato::Scalar>(0.), tBcValues); }
+
         if(mJacobian->isBlockMatrix())
         {
-            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues);
+            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tBcValues);
         }
         else
         {
-            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues);
+            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tBcValues);
+        }
+    }
+
+    /******************************************************************************//**
+     * \brief Apply Dirichlet constraints for adjoint problem
+     * \param [in] aMatrix Compressed Row Storage (CRS) matrix
+     * \param [in] aVector 1D view of Right-Hand-Side forces
+    **********************************************************************************/
+    void applyAdjointConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
+    {
+        if(mBcValues.size() <= static_cast<Plato::OrdinalType>(0))
+        { THROWERR("Elliptic VMS Problem: Essential Boundary Conditions Values array is empty.") }
+
+        if(mBcDofs.size() <= static_cast<Plato::OrdinalType>(0))
+        { THROWERR("Elliptic VMS Problem: Essential Boundary Conditions Dofs array is empty.") }
+
+        Plato::ScalarVector tBcValues("Dirichlet Values", mBcValues.size());
+        Plato::scale(static_cast<Plato::Scalar>(0.0), tBcValues);
+
+        if(aMatrix->isBlockMatrix())
+        {
+            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tBcValues);
+        }
+        else
+        {
+            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tBcValues);
         }
     }
 
@@ -209,6 +247,7 @@ public:
             // inner loop for load/time steps
             for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
             {
+                mCurrentNewtonStep = tNewtonIndex;
                 mProjResidual = mStateProjection.value      (mProjPGrad, mProjectState, aControl);
                 mProjJacobian = mStateProjection.gradient_u (mProjPGrad, mProjectState, aControl);
 
@@ -216,6 +255,7 @@ public:
 
                 // compute the state solution
                 mResidual = mEqualityConstraint.value      (tState, mProjPGrad, aControl);
+                Plato::scale(static_cast<Plato::Scalar>(-1.0), mResidual);
                 mJacobian = mEqualityConstraint.gradient_u (tState, mProjPGrad, aControl);
 
                 this->applyConstraints(mJacobian, mResidual);
@@ -223,7 +263,7 @@ public:
                 Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobian, tStateIncrement, mResidual);
 
                 // update the state with the new increment
-                Plato::update(-1.0, tStateIncrement, 1.0, tState);
+                Plato::update(static_cast<Plato::Scalar>(1.0), tStateIncrement, static_cast<Plato::Scalar>(1.0), tState);
 
                 // copy projection state
                 Plato::extract<SimplexPhysics::mNumDofsPerNode,
@@ -382,7 +422,7 @@ public:
             auto tRow = SimplexPhysics::ProjectorT::SimplexT::mProjectionDof;
             Plato::Condense(mJacobian, t_dP_dn_T, mProjJacobian,  t_dg_dPI_T, tRow);
 
-            this->applyConstraints(mJacobian, t_df_du);
+            this->applyAdjointConstraints(mJacobian, t_df_du);
 
             Plato::ScalarVector tLambda = Kokkos::subview(mLambda, tStepIndex, Kokkos::ALL());
             Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobian, tLambda, t_df_du);
@@ -469,7 +509,7 @@ public:
             auto tRow = SimplexPhysics::ProjectorT::SimplexT::mProjectionDof;
             Plato::Condense(mJacobian, t_dP_dn_T, mProjJacobian,  t_dg_dPI_T, tRow);
 
-            this->applyConstraints(mJacobian, t_df_du);
+            this->applyAdjointConstraints(mJacobian, t_df_du);
 
             Plato::ScalarVector tLambda = Kokkos::subview(mLambda, tStepIndex, Kokkos::ALL());
             Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobian, tLambda, t_df_du);
