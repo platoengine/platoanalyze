@@ -89,7 +89,9 @@ public:
         {
             if(tPDE == "Elliptic")
             {
-                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                return tOutput;
             }
             else
             {
@@ -131,7 +133,9 @@ public:
         {
             if(tPDE == "Elliptic")
             {
-                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                return tOutput;
             }
             else
             {

@@ -126,6 +126,40 @@ public:
         return mLambda;
     }
 
+    /***************************************************************************//**
+     * \brief Read essential (Dirichlet) boundary conditions from the Exodus file.
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aInputParams input parameters database
+    *******************************************************************************/
+    void readEssentialBoundaryConditions(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    {
+        if(aInputParams.isSublist("Essential Boundary Conditions") == false)
+        {
+            THROWERR("ESSENTIAL BOUNDARY CONDITIONS SUBLIST IS NOT DEFINED IN THE INPUT FILE.")
+        }
+        Plato::EssentialBCs<SimplexPhysics> tEssentialBoundaryConditions(aInputParams.sublist("Essential Boundary Conditions", false));
+        tEssentialBoundaryConditions.get(aMeshSets, mBcDofs, mBcValues);
+    }
+
+    /***************************************************************************//**
+     * \brief Set essential (Dirichlet) boundary conditions
+     * \param [in] aDofs   degrees of freedom associated with Dirichlet boundary conditions
+     * \param [in] aValues values associated with Dirichlet degrees of freedom
+    *******************************************************************************/
+    void setEssentialBoundaryConditions(const Plato::LocalOrdinalVector & aDofs, const Plato::ScalarVector & aValues)
+    {
+        if(aDofs.size() != aValues.size())
+        {
+            std::ostringstream tError;
+            tError << "DIMENSION MISMATCH: THE NUMBER OF ELEMENTS IN INPUT DOFS AND VALUES ARRAY DO NOT MATCH."
+                << "DOFS SIZE = " << aDofs.size() << " AND VALUES SIZE = " << aValues.size();
+            THROWERR(tError.str())
+        }
+        mBcDofs = aDofs;
+        mBcValues = aValues;
+    }
+
     /******************************************************************************//**
      * \brief Apply Dirichlet constraints
      * \param [in] aMatrix Compressed Row Storage (CRS) matrix
@@ -644,12 +678,6 @@ private:
 
             mEta = Plato::ScalarVector("Eta", tLength);
         }
-
-        // parse constraints
-        //
-        Plato::EssentialBCs<SimplexPhysics>
-            tEssentialBoundaryConditions(aInputParams.sublist("Essential Boundary Conditions",false));
-        tEssentialBoundaryConditions.get(aMeshSets, mBcDofs, mBcValues);
     }
 };
 // class EllipticVMSProblem
