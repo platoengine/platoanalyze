@@ -1353,16 +1353,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticStrain3D
     Plato::ScalarArray3DT<Plato::Scalar> tGradient("gradient", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
     Plato::ScalarMultiVectorT<Plato::Scalar> tLocalState("local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
-    Plato::StabilizedKinematics <tSpaceDim> tKinematics;
     Plato::ComputeGradientWorkset <tSpaceDim> tComputeGradient;
     Plato::LinearTetCubRuleDegreeOne <tSpaceDim> tCubatureRule;
     Plato::ThermoPlasticityUtilities <tSpaceDim, PhysicsT> tThermoPlasticityUtils;
 
     auto tBasisFunctions = tCubatureRule.getBasisFunctions();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         tComputeGradient(aCellOrdinal, tGradient, tConfig, tCellVolume);
-        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, tState, tLocalState, tBasisFunctions, tGradient, tStrains);
+        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, tStateWS, tLocalState, tBasisFunctions, tGradient, tStrains);
     }, "compute elastic strain test");
 
     Plato::print_array_2D(tStrains, "strains");
