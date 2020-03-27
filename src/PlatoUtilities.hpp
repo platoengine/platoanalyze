@@ -21,13 +21,13 @@ namespace Plato
 **********************************************************************************/
 template<typename ArrayT>
 DEVICE_TYPE inline void print_array_1D_device
-(const ArrayT & aInput, std::string aName = "")
+(const ArrayT & aInput, const char* aName)
 {
     auto tSize = aInput.size();
     for(Plato::OrdinalType tIndex = 0; tIndex < tSize; tIndex++)
     {
         auto tEntry = tIndex + static_cast<Plato::OrdinalType>(1);
-        printf("%s: X(%d) = %e\n", aName.c_str(), tEntry, aInput(tIndex));
+        printf("%s: X(%d) = %e\n", aName, tEntry, aInput(tIndex));
     }
 }
 // print_array_1D_device
@@ -40,13 +40,13 @@ DEVICE_TYPE inline void print_array_1D_device
 **********************************************************************************/
 template<typename ArrayT>
 DEVICE_TYPE inline void print_array_2D_device
-(const Plato::OrdinalType aLeadOrdinal, const ArrayT & aInput, std::string aName = "")
+(const Plato::OrdinalType & aLeadOrdinal, const ArrayT & aInput, const char* aName)
 {
     auto tSize = aInput.dimension_1();
     for(Plato::OrdinalType tIndex = 0; tIndex < tSize; tIndex++)
     {
         auto tEntry = tIndex + static_cast<Plato::OrdinalType>(1);
-        printf("%s: X(%d,%d) = %e\n", aName.c_str(), aLeadOrdinal, tEntry, aInput(aLeadOrdinal, tIndex));
+        printf("%s: X(%d,%d) = %e\n", aName, aLeadOrdinal, tEntry, aInput(aLeadOrdinal, tIndex));
     }
 }
 // print_array_2D_device
@@ -59,7 +59,7 @@ DEVICE_TYPE inline void print_array_2D_device
 **********************************************************************************/
 template<typename ArrayT>
 DEVICE_TYPE inline void print_array_3D_device
-(const Plato::OrdinalType aLeadOrdinal, const ArrayT & aInput, std::string aName = "")
+(const Plato::OrdinalType & aLeadOrdinal, const ArrayT & aInput, const char* aName)
 {
     auto tDimOneLength = aInput.dimension_1();
     auto tDimTwoLength = aInput.dimension_2();
@@ -69,7 +69,7 @@ DEVICE_TYPE inline void print_array_3D_device
         {
             auto tEntryI = tIndexI + static_cast<Plato::OrdinalType>(1);
             auto tEntryJ = tIndexJ + static_cast<Plato::OrdinalType>(1);
-            printf("%s: X(%d,%d,%d) = %e\n", aName.c_str(), aLeadOrdinal, tEntryI, tEntryJ, aInput(aLeadOrdinal, tIndexI, tIndexJ));
+            printf("%s: X(%d,%d,%d) = %e\n", aName, aLeadOrdinal, tEntryI, tEntryJ, aInput(aLeadOrdinal, tIndexI, tIndexJ));
         }
     }
 }
