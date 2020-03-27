@@ -1418,6 +1418,128 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual2D_Elastic)
 }
 
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
+{
+    // 1. DEFINE PROBLEM
+    const bool tOutputData = true; // for debugging purpose, set true to enable the Paraview output file
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+    Plato::DataMap    tDataMap;
+    Omega_h::MeshSets tMeshSets;
+
+    Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                                     \n"
+      "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
+      "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
+      "  <ParameterList name='Material Model'>                                                  \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
+      "      <Parameter  name='Density' type='double' value='1e3'/>                             \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.35'/>                     \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1e11'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Plasticity Model'>                                                \n"
+      "    <ParameterList name='J2 Plasticity'>                                                 \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1e9'/>         \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1e9'/>         \n"
+      "      <Parameter  name='Initial Yield Stress' type='double' value='1e9'/>                \n"
+      "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
+      "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
+      "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
+      "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <ParameterList name='Penalty Function'>                                              \n"
+      "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
+      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "    </ParameterList>                                                                     \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Time Stepping'>                                                   \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='1'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='1'/>              \n"
+      "  </ParameterList>                                                                       \n"
+      "  <ParameterList name='Newton-Raphson'>                                                  \n"
+      "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
+      "  </ParameterList>                                                                       \n"
+      "</ParameterList>                                                                         \n"
+    );
+
+    using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
+    Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
+
+    // 2. Get Dirichlet Boundary Conditions
+    Plato::OrdinalType tDispDofX = 0;
+    Plato::OrdinalType tDispDofY = 1;
+    Plato::OrdinalType tDispDofZ = 2;
+    constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    auto tDirichletIndicesBoundaryX0_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryX0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofY);
+    auto tDirichletIndicesBoundaryX0_Zdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofZ);
+    auto tDirichletIndicesBoundaryX1_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x1", tNumDofsPerNode, tDispDofY);
+
+    // 3. Set Dirichlet Boundary Conditions
+    Plato::Scalar tValueToSet = 0;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0_Xdof.size() + tDirichletIndicesBoundaryX0_Ydof.size() +
+            tDirichletIndicesBoundaryX0_Zdof.size() + tDirichletIndicesBoundaryX1_Ydof.size();
+    Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
+    Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0_Xdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tDirichletValues(aIndex) = tValueToSet;
+        tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0_Xdof(aIndex);
+    }, "set dirichlet values and indices");
+
+    auto tOffset = tDirichletIndicesBoundaryX0_Xdof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0_Ydof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX0_Ydof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tOffset += tDirichletIndicesBoundaryX0_Ydof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0_Zdof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX0_Zdof(aIndex);
+    }, "set dirichlet values and indices");
+
+    tValueToSet = -1e-3;
+    tOffset += tDirichletIndicesBoundaryX0_Zdof.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1_Ydof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        auto tIndex = tOffset + aIndex;
+        tDirichletValues(tIndex) = tValueToSet;
+        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1_Ydof(aIndex);
+    }, "set dirichlet values and indices");
+    tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
+
+    // 4. Solve problem
+    const Plato::OrdinalType tNumVerts = tMesh->nverts();
+    Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
+    Plato::fill(1.0, tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls);
+    Plato::print_array_2D(tSolution, "Solution");
+
+    // 6. Output Data
+    if(tOutputData)
+    {
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer("SolutionMesh", tMesh.getRawPtr(), tSpaceDim);
+        for(Plato::OrdinalType tTime = 0; tTime < tSolution.dimension_0(); tTime++)
+        {
+            auto tSubView = Kokkos::subview(tSolution, tTime, Kokkos::ALL());
+            Plato::output_vtk_node_field<tSpaceDim, tNumDofsPerNode>(tTime, tSubView, "State", *tMesh, tWriter);
+        }
+    }
+}
+
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestPlasticitySolution_2D)
 {
     // 1. DEFINE PROBLEM

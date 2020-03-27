@@ -113,7 +113,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     Plato::fill(1.0, tControls);
     auto tSolution = tEllipticVMSProblem.solution(tControls);
 
-
     // 5. Test Results
     const Plato::Scalar tTolerance = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =

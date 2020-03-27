@@ -11,6 +11,7 @@
 
 #include "Omega_h_build.hpp"
 #include "Omega_h_map.hpp"
+#include "Omega_h_marks.hpp"
 #include "Omega_h_matrix.hpp"
 #include "Omega_h_file.hpp"
 #include "Omega_h_teuchos.hpp"
@@ -591,7 +592,7 @@ inline Plato::LocalOrdinalVector get_dirichlet_indices_on_boundary_3D(Omega_h::M
     else if(aBoundaryID == "z1")
         Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 22);
     else
-        THROWERR("Specifed boundary ID not implemented.")
+        THROWERR("Specified boundary ID is not defined.")
 
     Omega_h::LOs tBoundaryNodes = Omega_h::collect_marked(Marks);
 
