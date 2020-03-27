@@ -212,9 +212,9 @@ public:
         // apply weighting
         //
         Plato::print(tPressure, "pressure");
+        Plato::print(tVolStrain, "volumetric strain");
         Plato::print_array_2D(tDevStress, "deviatoric stress");
         Plato::print_array_2D(tCellStab, "cell stabilization");
-        Plato::print_array_2D(tVolStrain, "volumetric strain");
         tApplyTensorWeighting (aCellOrdinal, tDevStress, aControlWS);
         tApplyVectorWeighting (aCellOrdinal, tCellStab,  aControlWS);
         tApplyScalarWeighting (aCellOrdinal, tPressure,  aControlWS);
