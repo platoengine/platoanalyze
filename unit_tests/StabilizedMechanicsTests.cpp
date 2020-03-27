@@ -18,6 +18,50 @@ namespace StabilizedMechanicsTests
 {
 
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Kinematics3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    constexpr Plato::OrdinalType tNumVoigtTerms = 6;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    // Set configuration workset
+    auto tNumCells = tMesh->nelems();
+    using PhysicsT = Plato::StabilizedMechanics<tSpaceDim>;
+    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
+    Plato::ScalarArray3D tConfig("configuration", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
+    tWorksetBase.worksetConfig(tConfig);
+
+    // Set state workset
+    auto tNumNodes = tMesh->nverts();
+    auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    Plato::ScalarVector tState("state", tSpaceDim * tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        tState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
+        tState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
+        tState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // press
+    }, "set global state");
+    Plato::ScalarMultiVector tStateWS("current state", tNumCells, PhysicsT::mNumDofsPerCell);
+    tWorksetBase.worksetState(tState, tStateWS);
+
+    Plato::ScalarVector tCellVolume("cell volume", tNumCells);
+    Plato::ScalarMultiVector tStrains("strains", tNumCells, tNumVoigtTerms);
+    Plato::ScalarMultiVector tPressGrad("pressure grad", tNumCells, tSpaceDim);
+    Plato::ScalarArray3D tGradient("gradient", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
+
+    Plato::StabilizedKinematics <tSpaceDim> tKinematics;
+    Plato::ComputeGradientWorkset <tSpaceDim> tComputeGradient;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfig, tCellVolume);
+        tKinematics(aCellOrdinal, tStrains, tPressGrad, tStateWS, tGradient);
+    }, "kinematics test");
+
+    Plato::print_array_2D(tStrains, "strains");
+}
+
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
 {
     // 1. DEFINE PROBLEM
