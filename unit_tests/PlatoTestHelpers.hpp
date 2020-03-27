@@ -11,7 +11,7 @@
 
 #include "Omega_h_build.hpp"
 #include "Omega_h_map.hpp"
-#include "Omega_h_marks.hpp"
+#include "Omega_h_mark.hpp"
 #include "Omega_h_matrix.hpp"
 #include "Omega_h_file.hpp"
 #include "Omega_h_teuchos.hpp"
