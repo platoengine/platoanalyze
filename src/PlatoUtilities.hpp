@@ -15,12 +15,73 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * \brief Print input 1D container to terminal
+ * \brief Print input 1D container to terminal - device function
  * \param [in] aInput 1D container
  * \param [in] aName  container name (default = "")
 **********************************************************************************/
-template<typename VecT>
-inline void print(const VecT & aInput, std::string aName = "")
+template<typename ArrayT>
+DEVICE_TYPE inline void print_array_1D_device
+(const ArrayT & aInput, std::string aName = "")
+{
+    auto tSize = aInput.size();
+    for(Plato::OrdinalType tIndex = 0; tIndex < tSize; tIndex++)
+    {
+        auto tEntry = tIndex + static_cast<Plato::OrdinalType>(1);
+        printf("%s: X(%d) = %e\n", aName.c_str(), tEntry, aInput(tIndex));
+    }
+}
+// print_array_1D_device
+
+/******************************************************************************//**
+ * \brief Print input 2D container to terminal - device function
+ * \param [in] aLeadOrdinal leading ordinal
+ * \param [in] aInput       2D container
+ * \param [in] aName        container name (default = "")
+**********************************************************************************/
+template<typename ArrayT>
+DEVICE_TYPE inline void print_array_2D_device
+(const Plato::OrdinalType aLeadOrdinal, const ArrayT & aInput, std::string aName = "")
+{
+    auto tSize = aInput.dimension_1();
+    for(Plato::OrdinalType tIndex = 0; tIndex < tSize; tIndex++)
+    {
+        auto tEntry = tIndex + static_cast<Plato::OrdinalType>(1);
+        printf("%s: X(%d,%d) = %e\n", aName.c_str(), aLeadOrdinal, tEntry, aInput(aLeadOrdinal, tIndex));
+    }
+}
+// print_array_2D_device
+
+/******************************************************************************//**
+ * \brief Print input 3D container to terminal - device function
+ * \param [in] aLeadOrdinal leading ordinal
+ * \param [in] aInput       3D container
+ * \param [in] aName        container name (default = "")
+**********************************************************************************/
+template<typename ArrayT>
+DEVICE_TYPE inline void print_array_3D_device
+(const Plato::OrdinalType aLeadOrdinal, const ArrayT & aInput, std::string aName = "")
+{
+    auto tDimOneLength = aInput.dimension_1();
+    auto tDimTwoLength = aInput.dimension_2();
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < tDimOneLength; tIndexI++)
+    {
+        for(Plato::OrdinalType tIndexJ = 0; tIndexJ < tDimTwoLength; tIndexJ++)
+        {
+            auto tEntryI = tIndexI + static_cast<Plato::OrdinalType>(1);
+            auto tEntryJ = tIndexJ + static_cast<Plato::OrdinalType>(1);
+            printf("%s: X(%d,%d,%d) = %e\n", aName.c_str(), aLeadOrdinal, tEntryI, tEntryJ, aInput(aLeadOrdinal, tIndexI, tIndexJ));
+        }
+    }
+}
+// print_array_3D_device
+
+/******************************************************************************//**
+ * \brief Print input 1D container to terminal - host function
+ * \param [in] aInput 1D container
+ * \param [in] aName  container name (default = "")
+**********************************************************************************/
+template<typename ArrayT>
+inline void print(const ArrayT & aInput, std::string aName = "")
 {
     printf("PRINT %s\n", aName.c_str());
 

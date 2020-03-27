@@ -429,13 +429,13 @@ public:
             Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
 
             // compute residual
-            Plato::print_array_2D(tElasticStrain, "elastic strains");
-            Plato::print_array_2D(tTotalCauchyStrain, "cauchy strains");
-            Plato::print_array_2D(tPressureGrad, "pressure gradient");
-            Plato::print(tPressure, "pressure");
-            Plato::print(tVolumeStrain, "volumetric strain");
-            Plato::print_array_2D(tDeviatoricStress, "deviatoric stress");
-            Plato::print_array_2D(tStabilization, "cell stabilization");
+            Plato::print_array_2D_device(aCellOrdinal, tElasticStrain, "elastic strains");
+            Plato::print_array_2D_device(aCellOrdinal, tTotalCauchyStrain, "cauchy strains");
+            Plato::print_array_2D_device(aCellOrdinal, tPressureGrad, "pressure gradient");
+            Plato::print_array_1D_device(tPressure, "pressure");
+            Plato::print_array_1D_device(tVolumeStrain, "volumetric strain");
+            Plato::print_array_2D_device(aCellOrdinal, tDeviatoricStress, "deviatoric stress");
+            Plato::print_array_2D_device(aCellOrdinal, tStabilization, "cell stabilization");
             tStressDivergence (aCellOrdinal, aResult, tDeviatoricStress, tConfigurationGradient, tCellVolume);
             tPressureDivergence (aCellOrdinal, aResult, tPressure, tConfigurationGradient, tCellVolume);
             tStabilizedDivergence (aCellOrdinal, aResult, tStabilization, tConfigurationGradient, tCellVolume, -1.0);
