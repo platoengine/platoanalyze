@@ -1,6 +1,8 @@
 #ifndef STABILIZED_ELASTOSTATIC_RESIDUAL_HPP
 #define STABILIZED_ELASTOSTATIC_RESIDUAL_HPP
 
+#include "PlatoUtilities.hpp"
+
 #include <memory>
 
 #include "Kinetics.hpp"
@@ -191,6 +193,9 @@ public:
         // compute symmetric gradient of displacement, pressure gradient, and temperature gradient
         //
         tKinematics(aCellOrdinal, tDGrad, tPGrad, aStateWS, tGradient);
+        Plato::print_array_2D(tPGrad, "pressure gradient");
+        Plato::print_array_2D(tDGrad, "strains");
+
 
         // interpolate projected PGrad, pressure, and temperature to gauss point
         //
@@ -206,6 +211,10 @@ public:
 
         // apply weighting
         //
+        Plato::print(tPressure, "pressure");
+        Plato::print_array_2D(tDevStress, "deviatoric stress");
+        Plato::print_array_2D(tCellStab, "cell stabilization");
+        Plato::print_array_2D(tVolStrain, "volumetric strain");
         tApplyTensorWeighting (aCellOrdinal, tDevStress, aControlWS);
         tApplyVectorWeighting (aCellOrdinal, tCellStab,  aControlWS);
         tApplyScalarWeighting (aCellOrdinal, tPressure,  aControlWS);

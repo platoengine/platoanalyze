@@ -5,6 +5,7 @@
  */
 
 #pragma once
+#include "PlatoUtilities.hpp"
 
 #include "Simp.hpp"
 #include "ToMap.hpp"
@@ -428,6 +429,13 @@ public:
             Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
 
             // compute residual
+            Plato::print_array_2D(tElasticStrain, "elastic strains");
+            Plato::print_array_2D(tTotalCauchyStrain, "cauchy strains");
+            Plato::print_array_2D(tPressureGrad, "pressure gradient");
+            Plato::print(tPressure, "pressure");
+            Plato::print_array_2D(tDeviatoricStress, "deviatoric stress");
+            Plato::print_array_2D(tStabilization, "cell stabilization");
+            Plato::print_array_2D(tVolumeStrain, "volumetric strain");
             tStressDivergence (aCellOrdinal, aResult, tDeviatoricStress, tConfigurationGradient, tCellVolume);
             tPressureDivergence (aCellOrdinal, aResult, tPressure, tConfigurationGradient, tCellVolume);
             tStabilizedDivergence (aCellOrdinal, aResult, tStabilization, tConfigurationGradient, tCellVolume, -1.0);
