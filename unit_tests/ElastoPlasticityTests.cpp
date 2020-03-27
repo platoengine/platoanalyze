@@ -1455,7 +1455,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
       "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"

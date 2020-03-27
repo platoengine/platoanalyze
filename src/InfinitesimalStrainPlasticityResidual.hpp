@@ -166,6 +166,8 @@ private:
             mNeumannLoads =
                     std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
         }
+
+        mDataMap.mScalarValues["LoadControlConstant"] = 1.0;
     }
 
     /**********************************************************************//**
@@ -301,6 +303,16 @@ public:
     *******************************************************************************/
     virtual ~InfinitesimalStrainPlasticityResidual()
     {
+    }
+
+
+    /***************************************************************************//**
+     * \brief Set load control multiplier
+     * \param [in] aInput load control multiplier
+    *******************************************************************************/
+    void setLoadControlMultiplier(const Plato::Scalar& aInput)
+    {
+        mDataMap.mScalarValues["LoadControlConstant"] = aInput;
     }
 
     /************************************************************************//**
