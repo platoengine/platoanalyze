@@ -10,9 +10,6 @@
 #include <Omega_h_assoc.hpp>
 #include <Omega_h_teuchos.hpp>
 
-// #include <matrix_container.hpp>
-// #include <communicator.hpp>
-
 #include <Plato_InputData.hpp>
 #include <Plato_Application.hpp>
 #include <Plato_Exceptions.hpp>
@@ -30,6 +27,21 @@
 
 #ifdef PLATO_GEOMETRY
 #include "Plato_MLS.hpp"
+#endif
+
+#ifdef PLATO_GEOMETRY
+  #include "Plato_MeshMap.hpp"
+  typedef Plato::Geometry::AbstractMeshMap<Plato::Scalar> MeshMapType;
+#else
+  typedef int MeshMapType;
+#endif
+
+
+#ifdef PLATO_ESP
+#include "Plato_ESP.hpp"
+typedef Plato::Geometry::ESP<double, Plato::ScalarVectorT<double>::HostMirror> ESPType;
+#else
+typedef int ESPType;
 #endif
 
 Plato::ScalarVector
@@ -100,6 +112,25 @@ public:
     };
     LocalOp* getOperation(const std::string & opName);
 
+    class ESP_Op
+    {
+        public:
+            ESP_Op(MPMD_App* aMyApp, Plato::InputData& aNode);
+        protected:
+            std::string mESPName;
+    };
+
+    class OnChangeOp
+    {
+        public:
+            OnChangeOp(MPMD_App* aMyApp, Plato::InputData& aNode);
+        protected:
+            bool hasChanged(const std::vector<Plato::Scalar>& aInputState);
+            std::vector<Plato::Scalar> mLocalState;
+            std::string mStrParameters;
+            bool mConditional;
+    };
+
     /******************************************************************************//**
      * @brief Multiple Program, Multiple Data (MPMD) application destructor
     **********************************************************************************/
@@ -129,16 +160,16 @@ public:
     void importData(const std::string & aName, const Plato::SharedData& aSharedField);
 
     /******************************************************************************//**
-     * @brief Export shared data from PLATO Analyze
+     * @brief Export shared data to PLATO Analyze
      * @param [in] aName shared data name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     void exportData(const std::string & aName, Plato::SharedData& aSharedField);
 
     /******************************************************************************//**
-     * @brief Export processor's owned global IDs from PLATO Analyze
+     * @brief Export processor's owned global IDs to PLATO Analyze
      * @param [in] aDataLayout data layout (e.g. node or element based data)
-     * @param [in/out] aMyOwnedGlobalIDs owned global IDs
+     * @param [out] aMyOwnedGlobalIDs owned global IDs
     **********************************************************************************/
     void exportDataMap(const Plato::data::layout_t & aDataLayout, std::vector<int> & aMyOwnedGlobalIDs);
 
@@ -175,6 +206,12 @@ public:
         if(aName == "Topology")
         {
             this->copyFieldIntoAnalyze(mControl, aSharedField);
+            if(mMeshMap != nullptr)
+            {
+                Plato::ScalarVector tMappedControl("mapped", mControl.extent(0));;
+                mMeshMap->apply(mControl, tMappedControl);
+                Kokkos::deep_copy(mControl, tMappedControl);
+            }
         }
         else if(aName == "Solution")
         {
@@ -230,17 +267,13 @@ public:
         for( int i=0; i<tNumDisplay; i++) ss << tValues[i] << " ";
         if(tNumValues > tMaxDisplay) ss << " ... ";
         ss << "]" << std::endl;
-        #ifdef PLATO_CONSOLE
         Plato::Console::Status(ss.str());
-        #else
-        std::cout << ss.str();
-        #endif
     }
 
     /******************************************************************************//**
-     * @brief Export data from PLATO Analyze
+     * @brief Export data to PLATO Analyze
      * @param [in] aName shared data name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportDataT(const std::string& aName, SharedDataT& aSharedField)
@@ -264,9 +297,9 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Export scalar value (i.e. global value) from PLATO Analyze
+     * @brief Export scalar value (i.e. global value) to PLATO Analyze
      * @param [in] aName shared data name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportScalarValue(const std::string& aName, SharedDataT& aSharedField)
@@ -298,18 +331,14 @@ public:
             ss << "[ ";
             for( auto val : tValues ) ss << val << " ";
             ss << "]" << std::endl;
-            #ifdef PLATO_CONSOLE
             Plato::Console::Status(ss.str());
-            #else
-            std::cout << ss.str();
-            #endif
         }
     }
 
     /******************************************************************************//**
-     * @brief Export element field (i.e. element-based data) from PLATO Analyze
+     * @brief Export element field (i.e. element-based data) to PLATO Analyze
      * @param [in] aTokens element-based shared field name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportElementField(const std::string& aName, SharedDataT& aSharedField)
@@ -317,7 +346,6 @@ public:
         auto tTokens = split(aName, '@');
         auto tFieldName = tTokens[0];
         auto tDataMap = mProblem->getDataMap();
-        // element ScalarVector?
         if(tDataMap.scalarVectors.count(tFieldName))
         {
             auto tData = tDataMap.scalarVectors.at(tFieldName);
@@ -339,19 +367,31 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Export scalar field (i.e. node-based data) from PLATO Analyze
+     * @brief Export scalar field (i.e. node-based data) to PLATO Analyze
      * @param [in] aName node-based shared field name
-     * @param [in/out] aSharedData shared data (i.e. data from PLATO Engine)
+     * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
     void exportScalarField(const std::string& aName, SharedDataT& aSharedField)
     {
         if(aName == "Objective Gradient")
         {
+            if(mMeshMap != nullptr)
+            {
+                Plato::ScalarVector tObjectiveGradientZ("unmapped", tObjectiveGradientZ.extent(0));
+                mMeshMap->applyT(mObjectiveGradientZ, tObjectiveGradientZ);
+                Kokkos::deep_copy(mObjectiveGradientZ, tObjectiveGradientZ);
+            }
             this->copyFieldFromAnalyze(mObjectiveGradientZ, aSharedField);
         }
         else if(aName == "Constraint Gradient")
         {
+            if(mMeshMap != nullptr)
+            {
+                Plato::ScalarVector tConstraintGradientZ("unmapped", tConstraintGradientZ.extent(0));
+                mMeshMap->applyT(mConstraintGradientZ, tConstraintGradientZ);
+                Kokkos::deep_copy(mConstraintGradientZ, tConstraintGradientZ);
+            }
             this->copyFieldFromAnalyze(mConstraintGradientZ, aSharedField);
         }
         else if(aName == "Adjoint")
@@ -538,6 +578,11 @@ private:
     Plato::OrdinalType mNumSpatialDims;
     Plato::OrdinalType mNumSolutionDofs;
 
+    std::map<std::string,std::shared_ptr<ESPType>> mESP;
+    void mapToParameters(std::shared_ptr<ESPType> aESP, std::vector<Plato::Scalar>& mGradientP, Plato::ScalarVector mGradientX);
+
+    std::shared_ptr<MeshMapType> mMeshMap;
+
 #ifdef PLATO_GEOMETRY
     struct MLSstruct
     {   Plato::any mls; int dimension;};
@@ -566,13 +611,25 @@ private:
     // Reinitialize sub-class
     //
     /******************************************************************************/
-    class Reinitialize : public LocalOp
+    class Reinitialize : public LocalOp, public OnChangeOp
     {
     public:
         Reinitialize(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     };
     friend class Reinitialize;
+    /******************************************************************************/
+
+    // Reinitialize ESP sub-class
+    //
+    /******************************************************************************/
+    class ReinitializeESP : public LocalOp, public ESP_Op, public OnChangeOp
+    {
+    public:
+        ReinitializeESP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    };
+    friend class ReinitializeESP;
     /******************************************************************************/
 
     // UpdateProblem sub-class
@@ -610,6 +667,18 @@ private:
     /******************************************************************************/
 
     /******************************************************************************/
+    class ComputeObjectiveP : public LocalOp, public ESP_Op
+    {
+    public:
+        ComputeObjectiveP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string mStrGradientP;
+    };
+    friend class ComputeObjectiveP;
+    /******************************************************************************/
+
+    /******************************************************************************/
     class ComputeObjectiveValue : public LocalOp
     {
     public:
@@ -639,6 +708,18 @@ private:
     friend class ComputeObjectiveGradientX;
     /******************************************************************************/
 
+    /******************************************************************************/
+    class ComputeObjectiveGradientP : public LocalOp, public ESP_Op
+    {
+    public:
+        ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string mStrGradientP;
+    };
+    friend class ComputeObjectiveGradientP;
+    /******************************************************************************/
+
     // Constraint sub-classes
     //
     class ComputeConstraint : public LocalOp
@@ -646,6 +727,8 @@ private:
     public:
         ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        Plato::Scalar mTarget;
     };
     friend class ComputeConstraint;
     /******************************************************************************/
@@ -656,8 +739,23 @@ private:
     public:
         ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        Plato::Scalar mTarget;
     };
     friend class ComputeConstraintX;
+    /******************************************************************************/
+
+    /******************************************************************************/
+    class ComputeConstraintP : public LocalOp, public ESP_Op
+    {
+    public:
+        ComputeConstraintP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string mStrGradientP;
+        Plato::Scalar mTarget;
+    };
+    friend class ComputeConstraintP;
     /******************************************************************************/
 
     /******************************************************************************/
@@ -666,6 +764,8 @@ private:
     public:
         ComputeConstraintValue(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        Plato::Scalar mTarget;
     };
     friend class ComputeConstraintValue;
     /******************************************************************************/
@@ -688,6 +788,44 @@ private:
         void operator()();
     };
     friend class ComputeConstraintGradientX;
+    /******************************************************************************/
+
+    /******************************************************************************/
+    class MapObjectiveGradientX : public LocalOp
+    {
+    public:
+        MapObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string mStrOutputName;
+        std::vector<std::string> mStrInputNames;
+    };
+    friend class MapObjectiveGradientX;
+    /******************************************************************************/
+
+    /******************************************************************************/
+    class MapConstraintGradientX : public LocalOp
+    {
+    public:
+        MapConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string mStrOutputName;
+        std::vector<std::string> mStrInputNames;
+    };
+    friend class MapConstraintGradientX;
+    /******************************************************************************/
+
+    /******************************************************************************/
+    class ComputeConstraintGradientP : public LocalOp, public ESP_Op
+    {
+    public:
+        ComputeConstraintGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string mStrGradientP;
+    };
+    friend class ComputeConstraintGradientP;
     /******************************************************************************/
 
     // Output sub-classes

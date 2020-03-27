@@ -27,11 +27,6 @@ MESSAGE("   Trilinos_CXX_COMPILER = ${Trilinos_CXX_COMPILER}")
 MESSAGE("   Trilinos_CXX_COMPILER_FLAGS = ${Trilinos_CXX_COMPILER_FLAGS}")
 MESSAGE("End of Trilinos details\n")
 
-# Important: We want to set the compilers and build flags from the Trilinos build. We do not need to check for valid compilers
-# etc here in the Plato Analyze build, as it has already been done in the Trilinos build. So, we force the compilers here
-# to be the same as the Trilinos build. We need the project statement after we force the compilers, or the compiler testing
-# will occur.
-
 set(CMAKE_CXX_COMPILER ${Trilinos_CXX_COMPILER})
 set(CMAKE_C_COMPILER ${Trilinos_C_COMPILER})
 set(CMAKE_Fortran_COMPILER ${Trilinos_Fortran_COMPILER})
@@ -222,6 +217,7 @@ if (PLATOANALYZE_ENABLE_MPMD)
   find_library(PLATO_ANALYZE_LIB NAMES PlatoAnalyze PATHS ${PLATOENGINE_PREFIX}/lib)
   find_library(PLATO_PARSER_LIB NAMES PlatoParser PATHS ${PLATOENGINE_PREFIX}/lib)
   find_library(PLATO_EXCEPTIONS_LIB NAMES PlatoExceptions PATHS ${PLATOENGINE_PREFIX}/lib)
+  find_library(PLATO_CONSOLE_LIB NAMES PlatoConsole PATHS ${PLATOENGINE_PREFIX}/lib)
   find_package(Epetra REQUIRED)
   find_package(AztecOO REQUIRED)
   find_package(SEACASExodus REQUIRED)
@@ -236,6 +232,7 @@ if (PLATOANALYZE_ENABLE_MPMD)
       ${PLATO_ANALYZE_LIB}
       ${PLATO_PARSER_LIB}
       ${PLATO_EXCEPTIONS_LIB}
+      ${PLATO_CONSOLE_LIB}
       aztecoo
       epetra
       intrepid
@@ -246,10 +243,9 @@ if (PLATOANALYZE_ENABLE_MPMD)
       exodus
      )
 
-   add_library( Analyze_App src/Analyze_App.cpp )
+  add_library( Analyze_App src/Analyze_App.cpp )
   target_include_directories(Analyze_App PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
   target_include_directories(Analyze_App PRIVATE "${PLATOENGINE_PREFIX}/include")
-  target_link_libraries(Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
   if( CMAKE_INSTALL_PREFIX )
     install( TARGETS Analyze_App DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
   endif()
@@ -268,8 +264,24 @@ if (PLATOANALYZE_ENABLE_MPMD)
     find_library(PLATO_GEOMETRY_COGENT_LIB NAMES PlatoGeometryCogent PATHS ${PLATOENGINE_PREFIX}/lib)
     find_package(Pamgen REQUIRED)
     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_MLS_LIB} ${PLATO_GEOMETRY_COGENT_LIB} pamgen)
+    message("Before search: ${CMAKE_CXX_FLAGS}")
+    string(REPLACE "-std=c++11" "-std=c++14" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    message("After search: ${CMAKE_CXX_FLAGS}")
+    find_package(ArborX REQUIRED)
   endif()
 
+  option(PLATOANALYZE_ENABLE_ESP "Enable ESP" OFF)
+  if (PLATOANALYZE_ENABLE_ESP)
+    find_library(PLATO_GEOMETRY_ESP_LIB NAMES PlatoGeometryESP PATHS ${PLATOENGINE_PREFIX}/lib)
+    find_library(ESP_LIB NAMES egads PATHS ${ESP_LIB_DIR})
+    find_library(OCSM_LIB NAMES ocsm PATHS ${ESP_LIB_DIR})
+    message("adding define: -DPLATO_ESP")
+    add_definitions(-DPLATO_ESP)
+    include_directories( ${ESP_INC_DIR} )
+    set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_ESP_LIB} ${OCSM_LIB} ${ESP_LIB} ${OCSM_LIB})
+  endif()
+
+  target_link_libraries(Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
   target_link_libraries(analyze_MPMD Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
 
   option(PLATOANALYZE_ENABLE_PYTHON "Enable the Plato Python interface" OFF)

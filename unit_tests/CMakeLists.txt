@@ -422,4 +422,32 @@ if(PLATOANALYZE_ENABLE_MPMD)
 
   target_include_directories(AnalyzeAppIntxTests PRIVATE "${PLATOENGINE_PREFIX}/include")
   target_include_directories(AnalyzeAppIntxTests PRIVATE "${CMAKE_SOURCE_DIR}/src")
+
+  set(MeshMapTests_SOURCES
+    PlatoMeshMapTests.cpp
+    PlatoTestHelpers.cpp
+    PlatoUnitTestMain.cpp
+  )
+
+  set(MeshMapTests_HEADERS
+    PlatoTestHelpers.hpp
+  )
+
+  add_executable(MeshMapUnitTests
+    ${MeshMapTests_SOURCES}
+    ${MeshMapTests_HEADERS}
+  )
+
+  target_link_libraries(MeshMapUnitTests
+    analyzelib
+    ${PLATO_LIBS}
+    ${Trilinos_LIBRARIES}
+    ${Trilinos_TPL_LIBRARIES}
+    )
+  target_include_directories(MeshMapUnitTests PRIVATE "${PLATOENGINE_PREFIX}/include")
+  target_include_directories(MeshMapUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/MeshMapUnitTests)
+  add_test(NAME runMeshMapUnitTests COMMAND ${ES_MPI_TEST})
+
 endif()
