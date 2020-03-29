@@ -59,7 +59,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Kinematics3D)
         tKinematics(aCellOrdinal, tStrains, tPressGrad, tStateWS, tGradient);
     }, "kinematics test");
 
-    Plato::print_array_2D(tStrains, "strains");
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        { {1e-7,  6e-7,  3e-7, 1.1e-6,   4e-7,   5e-7},
+          {3e-7,  6e-7, -3e-7,   7e-7,   8e-7,   9e-7},
+          {3e-7,  2e-7,  3e-7,   5e-7,   1e-6,   7e-7},
+          {5e-7, -2e-7,  3e-7,  -1e-7, 1.6e-6,   9e-7},
+          {7e-7, -2e-7, -3e-7,  -5e-7,   2e-6, 1.3e-6},
+          {7e-7, -6e-7,  3e-7,  -7e-7, 2.2e-6, 1.1e-6} };
+    PlatoUtestHelpers::test_array_2d(tStrains, tGold);
 }
 
 
@@ -159,21 +166,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     auto tSolution = tEllipticVMSProblem.solution(tControls);
 
     // 5. Test Results
-    const Plato::Scalar tTolerance = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
         { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
           {0, 0, 0, -3.765995e-6, 0, 0, 0, -2.756658e-5, 0, 0, 0, 7.081654e-5, 0, 0, 0, 8.626534e-05,
            3.118233e-4, -1.0e-3, 4.815153e-5, 1.774578e-5, 2.340348e-4, -1.0e-3, 4.357691e-5, -3.765995e-6,
            -3.927496e-4, -1.0e-3, 5.100447e-5, -9.986030e-5, -1.803906e-4, -1.0e-3, 9.081316e-5, -6.999675e-5}};
-    auto tHostSolution = Kokkos::create_mirror(tSolution);
-    Kokkos::deep_copy(tHostSolution, tSolution);
-    for(Plato::OrdinalType tStep = 0; tStep < tSolution.dimension_0(); tStep++)
-    {
-        for(Plato::OrdinalType tDof = 0; tDof < tSolution.dimension_1(); tDof++)
-        {
-            TEST_FLOATING_EQUALITY(tHostSolution(tStep, tDof), tGold[tStep][tDof], tTolerance);
-        }
-    }
+    PlatoUtestHelpers::test_array_2d(tSolution, tGold);
 
     // 6. Output Data
     if(tOutputData)

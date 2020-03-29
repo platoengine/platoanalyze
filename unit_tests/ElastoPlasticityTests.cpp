@@ -17,66 +17,6 @@
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
-namespace Plato
-{
-
-inline void test_array_1d
-(const Plato::ScalarVector& aInput, std::vector<Plato::Scalar>& aGold, Plato::Scalar tTol = 1e-4)
-{
-    auto tHostInput = Kokkos::create_mirror(aInput);
-    Kokkos::deep_copy(tHostInput, aInput);
-
-    const Plato::OrdinalType tDim0 = aInput.dimension_0();
-    for(Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
-    {
-        //printf("X(%d) = %f\n", tIndexI, tHostInput(tIndexI));
-        TEST_FLOATING_EQUALITY(tHostInput(tIndexI), aGold[tIndexI], tTol);
-    }
-}
-
-inline void test_array_2d
-(const Plato::ScalarMultiVector& aInput, std::vector<std::vector<Plato::Scalar>>& aGold, Plato::Scalar tTol = 1e-4)
-{
-    auto tHostInput = Kokkos::create_mirror(aInput);
-    Kokkos::deep_copy(tHostInput, aInput);
-
-    const Plato::OrdinalType tDim0 = aInput.dimension_0();
-    const Plato::OrdinalType tDim1 = aInput.dimension_1();
-    for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
-    {
-        for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
-        {
-            //printf("X(%d,%d) = %f\n", tIndexI, tIndexJ, tHostInput(tIndexI, tIndexJ));
-            TEST_FLOATING_EQUALITY(tHostInput(tIndexI, tIndexJ), aGold[tIndexI][tIndexJ], tTol);
-        }
-    }
-}
-
-inline void test_array_3d
-(const Plato::ScalarArray3D& aInput, std::vector< std::vector< std::vector<Plato::Scalar> > >& aGold, Plato::Scalar tTol = 1e-4)
-{
-    auto tHostInput = Kokkos::create_mirror(aInput);
-    Kokkos::deep_copy(tHostInput, aInput);
-
-    const Plato::OrdinalType tDim0 = aInput.dimension_0();
-    const Plato::OrdinalType tDim1 = aInput.dimension_1();
-    const Plato::OrdinalType tDim2 = aInput.dimension_2();
-    for(Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
-    {
-        for(Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
-        {
-            for(Plato::OrdinalType tIndexK = 0; tIndexK < tDim2; tIndexK++)
-            {
-                //printf("X(%d,%d,%d) = %f\n", tIndexI, tIndexJ, tIndexK, tHostInput(tIndexI, tIndexJ, tIndexK));
-                TEST_FLOATING_EQUALITY(tHostInput(tIndexI, tIndexJ, tIndexK), aGold[tIndexI][tIndexJ][tIndexK], tTol);
-            }
-        }
-    }
-}
-
-}
-
-
 namespace ElastoPlasticityTests
 {
 
@@ -1362,19 +1302,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeStabilization1D
     }, "test compute stabilization functor");
 
     // TEST RESULTS
-    constexpr Plato::Scalar tTolerance = 1e-6;
-    auto tHostStabilization = Kokkos::create_mirror(tStabilization);
-    Kokkos::deep_copy(tHostStabilization, tStabilization);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.0255839119441290},
-                                                     {-0.0812238574671431},
-                                                     {-0.1596500440960990}};
-    for (Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
-    {
-        for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; tDimIndex++)
-        {
-            TEST_FLOATING_EQUALITY(tHostStabilization(tCellIndex, tDimIndex), tGold[tCellIndex][tDimIndex], tTolerance);
-        }
-    }
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{-0.0255839119441290}, {-0.0812238574671431}, {-0.1596500440960990}};
+    PlatoUtestHelpers::test_array_2d(tStabilization, tGold);
 }
 
 
@@ -1423,7 +1353,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticStrain3D
         tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, tStateWS, tLocalState, tBasisFunctions, tGradient, tStrains);
     }, "compute elastic strain test");
 
-    Plato::print_array_2D(tStrains, "strains");
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        { {1e-7,  6e-7,  3e-7, 1.1e-6,   4e-7,   5e-7},
+          {3e-7,  6e-7, -3e-7,   7e-7,   8e-7,   9e-7},
+          {3e-7,  2e-7,  3e-7,   5e-7,   1e-6,   7e-7},
+          {5e-7, -2e-7,  3e-7,  -1e-7, 1.6e-6,   9e-7},
+          {7e-7, -2e-7, -3e-7,  -5e-7,   2e-6, 1.3e-6},
+          {7e-7, -6e-7,  3e-7,  -7e-7, 2.2e-6, 1.1e-6} };
+    PlatoUtestHelpers::test_array_2d(tStrains, tGold);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual2D_Elastic)

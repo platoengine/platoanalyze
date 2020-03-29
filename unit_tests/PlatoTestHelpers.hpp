@@ -9,6 +9,8 @@
 
 #include <fstream>
 
+#include "Teuchos_UnitTestHarness.hpp"
+
 #include "Omega_h_build.hpp"
 #include "Omega_h_map.hpp"
 #include "Omega_h_mark.hpp"
@@ -26,6 +28,78 @@ namespace PlatoUtestHelpers
 void finalizeOmegaH();
 void initializeOmegaH(int *argc, char ***argv);
 Teuchos::RCP<Omega_h::Library> getLibraryOmegaH();
+
+/***********************************************************************************
+ * \brief Test 1D container results against gold values
+ * \param [in] aInput 1D Kokkos View
+ * \param [in] aGold  gold values
+ * \param [in] tTol   tolerance (default = 1e-4)
+ **********************************************************************************/
+inline void test_array_1d
+(const Plato::ScalarVector& aInput, std::vector<Plato::Scalar>& aGold, Plato::Scalar tTol = 1e-4)
+{
+    auto tHostInput = Kokkos::create_mirror(aInput);
+    Kokkos::deep_copy(tHostInput, aInput);
+
+    const Plato::OrdinalType tDim0 = aInput.dimension_0();
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
+    {
+        //printf("X(%d) = %f\n", tIndexI, tHostInput(tIndexI));
+        TEST_FLOATING_EQUALITY(tHostInput(tIndexI), aGold[tIndexI], tTol);
+    }
+}
+
+/***********************************************************************************
+ * \brief Test 2D container results against gold values
+ * \param [in] aInput 2D Kokkos View
+ * \param [in] aGold  gold values
+ * \param [in] tTol   tolerance (default = 1e-4)
+ **********************************************************************************/
+inline void test_array_2d
+(const Plato::ScalarMultiVector& aInput, std::vector<std::vector<Plato::Scalar>>& aGold, Plato::Scalar tTol = 1e-4)
+{
+    auto tHostInput = Kokkos::create_mirror(aInput);
+    Kokkos::deep_copy(tHostInput, aInput);
+
+    const Plato::OrdinalType tDim0 = aInput.dimension_0();
+    const Plato::OrdinalType tDim1 = aInput.dimension_1();
+    for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
+    {
+        for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
+        {
+            //printf("X(%d,%d) = %f\n", tIndexI, tIndexJ, tHostInput(tIndexI, tIndexJ));
+            TEST_FLOATING_EQUALITY(tHostInput(tIndexI, tIndexJ), aGold[tIndexI][tIndexJ], tTol);
+        }
+    }
+}
+
+/***********************************************************************************
+ * \brief Test 3D container results against gold values
+ * \param [in] aInput 3D Kokkos View
+ * \param [in] aGold  gold values
+ * \param [in] tTol   tolerance (default = 1e-4)
+ **********************************************************************************/
+inline void test_array_3d
+(const Plato::ScalarArray3D& aInput, std::vector< std::vector< std::vector<Plato::Scalar> > >& aGold, Plato::Scalar tTol = 1e-4)
+{
+    auto tHostInput = Kokkos::create_mirror(aInput);
+    Kokkos::deep_copy(tHostInput, aInput);
+
+    const Plato::OrdinalType tDim0 = aInput.dimension_0();
+    const Plato::OrdinalType tDim1 = aInput.dimension_1();
+    const Plato::OrdinalType tDim2 = aInput.dimension_2();
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
+    {
+        for(Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
+        {
+            for(Plato::OrdinalType tIndexK = 0; tIndexK < tDim2; tIndexK++)
+            {
+                //printf("X(%d,%d,%d) = %f\n", tIndexI, tIndexJ, tIndexK, tHostInput(tIndexI, tIndexJ, tIndexK));
+                TEST_FLOATING_EQUALITY(tHostInput(tIndexI, tIndexJ, tIndexK), aGold[tIndexI][tIndexJ][tIndexK], tTol);
+            }
+        }
+    }
+}
 
 /******************************************************************************/
 //! returns all nodes matching x=0 on the boundary of the provided mesh
