@@ -184,7 +184,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
           {0, 0, 0, -3.765995e-6, 0, 0, 0, -2.756658e-5, 0, 0, 0, 7.081654e-5, 0, 0, 0, 8.626534e-05,
            3.118233e-4, -1.0e-3, 4.815153e-5, 1.774578e-5, 2.340348e-4, -1.0e-3, 4.357691e-5, -3.765995e-6,
            -3.927496e-4, -1.0e-3, 5.100447e-5, -9.986030e-5, -1.803906e-4, -1.0e-3, 9.081316e-5, -6.999675e-5}};
-    PlatoUtestHelpers::test_array_2d(tSolution, tGold);
+    auto tHostSolution = Kokkos::create_mirror(tSolution);
+    Kokkos::deep_copy(tHostSolution, tSolution);
+
+    const Plato::Scalar tTolerance = 1e-4;
+    const Plato::OrdinalType tDim0 = tSolution.dimension_0();
+    const Plato::OrdinalType tDim1 = tSolution.dimension_1();
+    for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
+    {
+        for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
+        {
+            //printf("X(%d,%d) = %f\n", tIndexI, tIndexJ, tHostInput(tIndexI, tIndexJ));
+            TEST_FLOATING_EQUALITY(tHostSolution(tIndexI, tIndexJ), tGold[tIndexI][tIndexJ], tTolerance);
+        }
+    }
 
     // 6. Output Data
     if(tOutputData)
