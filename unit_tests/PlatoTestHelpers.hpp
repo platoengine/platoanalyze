@@ -34,7 +34,9 @@ Teuchos::RCP<Omega_h::Library> getLibraryOmegaH();
  * \param [in] tTol   tolerance (default = 1e-4)
  **********************************************************************************/
 inline void test_array_1d
-(const Plato::ScalarVector& aInput, std::vector<Plato::Scalar>& aGold, Plato::Scalar tTol = 1e-4)
+(const Plato::ScalarVector& aInput,
+ std::vector<Plato::Scalar>& aGold,
+ Plato::Scalar tTol = 1e-4);
 
 /***********************************************************************************
  * \brief Test 2D container results against gold values
@@ -43,7 +45,9 @@ inline void test_array_1d
  * \param [in] tTol   tolerance (default = 1e-4)
  **********************************************************************************/
 inline void test_array_2d
-(const Plato::ScalarMultiVector& aInput, std::vector<std::vector<Plato::Scalar>>& aGold, Plato::Scalar tTol = 1e-4)
+(const Plato::ScalarMultiVector& aInput,
+ std::vector<std::vector<Plato::Scalar>>& aGold,
+ Plato::Scalar tTol = 1e-4);
 
 /***********************************************************************************
  * \brief Test 3D container results against gold values
@@ -52,7 +56,9 @@ inline void test_array_2d
  * \param [in] tTol   tolerance (default = 1e-4)
  **********************************************************************************/
 inline void test_array_3d
-(const Plato::ScalarArray3D& aInput, std::vector< std::vector< std::vector<Plato::Scalar> > >& aGold, Plato::Scalar tTol = 1e-4)
+(const Plato::ScalarArray3D& aInput,
+ std::vector< std::vector< std::vector<Plato::Scalar> > >& aGold,
+ Plato::Scalar tTol = 1e-4);
 
 /******************************************************************************/
 //! returns all nodes matching x=0 on the boundary of the provided mesh

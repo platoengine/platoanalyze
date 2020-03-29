@@ -23,7 +23,9 @@ Teuchos::RCP<Omega_h::Library> getLibraryOmegaH()
 }
 
 void test_array_1d
-(const Plato::ScalarVector& aInput, std::vector<Plato::Scalar>& aGold, Plato::Scalar tTol = 1e-4)
+(const Plato::ScalarVector& aInput,
+ std::vector<Plato::Scalar>& aGold,
+ Plato::Scalar tTol)
 {
     auto tHostInput = Kokkos::create_mirror(aInput);
     Kokkos::deep_copy(tHostInput, aInput);
@@ -37,7 +39,9 @@ void test_array_1d
 }
 
 void test_array_2d
-(const Plato::ScalarMultiVector& aInput, std::vector<std::vector<Plato::Scalar>>& aGold, Plato::Scalar tTol = 1e-4)
+(const Plato::ScalarMultiVector& aInput,
+ std::vector<std::vector<Plato::Scalar>>& aGold,
+ Plato::Scalar tTol)
 {
     auto tHostInput = Kokkos::create_mirror(aInput);
     Kokkos::deep_copy(tHostInput, aInput);
@@ -55,7 +59,9 @@ void test_array_2d
 }
 
 void test_array_3d
-(const Plato::ScalarArray3D& aInput, std::vector< std::vector< std::vector<Plato::Scalar> > >& aGold, Plato::Scalar tTol = 1e-4)
+(const Plato::ScalarArray3D& aInput,
+ std::vector< std::vector< std::vector<Plato::Scalar> > >& aGold,
+ Plato::Scalar tTol)
 {
     auto tHostInput = Kokkos::create_mirror(aInput);
     Kokkos::deep_copy(tHostInput, aInput);
