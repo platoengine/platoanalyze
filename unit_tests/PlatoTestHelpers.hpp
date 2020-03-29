@@ -27,39 +27,6 @@ void finalizeOmegaH();
 void initializeOmegaH(int *argc, char ***argv);
 Teuchos::RCP<Omega_h::Library> getLibraryOmegaH();
 
-/***********************************************************************************
- * \brief Test 1D container results against gold values
- * \param [in] aInput 1D Kokkos View
- * \param [in] aGold  gold values
- * \param [in] tTol   tolerance (default = 1e-4)
- **********************************************************************************/
-inline void test_array_1d
-(const Plato::ScalarVector& aInput,
- std::vector<Plato::Scalar>& aGold,
- Plato::Scalar tTol = 1e-4);
-
-/***********************************************************************************
- * \brief Test 2D container results against gold values
- * \param [in] aInput 2D Kokkos View
- * \param [in] aGold  gold values
- * \param [in] tTol   tolerance (default = 1e-4)
- **********************************************************************************/
-inline void test_array_2d
-(const Plato::ScalarMultiVector& aInput,
- std::vector<std::vector<Plato::Scalar>>& aGold,
- Plato::Scalar tTol = 1e-4);
-
-/***********************************************************************************
- * \brief Test 3D container results against gold values
- * \param [in] aInput 3D Kokkos View
- * \param [in] aGold  gold values
- * \param [in] tTol   tolerance (default = 1e-4)
- **********************************************************************************/
-inline void test_array_3d
-(const Plato::ScalarArray3D& aInput,
- std::vector< std::vector< std::vector<Plato::Scalar> > >& aGold,
- Plato::Scalar tTol = 1e-4);
-
 /******************************************************************************/
 //! returns all nodes matching x=0 on the boundary of the provided mesh
 inline Omega_h::LOs getBoundaryNodes_x0(Teuchos::RCP<Omega_h::Mesh> & aMesh)

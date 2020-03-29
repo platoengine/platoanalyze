@@ -66,7 +66,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Kinematics3D)
           {5e-7, -2e-7,  3e-7,  -1e-7, 1.6e-6,   9e-7},
           {7e-7, -2e-7, -3e-7,  -5e-7,   2e-6, 1.3e-6},
           {7e-7, -6e-7,  3e-7,  -7e-7, 2.2e-6, 1.1e-6} };
-    PlatoUtestHelpers::test_array_2d(tStrains, tGold);
+    auto tHostStrains = Kokkos::create_mirror(tStrains);
+    Kokkos::deep_copy(tHostStrains, tStrains);
+
+    const Plato::Scalar tTolerance = 1e-4;
+    const Plato::OrdinalType tDim0 = tStrains.dimension_0();
+    const Plato::OrdinalType tDim1 = tStrains.dimension_1();
+    for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
+    {
+        for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
+        {
+            //printf("X(%d,%d) = %f\n", tIndexI, tIndexJ, tHostInput(tIndexI, tIndexJ));
+            TEST_FLOATING_EQUALITY(tHostStrains(tIndexI, tIndexJ), tGold[tIndexI][tIndexJ], tTolerance);
+        }
+    }
 }
 
 
