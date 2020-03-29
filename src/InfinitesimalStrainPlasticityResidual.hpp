@@ -349,7 +349,7 @@ public:
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence ;
-        Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeCauchyStrain;
+        Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
@@ -368,9 +368,9 @@ public:
         Plato::ScalarVectorT<ResultT> tStrainDivergence("strain divergence", tNumCells);
         Plato::ScalarMultiVectorT<ResultT> tStabilization("cell stabilization", tNumCells, mSpaceDim);
         Plato::ScalarMultiVectorT<GradScalarT> tPressureGrad("pressure gradient", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<GradScalarT> tTotalStrain("total strain", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ResultT> tDeviatoricStress("deviatoric stress", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
-        Plato::ScalarMultiVectorT<GradScalarT> tTotalCauchyStrain("Total Cauchy Strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
         Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
 
@@ -397,9 +397,9 @@ public:
             tCellVolume(aCellOrdinal) *= tQuadratureWeight;
 
             // compute elastic strain, i.e. e_elastic = e_total - e_plastic
-            tComputeCauchyStrain(aCellOrdinal, tElasticStrain, aCurrentGlobalState, tConfigurationGradient);
+            tComputeTotalStrain(aCellOrdinal, tTotalStrain, aCurrentGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
-                                                        tBasisFunctions, tConfigurationGradient, tElasticStrain);
+                                                        tBasisFunctions, tTotalStrain, tElasticStrain);
 
             // compute pressure gradient
             tComputeScalarGrad(aCellOrdinal, tNumDofsPerNode, tPressureDofOffset,
@@ -416,8 +416,7 @@ public:
             // compute deviatoric stress and displacement divergence
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
             tJ2PlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
-            tComputeCauchyStrain(aCellOrdinal, tTotalCauchyStrain, aCurrentGlobalState, tConfigurationGradient);
-            tComputeStrainDivergence(aCellOrdinal, tTotalCauchyStrain, tStrainDivergence);
+            tComputeStrainDivergence(aCellOrdinal, tTotalStrain, tStrainDivergence);
 
             // compute volume difference
             tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
@@ -430,7 +429,7 @@ public:
 
             // compute residual
             Plato::print_array_2D_device(aCellOrdinal, tElasticStrain, "elastic strains");
-            Plato::print_array_2D_device(aCellOrdinal, tTotalCauchyStrain, "cauchy strains");
+            Plato::print_array_2D_device(aCellOrdinal, tTotalStrain, "cauchy strains");
             Plato::print_array_2D_device(aCellOrdinal, tPressureGrad, "pressure gradient");
             Plato::print_array_1D_device(tPressure, "pressure");
             Plato::print_array_1D_device(tVolumeStrain, "volumetric strain");

@@ -1351,20 +1351,24 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticStrain3D
     tWorksetBase.worksetState(tState, tStateWS);
 
     Plato::ScalarVectorT<Plato::Scalar> tCellVolume("cell volume", tNumCells);
-    Plato::ScalarMultiVectorT<Plato::Scalar> tStrains("strains", tNumCells, tNumVoigtTerms);
     Plato::ScalarMultiVectorT<Plato::Scalar> tPressGrad("pressure grad", tNumCells, tSpaceDim);
+    Plato::ScalarMultiVectorT<Plato::Scalar> tElasticStrains("strains", tNumCells, tNumVoigtTerms);
+    Plato::ScalarMultiVectorT<Plato::Scalar> tTotalStrain("total strain", tNumCells, tNumVoigtTerms);
     Plato::ScalarArray3DT<Plato::Scalar> tGradient("gradient", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
     Plato::ScalarMultiVectorT<Plato::Scalar> tLocalState("local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
     Plato::ComputeGradientWorkset <tSpaceDim> tComputeGradient;
     Plato::LinearTetCubRuleDegreeOne <tSpaceDim> tCubatureRule;
+    Plato::Strain<tSpaceDim, PhysicsT::mNumDofsPerNode> tComputeTotalStrain;
     Plato::ThermoPlasticityUtilities <tSpaceDim, PhysicsT> tThermoPlasticityUtils;
 
     auto tBasisFunctions = tCubatureRule.getBasisFunctions();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         tComputeGradient(aCellOrdinal, tGradient, tConfig, tCellVolume);
-        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, tStateWS, tLocalState, tBasisFunctions, tGradient, tStrains);
+        tComputeTotalStrain(aCellOrdinal, tTotalStrain, tStateWS, tGradient);
+        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, tStateWS, tLocalState,
+                                                    tBasisFunctions, tTotalStrain, tElasticStrains);
     }, "compute elastic strain test");
 
     std::vector<std::vector<Plato::Scalar>> tGold =
@@ -1374,12 +1378,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticStrain3D
           {5e-7, -2e-7,  3e-7,  -1e-7, 1.6e-6,   9e-7},
           {7e-7, -2e-7, -3e-7,  -5e-7,   2e-6, 1.3e-6},
           {7e-7, -6e-7,  3e-7,  -7e-7, 2.2e-6, 1.1e-6} };
-    auto tHostStrains = Kokkos::create_mirror(tStrains);
-    Kokkos::deep_copy(tHostStrains, tStrains);
+    auto tHostStrains = Kokkos::create_mirror(tElasticStrains);
+    Kokkos::deep_copy(tHostStrains, tElasticStrains);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tStrains.dimension_0();
-    const Plato::OrdinalType tDim1 = tStrains.dimension_1();
+    const Plato::OrdinalType tDim0 = tElasticStrains.dimension_0();
+    const Plato::OrdinalType tDim1 = tElasticStrains.dimension_1();
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)

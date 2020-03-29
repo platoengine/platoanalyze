@@ -11,6 +11,7 @@
 
 #include "Plato_Diagnostics.hpp"
 
+#include "Strain.hpp"
 #include "LocalVectorFunctionInc.hpp"
 #include "J2PlasticityLocalResidual.hpp"
 
@@ -1117,6 +1118,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     using ResultT      = typename Residual::ResultScalarType;
     using ControlT     = typename Residual::ControlScalarType;
 
+    using TotalStrainT = typename Plato::fad_type_t<PhysicsT, GlobalStateT, ConfigT>;
     using ElasticStrainT = typename Plato::fad_type_t<PhysicsT, LocalStateT, 
                                                       GlobalStateT, ConfigT, ControlT>;
 
@@ -1190,15 +1192,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     auto tBasisFunctions = tCubatureRule.getBasisFunctions();
 
     Plato::ComputeGradientWorkset<tSpaceDim> tComputeGradient;
+    Plato::Strain<tSpaceDim, tDofsPerNode> tComputeTotalStrain;
     Plato::ScalarVectorT<ConfigT>  tCellVolume("cell volume unused", tNumCells);
     Plato::ScalarArray3DT<ConfigT> tGradient("gradient", tNumCells, tNodesPerCell, tSpaceDim);
+    Plato::ScalarMultiVectorT<TotalStrainT> tTotalStrain("total strain", tNumCells, tNumStressTerms);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        tComputeGradient(tCellOrdinal, tGradient, tConfigWS, tCellVolume);
-
-        tThermoPlasticityUtils.computeElasticStrain(tCellOrdinal, tGlobalStateWS, tLocalStateWS, 
-                                                    tBasisFunctions,   tGradient, tElasticStrain);
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        tComputeTotalStrain(aCellOrdinal, tTotalStrain, tGlobalStateWS, tGradient);
+        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal,  tGlobalStateWS, tLocalStateWS,
+                                                    tBasisFunctions, tTotalStrain, tElasticStrain);
     }, "Unit Test");
 
 
@@ -1230,6 +1234,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     using ResultT      = typename Residual::ResultScalarType;
     using ControlT     = typename Residual::ControlScalarType;
 
+    using TotalStrainT = typename Plato::fad_type_t<PhysicsT, GlobalStateT, ConfigT>;
     using ElasticStrainT = typename Plato::fad_type_t<PhysicsT, LocalStateT, 
                                                       GlobalStateT, ConfigT, ControlT>;
 
@@ -1299,15 +1304,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     auto tBasisFunctions = tCubatureRule.getBasisFunctions();
 
     Plato::ComputeGradientWorkset<tSpaceDim> tComputeGradient;
+    Plato::Strain<tSpaceDim, tDofsPerNode> tComputeTotalStrain;
     Plato::ScalarVectorT<ConfigT>  tCellVolume("cell volume unused", tNumCells);
     Plato::ScalarArray3DT<ConfigT> tGradient("gradient", tNumCells, tNodesPerCell, tSpaceDim);
+    Plato::ScalarMultiVectorT<TotalStrainT> tTotalStrain("total strain", tNumCells, tNumStressTerms);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        tComputeGradient(tCellOrdinal, tGradient, tConfigWS, tCellVolume);
-
-        tThermoPlasticityUtils.computeElasticStrain(tCellOrdinal, tGlobalStateWS, tLocalStateWS, 
-                                                    tBasisFunctions,   tGradient, tElasticStrain);
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        tComputeTotalStrain(aCellOrdinal, tTotalStrain, tGlobalStateWS, tGradient);
+        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal,  tGlobalStateWS, tLocalStateWS,
+                                                    tBasisFunctions, tTotalStrain, tElasticStrain);
     }, "Unit Test");
 
 
@@ -1339,6 +1346,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     using ResultT      = typename Residual::ResultScalarType;
     using ControlT     = typename Residual::ControlScalarType;
 
+    using TotalStrainT = typename Plato::fad_type_t<PhysicsT, GlobalStateT, ConfigT>;
     using ElasticStrainT = typename Plato::fad_type_t<PhysicsT, LocalStateT, 
                                                       GlobalStateT, ConfigT, ControlT>;
 
@@ -1422,15 +1430,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     auto tBasisFunctions = tCubatureRule.getBasisFunctions();
 
     Plato::ComputeGradientWorkset<tSpaceDim> tComputeGradient;
+    Plato::Strain<tSpaceDim, tDofsPerNode> tComputeTotalStrain;
     Plato::ScalarVectorT<ConfigT>  tCellVolume("cell volume unused", tNumCells);
     Plato::ScalarArray3DT<ConfigT> tGradient("gradient", tNumCells, tNodesPerCell, tSpaceDim);
+    Plato::ScalarMultiVectorT<TotalStrainT> tTotalStrain("total strain", tNumCells, tNumStressTerms);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        tComputeGradient(tCellOrdinal, tGradient, tConfigWS, tCellVolume);
-
-        tThermoPlasticityUtils.computeElasticStrain(tCellOrdinal, tGlobalStateWS, tLocalStateWS, 
-                                                    tBasisFunctions,   tGradient, tElasticStrain);
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        tComputeTotalStrain(aCellOrdinal, tTotalStrain, tGlobalStateWS, tGradient);
+        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal,  tGlobalStateWS, tLocalStateWS,
+                                                    tBasisFunctions, tTotalStrain, tElasticStrain);
     }, "Unit Test");
 
 
@@ -1466,6 +1476,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     using ResultT      = typename Residual::ResultScalarType;
     using ControlT     = typename Residual::ControlScalarType;
 
+    using TotalStrainT = typename Plato::fad_type_t<PhysicsT, GlobalStateT, ConfigT>;
     using ElasticStrainT = typename Plato::fad_type_t<PhysicsT, LocalStateT, 
                                                       GlobalStateT, ConfigT, ControlT>;
 
@@ -1545,15 +1556,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     auto tBasisFunctions = tCubatureRule.getBasisFunctions();
 
     Plato::ComputeGradientWorkset<tSpaceDim> tComputeGradient;
+    Plato::Strain<tSpaceDim, tDofsPerNode> tComputeTotalStrain;
     Plato::ScalarVectorT<ConfigT>  tCellVolume("cell volume unused", tNumCells);
     Plato::ScalarArray3DT<ConfigT> tGradient("gradient", tNumCells, tNodesPerCell, tSpaceDim);
+    Plato::ScalarMultiVectorT<TotalStrainT> tTotalStrain("total strain", tNumCells, tNumStressTerms);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        tComputeGradient(tCellOrdinal, tGradient, tConfigWS, tCellVolume);
-
-        tThermoPlasticityUtils.computeElasticStrain(tCellOrdinal, tGlobalStateWS, tLocalStateWS, 
-                                                    tBasisFunctions,   tGradient, tElasticStrain);
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        tComputeTotalStrain(aCellOrdinal, tTotalStrain, tGlobalStateWS, tGradient);
+        tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal,  tGlobalStateWS, tLocalStateWS,
+                                                    tBasisFunctions, tTotalStrain, tElasticStrain);
     }, "Unit Test");
 
 
