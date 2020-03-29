@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Strain.hpp"
 #include "ScalarGrad.hpp"
 #include "SimplexFadTypes.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -27,11 +28,12 @@ class J2PlasticityLocalResidual :
   public Plato::AbstractLocalVectorFunctionInc<EvaluationType>
 {
   private:
-    static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
 
-    static constexpr Plato::OrdinalType mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
-    static constexpr Plato::OrdinalType mNumStressTerms  = SimplexPhysicsType::mNumStressTerms;  /*!< number of stress/strain terms */
-    static constexpr Plato::OrdinalType mNumLocalDofsPerCell = SimplexPhysicsType::mNumLocalDofsPerCell;  /*!< number of local degrees of freedom */
+    static constexpr auto mNumDofsPerNode      = SimplexPhysicsType::mNumDofsPerNode;       /*!< number global degrees of freedom per node */
+    static constexpr auto mNumNodesPerCell     = SimplexPhysicsType::mNumNodesPerCell;      /*!< number nodes per cell */
+    static constexpr auto mNumStressTerms      = SimplexPhysicsType::mNumStressTerms;       /*!< number of stress/strain terms */
+    static constexpr auto mNumLocalDofsPerCell = SimplexPhysicsType::mNumLocalDofsPerCell;  /*!< number of local degrees of freedom */
 
     using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mMesh;    /*!< mesh database */
     using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mDataMap; /*!< PLATO Engine output database */
@@ -244,12 +246,13 @@ class J2PlasticityLocalResidual :
     {
       auto tNumCells = mMesh.nelems();
 
+      using TotalStrainT   = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
       using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
-
-      using StressT = typename Plato::fad_type_t<SimplexPhysicsType, ControlT, LocalStateT, ConfigT, GlobalStateT>;
+      using StressT        = typename Plato::fad_type_t<SimplexPhysicsType, ControlT, LocalStateT, ConfigT, GlobalStateT>;
 
       // Functors
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+      Plato::Strain<mSpaceDim, mNumDofsPerNode> tComputeTotalStrain;
 
       // J2 Utility Functions Object
       Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
@@ -261,10 +264,11 @@ class J2PlasticityLocalResidual :
       // Many views
       Plato::ScalarVectorT<ConfigT>             tCellVolume("cell volume unused", tNumCells);
       Plato::ScalarVectorT<StressT>             tDevStressMinusBackstressNorm("norm(deviatoric_stress - backstress)",tNumCells);
-      Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells,mNumStressTerms);
+      Plato::ScalarArray3DT<ConfigT>            tGradient("gradient", tNumCells,mNumNodesPerCell,mSpaceDim);
       Plato::ScalarMultiVectorT<StressT>        tDeviatoricStress("deviatoric stress", tNumCells,mNumStressTerms);
       Plato::ScalarMultiVectorT<StressT>        tYieldSurfaceNormal("yield surface normal",tNumCells,mNumStressTerms);
-      Plato::ScalarArray3DT<ConfigT>            tGradient("gradient", tNumCells,mNumNodesPerCell,mSpaceDim);
+      Plato::ScalarMultiVectorT<TotalStrainT>   tTotalStrain("total strain",tNumCells,mNumStressTerms);
+      Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells,mNumStressTerms);
 
       // Transfer elasticity parameters to device
       auto tElasticShearModulus = mElasticShearModulus;
@@ -286,8 +290,9 @@ class J2PlasticityLocalResidual :
         tComputeGradient(aCellOrdinal, tGradient, aConfig, tCellVolume);
 
         // compute elastic strain
+        tComputeTotalStrain(aCellOrdinal, tTotalStrain, aGlobalState, tGradient);
         tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState, 
-                                                    tBasisFunctions, tGradient, tElasticStrain);
+                                                    tBasisFunctions, tTotalStrain, tElasticStrain);
       
         // apply penalization to elastic shear modulus
         ControlT tDensity               = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);
@@ -369,6 +374,7 @@ class J2PlasticityLocalResidual :
 
       // Functors
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+      Plato::Strain<mSpaceDim, mNumDofsPerNode> tComputeTotalStrain;
 
       // J2 Utility Functions Object
       Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
@@ -379,6 +385,7 @@ class J2PlasticityLocalResidual :
 
       // Many views
       Plato::ScalarVector      tCellVolume("cell volume unused",tNumCells);
+      Plato::ScalarMultiVector tTotalStrain("total strain",tNumCells,mNumStressTerms);
       Plato::ScalarMultiVector tElasticStrain("elastic strain",tNumCells,mNumStressTerms);
       Plato::ScalarArray3D     tGradient("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
       Plato::ScalarMultiVector tDeviatoricStress("deviatoric stress",tNumCells,mNumStressTerms);
@@ -413,8 +420,9 @@ class J2PlasticityLocalResidual :
         tJ2PlasticityUtils.updatePlasticStrainAndBackstressElasticStep(aCellOrdinal, aPrevLocalState, aLocalState);
 
         // compute elastic strain
+        tComputeTotalStrain(aCellOrdinal, tTotalStrain, aGlobalState, tGradient);
         tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState, 
-                                                    tBasisFunctions, tGradient, tElasticStrain);
+                                                    tBasisFunctions, tTotalStrain, tElasticStrain);
       
         // apply penalization to elastic shear modulus
         Plato::Scalar tDensity               = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);
