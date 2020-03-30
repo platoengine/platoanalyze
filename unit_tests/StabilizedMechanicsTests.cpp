@@ -289,7 +289,34 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Residual3D)
     tComputeResidual.evaluate(tStateWS, tProjPressGradWS, tControlWS, tConfigWS, tResidualWS);
 
     // 5. TEST RESULTS
-    Plato::print_array_2D(tResidualWS, "residual");
+    std::vector<std::vector<Plato::Scalar>> tGold =
+    {
+      {-3.086420e+03, -2.551440e+04, -6.790123e+03,  9.169188e+03,  1.687243e+04, -3.703704e+03, -1.934156e+04, -9.259259e+02,
+       -1.625514e+04,  2.242798e+04,  4.320988e+03, -7.656002e+03,  2.469136e+03,  6.790123e+03,  2.181070e+04, -4.290964e+03},
+      {-5.555556e+03, -2.345679e+04, -4.320988e+03,  8.243263e+03,  6.172840e+02,  1.913580e+04, -8.024691e+03, -1.531200e+04,
+       -1.481481e+04, -1.234568e+03,  7.407407e+03,  1.160830e+04,  1.975309e+04,  5.555556e+03,  4.938272e+03, -1.194697e+04},
+      {-6.172840e+03, -3.086420e+03, -1.522634e+04,  3.365038e+03, -1.090535e+04,  9.670782e+03, -3.086420e+03,  6.730076e+03,
+        1.851852e+03, -1.090535e+04,  1.213992e+04,  2.271404e-07,  1.522634e+04,  4.320988e+03,  6.172840e+03, -1.009511e+04},
+      {-9.876543e+03,  6.172840e+02, -2.345679e+04,  5.872604e+02,  2.037037e+04, -1.172840e+04,  1.049383e+04, -2.296801e+04,
+        5.555556e+03,  1.728395e+04, -6.172840e+02,  5.872604e+02, -1.604938e+04, -6.172840e+03,  1.358025e+04,  1.068237e+04},
+      { 2.880658e+04,  1.111111e+04, -1.646091e+04, -3.432771e+04,  4.320988e+03, -3.312757e+04,  3.189300e+04, -7.407407e+03,
+        8.024691e+03,  3.004115e+04, -3.086420e+03, -4.042369e+03, -4.115226e+04, -8.024691e+03, -1.234568e+04,  1.614786e+04},
+      { 2.983539e+04, -1.378601e+04,  1.790123e+04, -3.920594e+04,  1.358025e+04, -4.320988e+03,  3.168724e+04, -8.920594e+03,
+        -6.790123e+03,  2.489712e+04, -3.600823e+04,  7.904597e+03, -3.662551e+04, -6.790123e+03, -1.358025e+04,  1.799971e+04}
+    };
+
+    auto tHostResidualWS = Kokkos::create_mirror(tResidualWS);
+    Kokkos::deep_copy(tHostResidualWS, tResidualWS);
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
+        {
+            //printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostElastoPlasticityResidual(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostResidualWS(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+        }
+    }
+    //Plato::print_array_2D(tResidualWS, "residual");
 }
 
 
