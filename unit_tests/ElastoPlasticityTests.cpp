@@ -2136,10 +2136,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     Kokkos::deep_copy(tDirichletValues, tHostDirichletValues);
 
     auto tHostDirichletDofs = Kokkos::create_mirror(tDirichletDofs);
-    Kokkos::deep_copy(tHostDirichletValues, tDirichletDofs);
+    Kokkos::deep_copy(tHostDirichletDofs, tDirichletDofs);
     tHostDirichletDofs(tOffset + tDispDofX) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofX;
     tHostDirichletDofs(tOffset + tDispDofY) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofY;
-    Kokkos::deep_copy(tDirichletDofs, tHostDirichletValues);
+    Kokkos::deep_copy(tDirichletDofs, tHostDirichletDofs);
 
     // 3.4 set Dirichlet boundary conditions
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
