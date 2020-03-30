@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Simp.hpp"
+#include "Strain.hpp"
 #include "SimplexFadTypes.hpp"
 #include "ImplicitFunctors.hpp"
 #include "SimplexPlasticity.hpp"
@@ -43,9 +44,11 @@ class PlasticWorkCriterion : public Plato::AbstractLocalScalarFunctionInc<Evalua
 {
 // private member data
 private:
-    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;                  /*!< spatial dimensions */
-    static constexpr auto mNumStressTerms = SimplexPhysicsType::mNumStressTerms;   /*!< number of stress/strain components */
-    static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
+
+    static constexpr auto mNumStressTerms       = SimplexPhysicsType::mNumStressTerms;  /*!< number of stress/strain components */
+    static constexpr auto mNumNodesPerCell      = SimplexPhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
+    static constexpr auto mNumGlobalDofsPerNode = SimplexPhysicsType::mNumDofsPerNode;  /*!< number global degrees of freedom per node */
 
     using ResultT = typename EvaluationType::ResultScalarType;                     /*!< result variables automatic differentiation type */
     using ConfigT = typename EvaluationType::ConfigScalarType;                     /*!< config variables automatic differentiation type */
@@ -135,11 +138,13 @@ public:
                   const Plato::ScalarVectorT<ResultT> &aResult,
                   Plato::Scalar aTimeStep = 0.0)
     {
+        using TotalStrainT   = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
         using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
 
         // allocate functors used to evaluate criterion
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
+        Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
         Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
         Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
@@ -149,6 +154,7 @@ public:
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
         Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<TotalStrainT> tCurrentTotalStrain("current total strain",tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ElasticStrainT> tCurrentElasticStrain("current elastic strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
 
@@ -168,8 +174,9 @@ public:
             tJ2PlasticityUtils.computePlasticStrainMisfit(aCellOrdinal, aCurrentLocalState, aPreviousLocalState, tPlasticStrainMisfit);
 
             // compute current elastic strain
+            tComputeTotalStrain(aCellOrdinal, tCurrentTotalStrain, aCurrentGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
-                                                        tBasisFunctions, tConfigurationGradient, tCurrentElasticStrain);
+                                                        tBasisFunctions, tCurrentTotalStrain, tCurrentElasticStrain);
 
             // compute cell penalty and penalized elastic properties
             ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
