@@ -1737,12 +1737,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
     // 6. Output Data
     if(tOutputData)
     {
-        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer("SolutionMesh", tMesh.getRawPtr(), tSpaceDim);
-        for(Plato::OrdinalType tTime = 0; tTime < tSolution.dimension_0(); tTime++)
-        {
-            auto tSubView = Kokkos::subview(tSolution, tTime, Kokkos::ALL());
-            Plato::output_vtk_node_field<tSpaceDim, tNumDofsPerNode>(tTime, tSubView, "State", *tMesh, tWriter);
-        }
+        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tSolution, "State", "SolutionMesh", *tMesh);
     }
 }
 

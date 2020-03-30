@@ -232,7 +232,38 @@ Omega_h::Write<T> create_omega_h_write_array(std::string aName, Plato::OrdinalTy
 // function create_omega_h_write_array
 
 /******************************************************************************//**
+* \brief Output node field to visualization file - convenient for visualization
+*
+* \tparam SpaceDim       spatial dimension
+* \tparam NumDofsPerNode number of degrees of freedom per node
+*
+* \param [in] aField      2D field array - X(Time, Dofs)
+* \param [in] aFieldName  field name
+* \param [in] aFileName   output file name
+* \param [in] aMesh       mesh database
+*
+**********************************************************************************/
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumDofsPerNode>
+inline void output_node_field_to_viz_file
+(const Plato::ScalarMultiVector& aField,
+ const std::string& aFieldName,
+ const std::string& aFileName,
+ Omega_h::Mesh & aMesh)
+{
+    Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFileName, &aMesh, SpaceDim);
+    for(Plato::OrdinalType tTime = 0; tTime < aField.dimension_0(); tTime++)
+    {
+        auto tSubView = Kokkos::subview(aField, tTime, Kokkos::ALL());
+        Plato::output_vtk_node_field<SpaceDim, NumDofsPerNode>(tTime, tSubView, aFieldName, aMesh, tWriter);
+    }
+}
+// function output_node_field
+
+/******************************************************************************//**
 * \brief Output node field to vtk file - convenient for visualization
+*
+* \tparam SpaceDim       spatial dimension
+* \tparam NumDofsPerNode number of degrees of freedom per node
 *
 * \param [in] aTime    time step
 * \param [in] aData    output data
