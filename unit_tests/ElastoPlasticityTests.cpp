@@ -2034,7 +2034,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
 {
     const bool tOutputData = true; // for debugging purpose, set true to enable the Paraview output file
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
@@ -2054,8 +2053,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Plasticity Model'>                                                \n"
       "    <ParameterList name='J2 Plasticity'>                                                 \n"
-      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='0.0'/>         \n"
-      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='0.0'/>         \n"
+      "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0'/>         \n"
+      "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0'/>         \n"
       "      <Parameter  name='Initial Yield Stress' type='double' value='16e3'/>               \n"
       "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
       "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
@@ -2108,7 +2107,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
 
     // 3. Set Dirichlet Boundary Conditions
-    // 3.1 Load degrees of freedom
+    // 3.1 Symmetry degrees of freedom
     Plato::Scalar tValueToSet = 0;
     auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + 2;
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
