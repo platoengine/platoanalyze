@@ -2148,16 +2148,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::fill(1.0, tControls);
-/*
     auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 6. Output Data
-    if(tOutputData)
+    if (tOutputData)
     {
-        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tSolution, "State", "SolutionMesh", *tMesh);
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer("SolutionMesh", tMesh.get(), tSpaceDim);
+        for (Plato::OrdinalType tTime = 0; tTime < tSolution.dimension_0(); tTime++)
+        {
+            auto tSubView = Kokkos::subview(tSolution, tTime, Kokkos::ALL());
+            Plato::output_vtk_node_field<tSpaceDim, tNumDofsPerNode>(tTime, tSubView, "State", tMesh.operator*(), tWriter);
+        }
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-*/
 }
 
 
