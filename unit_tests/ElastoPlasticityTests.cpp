@@ -1739,6 +1739,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
     {
         Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tSolution, "State", "SolutionMesh", *tMesh);
     }
+
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
