@@ -2102,6 +2102,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     PlatoUtestHelpers::print_2d_coords(*tMesh, tNodesOnBoundaryX1);
 
     // 3. Set Dirichlet Boundary Conditions
+
+    // 3.1 Load degrees of freedom
     Plato::Scalar tValueToSet = 0;
     auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY1.size() + 1;
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
@@ -2112,14 +2114,26 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
         tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
     }, "set dirichlet values and indices");
 
+    // 3.2 Symmetry condition degrees of freedom
     tValueToSet = 1e-3;
-    auto tOffset = tDirichletIndicesBoundaryY1.size();
+    auto tOffset = tDirichletIndicesBoundaryX0.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         auto tIndex = tOffset + aIndex;
         tDirichletValues(tIndex) = tValueToSet;
         tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY1(aIndex);
     }, "set dirichlet values and indices");
+
+    // 3.3. Pinned degrees of freedom
+    tValueToSet = 0.0;
+    const Plato::OrdinalType tPinnedNodeIndex = 32;
+    tOffset += tDirichletIndicesBoundaryY1.size();
+    tDirichletValues(tOffset + tDispDofX) = tValueToSet;
+    tDirichletDofs(tOffset + tDispDofX) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofX;
+    tDirichletValues(tOffset + tDispDofY) = tValueToSet;
+    tDirichletDofs(tOffset + tDispDofY) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofY;
+
+    // 3.4 set Dirichlet boundary conditions
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. Solution
