@@ -371,13 +371,15 @@ inline void print_1d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNod
     auto tCoords = aMesh.coords();
     auto tNumNodes = aNodeOrdinals.size();
 
+    printf("\nPrint 1D Coordinates (X)\n");
+
     // the following will only work well in serial mode on host -- this is just for basic sanity checking
     Kokkos::parallel_for("print coords", tNumNodes, LAMBDA_EXPRESSION(const int & aNodeIndex)
     {
         auto tVertexNumber = aNodeOrdinals[aNodeIndex];
         auto tEntryOffset = tVertexNumber * tSpaceDim;
         auto tX = tCoords[tEntryOffset + 0];
-        printf("(%f)\n", tX);
+        printf("Node(%d)=(%f)\n", tVertexNumber, tX);
     });
 }
 
@@ -395,6 +397,8 @@ inline void print_2d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNod
     auto tCoords = aMesh.coords();
     auto tNumNodes = aNodeOrdinals.size();
 
+    printf("\nPrint 2D Coordinates (X,Y)\n");
+
     // the following will only work well in serial mode on host -- this is just for basic sanity checking
     Kokkos::parallel_for("print coords", tNumNodes, LAMBDA_EXPRESSION(const int & aNodeIndex)
     {
@@ -402,7 +406,7 @@ inline void print_2d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNod
         auto tEntryOffset = tVertexNumber * tSpaceDim;
         auto tX = tCoords[tEntryOffset + 0];
         auto tY = tCoords[tEntryOffset + 1];
-        printf("(%f,%f)\n", tX, tY);
+        printf("Node(%d)=(%f,%f)\n", tVertexNumber, tX, tY);
     });
 }
 
@@ -419,6 +423,8 @@ inline void print_3d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNod
     auto tCoords = aMesh.coords();
     auto tNumNodes = aNodeOrdinals.size();
 
+    printf("\nPrint 3D Coordinates (X,Y,Z)\n");
+
     // the following will only work well in serial mode on host -- this is just for basic sanity checking
     Kokkos::parallel_for("print coords", tNumNodes, LAMBDA_EXPRESSION(const int & aNodeIndex)
     {
@@ -427,7 +433,7 @@ inline void print_3d_coords(const Omega_h::Mesh& aMesh, const Omega_h::LOs& aNod
         auto tX = tCoords[tEntryOffset + 0];
         auto tY = tCoords[tEntryOffset + 1];
         auto tZ = tCoords[tEntryOffset + 2];
-        printf("(%f,%f,%f)\n", tX, tY, tZ);
+        printf("Node(%d)=(%f,%f,%f)\n", tVertexNumber, tX, tY, tZ);
     });
 }
 
