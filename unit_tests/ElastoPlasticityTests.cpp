@@ -2128,10 +2128,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     tValueToSet = 0.0;
     const Plato::OrdinalType tPinnedNodeIndex = 32;
     tOffset += tDirichletIndicesBoundaryY1.size();
-    tDirichletValues(tOffset + tDispDofX) = tValueToSet;
-    tDirichletDofs(tOffset + tDispDofX) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofX;
-    tDirichletValues(tOffset + tDispDofY) = tValueToSet;
-    tDirichletDofs(tOffset + tDispDofY) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofY;
+
+    auto tHostDirichletValues = Kokkos::create_mirror(tDirichletValues);
+    Kokkos::deep_copy(tHostDirichletValues, tDirichletValues);
+    tHostDirichletValues(tOffset + tDispDofX) = tValueToSet;
+    tHostDirichletValues(tOffset + tDispDofY) = tValueToSet;
+    Kokkos::deep_copy(tDirichletValues, tHostDirichletValues);
+
+    auto tHostDirichletDofs = Kokkos::create_mirror(tDirichletDofs);
+    Kokkos::deep_copy(tHostDirichletValues, tDirichletDofs);
+    tHostDirichletDofs(tOffset + tDispDofX) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofX;
+    tHostDirichletDofs(tOffset + tDispDofY) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofY;
+    Kokkos::deep_copy(tDirichletDofs, tHostDirichletValues);
 
     // 3.4 set Dirichlet boundary conditions
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
