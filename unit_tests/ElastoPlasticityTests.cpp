@@ -2095,11 +2095,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     const Plato::OrdinalType tDispDofY = 1;
     constexpr auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
+    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
     auto tDirichletIndicesBoundaryY1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y1", tNumDofsPerNode, tDispDofY);
+
+    auto tNodesOnBoundaryX1 = PlatoUtestHelpers::get_2D_boundary_nodes_x1(*tMesh);
+    PlatoUtestHelpers::print_2d_coords(*tMesh, tNodesOnBoundaryX1);
 
     // 3. Set Dirichlet Boundary Conditions
     Plato::Scalar tValueToSet = 0;
-    auto tCoords = tMesh->coords();
     auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY1.size() + 1;
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
     Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
@@ -2110,7 +2113,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     }, "set dirichlet values and indices");
 
     tValueToSet = 1e-3;
-    auto tOffset += tDirichletIndicesBoundaryY1.size();
+    auto tOffset = tDirichletIndicesBoundaryY1.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         auto tIndex = tOffset + aIndex;
@@ -2123,7 +2126,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::fill(1.0, tControls);
-    //auto tSolution = tPlasticityProblem.solution(tControls);
+/*
+    auto tSolution = tPlasticityProblem.solution(tControls);
+
+    // 6. Output Data
+    if(tOutputData)
+    {
+        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tSolution, "State", "SolutionMesh", *tMesh);
+    }
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+*/
 }
 
 
