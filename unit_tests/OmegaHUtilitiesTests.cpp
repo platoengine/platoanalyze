@@ -16,6 +16,21 @@ namespace OmegaHUtilitiesTests
 {
 
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_FacesID)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
+
+    Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(tMesh.get(), Omega_h::FACE, Omega_h::EDGE, 7 /* class id */);
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    Kokkos::parallel_for("print array", tLocalOrdinals.size(), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        printf("X(%d)=%d\n", aIndex, tLocalOrdinals[aIndex]);
+    });
+}
+
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaHGrapsh)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
