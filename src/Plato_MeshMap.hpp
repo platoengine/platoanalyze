@@ -168,6 +168,26 @@ struct MathMapBase
 };
 
 template <typename ScalarT>
+struct Full : public MathMapBase<ScalarT>
+{
+    using VectorArrayT = typename Plato::ScalarMultiVectorT<ScalarT>;
+    using OrdinalT     = typename VectorArrayT::size_type;
+
+    ScalarT mOrigin[cSpaceDim];
+    ScalarT mNormal[cSpaceDim];
+
+    Full(const Plato::InputData & aInput){}
+
+    DEVICE_TYPE inline void
+    operator()( OrdinalT aOrdinal, VectorArrayT aInValue, VectorArrayT aOutValue ) const
+    {
+        aOutValue(Dim::X, aOrdinal) = aInValue(Dim::X, aOrdinal);
+        aOutValue(Dim::Y, aOrdinal) = aInValue(Dim::Y, aOrdinal);
+        aOutValue(Dim::Z, aOrdinal) = aInValue(Dim::Z, aOrdinal);
+    }
+};
+
+template <typename ScalarT>
 struct SymmetryPlane : public MathMapBase<ScalarT>
 {
     using VectorArrayT = typename Plato::ScalarMultiVectorT<ScalarT>;
@@ -332,6 +352,52 @@ struct GetBasis
         aEntries(aEntryOrdinal+2) = N2;
         aEntries(aEntryOrdinal+3) = N3;
     }
+    DEVICE_TYPE inline void
+    operator()(
+      VectorArrayT  aLocations,
+      OrdinalT      aNodeOrdinal,
+      int           aElemOrdinal,
+      ScalarT       aBases[cNVertsPerElem]) const
+    {
+        // get vertex indices
+        OrdinalT i0 = mCells2Nodes[aElemOrdinal*cNVertsPerElem  ];
+        OrdinalT i1 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+1];
+        OrdinalT i2 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+2];
+        OrdinalT i3 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+3];
+
+        // get vertex point values
+        ScalarT X0=mCoords[i0*cSpaceDim+Dim::X], Y0=mCoords[i0*cSpaceDim+Dim::Y], Z0=mCoords[i0*cSpaceDim+Dim::Z];
+        ScalarT X1=mCoords[i1*cSpaceDim+Dim::X], Y1=mCoords[i1*cSpaceDim+Dim::Y], Z1=mCoords[i1*cSpaceDim+Dim::Z];
+        ScalarT X2=mCoords[i2*cSpaceDim+Dim::X], Y2=mCoords[i2*cSpaceDim+Dim::Y], Z2=mCoords[i2*cSpaceDim+Dim::Z];
+        ScalarT X3=mCoords[i3*cSpaceDim+Dim::X], Y3=mCoords[i3*cSpaceDim+Dim::Y], Z3=mCoords[i3*cSpaceDim+Dim::Z];
+
+        ScalarT a11=X0-X3, a12=X1-X3, a13=X2-X3;
+        ScalarT a21=Y0-Y3, a22=Y1-Y3, a23=Y2-Y3;
+        ScalarT a31=Z0-Z3, a32=Z1-Z3, a33=Z2-Z3;
+
+        ScalarT detA = a11*a22*a33+a12*a23*a31+a13*a21*a32-a11*a23*a32-a12*a21*a33-a13*a22*a31;
+
+        ScalarT b11=(a22*a33-a23*a32)/detA, b12=(a13*a32-a12*a33)/detA, b13=(a12*a23-a13*a22)/detA;
+        ScalarT b21=(a23*a31-a21*a33)/detA, b22=(a11*a33-a13*a31)/detA, b23=(a13*a21-a11*a23)/detA;
+        ScalarT b31=(a21*a32-a22*a31)/detA, b32=(a12*a31-a11*a32)/detA, b33=(a11*a22-a12*a21)/detA;
+
+        // get input point values
+        ScalarT Xh=aLocations(Dim::X,aNodeOrdinal),
+                Yh=aLocations(Dim::Y,aNodeOrdinal),
+                Zh=aLocations(Dim::Z,aNodeOrdinal);
+
+        ScalarT FX=Xh-X3, FY=Yh-Y3, FZ=Zh-Z3;
+
+        ScalarT N0=b11*FX+b12*FY+b13*FZ;
+        ScalarT N1=b21*FX+b22*FY+b23*FZ;
+        ScalarT N2=b31*FX+b32*FY+b33*FZ;
+        ScalarT N3=1.0-N0-N1-N2;
+
+        aBases[0] = N0;
+        aBases[1] = N1;
+        aBases[2] = N2;
+        aBases[3] = N3;
+    }
 };
 
 template <typename ScalarT>
@@ -445,8 +511,8 @@ class AbstractMeshMap
             for (auto iEntryIndex = tRowStart; iEntryIndex < tRowEnd; iEntryIndex++)
             {
                 auto iRowIndexT = tColMap(iEntryIndex);
-                auto iEntryIndexT = tRowMapT(iRowIndexT)+tOffsetT(iRowIndexT);
-                Kokkos::atomic_increment(&tOffsetT(iRowIndexT));
+                auto tMyOffset = Kokkos::atomic_fetch_add(&tOffsetT(iRowIndexT), 1);
+                auto iEntryIndexT = tRowMapT(iRowIndexT)+tMyOffset;
                 tColMapT(iEntryIndexT) = iRowOrdinal;
                 tEntriesT(iEntryIndexT) = tEntries(iEntryIndex);
             }
@@ -568,8 +634,6 @@ class AbstractMeshMap
 
   public:
 
-    //virtual void apply(const ScalarArray & aInput, ScalarArray aOutput) = 0;
-    //virtual void applyT(const ScalarArray & aInput, ScalarArray aOutput) = 0;
     /***************************************************************************//**
     *
     * @brief Apply mapping
@@ -718,7 +782,7 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Sc
         VectorArrayT tMin("min", cSpaceDim, tNElems);
         VectorArrayT tMax("max", cSpaceDim, tNElems);
 
-        ScalarT tol = 1e-4;
+        ScalarT tol = 1e-2;
 
         // fill d_* data
         auto tCoords = aMesh.coords();
@@ -781,23 +845,36 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Sc
         bvh.query(Points{d_x.data(), d_y.data(), d_z.data(), tNVerts}, tIndices, tOffset);
 
         // loop over indices and find containing element
-        EnclosingElement<ScalarT> tEnclosingElement(aMesh);
+        GetBasis<ScalarT> tGetBasis(aMesh);
         Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNVerts), LAMBDA_EXPRESSION(OrdinalT iNodeOrdinal)
         {
+            ScalarT tBasis[cNVertsPerElem];
             aParentElements(iNodeOrdinal) = -1;
             if( aLocations(Dim::X, iNodeOrdinal) != aMappedLocations(Dim::X, iNodeOrdinal) ||
                 aLocations(Dim::Y, iNodeOrdinal) != aMappedLocations(Dim::Y, iNodeOrdinal) ||
                 aLocations(Dim::Z, iNodeOrdinal) != aMappedLocations(Dim::Z, iNodeOrdinal) )
             {
                 aParentElements(iNodeOrdinal) = -2;
+                ScalarT tMaxMin = -tol;
+                typename IntegerArrayT::value_type iParent = -2;
                 for( int iElem=tOffset(iNodeOrdinal); iElem<tOffset(iNodeOrdinal+1); iElem++ )
                 {
                     auto tElem = tIndices(iElem);
-                    if( tEnclosingElement(tElem, iNodeOrdinal, aMappedLocations) )
+                    tGetBasis(aMappedLocations, iNodeOrdinal, tElem, tBasis);
+                    ScalarT tMin = tBasis[0];
+                    for(OrdinalT iB=1; iB<cNVertsPerElem; iB++)
                     {
-                        aParentElements(iNodeOrdinal) = tElem;
-                        break;
+                        if( tBasis[iB] < tMin ) tMin = tBasis[iB];
                     }
+                    if( tMin > tMaxMin )
+                    {
+                         tMaxMin = tMin;
+                         iParent = tElem;
+                    }
+                }
+                if( tMaxMin > -tol )
+                {
+                    aParentElements(iNodeOrdinal) = iParent;
                 }
             }
         }, "find parent element");
@@ -927,18 +1004,6 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Sc
     ~MeshMap()
     {
     }
-
-    /***************************************************************************//**
-    * @brief Get number of columns in map matrix
-    *******************************************************************************/
-    OrdinalT numColumns();
-
-    /***************************************************************************//**
-    * @brief Get number of rows in map matrix
-    *******************************************************************************/
-    OrdinalT numRows();
-
-
 }; // end class MeshMap
 
 
@@ -980,6 +1045,10 @@ struct MeshMapFactory
         if(tLinearMapType == "SymmetryPlane")
         {
             return std::make_shared<Plato::Geometry::MeshMap<SymmetryPlane<ScalarT>>>(aMesh, aInput);
+        } else
+        if(tLinearMapType == "")
+        {
+            return std::make_shared<Plato::Geometry::MeshMap<Full<ScalarT>>>(aMesh, aInput);
         }
         else
         {

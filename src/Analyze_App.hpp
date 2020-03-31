@@ -374,11 +374,15 @@ public:
     template<typename SharedDataT>
     void exportScalarField(const std::string& aName, SharedDataT& aSharedField)
     {
-        if(aName == "Objective Gradient")
+        if(aName == "Topology")
         {
-            if(mMeshMap != nullptr)
+            this->copyFieldFromAnalyze(mControl, aSharedField);
+        }
+        else if(aName == "Objective Gradient")
+        {
+            if(mMeshMap != nullptr && mObjectiveGradientZ.extent(0) != 0)
             {
-                Plato::ScalarVector tObjectiveGradientZ("unmapped", tObjectiveGradientZ.extent(0));
+                Plato::ScalarVector tObjectiveGradientZ("unmapped", mObjectiveGradientZ.extent(0));
                 mMeshMap->applyT(mObjectiveGradientZ, tObjectiveGradientZ);
                 Kokkos::deep_copy(mObjectiveGradientZ, tObjectiveGradientZ);
             }
@@ -386,9 +390,9 @@ public:
         }
         else if(aName == "Constraint Gradient")
         {
-            if(mMeshMap != nullptr)
+            if(mMeshMap != nullptr && mConstraintGradientZ.extent(0) != 0)
             {
-                Plato::ScalarVector tConstraintGradientZ("unmapped", tConstraintGradientZ.extent(0));
+                Plato::ScalarVector tConstraintGradientZ("unmapped", mConstraintGradientZ.extent(0));
                 mMeshMap->applyT(mConstraintGradientZ, tConstraintGradientZ);
                 Kokkos::deep_copy(mConstraintGradientZ, tConstraintGradientZ);
             }

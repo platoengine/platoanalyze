@@ -38,6 +38,82 @@ get(ViewType aView)
 
 namespace PlatoTestMeshMap
 {
+
+/******************************************************************************/
+/*!
+  \brief Compute basis function values
+
+  1. Compute the centroid of each element in a test mesh in physical coordinates.
+  2. Use GetBases() to determine the basis function values at the equivalent
+     point in element coordinates.
+
+     X_i = N(x)_I v^e_{Ii}
+
+     v^e_{Ii}: vertex coordinates for local node I of element e
+     X_i:      Input point for which basis values are determined. Element
+               centroid in this test.
+     x:        location of X in element coordinates.
+     N(x)_I:   Basis values to be determines.
+
+  test passes if:
+    N(x)_I = {1/4, 1/4, 1/4, 1/4};
+*/
+/******************************************************************************/
+  TEUCHOS_UNIT_TEST(PlatoTestMeshMap, GetBasis)
+  {
+
+    // create mesh
+    //
+    constexpr int cMeshWidth=5;
+    constexpr int cSpaceDim=3;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(cSpaceDim, cMeshWidth);
+
+    // create GetBasis functor
+    //
+    Plato::Geometry::GetBasis<Plato::Scalar> tGetBasis(*tMesh);
+
+    auto tNElems = tMesh->nelems();
+    Plato::ScalarMultiVector tInPoints("centroids", cSpaceDim, tNElems);
+    Plato::ScalarMultiVector tBases("basis values", cSpaceDim+1, tNElems);
+
+    auto tCoords = tMesh->coords();
+    Omega_h::LOs tCells2Nodes = tMesh->ask_elem_verts();
+
+    // map from input to output
+    //
+    Kokkos::parallel_for(Kokkos::RangePolicy<int>(0, tNElems), LAMBDA_EXPRESSION(int aOrdinal)
+    {
+        Plato::Scalar tElemBases[cSpaceDim+1];
+        // compute element centroid
+        for(int iVert=0; iVert<(cSpaceDim+1); iVert++)
+        {
+            auto iVertOrdinal = tCells2Nodes[aOrdinal*(cSpaceDim+1)+iVert];
+            for(int iDim=0; iDim<cSpaceDim; iDim++)
+            {
+                tInPoints(iDim, aOrdinal) += tCoords[iVertOrdinal*cSpaceDim+iDim];
+            }
+        }
+        for(int iDim=0; iDim<cSpaceDim; iDim++)
+        {
+            tInPoints(iDim, aOrdinal) /= cSpaceDim+1;
+        }
+        tGetBasis(tInPoints, aOrdinal, aOrdinal, tElemBases);
+        for(int iVert=0; iVert<(cSpaceDim+1); iVert++)
+        {
+            tBases(iVert, aOrdinal) = tElemBases[iVert];
+        }
+    }, "compute");
+
+    double tol_double = 1e-14;
+    auto tBases_host = get(tBases);
+    for(int iElem=0; iElem<tNElems; iElem++)
+    {
+        for(int iNode=0; iNode<(cSpaceDim+1); iNode++)
+        {
+            TEST_FLOATING_EQUALITY(tBases_host(iNode, iElem), 1.0/4.0, tol_double);
+        }
+    }
+  }
   TEUCHOS_UNIT_TEST(PlatoTestMeshMap, SymmetryPlane)
   {
 
@@ -350,7 +426,7 @@ namespace PlatoTestMeshMap
     //
     auto tMeshMapParams = tInputData.get<Plato::InputData>("MeshMap");
 
-    constexpr int cMeshWidth=5;
+    constexpr int cMeshWidth=3;
     constexpr int cSpaceDim=3;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(cSpaceDim, cMeshWidth);
 
