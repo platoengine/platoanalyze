@@ -1309,8 +1309,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeStabilization1D
     Kokkos::deep_copy(tHostStabilization, tStabilization);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tStabilization.dimension_0();
-    const Plato::OrdinalType tDim1 = tStabilization.dimension_1();
+    const Plato::OrdinalType tDim0 = tStabilization.extent(0);
+    const Plato::OrdinalType tDim1 = tStabilization.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
@@ -1382,8 +1382,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticStrain3D
     Kokkos::deep_copy(tHostStrains, tElasticStrains);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tElasticStrains.dimension_0();
-    const Plato::OrdinalType tDim1 = tElasticStrains.dimension_1();
+    const Plato::OrdinalType tDim0 = tElasticStrains.extent(0);
+    const Plato::OrdinalType tDim1 = tElasticStrains.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
@@ -1723,8 +1723,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
     Kokkos::deep_copy(tHostSolution, tSolution);
 
     const Plato::Scalar tTolerance = 1e-4;
-    const Plato::OrdinalType tDim0 = tSolution.dimension_0();
-    const Plato::OrdinalType tDim1 = tSolution.dimension_1();
+    const Plato::OrdinalType tDim0 = tSolution.extent(0);
+    const Plato::OrdinalType tDim1 = tSolution.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
@@ -2139,7 +2139,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. Solution
-    auto tNumVertices = tMesh->nverts();
+    constexpr auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
@@ -2147,7 +2147,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     // 6. Output Data
     if (tOutputData)
     {
-        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tSolution, "State", "SolutionMesh", *tMesh);
+        Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
+        Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
+        Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
+        Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tPressure, "Pressure", "SolutionMesh", *tMesh);
+        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tDisplacements, "Displacements", "SolutionMesh", *tMesh);
     }
     //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }

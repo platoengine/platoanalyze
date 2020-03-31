@@ -12,6 +12,76 @@
 namespace Plato
 {
 
+namespace blas2
+{
+
+/******************************************************************************//**
+ * \brief Extract a sub 2D array from full 2D array
+ *
+ * \tparam NumStride stride, e.g. number of degree of freedom per node
+ * \tparam NumOffset offset, e.g. degree of freedom offset
+ *
+ * \param [in] aFrom  input 2D array
+ * \param [out] aTo   extracted 2D sub-array
+ *
+ * aToVector(i,j) = aFromVector(i,j*NumStride+NumOffset)
+ *
+**********************************************************************************/
+template<Plato::OrdinalType NumStride, Plato::OrdinalType NumOffset>
+inline void extract(const Plato::ScalarMultiVector& aFrom, Plato::ScalarMultiVector& aTo)
+{
+    auto tDim0 = aFrom.dimension_0();
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
+    {
+        auto tToSubView = Kokkos::subview(aTo, tIndexI, Kokkos::ALL());
+        auto tFromSubView = Kokkos::subview(aFrom, tIndexI, Kokkos::ALL());
+
+        auto tLength = tToSubView.extent(0);
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+        {
+            tToSubView(aOrdinal) = tFromSubView(aOrdinal*NumStride + NumOffset);
+        }, "extract");
+    }
+}
+// function extract
+
+/******************************************************************************//**
+ * \brief Extract a sub 2D array from full 2D array
+ *
+ * \tparam  NumStride   stride, e.g. number of degree of freedom per node
+ * \tparam  NumDim      number of dimensions to extract from an ordinal, e.g. number of displacement components at a vertex
+ * \tparam  NumOffset   offset, e.g. degree of freedom offset (default = 0)
+ *
+ * \param  [in]  aNumOrdinal  number of ordinal, e.g. number of vertices in the mesh
+ * \param  [in]  aFrom        input 2D array
+ * \param  [out] aTo          extracted 2D sub-array
+ *
+ * aToVector(i,j*NumDim+Dim) = aFromVector(i,j*NumStride+Dim+NumOffset)
+ *
+**********************************************************************************/
+template<Plato::OrdinalType NumStride, Plato::OrdinalType NumDim, Plato::OrdinalType NumOffset = 0>
+inline void extract(const Plato::OrdinalType& aNumOrdinal, const Plato::ScalarMultiVector& aFrom, Plato::ScalarMultiVector& aTo)
+{
+    auto tDim0 = aFrom.dimension_0();
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
+    {
+        auto tToSubView = Kokkos::subview(aTo, tIndexI, Kokkos::ALL());
+        auto tFromSubView = Kokkos::subview(aFrom, tIndexI, Kokkos::ALL());
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumOrdinal), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+        {
+            for(Plato::OrdinalType tDim = 0; tDim < NumDim; tDim++)
+            {
+                tToSubView(aOrdinal*NumDim + tDim) = tFromSubView(aOrdinal*NumStride+tDim+NumOffset);
+            }
+
+        }, "extract");
+    }
+}
+// function extract
+
+}
+// namespace blas2
+
 /******************************************************************************//**
  * \brief Fill 2-D array with a given input value, \f$ X(i,j) = \alpha\ \forall\ i,j \f$ indices.
  *

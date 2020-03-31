@@ -391,8 +391,12 @@ void min(const VecT & aInput, ScalarT & aOutput)
 
 /******************************************************************************//**
  * \brief Extract a sub array
- * \param [in] aFromVector
- * \param [out] aToVector
+ *
+ * \tparam NumStride stride, e.g. number of degree of freedom per node
+ * \tparam NumOffset offset, e.g. degree of freedom offset
+ *
+ * \param [in] aFromVector input array
+ * \param [out] aToVector  extracted sub-array
  *
  * aToVector(i) = aFromVector(i*NumStride+NumOffset)
  *
@@ -402,9 +406,9 @@ inline void extract(const Plato::ScalarVector& aFromVector, Plato::ScalarVector&
 {
     auto tNumRows = aToVector.extent(0);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & ordinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
-        aToVector(ordinal) = aFromVector(ordinal*NumStride + NumOffset);
+        aToVector(aOrdinal) = aFromVector(aOrdinal*NumStride + NumOffset);
     }, "extract");
 }
 
