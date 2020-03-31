@@ -60,7 +60,7 @@ inline Omega_h::LOs getBoundaryNodes_x0(Teuchos::RCP<Omega_h::Mesh> & aMesh)
 }
 
 /***************************************************************************//**
- * \brief Return array of edge ids on edge y=0, assuming a box mesh.
+ * \brief Return array of edge ids on edge y=0, assuming a unit-box mesh for illustration.
  *
  *            y=1
  *        -----------
@@ -82,7 +82,7 @@ inline Omega_h::LOs get_edge_ids_on_y0(Omega_h::Mesh & aMesh)
 }
 
 /***************************************************************************//**
- * \brief Return array of edge ids on edge x=0, assuming a box mesh.
+ * \brief Return array of edge ids on edge x=0, assuming a unit-box mesh for illustration.
  *
  *            y=1
  *        -----------
@@ -104,7 +104,7 @@ inline Omega_h::LOs get_edge_ids_on_x0(Omega_h::Mesh & aMesh)
 }
 
 /***************************************************************************//**
- * \brief Return array of edge ids on edge x=1, assuming a box mesh.
+ * \brief Return array of edge ids on edge x=1, assuming a unit-box mesh for illustration.
  *
  *            y=1
  *        -----------
@@ -126,7 +126,7 @@ inline Omega_h::LOs get_edge_ids_on_x1(Omega_h::Mesh & aMesh)
 }
 
 /***************************************************************************//**
- * \brief Return array of edge ids on edge y=1, assuming a box mesh.
+ * \brief Return array of edge ids on edge y=1, assuming a unit-box mesh for illustration.
  *
  *            y=1
  *        -----------

@@ -2048,7 +2048,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
-      "      <Parameter  name='Poissons Ratio' type='double' value='0.24'/>                      \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.24'/>                     \n"
       "      <Parameter  name='Youngs Modulus' type='double' value='1.0e7'/>                    \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
@@ -2078,15 +2078,26 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
       "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='10'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='10'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='10'/>             \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='10'/>             \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
       "    <Parameter name='Maximum Number Iterations' type='int' value='10'/>                  \n"
       "  </ParameterList>                                                                       \n"
+      "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
+      "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
+      "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, -100, 0.0}'/>         \n"
+      "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
+      "   </ParameterList>                                                                      \n"
+      " </ParameterList>                                                                        \n"
       "</ParameterList>                                                                         \n"
     );
+
+    // 1. Construct plasticity problem
+    auto tFaceIDs = PlatoUtestHelpers::get_edge_ids_on_y1(*tMesh);
+    tMeshSets[Omega_h::SIDE_SET]["Load"] = tFaceIDs;
     using PhysicsT = Plato::InfinitesimalStrainPlasticity<tSpaceDim>;
     Plato::PlasticityProblem<PhysicsT> tPlasticityProblem(*tMesh, tMeshSets, *tParamList);
 
@@ -2095,17 +2106,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     const Plato::OrdinalType tDispDofY = 1;
     constexpr auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     auto tDirichletIndicesBoundaryX0 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
-    auto tDirichletIndicesBoundaryX1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x1", tNumDofsPerNode, tDispDofX);
-    auto tDirichletIndicesBoundaryY1 = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y1", tNumDofsPerNode, tDispDofY);
-
-    auto tNodesOnBoundaryX1 = PlatoUtestHelpers::get_2D_boundary_nodes_x1(*tMesh);
-    PlatoUtestHelpers::print_2d_coords(*tMesh, tNodesOnBoundaryX1);
 
     // 3. Set Dirichlet Boundary Conditions
-
     // 3.1 Load degrees of freedom
     Plato::Scalar tValueToSet = 0;
-    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + tDirichletIndicesBoundaryY1.size() + 2;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + 2;
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
     Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
@@ -2114,20 +2119,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
         tDirichletDofs(aIndex) = tDirichletIndicesBoundaryX0(aIndex);
     }, "set dirichlet values and indices");
 
-    // 3.2 Symmetry condition degrees of freedom
-    tValueToSet = 1e-3;
-    auto tOffset = tDirichletIndicesBoundaryX0.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryY1.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    {
-        auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = tValueToSet;
-        tDirichletDofs(tIndex) = tDirichletIndicesBoundaryY1(aIndex);
-    }, "set dirichlet values and indices");
-
-    // 3.3. Pinned degrees of freedom
+    // 3.2. Pinned degrees of freedom
     tValueToSet = 0.0;
     const Plato::OrdinalType tPinnedNodeIndex = 32;
-    tOffset += tDirichletIndicesBoundaryY1.size();
+    auto tOffset = tDirichletIndicesBoundaryX0.size();
 
     auto tHostDirichletValues = Kokkos::create_mirror(tDirichletValues);
     Kokkos::deep_copy(tHostDirichletValues, tDirichletValues);
@@ -2141,7 +2136,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     tHostDirichletDofs(tOffset + tDispDofY) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofY;
     Kokkos::deep_copy(tDirichletDofs, tHostDirichletDofs);
 
-    // 3.4 set Dirichlet boundary conditions
+    // 3.3 set Dirichlet boundary conditions
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. Solution
@@ -2153,14 +2148,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     // 6. Output Data
     if (tOutputData)
     {
-        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer("SolutionMesh", tMesh.get(), tSpaceDim);
-        for (Plato::OrdinalType tTime = 0; tTime < tSolution.dimension_0(); tTime++)
-        {
-            auto tSubView = Kokkos::subview(tSolution, tTime, Kokkos::ALL());
-            Plato::output_vtk_node_field<tSpaceDim, tNumDofsPerNode>(tTime, tSubView, "State", tMesh.operator*(), tWriter);
-        }
+        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tSolution, "State", "SolutionMesh", *tMesh);
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
