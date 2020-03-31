@@ -2151,8 +2151,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
         Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
         Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
         Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
-        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tPressure, "Pressure", "SolutionMesh", *tMesh);
-        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tDisplacements, "Displacements", "SolutionMesh", *tMesh);
+        Plato::output_node_field_to_viz_file<tSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", "SolutionMesh", *tMesh);
+        Plato::output_node_field_to_viz_file<tSpaceDim, tSpaceDim>(tDisplacements, "Displacements", "SolutionMesh", *tMesh);
     }
     //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
