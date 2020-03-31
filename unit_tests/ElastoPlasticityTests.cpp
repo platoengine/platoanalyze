@@ -1607,7 +1607,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual3D_Elastic)
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
 {
     // 1. DEFINE PROBLEM
-    const bool tOutputData = false; // for debugging purpose, set true to enable the Paraview output file
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
@@ -1746,7 +1746,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTractionForce_2D)
 {
-    const bool tOutputData = true; // for debugging purpose, set true to enable the Paraview output file
+    const bool tOutputData = true; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
     Plato::DataMap    tDataMap;
@@ -1876,7 +1876,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPressure_2D)
 {
-    const bool tOutputData = true; // for debugging purpose, set true to enable the Paraview output file
+    const bool tOutputData = true; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
     Plato::DataMap    tDataMap;
