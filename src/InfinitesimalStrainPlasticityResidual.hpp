@@ -259,7 +259,6 @@ private:
         }
 
         auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tSearch->second;
-        printf("Natural BC Control Constant = %f\n", tMultiplier);
         if (mBodyLoads != nullptr)
         {
             mBodyLoads->get( mMesh, aGlobalState, aControl, aResult, tMultiplier );
