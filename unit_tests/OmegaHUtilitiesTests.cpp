@@ -18,8 +18,6 @@ namespace OmegaHUtilitiesTests
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnY1)
 {
-    constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
     auto tIDs = PlatoUtestHelpers::get_edge_ids_on_y1(tMesh.operator*());
     Plato::ScalarVector tResults("face ordinals", tIDs.size());
@@ -45,8 +43,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnY1)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnY0)
 {
-    constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
     auto tIDs = PlatoUtestHelpers::get_edge_ids_on_y0(tMesh.operator*());
     Plato::ScalarVector tResults("face ordinals", tIDs.size());
@@ -72,8 +68,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnY0)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnX0)
 {
-    constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
     auto tIDs = PlatoUtestHelpers::get_edge_ids_on_x0(tMesh.operator*());
     Plato::ScalarVector tResults("face ordinals", tIDs.size());
@@ -90,8 +84,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnX0)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnX1)
 {
-    constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
     auto tIDs = PlatoUtestHelpers::get_edge_ids_on_x1(tMesh.operator*());
     Plato::ScalarVector tResults("face ordinals", tIDs.size());
