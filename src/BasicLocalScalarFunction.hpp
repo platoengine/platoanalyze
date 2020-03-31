@@ -319,7 +319,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtControl("criterion partial wrt control", tNumCells, mNumNodesPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumNodesPerCell>(tResultWS, tCriterionPartialWrtControl);
-        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtControl);
+        Plato::blas2::scale(mMultiplier, tCriterionPartialWrtControl);
 
         return tCriterionPartialWrtControl;
     }
@@ -385,7 +385,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtGlobalStates("criterion partial wrt global states", tNumCells, mNumGlobalDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tResultWS, tCriterionPartialWrtGlobalStates);
-        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtGlobalStates);
+        Plato::blas2::scale(mMultiplier, tCriterionPartialWrtGlobalStates);
 
         return (tCriterionPartialWrtGlobalStates);
     }
@@ -451,7 +451,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtPrevGlobalState("partial wrt previous global states", tNumCells, mNumGlobalDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tResultWS, tCriterionPartialWrtPrevGlobalState);
-        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtPrevGlobalState);
+        Plato::blas2::scale(mMultiplier, tCriterionPartialWrtPrevGlobalState);
 
         return (tCriterionPartialWrtPrevGlobalState);
     }
@@ -517,7 +517,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtLocalStates("criterion partial wrt local states", tNumCells, mNumLocalDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tResultWS, tCriterionPartialWrtLocalStates);
-        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtLocalStates);
+        Plato::blas2::scale(mMultiplier, tCriterionPartialWrtLocalStates);
 
         return tCriterionPartialWrtLocalStates;
     }
@@ -583,7 +583,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtPrevLocalStates("partial wrt previous local states", tNumCells, mNumLocalDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tResultWS, tCriterionPartialWrtPrevLocalStates);
-        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtPrevLocalStates);
+        Plato::blas2::scale(mMultiplier, tCriterionPartialWrtPrevLocalStates);
 
         return tCriterionPartialWrtPrevLocalStates;
     }
@@ -649,7 +649,7 @@ public:
         // convert AD types to POD types
         Plato::ScalarMultiVector tCriterionPartialWrtConfiguration("criterion partial wrt configuration", tNumCells, mNumConfigDofsPerCell);
         Plato::transform_ad_type_to_pod_2Dview<mNumSpatialDims>(tResultWS, tCriterionPartialWrtConfiguration);
-        Plato::scale_array_2D(mMultiplier, tCriterionPartialWrtConfiguration);
+        Plato::blas2::scale(mMultiplier, tCriterionPartialWrtConfiguration);
 
         return tCriterionPartialWrtConfiguration;
     }

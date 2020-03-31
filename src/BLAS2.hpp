@@ -40,7 +40,7 @@ inline void extract(const Plato::ScalarMultiVector& aFrom, Plato::ScalarMultiVec
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
         {
             tToSubView(aOrdinal) = tFromSubView(aOrdinal*NumStride + NumOffset);
-        }, "extract");
+        }, "blas2::extract");
     }
 }
 // function extract
@@ -74,13 +74,10 @@ inline void extract(const Plato::OrdinalType& aNumOrdinal, const Plato::ScalarMu
                 tToSubView(aOrdinal*NumDim + tDim) = tFromSubView(aOrdinal*NumStride+tDim+NumOffset);
             }
 
-        }, "extract");
+        }, "blas2::extract");
     }
 }
 // function extract
-
-}
-// namespace blas2
 
 /******************************************************************************//**
  * \brief Fill 2-D array with a given input value, \f$ X(i,j) = \alpha\ \forall\ i,j \f$ indices.
@@ -91,7 +88,7 @@ inline void extract(const Plato::OrdinalType& aNumOrdinal, const Plato::ScalarMu
  * \param [in/out] aXvec   2-D Kokkos view
 **********************************************************************************/
 template<class XViewType>
-inline void fill_array_2D(typename XViewType::const_value_type& aAlpha, XViewType& aXvec)
+inline void fill(typename XViewType::const_value_type& aAlpha, XViewType& aXvec)
 {
     if(static_cast<Plato::OrdinalType>(aXvec.size()) <= static_cast<Plato::OrdinalType>(0))
     {
@@ -106,9 +103,9 @@ inline void fill_array_2D(typename XViewType::const_value_type& aAlpha, XViewTyp
         {
             aXvec(aCellOrdinal, tIndex) = aAlpha;
         }
-    }, "fill_array_2D");
+    }, "blas2::fill");
 }
-// function fill_array_2D
+// function fill
 
 
 /******************************************************************************//**
@@ -120,7 +117,7 @@ inline void fill_array_2D(typename XViewType::const_value_type& aAlpha, XViewTyp
  * \param [in/out] aXvec   2-D Kokkos view
 **********************************************************************************/
 template<class XViewType>
-inline void scale_array_2D(typename XViewType::const_value_type& aAlpha, XViewType& aXvec)
+inline void scale(typename XViewType::const_value_type& aAlpha, XViewType& aXvec)
 {
     if(static_cast<Plato::OrdinalType>(aXvec.size()) <= static_cast<Plato::OrdinalType>(0))
     {
@@ -135,10 +132,9 @@ inline void scale_array_2D(typename XViewType::const_value_type& aAlpha, XViewTy
         {
             aXvec(aCellOrdinal, tIndex) = aAlpha * aXvec(aCellOrdinal, tIndex);
         }
-    }, "scale_array_2D");
+    }, "blas2::scale");
 }
-// function scale_array_2D
-
+// function scale
 
 /******************************************************************************//**
  * \brief Add 2-D arrays, \f$ Y = \beta*Y + \alpha*X \f$
@@ -152,10 +148,10 @@ inline void scale_array_2D(typename XViewType::const_value_type& aAlpha, XViewTy
  * \param [in/out] aYvec 2-D vector workset (NumCells, NumEntriesPerCell)
 **********************************************************************************/
 template<class XViewType, class YViewType>
-inline void update_array_2D(typename XViewType::const_value_type& aAlpha,
-                            const XViewType& aXvec,
-                            typename YViewType::const_value_type& aBeta,
-                            const YViewType& aYvec)
+inline void update(typename XViewType::const_value_type& aAlpha,
+                   const XViewType& aXvec,
+                   typename YViewType::const_value_type& aBeta,
+                   const YViewType& aYvec)
 {
     if(aXvec.extent(0) != aYvec.extent(0))
     {
@@ -180,9 +176,9 @@ inline void update_array_2D(typename XViewType::const_value_type& aAlpha,
         {
             aYvec(aCellOrdinal, tIndex) = aAlpha * aXvec(aCellOrdinal, tIndex) + aBeta * aYvec(aCellOrdinal, tIndex);
         }
-    }, "update_array_2D");
+    }, "blas2::update");
 }
-// function update_array_2D
+// function update
 
 /******************************************************************************//**
  * \brief Add two 2-D vector workset
@@ -195,7 +191,7 @@ inline void update_array_2D(typename XViewType::const_value_type& aAlpha,
  * \param [in/out] aYvec  2-D vector workset (NumCells, NumEntriesPerCell)
 **********************************************************************************/
 template<Plato::OrdinalType NumDofsPerNode, Plato::OrdinalType DofOffset>
-inline void axpy_array_2D(const Plato::Scalar & aAlpha, const Plato::ScalarMultiVector& aIn, Plato::ScalarMultiVector& aOut)
+inline void axpy(const Plato::Scalar & aAlpha, const Plato::ScalarMultiVector& aIn, Plato::ScalarMultiVector& aOut)
 {
     if(aOut.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -222,9 +218,9 @@ inline void axpy_array_2D(const Plato::Scalar & aAlpha, const Plato::ScalarMulti
             const auto tOutputVecIndex = (NumDofsPerNode * tInputVecIndex) + DofOffset;
             aOut(aCellOrdinal, tOutputVecIndex) = aAlpha * aOut(aCellOrdinal, tOutputVecIndex) + aIn(aCellOrdinal, tInputVecIndex);
         }
-    }, "axpy_array_2D");
+    }, "blas2::axpy");
 }
-// function update_array_2D
+// function axpy
 
 /************************************************************************//**
  *
@@ -247,12 +243,12 @@ inline void axpy_array_2D(const Plato::Scalar & aAlpha, const Plato::ScalarMulti
  *
 ********************************************************************************/
 template<class AViewType, class XViewType, class YViewType>
-inline void matrix_times_vector_workset(const char aTransA[],
-                                        typename AViewType::const_value_type& aAlpha,
-                                        const AViewType& aAmat,
-                                        const XViewType& aXvec,
-                                        typename YViewType::const_value_type& aBeta,
-                                        YViewType& aYvec)
+inline void matrix_times_vector(const char aTransA[],
+                                typename AViewType::const_value_type& aAlpha,
+                                const AViewType& aAmat,
+                                const XViewType& aXvec,
+                                typename YViewType::const_value_type& aBeta,
+                                YViewType& aYvec)
 {
     // check validity of inputs' dimensions
     if(aAmat.size() <= static_cast<Plato::OrdinalType>(0))
@@ -329,7 +325,10 @@ inline void matrix_times_vector_workset(const char aTransA[],
         }, "matrix vector multiplication - transpose");
     }
 }
-// function matrix_times_vector_workset
+// function matrix_times_vector
+
+}
+// namespace blas2
 
 }
 // namespace Plato

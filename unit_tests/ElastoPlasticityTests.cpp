@@ -310,16 +310,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill3DView_Error)
     // CALL FUNCTION - TEST tMatrixWorkSet IS EMPTY
     constexpr Plato::Scalar tAlpha = 2.0;
     Plato::ScalarArray3D tMatrixWorkSet;
-    TEST_THROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::fill<tNumRows, tNumCols>(tNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
 
     // CALL FUNCTION - TEST tNumCells IS ZERO
     Plato::OrdinalType tBadNumCells = 0;
     tMatrixWorkSet = Plato::ScalarArray3D("Matrix A WS", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::fill<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
 
     // CALL FUNCTION - TEST tNumCells IS NEGATIVE
     tBadNumCells = -1;
-    TEST_THROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::fill<tNumRows, tNumCols>(tBadNumCells, tAlpha, tMatrixWorkSet)), std::runtime_error );
 }
 
 
@@ -333,7 +333,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill_3D_View)
 
     // CALL FUNCTION
     Plato::Scalar tAlpha = 2.0;
-    TEST_NOTHROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::blas3::fill<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
 
     // TEST RESULTS
     constexpr Plato::Scalar tGold = 2.0;
@@ -363,7 +363,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_fill_2D_View)
 
     // CALL FUNCTION
     constexpr Plato::Scalar tAlpha = 2.0;
-    TEST_NOTHROW( (Plato::fill_array_2D(tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::blas2::fill(tAlpha, tA)) );
 
     // TEST RESULTS
     constexpr Plato::Scalar tGold = 2.0;
@@ -390,8 +390,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_scale_2D_View)
 
     // CALL FUNCTION
     constexpr Plato::Scalar tAlpha = 2.0;
-    TEST_NOTHROW( (Plato::fill_array_2D(tAlpha, tA)) );
-    TEST_NOTHROW( (Plato::scale_array_2D(tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::blas2::fill(tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::blas2::scale(tAlpha, tA)) );
 
     // TEST RESULTS
     constexpr Plato::Scalar tGold = 4.0;
@@ -416,35 +416,35 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateMatrixWorkset_Er
     Plato::ScalarArray3D tA;
     constexpr Plato::OrdinalType tNumCells = 2;
     Plato::Scalar tAlpha = 1; Plato::Scalar tBeta = 3;
-    TEST_THROW( (Plato::update_array_3D(tNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::update(tNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
 
     // CALL FUNCTION - OUTPUT VIEW IS EMPTY
     Plato::OrdinalType tNumRows = 4;
     Plato::OrdinalType tNumCols = 4;
     tA = Plato::ScalarArray3D("Matrix A WS", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::update_array_3D(tNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::update(tNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
 
     // CALL FUNCTION - ROW DIM MISTMATCH
     tNumRows = 3;
     Plato::ScalarArray3D tC = Plato::ScalarArray3D("Matrix C WS", tNumCells, tNumRows, tNumCols);
     tNumRows = 4;
     Plato::ScalarArray3D tD = Plato::ScalarArray3D("Matrix D WS", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::update_array_3D(tNumCells, tAlpha, tC, tBeta, tD)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::update(tNumCells, tAlpha, tC, tBeta, tD)), std::runtime_error );
 
     // CALL FUNCTION - COLUMN DIM MISTMATCH
     tNumCols = 5;
     Plato::ScalarArray3D tE = Plato::ScalarArray3D("Matrix E WS", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::update_array_3D(tNumCells, tAlpha, tD, tBeta, tE)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::update(tNumCells, tAlpha, tD, tBeta, tE)), std::runtime_error );
 
     // CALL FUNCTION - NEGATIVE NUMBER OF CELLS
     tNumRows = 4; tNumCols = 4;
     Plato::OrdinalType tBadNumCells = -1;
     tB = Plato::ScalarArray3D("Matrix B WS", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::update_array_3D(tBadNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::update(tBadNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
 
     // CALL FUNCTION - ZERO NUMBER OF CELLS
     tBadNumCells = 0;
-    TEST_THROW( (Plato::update_array_3D(tBadNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::update(tBadNumCells, tAlpha, tA, tBeta, tB)), std::runtime_error );
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateMatrixWorkset)
@@ -455,16 +455,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateMatrixWorkset)
     constexpr Plato::OrdinalType tNumCells = 2;
     Plato::ScalarArray3D tA("Matrix A WS", tNumCells, tNumRows, tNumCols);
     Plato::Scalar tAlpha = 2;
-    TEST_NOTHROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::blas3::fill<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
 
     tAlpha = 1;
     Plato::ScalarArray3D tB("Matrix A WS", tNumCells, tNumRows, tNumCols);
-    TEST_NOTHROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
+    TEST_NOTHROW( (Plato::blas3::fill<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
 
     // CALL FUNCTION
     tAlpha = 2;
     Plato::Scalar tBeta = 3;
-    TEST_NOTHROW( (Plato::update_array_3D(tNumCells, tAlpha, tA, tBeta, tB)) );
+    TEST_NOTHROW( (Plato::blas3::update(tNumCells, tAlpha, tA, tBeta, tB)) );
 
     // TEST RESULTS
     constexpr Plato::Scalar tGold = 7.0;
@@ -493,12 +493,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateVectorWorkset_Er
     tNumDofsPerCell = 4;
     Plato::ScalarMultiVector tVecY("vector Y WS", tNumCells, tNumDofsPerCell);
     Plato::Scalar tAlpha = 1; Plato::Scalar tBeta = 3;
-    TEST_THROW( (Plato::update_array_2D(tAlpha, tVecX, tBeta, tVecY)), std::runtime_error );
+    TEST_THROW( (Plato::blas2::update(tAlpha, tVecX, tBeta, tVecY)), std::runtime_error );
 
     // CALL FUNCTION - DIM(0) MISMATCH
     Plato::OrdinalType tBadNumCells = 4;
     Plato::ScalarMultiVector tVecZ("vector Y WS", tBadNumCells, tNumDofsPerCell);
-    TEST_THROW( (Plato::update_array_2D(tAlpha, tVecY, tBeta, tVecZ)), std::runtime_error );
+    TEST_THROW( (Plato::blas2::update(tAlpha, tVecY, tBeta, tVecZ)), std::runtime_error );
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateVectorWorkset)
@@ -526,7 +526,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_UpdateVectorWorkset)
 
     // CALL FUNCTION
     Plato::Scalar tAlpha = 1; Plato::Scalar tBeta = 2;
-    TEST_NOTHROW( (Plato::update_array_2D(tAlpha, tVecX, tBeta, tVecY)) );
+    TEST_NOTHROW( (Plato::blas2::update(tAlpha, tVecX, tBeta, tVecY)) );
 
     // TEST OUTPUT
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -554,41 +554,41 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_
     // CALL FUNCTION - A IS EMPTY
     constexpr Plato::OrdinalType tNumCells = 2;
     Plato::Scalar tAlpha = 1; Plato::Scalar tBeta = 1;
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
 
     // CALL FUNCTION - B IS EMPTY
     constexpr Plato::OrdinalType tNumRows = 4;
     constexpr Plato::OrdinalType tNumCols = 4;
     tA = Plato::ScalarArray3D("Matrix A", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
 
     // CALL FUNCTION - C IS EMPTY
     tB = Plato::ScalarArray3D("Matrix B", tNumCells, tNumRows + 1, tNumCols);
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
 
     // CALL FUNCTION - NUM ROWS/COLUMNS MISMATCH IN INPUT MATRICES
     tC = Plato::ScalarArray3D("Matrix C", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tB, tBeta, tC)), std::runtime_error );
 
     // CALL FUNCTION - NUM ROWS MISMATCH IN INPUT AND OUTPUT MATRICES
     Plato::ScalarArray3D tD("Matrix D", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tD, tBeta, tB)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tD, tBeta, tB)), std::runtime_error );
 
     // CALL FUNCTION - NUM COLUMNS MISMATCH IN INPUT AND OUTPUT MATRICES
     Plato::ScalarArray3D tH("Matrix H", tNumCells, tNumRows, tNumCols + 1);
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tC, tBeta, tH)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tC, tBeta, tH)), std::runtime_error );
 
     // CALL FUNCTION - NUM CELLS MISMATCH IN A
     Plato::ScalarArray3D tE("Matrix E", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells + 1, tAlpha, tA, tD, tBeta, tE)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::multiply(tNumCells + 1, tAlpha, tA, tD, tBeta, tE)), std::runtime_error );
 
     // CALL FUNCTION - NUM CELLS MISMATCH IN F
     Plato::ScalarArray3D tF("Matrix F", tNumCells + 1, tNumRows, tNumCols);
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tF, tBeta, tE)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tF, tBeta, tE)), std::runtime_error );
 
     // CALL FUNCTION - NUM CELLS MISMATCH IN E
     Plato::ScalarArray3D tG("Matrix G", tNumCells + 1, tNumRows, tNumCols);
-    TEST_THROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tD, tBeta, tG)), std::runtime_error );
+    TEST_THROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tD, tBeta, tG)), std::runtime_error );
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_One)
@@ -599,17 +599,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_
     constexpr Plato::OrdinalType tNumCells = 3;
     Plato::ScalarArray3D tA("Matrix A WS", tNumCells, tNumRows, tNumCols);
     Plato::Scalar tAlpha = 2;
-    TEST_NOTHROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
+    TEST_NOTHROW( (Plato::blas3::fill<tNumRows, tNumCols>(tNumCells, tAlpha, tA)) );
     Plato::ScalarArray3D tB("Matrix B WS", tNumCells, tNumRows, tNumCols);
     tAlpha = 1;
-    TEST_NOTHROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
+    TEST_NOTHROW( (Plato::blas3::fill<tNumRows, tNumCols>(tNumCells, tAlpha, tB)) );
     Plato::ScalarArray3D tC("Matrix C WS", tNumCells, tNumRows, tNumCols);
     tAlpha = 3;
-    TEST_NOTHROW( (Plato::fill_array_3D<tNumRows, tNumCols>(tNumCells, tAlpha, tC)) );
+    TEST_NOTHROW( (Plato::blas3::fill<tNumRows, tNumCols>(tNumCells, tAlpha, tC)) );
 
     // CALL FUNCTION
     Plato::Scalar tBeta = 1;
-    TEST_NOTHROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)) );
+    TEST_NOTHROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tB, tBeta, tC)) );
 
     // TEST RESULTS
     constexpr Plato::Scalar tGold = 27.0;
@@ -656,7 +656,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_
 
     // CALL FUNCTION - NO TRANSPOSE
     tAlpha = 1.5; tBeta = 2.5;
-    TEST_NOTHROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tD, tE, tBeta, tF)) );
+    TEST_NOTHROW( (Plato::blas3::multiply(tNumCells, tAlpha, tD, tE, tBeta, tF)) );
 
     // 2. TEST RESULTS
     std::vector<std::vector<Plato::Scalar>> tGoldOut = { {47.5, 59, 70.5}, {109, 134, 159}, {170.5, 209, 247.5} };
@@ -734,7 +734,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MultiplyMatrixWorkset_
     constexpr Plato::Scalar tBeta = 0.0;
     constexpr Plato::Scalar tAlpha = 1.0;
     Plato::ScalarArray3D tC("Matrix C WS", tNumCells, tNumOutRows, tNumOutCols);
-    TEST_NOTHROW( (Plato::multiply_matrix_workset(tNumCells, tAlpha, tA, tB, tBeta, tC)) );
+    TEST_NOTHROW( (Plato::blas3::multiply(tNumCells, tAlpha, tA, tB, tBeta, tC)) );
 
     // 2. TEST RESULTS
     Plato::ScalarArray3D tGold("Gold", tNumCells, tNumOutRows, tNumOutCols);
@@ -786,25 +786,25 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MatrixTimesVectorWorks
     // CALL FUNCTION - MATRIX A IS EMPTY
     constexpr Plato::OrdinalType tNumCells = 3;
     Plato::Scalar tAlpha = 1.5; Plato::Scalar tBeta = 2.5;
-    TEST_THROW( (Plato::matrix_times_vector_workset("N", tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
+    TEST_THROW( (Plato::blas2::matrix_times_vector("N", tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
 
     // CALL FUNCTION - VECTOR X IS EMPTY
     constexpr Plato::OrdinalType tNumCols = 2;
     constexpr Plato::OrdinalType tNumRows = 3;
     tA = Plato::ScalarArray3D("A Matrix WS", tNumCells, tNumRows, tNumCols);
-    TEST_THROW( (Plato::matrix_times_vector_workset("N", tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
+    TEST_THROW( (Plato::blas2::matrix_times_vector("N", tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
 
     // CALL FUNCTION - VECTOR Y IS EMPTY
     tX = Plato::ScalarMultiVector("X Vector WS", tNumCells, tNumCols);
-    TEST_THROW( (Plato::matrix_times_vector_workset("N", tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
+    TEST_THROW( (Plato::blas2::matrix_times_vector("N", tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
 
     // CALL FUNCTION - NUM CELL MISMATCH IN INPUT MATRIX
     tY = Plato::ScalarMultiVector("Y Vector WS", tNumCells + 1, tNumRows);
-    TEST_THROW( (Plato::matrix_times_vector_workset("N", tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
+    TEST_THROW( (Plato::blas2::matrix_times_vector("N", tAlpha, tA, tX, tBeta, tY)), std::runtime_error );
 
     // CALL FUNCTION - NUM CELL MISMATCH IN INPUT VECTOR X
     Plato::ScalarMultiVector tVecX("X Vector WS", tNumCells + 1, tNumRows);
-    TEST_THROW( (Plato::matrix_times_vector_workset("N", tAlpha, tA, tVecX, tBeta, tY)), std::runtime_error );
+    TEST_THROW( (Plato::blas2::matrix_times_vector("N", tAlpha, tA, tVecX, tBeta, tY)), std::runtime_error );
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MatrixTimesVectorWorkset)
@@ -859,7 +859,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MatrixTimesVectorWorks
 
     // 1.4 CALL FUNCTION - NO TRANSPOSE
     Plato::Scalar tAlpha = 1.5; Plato::Scalar tBeta = 2.5;
-    TEST_NOTHROW( (Plato::matrix_times_vector_workset("N", tAlpha, tA, tX, tBeta, tY)) );
+    TEST_NOTHROW( (Plato::blas2::matrix_times_vector("N", tAlpha, tA, tX, tBeta, tY)) );
 
     // 1.5 TEST RESULTS
     tHostY = Kokkos::create_mirror(tY);
@@ -902,7 +902,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MatrixTimesVectorWorks
     Kokkos::deep_copy(tVecY, tHostVecY);
 
     // 2.2 CALL FUNCTION - TRANSPOSE
-    TEST_NOTHROW( (Plato::matrix_times_vector_workset("T", tAlpha, tA, tVecX, tBeta, tVecY)) );
+    TEST_NOTHROW( (Plato::blas2::matrix_times_vector("T", tAlpha, tA, tVecX, tBeta, tVecY)) );
 
     // 2.3 TEST RESULTS
     tHostVecY = Kokkos::create_mirror(tVecY);
@@ -918,7 +918,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_MatrixTimesVectorWorks
     }
 
     // 3. TEST VALIDITY OF TRANSPOSE
-    TEST_THROW( (Plato::matrix_times_vector_workset("C", tAlpha, tA, tVecX, tBeta, tVecY)), std::runtime_error );
+    TEST_THROW( (Plato::blas2::matrix_times_vector("C", tAlpha, tA, tVecX, tBeta, tVecY)), std::runtime_error );
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_IdentityWorkset)
@@ -930,7 +930,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_IdentityWorkset)
     Plato::ScalarArray3D tIdentity("tIdentity WS", tNumCells, tNumRows, tNumCols);
 
     // CALL FUNCTION
-    Plato::identity_workset<tNumRows, tNumCols>(tNumCells, tIdentity);
+    Plato::blas3::identity<tNumRows, tNumCols>(tNumCells, tIdentity);
 
     // TEST RESULTS
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -969,7 +969,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_InverseMatrixWorkset)
 
     // CALL FUNCTION
     Plato::ScalarArray3D tAInverse("A Inverse", tNumCells, 2, 2);
-    Plato::inverse_matrix_workset<tNumRows, tNumCols>(tNumCells, tMatrix, tAInverse);
+    Plato::blas3::inverse<tNumRows, tNumCols>(tNumCells, tMatrix, tAInverse);
 
     constexpr Plato::Scalar tTolerance = 1e-6;
     std::vector<std::vector<Plato::Scalar> > tGoldMatrixInverse = { { 1.0, 3.0 }, { 2.0, 4.0 } };
@@ -2139,7 +2139,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeam_2D
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. Solution
-    constexpr auto tNumVertices = tMesh->nverts();
+    auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);

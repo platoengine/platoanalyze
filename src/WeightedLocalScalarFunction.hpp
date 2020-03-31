@@ -275,7 +275,7 @@ public:
             auto tFunctionGradZ = mLocalScalarFunctionContainer[tFunctionIndex]->gradient_z(aCurrentGlobalState, aPreviousGlobalState,
                                                                                             aCurrentLocalState, aPreviousLocalState,
                                                                                             aControls, aTimeStep);
-            Plato::update_array_2D(tFunctionWeight, tFunctionGradZ, static_cast<Plato::Scalar>(1.0), tOutput);
+            Plato::blas2::update(tFunctionWeight, tFunctionGradZ, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
     }
@@ -309,7 +309,7 @@ public:
             auto tFunctionGradX = mLocalScalarFunctionContainer[tFunctionIndex]->gradient_x(aCurrentGlobalState, aPreviousGlobalState,
                                                                                             aCurrentLocalState, aPreviousLocalState,
                                                                                             aControls, aTimeStep);
-            Plato::update_array_2D(tFunctionWeight, tFunctionGradX, static_cast<Plato::Scalar>(1.0), tOutput);
+            Plato::blas2::update(tFunctionWeight, tFunctionGradX, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
     }
@@ -342,7 +342,7 @@ public:
                 mLocalScalarFunctionContainer[tFunctionIndex]->gradient_u(aCurrentGlobalState, aPreviousGlobalState,
                                                                           aCurrentLocalState, aPreviousLocalState,
                                                                           aControls, aTimeStep);
-            Plato::update_array_2D(tFunctionWeight, tFunctionGradCurrentGlobalState, static_cast<Plato::Scalar>(1.0), tOutput);
+            Plato::blas2::update(tFunctionWeight, tFunctionGradCurrentGlobalState, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
     }
@@ -375,7 +375,7 @@ public:
                 mLocalScalarFunctionContainer[tFunctionIndex]->gradient_up(aCurrentGlobalState, aPreviousGlobalState,
                                                                            aCurrentLocalState, aPreviousLocalState,
                                                                            aControls, aTimeStep);
-            Plato::update_array_2D(tFunctionWeight, tFunctionGradPreviousGlobalState, static_cast<Plato::Scalar>(1.0), tOutput);
+            Plato::blas2::update(tFunctionWeight, tFunctionGradPreviousGlobalState, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
     }
@@ -408,7 +408,7 @@ public:
                 mLocalScalarFunctionContainer[tFunctionIndex]->gradient_c(aCurrentGlobalState, aPreviousGlobalState,
                                                                           aCurrentLocalState, aPreviousLocalState,
                                                                           aControls, aTimeStep);
-            Plato::update_array_2D(tFunctionWeight, tFunctionGradCurrentLocalState, static_cast<Plato::Scalar>(1.0), tOutput);
+            Plato::blas2::update(tFunctionWeight, tFunctionGradCurrentLocalState, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
     }
@@ -441,7 +441,7 @@ public:
                 mLocalScalarFunctionContainer[tFunctionIndex]->gradient_cp(aCurrentGlobalState, aPreviousGlobalState,
                                                                            aCurrentLocalState, aPreviousLocalState,
                                                                            aControls, aTimeStep);
-            Plato::update_array_2D(tFunctionWeight, tFunctionGradPreviousLocalState, static_cast<Plato::Scalar>(1.0), tOutput);
+            Plato::blas2::update(tFunctionWeight, tFunctionGradPreviousLocalState, static_cast<Plato::Scalar>(1.0), tOutput);
         }
         return tOutput;
     }

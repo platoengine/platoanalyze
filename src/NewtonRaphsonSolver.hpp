@@ -101,7 +101,7 @@ private:
         auto tDhDc = mLocalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                   aStates.mCurrentLocalState , aStates.mPreviousLocalState,
                                                   aControls, aStates.mCurrentStepIndex);
-        Plato::inverse_matrix_workset<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, Output);
+        Plato::blas3::inverse<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, Output);
     }
 
     /***************************************************************************//**
@@ -182,7 +182,7 @@ private:
         const Plato::Scalar tAlpha = 1.0;
         auto tNumCells = mLocalEquation->numCells();
         Plato::ScalarArray3D tInvDhDcTimesDhDu("InvDhDc times DhDu", tNumCells, mNumLocalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::multiply_matrix_workset(tNumCells, tAlpha, aInvLocalJacobian, tDhDu, tBeta, tInvDhDcTimesDhDu);
+        Plato::blas3::multiply(tNumCells, tAlpha, aInvLocalJacobian, tDhDu, tBeta, tInvDhDcTimesDhDu);
 
         // Compute cell Jacobian of the global residual with respect to the current local state WorkSet (WS)
         auto tDrDc = mGlobalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
@@ -192,7 +192,7 @@ private:
         // Compute cell Schur = dR/dc * (dH/dc)^{-1} * dH/du, where H is the local residual,
         // R is the global residual, c are the local states and u are the global states
         Plato::ScalarArray3D tSchurComplement("Schur Complement", tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell);
-        Plato::multiply_matrix_workset(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tSchurComplement);
+        Plato::blas3::multiply(tNumCells, tAlpha, tDrDc, tInvDhDcTimesDhDu, tBeta, tSchurComplement);
 
         return tSchurComplement;
     }
@@ -230,7 +230,7 @@ private:
         const Plato::Scalar tBeta = 1.0;
         const Plato::Scalar tAlpha = -1.0;
         auto tNumCells = mGlobalEquation->numCells();
-        Plato::update_array_3D(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
+        Plato::blas3::update(tNumCells, tAlpha, tSchurComplement, tBeta, tDrDu);
 
         // Assemble full Jacobian
         auto tMesh = mGlobalEquation->getMesh();
@@ -275,14 +275,14 @@ private:
         auto tNumCells = mLocalEquation->numCells();
         const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 0.0;
         Plato::ScalarMultiVector tInvLocalJacTimesLocalRes("InvLocalJacTimesLocalRes", tNumCells, mNumLocalDofsPerCell);
-        Plato::matrix_times_vector_workset("N", tAlpha, aInvLocalJacobianT, tLocalResidualWS, tBeta, tInvLocalJacTimesLocalRes);
+        Plato::blas2::matrix_times_vector("N", tAlpha, aInvLocalJacobianT, tLocalResidualWS, tBeta, tInvLocalJacTimesLocalRes);
 
         // compute DrDc*inv(DhDc)*h
         Plato::ScalarMultiVector tLocalResidualTerm("LocalResidualTerm", tNumCells, mNumGlobalDofsPerCell);
         auto tDrDc = mGlobalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                    aStates.mCurrentLocalState, aStates.mPreviousLocalState,
                                                    aStates.mProjectedPressGrad, aControls, aStates.mCurrentStepIndex);
-        Plato::matrix_times_vector_workset("N", tAlpha, tDrDc, tInvLocalJacTimesLocalRes, tBeta, tLocalResidualTerm);
+        Plato::blas2::matrix_times_vector("N", tAlpha, tDrDc, tInvLocalJacTimesLocalRes, tBeta, tLocalResidualTerm);
 
         // assemble local residual contribution
         const auto tNumNodes = mGlobalEquation->numNodes();

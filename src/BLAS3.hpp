@@ -24,6 +24,9 @@
 namespace Plato
 {
 
+namespace blas3
+{
+
 /************************************************************************//**
  *
  * \brief Build a workset of identity matrices
@@ -36,7 +39,7 @@ namespace Plato
  *
 ********************************************************************************/
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell>
-inline void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& aIdentity)
+inline void identity(const Plato::OrdinalType& aNumCells, Plato::ScalarArray3D& aIdentity)
 {
     if(aIdentity.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -56,13 +59,13 @@ inline void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarA
                 aIdentity(aCellOrdinal, tRowIndex, tColumnIndex) = tRowIndex == tColumnIndex ? 1.0 : 0.0;
             }
         }
-    }, "identity workset");
+    }, "blas3::identity");
 }
-// function identity_workset
+// function identity
 
 /************************************************************************//**
  *
- * \brief Compute workset of matrix inverse
+ * \brief Compute inverse matrix workset
  *
  * \tparam NumRowsPerCell number of rows per cell
  * \tparam NumColsPerCell number of columns per cell
@@ -75,7 +78,7 @@ inline void identity_workset(const Plato::OrdinalType& aNumCells, Plato::ScalarA
  *
 ********************************************************************************/
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, class AViewType, class BViewType>
-inline void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewType& aA, BViewType& aInverse)
+inline void inverse(const Plato::OrdinalType& aNumCells, AViewType& aA, BViewType& aInverse)
 {
     if(aA.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -90,7 +93,7 @@ inline void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewTyp
         THROWERR("\nInput and output views dimensions are different, i.e. Input.size != Output.size.\n")
     }
 
-    Plato::identity_workset<NumRowsPerCell, NumColumnsPerCell>(aNumCells, aInverse);
+    Plato::blas3::identity<NumRowsPerCell, NumColumnsPerCell>(aNumCells, aInverse);
 
     using namespace KokkosBatched;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -104,7 +107,7 @@ inline void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewTyp
         SerialTrsm<Side::Left,Uplo::Upper,Trans::NoTranspose,Diag::NonUnit,Algo::Trsm::Blocked>::invoke(tAlpha, tA, tAinv);
     }, "compute matrix inverse 3DView");
 }
-// function inverse_matrix_workset
+// function inverse
 
 /******************************************************************************//**
  * \brief Set entries in 3-D array to a single value.
@@ -118,9 +121,9 @@ inline void inverse_matrix_workset(const Plato::OrdinalType& aNumCells, AViewTyp
  * \param [in/out] aOutput 3-D matrix workset (NumCells, NumRowsPerCell, NumColumnsPerCell)
 **********************************************************************************/
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColumnsPerCell, class AViewType>
-inline void fill_array_3D(const Plato::OrdinalType& aNumCells,
-                                typename AViewType::const_value_type & aAlpha,
-                                AViewType& aOutput)
+inline void fill(const Plato::OrdinalType& aNumCells,
+                 typename AViewType::const_value_type & aAlpha,
+                 AViewType& aOutput)
 {
     if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -140,12 +143,12 @@ inline void fill_array_3D(const Plato::OrdinalType& aNumCells,
                 aOutput(aCellOrdinal, tRowIndex, tColIndex) = aAlpha;
             }
         }
-    }, "fill matrix identity 3DView");
+    }, "blas3::fill");
 }
-// function fill_array_3D
+// function fill
 
 /******************************************************************************//**
- * \brief Add workset of matrices
+ * \brief Update matrices, i.e. /f$ B = \beta*B + \alpha*A/f$
  *
  * \tparam AViewType Input matrix, as a 3-D Kokkos::View
  * \tparam BViewType Output matrix, as a 3-D Kokkos::View
@@ -157,11 +160,11 @@ inline void fill_array_3D(const Plato::OrdinalType& aNumCells,
  * \param [in/out] aB        3-D matrix workset (NumCells, NumRowsPerCell, NumColumnsPerCell)
 **********************************************************************************/
 template<class AViewType, class BViewType>
-inline void update_array_3D(const Plato::OrdinalType& aNumCells,
-                            typename AViewType::const_value_type& aAlpha,
-                            const AViewType& aA,
-                            typename BViewType::const_value_type& aBeta,
-                            const BViewType& aB)
+inline void update(const Plato::OrdinalType& aNumCells,
+                   typename AViewType::const_value_type& aAlpha,
+                   const AViewType& aA,
+                   typename BViewType::const_value_type& aBeta,
+                   const BViewType& aB)
 {
     if(aA.size() <= static_cast<Plato::OrdinalType>(0))
     {
@@ -196,9 +199,9 @@ inline void update_array_3D(const Plato::OrdinalType& aNumCells,
                         aBeta * aB(aCellOrdinal, tRowIndex, tColIndex);
             }
         }
-    }, "update matrix workset");
+    }, "blas3::update");
 }
-// function update_array_3D
+// function update
 
 /************************************************************************//**
  *
@@ -219,12 +222,12 @@ inline void update_array_3D(const Plato::OrdinalType& aNumCells,
  *
 ****************************************************************************/
 template<class AViewType, class BViewType, class CViewType>
-inline void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
-                                    typename AViewType::const_value_type& aAlpha,
-                                    const AViewType& aA,
-                                    const BViewType& aB,
-                                    typename CViewType::const_value_type& aBeta,
-                                    CViewType& aC)
+inline void multiply(const Plato::OrdinalType& aNumCells,
+                     typename AViewType::const_value_type& aAlpha,
+                     const AViewType& aA,
+                     const BViewType& aB,
+                     typename CViewType::const_value_type& aBeta,
+                     CViewType& aC)
 {
     std::ostringstream tError;
     if(aA.size() <= static_cast<Plato::OrdinalType>(0))
@@ -305,9 +308,12 @@ inline void multiply_matrix_workset(const Plato::OrdinalType& aNumCells,
                 aC(aCellOrdinal, tOutRowIndex, tOutColIndex) += tValue;
             }
         }
-    }, "multiply matrix workset");
+    }, "blas3::multiply");
 }
-// function multiply_matrix_workset
+// function multiply
+
+}
+// namespace blas3
 
 }
 // namespace Plato
