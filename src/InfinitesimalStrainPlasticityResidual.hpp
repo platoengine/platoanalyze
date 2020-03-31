@@ -257,16 +257,17 @@ private:
         {
             THROWERR("Infinitesimal Strain Plasticity Residual: 'Load Control Constant' is NOT defined in data map.")
         }
-        auto tLoadControlConstant = static_cast<Plato::Scalar>(-1) * tSearch->second;
 
+        auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tSearch->second;
+        printf("Natural BC Control Constant = %f\n", tMultiplier);
         if (mBodyLoads != nullptr)
         {
-            mBodyLoads->get(mMesh, aGlobalState, aControl, aResult, tLoadControlConstant);
+            mBodyLoads->get( mMesh, aGlobalState, aControl, aResult, tMultiplier );
         }
 
         if( mNeumannLoads != nullptr )
         {
-            mNeumannLoads->get( &mMesh, mMeshSets, aGlobalState, aControl, aConfig, aResult, tLoadControlConstant );
+            mNeumannLoads->get( &mMesh, mMeshSets, aGlobalState, aControl, aConfig, aResult, tMultiplier );
         }
     }
 
