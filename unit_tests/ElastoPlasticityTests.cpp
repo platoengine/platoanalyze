@@ -1890,7 +1890,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     Kokkos::deep_copy(tHostDisplacements, tDisplacements);
     std::vector<std::vector<Plato::Scalar>> tGoldDisp =
         {
-         {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, 6.164854e-02, -1.189951e-03,
+         {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, -6.164854e-02, -1.189951e-03,
           -6.163677e-02, 0.0, -6.243005e-02, -2.395852e-03, -5.908745e-02, 9.381758e-04, -5.919208e-02, -7.291411e-04, -5.909716e-02,
           1.326328e-03, -5.503616e-02, -1.099687e-03, -5.494402e-02, -3.525908e-03, -5.492911e-02, 1.629318e-03, -4.941788e-02,  -1.472318e-03,
           -4.933201e-02, -4.573797e-03, -4.931350e-02, -6.306177e-03, -3.454268e-02, -5.510012e-03, -4.243363e-02, -1.845476e-03, -4.245746e-02,
@@ -1917,13 +1917,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
             (tDisplacements, "Displacements", "SimplySupportedBeamTractionForce2D", *tMesh);
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
-    // std::system("rm -rf SimplySupportedBeamTractionForce2D");
+    std::system("rm -rf SimplySupportedBeamTractionForce2D");
 }
 
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPressure2D_Elastic)
 {
-    const bool tOutputData = true; // for debugging purpose, set true to enable Paraview output
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
     Plato::DataMap    tDataMap;
@@ -2067,7 +2067,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     Kokkos::deep_copy(tHostDisplacements, tDisplacements);
     std::vector<std::vector<Plato::Scalar>> tGoldDisp =
         {
-         {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, 6.164854e-02, -1.189951e-03,
+         {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, -6.164854e-02, -1.189951e-03,
           -6.163677e-02, 0.0, -6.243005e-02, -2.395852e-03, -5.908745e-02, 9.381758e-04, -5.919208e-02, -7.291411e-04, -5.909716e-02,
           1.326328e-03, -5.503616e-02, -1.099687e-03, -5.494402e-02, -3.525908e-03, -5.492911e-02, 1.629318e-03, -4.941788e-02,  -1.472318e-03,
           -4.933201e-02, -4.573797e-03, -4.931350e-02, -6.306177e-03, -3.454268e-02, -5.510012e-03, -4.243363e-02, -1.845476e-03, -4.245746e-02,
@@ -2093,7 +2093,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
         Plato::output_node_field_to_viz_file<tSpaceDim, tSpaceDim>
             (tDisplacements, "Displacements", "SimplySupportedBeamPressure2D", *tMesh);
     }
-    // std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
