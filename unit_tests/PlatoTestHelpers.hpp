@@ -59,6 +59,94 @@ inline Omega_h::LOs getBoundaryNodes_x0(Teuchos::RCP<Omega_h::Mesh> & aMesh)
     return (tLocalOrdinals);
 }
 
+/***************************************************************************//**
+ * \brief Return array of edge ids on edge y=0, assuming a box mesh.
+ *
+ *            y=1
+ *        -----------
+ *        |         |
+ *   x=0  |         | x=1
+ *        |         |
+ *        |         |
+ *        -----------
+ *            y=0
+ *
+ * \param [in] aMesh mesh database
+ * \return array of edge ids
+*******************************************************************************/
+inline Omega_h::LOs get_edge_ids_on_y0(Omega_h::Mesh & aMesh)
+{
+    Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::EDGE, Omega_h::EDGE, 1 /* class id */);
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    return (tLocalOrdinals);
+}
+
+/***************************************************************************//**
+ * \brief Return array of edge ids on edge x=0, assuming a box mesh.
+ *
+ *            y=1
+ *        -----------
+ *        |         |
+ *   x=0  |         | x=1
+ *        |         |
+ *        |         |
+ *        -----------
+ *            y=0
+ *
+ * \param [in] aMesh mesh database
+ * \return array of edge ids
+*******************************************************************************/
+inline Omega_h::LOs get_edge_ids_on_x0(Omega_h::Mesh & aMesh)
+{
+    Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::EDGE, Omega_h::EDGE, 3 /* class id */);
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    return (tLocalOrdinals);
+}
+
+/***************************************************************************//**
+ * \brief Return array of edge ids on edge x=1, assuming a box mesh.
+ *
+ *            y=1
+ *        -----------
+ *        |         |
+ *   x=0  |         | x=1
+ *        |         |
+ *        |         |
+ *        -----------
+ *            y=0
+ *
+ * \param [in] aMesh mesh database
+ * \return array of edge ids
+*******************************************************************************/
+inline Omega_h::LOs get_edge_ids_on_x1(Omega_h::Mesh & aMesh)
+{
+    Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::EDGE, Omega_h::EDGE, 5 /* class id */);
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    return (tLocalOrdinals);
+}
+
+/***************************************************************************//**
+ * \brief Return array of edge ids on edge y=1, assuming a box mesh.
+ *
+ *            y=1
+ *        -----------
+ *        |         |
+ *   x=0  |         | x=1
+ *        |         |
+ *        |         |
+ *        -----------
+ *            y=0
+ *
+ * \param [in] aMesh mesh database
+ * \return array of edge ids
+*******************************************************************************/
+inline Omega_h::LOs get_edge_ids_on_y1(Omega_h::Mesh & aMesh)
+{
+    Omega_h::Read<Omega_h::I8> tMarks = Omega_h::mark_class_closure(&aMesh, Omega_h::EDGE, Omega_h::EDGE, 7 /* class id */);
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(tMarks);
+    return (tLocalOrdinals);
+}
+
 /******************************************************************************/
 // This one Tpetra likes; will have to check whether this works with Magma
 // Sparse and AmgX or if we need to do something to factor this out
