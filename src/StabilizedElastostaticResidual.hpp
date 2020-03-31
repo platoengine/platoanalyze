@@ -193,9 +193,6 @@ public:
         // compute symmetric gradient of displacement, pressure gradient, and temperature gradient
         //
         tKinematics(aCellOrdinal, tDGrad, tPGrad, aStateWS, tGradient);
-//        Plato::print_array_2D_device(aCellOrdinal, tPGrad, "pressure gradient");
-//        Plato::print_array_2D_device(aCellOrdinal, tDGrad, "strains");
-
 
         // interpolate projected PGrad, pressure, and temperature to gauss point
         //
@@ -211,10 +208,6 @@ public:
 
         // apply weighting
         //
-//        Plato::print_array_1D_device(tPressure, "pressure");
-//        Plato::print_array_1D_device(tVolStrain, "volumetric strain");
-//        Plato::print_array_2D_device(aCellOrdinal, tDevStress, "deviatoric stress");
-//        Plato::print_array_2D_device(aCellOrdinal, tCellStab, "cell stabilization");
         tApplyTensorWeighting (aCellOrdinal, tDevStress, aControlWS);
         tApplyVectorWeighting (aCellOrdinal, tCellStab,  aControlWS);
         tApplyScalarWeighting (aCellOrdinal, tPressure,  aControlWS);
