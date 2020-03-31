@@ -1868,32 +1868,43 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tHostPressure = Kokkos::create_mirror(tPressure);
     Kokkos::deep_copy(tHostPressure, tPressure);
-    std::vector<std::vector<Plato::Scalar>> tGold =
+    std::vector<std::vector<Plato::Scalar>> tGoldPress =
         {
-         {-0.3108974359, -0.1923076923, 0.2003656347, 0.1185897436, 0.0737179487, -0.3967844462, 0.1923076923, 0.1185897436, 0.0297521448}
+         {-3.299964e-05, -2.924226e-04, -3.578935e-05, -2.366009e-04, -4.345038e-04, -4.563773e-04, -4.633730e-04, -6.697234e-05,
+          -2.629413e-04, -8.303730e-05, -2.597446e-04, -4.423508e-04, -1.090250e-04, -2.602183e-04, -4.191878e-04, -3.523074e-04,
+          -3.893599e-04, -2.609167e-04, -1.422199e-04, -2.614324e-04, -1.822682e-04, -3.080992e-04, -2.617164e-04, -2.293268e-04,
+          -2.655483e-04, -2.902515e-04, -2.602289e-04, -1.783265e-04, -2.058990e-04, -2.578857e-04, -3.439657e-04, -3.112222e-04,
+          -4.220872e-04}
         };
     for(Plato::OrdinalType tTimeStep=0; tTimeStep < tPressure.extent(0); tTimeStep++)
     {
         for(Plato::OrdinalType tOrdinal=0; tOrdinal< tPressure.extent(1); tOrdinal++)
         {
-            printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostPressure(tTimeStep, tOrdinal));
-            //TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), 0, tTolerance);
+            //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostPressure(tTimeStep, tOrdinal));
+            TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), tPressure[tTimeStep][tOrdinal], tTolerance);
         }
     }
 
     // 5.2 test displacement
     auto tHostDisplacements = Kokkos::create_mirror(tDisplacements);
     Kokkos::deep_copy(tHostDisplacements, tDisplacements);
-    std::vector<std::vector<Plato::Scalar>> tGold =
+    std::vector<std::vector<Plato::Scalar>> tGoldDisp =
         {
-         {-0.3108974359, -0.1923076923, 0.2003656347, 0.1185897436, 0.0737179487, -0.3967844462, 0.1923076923, 0.1185897436, 0.0297521448}
+         {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, 6.164854e-02, -1.189951e-03,
+          -6.163677e-02, 0.0, -6.243005e-02, -2.395852e-03, -5.908745e-02, 9.381758e-04, -5.919208e-02, -7.291411e-04, -5.909716e-02,
+          1.326328e-03, -5.503616e-02, -1.099687e-03, -5.494402e-02, -3.525908e-03, -5.492911e-02, 1.629318e-03, -4.941788e-02,  -1.472318e-03,
+          -4.933201e-02, -4.573797e-03, -4.931350e-02, -6.306177e-03, -3.454268e-02, -5.510012e-03, -4.243363e-02, -1.845476e-03, -4.245746e-02,
+          1.819180e-03, -4.253584e-02, -2.219095e-03, -3.457328e-02, 1.868041e-03, -3.464274e-02, -6.934208e-03, -2.594957e-02, -2.593272e-03,
+          -2.598862e-02, 1.747752e-03, -2.604802e-02, -2.966076e-03, -1.706881e-02, 1.432299e-03, -1.711426e-02, -7.365046e-03, -1.702033e-02,
+          -7.602023e-03, 1.234104e-04,  -7.582309e-03, -8.182097e-03, -3.335936e-03, -8.239034e-03, 8.764536e-04, -8.256626e-03, -3.587180e-03,
+          1.188541e-05, 0.0, 0.0}
         };
     for(Plato::OrdinalType tTimeStep=0; tTimeStep < tDisplacements.extent(0); tTimeStep++)
     {
         for(Plato::OrdinalType tOrdinal=0; tOrdinal< tDisplacements.extent(1); tOrdinal++)
         {
-            printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostDisplacements(tTimeStep, tOrdinal));
-            //TEST_FLOATING_EQUALITY(tHostDisplacements(tTimeStep, tOrdinal), 0, tTolerance);
+            //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostDisplacements(tTimeStep, tOrdinal));
+            TEST_FLOATING_EQUALITY(tHostDisplacements(tTimeStep, tOrdinal), tGoldDisp[tTimeStep][tOrdinal], tTolerance);
         }
     }
 
@@ -2029,6 +2040,50 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
     Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
     Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+
+    // 5.1 test pressure
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostPressure = Kokkos::create_mirror(tPressure);
+    Kokkos::deep_copy(tHostPressure, tPressure);
+    std::vector<std::vector<Plato::Scalar>> tGoldPress =
+        {
+         {-3.299964e-05, -2.924226e-04, -3.578935e-05, -2.366009e-04, -4.345038e-04, -4.563773e-04, -4.633730e-04, -6.697234e-05,
+          -2.629413e-04, -8.303730e-05, -2.597446e-04, -4.423508e-04, -1.090250e-04, -2.602183e-04, -4.191878e-04, -3.523074e-04,
+          -3.893599e-04, -2.609167e-04, -1.422199e-04, -2.614324e-04, -1.822682e-04, -3.080992e-04, -2.617164e-04, -2.293268e-04,
+          -2.655483e-04, -2.902515e-04, -2.602289e-04, -1.783265e-04, -2.058990e-04, -2.578857e-04, -3.439657e-04, -3.112222e-04,
+          -4.220872e-04}
+        };
+    for(Plato::OrdinalType tTimeStep=0; tTimeStep < tPressure.extent(0); tTimeStep++)
+    {
+        for(Plato::OrdinalType tOrdinal=0; tOrdinal< tPressure.extent(1); tOrdinal++)
+        {
+            //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostPressure(tTimeStep, tOrdinal));
+            TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), tPressure[tTimeStep][tOrdinal], tTolerance);
+        }
+    }
+
+    // 5.2 test displacement
+    auto tHostDisplacements = Kokkos::create_mirror(tDisplacements);
+    Kokkos::deep_copy(tHostDisplacements, tDisplacements);
+    std::vector<std::vector<Plato::Scalar>> tGoldDisp =
+        {
+         {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, 6.164854e-02, -1.189951e-03,
+          -6.163677e-02, 0.0, -6.243005e-02, -2.395852e-03, -5.908745e-02, 9.381758e-04, -5.919208e-02, -7.291411e-04, -5.909716e-02,
+          1.326328e-03, -5.503616e-02, -1.099687e-03, -5.494402e-02, -3.525908e-03, -5.492911e-02, 1.629318e-03, -4.941788e-02,  -1.472318e-03,
+          -4.933201e-02, -4.573797e-03, -4.931350e-02, -6.306177e-03, -3.454268e-02, -5.510012e-03, -4.243363e-02, -1.845476e-03, -4.245746e-02,
+          1.819180e-03, -4.253584e-02, -2.219095e-03, -3.457328e-02, 1.868041e-03, -3.464274e-02, -6.934208e-03, -2.594957e-02, -2.593272e-03,
+          -2.598862e-02, 1.747752e-03, -2.604802e-02, -2.966076e-03, -1.706881e-02, 1.432299e-03, -1.711426e-02, -7.365046e-03, -1.702033e-02,
+          -7.602023e-03, 1.234104e-04,  -7.582309e-03, -8.182097e-03, -3.335936e-03, -8.239034e-03, 8.764536e-04, -8.256626e-03, -3.587180e-03,
+          1.188541e-05, 0.0, 0.0}
+        };
+    for(Plato::OrdinalType tTimeStep=0; tTimeStep < tDisplacements.extent(0); tTimeStep++)
+    {
+        for(Plato::OrdinalType tOrdinal=0; tOrdinal< tDisplacements.extent(1); tOrdinal++)
+        {
+            //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostDisplacements(tTimeStep, tOrdinal));
+            TEST_FLOATING_EQUALITY(tHostDisplacements(tTimeStep, tOrdinal), tGoldDisp[tTimeStep][tOrdinal], tTolerance);
+        }
+    }
 
     // 6. Output Data
     if (tOutputData)
