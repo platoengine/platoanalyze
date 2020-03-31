@@ -24,6 +24,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnY1)
     Kokkos::parallel_for("print array", tIDs.size(), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         tResults(aIndex) = tIDs[aIndex];
+        //printf("X(%d)=%d\n", aIndex, tIDs[aIndex]);
     });
 
     auto tHostResults = Kokkos::create_mirror(tResults);
@@ -49,6 +50,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnY0)
     Kokkos::parallel_for("print array", tIDs.size(), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         tResults(aIndex) = tIDs[aIndex];
+        //printf("X(%d)=%d\n", aIndex, tIDs[aIndex]);
     });
 
     auto tHostResults = Kokkos::create_mirror(tResults);
@@ -74,7 +76,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnX0)
     Kokkos::parallel_for("print array", tIDs.size(), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         tResults(aIndex) = tIDs[aIndex];
-        printf("X(%d)=%d\n", aIndex, tIDs[aIndex]);
+        //printf("X(%d)=%d\n", aIndex, tIDs[aIndex]);
     });
 
     auto tHostResults = Kokkos::create_mirror(tResults);
@@ -92,7 +94,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnX1)
     Kokkos::parallel_for("print array", tIDs.size(), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         tResults(aIndex) = tIDs[aIndex];
-        printf("X(%d)=%d\n", aIndex, tIDs[aIndex]);
+        //printf("X(%d)=%d\n", aIndex, tIDs[aIndex]);
     });
 
     auto tHostResults = Kokkos::create_mirror(tResults);
