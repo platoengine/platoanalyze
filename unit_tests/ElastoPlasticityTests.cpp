@@ -1744,7 +1744,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTractionForce_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTractionForce2D_Elastic)
 {
     const bool tOutputData = true; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -1858,23 +1858,59 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     Plato::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
 
+    // 5. Test results
+    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices * tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+
+    // 5.1 test pressure
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostPressure = Kokkos::create_mirror(tPressure);
+    Kokkos::deep_copy(tHostPressure, tPressure);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {
+         {-0.3108974359, -0.1923076923, 0.2003656347, 0.1185897436, 0.0737179487, -0.3967844462, 0.1923076923, 0.1185897436, 0.0297521448}
+        };
+    for(Plato::OrdinalType tTimeStep=0; tTimeStep < tPressure.extent(0); tTimeStep++)
+    {
+        for(Plato::OrdinalType tOrdinal=0; tOrdinal< tPressure.extent(1); tOrdinal++)
+        {
+            printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostPressure(tTimeStep, tOrdinal));
+            //TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), 0, tTolerance);
+        }
+    }
+
+    // 5.2 test displacement
+    auto tHostDisplacements = Kokkos::create_mirror(tDisplacements);
+    Kokkos::deep_copy(tHostDisplacements, tDisplacements);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {
+         {-0.3108974359, -0.1923076923, 0.2003656347, 0.1185897436, 0.0737179487, -0.3967844462, 0.1923076923, 0.1185897436, 0.0297521448}
+        };
+    for(Plato::OrdinalType tTimeStep=0; tTimeStep < tDisplacements.extent(0); tTimeStep++)
+    {
+        for(Plato::OrdinalType tOrdinal=0; tOrdinal< tDisplacements.extent(1); tOrdinal++)
+        {
+            printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostDisplacements(tTimeStep, tOrdinal));
+            //TEST_FLOATING_EQUALITY(tHostDisplacements(tTimeStep, tOrdinal), 0, tTolerance);
+        }
+    }
+
     // 6. Output Data
     if (tOutputData)
     {
-        Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-        Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-        Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-        Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
         Plato::output_node_field_to_viz_file<tSpaceDim, 1 /*dofs per node*/>
             (tPressure, "Pressure", "SimplySupportedBeamTractionForce2D", *tMesh);
         Plato::output_node_field_to_viz_file<tSpaceDim, tSpaceDim>
             (tDisplacements, "Displacements", "SimplySupportedBeamTractionForce2D", *tMesh);
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    // std::system("rm -rf SimplySupportedBeamTractionForce2D");
 }
 
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPressure_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPressure2D_Elastic)
 {
     const bool tOutputData = true; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -1988,19 +2024,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     Plato::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
 
+    // 5. Test results
+    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
+    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
+    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+
     // 6. Output Data
     if (tOutputData)
     {
-        Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-        Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices*tSpaceDim);
-        Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-        Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
         Plato::output_node_field_to_viz_file<tSpaceDim, 1 /*dofs per node*/>
             (tPressure, "Pressure", "SimplySupportedBeamPressure2D", *tMesh);
         Plato::output_node_field_to_viz_file<tSpaceDim, tSpaceDim>
             (tDisplacements, "Displacements", "SimplySupportedBeamPressure2D", *tMesh);
     }
-    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    // std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
