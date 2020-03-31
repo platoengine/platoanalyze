@@ -43,6 +43,69 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnY1)
 }
 
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnY0)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
+    auto tIDs = PlatoUtestHelpers::get_edge_ids_on_y0(tMesh.operator*());
+    Plato::ScalarVector tResults("face ordinals", tIDs.size());
+    Kokkos::parallel_for("print array", tIDs.size(), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tResults(aIndex) = tIDs[aIndex];
+    });
+
+    auto tHostResults = Kokkos::create_mirror(tResults);
+    Kokkos::deep_copy(tHostResults, tResults);
+    TEST_EQUALITY(0, tHostResults(0));
+    TEST_EQUALITY(0, tHostResults(1));
+    TEST_EQUALITY(0, tHostResults(2));
+    TEST_EQUALITY(0, tHostResults(3));
+    TEST_EQUALITY(0, tHostResults(4));
+    TEST_EQUALITY(0, tHostResults(5));
+    TEST_EQUALITY(0, tHostResults(6));
+    TEST_EQUALITY(0, tHostResults(7));
+    TEST_EQUALITY(0, tHostResults(8));
+    TEST_EQUALITY(0, tHostResults(9));
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnX0)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
+    auto tIDs = PlatoUtestHelpers::get_edge_ids_on_x0(tMesh.operator*());
+    Plato::ScalarVector tResults("face ordinals", tIDs.size());
+    Kokkos::parallel_for("print array", tIDs.size(), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tResults(aIndex) = tIDs[aIndex];
+        printf("X(%d)=%d\n", aIndex, tIDs[aIndex]);
+    });
+
+    auto tHostResults = Kokkos::create_mirror(tResults);
+    Kokkos::deep_copy(tHostResults, tResults);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnX1)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
+    auto tIDs = PlatoUtestHelpers::get_edge_ids_on_x1(tMesh.operator*());
+    Plato::ScalarVector tResults("face ordinals", tIDs.size());
+    Kokkos::parallel_for("print array", tIDs.size(), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        tResults(aIndex) = tIDs[aIndex];
+        printf("X(%d)=%d\n", aIndex, tIDs[aIndex]);
+    });
+
+    auto tHostResults = Kokkos::create_mirror(tResults);
+    Kokkos::deep_copy(tHostResults, tResults);
+}
+
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaHGrapsh)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
