@@ -643,9 +643,6 @@ private:
     *******************************************************************************/
     void initializeNewtonSolver()
     {
-        mNewtonSolver->setDirichletValuesMultiplier(mPseudoTimeStep);
-        mDataMap.mScalarValues["LoadControlConstant"] = mPseudoTimeStep;
-
         mNewtonSolver->appendDirichletDofs(mDirichletDofs);
         mNewtonSolver->appendDirichletValues(mDirichletValues);
 
@@ -679,6 +676,9 @@ private:
             tStateData.mCurrentStepIndex = tCurrentStepIndex;
             this->cacheStateData(tStateData);
 
+            // update displacement and load control multiplier
+            this->updateDispAndLoadControlMultipliers(tCurrentStepIndex);
+
             // update local and global states
             bool tNewtonRaphsonConverged = mNewtonSolver->solve(aControls, tStateData);
             mDataMap.saveState();
@@ -699,6 +699,17 @@ private:
 
         tToleranceSatisfied = true;
         return tToleranceSatisfied;
+    }
+
+    /***************************************************************************//**
+     * \brief Update displacement and load control multiplier.
+     * \param [in] aInput  current time step index
+    *******************************************************************************/
+    void updateDispAndLoadControlMultipliers(const Plato::OrdinalType& aInput)
+    {
+        auto tMultiplier = mPseudoTimeStep * static_cast<Plato::Scalar>(aInput + 1);
+        mNewtonSolver->setDirichletValuesMultiplier(tMultiplier);
+        mDataMap.mScalarValues["LoadControlConstant"] = tMultiplier;
     }
 
     /***************************************************************************//**
