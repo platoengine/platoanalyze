@@ -79,8 +79,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnX0)
 
     auto tHostResults = Kokkos::create_mirror(tResults);
     Kokkos::deep_copy(tHostResults, tResults);
-    TEST_EQUALITY(70, tHostResults(0));
-    TEST_EQUALITY(71, tHostResults(1));
+    TEST_EQUALITY(2, tHostResults(0));
+    TEST_EQUALITY(12, tHostResults(1));
 }
 
 
@@ -97,6 +97,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, OmegaH_EdgeID_OnX1)
 
     auto tHostResults = Kokkos::create_mirror(tResults);
     Kokkos::deep_copy(tHostResults, tResults);
+    TEST_EQUALITY(70, tHostResults(0));
+    TEST_EQUALITY(71, tHostResults(1));
 }
 
 
