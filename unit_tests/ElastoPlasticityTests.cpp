@@ -1881,7 +1881,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
         for(Plato::OrdinalType tOrdinal=0; tOrdinal< tPressure.extent(1); tOrdinal++)
         {
             //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostPressure(tTimeStep, tOrdinal));
-            TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), tPressure[tTimeStep][tOrdinal], tTolerance);
+            TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), tGoldPress[tTimeStep][tOrdinal], tTolerance);
         }
     }
 
@@ -2058,7 +2058,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
         for(Plato::OrdinalType tOrdinal=0; tOrdinal< tPressure.extent(1); tOrdinal++)
         {
             //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostPressure(tTimeStep, tOrdinal));
-            TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), tPressure[tTimeStep][tOrdinal], tTolerance);
+            TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), tGoldPress[tTimeStep][tOrdinal], tTolerance);
         }
     }
 
