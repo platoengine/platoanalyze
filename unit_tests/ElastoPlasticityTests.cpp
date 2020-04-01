@@ -2275,6 +2275,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     const bool tOutputData = true; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
+    Plato::write_exodus_file("BeamExodus", tMesh.operator*());
     Plato::DataMap    tDataMap;
     Omega_h::MeshSets tMeshSets;
 

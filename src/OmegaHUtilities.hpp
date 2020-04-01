@@ -19,6 +19,18 @@ namespace Plato
 {
 
 /***************************************************************************//**
+ * \brief Write mesh to exodus file
+ *
+ * \param [in] aFilepath  exodus filepath
+ * \param [in] aMesh      mesh database
+ *
+*******************************************************************************/
+inline void write_exodus_file(const std::string& aFilepath, Omega_h::Mesh& aMesh)
+{
+    Omega_h::exodus::write(aFilepath, &aMesh);
+}
+
+/***************************************************************************//**
  * \brief Return the local identifiers/ordinals associated with this element face.
  * Here, local is used in the context of domain decomposition.  Therefore, the
  * identifiers/ordinals are local to the subdomain.  Return -100 if the element
