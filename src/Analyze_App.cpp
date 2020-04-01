@@ -45,9 +45,13 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
   }
   else
   {
+#ifdef PLATO_MESHMAP
       auto tMeshMapInput = tMeshMapInputs[0];
       Plato::Geometry::MeshMapFactory<double> tMeshMapFactory;
       mMeshMap = tMeshMapFactory.create(mMesh, tMeshMapInput);
+#else
+      THROWERR("MeshMap requested but Plato was compiled without MeshMap.");
+#endif
   }
 
   // parse/create the ESP instance(s)

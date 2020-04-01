@@ -209,7 +209,7 @@ public:
             if(mMeshMap != nullptr)
             {
                 Plato::ScalarVector tMappedControl("mapped", mControl.extent(0));;
-                mMeshMap->apply(mControl, tMappedControl);
+                apply(mMeshMap, mControl, tMappedControl);
                 Kokkos::deep_copy(mControl, tMappedControl);
             }
         }
@@ -389,7 +389,7 @@ public:
             if(mMeshMap != nullptr && mObjectiveGradientZ.extent(0) != 0)
             {
                 Plato::ScalarVector tObjectiveGradientZ("unmapped", mObjectiveGradientZ.extent(0));
-                mMeshMap->applyT(mObjectiveGradientZ, tObjectiveGradientZ);
+                applyT(mMeshMap, mObjectiveGradientZ, tObjectiveGradientZ);
                 Kokkos::deep_copy(mObjectiveGradientZ, tObjectiveGradientZ);
             }
             this->copyFieldFromAnalyze(mObjectiveGradientZ, aSharedField);
@@ -399,7 +399,7 @@ public:
             if(mMeshMap != nullptr && mConstraintGradientZ.extent(0) != 0)
             {
                 Plato::ScalarVector tConstraintGradientZ("unmapped", mConstraintGradientZ.extent(0));
-                mMeshMap->applyT(mConstraintGradientZ, tConstraintGradientZ);
+                applyT(mMeshMap, mConstraintGradientZ, tConstraintGradientZ);
                 Kokkos::deep_copy(mConstraintGradientZ, tConstraintGradientZ);
             }
             this->copyFieldFromAnalyze(mConstraintGradientZ, aSharedField);
@@ -592,6 +592,22 @@ private:
     void mapToParameters(std::shared_ptr<ESPType> aESP, std::vector<Plato::Scalar>& mGradientP, Plato::ScalarVector mGradientX);
 
     std::shared_ptr<MeshMapType> mMeshMap;
+    inline void apply(decltype(mMeshMap) aMeshMap, const Plato::ScalarVector & aInput, Plato::ScalarVector aOutput)
+    {
+#ifdef PLATO_MESHMAP
+        aMeshMap->apply(aInput, aOutput);
+#else
+        THROWERR("Not compiled with MeshMap.");
+#endif
+    }
+    void applyT(decltype(mMeshMap) aMeshMap, const Plato::ScalarVector & aInput, Plato::ScalarVector aOutput)
+    {
+#ifdef PLATO_MESHMAP
+        aMeshMap->applyT(aInput, aOutput);
+#else
+        THROWERR("Not compiled with MeshMap.");
+#endif
+    }
 
 #ifdef PLATO_GEOMETRY
     struct MLSstruct
