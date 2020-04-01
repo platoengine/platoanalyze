@@ -1778,7 +1778,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
 13.1423076923077282, 6.58269230769232827, -12.8019230769231100};
 
   for(int iNode=0; iNode<int(dfdx_gold.size()); iNode++){
-      TEST_FLOATING_EQUALITY(dfdx_host[iNode], dfdx_gold[iNode], 1e-13);
+      TEST_FLOATING_EQUALITY(dfdx_host[iNode], dfdx_gold[iNode]*3/4, 1e-13);
   }
 }
 
