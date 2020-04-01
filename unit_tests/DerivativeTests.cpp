@@ -527,7 +527,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
   //
   auto value = eeScalarFunction.value(u,z);
 
-  Plato::Scalar value_gold = 92.25;
+  Plato::Scalar value_gold = 46.125;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
@@ -538,6 +538,10 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
 
+  // NOTE:: a bug was found where the objective value being computed
+  // was double what it should have been. Likewise, the gradient
+  // values were double what they should have been. Rather than replacing
+  // the gold value, I am checking for equality with half the gold value.
   std::vector<Plato::Scalar> grad_u_gold = { 
     -3807.692307692307, -1788.461538461538, -2076.923076923077,
     -4125.000000000000, -2048.076923076922, -1384.615384615384,
@@ -572,7 +576,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
     if(grad_u_gold[iNode] == 0.0){
       TEST_ASSERT(fabs(grad_u_Host[iNode]) < 1e-12);
     } else {
-      TEST_FLOATING_EQUALITY(grad_u_Host[iNode], grad_u_gold[iNode], 1e-13);
+      TEST_FLOATING_EQUALITY(grad_u_Host[iNode], grad_u_gold[iNode]/2, 1e-13);
     }
   }
 
@@ -597,7 +601,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
   };
 
   for(int iNode=0; iNode<int(grad_z_gold.size()); iNode++){
-    TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
+    TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode]/2, 1e-13);
   }
 
   // compute and test objective gradient wrt node position, x
@@ -638,7 +642,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
   };
 
   for(int iNode=0; iNode<int(grad_x_gold.size()); iNode++){
-    TEST_FLOATING_EQUALITY(grad_x_Host[iNode], grad_x_gold[iNode], 1e-13);
+    TEST_FLOATING_EQUALITY(grad_x_Host[iNode], grad_x_gold[iNode]/2, 1e-13);
   }
 }
 
