@@ -29,7 +29,7 @@
 #include "Plato_MLS.hpp"
 #endif
 
-#ifdef PLATO_GEOMETRY
+#ifdef PLATO_MESHMAP
   #include "Plato_MeshMap.hpp"
   typedef Plato::Geometry::MeshMap<Plato::Scalar> MeshMapType;
 #else

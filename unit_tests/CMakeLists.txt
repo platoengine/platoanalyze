@@ -446,6 +446,7 @@ if(PLATOANALYZE_ENABLE_MPMD)
     )
   target_include_directories(MeshMapUnitTests PRIVATE "${PLATOENGINE_PREFIX}/include")
   target_include_directories(MeshMapUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+  target_link_libraries(MeshMapUnitTests ArborX::ArborX)
 
   build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/MeshMapUnitTests)
   add_test(NAME runMeshMapUnitTests COMMAND ${ES_MPI_TEST})
