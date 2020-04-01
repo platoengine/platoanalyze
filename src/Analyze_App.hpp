@@ -267,7 +267,10 @@ public:
         for( int i=0; i<tNumDisplay; i++) ss << tValues[i] << " ";
         if(tNumValues > tMaxDisplay) ss << " ... ";
         ss << "]" << std::endl;
+
+#ifdef PLATO_CONSOLE
         Plato::Console::Status(ss.str());
+#endif
     }
 
     /******************************************************************************//**
@@ -331,7 +334,10 @@ public:
             ss << "[ ";
             for( auto val : tValues ) ss << val << " ";
             ss << "]" << std::endl;
+
+#ifdef PLATO_CONSOLE
             Plato::Console::Status(ss.str());
+#endif
         }
     }
 

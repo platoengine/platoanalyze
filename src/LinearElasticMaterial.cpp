@@ -1,219 +1,156 @@
 #include "LinearElasticMaterial.hpp"
 
-namespace Plato {
-
-/******************************************************************************/
-template<>
-::Plato::IsotropicLinearElasticMaterial<1>::
-IsotropicLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
-LinearElasticMaterial<1>(paramList)
-/******************************************************************************/
+namespace Plato
 {
-    mPoissonsRatio = paramList.get<Plato::Scalar>("Poissons Ratio");
-    mYoungsModulus = paramList.get<Plato::Scalar>("Youngs Modulus");
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
-    mCellStiffness(0,0)=c*(1.0-v);
 
-    if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
-      mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
-    } else {
-      mPressureScaling = k / (3.0*(1.0-2.0*v));
-    }
-    if( paramList.isType<Plato::Scalar>("Mass Density") ){
-      mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
-    } else {
-      mCellDensity = 1.0;
-    }
-}
-/******************************************************************************/
+//*********************************************************************************
+//**************************** NEXT: 1D Implementation ****************************
+//*********************************************************************************
+
 template<>
-::Plato::IsotropicLinearElasticMaterial<2>::
-IsotropicLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
-LinearElasticMaterial<2>(paramList)
-/******************************************************************************/
+void LinearElasticMaterial<1>::initialize()
 {
-    mPoissonsRatio = paramList.get<Plato::Scalar>("Poissons Ratio");
-    mYoungsModulus = paramList.get<Plato::Scalar>("Youngs Modulus");
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
-
-    mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;
-    mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v);
-    mCellStiffness(2,2)=1.0/2.0*c*(1.0-2.0*v);
-
-    if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
-      mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
-    } else {
-      mPressureScaling = k / (3.0*(1.0-2.0*v));
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < mNumVoigtTerms; tIndexI++)
+    {
+        for(Plato::OrdinalType tIndexJ = 0; tIndexJ < mNumVoigtTerms; tIndexJ++)
+        {
+            mCellStiffness(tIndexI, tIndexJ) = 0.0;
+        }
     }
-    if( paramList.isType<Plato::Scalar>("Mass Density") ){
-      mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
-    } else {
-      mCellDensity = 1.0;
-    }
-}
-/******************************************************************************/
-template<>
-::Plato::IsotropicLinearElasticMaterial<3>::
-IsotropicLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
-LinearElasticMaterial<3>(paramList)
-/******************************************************************************/
-{
-    mPoissonsRatio = paramList.get<Plato::Scalar>("Poissons Ratio");
-    mYoungsModulus = paramList.get<Plato::Scalar>("Youngs Modulus");
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
 
-    mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;       mCellStiffness(0,2)=c*v;
-    mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v); mCellStiffness(1,2)=c*v;
-    mCellStiffness(2,0)=c*v;       mCellStiffness(2,1)=c*v;       mCellStiffness(2,2)=c*(1.0-v);
-    mCellStiffness(3,3)=1.0/2.0*c*(1.0-2.0*v);
-    mCellStiffness(4,4)=1.0/2.0*c*(1.0-2.0*v);
-    mCellStiffness(5,5)=1.0/2.0*c*(1.0-2.0*v);
-
-    if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
-      mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
-    } else {
-      mPressureScaling = k / (3.0*(1.0-2.0*v));
-    }
-    if( paramList.isType<Plato::Scalar>("Mass Density") ){
-      mCellDensity = paramList.get<Plato::Scalar>("Mass Density");
-    } else {
-      mCellDensity = 1.0;
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < mNumVoigtTerms; tIndexI++)
+    {
+        mReferenceStrain(tIndexI) = 0.0;
     }
 }
 
-/******************************************************************************/
 template<>
-::Plato::IsotropicLinearElasticMaterial<1>::
-IsotropicLinearElasticMaterial(const Plato::Scalar & aYoungsModulus, const Plato::Scalar & aPoissonsRatio) :
-    LinearElasticMaterial<1>(),
-    mPoissonsRatio(aPoissonsRatio),
-    mYoungsModulus(aYoungsModulus)
-/******************************************************************************/
+void LinearElasticMaterial<1>::setReferenceStrainTensor(const Teuchos::ParameterList& aParamList)
 {
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
-    mCellStiffness(0,0)=c*(1.0-v);
+    if(aParamList.isType<Plato::Scalar>("e11"))
+        mReferenceStrain(0) = aParamList.get<Plato::Scalar>("e11");
 }
 
-/******************************************************************************/
 template<>
-::Plato::IsotropicLinearElasticMaterial<2>::
-IsotropicLinearElasticMaterial(const Plato::Scalar & aYoungsModulus, const Plato::Scalar & aPoissonsRatio) :
-    LinearElasticMaterial<2>(),
-    mPoissonsRatio(aPoissonsRatio),
-    mYoungsModulus(aYoungsModulus)
-/******************************************************************************/
+LinearElasticMaterial<1>::LinearElasticMaterial() :
+        mCellDensity(1.0),
+        mPressureScaling(1.0)
 {
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
-    mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;
-    mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v);
-    mCellStiffness(2,2)=1.0/2.0*c*(1.0-2.0*v);
-}
-/******************************************************************************/
-template<>
-::Plato::IsotropicLinearElasticMaterial<3>::
-IsotropicLinearElasticMaterial(const Plato::Scalar & aYoungsModulus, const Plato::Scalar & aPoissonsRatio) :
-    LinearElasticMaterial<3>(),
-    mPoissonsRatio(aPoissonsRatio),
-    mYoungsModulus(aYoungsModulus)
-/******************************************************************************/
-{
-    auto v = mPoissonsRatio;
-    auto k = mYoungsModulus;
-    auto c = k/((1.0+v)*(1.0-2.0*v));
-    mCellStiffness(0,0)=c*(1.0-v); mCellStiffness(0,1)=c*v;       mCellStiffness(0,2)=c*v;
-    mCellStiffness(1,0)=c*v;       mCellStiffness(1,1)=c*(1.0-v); mCellStiffness(1,2)=c*v;
-    mCellStiffness(2,0)=c*v;       mCellStiffness(2,1)=c*v;       mCellStiffness(2,2)=c*(1.0-v);
-    mCellStiffness(3,3)=1.0/2.0*c*(1.0-2.0*v);
-    mCellStiffness(4,4)=1.0/2.0*c*(1.0-2.0*v);
-    mCellStiffness(5,5)=1.0/2.0*c*(1.0-2.0*v);
+    this->initialize();
 }
 
-/******************************************************************************/
 template<>
-::Plato::CubicLinearElasticMaterial<1>::
-CubicLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
-LinearElasticMaterial<1>(paramList)
-/******************************************************************************/
+LinearElasticMaterial<1>::LinearElasticMaterial(const Teuchos::ParameterList& aParamList) :
+        mCellDensity(1.0),
+        mPressureScaling(1.0)
 {
-    Plato::Scalar C11   = paramList.get<Plato::Scalar>("C11");
-    mCellStiffness(0,0)=C11;
-
-/*
-    if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
-      mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
-    } else {
-      mPressureScaling = k / (3.0*(1.0-2.0*v));
-    }
-*/
+    this->initialize();
+    this->setReferenceStrainTensor(aParamList);
 }
 
-/******************************************************************************/
+//*********************************************************************************
+//**************************** NEXT: 2D Implementation ****************************
+//*********************************************************************************
+
 template<>
-::Plato::CubicLinearElasticMaterial<2>::
-CubicLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
-LinearElasticMaterial<2>(paramList)
-/******************************************************************************/
+void LinearElasticMaterial<2>::initialize()
 {
-    Plato::Scalar C11   = paramList.get<Plato::Scalar>("C11");
-    Plato::Scalar C12   = paramList.get<Plato::Scalar>("C12");
-    Plato::Scalar C44   = paramList.get<Plato::Scalar>("C44");
-
-    mCellStiffness(0,0)=C11; mCellStiffness(0,1)=C12;
-    mCellStiffness(1,0)=C12; mCellStiffness(1,1)=C11;
-    mCellStiffness(2,2)=C44;
-
-/*
-    if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
-      mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
-    } else {
-      mPressureScaling = k / (3.0*(1.0-2.0*v));
-    }
-*/
-}
-
-/******************************************************************************/
-template<>
-::Plato::CubicLinearElasticMaterial<3>::
-CubicLinearElasticMaterial(const Teuchos::ParameterList& paramList) :
-LinearElasticMaterial<3>(paramList)
-/******************************************************************************/
-{
-    Plato::Scalar C11   = paramList.get<Plato::Scalar>("C11");
-    Plato::Scalar C12   = paramList.get<Plato::Scalar>("C12");
-    Plato::Scalar C44   = paramList.get<Plato::Scalar>("C44");
-
-    mCellStiffness(0,0)=C11; mCellStiffness(0,1)=C12; mCellStiffness(0,2)=C12;
-    mCellStiffness(1,0)=C12; mCellStiffness(1,1)=C11; mCellStiffness(1,2)=C12;
-    mCellStiffness(2,0)=C12; mCellStiffness(2,1)=C12; mCellStiffness(2,2)=C11;
-    mCellStiffness(3,3)=C44;
-    mCellStiffness(4,4)=C44;
-    mCellStiffness(5,5)=C44;
-
-/*
-    if( paramList.isType<Plato::Scalar>("Pressure Scaling") ){
-      mPressureScaling = paramList.get<Plato::Scalar>("Pressure Scaling");
-    } else {
-      mPressureScaling = k / (3.0*(1.0-2.0*v));
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < mNumVoigtTerms; tIndexI++)
+    {
+        for(Plato::OrdinalType tIndexJ = 0; tIndexJ < mNumVoigtTerms; tIndexJ++)
+        {
+            mCellStiffness(tIndexI, tIndexJ) = 0.0;
+        }
     }
 
-*/
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < mNumVoigtTerms; tIndexI++)
+    {
+        mReferenceStrain(tIndexI) = 0.0;
+    }
+}
+
+template<>
+void LinearElasticMaterial<2>::setReferenceStrainTensor(const Teuchos::ParameterList& aParamList)
+{
+    if(aParamList.isType<Plato::Scalar>("e11"))
+        mReferenceStrain(0) = aParamList.get<Plato::Scalar>("e11");
+    if(aParamList.isType<Plato::Scalar>("e22"))
+        mReferenceStrain(1) = aParamList.get<Plato::Scalar>("e22");
+    if(aParamList.isType<Plato::Scalar>("e12"))
+        mReferenceStrain(2) = aParamList.get<Plato::Scalar>("e12");
+}
+
+template<>
+LinearElasticMaterial<2>::LinearElasticMaterial() :
+        mCellDensity(1.0),
+        mPressureScaling(1.0)
+{
+    this->initialize();
+}
+
+template<>
+LinearElasticMaterial<2>::LinearElasticMaterial(const Teuchos::ParameterList& aParamList) :
+        mCellDensity(1.0),
+        mPressureScaling(1.0)
+{
+    this->initialize();
+    this->setReferenceStrainTensor(aParamList);
 }
 
 
+//*********************************************************************************
+//**************************** NEXT: 3D Implementation ****************************
+//*********************************************************************************
 
+template<>
+void LinearElasticMaterial<3>::initialize()
+{
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < mNumVoigtTerms; tIndexI++)
+    {
+        for(Plato::OrdinalType tIndexJ = 0; tIndexJ < mNumVoigtTerms; tIndexJ++)
+        {
+            mCellStiffness(tIndexI, tIndexJ) = 0.0;
+        }
+    }
 
+    for(Plato::OrdinalType tIndexI = 0; tIndexI < mNumVoigtTerms; tIndexI++)
+    {
+        mReferenceStrain(tIndexI) = 0.0;
+    }
+}
 
+template<>
+void LinearElasticMaterial<3>::setReferenceStrainTensor(const Teuchos::ParameterList& aParamList)
+{
+    if(aParamList.isType<Plato::Scalar>("e11"))
+        mReferenceStrain(0) = aParamList.get<Plato::Scalar>("e11");
+    if(aParamList.isType<Plato::Scalar>("e22"))
+        mReferenceStrain(1) = aParamList.get<Plato::Scalar>("e22");
+    if(aParamList.isType<Plato::Scalar>("e33"))
+        mReferenceStrain(2) = aParamList.get<Plato::Scalar>("e33");
+    if(aParamList.isType<Plato::Scalar>("e23"))
+        mReferenceStrain(3) = aParamList.get<Plato::Scalar>("e23");
+    if(aParamList.isType<Plato::Scalar>("e13"))
+        mReferenceStrain(4) = aParamList.get<Plato::Scalar>("e13");
+    if(aParamList.isType<Plato::Scalar>("e12"))
+        mReferenceStrain(5) = aParamList.get<Plato::Scalar>("e12");
+}
 
+template<>
+LinearElasticMaterial<3>::LinearElasticMaterial() :
+        mCellDensity(1.0),
+        mPressureScaling(1.0)
+{
+    this->initialize();
+}
 
+template<>
+LinearElasticMaterial<3>::LinearElasticMaterial(const Teuchos::ParameterList& aParamList) :
+        mCellDensity(1.0),
+        mPressureScaling(1.0)
+{
+    this->initialize();
+    this->setReferenceStrainTensor(aParamList);
+}
 
-} // namespace Plato 
+} // namespace Plato

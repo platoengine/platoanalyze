@@ -5,6 +5,7 @@
 #include <Omega_h_expr.hpp>
 #include <Omega_h_matrix.hpp>
 
+#include "ElasticModelFactory.hpp"
 #include "ElastostaticSolve.hpp"
 #include "ApplyConstraints.hpp"
 

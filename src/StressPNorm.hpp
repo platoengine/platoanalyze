@@ -6,7 +6,7 @@
 #include "Strain.hpp"
 #include "LinearStress.hpp"
 #include "TensorPNorm.hpp"
-#include "LinearElasticMaterial.hpp"
+#include "ElasticModelFactory.hpp"
 #include "ImplicitFunctors.hpp"
 #include "AbstractScalarFunction.hpp"
 #include "ExpInstMacros.hpp"

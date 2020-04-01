@@ -18,7 +18,7 @@
 #include "Heaviside.hpp"
 #include "ToMap.hpp"
 
-#include "LinearElasticMaterial.hpp"
+#include "ElasticModelFactory.hpp"
 #include "NaturalBCs.hpp"
 #include "BodyLoads.hpp"
 
