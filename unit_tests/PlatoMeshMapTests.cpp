@@ -18,7 +18,7 @@
 #define MAKE_PUBLIC
 #include "Plato_MeshMap.hpp"
 
-using SparseMatrix = Plato::Geometry::AbstractMeshMap<Plato::Scalar>::SparseMatrix;
+using SparseMatrix = Plato::Geometry::MeshMap<Plato::Scalar>::SparseMatrix;
 
 std::vector<std::vector<Plato::Scalar>>
 toFull( SparseMatrix aInMatrix );
@@ -283,7 +283,6 @@ namespace PlatoTestMeshMap
         }
     }
   }
-}
 
 /******************************************************************************/
 /*!
@@ -426,7 +425,7 @@ namespace PlatoTestMeshMap
     //
     auto tMeshMapParams = tInputData.get<Plato::InputData>("MeshMap");
 
-    constexpr int cMeshWidth=3;
+    constexpr int cMeshWidth=5;
     constexpr int cSpaceDim=3;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(cSpaceDim, cMeshWidth);
 
@@ -473,12 +472,16 @@ namespace PlatoTestMeshMap
         }
     }
   }
+}
 
 
+/***************************************************************************//**
+* @brief Convert sparse matrix to full matrix
+*******************************************************************************/
 std::vector<std::vector<Plato::Scalar>>
 toFull( SparseMatrix aInMatrix )
 {
-    using OrdinalType = Plato::Geometry::AbstractMeshMap<Plato::Scalar>::OrdinalT;
+    using OrdinalType = Plato::Geometry::MeshMap<Plato::Scalar>::OrdinalT;
     using Plato::Scalar;
 
     std::vector<std::vector<Scalar>>

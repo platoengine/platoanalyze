@@ -167,6 +167,9 @@ struct MathMapBase
     using ScalarT = Scalar_T;
 };
 
+/***************************************************************************//**
+* @brief Functor for no prescribed symmetry
+*******************************************************************************/
 template <typename ScalarT>
 struct Full : public MathMapBase<ScalarT>
 {
@@ -187,6 +190,14 @@ struct Full : public MathMapBase<ScalarT>
     }
 };
 
+/***************************************************************************//**
+* @brief Functor for mirror plane symmetry
+
+  The mirror plane is defined by an origin and a normal vector.  The given
+  normal vector is unitized during initialization.  Points that have a negative
+  projection onto the plane are reflected, that is, the positive side
+  is the parent side and the negative side is the child side.
+*******************************************************************************/
 template <typename ScalarT>
 struct SymmetryPlane : public MathMapBase<ScalarT>
 {
@@ -207,6 +218,19 @@ struct SymmetryPlane : public MathMapBase<ScalarT>
         mNormal[Dim::X] = Plato::Get::Double(tNormalInput, "X");
         mNormal[Dim::Y] = Plato::Get::Double(tNormalInput, "Y");
         mNormal[Dim::Z] = Plato::Get::Double(tNormalInput, "Z");
+
+        auto tLength = mNormal[Dim::X] * mNormal[Dim::X]
+                     + mNormal[Dim::Y] * mNormal[Dim::Y]
+                     + mNormal[Dim::Z] * mNormal[Dim::Z];
+
+        if( tLength == 0.0 )
+        {
+            throw Plato::ParsingException("SymmetryPlane: Normal vector has zero length.");
+        }
+        tLength = sqrt(tLength);
+        mNormal[Dim::X] /= tLength;
+        mNormal[Dim::Y] /= tLength;
+        mNormal[Dim::Z] /= tLength;
     }
     DEVICE_TYPE inline void
     operator()( OrdinalT aOrdinal, VectorArrayT aInValue, VectorArrayT aOutValue ) const
@@ -229,61 +253,37 @@ struct SymmetryPlane : public MathMapBase<ScalarT>
     }
 };
 
-template <typename ScalarT>
-struct EnclosingElement
-{
-    using VectorArrayT  = typename Plato::ScalarMultiVectorT<ScalarT>;
-    using OrdinalT      = typename VectorArrayT::size_type;
-    using OrdinalArrayT = typename Plato::ScalarVectorT<OrdinalT>;
+/***************************************************************************//**
+* @brief Functor that computes position in local coordinates of a point given
+         in global coordinates then returns the basis values at that local
+         point.
 
-    const Omega_h::LOs mCells2Nodes;
-    const Omega_h::Reals mCoords;
+  The local position is computed as follows.  Given:
+  \f{eqnarray*}{
+    \bar{x}^h(\xi) = N_I(\xi) \bar{x}_I \\
+    N_I = \left\{\begin{array}{cccc}
+              x_l & y_l & z_l & 1-x_l-y_l-z_l
+           \end{array}\right\}^T
+  \f}
+  Find: \f$ x_l \f$, \f$ y_l \f$, and \f$ z_l \f$.
 
-    EnclosingElement(Omega_h::Mesh& aMesh) :
-      mCells2Nodes(aMesh.ask_elem_verts()),
-      mCoords(aMesh.coords()) {}
-
-    DEVICE_TYPE inline bool
-    operator()( OrdinalT aElemOrdinal, OrdinalT aNodeOrdinal, VectorArrayT aLocations ) const
-    {
-        bool tRetVal = true;
-
-        for(OrdinalT iFace=0; iFace<cNFacesPerElem; ++iFace)
-        {
-            // get vertex indices
-            OrdinalT i0 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+iFace];
-            OrdinalT i1 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+(iFace+1)%cNFacesPerElem];
-            OrdinalT i2 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+(iFace+2)%cNFacesPerElem];
-            OrdinalT i3 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+(iFace+3)%cNFacesPerElem];
-
-            // get vertex point values
-            ScalarT X0=mCoords[i0*cSpaceDim+Dim::X], Y0=mCoords[i0*cSpaceDim+Dim::Y], Z0=mCoords[i0*cSpaceDim+Dim::Z];
-            ScalarT X1=mCoords[i1*cSpaceDim+Dim::X], Y1=mCoords[i1*cSpaceDim+Dim::Y], Z1=mCoords[i1*cSpaceDim+Dim::Z];
-            ScalarT X2=mCoords[i2*cSpaceDim+Dim::X], Y2=mCoords[i2*cSpaceDim+Dim::Y], Z2=mCoords[i2*cSpaceDim+Dim::Z];
-            ScalarT X3=mCoords[i3*cSpaceDim+Dim::X], Y3=mCoords[i3*cSpaceDim+Dim::Y], Z3=mCoords[i3*cSpaceDim+Dim::Z];
-
-            // get input point values
-            ScalarT PX=aLocations(Dim::X,aNodeOrdinal),
-                    PY=aLocations(Dim::Y,aNodeOrdinal),
-                    PZ=aLocations(Dim::Z,aNodeOrdinal);
-
-            ScalarT V1X=X1-X0, V1Y=Y1-Y0, V1Z=Z1-Z0; // V1 - V0
-            ScalarT V2X=X2-X0, V2Y=Y2-Y0, V2Z=Z2-Z0; // V2 - V0
-            ScalarT V3X=X3-X0, V3Y=Y3-Y0, V3Z=Z3-Z0; // V3 - V0
-            ScalarT VPX=PX-X0, VPY=PY-Y0, VPZ=PZ-Z0; // VP - V0
-            ScalarT VNX=V1Y*V2Z-V1Z*V2Y,
-                    VNY=V1Z*V2X-V1X*V2Z,
-                    VNZ=V1X*V2Y-V1Y*V2X;  // VN = V1 X V2
-            ScalarT P3=V3X*VNX+V3Y*VNY+V3Z*VNZ; // V3 . VN: projection out of plane vertex onto plane normal
-            ScalarT PP=VPX*VNX+VPY*VNY+VPZ*VNZ; // VP . VN: projection of input point vector onto plane normal
-            ScalarT sgnP3 = (P3 >= 0.0) ? 1.0 : -1.0;
-            ScalarT tol = 1e-4;
-            tRetVal = (tRetVal && (P3*(PP+sgnP3*tol) > 0.0));  // if the projections are the same sign ...
-        }
-        return tRetVal;
-    }
-};
-
+  Simplifying the above yields:
+  \f[
+    \left[\begin{array}{ccc}
+      x_1-x_4 & x_2-x_4 & x_3-x_4 \\
+      y_1-y_4 & y_2-y_4 & y_3-y_4 \\
+      z_1-z_4 & z_2-z_4 & z_3-z_4 \\
+    \end{array}\right]
+    \left\{\begin{array}{c}
+      x_l \\ y_l \\ z_l
+    \end{array}\right\} =
+    \left\{\begin{array}{c}
+      x^h-x_4 \\ y^h-y_4 \\ z^h-z_4
+    \end{array}\right\}
+  \f]
+  Below directly solves the linear system above for \f$x_l\f$, \f$ y_l \f$, and
+  \f$ z_l \f$ then evaluates the basis.
+*******************************************************************************/
 template <typename ScalarT>
 struct GetBasis
 {
@@ -299,6 +299,53 @@ struct GetBasis
       mCells2Nodes(aMesh.ask_elem_verts()),
       mCoords(aMesh.coords()) {}
 
+    /******************************************************************************//**
+     * @brief Find local coordinates from global coordinates, compute basis values
+     * @param [in]  Zh, Yh, Zh position in global coordinates
+     * @param [in]  i0, i1, i2, i3 global indices of nodes comprised by the element
+     * @param [out] b0, b1, b2, b3 basis values
+    **********************************************************************************/
+    DEVICE_TYPE inline void
+    basis(
+      ScalarT  Xh, ScalarT  Yh, ScalarT  Zh,
+      OrdinalT i0, OrdinalT i1, OrdinalT i2, OrdinalT i3,
+      ScalarT& b0, ScalarT& b1, ScalarT& b2, ScalarT& b3) const
+    {
+        // get vertex point values
+        ScalarT X0=mCoords[i0*cSpaceDim+Dim::X], Y0=mCoords[i0*cSpaceDim+Dim::Y], Z0=mCoords[i0*cSpaceDim+Dim::Z];
+        ScalarT X1=mCoords[i1*cSpaceDim+Dim::X], Y1=mCoords[i1*cSpaceDim+Dim::Y], Z1=mCoords[i1*cSpaceDim+Dim::Z];
+        ScalarT X2=mCoords[i2*cSpaceDim+Dim::X], Y2=mCoords[i2*cSpaceDim+Dim::Y], Z2=mCoords[i2*cSpaceDim+Dim::Z];
+        ScalarT X3=mCoords[i3*cSpaceDim+Dim::X], Y3=mCoords[i3*cSpaceDim+Dim::Y], Z3=mCoords[i3*cSpaceDim+Dim::Z];
+
+        ScalarT a11=X0-X3, a12=X1-X3, a13=X2-X3;
+        ScalarT a21=Y0-Y3, a22=Y1-Y3, a23=Y2-Y3;
+        ScalarT a31=Z0-Z3, a32=Z1-Z3, a33=Z2-Z3;
+
+        ScalarT detA = a11*a22*a33+a12*a23*a31+a13*a21*a32-a11*a23*a32-a12*a21*a33-a13*a22*a31;
+
+        ScalarT b11=(a22*a33-a23*a32)/detA, b12=(a13*a32-a12*a33)/detA, b13=(a12*a23-a13*a22)/detA;
+        ScalarT b21=(a23*a31-a21*a33)/detA, b22=(a11*a33-a13*a31)/detA, b23=(a13*a21-a11*a23)/detA;
+        ScalarT b31=(a21*a32-a22*a31)/detA, b32=(a12*a31-a11*a32)/detA, b33=(a11*a22-a12*a21)/detA;
+
+        ScalarT FX=Xh-X3, FY=Yh-Y3, FZ=Zh-Z3;
+
+        b0=b11*FX+b12*FY+b13*FZ;
+        b1=b21*FX+b22*FY+b23*FZ;
+        b2=b31*FX+b32*FY+b33*FZ;
+        b3=1.0-b0-b1-b2;
+    }
+
+
+    /******************************************************************************//**
+     * @brief Find local coordinates from global coordinates, compute basis values, and
+              assembles them into the columnMap and entries of a sparse matrix.
+     * @param [in]  aLocations view of points (D, N)
+     * @param [in]  aNodeOrdinal index of point for which to determine local coords
+     * @param [in]  aElemOrdinal index of element whose bases will be used for interpolation
+     * @param [in]  aEntryOrdinal index into aColumnMap and aEntries
+     * @param [out] aColumnMap of the sparse matrix
+     * @param [out] aEntries of the sparse matrix
+    **********************************************************************************/
     DEVICE_TYPE inline void
     operator()(
       VectorArrayT  aLocations,
@@ -308,50 +355,41 @@ struct GetBasis
       OrdinalArrayT aColumnMap,
       ScalarArrayT  aEntries) const
     {
+        // get input point values
+        ScalarT Xh=aLocations(Dim::X,aNodeOrdinal),
+                Yh=aLocations(Dim::Y,aNodeOrdinal),
+                Zh=aLocations(Dim::Z,aNodeOrdinal);
+
         // get vertex indices
         OrdinalT i0 = mCells2Nodes[aElemOrdinal*cNVertsPerElem  ];
         OrdinalT i1 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+1];
         OrdinalT i2 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+2];
         OrdinalT i3 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+3];
 
-        // get vertex point values
-        ScalarT X0=mCoords[i0*cSpaceDim+Dim::X], Y0=mCoords[i0*cSpaceDim+Dim::Y], Z0=mCoords[i0*cSpaceDim+Dim::Z];
-        ScalarT X1=mCoords[i1*cSpaceDim+Dim::X], Y1=mCoords[i1*cSpaceDim+Dim::Y], Z1=mCoords[i1*cSpaceDim+Dim::Z];
-        ScalarT X2=mCoords[i2*cSpaceDim+Dim::X], Y2=mCoords[i2*cSpaceDim+Dim::Y], Z2=mCoords[i2*cSpaceDim+Dim::Z];
-        ScalarT X3=mCoords[i3*cSpaceDim+Dim::X], Y3=mCoords[i3*cSpaceDim+Dim::Y], Z3=mCoords[i3*cSpaceDim+Dim::Z];
+        ScalarT b0, b1, b2, b3;
 
-        ScalarT a11=X0-X3, a12=X1-X3, a13=X2-X3;
-        ScalarT a21=Y0-Y3, a22=Y1-Y3, a23=Y2-Y3;
-        ScalarT a31=Z0-Z3, a32=Z1-Z3, a33=Z2-Z3;
-
-        ScalarT detA = a11*a22*a33+a12*a23*a31+a13*a21*a32-a11*a23*a32-a12*a21*a33-a13*a22*a31;
-
-        ScalarT b11=(a22*a33-a23*a32)/detA, b12=(a13*a32-a12*a33)/detA, b13=(a12*a23-a13*a22)/detA;
-        ScalarT b21=(a23*a31-a21*a33)/detA, b22=(a11*a33-a13*a31)/detA, b23=(a13*a21-a11*a23)/detA;
-        ScalarT b31=(a21*a32-a22*a31)/detA, b32=(a12*a31-a11*a32)/detA, b33=(a11*a22-a12*a21)/detA;
-
-        // get input point values
-        ScalarT Xh=aLocations(Dim::X,aNodeOrdinal),
-                Yh=aLocations(Dim::Y,aNodeOrdinal),
-                Zh=aLocations(Dim::Z,aNodeOrdinal);
-
-        ScalarT FX=Xh-X3, FY=Yh-Y3, FZ=Zh-Z3;
-
-        ScalarT N0=b11*FX+b12*FY+b13*FZ;
-        ScalarT N1=b21*FX+b22*FY+b23*FZ;
-        ScalarT N2=b31*FX+b32*FY+b33*FZ;
-        ScalarT N3=1.0-N0-N1-N2;
+        basis(Xh, Yh, Zh,
+              i0, i1, i2, i3,
+              b0, b1, b2, b3);
 
         aColumnMap(aEntryOrdinal  ) = i0;
         aColumnMap(aEntryOrdinal+1) = i1;
         aColumnMap(aEntryOrdinal+2) = i2;
         aColumnMap(aEntryOrdinal+3) = i3;
 
-        aEntries(aEntryOrdinal  ) = N0;
-        aEntries(aEntryOrdinal+1) = N1;
-        aEntries(aEntryOrdinal+2) = N2;
-        aEntries(aEntryOrdinal+3) = N3;
+        aEntries(aEntryOrdinal  ) = b0;
+        aEntries(aEntryOrdinal+1) = b1;
+        aEntries(aEntryOrdinal+2) = b2;
+        aEntries(aEntryOrdinal+3) = b3;
     }
+
+    /******************************************************************************//**
+     * @brief Find local coordinates from global coordinates and compute basis values
+     * @param [in]  aLocations view of points (D, N)
+     * @param [in]  aNodeOrdinal index of point for which to determine local coords
+     * @param [in]  aElemOrdinal index of element whose bases will be used for interpolation
+     * @param [out] aBases basis values
+    **********************************************************************************/
     DEVICE_TYPE inline void
     operator()(
       VectorArrayT  aLocations,
@@ -359,57 +397,48 @@ struct GetBasis
       int           aElemOrdinal,
       ScalarT       aBases[cNVertsPerElem]) const
     {
+        // get input point values
+        ScalarT Xh=aLocations(Dim::X,aNodeOrdinal),
+                Yh=aLocations(Dim::Y,aNodeOrdinal),
+                Zh=aLocations(Dim::Z,aNodeOrdinal);
+
         // get vertex indices
         OrdinalT i0 = mCells2Nodes[aElemOrdinal*cNVertsPerElem  ];
         OrdinalT i1 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+1];
         OrdinalT i2 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+2];
         OrdinalT i3 = mCells2Nodes[aElemOrdinal*cNVertsPerElem+3];
 
-        // get vertex point values
-        ScalarT X0=mCoords[i0*cSpaceDim+Dim::X], Y0=mCoords[i0*cSpaceDim+Dim::Y], Z0=mCoords[i0*cSpaceDim+Dim::Z];
-        ScalarT X1=mCoords[i1*cSpaceDim+Dim::X], Y1=mCoords[i1*cSpaceDim+Dim::Y], Z1=mCoords[i1*cSpaceDim+Dim::Z];
-        ScalarT X2=mCoords[i2*cSpaceDim+Dim::X], Y2=mCoords[i2*cSpaceDim+Dim::Y], Z2=mCoords[i2*cSpaceDim+Dim::Z];
-        ScalarT X3=mCoords[i3*cSpaceDim+Dim::X], Y3=mCoords[i3*cSpaceDim+Dim::Y], Z3=mCoords[i3*cSpaceDim+Dim::Z];
+        ScalarT b0, b1, b2, b3;
 
-        ScalarT a11=X0-X3, a12=X1-X3, a13=X2-X3;
-        ScalarT a21=Y0-Y3, a22=Y1-Y3, a23=Y2-Y3;
-        ScalarT a31=Z0-Z3, a32=Z1-Z3, a33=Z2-Z3;
+        basis(Xh, Yh, Zh,
+              i0, i1, i2, i3,
+              b0, b1, b2, b3);
 
-        ScalarT detA = a11*a22*a33+a12*a23*a31+a13*a21*a32-a11*a23*a32-a12*a21*a33-a13*a22*a31;
-
-        ScalarT b11=(a22*a33-a23*a32)/detA, b12=(a13*a32-a12*a33)/detA, b13=(a12*a23-a13*a22)/detA;
-        ScalarT b21=(a23*a31-a21*a33)/detA, b22=(a11*a33-a13*a31)/detA, b23=(a13*a21-a11*a23)/detA;
-        ScalarT b31=(a21*a32-a22*a31)/detA, b32=(a12*a31-a11*a32)/detA, b33=(a11*a22-a12*a21)/detA;
-
-        // get input point values
-        ScalarT Xh=aLocations(Dim::X,aNodeOrdinal),
-                Yh=aLocations(Dim::Y,aNodeOrdinal),
-                Zh=aLocations(Dim::Z,aNodeOrdinal);
-
-        ScalarT FX=Xh-X3, FY=Yh-Y3, FZ=Zh-Z3;
-
-        ScalarT N0=b11*FX+b12*FY+b13*FZ;
-        ScalarT N1=b21*FX+b22*FY+b23*FZ;
-        ScalarT N2=b31*FX+b32*FY+b33*FZ;
-        ScalarT N3=1.0-N0-N1-N2;
-
-        aBases[0] = N0;
-        aBases[1] = N1;
-        aBases[2] = N2;
-        aBases[3] = N3;
+        aBases[0] = b0;
+        aBases[1] = b1;
+        aBases[2] = b2;
+        aBases[3] = b3;
     }
 };
 
+/***************************************************************************//**
+* @brief MeshMap
+
+   This base class contains most of the functionality needed for a MeshMap. The
+   MathMap (i.e., Full, SymmetryPlane, etc) is added in the template derived
+   class.
+*******************************************************************************/
 template <typename ScalarT>
-class AbstractMeshMap
+class MeshMap
 {
   public:
     using ScalarArrayT  = typename Plato::ScalarVectorT<ScalarT>;
     using VectorArrayT  = typename Plato::ScalarMultiVectorT<ScalarT>;
     using OrdinalT      = typename ScalarArrayT::size_type;
     using OrdinalArrayT = typename Plato::ScalarVectorT<OrdinalT>;
+    using IntegerArrayT = typename Plato::ScalarVectorT<int>;
 
-    AbstractMeshMap(Omega_h::Mesh& aMesh, Plato::InputData& aInput) :
+    MeshMap(Omega_h::Mesh& aMesh, Plato::InputData& aInput) :
       mFilter(nullptr),
       mFilterT(nullptr),
       mFilterFirst(Plato::Get::Bool(aInput, "FilterFirst", /*default=*/ true)) {}
@@ -436,7 +465,196 @@ class AbstractMeshMap
 
   public:
     /***************************************************************************//**
-    * @brief Compute transpose
+    * @brief Find element that contains each mapped node
+     * @param [in]  aLocations location of mesh nodes
+     * @param [in]  aMappedLocations mapped location of mesh nodes
+     * @param [out] aParentElements if node is mapped, index of parent element.
+
+       If a node is mapped (i.e., aLocations(*,node_id)!=aMappedLocations(*,node_id))
+       and the parent element is found, aParentElements(node_id) is set to the index
+       of the parent element.
+       If a node is mapped but the parent element isn't found, aParentElements(node_id)
+       is set to -2.
+       If a node is not mapped, aParentElements(node_id) is set to -1.
+    *******************************************************************************/
+    void
+    findParentElements(
+      Omega_h::Mesh& aMesh,
+      VectorArrayT aLocations,
+      VectorArrayT aMappedLocations,
+      IntegerArrayT aParentElements)
+    {
+        auto tNElems = aMesh.nelems();
+        VectorArrayT tMin("min", cSpaceDim, tNElems);
+        VectorArrayT tMax("max", cSpaceDim, tNElems);
+
+        constexpr ScalarT cRelativeTol = 1e-2;
+
+        // fill d_* data
+        auto tCoords = aMesh.coords();
+        Omega_h::LOs tCells2Nodes = aMesh.ask_elem_verts();
+        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNElems), LAMBDA_EXPRESSION(OrdinalT iCellOrdinal)
+        {
+            OrdinalT tNVertsPerElem = cSpaceDim+1;
+
+            // set min and max of element bounding box to first node
+            for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
+            {
+                OrdinalT tVertIndex = tCells2Nodes[iCellOrdinal*tNVertsPerElem];
+                tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
+                tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
+            }
+            // loop on remaining nodes to find min
+            for(OrdinalT iVert=1; iVert<tNVertsPerElem; ++iVert)
+            {
+                OrdinalT tVertIndex = tCells2Nodes[iCellOrdinal*tNVertsPerElem + iVert];
+                for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
+                {
+                    if( tMin(iDim, iCellOrdinal) > tCoords[tVertIndex*cSpaceDim+iDim] )
+                    {
+                        tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
+                    }
+                    else
+                    if( tMax(iDim, iCellOrdinal) < tCoords[tVertIndex*cSpaceDim+iDim] )
+                    {
+                        tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
+                    }
+                }
+            }
+            for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
+            {
+                ScalarT tLen = tMax(iDim, iCellOrdinal) - tMin(iDim, iCellOrdinal);
+                tMax(iDim, iCellOrdinal) += cRelativeTol * tLen;
+                tMin(iDim, iCellOrdinal) -= cRelativeTol * tLen;
+            }
+        }, "element bounding boxes");
+
+
+        auto d_x0 = Kokkos::subview(tMin, (size_t)Dim::X, Kokkos::ALL());
+        auto d_y0 = Kokkos::subview(tMin, (size_t)Dim::Y, Kokkos::ALL());
+        auto d_z0 = Kokkos::subview(tMin, (size_t)Dim::Z, Kokkos::ALL());
+        auto d_x1 = Kokkos::subview(tMax, (size_t)Dim::X, Kokkos::ALL());
+        auto d_y1 = Kokkos::subview(tMax, (size_t)Dim::Y, Kokkos::ALL());
+        auto d_z1 = Kokkos::subview(tMax, (size_t)Dim::Z, Kokkos::ALL());
+
+        // construct search tree
+        ArborX::BVH<DeviceType>
+          bvh{BoundingBoxes{d_x0.data(), d_y0.data(), d_z0.data(),
+                            d_x1.data(), d_y1.data(), d_z1.data(), tNElems}};
+
+        // conduct search for bounding box elements
+        auto d_x = Kokkos::subview(aMappedLocations, (size_t)Dim::X, Kokkos::ALL());
+        auto d_y = Kokkos::subview(aMappedLocations, (size_t)Dim::Y, Kokkos::ALL());
+        auto d_z = Kokkos::subview(aMappedLocations, (size_t)Dim::Z, Kokkos::ALL());
+
+        auto tNVerts = aMesh.nverts();
+        Kokkos::View<int*, DeviceType> tIndices("indices", 0), tOffset("offset", 0);
+        bvh.query(Points{d_x.data(), d_y.data(), d_z.data(), tNVerts}, tIndices, tOffset);
+
+        // loop over indices and find containing element
+        GetBasis<ScalarT> tGetBasis(aMesh);
+        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNVerts), LAMBDA_EXPRESSION(OrdinalT iNodeOrdinal)
+        {
+            ScalarT tBasis[cNVertsPerElem];
+            aParentElements(iNodeOrdinal) = -1;
+            if( aLocations(Dim::X, iNodeOrdinal) != aMappedLocations(Dim::X, iNodeOrdinal) ||
+                aLocations(Dim::Y, iNodeOrdinal) != aMappedLocations(Dim::Y, iNodeOrdinal) ||
+                aLocations(Dim::Z, iNodeOrdinal) != aMappedLocations(Dim::Z, iNodeOrdinal) )
+            {
+                aParentElements(iNodeOrdinal) = -2;
+                constexpr ScalarT cNotFound = -1e8; // big negative number ensures max min is found
+                ScalarT tMaxMin = cNotFound;
+                typename IntegerArrayT::value_type iParent = -2;
+                for( int iElem=tOffset(iNodeOrdinal); iElem<tOffset(iNodeOrdinal+1); iElem++ )
+                {
+                    auto tElem = tIndices(iElem);
+                    tGetBasis(aMappedLocations, iNodeOrdinal, tElem, tBasis);
+                    ScalarT tMin = tBasis[0];
+                    for(OrdinalT iB=1; iB<cNVertsPerElem; iB++)
+                    {
+                        if( tBasis[iB] < tMin ) tMin = tBasis[iB];
+                    }
+                    if( tMin > cNotFound )
+                    {
+                         tMaxMin = tMin;
+                         iParent = tElem;
+                    }
+                }
+                if( tMaxMin > cNotFound )
+                {
+                    aParentElements(iNodeOrdinal) = iParent;
+                }
+            }
+        }, "find parent element");
+    }
+
+    /***************************************************************************//**
+    * @brief Set map matrix values from parent element
+    *******************************************************************************/
+    void setMatrixValues(Omega_h::Mesh& aMesh, IntegerArrayT aParentElements, VectorArrayT aLocation, SparseMatrix& aMatrix)
+    {
+        auto tNVerts = aMesh.nverts();
+        aMatrix.mNumRows = tNVerts;
+        aMatrix.mNumCols = tNVerts;
+
+        // determine rowmap
+        auto tNumRows = aMatrix.mNumRows;
+        OrdinalArrayT tRowMap("row map", tNumRows+1);
+        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalT iRowOrdinal)
+        {
+            if( aParentElements(iRowOrdinal) == -2 ) // no parent element found
+            {
+                tRowMap(iRowOrdinal) = 0;
+            }
+            else
+            if( aParentElements(iRowOrdinal) == -1 ) // not mapped
+            {
+                tRowMap(iRowOrdinal) = 1;
+            }
+            else
+            {
+                tRowMap(iRowOrdinal) = cNVertsPerElem; // mapped
+            }
+        }, "nonzeros");
+
+        OrdinalT tNumEntries(0);
+        Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalT>(0,tNumRows+1),
+        KOKKOS_LAMBDA (const OrdinalT& iOrdinal, OrdinalT& aUpdate, const bool& tIsFinal)
+        {
+            const OrdinalT tVal = tRowMap(iOrdinal);
+            if( tIsFinal )
+            {
+              tRowMap(iOrdinal) = aUpdate;
+            }
+            aUpdate += tVal;
+        }, tNumEntries);
+        aMatrix.mRowMap = tRowMap;
+
+        // determine column map and entries
+        OrdinalArrayT tColMap("row map", tNumEntries);
+        ScalarArrayT tEntries("entries", tNumEntries);
+        GetBasis<ScalarT> tGetBasis(aMesh);
+        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalT iRowOrdinal)
+        {
+            auto iEntryOrdinal = tRowMap(iRowOrdinal);
+            auto iElemOrdinal = aParentElements(iRowOrdinal);
+            if( iElemOrdinal == -1 ) // not mapped
+            {
+                tColMap(iEntryOrdinal) = iRowOrdinal;
+                tEntries(iEntryOrdinal) = 1.0;
+            }
+            else
+            {
+                tGetBasis(aLocation, iRowOrdinal, iElemOrdinal, iEntryOrdinal, tColMap, tEntries);
+            }
+
+        }, "colmap and entries");
+        mMatrix.mColMap = tColMap;
+        mMatrix.mEntries = tEntries;
+    }
+
+    /***************************************************************************//**
+    * @brief Compute transpose if input matrix exists
     *******************************************************************************/
     inline std::shared_ptr<SparseMatrix>
     createTranspose(std::shared_ptr<SparseMatrix> aMatrix)
@@ -454,7 +672,7 @@ class AbstractMeshMap
     }
 
     /***************************************************************************//**
-    * @brief Compute transpose
+    * @brief Compute transpose (existence of input matrix is assumed)
     *******************************************************************************/
     inline SparseMatrix
     createTranspose(SparseMatrix& aMatrix)
@@ -522,6 +740,9 @@ class AbstractMeshMap
     }
 
 
+    /***************************************************************************//**
+    * @brief Create linear filter
+    *******************************************************************************/
     inline void
     createLinearFilter(ScalarT aRadius, SparseMatrix& aMatrix, VectorArrayT aLocations)
     {
@@ -544,6 +765,9 @@ class AbstractMeshMap
         setLinearFilterMatrixValues(aRadius, aMatrix, aLocations, tIndices, tOffset);
     }
 
+    /***************************************************************************//**
+    * @brief Set linear filter matrix values
+    *******************************************************************************/
     inline void
     setLinearFilterMatrixValues(
       ScalarT aRadius,
@@ -610,6 +834,9 @@ class AbstractMeshMap
         aMatrix.mEntries = tEntries;
     }
 
+    /***************************************************************************//**
+    * @brief create filter of type specified in input
+    *******************************************************************************/
     inline std::shared_ptr<SparseMatrix>
     createFilter(Plato::InputData aFilterSpec, VectorArrayT aLocations)
     {
@@ -635,9 +862,7 @@ class AbstractMeshMap
   public:
 
     /***************************************************************************//**
-    *
     * @brief Apply mapping
-    *
     *******************************************************************************/
     void apply(const ScalarArrayT & aInput, ScalarArrayT aOutput)
     {
@@ -661,9 +886,7 @@ class AbstractMeshMap
     }
 
     /***************************************************************************//**
-    *
-    * @brief Matrix times vector
-    *
+    * @brief Matrix times vector in place (overwrites input vector)
     *******************************************************************************/
     void matvec(const SparseMatrix & aMatrix, const ScalarArrayT & aInput)
     {
@@ -672,6 +895,10 @@ class AbstractMeshMap
         matvec(aMatrix, aInput, tOutput);
         Kokkos::deep_copy(aInput, tOutput);
     }
+
+    /***************************************************************************//**
+    * @brief Matrix times vector
+    *******************************************************************************/
     void matvec(const SparseMatrix & aMatrix, const ScalarArrayT & aInput, ScalarArrayT aOutput)
     {
         auto tRowMap = aMatrix.mRowMap;
@@ -694,9 +921,7 @@ class AbstractMeshMap
     }
 
     /***************************************************************************//**
-    *
     * @brief Apply transpose of mapping
-    *
     *******************************************************************************/
     void applyT(const ScalarArrayT & aInput, ScalarArrayT aOutput)
     {
@@ -720,8 +945,11 @@ class AbstractMeshMap
     }
 };
 
+/***************************************************************************//**
+* @brief Derived class template that adds MathMap functionality.
+*******************************************************************************/
 template <typename MathMapType>
-class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::ScalarT>
+class MeshMapDerived : public Plato::Geometry::MeshMap<typename MathMapType::ScalarT>
 {
     MathMapType mMathMap;
 
@@ -729,11 +957,11 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Sc
     using ScalarArrayT  = typename Plato::ScalarVectorT<ScalarT>;
     using IntegerArrayT = typename Plato::ScalarVectorT<int>;
     using VectorArrayT  = typename Plato::ScalarMultiVectorT<ScalarT>;
-    using SparseMatrix  = typename AbstractMeshMap<ScalarT>::SparseMatrix;
+    using SparseMatrix  = typename MeshMap<ScalarT>::SparseMatrix;
     using OrdinalT      = typename ScalarArrayT::size_type;
     using OrdinalArrayT = typename Plato::ScalarVectorT<OrdinalT>;
 
-    using MapBase = AbstractMeshMap<ScalarT>;
+    using MapBase = MeshMap<ScalarT>;
     using MapBase::mMatrix;
     using MapBase::mMatrixT;
     using MapBase::mFilter;
@@ -741,8 +969,8 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Sc
 
   public:
 
-    MeshMap(Omega_h::Mesh& aMesh, Plato::InputData& aInput) :
-      AbstractMeshMap<typename MathMapType::ScalarT>(aMesh, aInput),
+    MeshMapDerived(Omega_h::Mesh& aMesh, Plato::InputData& aInput) :
+      MeshMap<typename MathMapType::ScalarT>(aMesh, aInput),
       mMathMap(aInput.get<Plato::InputData>("LinearMap"))
     {
         // compute mapped values
@@ -756,12 +984,12 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Sc
         // find elements that contain mapped locations
         //
         IntegerArrayT tParentElements("mapped mask", tNVerts);
-        findParentElements(aMesh, tVertexLocations, tMappedVertexLocations, tParentElements);
+        MapBase::findParentElements(aMesh, tVertexLocations, tMappedVertexLocations, tParentElements);
 
 
-        // conduct search and populate crs matrix
+        // populate crs matrix
         //
-        setMatrixValues(aMesh, tParentElements, tMappedVertexLocations, mMatrix);
+        MapBase::setMatrixValues(aMesh, tParentElements, tMappedVertexLocations, mMatrix);
         mMatrixT = MapBase::createTranspose(mMatrix);
 
         // build filter if requested
@@ -769,221 +997,6 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Sc
         auto tFilterSpec = aInput.get_add<Plato::InputData>("Filter");
         mFilter  = MapBase::createFilter(tFilterSpec, tVertexLocations);
         mFilterT = MapBase::createTranspose(mFilter);
-    }
-
-    void
-    findParentElements(
-      Omega_h::Mesh& aMesh,
-      VectorArrayT aLocations,
-      VectorArrayT aMappedLocations,
-      IntegerArrayT aParentElements)
-    {
-        auto tNElems = aMesh.nelems();
-        VectorArrayT tMin("min", cSpaceDim, tNElems);
-        VectorArrayT tMax("max", cSpaceDim, tNElems);
-
-        ScalarT tol = 1e-2;
-
-        // fill d_* data
-        auto tCoords = aMesh.coords();
-        Omega_h::LOs tCells2Nodes = aMesh.ask_elem_verts();
-        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNElems), LAMBDA_EXPRESSION(OrdinalT iCellOrdinal)
-        {
-            OrdinalT tNVertsPerElem = cSpaceDim+1;
-
-            // set min and max of element bounding box to first node
-            for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
-            {
-                OrdinalT tVertIndex = tCells2Nodes[iCellOrdinal*tNVertsPerElem];
-                tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
-                tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
-            }
-            // loop on remaining nodes to find min
-            for(OrdinalT iVert=1; iVert<tNVertsPerElem; ++iVert)
-            {
-                OrdinalT tVertIndex = tCells2Nodes[iCellOrdinal*tNVertsPerElem + iVert];
-                for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
-                {
-                    if( tMin(iDim, iCellOrdinal) > tCoords[tVertIndex*cSpaceDim+iDim] )
-                    {
-                        tMin(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
-                    }
-                    else
-                    if( tMax(iDim, iCellOrdinal) < tCoords[tVertIndex*cSpaceDim+iDim] )
-                    {
-                        tMax(iDim, iCellOrdinal) = tCoords[tVertIndex*cSpaceDim+iDim];
-                    }
-                }
-            }
-            for(size_t iDim=0; iDim<cSpaceDim; ++iDim)
-            {
-                tMax(iDim, iCellOrdinal) += tol;
-                tMin(iDim, iCellOrdinal) -= tol;
-            }
-        }, "element bounding boxes");
-
-
-        auto d_x0 = Kokkos::subview(tMin, (size_t)Dim::X, Kokkos::ALL());
-        auto d_y0 = Kokkos::subview(tMin, (size_t)Dim::Y, Kokkos::ALL());
-        auto d_z0 = Kokkos::subview(tMin, (size_t)Dim::Z, Kokkos::ALL());
-        auto d_x1 = Kokkos::subview(tMax, (size_t)Dim::X, Kokkos::ALL());
-        auto d_y1 = Kokkos::subview(tMax, (size_t)Dim::Y, Kokkos::ALL());
-        auto d_z1 = Kokkos::subview(tMax, (size_t)Dim::Z, Kokkos::ALL());
-
-        // construct search tree
-        ArborX::BVH<DeviceType>
-          bvh{BoundingBoxes{d_x0.data(), d_y0.data(), d_z0.data(),
-                            d_x1.data(), d_y1.data(), d_z1.data(), tNElems}};
-
-        // conduct search for bounding box elements
-        auto d_x = Kokkos::subview(aMappedLocations, (size_t)Dim::X, Kokkos::ALL());
-        auto d_y = Kokkos::subview(aMappedLocations, (size_t)Dim::Y, Kokkos::ALL());
-        auto d_z = Kokkos::subview(aMappedLocations, (size_t)Dim::Z, Kokkos::ALL());
-
-        auto tNVerts = aMesh.nverts();
-        Kokkos::View<int*, DeviceType> tIndices("indices", 0), tOffset("offset", 0);
-        bvh.query(Points{d_x.data(), d_y.data(), d_z.data(), tNVerts}, tIndices, tOffset);
-
-        // loop over indices and find containing element
-        GetBasis<ScalarT> tGetBasis(aMesh);
-        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNVerts), LAMBDA_EXPRESSION(OrdinalT iNodeOrdinal)
-        {
-            ScalarT tBasis[cNVertsPerElem];
-            aParentElements(iNodeOrdinal) = -1;
-            if( aLocations(Dim::X, iNodeOrdinal) != aMappedLocations(Dim::X, iNodeOrdinal) ||
-                aLocations(Dim::Y, iNodeOrdinal) != aMappedLocations(Dim::Y, iNodeOrdinal) ||
-                aLocations(Dim::Z, iNodeOrdinal) != aMappedLocations(Dim::Z, iNodeOrdinal) )
-            {
-                aParentElements(iNodeOrdinal) = -2;
-                ScalarT tMaxMin = -tol;
-                typename IntegerArrayT::value_type iParent = -2;
-                for( int iElem=tOffset(iNodeOrdinal); iElem<tOffset(iNodeOrdinal+1); iElem++ )
-                {
-                    auto tElem = tIndices(iElem);
-                    tGetBasis(aMappedLocations, iNodeOrdinal, tElem, tBasis);
-                    ScalarT tMin = tBasis[0];
-                    for(OrdinalT iB=1; iB<cNVertsPerElem; iB++)
-                    {
-                        if( tBasis[iB] < tMin ) tMin = tBasis[iB];
-                    }
-                    if( tMin > tMaxMin )
-                    {
-                         tMaxMin = tMin;
-                         iParent = tElem;
-                    }
-                }
-                if( tMaxMin > -tol )
-                {
-                    aParentElements(iNodeOrdinal) = iParent;
-                }
-            }
-        }, "find parent element");
-    }
-
-    void setMatrixValues(Omega_h::Mesh& aMesh, IntegerArrayT aParentElements, VectorArrayT aLocation, SparseMatrix& aMatrix)
-    {
-        auto tNVerts = aMesh.nverts();
-        aMatrix.mNumRows = tNVerts;
-        aMatrix.mNumCols = tNVerts;
-
-        // determine rowmap
-        auto tNumRows = aMatrix.mNumRows;
-        OrdinalArrayT tRowMap("row map", tNumRows+1);
-        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalT iRowOrdinal)
-        {
-            if( aParentElements(iRowOrdinal) == -2 ) // no parent element found
-            {
-                tRowMap(iRowOrdinal) = 0;
-            }
-            else
-            if( aParentElements(iRowOrdinal) == -1 ) // not mapped
-            {
-                tRowMap(iRowOrdinal) = 1;
-            }
-            else
-            {
-                tRowMap(iRowOrdinal) = cNVertsPerElem; // mapped
-            }
-        }, "nonzeros");
-
-        OrdinalT tNumEntries(0);
-        Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalT>(0,tNumRows+1),
-        KOKKOS_LAMBDA (const OrdinalT& iOrdinal, OrdinalT& aUpdate, const bool& tIsFinal)
-        {
-            const OrdinalT tVal = tRowMap(iOrdinal);
-            if( tIsFinal )
-            {
-              tRowMap(iOrdinal) = aUpdate;
-            }
-            aUpdate += tVal;
-        }, tNumEntries);
-        aMatrix.mRowMap = tRowMap;
-
-        // determine column map and entries
-        OrdinalArrayT tColMap("row map", tNumEntries);
-        ScalarArrayT tEntries("entries", tNumEntries);
-        GetBasis<ScalarT> tGetBasis(aMesh);
-        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalT iRowOrdinal)
-        {
-            auto iEntryOrdinal = tRowMap(iRowOrdinal);
-            auto iElemOrdinal = aParentElements(iRowOrdinal);
-            if( iElemOrdinal == -1 ) // not mapped
-            {
-                tColMap(iEntryOrdinal) = iRowOrdinal;
-                tEntries(iEntryOrdinal) = 1.0;
-            }
-            else
-            {
-                tGetBasis(aLocation, iRowOrdinal, iElemOrdinal, iEntryOrdinal, tColMap, tEntries);
-            }
-
-        }, "colmap and entries");
-        mMatrix.mColMap = tColMap;
-        mMatrix.mEntries = tEntries;
-    }
-
-    SparseMatrix createMatrix(OrdinalArrayT aMask)
-    {
-
-        // determine nrows and ncolumns
-        //
-        OrdinalT tNumRows = aMask.extent(0);
-        OrdinalT tNumCols = 0;
-        Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalT aOrdinal, OrdinalT & aNumNonzeros)
-        {
-            if( aMask(aOrdinal) > 0 )
-            {
-                aNumNonzeros++;
-            }
-        }, tNumCols);
-
-        SparseMatrix tMatrix;
-        tMatrix.mNumRows = tNumRows;
-        tMatrix.mNumCols = tNumCols;
-
-        return tMatrix;
-    }
-
-    void createMask(Omega_h::Mesh& aMesh, IntegerArrayT aParentElements, OrdinalArrayT aMask)
-    {
-        auto tNVerts = aMesh.nverts();
-        typename OrdinalArrayT::value_type tFlag(1);
-        Omega_h::LOs tCells2Nodes = aMesh.ask_elem_verts();
-        Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNVerts), LAMBDA_EXPRESSION(OrdinalT iVertOrdinal)
-        {
-            OrdinalT tNVerts = cSpaceDim+1;
-
-            auto tParentElement = aParentElements(iVertOrdinal);
-
-            if( tParentElement >= 0 )
-            {
-                for(OrdinalT iElemVert=0; iElemVert<tNVerts; ++iElemVert)
-                {
-                    OrdinalT tVertIndex = tCells2Nodes[tParentElement*tNVerts + iElemVert];
-                    Kokkos::atomic_assign(&aMask(tVertIndex), tFlag);
-                }
-            }
-        }, "get mask");
     }
 
     void mapVertexLocations(Omega_h::Mesh& aMesh, VectorArrayT aLocations, VectorArrayT aMappedLocations)
@@ -1001,10 +1014,10 @@ class MeshMap : public Plato::Geometry::AbstractMeshMap<typename MathMapType::Sc
         }, "get verts and apply map");
     }
 
-    ~MeshMap()
+    ~MeshMapDerived()
     {
     }
-}; // end class MeshMap
+}; // end class MeshMapDerived
 
 
 
@@ -1012,7 +1025,7 @@ template <typename ScalarT = double>
 struct MeshMapFactory
 {
 
-    inline std::shared_ptr<Plato::Geometry::AbstractMeshMap<ScalarT>>
+    inline std::shared_ptr<Plato::Geometry::MeshMap<ScalarT>>
     create(Plato::InputData aInput)
     {
         // load mesh
@@ -1025,7 +1038,7 @@ struct MeshMapFactory
         return create(tMesh, aInput);
     }
 
-    inline std::shared_ptr<Plato::Geometry::AbstractMeshMap<ScalarT>>
+    inline std::shared_ptr<Plato::Geometry::MeshMap<ScalarT>>
     create(Omega_h::Mesh& aMesh, Plato::InputData aInput)
     {
         auto tLinearMapInputs = aInput.getByName<Plato::InputData>("LinearMap");
@@ -1044,11 +1057,11 @@ struct MeshMapFactory
 
         if(tLinearMapType == "SymmetryPlane")
         {
-            return std::make_shared<Plato::Geometry::MeshMap<SymmetryPlane<ScalarT>>>(aMesh, aInput);
+            return std::make_shared<Plato::Geometry::MeshMapDerived<SymmetryPlane<ScalarT>>>(aMesh, aInput);
         } else
         if(tLinearMapType == "")
         {
-            return std::make_shared<Plato::Geometry::MeshMap<Full<ScalarT>>>(aMesh, aInput);
+            return std::make_shared<Plato::Geometry::MeshMapDerived<Full<ScalarT>>>(aMesh, aInput);
         }
         else
         {

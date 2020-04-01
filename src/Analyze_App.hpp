@@ -31,7 +31,7 @@
 
 #ifdef PLATO_GEOMETRY
   #include "Plato_MeshMap.hpp"
-  typedef Plato::Geometry::AbstractMeshMap<Plato::Scalar> MeshMapType;
+  typedef Plato::Geometry::MeshMap<Plato::Scalar> MeshMapType;
 #else
   typedef int MeshMapType;
 #endif
