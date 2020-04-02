@@ -664,8 +664,8 @@ private:
         Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
 
         auto tMesh = mGlobalEquation->getMesh();
-        Plato::output_node_state_to_viz_file<mSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", *tMesh, aWriter);
-        Plato::output_node_state_to_viz_file<mSpaceDim, mSpaceDim>(tDisplacements, "Displacements", *tMesh, aWriter);
+        Plato::output_node_state_to_viz_file<mSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", tMesh, aWriter);
+        Plato::output_node_state_to_viz_file<mSpaceDim, mSpaceDim>(tDisplacements, "Displacements", tMesh, aWriter);
     }
 
     /***************************************************************************//**
