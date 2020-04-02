@@ -376,6 +376,15 @@ public:
     {
     }
 
+    /***************************************************************************//**
+     * \brief Return reference to Omega_h mesh database
+     * \return Omega_h mesh database
+    *******************************************************************************/
+    Omega_h::Mesh& getMesh() const
+    {
+        return (mVectorFunctionVMSResidual->getMesh());
+    }
+
     /**************************************************************************//**
     *
     * \brief Return number of degrees of freedom

@@ -12,6 +12,7 @@
 #include <Omega_h_assoc.hpp>
 
 #include "PlatoTypes.hpp"
+#include "PlatoUtilities.hpp"
 #include "alg/PlatoLambda.hpp"
 #include "ImplicitFunctors.hpp"
 
@@ -29,6 +30,52 @@ inline void write_exodus_file(const std::string& aFilepath, Omega_h::Mesh& aMesh
 {
     Omega_h::exodus::write(aFilepath, &aMesh);
 }
+
+/******************************************************************************//**
+ * \brief Add output tag for element states, e.g. states defined at the elements.
+ * \param [in] aMesh         mesh metadata
+ * \param [in] aStateDataMap output data map
+ * \param [in] aStepIndex    time step index
+ **********************************************************************************/
+inline void add_element_state_tags(Omega_h::Mesh& aMesh, const Plato::DataMap& aStateDataMap, Plato::OrdinalType aStepIndex)
+{
+    auto tDataMap = aStateDataMap.getState(aStepIndex);
+
+    auto tNumElements = aMesh.nelems();
+    {   // ScalarVectors
+        //
+        auto& tVars = tDataMap.scalarVectors;
+        for(auto tVar=tVars.begin(); tVar!=tVars.end(); ++tVar)
+        {
+            auto& tElemStateName = tVar->first;
+            auto& tElemStateData = tVar->second;
+            if(tElemStateData.extent(0) == tNumElements)
+            {
+                Omega_h::Write<Omega_h::Real> tElemStateWrite(tNumElements, tElemStateName);
+                Plato::copy_1Dview_to_write(tElemStateData, tElemStateWrite);
+                aMesh.add_tag(aMesh.dim(), tElemStateName, /*numDataPerElement=*/1, Omega_h::Reals(tElemStateWrite));
+            }
+        }
+    }
+    {   // ScalarMultiVectors
+        //
+        auto& tVars = tDataMap.scalarMultiVectors;
+        for(auto tVar=tVars.begin(); tVar!=tVars.end(); ++tVar)
+        {
+            auto& tElemStateName = tVar->first;
+            auto& tElemStateData = tVar->second;
+            if(tElemStateData.extent(0) == tNumElements)
+            {
+                auto tNumDataPerElement = tElemStateData.extent(1);
+                auto tNumData = tNumElements * tNumDataPerElement;
+                Omega_h::Write<Omega_h::Real> tElemStateWrite(tNumData, tElemStateName);
+                Plato::copy_2Dview_to_write(tElemStateData, tElemStateWrite);
+                aMesh.add_tag(aMesh.dim(), tElemStateName, tNumDataPerElement, Omega_h::Reals(tElemStateWrite));
+            }
+        }
+    }
+}
+// function add_element_state_tags
 
 /***************************************************************************//**
  * \brief Return the local identifiers/ordinals associated with this element face.
@@ -244,32 +291,6 @@ Omega_h::Write<T> create_omega_h_write_array(std::string aName, Plato::OrdinalTy
 // function create_omega_h_write_array
 
 /******************************************************************************//**
-* \brief Output node field to vtk file - convenient for visualization
-*
-* \tparam SpaceDim       spatial dimension
-* \tparam NumDofsPerNode number of degrees of freedom per node
-*
-* \param [in] aTime    time step
-* \param [in] aData    output data
-* \param [in] aName    output data name
-* \param [in] aMesh    mesh database
-* \param [in] aOutput  omega_h - vtk output interface
-*
-**********************************************************************************/
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumDofsPerNode>
-inline void output_vtk_node_field(const Plato::Scalar aTime,
-                                  const Plato::ScalarVector& aData,
-                                  const std::string& aName,
-                                  Omega_h::Mesh& aMesh,
-                                  Omega_h::vtk::Writer& aOutput)
-{
-    aMesh.add_tag(Omega_h::VERT, aName.c_str(), NumDofsPerNode, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(aData)));
-    auto tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpaceDim);
-    aOutput.write(static_cast<Omega_h::Real>(aTime), tTags);
-}
-// function output_vtk_node_field
-
-/******************************************************************************//**
 * \brief Output node field to visualization file - convenient for visualization
 *
 * \tparam SpaceDim       spatial dimension
@@ -277,22 +298,49 @@ inline void output_vtk_node_field(const Plato::Scalar aTime,
 *
 * \param [in] aField      2D field array - X(Time, Dofs)
 * \param [in] aFieldName  field name
-* \param [in] aFileName   output file name
-* \param [in] aMesh       mesh database
+* \param [in] aMesh       omega_h mesh database
+* \param [in] aWriter     omega_h output/viz interface
 *
 **********************************************************************************/
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumDofsPerNode>
-inline void output_node_field_to_viz_file
+inline void output_node_state_to_viz_file
 (const Plato::ScalarMultiVector& aField,
  const std::string& aFieldName,
- const std::string& aFileName,
- Omega_h::Mesh & aMesh)
+ Omega_h::Mesh & aMesh,
+ Omega_h::vtk::Writer& aWriter)
 {
-    Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFileName, &aMesh, SpaceDim);
-    for(Plato::OrdinalType tTime = 0; tTime < aField.dimension_0(); tTime++)
+    for(Plato::OrdinalType tSnapshot = 0; tSnapshot < aField.dimension_0(); tSnapshot++)
     {
-        auto tSubView = Kokkos::subview(aField, tTime, Kokkos::ALL());
-        Plato::output_vtk_node_field<SpaceDim, NumDofsPerNode>(tTime, tSubView, aFieldName, aMesh, tWriter);
+        auto tSubView = Kokkos::subview(aField, tSnapshot, Kokkos::ALL());
+        aMesh.add_tag(Omega_h::VERT, aFieldName.c_str(), NumDofsPerNode, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tSubView)));
+        auto tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpaceDim);
+        aWriter.write(/*time_index*/tSnapshot, /*current_time=*/(Plato::Scalar)tSnapshot, tTags);
+    }
+}
+// function output_node_state_to_viz_file
+
+/******************************************************************************//**
+* \brief Output element field to visualization file - convenient for visualization
+*
+* \tparam SpaceDim      spatial dimension
+*
+* \param [in] aMesh     omega_h mesh database
+* \param [in] aWriter   omega_h output/viz interface
+* \param [in] aWriter   omega_h output/viz interface
+*
+**********************************************************************************/
+template<Plato::OrdinalType SpaceDim>
+inline void output_element_state_to_viz_file
+(const Plato::OrdinalType& aNumSnapShots,
+ const Plato::DataMap& aDataMap,
+ Omega_h::Mesh & aMesh,
+ Omega_h::vtk::Writer& aWriter)
+{
+    for(Plato::OrdinalType tSnapshot = 0; tSnapshot < aNumSnapShots; tSnapshot++)
+    {
+        Plato::add_element_state_tags(aMesh, aDataMap, tSnapshot);
+        Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpaceDim);
+        aWriter.write(/*time_index*/tSnapshot, /*current_time=*/(Plato::Scalar)tSnapshot, tTags);
     }
 }
 // function output_node_field

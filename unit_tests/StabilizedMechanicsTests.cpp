@@ -202,7 +202,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     // 6. Output Data
     if(tOutputData)
     {
-        Plato::output_node_field_to_viz_file<tSpaceDim, tNumDofsPerNode>(tSolution, "State", "SolutionMesh", *tMesh);
+        tEllipticVMSProblem.saveStates("Output");
     }
 }
 

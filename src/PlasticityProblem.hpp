@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "EssentialBCs.hpp"
+#include "OmegaHUtilities.hpp"
 #include "NewtonRaphsonSolver.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "PathDependentAdjointSolver.hpp"
@@ -29,7 +30,7 @@ class PlasticityProblem : public Plato::AbstractProblem
 {
 // private member data
 private:
-    static constexpr auto mNumSpatialDims = PhysicsT::mNumSpatialDims;                /*!< spatial dimensions*/
+    static constexpr auto mSpaceDim = PhysicsT::mSpaceDim;                           /*!< spatial dimensions*/
     static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;              /*!< number of nodes per cell*/
     static constexpr auto mPressureDofOffset = PhysicsT::mPressureDofOffset;          /*!< number of pressure dofs offset*/
     static constexpr auto mNumGlobalDofsPerNode = PhysicsT::mNumDofsPerNode;          /*!< number of global degrees of freedom per node*/
@@ -37,11 +38,11 @@ private:
     static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;      /*!< number of local degrees of freedom per cell (i.e. element)*/
     static constexpr auto mNumPressGradDofsPerCell = PhysicsT::mNumNodeStatePerCell;  /*!< number of projected pressure gradient degrees of freedom per cell (i.e. element)*/
     static constexpr auto mNumPressGradDofsPerNode = PhysicsT::mNumNodeStatePerNode;  /*!< number of projected pressure gradient degrees of freedom per node*/
-    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell; /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
+    static constexpr auto mNumConfigDofsPerCell = mSpaceDim * mNumNodesPerCell; /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
 
     // Required
-    using PlasticityT = typename Plato::Plasticity<mNumSpatialDims>;
-    using ProjectorT  = typename Plato::Projection<mNumSpatialDims, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
+    using PlasticityT = typename Plato::Plasticity<mSpaceDim>;
+    using ProjectorT  = typename Plato::Projection<mSpaceDim, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
     std::shared_ptr<Plato::VectorFunctionVMS<ProjectorT>> mProjectionEquation;  /*!< global pressure gradient projection interface */
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;  /*!< global equality constraint interface */
     std::shared_ptr<Plato::LocalVectorFunctionInc<PlasticityT>> mLocalEquation; /*!< local equality constraint interface */
@@ -66,7 +67,7 @@ private:
     Plato::ScalarVector mDirichletValues;         /*!< values associated with the Dirichlet boundary conditions*/
     Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions*/
 
-    Plato::WorksetBase<Plato::SimplexPlasticity<mNumSpatialDims>> mWorksetBase; /*!< assembly routine interface */
+    Plato::WorksetBase<Plato::SimplexPlasticity<mSpaceDim>> mWorksetBase; /*!< assembly routine interface */
 
     std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver;         /*!< Newton-Raphson solve interface */
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
@@ -194,6 +195,18 @@ public:
         }
         mDirichletDofs = aDirichletDofs;
         mDirichletValues = aDirichletValues;
+    }
+
+    /***************************************************************************//**
+     * \brief Save states to visualization file
+     * \param [in] aFilepath output/viz directory path
+    *******************************************************************************/
+    void saveStates(const std::string& aFilepath)
+    {
+        auto tMesh = mGlobalEquation->getMesh();
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
+        this->saveNodeStates(tWriter);
+        this->saveElementStates(tWriter);
     }
 
     /***************************************************************************//**
@@ -636,6 +649,34 @@ private:
     {
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
         this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
+    }
+
+    /***************************************************************************//**
+     * \brief Save node states to visualization file
+     * \param [in] aWriter omega_h output/viz file interface
+    *******************************************************************************/
+    void saveNodeStates(Omega_h::vtk::Writer& aWriter)
+    {
+        auto tNumNodes = mGlobalEquation->getNumNodes();
+        Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
+        Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
+        Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalStates, tPressure);
+        Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
+
+        auto tMesh = mGlobalEquation->getMesh();
+        Plato::output_node_state_to_viz_file<mSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", *tMesh, aWriter);
+        Plato::output_node_state_to_viz_file<mSpaceDim, mSpaceDim>(tDisplacements, "Displacements", *tMesh, aWriter);
+    }
+
+    /***************************************************************************//**
+     * \brief Save element states to visualization file
+     * \param [in] aWriter omega_h output/viz file interface
+    *******************************************************************************/
+    void saveElementStates(Omega_h::vtk::Writer& aWriter)
+    {
+        auto tMesh = mGlobalEquation->getMesh();
+        auto tNumTimeSteps = mGlobalStates.extent(0);
+        Plato::output_element_state_to_viz_file<mSpaceDim>(tNumTimeSteps, mDataMap, tMesh, aWriter);
     }
 
     /***************************************************************************//**

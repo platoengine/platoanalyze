@@ -7,8 +7,10 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
+#include "BLAS2.hpp"
 #include "NaturalBCs.hpp"
 #include "EssentialBCs.hpp"
+#include "OmegaHUtilities.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 
@@ -34,6 +36,9 @@ template<typename SimplexPhysics>
 class EllipticVMSProblem: public Plato::AbstractProblem
 {
 private:
+    static constexpr auto mSpaceDim = SimplexPhysics::SpaceDim; /*!< spatial dimensions*/
+    static constexpr auto mPressureDofOffset = SimplexPhysics::mPressureDofOffset;          /*!< number of pressure dofs offset*/
+    static constexpr auto mNumGlobalDofsPerNode = SimplexPhysics::mNumDofsPerNode;          /*!< number of global degrees of freedom per node*/
 
     // required
     Plato::VectorFunctionVMS<SimplexPhysics> mEqualityConstraint; /*!< equality constraint interface */
@@ -87,6 +92,18 @@ public:
             mProjJacobian(Teuchos::null)
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
+    }
+
+    /***************************************************************************//**
+     * \brief Save states to visualization file
+     * \param [in] aFilepath output/viz directory path
+    *******************************************************************************/
+    void saveStates(const std::string& aFilepath)
+    {
+        auto tMesh = mStateProjection->getMesh();
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
+        this->saveNodeStates(tWriter);
+        this->saveElementStates(tWriter);
     }
 
     /******************************************************************************//**
@@ -718,6 +735,34 @@ private:
 
             mEta = Plato::ScalarVector("Eta", tLength);
         }
+    }
+
+    /***************************************************************************//**
+     * \brief Save node states to visualization file
+     * \param [in] aWriter omega_h output/viz file interface
+    *******************************************************************************/
+    void saveNodeStates(Omega_h::vtk::Writer& aWriter)
+    {
+        auto tNumNodes = mEqualityConstraint->getNumNodes();
+        Plato::ScalarMultiVector tPressure("Pressure", mGlobalState.extent(0), tNumNodes);
+        Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalState.extent(0), tNumNodes*mSpaceDim);
+        Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalState, tPressure);
+        Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalState, tDisplacements);
+
+        auto tMesh = mEqualityConstraint->getMesh();
+        Plato::output_node_state_to_viz_file<mSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", *tMesh, aWriter);
+        Plato::output_node_state_to_viz_file<mSpaceDim, mSpaceDim>(tDisplacements, "Displacements", *tMesh, aWriter);
+    }
+
+    /***************************************************************************//**
+     * \brief Save element states to visualization file
+     * \param [in] aWriter omega_h output/viz file interface
+    *******************************************************************************/
+    void saveElementStates(Omega_h::vtk::Writer& aWriter)
+    {
+        auto tMesh = mEqualityConstraint->getMesh();
+        auto tNumTimeSteps = mGlobalState.extent(0);
+        Plato::output_element_state_to_viz_file<mSpaceDim>(tNumTimeSteps, mDataMap, tMesh, aWriter);
     }
 };
 // class EllipticVMSProblem

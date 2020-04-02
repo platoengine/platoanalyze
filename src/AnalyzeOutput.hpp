@@ -13,55 +13,10 @@
 #include <Omega_h_teuchos.hpp>
 
 #include "PlatoUtilities.hpp"
+#include "OmegaHUtilities.hpp"
 #include "PlatoProblemFactory.hpp"
 namespace Plato
 {
-
-/******************************************************************************//**
- * \brief Add output tag for element states, e.g. state data defined at elements.
- * \param [in] aMesh         mesh metadata
- * \param [in] aStateDataMap Plato Analyze data map
- * \param [in] aStepIndex    time step index
- **********************************************************************************/
-inline void add_element_state_tags(Omega_h::Mesh& aMesh, const Plato::DataMap& aStateDataMap, Plato::OrdinalType aStepIndex)
-{ 
-    auto tDataMap = aStateDataMap.getState(aStepIndex);
-
-    auto tNumElements = aMesh.nelems();
-    {   // ScalarVectors
-        //
-        auto& tVars = tDataMap.scalarVectors;
-        for(auto tVar=tVars.begin(); tVar!=tVars.end(); ++tVar)
-        {
-            auto& tElemStateName = tVar->first;
-            auto& tElemStateData = tVar->second;
-            if(tElemStateData.extent(0) == tNumElements)
-            {
-                Omega_h::Write<Omega_h::Real> tElemStateWrite(tNumElements, tElemStateName);
-                Plato::copy_1Dview_to_write(tElemStateData, tElemStateWrite);
-                aMesh.add_tag(aMesh.dim(), tElemStateName, /*numDataPerElement=*/1, Omega_h::Reals(tElemStateWrite));
-            }
-        }
-    }
-    {   // ScalarMultiVectors
-        //
-        auto& tVars = tDataMap.scalarMultiVectors;
-        for(auto tVar=tVars.begin(); tVar!=tVars.end(); ++tVar)
-        {
-            auto& tElemStateName = tVar->first;
-            auto& tElemStateData = tVar->second;
-            if(tElemStateData.extent(0) == tNumElements)
-            {
-                auto tNumDataPerElement = tElemStateData.extent(1);
-                auto tNumData = tNumElements * tNumDataPerElement;
-                Omega_h::Write<Omega_h::Real> tElemStateWrite(tNumData, tElemStateName);
-                Plato::copy_2Dview_to_write(tElemStateData, tElemStateWrite);
-                aMesh.add_tag(aMesh.dim(), tElemStateName, tNumDataPerElement, Omega_h::Reals(tElemStateWrite));
-            }
-        }
-    }
-}
-// function add_element_state_tags
 
 
 /******************************************************************************//**
