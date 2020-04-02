@@ -97,13 +97,13 @@ public:
     /***************************************************************************//**
      * \brief Save states to visualization file
      * \param [in] aFilepath output/viz directory path
+     * \param [in] aMesh     omega_h mesh database
     *******************************************************************************/
-    void saveStates(const std::string& aFilepath)
+    void saveStates(const std::string& aFilepath, Omega_h::Mesh& aMesh)
     {
-        auto tMesh = mEqualityConstraint.getMesh();
-        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
-        this->saveNodeStates(tWriter);
-        this->saveElementStates(tWriter);
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &aMesh, mSpaceDim);
+        this->saveNodeStates(tWriter, aMesh);
+        this->saveElementStates(tWriter, aMesh);
     }
 
     /******************************************************************************//**
@@ -740,8 +740,9 @@ private:
     /***************************************************************************//**
      * \brief Save node states to visualization file
      * \param [in] aWriter omega_h output/viz file interface
+     * \param [in] aMesh   omega_h mesh database
     *******************************************************************************/
-    void saveNodeStates(Omega_h::vtk::Writer& aWriter)
+    void saveNodeStates(Omega_h::vtk::Writer& aWriter, Omega_h::Mesh& aMesh)
     {
         auto tNumNodes = mEqualityConstraint.numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalState.extent(0), tNumNodes);
@@ -749,20 +750,19 @@ private:
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalState, tPressure);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalState, tDisplacements);
 
-        auto tMesh = mEqualityConstraint.getMesh();
-        Plato::output_node_state_to_viz_file<mSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", tMesh, aWriter);
-        Plato::output_node_state_to_viz_file<mSpaceDim, mSpaceDim>(tDisplacements, "Displacements", tMesh, aWriter);
+        Plato::output_node_state_to_viz_file<mSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", aMesh, aWriter);
+        Plato::output_node_state_to_viz_file<mSpaceDim, mSpaceDim>(tDisplacements, "Displacements", aMesh, aWriter);
     }
 
     /***************************************************************************//**
      * \brief Save element states to visualization file
      * \param [in] aWriter omega_h output/viz file interface
+     * \param [in] aMesh   omega_h mesh database
     *******************************************************************************/
-    void saveElementStates(Omega_h::vtk::Writer& aWriter)
+    void saveElementStates(Omega_h::vtk::Writer& aWriter, Omega_h::Mesh& aMesh)
     {
-        auto tMesh = mEqualityConstraint.getMesh();
         auto tNumTimeSteps = mGlobalState.extent(0);
-        Plato::output_element_state_to_viz_file<mSpaceDim>(tNumTimeSteps, mDataMap, tMesh, aWriter);
+        Plato::output_element_state_to_viz_file<mSpaceDim>(tNumTimeSteps, mDataMap, aMesh, aWriter);
     }
 };
 // class EllipticVMSProblem
