@@ -2328,7 +2328,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform Pressure'/>         \n"
-      "     <Parameter  name='Value'    type='double'        value='-200'/>                     \n"
+      "     <Parameter  name='Value'    type='double'        value='-150'/>                     \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       " </ParameterList>                                                                        \n"
