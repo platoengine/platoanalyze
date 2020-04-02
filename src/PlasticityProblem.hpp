@@ -219,7 +219,8 @@ public:
             aMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubView)));
             Plato::add_element_state_tags(aMesh, mDataMap, tSnapshot);
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, mSpaceDim);
-            tWriter.write(/*time_index*/tSnapshot, /*current_time=*/(Plato::Scalar)tSnapshot, tTags);
+            auto tTime = mPseudoTimeStep * static_cast<Plato::Scalar>(tSnapshot + 1);
+            tWriter.write(tSnapshot, tTime, tTags);
         }
     }
 
