@@ -657,7 +657,7 @@ private:
     *******************************************************************************/
     void saveNodeStates(Omega_h::vtk::Writer& aWriter)
     {
-        auto tNumNodes = mGlobalEquation->getNumNodes();
+        auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
         Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalStates, tPressure);

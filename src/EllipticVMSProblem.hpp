@@ -100,7 +100,7 @@ public:
     *******************************************************************************/
     void saveStates(const std::string& aFilepath)
     {
-        auto tMesh = mStateProjection->getMesh();
+        auto tMesh = mEqualityConstraint.getMesh();
         Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
         this->saveNodeStates(tWriter);
         this->saveElementStates(tWriter);
@@ -743,13 +743,13 @@ private:
     *******************************************************************************/
     void saveNodeStates(Omega_h::vtk::Writer& aWriter)
     {
-        auto tNumNodes = mEqualityConstraint->getNumNodes();
+        auto tNumNodes = mEqualityConstraint.numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalState.extent(0), tNumNodes);
         Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalState.extent(0), tNumNodes*mSpaceDim);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalState, tPressure);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalState, tDisplacements);
 
-        auto tMesh = mEqualityConstraint->getMesh();
+        auto tMesh = mEqualityConstraint.getMesh();
         Plato::output_node_state_to_viz_file<mSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", *tMesh, aWriter);
         Plato::output_node_state_to_viz_file<mSpaceDim, mSpaceDim>(tDisplacements, "Displacements", *tMesh, aWriter);
     }
@@ -760,7 +760,7 @@ private:
     *******************************************************************************/
     void saveElementStates(Omega_h::vtk::Writer& aWriter)
     {
-        auto tMesh = mEqualityConstraint->getMesh();
+        auto tMesh = mEqualityConstraint.getMesh();
         auto tNumTimeSteps = mGlobalState.extent(0);
         Plato::output_element_state_to_viz_file<mSpaceDim>(tNumTimeSteps, mDataMap, tMesh, aWriter);
     }
