@@ -200,13 +200,13 @@ public:
     /***************************************************************************//**
      * \brief Save states to visualization file
      * \param [in] aFilepath output/viz directory path
+     * \param [in] aMesh     Omega_h mesh database
     *******************************************************************************/
-    void saveStates(const std::string& aFilepath)
+    void saveStates(const std::string& aFilepath, Omega_h::Mesh& aMesh)
     {
-        auto tMesh = mGlobalEquation->getMesh();
-        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
-        this->saveNodeStates(tWriter);
-        this->saveElementStates(tWriter);
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &aMesh, mSpaceDim);
+        this->saveNodeStates(tWriter, aMesh);
+        this->saveElementStates(tWriter, aMesh);
     }
 
     /***************************************************************************//**
@@ -639,6 +639,33 @@ public:
         return (tTotalDerivative);
     }
 
+    /***************************************************************************//**
+     * \brief Save node states to visualization file
+     * \param [in] aWriter omega_h output/viz file interface
+     * \param [in] aMesh   omega_h mesh database
+    *******************************************************************************/
+    void saveNodeStates(Omega_h::vtk::Writer& aWriter, Omega_h::Mesh& aMesh)
+    {
+        auto tNumNodes = mGlobalEquation->numNodes();
+        Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
+        Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
+        Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalStates, tPressure);
+        Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
+
+        Plato::output_node_state_to_viz_file<mSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", aMesh, aWriter);
+        Plato::output_node_state_to_viz_file<mSpaceDim, mSpaceDim>(tDisplacements, "Displacements", aMesh, aWriter);
+    }
+
+    /***************************************************************************//**
+     * \brief Save element states to visualization file
+     * \param [in] aWriter omega_h output/viz file interface
+    *******************************************************************************/
+    void saveElementStates(Omega_h::vtk::Writer& aWriter, Omega_h::Mesh& aMesh)
+    {
+        auto tNumTimeSteps = mGlobalStates.extent(0);
+        Plato::output_element_state_to_viz_file<mSpaceDim>(tNumTimeSteps, mDataMap, aMesh, aWriter);
+    }
+
 // private functions
 private:
     /***************************************************************************//**
@@ -649,34 +676,6 @@ private:
     {
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
         this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
-    }
-
-    /***************************************************************************//**
-     * \brief Save node states to visualization file
-     * \param [in] aWriter omega_h output/viz file interface
-    *******************************************************************************/
-    void saveNodeStates(Omega_h::vtk::Writer& aWriter)
-    {
-        auto tNumNodes = mGlobalEquation->numNodes();
-        Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
-        Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
-        Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalStates, tPressure);
-        Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
-
-        auto tMesh = mGlobalEquation->getMesh();
-        Plato::output_node_state_to_viz_file<mSpaceDim, 1 /*dofs per node*/>(tPressure, "Pressure", tMesh, aWriter);
-        Plato::output_node_state_to_viz_file<mSpaceDim, mSpaceDim>(tDisplacements, "Displacements", tMesh, aWriter);
-    }
-
-    /***************************************************************************//**
-     * \brief Save element states to visualization file
-     * \param [in] aWriter omega_h output/viz file interface
-    *******************************************************************************/
-    void saveElementStates(Omega_h::vtk::Writer& aWriter)
-    {
-        auto tMesh = mGlobalEquation->getMesh();
-        auto tNumTimeSteps = mGlobalStates.extent(0);
-        Plato::output_element_state_to_viz_file<mSpaceDim>(tNumTimeSteps, mDataMap, tMesh, aWriter);
     }
 
     /***************************************************************************//**

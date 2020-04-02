@@ -1737,7 +1737,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
     // 6. Output Data
     if(tOutputData)
     {
-        tPlasticityProblem.saveStates("ElasticSolution");
+        tPlasticityProblem.saveStates("ElasticSolution", *tMesh);
     }
 
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -1911,7 +1911,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamTraction2D");
+        tPlasticityProblem.saveStates("SimplySupportedBeamTraction2D", *tMesh);
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -2084,7 +2084,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D", *tMesh);
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -2253,7 +2253,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if (tOutputData)
     {
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D", *tMesh);
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -2294,6 +2294,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Infinite Strain Plasticity'>                                      \n"
+      "    <Parameter name='Plottable' type='Array(string)' value='{elastic stress, accumulated plastic strain, plastic multiplier increment, elastic strain, deviatoric stress, plastic strain, backstress}'/>\n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
       "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
@@ -2378,8 +2379,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 6. Output Data
     if(tOutputData)
     {
-        Plato::write_exodus_file("beam.exo", tMesh.operator*());
-        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
+        tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D", *tMesh);
     }
 
     if(tDeleteSolverStats)
