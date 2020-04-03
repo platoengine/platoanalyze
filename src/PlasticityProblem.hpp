@@ -48,24 +48,25 @@ private:
     std::shared_ptr<Plato::LocalVectorFunctionInc<PlasticityT>> mLocalEquation; /*!< local equality constraint interface */
 
     // Optional
-    std::shared_ptr<Plato::LocalScalarFunctionInc> mObjective;  /*!< objective constraint interface*/
-    std::shared_ptr<Plato::LocalScalarFunctionInc> mConstraint; /*!< constraint constraint interface*/
+    std::shared_ptr<Plato::LocalScalarFunctionInc> mObjective;  /*!< objective constraint interface */
+    std::shared_ptr<Plato::LocalScalarFunctionInc> mConstraint; /*!< constraint constraint interface */
 
-    Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps*/
-    Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps*/
+    Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps */
+    Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps */
 
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
-    Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual*/
+    Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual */
     Plato::Scalar mDispControlConstant;           /*!< current pseudo time step */
     Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
 
     Plato::ScalarVector mPressure;                /*!< projected pressure field */
-    Plato::ScalarMultiVector mLocalStates;        /*!< local state variables*/
-    Plato::ScalarMultiVector mGlobalStates;       /*!< global state variables*/
-    Plato::ScalarMultiVector mProjectedPressGrad; /*!< projected pressure gradient (# Time Steps, # Projected Pressure Gradient dofs)*/
+    Plato::ScalarMultiVector mLocalStates;        /*!< local state variables */
+    Plato::ScalarMultiVector mGlobalStates;       /*!< global state variables */
+    Plato::ScalarMultiVector mReactionForce;      /*!< reaction */
+    Plato::ScalarMultiVector mProjectedPressGrad; /*!< projected pressure gradient (# Time Steps, # Projected Pressure Gradient dofs) */
 
-    Plato::ScalarVector mDirichletValues;         /*!< values associated with the Dirichlet boundary conditions*/
-    Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions*/
+    Plato::ScalarVector mDirichletValues;         /*!< values associated with the Dirichlet boundary conditions */
+    Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
 
     Plato::WorksetBase<Plato::SimplexPlasticity<mSpaceDim>> mWorksetBase; /*!< assembly routine interface */
 
@@ -95,6 +96,7 @@ public:
             mPressure("Previous Pressure Field", aMesh.nverts()),
             mLocalStates("Local States", mNumPseudoTimeSteps, mLocalEquation->size()),
             mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalEquation->size()),
+            mReactionForce("Reaction Force", mNumPseudoTimeSteps, aMesh.nverts()),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEquation->size()),
             mWorksetBase(aMesh),
             mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs)),
@@ -122,6 +124,7 @@ public:
             mPressure("Pressure Field", aMesh.nverts()),
             mLocalStates("Local States", mNumPseudoTimeSteps, aMesh.nelems() * mNumLocalDofsPerCell),
             mGlobalStates("Global States", mNumPseudoTimeSteps, aMesh.nverts() * mNumGlobalDofsPerNode),
+            mReactionForce("Reaction Force", mNumPseudoTimeSteps, aMesh.nverts()),
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, aMesh.nverts() * mNumPressGradDofsPerNode),
             mWorksetBase(aMesh),
             mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh)),
@@ -215,7 +218,9 @@ public:
         {
             auto tPressSubView = Kokkos::subview(tPressure, tSnapshot, Kokkos::ALL());
             auto tDispSubView = Kokkos::subview(tDisplacements, tSnapshot, Kokkos::ALL());
+            auto tForceSubView = Kokkos::subview(mReactionForce, tSnapshot, Kokkos::ALL());
             aMesh.add_tag(Omega_h::VERT, "Pressure", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tPressSubView)));
+            aMesh.add_tag(Omega_h::VERT, "Reaction Force", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tForceSubView)));
             aMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubView)));
             Plato::add_element_state_tags(aMesh, mDataMap, tSnapshot);
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, mSpaceDim);
@@ -654,6 +659,29 @@ public:
         return (tTotalDerivative);
     }
 
+    /***************************************************************************//**
+     * \brief Compute reaction force.
+     * \param [in] aControl 1D view of controls
+     * \param [in] aStates  C++ structure with current state information
+    *******************************************************************************/
+    void computeReactionForce(const Plato::ScalarVector &aControl, Plato::CurrentStates &aStates)
+    {
+        mDataMap.mScalarValues["LoadControlConstant"] = 0.0;
+        auto tInternalForce = mGlobalEquation->value(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
+                                                     aStates.mCurrentLocalState,  aStates.mPreviousLocalState,
+                                                     aControl, aStates.mCurrentStepIndex);
+
+        auto tNumNodes = mGlobalEquation->numNodes();
+        auto tReactionForce = Kokkos::subview(mReactionForce, aStates.mCurrentStepIndex, Kokkos::ALL());
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType &aOrdinal)
+        {
+            for(Plato::OrdinalType tDim = 0; tDim < mSpaceDim; tDim++)
+            {
+                tReactionForce(aOrdinal) += tInternalForce(aOrdinal*mNumGlobalDofsPerNode+tDim);
+            }
+        }, "reaction force");
+    }
+
 // private functions
 private:
     /***************************************************************************//**
@@ -687,9 +715,9 @@ private:
     {
         mDataMap.clearStates();
 
-        Plato::CurrentStates tStateData;
+        Plato::CurrentStates tCurrentState;
         auto tNumCells = mLocalEquation->numCells();
-        tStateData.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalEquation->size());
+        tCurrentState.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalEquation->size());
 
         this->initializeNewtonSolver();
 
@@ -701,15 +729,18 @@ private:
                 << mPseudoTimeStep * static_cast<Plato::Scalar>(tCurrentStepIndex + 1) << "\n";
             mNewtonSolver->appendOutputMessage(tMsg);
 
-            tStateData.mCurrentStepIndex = tCurrentStepIndex;
-            this->cacheStateData(tStateData);
+            tCurrentState.mCurrentStepIndex = tCurrentStepIndex;
+            this->cacheStateData(tCurrentState);
 
             // update displacement and load control multiplier
             this->updateDispAndLoadControlMultipliers(tCurrentStepIndex);
 
             // update local and global states
-            bool tNewtonRaphsonConverged = mNewtonSolver->solve(aControls, tStateData);
+            bool tNewtonRaphsonConverged = mNewtonSolver->solve(aControls, tCurrentState);
             mDataMap.saveState();
+
+            // compute reaction force
+            this->computeReactionForce(aControls, tCurrentState);
 
             if(tNewtonRaphsonConverged == false)
             {
@@ -722,7 +753,7 @@ private:
             }
 
             // update projected pressure gradient state
-            this->updateProjectedPressureGradient(aControls, tStateData);
+            this->updateProjectedPressureGradient(aControls, tCurrentState);
         }
 
         tToleranceSatisfied = true;
