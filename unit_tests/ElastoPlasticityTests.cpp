@@ -255,8 +255,8 @@ public:
         auto tElasticBulkModulus = mElasticBulkModulus;
         auto tElasticShearModulus = mElasticShearModulus;
 
-        auto tQuadratureWeight = mCubatureRule->getCubWeight();
-        auto tBasisFunctions = mCubatureRule->getBasisFunctions();
+        auto tQuadratureWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
         {
             // compute configuration gradients
