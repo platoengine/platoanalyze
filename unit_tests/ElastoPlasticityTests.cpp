@@ -299,7 +299,7 @@ public:
             tPressureDivergence (aCellOrdinal, aResult, tPressure, tConfigurationGradient, tCellVolume);
             tStabilizedDivergence (aCellOrdinal, aResult, tStabilization, tConfigurationGradient, tCellVolume, -1.0);
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
-        }, "stabilized infinitesimal strain plasticity residual");
+        }, "stabilized infinitesimal strain plasticity - internal force");
     }
 };
 
