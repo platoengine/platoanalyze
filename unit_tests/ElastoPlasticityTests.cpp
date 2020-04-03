@@ -18,6 +18,293 @@
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
 
+namespace Plato
+{
+
+template<typename EvaluationType, typename SimplexPhysicsType>
+class InfinitesimalStrainPlasticityInternalForce : public Plato::AbstractGlobalVectorFunctionInc<EvaluationType>
+{
+// Private member data
+private:
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;                      /*!< number of spatial dimensions */
+    static constexpr auto mNumStressTerms = SimplexPhysicsType::mNumStressTerms;       /*!< number of stress/strain components */
+    static constexpr auto mNumDofsPerCell = SimplexPhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
+    static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell;     /*!< number nodes per cell */
+    static constexpr auto mPressureDofOffset = SimplexPhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
+    static constexpr auto mNumGlobalDofsPerNode = SimplexPhysicsType::mNumDofsPerNode; /*!< number of global dofs per node */
+
+    static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
+    static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
+
+    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mMesh;     /*!< mesh database */
+    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
+    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mMeshSets; /*!< side-sets metadata */
+
+    using GlobalStateT = typename EvaluationType::StateScalarType;             /*!< global state variables automatic differentiation type */
+    using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
+    using LocalStateT = typename EvaluationType::LocalStateScalarType;         /*!< local state variables automatic differentiation type */
+    using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType; /*!< local state variables automatic differentiation type */
+    using NodeStateT = typename EvaluationType::NodeStateScalarType;           /*!< node State AD type */
+    using ControlT = typename EvaluationType::ControlScalarType;               /*!< control variables automatic differentiation type */
+    using ConfigT = typename EvaluationType::ConfigScalarType;                 /*!< config variables automatic differentiation type */
+    using ResultT = typename EvaluationType::ResultScalarType;                 /*!< result variables automatic differentiation type */
+
+    Plato::Scalar mPoissonsRatio;                  /*!< Poisson's ratio */
+    Plato::Scalar mElasticModulus;                 /*!< elastic modulus */
+    Plato::Scalar mPressureScaling;                /*!< Pressure scaling term */
+    Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
+    Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
+    Plato::Scalar mElasticPropertiesPenaltySIMP;   /*!< SIMP penalty for elastic properties */
+    Plato::Scalar mElasticPropertiesMinErsatzSIMP; /*!< SIMP min ersatz stiffness for elastic properties */
+
+    Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule; /*!< linear cubature rule */
+
+// Private access functions
+private:
+    /***************************************************************************//**
+     * \brief initialize material, loads and output data
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    *******************************************************************************/
+    void initialize(Teuchos::ParameterList &aProblemParams)
+    {
+        this->parseMaterialProperties(aProblemParams);
+        this->parseMaterialPenaltyInputs(aProblemParams);
+    }
+
+    /***************************************************************************//**
+     * \brief Parse material penalty inputs
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    *******************************************************************************/
+    void parseMaterialPenaltyInputs(Teuchos::ParameterList &aProblemParams)
+    {
+        if(aProblemParams.isSublist("Infinite Strain Plasticity"))
+        {
+            auto tResidualParams = aProblemParams.sublist("Infinite Strain Plasticity");
+            if(tResidualParams.isSublist("Penalty Function"))
+            {
+                auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
+                mElasticPropertiesPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Exponent", 3.0);
+                mElasticPropertiesMinErsatzSIMP = tPenaltyParams.get<Plato::Scalar>("Minimum Value", 1e-9);
+            }
+        }
+        else
+        {
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Infinite Strain Plasticity' sublist is not defined in XML input file.")
+        }
+    }
+
+    /**********************************************************************//**
+     * \brief Parse elastic material properties
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    **************************************************************************/
+    void parseMaterialProperties(Teuchos::ParameterList &aProblemParams)
+    {
+        if(aProblemParams.isSublist("Material Model"))
+        {
+            this->parseIsotropicMaterialProperties(aProblemParams);
+        }
+        else
+        {
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Material Model' sublist is not defined.")
+        }
+    }
+
+    /**********************************************************************//**
+     * \brief Parse isotropic material parameters
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    **************************************************************************/
+    void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
+    {
+        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
+        if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
+        {
+            auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
+            mPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
+            mElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
+            mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
+            mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
+            this->parsePressureTermScaling(tMaterialInputs);
+        }
+        else
+        {
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
+        }
+    }
+
+    /**********************************************************************//**
+     * \brief Parse pressure scaling, needed to improve the condition number.
+     * \param [in] aMatParamList material model inputs, i.e. parameter list
+    **************************************************************************/
+    void parsePressureTermScaling(Teuchos::ParameterList & aMatParamList)
+    {
+        if (aMatParamList.isType<Plato::Scalar>("Pressure Scaling"))
+        {
+            mPressureScaling = aMatParamList.get<Plato::Scalar>("Pressure Scaling");
+        }
+        else
+        {
+            mPressureScaling = mElasticBulkModulus;
+        }
+    }
+
+// Public access functions
+public:
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aMesh          mesh metadata
+     * \param [in] aMeshSets      side-sets metadata
+     * \param [in] aDataMap       output data map
+     * \param [in] aProblemParams input XML data
+     * \param [in] aPenaltyParams penalty function input XML data
+    *******************************************************************************/
+    InfinitesimalStrainPlasticityInternalForce(Omega_h::Mesh &aMesh,
+                                               Omega_h::MeshSets &aMeshSets,
+                                               Plato::DataMap &aDataMap,
+                                               Teuchos::ParameterList &aInputParams) :
+        Plato::AbstractGlobalVectorFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap),
+        mPoissonsRatio(-1.0),
+        mElasticModulus(-1.0),
+        mPressureScaling(1.0),
+        mElasticBulkModulus(-1.0),
+        mElasticShearModulus(-1.0),
+        mElasticPropertiesPenaltySIMP(3),
+        mElasticPropertiesMinErsatzSIMP(1e-9),
+        mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mSpaceDim>())
+    {
+        this->initialize(aInputParams);
+    }
+
+    /***************************************************************************//**
+     * \brief Destructor
+    *******************************************************************************/
+    virtual ~InfinitesimalStrainPlasticityInternalForce()
+    {
+    }
+
+    /***************************************************************************//**
+     * \brief Set load control multiplier
+     * \param [in] aInput load control multiplier
+    *******************************************************************************/
+    void setLoadControlMultiplier(const Plato::Scalar& aInput)
+    {
+        mDataMap.mScalarValues["LoadControlConstant"] = aInput;
+    }
+
+    /************************************************************************//**
+     * \brief Evaluate the stabilized residual equation
+     *
+     * \param [in]     aCurrentGlobalState    current global state workset ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aPrevGlobalState       previous global state workset ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
+     * \param [in]     aCurrentLocalState     current local state workset ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aPrevLocalState        previous local state workset ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
+     * \param [in]     aProjectedPressureGrad current pressure gradient workset ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aControls               design variables workset
+     * \param [in]     aConfig                configuration workset
+     * \param [in/out] aResult                residual workset
+     * \param [in]     aTimeStep              current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
+     *
+    ****************************************************************************/
+    void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
+                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPrevGlobalState,
+                  const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
+                  const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPrevLocalState,
+                  const Plato::ScalarMultiVectorT<NodeStateT> &aProjectedPressureGrad,
+                  const Plato::ScalarMultiVectorT<ControlT> &aControls,
+                  const Plato::ScalarArray3DT<ConfigT> &aConfig,
+                  const Plato::ScalarMultiVectorT<ResultT> &aResult,
+                  Plato::Scalar aTimeStep = 0.0) override
+    {
+        auto tNumCells = mMesh.nelems();
+        using GradScalarT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
+        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
+
+        // Functors used to compute residual-related quantities
+        Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
+        Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+        Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
+        Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence ;
+        Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
+        Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
+        Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
+        Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0 /* dof offset */, mSpaceDim> tInterpolatePressGradFromNodal;
+
+        // Residual evaulation functors
+        Plato::PressureDivergence<mSpaceDim, mNumGlobalDofsPerNode> tPressureDivergence;
+        Plato::StressDivergence<mSpaceDim, mNumGlobalDofsPerNode, mMechDofOffset> tStressDivergence;
+        Plato::ProjectToNode<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tProjectVolumeStrain;
+        Plato::FluxDivergence<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tStabilizedDivergence;
+        Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
+
+        Plato::ScalarVectorT<ResultT> tPressure("L2 pressure", tNumCells);
+        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
+        Plato::ScalarVectorT<ResultT> tVolumeStrain("volume strain", tNumCells);
+        Plato::ScalarVectorT<ResultT> tStrainDivergence("strain divergence", tNumCells);
+        Plato::ScalarMultiVectorT<ResultT> tStabilization("cell stabilization", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<GradScalarT> tPressureGrad("pressure gradient", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<GradScalarT> tTotalStrain("total strain", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<ResultT> tDeviatoricStress("deviatoric stress", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
+        Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
+        Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
+
+        // Transfer elasticity parameters to device
+        auto tNumDofsPerNode = mNumGlobalDofsPerNode;
+        auto tPressureScaling = mPressureScaling;
+        auto tPressureDofOffset = mPressureDofOffset;
+        auto tElasticBulkModulus = mElasticBulkModulus;
+        auto tElasticShearModulus = mElasticShearModulus;
+
+        auto tQuadratureWeight = mCubatureRule->getCubWeight();
+        auto tBasisFunctions = mCubatureRule->getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
+        {
+            // compute configuration gradients
+            tComputeGradient(aCellOrdinal, tConfigurationGradient, aConfig, tCellVolume);
+            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
+
+            // compute elastic strain, i.e. e_elastic = e_total - e_plastic
+            tComputeTotalStrain(aCellOrdinal, tTotalStrain, aCurrentGlobalState, tConfigurationGradient);
+            tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
+                                                        tBasisFunctions, tTotalStrain, tElasticStrain);
+
+            // compute pressure gradient
+            tComputeScalarGrad(aCellOrdinal, tNumDofsPerNode, tPressureDofOffset,
+                               aCurrentGlobalState, tConfigurationGradient, tPressureGrad);
+
+            // interpolate projected pressure grad, pressure, and temperature to gauss point
+            tInterpolatePressureFromNodal(aCellOrdinal, tBasisFunctions, aCurrentGlobalState, tPressure);
+            tInterpolatePressGradFromNodal(aCellOrdinal, tBasisFunctions, aProjectedPressureGrad, tProjectedPressureGradGP);
+
+            // compute cell penalty
+            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
+            ControlT tElasticPropertiesPenalty = tPenaltyFunction(tDensity);
+
+            // compute deviatoric stress and displacement divergence
+            ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
+            tJ2PlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
+            tComputeStrainDivergence(aCellOrdinal, tTotalStrain, tStrainDivergence);
+
+            // compute volume difference
+            tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
+            tVolumeStrain(aCellOrdinal) = tPressureScaling * tElasticPropertiesPenalty
+                * (tStrainDivergence(aCellOrdinal) - tPressure(aCellOrdinal) / tElasticBulkModulus);
+
+            // compute cell stabilization term
+            tComputeStabilization(aCellOrdinal, tCellVolume, tPressureGrad, tProjectedPressureGradGP, tStabilization);
+            Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
+
+            // compute residual
+            tStressDivergence (aCellOrdinal, aResult, tDeviatoricStress, tConfigurationGradient, tCellVolume);
+            tPressureDivergence (aCellOrdinal, aResult, tPressure, tConfigurationGradient, tCellVolume);
+            tStabilizedDivergence (aCellOrdinal, aResult, tStabilization, tConfigurationGradient, tCellVolume, -1.0);
+            tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
+        }, "stabilized infinitesimal strain plasticity residual");
+    }
+};
+
+}
+
 namespace ElastoPlasticityTests
 {
 
@@ -1394,6 +1681,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticStrain3D
     }
 }
 
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual2D_Elastic)
 {
     // 1. PREPARE PROBLEM INPUS FOR TEST
@@ -1501,7 +1789,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual3D_Elastic)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
-    Teuchos::RCP<Teuchos::ParameterList> tElastoPlasticityInputs =
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
         "<ParameterList name='Plato Problem'>                                   \n"
         "  <ParameterList name='Material Model'>                                \n"
@@ -1568,7 +1856,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual3D_Elastic)
     Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalState("previous local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
 
     // 3. CALL FUNCTION
-    Plato::InfinitesimalStrainPlasticityResidual<EvalType, PhysicsT> tComputeResidual(*tMesh, tMeshSets, tDataMap, *tElastoPlasticityInputs);
+    Plato::InfinitesimalStrainPlasticityResidual<EvalType, PhysicsT> tComputeResidual(*tMesh, tMeshSets, tDataMap, *tInputs);
     Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tResidual("residual", tNumCells, PhysicsT::mNumDofsPerCell);
     tComputeResidual.evaluate(tCurrentGlobalState, tPrevGlobalState, tCurrentLocalState, tPrevLocalState,
                               tProjectedPressureGrad, tDesignVariables, tConfiguration, tResidual);
@@ -1599,6 +1887,106 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual3D_Elastic)
         {
             //printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostElastoPlasticityResidual(tCellIndex, tDofIndex));
             TEST_FLOATING_EQUALITY(tHostResidual(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+        }
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_InternalForce2D)
+{
+    // 1. PREPARE PROBLEM INPUS FOR TEST
+    Plato::DataMap tDataMap;
+    Omega_h::MeshSets tMeshSets;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1.0, 1.0, 1, 1);
+
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+        "<ParameterList name='Plato Problem'>                                   \n"
+        "  <ParameterList name='Material Model'>                                \n"
+        "    <ParameterList name='Isotropic Linear Elastic'>                    \n"
+        "      <Parameter  name='Poissons Ratio' type='double' value='0.35'/>   \n"
+        "      <Parameter  name='Youngs Modulus' type='double' value='1e11'/>   \n"
+        "    </ParameterList>                                                   \n"
+        "  </ParameterList>                                                     \n"
+        "  <ParameterList name='Infinite Strain Plasticity'>                    \n"
+        "    <ParameterList name='Penalty Function'>                            \n"
+        "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
+        "      <Parameter name='Exponent' type='double' value='3.0'/>           \n"
+        "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>   \n"
+        "    </ParameterList>                                                   \n"
+        "  </ParameterList>                                                     \n"
+        "</ParameterList>                                                       \n"
+      );
+
+    // 2. PREPARE FUNCTION INPUTS FOR TEST
+    const Plato::OrdinalType tNumNodes = tMesh->nverts();
+    const Plato::OrdinalType tNumCells = tMesh->nelems();
+    using SimplexT = Plato::SimplexPlasticity<tSpaceDim>;
+    using EvalType = typename Plato::Evaluation<SimplexT>::Residual;
+    Plato::WorksetBase<SimplexT> tWorksetBase(*tMesh);
+
+    // 2.1 SET CONFIGURATION
+    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfigWS("configuration", tNumCells, SimplexT::mNumNodesPerCell, tSpaceDim);
+    tWorksetBase.worksetConfig(tConfigWS);
+
+    // 2.2 SET DESIGN VARIABLES
+    Plato::ScalarMultiVectorT<EvalType::ControlScalarType> tControlWS("design variables", tNumCells, SimplexT::mNumNodesPerCell);
+    Kokkos::deep_copy(tControlWS, 1.0);
+
+    // 2.3 SET GLOBAL STATE
+    auto tNumDofsPerNode = SimplexT::mNumDofsPerNode;
+    Plato::ScalarVector tGlobalState("global state", tSpaceDim * tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // press
+    }, "set global state");
+    Plato::ScalarMultiVectorT<EvalType::StateScalarType> tCurrGlobalStateWS("current global state", tNumCells, SimplexT::mNumDofsPerCell);
+    tWorksetBase.worksetState(tGlobalState, tCurrGlobalStateWS);
+    Plato::ScalarMultiVectorT<EvalType::PrevStateScalarType> tPrevGlobalStateWS("previous global state", tNumCells, SimplexT::mNumDofsPerCell);
+
+    // 2.4 SET PROJECTED PRESSURE GRADIENT
+    auto tNumNodesPerCell = SimplexT::mNumNodesPerCell;
+    Plato::ScalarMultiVectorT<EvalType::NodeStateScalarType> tProjPressGradWS("projected pressure grad", tNumCells, SimplexT::mNumNodeStatePerCell);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tNodeIndex=0; tNodeIndex< tNumNodesPerCell; tNodeIndex++)
+        {
+            for(Plato::OrdinalType tDimIndex=0; tDimIndex< tSpaceDim; tDimIndex++)
+            {
+                tProjPressGradWS(aCellOrdinal, tNodeIndex*tSpaceDim+tDimIndex) = (4e-7)*(tNodeIndex+1)*(tDimIndex+1)*(aCellOrdinal+1);
+            }
+        }
+    }, "set projected pressure grad");
+
+    // 2.5 SET LOCAL STATE
+    Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tCurrLocalStateWS("current local state", tNumCells, SimplexT::mNumLocalDofsPerCell);
+    Plato::ScalarMultiVectorT<EvalType::PrevLocalStateScalarType> tPrevLocalStateWS("previous local state", tNumCells, SimplexT::mNumLocalDofsPerCell);
+
+    // 3. CALL FUNCTION
+    Plato::InfinitesimalStrainPlasticityInternalForce<EvalType, SimplexT> tInternalForce(*tMesh, tMeshSets, tDataMap, *tInputs);
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tInternalForceWS("internal force", tNumCells, SimplexT::mNumDofsPerCell);
+    tInternalForce.evaluate(tCurrGlobalStateWS, tPrevGlobalStateWS,
+                            tCurrLocalStateWS, tPrevLocalStateWS,
+                            tProjPressGradWS, tControlWS, tConfigWS,
+                            tInternalForceWS);
+
+    // 5. TEST RESULTS
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostInternalForceWS = Kokkos::create_mirror(tInternalForceWS);
+    Kokkos::deep_copy(tHostInternalForceWS, tInternalForceWS);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{-0.3108974359, -0.1923076923, 0.2003656347, 0.1185897436, 0.0737179487, -0.3967844462, 0.1923076923, 0.1185897436, 0.0297521448},
+         {0.125, 0.1153846154, -0.0853066085, -0.0096153846, 0.0480769231, 5.45966e-07,  -0.1153846154, -0.1634615385, 0.0853060625}};
+    for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
+    {
+        for(Plato::OrdinalType tDofIndex=0; tDofIndex< SimplexT::mNumDofsPerCell; tDofIndex++)
+        {
+            printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostInternalForceWS(tCellIndex, tDofIndex));
+            //TEST_FLOATING_EQUALITY(tHostInternalForceWS(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
         }
     }
 }
