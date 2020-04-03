@@ -1987,15 +1987,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_InternalForce2D)
     auto tHostInternalForceWS = Kokkos::create_mirror(tInternalForceWS);
     Kokkos::deep_copy(tHostInternalForceWS, tInternalForceWS);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{-0.3108974359, -0.1923076923, 0.2003656347, 0.1185897436, 0.0737179487, -0.3967844462, 0.1923076923, 0.1185897436, 0.0297521448},
-         {0.125, 0.1153846154, -0.0853066085, -0.0096153846, 0.0480769231, 5.45966e-07,  -0.1153846154, -0.1634615385, 0.0853060625}};
+        {{-37654.3209876543, -9259.2592592593, 39839.6319632724, 28395.0617283951, -9876.5432098765, -70403.459902529,
+           9259.2592592593, 19135.8024691358, 8341.6057170345, 16666.6666666667, 5555.5555555556, -15749.01312293,
+          -11111.111111111, 14814.8148148148, 0.000000756, -5555.5555555556, -20370.3703703704, 15749.013122174}};
     for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
     {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< SimplexT::mNumDofsPerCell; tDofIndex++)
         {
-            printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostResidualWS(tCellIndex, tDofIndex));
-            printf("internal force(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostInternalForceWS(tCellIndex, tDofIndex));
-            //TEST_FLOATING_EQUALITY(tHostInternalForceWS(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            //printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostResidualWS(tCellIndex, tDofIndex));
+            //printf("internal force(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostInternalForceWS(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostResidualWS(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            TEST_FLOATING_EQUALITY(tHostInternalForceWS(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            TEST_FLOATING_EQUALITY(tHostInternalForceWS(tCellIndex, tDofIndex), tHostResidualWS(tCellIndex, tDofIndex), tTolerance);
         }
     }
 }
