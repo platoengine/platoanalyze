@@ -1897,8 +1897,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_InternalForce2D)
     // 1. PREPARE PROBLEM INPUS FOR TEST
     Plato::DataMap tDataMap;
     Omega_h::MeshSets tMeshSets;
-    constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1.0, 1.0, 1, 1);
 
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
