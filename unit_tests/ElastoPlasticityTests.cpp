@@ -1974,7 +1974,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_InternalForce2D)
                             tInternalForceWS);
 
     Plato::InfinitesimalStrainPlasticityResidual<EvalType, SimplexT> tResidual(*tMesh, tMeshSets, tDataMap, *tInputs);
-    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tResidualWS("internal force", tNumCells, SimplexT::mNumDofsPerCell);
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tResidualWS("residual", tNumCells, SimplexT::mNumDofsPerCell);
     tResidual.evaluate(tCurrGlobalStateWS, tPrevGlobalStateWS,
                        tCurrLocalStateWS, tPrevLocalStateWS,
                        tProjPressGradWS, tControlWS, tConfigWS,
