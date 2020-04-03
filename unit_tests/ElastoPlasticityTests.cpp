@@ -1973,8 +1973,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_InternalForce2D)
                             tProjPressGradWS, tControlWS, tConfigWS,
                             tInternalForceWS);
 
+    Plato::InfinitesimalStrainPlasticityResidual<EvalType, SimplexT> tResidual(*tMesh, tMeshSets, tDataMap, *tInputs);
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tResidualWS("internal force", tNumCells, SimplexT::mNumDofsPerCell);
+    tResidual.evaluate(tCurrGlobalStateWS, tPrevGlobalStateWS,
+                       tCurrLocalStateWS, tPrevLocalStateWS,
+                       tProjPressGradWS, tControlWS, tConfigWS,
+                       tResidualWS);
+
     // 5. TEST RESULTS
     constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostResidualWS = Kokkos::create_mirror(tResidualWS);
+    Kokkos::deep_copy(tHostResidualWS, tResidualWS);
     auto tHostInternalForceWS = Kokkos::create_mirror(tInternalForceWS);
     Kokkos::deep_copy(tHostInternalForceWS, tInternalForceWS);
     std::vector<std::vector<Plato::Scalar>> tGold =
@@ -1984,7 +1993,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_InternalForce2D)
     {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< SimplexT::mNumDofsPerCell; tDofIndex++)
         {
-            printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostInternalForceWS(tCellIndex, tDofIndex));
+            printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostResidualWS(tCellIndex, tDofIndex));
+            printf("internal force(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostInternalForceWS(tCellIndex, tDofIndex));
             //TEST_FLOATING_EQUALITY(tHostInternalForceWS(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
         }
     }
