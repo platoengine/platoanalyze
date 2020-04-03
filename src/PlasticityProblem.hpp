@@ -669,7 +669,7 @@ public:
         mDataMap.mScalarValues["LoadControlConstant"] = 0.0;
         auto tInternalForce = mGlobalEquation->value(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                      aStates.mCurrentLocalState,  aStates.mPreviousLocalState,
-                                                     aControl, aStates.mCurrentStepIndex);
+                                                     aStates.mProjectedPressGrad, aControl, aStates.mCurrentStepIndex);
 
         auto tNumNodes = mGlobalEquation->numNodes();
         auto tReactionForce = Kokkos::subview(mReactionForce, aStates.mCurrentStepIndex, Kokkos::ALL());
