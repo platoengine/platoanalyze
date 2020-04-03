@@ -330,6 +330,11 @@ private:
             tStop = true;
             aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
         }
+        else if(!std::isfinite(aOutputData.mCurrentNorm) || !std::isfinite(aOutputData.mRelativeNorm))
+        {
+            tStop = true;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::NaN_NORM_VALUE;
+        }
 
         return (tStop);
     }

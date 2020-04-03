@@ -28,6 +28,7 @@ struct NewtonRaphson
         MAX_NUMBER_ITERATIONS = 1,
         RELATIVE_NORM_TOLERANCE = 2,
         CURRENT_NORM_TOLERANCE = 3,
+        NaN_NORM_VALUE = 4,
     };
 
     enum measure_t
@@ -117,6 +118,11 @@ inline void print_newton_raphson_stop_criterion(const Plato::NewtonRaphsonOutput
         case Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE:
         {
             aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to current norm tolerance being met. ******\n\n";
+            break;
+        }
+        case Plato::NewtonRaphson::NaN_NORM_VALUE:
+        {
+            aOutputFile << "\n\n******  MAJOR FAILURE: Newton-Raphson algorithm stopping due to NaN norm value detected. ******\n\n";
             break;
         }
         case Plato::NewtonRaphson::DID_NOT_CONVERGE:
