@@ -5,6 +5,7 @@
 #include "SimplexFadTypes.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "Plato_TopOptFunctors.hpp"
+#include "ComputeDeviatoricStress.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "Simp.hpp"
 
@@ -253,6 +254,7 @@ class J2PlasticityLocalResidual :
       // Functors
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim, mNumDofsPerNode> tComputeTotalStrain;
+      Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
 
       // J2 Utility Functions Object
       Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
@@ -300,7 +302,7 @@ class J2PlasticityLocalResidual :
         ControlT tPenalizedShearModulus = tElasticParamsPenalty * tElasticShearModulus;
 
         // compute deviatoric stress
-        tJ2PlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
+        tComputeDeviatoricStress(aCellOrdinal, tPenalizedShearModulus, tElasticStrain, tDeviatoricStress);
 
         // compute eta = (deviatoric_stress - backstress) ... and its norm ... the normalized version is the yield surface normal
         tJ2PlasticityUtils.computeDeviatoricStressMinusBackstressNormalized(aCellOrdinal, tDeviatoricStress, aLocalState,
@@ -375,6 +377,7 @@ class J2PlasticityLocalResidual :
       // Functors
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim, mNumDofsPerNode> tComputeTotalStrain;
+      Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
 
       // J2 Utility Functions Object
       Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
@@ -430,7 +433,7 @@ class J2PlasticityLocalResidual :
         Plato::Scalar tPenalizedShearModulus = tElasticParamsPenalty * tElasticShearModulus;
 
         // compute deviatoric stress
-        tJ2PlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
+        tComputeDeviatoricStress(aCellOrdinal, tPenalizedShearModulus, tElasticStrain, tDeviatoricStress);
 
         // compute eta = (deviatoric_stress - backstress) ... and its norm ... the normalized version is the yield surf normal
         tJ2PlasticityUtils.computeDeviatoricStressMinusBackstressNormalized(aCellOrdinal, tDeviatoricStress, aLocalState,

@@ -24,6 +24,7 @@
 #include "InterpolateFromNodal.hpp"
 #include "ComputeStabilization.hpp"
 #include "J2PlasticityUtilities.hpp"
+#include "ComputeDeviatoricStress.hpp"
 #include "ThermoPlasticityUtilities.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "IsotropicMaterialUtilities.hpp"
@@ -350,6 +351,7 @@ public:
         Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence;
+        Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
@@ -416,7 +418,7 @@ public:
 
             // compute deviatoric stress and displacement divergence
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
-            tJ2PlasticityUtils.computeDeviatoricStress(aCellOrdinal, tElasticStrain, tPenalizedShearModulus, tDeviatoricStress);
+            tComputeDeviatoricStress(aCellOrdinal, tPenalizedShearModulus, tElasticStrain, tDeviatoricStress);
             tComputeStrainDivergence(aCellOrdinal, tTotalStrain, tStrainDivergence);
 
             // compute volume difference

@@ -98,21 +98,6 @@ class J2PlasticityUtilities
                                const Plato::ScalarMultiVectorT< ResultType > & aOutput) const;
 
     /******************************************************************************//**
-     * \brief Compute the deviatoric stress
-     * \param [in] aCellOrdinal cell/element index
-     * \param [in] aElasticStrain elastic strain tensor
-     * \param [in] aPenalizedShearModulus penalized elastic shear modulus
-     * \param [out] aDeviatoricStress deviatoric stress tensor
-    **********************************************************************************/
-    template<typename ElasticStrainT, typename ControlT, typename StressT>
-    DEVICE_TYPE inline void
-    computeDeviatoricStress(
-                const Plato::OrdinalType                           & aCellOrdinal,
-                const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain,
-                const ControlT                                     & aPenalizedShearModulus,
-                const Plato::ScalarMultiVectorT< StressT >         & aDeviatoricStress) const;
-
-    /******************************************************************************//**
      * \brief Fill the local residual vector with the plastic strain residual equation for plastic step
      * \param [in] aCellOrdinal cell/element index
      * \param [in] aLocalState 2D container of local state variables
@@ -483,68 +468,10 @@ class J2PlasticityUtilities
       aOutput(aCellOrdinal, 3) = aLocalStateOne(aCellOrdinal, 5) - aLocalStateTwo(aCellOrdinal, 5);
   }
 
-  /*******************************************************************************************/
-  /*******************************************************************************************/
-
-  /******************************************************************************//**
-   * \brief Compute the deviatoric stress for 2D - plane strain
-  **********************************************************************************/
-  template<>
-  template<typename ElasticStrainT, typename ControlT, typename StressT>
-  DEVICE_TYPE inline void
-  J2PlasticityUtilities<2>::computeDeviatoricStress(
-              const Plato::OrdinalType                           & aCellOrdinal,
-              const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain,
-              const ControlT                                     & aPenalizedShearModulus,
-              const Plato::ScalarMultiVectorT< StressT >         & aDeviatoricStress) const
-  {
-    ElasticStrainT tTraceOver3 = (aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
-            + aElasticStrain(aCellOrdinal, 3)) / static_cast<Plato::Scalar>(3.0);
-
-    // sigma_11
-    aDeviatoricStress(aCellOrdinal, 0) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
-                                          * (aElasticStrain(aCellOrdinal, 0) - tTraceOver3);
-
-    // sigma_22
-    aDeviatoricStress(aCellOrdinal, 1) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
-                                          * (aElasticStrain(aCellOrdinal, 1) - tTraceOver3);
-
-    // sigma_12
-    aDeviatoricStress(aCellOrdinal, 2) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 2);
-
-    // sigma_33 - out-of-plane stress
-    aDeviatoricStress(aCellOrdinal, 3) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
-                                          * (aElasticStrain(aCellOrdinal, 3) - tTraceOver3);
-  }
-
-  /******************************************************************************//**
-   * \brief Compute the deviatoric stress for 3D
-  **********************************************************************************/
-  template<>
-  template<typename ElasticStrainT, typename ControlT, typename StressT>
-  DEVICE_TYPE inline void
-  J2PlasticityUtilities<3>::computeDeviatoricStress(
-              const Plato::OrdinalType                           & aCellOrdinal,
-              const Plato::ScalarMultiVectorT< ElasticStrainT >  & aElasticStrain,
-              const ControlT                                     & aPenalizedShearModulus,
-              const Plato::ScalarMultiVectorT< StressT >         & aDeviatoricStress) const
-  {
-    ElasticStrainT tTraceOver3 = (  aElasticStrain(aCellOrdinal, 0) + aElasticStrain(aCellOrdinal, 1)
-                                  + aElasticStrain(aCellOrdinal, 2) ) / static_cast<Plato::Scalar>(3.0);
-    aDeviatoricStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 0) -
-                                                                           tTraceOver3);
-    aDeviatoricStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 1) -
-                                                                           tTraceOver3);
-    aDeviatoricStress(aCellOrdinal, 2) = (2.0 * aPenalizedShearModulus) * (aElasticStrain(aCellOrdinal, 2) -
-                                                                           tTraceOver3);
-    aDeviatoricStress(aCellOrdinal, 3) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 3);
-    aDeviatoricStress(aCellOrdinal, 4) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 4);
-    aDeviatoricStress(aCellOrdinal, 5) = aPenalizedShearModulus * aElasticStrain(aCellOrdinal, 5);
-  }
-
 
   /*******************************************************************************************/
   /*******************************************************************************************/
+
   
   /******************************************************************************//**
    * \brief Fill the local residual vector with the plastic strain residual equation
