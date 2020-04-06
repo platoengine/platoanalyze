@@ -145,7 +145,6 @@ public:
             ControlT tElasticPropertiesPenalty = tPenaltyFunction(tDensity);
             ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tBulkModulus;
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tShearModulus;
-            Plato::print_array_2D_device(aCellOrdinal,tCauchyStress,"cauchy stress");
             tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
 
             // compute principal stresses
@@ -263,7 +262,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
          {4.266667e-06,6.497617e-06,3.235716e-06},
          {2.225699e-06,2.666667e-06,4.707634e-06},
          {3.077556e-06,5.333333e-07,-8.108889e-07},
-         {2.872078e-06,0.0,-2.472078e-06},
+         {2.872078e-06,-3.70662e-19,-2.472078e-06},
          {1.674022e-06,-1.600000e-06,-4.074022e-06},
         };
     auto tHostPrincipalStressWS = Kokkos::create_mirror(tPrincipalStressWS);
