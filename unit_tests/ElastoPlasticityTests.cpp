@@ -17,9 +17,311 @@
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
+#include "Eigenvalues.hpp"
+
+namespace Plato
+{
+
+template<typename EvaluationType, typename SimplexPhysicsType>
+class ComputePrincipalStresses
+{
+private:
+    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;                      /*!< number of spatial dimensions */
+    static constexpr auto mNumStressTerms = SimplexPhysicsType::mNumStressTerms;       /*!< number of stress/strain components */
+    static constexpr auto mNumDofsPerCell = SimplexPhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
+    static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell;     /*!< number nodes per cell */
+    static constexpr auto mPressureDofOffset = SimplexPhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
+    static constexpr auto mNumGlobalDofsPerNode = SimplexPhysicsType::mNumDofsPerNode; /*!< number of global dofs per node */
+
+    using GlobalStateT = typename EvaluationType::StateScalarType;     /*!< global states forward automatic differentiation (FAD) type */
+    using LocalStateT = typename EvaluationType::LocalStateScalarType; /*!< local state FAD type */
+    using ControlT = typename EvaluationType::ControlScalarType;       /*!< control FAD type */
+    using ConfigT = typename EvaluationType::ConfigScalarType;         /*!< configuration FAD type */
+    using ResultT = typename EvaluationType::ResultScalarType;         /*!< result/output FAD type */
+
+    Plato::Scalar mBulkModulus;   /*!< elastic bulk modulus */
+    Plato::Scalar mShearModulus;  /*!< elastic shear modulus */
+    Plato::Scalar mPenaltySIMP;   /*!< SIMP penalty for elastic properties */
+    Plato::Scalar mMinErsatzSIMP; /*!< SIMP min ersatz stiffness for elastic properties */
+
+private:
+    void initialize(Teuchos::ParameterList &aInputParams)
+    {
+        mBulkModulus = Plato::compute_bulk_modulus(aInputParams);
+        mShearModulus = Plato::compute_shear_modulus(aInputParams);
+    }
+
+public:
+    ComputePrincipalStresses() :
+            mBulkModulus(1),
+            mShearModulus(1),
+            mPenaltySIMP(3),
+            mMinErsatzSIMP(1e-9)
+    {
+    }
+
+    ComputePrincipalStresses(Teuchos::ParameterList &aInputParams) :
+            mBulkModulus(1),
+            mShearModulus(1),
+            mPenaltySIMP(3),
+            mMinErsatzSIMP(1e-9)
+    {
+    }
+
+    void setBulkModulus(const Plato::Scalar& aInput)
+    {
+        mBulkModulus = aInput;
+    }
+
+    void setShearModulus(const Plato::Scalar& aInput)
+    {
+        mShearModulus = aInput;
+    }
+
+    void setPenaltySIMP(const Plato::Scalar& aInput)
+    {
+        mPenaltySIMP = aInput;
+    }
+
+    void setMinErsatzSIMP(const Plato::Scalar& aInput)
+    {
+        mMinErsatzSIMP = aInput;
+    }
+
+    void operator()(const Plato::ScalarMultiVectorT<GlobalStateT>& aGlobalState,
+                    const Plato::ScalarMultiVectorT<LocalStateT>& aLocalState,
+                    const Plato::ScalarMultiVectorT<ControlT>& aControls,
+                    const Plato::ScalarArray3DT<ConfigT>& aConfig,
+                    const Plato::ScalarMultiVectorT<ResultT>& aResult)
+    {
+        // FAD types
+        using GradScalarT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
+        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
+
+        // local data
+        auto tNumCells = aResult.extent(0);
+        if(tNumCells <= static_cast<Plato::OrdinalType>(0))
+        {
+            std::ostringstream tMsg;
+            tMsg << "PrincipalStresses: Invalid number of cells.  Number of cells is '" << tNumCells << "'.";
+            THROWERR(tMsg.str().c_str())
+        }
+
+        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
+        Plato::ScalarMultiVectorT<ResultT> tCauchyStress("cauchy stress", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<GradScalarT> tTotalStrain("total strain", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
+        Plato::ScalarArray3DT<ConfigT> tConfigGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
+
+        // functors
+        Plato::Eigenvalues<mSpaceDim> tComputePrincipalStresses;
+        Plato::LinearTetCubRuleDegreeOne<mSpaceDim> tCubatureRule;
+        Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+        Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
+        Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatzSIMP);
+        Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
+
+        // Transfer elasticity parameters to device
+        auto tBulkModulus = mBulkModulus;
+        auto tShearModulus = mShearModulus;
+
+        auto tQuadratureWeight = tCubatureRule.getCubWeight();
+        auto tBasisFunctions = tCubatureRule.getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
+        {
+            // compute configuration gradients
+            tComputeGradient(aCellOrdinal, tConfigGradient, aConfig, tCellVolume);
+            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
+
+            // compute elastic strain, i.e. e_elastic = e_total - e_plastic
+            tComputeTotalStrain(aCellOrdinal, tTotalStrain, aGlobalState, tConfigGradient);
+            tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState,
+                                                        tBasisFunctions, tTotalStrain, tElasticStrain);
+
+            // compute cauchy stress
+            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
+            ControlT tElasticPropertiesPenalty = tPenaltyFunction(tDensity);
+            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tBulkModulus;
+            ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tShearModulus;
+            tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
+
+            // compute principal stresses
+            tComputePrincipalStresses(aCellOrdinal, tCauchyStress, aResult, false);
+        },"compute principal stresses");
+    }
+};
+
+}
+
 
 namespace ElastoPlasticityTests
 {
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStresses1D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 1;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    // Set configuration workset
+    auto tNumCells = tMesh->nelems();
+    using PhysicsT = Plato::SimplexPlasticity<tSpaceDim>;
+    using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
+    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
+    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfigWS("configuration", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
+    tWorksetBase.worksetConfig(tConfigWS);
+
+    // Set global, local state, and control worksets
+    auto tNumNodes = tMesh->nverts();
+    auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    Plato::ScalarVectorT<EvalType::StateScalarType> tGlobalState("state", tSpaceDim * tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+3) = (4e-7)*aNodeOrdinal; // press
+    }, "set global state");
+    Plato::ScalarMultiVector tGlobalStateWS("current state", tNumCells, PhysicsT::mNumDofsPerCell);
+    tWorksetBase.worksetState(tGlobalState, tGlobalStateWS);
+
+    Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tLocalStateWS("local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+    Plato::ScalarMultiVectorT<EvalType::ControlScalarType> tControlWS("control", tNumCells, PhysicsT::mNumNodesPerCell);
+    Kokkos::deep_copy(tControlWS, 1.0);
+
+    // Compute principal stresses
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tPrincipalStressWS("control", tNumCells, tSpaceDim);
+    Plato::ComputePrincipalStresses<EvalType, PhysicsT> tComputePrincipalStresses;
+    tComputePrincipalStresses.setBulkModulus(4);
+    tComputePrincipalStresses.setShearModulus(1);
+    tComputePrincipalStresses(tGlobalStateWS, tLocalStateWS, tControlWS, tConfigWS, tPrincipalStressWS);
+
+    // Test results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<Plato::Scalar> tGold = {{0}};
+    auto tHostPrincipalStressWS = Kokkos::create_mirror(tPrincipalStressWS);
+    Kokkos::deep_copy(tHostPrincipalStressWS, tPrincipalStressWS);
+    for (size_t tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (size_t tDim = 0; tDim < tSpaceDim; tDim++)
+        {
+            printf("(%d,%d) = %f\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
+            //TEST_FLOATING_EQUALITY(tHostPrincipalStressWS(tCell, tDim), tGold[tCell][tDim], tTolerance);
+        }
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStresses2D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    // Set configuration workset
+    auto tNumCells = tMesh->nelems();
+    using PhysicsT = Plato::SimplexPlasticity<tSpaceDim>;
+    using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
+    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
+    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfigWS("configuration", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
+    tWorksetBase.worksetConfig(tConfigWS);
+
+    // Set global, local state, and control worksets
+    auto tNumNodes = tMesh->nverts();
+    auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    Plato::ScalarVectorT<EvalType::StateScalarType> tGlobalState("state", tSpaceDim * tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+3) = (4e-7)*aNodeOrdinal; // press
+    }, "set global state");
+    Plato::ScalarMultiVector tGlobalStateWS("current state", tNumCells, PhysicsT::mNumDofsPerCell);
+    tWorksetBase.worksetState(tGlobalState, tGlobalStateWS);
+
+    Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tLocalStateWS("local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+    Plato::ScalarMultiVectorT<EvalType::ControlScalarType> tControlWS("control", tNumCells, PhysicsT::mNumNodesPerCell);
+    Kokkos::deep_copy(tControlWS, 1.0);
+
+    // Compute principal stresses
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tPrincipalStressWS("control", tNumCells, tSpaceDim);
+    Plato::ComputePrincipalStresses<EvalType, PhysicsT> tComputePrincipalStresses;
+    tComputePrincipalStresses.setBulkModulus(4);
+    tComputePrincipalStresses.setShearModulus(1);
+    tComputePrincipalStresses(tGlobalStateWS, tLocalStateWS, tControlWS, tConfigWS, tPrincipalStressWS);
+
+    // Test results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<Plato::Scalar> tGold = {{0}};
+    auto tHostPrincipalStressWS = Kokkos::create_mirror(tPrincipalStressWS);
+    Kokkos::deep_copy(tHostPrincipalStressWS, tPrincipalStressWS);
+    for (size_t tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (size_t tDim = 0; tDim < tSpaceDim; tDim++)
+        {
+            printf("(%d,%d) = %f\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
+            //TEST_FLOATING_EQUALITY(tHostPrincipalStressWS(tCell, tDim), tGold[tCell][tDim], tTolerance);
+        }
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStresses3D)
+{
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
+    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
+
+    // Set configuration workset
+    auto tNumCells = tMesh->nelems();
+    using PhysicsT = Plato::SimplexPlasticity<tSpaceDim>;
+    using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
+    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
+    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfigWS("configuration", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
+    tWorksetBase.worksetConfig(tConfigWS);
+
+    // Set global, local state, and control worksets
+    auto tNumNodes = tMesh->nverts();
+    auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    Plato::ScalarVectorT<EvalType::StateScalarType> tGlobalState("state", tSpaceDim * tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+3) = (4e-7)*aNodeOrdinal; // press
+    }, "set global state");
+    Plato::ScalarMultiVector tGlobalStateWS("current state", tNumCells, PhysicsT::mNumDofsPerCell);
+    tWorksetBase.worksetState(tGlobalState, tGlobalStateWS);
+
+    Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tLocalStateWS("local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
+    Plato::ScalarMultiVectorT<EvalType::ControlScalarType> tControlWS("control", tNumCells, PhysicsT::mNumNodesPerCell);
+    Kokkos::deep_copy(tControlWS, 1.0);
+
+    // Compute principal stresses
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tPrincipalStressWS("control", tNumCells, tSpaceDim);
+    Plato::ComputePrincipalStresses<EvalType, PhysicsT> tComputePrincipalStresses;
+    tComputePrincipalStresses.setBulkModulus(4);
+    tComputePrincipalStresses.setShearModulus(1);
+    tComputePrincipalStresses(tGlobalStateWS, tLocalStateWS, tControlWS, tConfigWS, tPrincipalStressWS);
+
+    // Test results
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<Plato::Scalar> tGold = {{0}};
+    auto tHostPrincipalStressWS = Kokkos::create_mirror(tPrincipalStressWS);
+    Kokkos::deep_copy(tHostPrincipalStressWS, tPrincipalStressWS);
+    for (size_t tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (size_t tDim = 0; tDim < tSpaceDim; tDim++)
+        {
+            printf("(%d,%d) = %f\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
+            //TEST_FLOATING_EQUALITY(tHostPrincipalStressWS(tCell, tDim), tGold[tCell][tDim], tTolerance);
+        }
+    }
+}
 
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_DeviatoricStress1D)
@@ -1277,6 +1579,77 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ApplyPenalty)
     }
 }
 
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeBulkModulusError)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                 \n"
+      "  <ParameterList name='Material Model'>                              \n"
+      "  </ParameterList>                                                   \n"
+      "</ParameterList>                                                     \n"
+    );
+
+    TEST_THROW( (Plato::compute_bulk_modulus(*tParams)), std::runtime_error );
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeBulkModulus)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                 \n"
+      "  <ParameterList name='Material Model'>                              \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                  \n"
+      "      <Parameter  name='Density' type='double' value='1000'/>        \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>  \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0'/>  \n"
+      "    </ParameterList>                                                 \n"
+      "  </ParameterList>                                                   \n"
+      "</ParameterList>                                                     \n"
+    );
+
+    auto tBulk = Plato::compute_bulk_modulus(*tParams);
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    TEST_FLOATING_EQUALITY(tBulk, 0.833333333333333, tTolerance);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeShearModulusError)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                 \n"
+      "  <ParameterList name='Material Model'>                              \n"
+      "  </ParameterList>                                                   \n"
+      "</ParameterList>                                                     \n"
+    );
+
+    TEST_THROW( (Plato::compute_shear_modulus(*tParams)), std::runtime_error );
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeShearModulus)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+    Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                 \n"
+      "  <ParameterList name='Material Model'>                              \n"
+      "    <ParameterList name='Isotropic Linear Elastic'>                  \n"
+      "      <Parameter  name='Density' type='double' value='1000'/>        \n"
+      "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>  \n"
+      "      <Parameter  name='Youngs Modulus' type='double' value='1.0'/>  \n"
+      "    </ParameterList>                                                 \n"
+      "  </ParameterList>                                                   \n"
+      "</ParameterList>                                                     \n"
+    );
+
+    auto tShear = Plato::compute_shear_modulus(*tParams);
+    constexpr Plato::Scalar tTolerance = 1e-6;
+    TEST_FLOATING_EQUALITY(tShear, 0.384615384615385, tTolerance);
+}
+
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeShearAndBulkModulus)
 {
     const Plato::Scalar tPoisson = 0.3;
@@ -1287,6 +1660,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeShearAndBulkMod
     auto tShear = Plato::compute_shear_modulus(tElasticModulus, tPoisson);
     TEST_FLOATING_EQUALITY(tShear, 0.384615384615385, tTolerance);
 }
+
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_StrainDivergence3D)
 {
