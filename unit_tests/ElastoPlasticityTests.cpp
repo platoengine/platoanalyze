@@ -202,7 +202,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
 
     // Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<Plato::Scalar> tGold = {{3.219804e-06,1.180196e-06}, {2.482843e-06,1.917157e-06}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{3.219804e-06,1.180196e-06}, {2.482843e-06,1.917157e-06}};
     auto tHostPrincipalStressWS = Kokkos::create_mirror(tPrincipalStressWS);
     Kokkos::deep_copy(tHostPrincipalStressWS, tPrincipalStressWS);
     for (size_t tCell = 0; tCell < tNumCells; tCell++)
@@ -257,7 +257,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
 
     // Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<Plato::Scalar> tGold =
+    std::vector<std::vector<Plato::Scalar>> tGold =
         {
          {4.800000e-06,7.040967e-06,4.559033e-06},
          {4.266667e-06,6.497617e-06,3.235716e-06},
