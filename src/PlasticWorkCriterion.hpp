@@ -11,6 +11,7 @@
 #include "SimplexFadTypes.hpp"
 #include "ImplicitFunctors.hpp"
 #include "SimplexPlasticity.hpp"
+#include "ComputeCauchyStress.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "J2PlasticityUtilities.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
@@ -143,6 +144,7 @@ public:
 
         // allocate functors used to evaluate criterion
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+        Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
         Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
@@ -185,8 +187,7 @@ public:
             ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tElasticShearModulus;
 
             // compute current Cauchy stress
-            tJ2PlasticityUtils.computeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus,
-                                                   tCurrentElasticStrain, tCurrentCauchyStress);
+            tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tCurrentElasticStrain, tCurrentCauchyStress);
 
             // compute double dot product
             const Plato::Scalar tMultiplier = 0.5;

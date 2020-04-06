@@ -19,6 +19,7 @@
 #include "StrainDivergence.hpp"
 #include "SimplexPlasticity.hpp"
 #include "PressureDivergence.hpp"
+#include "ComputeCauchyStress.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "ComputeStabilization.hpp"
@@ -346,8 +347,9 @@ public:
         // Functors used to compute residual-related quantities
         Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+        Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
-        Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence ;
+        Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
@@ -434,7 +436,7 @@ public:
 
             // prepare output data
             ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
-            tJ2PlasticityUtils.computeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
+            tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
             tJ2PlasticityUtils.getPlasticMultiplierIncrement(aCellOrdinal, aCurrentLocalState, tPlasticMultiplier);
             tJ2PlasticityUtils.getAccumulatedPlasticStrain(aCellOrdinal, aCurrentLocalState, tAccumPlasticStrain);
             tJ2PlasticityUtils.getPlasticStrainTensor(aCellOrdinal, aCurrentLocalState, tPlasticStrain);
