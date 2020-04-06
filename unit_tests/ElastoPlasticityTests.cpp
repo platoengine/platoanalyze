@@ -18,6 +18,7 @@
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
 #include "Eigenvalues.hpp"
+#include "ThermoPlasticityUtilities.hpp"
 
 namespace Plato
 {
@@ -92,7 +93,7 @@ public:
                     const Plato::ScalarMultiVectorT<LocalStateT>& aLocalState,
                     const Plato::ScalarMultiVectorT<ControlT>& aControls,
                     const Plato::ScalarArray3DT<ConfigT>& aConfig,
-                    const Plato::ScalarMultiVectorT<ResultT>& aResult)
+                    const Plato::ScalarMultiVectorT<ResultT>& aResult) const
     {
         // FAD types
         using GradScalarT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
