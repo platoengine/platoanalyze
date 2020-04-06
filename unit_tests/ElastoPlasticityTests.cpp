@@ -167,7 +167,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_DeviatoricStress1D)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
     {
-        tComputeDeviatoricStress(tCellOrdinal, tElasticStrain, tShearModulus, tDeviatoricStress);
+        tComputeDeviatoricStress(tCellOrdinal, tShearModulus, tElasticStrain, tDeviatoricStress);
     }, "Unit Test");
 
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -205,7 +205,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_DeviatoricStress2D)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
     {
-        tComputeDeviatoricStress(tCellOrdinal, tElasticStrain, tShearModulus, tDeviatoricStress);
+        tComputeDeviatoricStress(tCellOrdinal, tShearModulus, tElasticStrain, tDeviatoricStress);
     }, "Unit Test");
 
     constexpr Plato::Scalar tTolerance = 1e-4;
@@ -243,7 +243,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_DeviatoricStress3D)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
     {
-        tComputeDeviatoricStress(tCellOrdinal, tElasticStrain, tShearModulus, tDeviatoricStress);
+        tComputeDeviatoricStress(tCellOrdinal, tShearModulus, tElasticStrain, tDeviatoricStress);
     }, "Unit Test");
 
     constexpr Plato::Scalar tTolerance = 1e-4;
