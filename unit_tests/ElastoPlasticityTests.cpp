@@ -160,61 +160,6 @@ namespace ElastoPlasticityTests
 {
 
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStresses1D)
-{
-    constexpr Plato::OrdinalType tSpaceDim = 1;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
-    auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
-
-    // Set configuration workset
-    auto tNumCells = tMesh->nelems();
-    using PhysicsT = Plato::SimplexPlasticity<tSpaceDim>;
-    using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
-    Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
-    Plato::ScalarArray3DT<EvalType::ConfigScalarType> tConfigWS("configuration", tNumCells, PhysicsT::mNumNodesPerCell, tSpaceDim);
-    tWorksetBase.worksetConfig(tConfigWS);
-
-    // Set global, local state, and control worksets
-    auto tNumNodes = tMesh->nverts();
-    auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    Plato::ScalarVectorT<EvalType::StateScalarType> tGlobalState("state", tSpaceDim * tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
-    {
-        tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
-        tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
-        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
-        tGlobalState(aNodeOrdinal*tNumDofsPerNode+3) = (4e-7)*aNodeOrdinal; // press
-    }, "set global state");
-    Plato::ScalarMultiVector tGlobalStateWS("current state", tNumCells, PhysicsT::mNumDofsPerCell);
-    tWorksetBase.worksetState(tGlobalState, tGlobalStateWS);
-
-    Plato::ScalarMultiVectorT<EvalType::LocalStateScalarType> tLocalStateWS("local state", tNumCells, PhysicsT::mNumLocalDofsPerCell);
-    Plato::ScalarMultiVectorT<EvalType::ControlScalarType> tControlWS("control", tNumCells, PhysicsT::mNumNodesPerCell);
-    Kokkos::deep_copy(tControlWS, 1.0);
-
-    // Compute principal stresses
-    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tPrincipalStressWS("control", tNumCells, tSpaceDim);
-    Plato::ComputePrincipalStresses<EvalType, PhysicsT> tComputePrincipalStresses;
-    tComputePrincipalStresses.setBulkModulus(4);
-    tComputePrincipalStresses.setShearModulus(1);
-    tComputePrincipalStresses(tGlobalStateWS, tLocalStateWS, tControlWS, tConfigWS, tPrincipalStressWS);
-
-    // Test results
-    constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<Plato::Scalar> tGold = {{0}};
-    auto tHostPrincipalStressWS = Kokkos::create_mirror(tPrincipalStressWS);
-    Kokkos::deep_copy(tHostPrincipalStressWS, tPrincipalStressWS);
-    for (size_t tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (size_t tDim = 0; tDim < tSpaceDim; tDim++)
-        {
-            printf("(%d,%d) = %f\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
-            //TEST_FLOATING_EQUALITY(tHostPrincipalStressWS(tCell, tDim), tGold[tCell][tDim], tTolerance);
-        }
-    }
-}
-
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStresses2D)
 {
     constexpr Plato::OrdinalType tSpaceDim = 2;
