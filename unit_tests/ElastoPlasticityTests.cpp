@@ -25,12 +25,38 @@
 namespace Plato
 {
 
+/******************************************************************************//**
+ * \brief Compute the Cauchy stress tensor:
+ *
+ * \f$ \sigma_{ij} = \mu(\epsilon_{ij} + \epsilon_{ji}) + \lambda\delta{ij}\epsilon_{kk} \f$,
+ * where
+ * \f$ \lambda = K-\frac{2\mu}{3} \f$
+ *
+ * Here, \f$ \epsilon_{ij} \f$ is the strain tensor, \f$ \mu \f$ is the shear modulus,
+ * \f$ \epsilon_{kk} \f$ is the trace of the strain tensor, and K is the bulk modulus.
+ *
+ * \tparam SpaceDim number of spatial dimensions
+ *
+**********************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 class ComputeCauchyStress
 {
 public:
+
+    /******************************************************************************//**
+     * \brief Functor constructor
+    **********************************************************************************/
     ComputeCauchyStress(){}
 
+    /******************************************************************************//**
+     * \brief Compute the Cauchy stress tensor:
+     *
+     * \param [in]  aCellOrdinal cell/element index
+     * \param [in]  aElasticStrain elastic strain tensor
+     * \param [in]  aPenalizedBulkModulus  penalized elastic bulk modulus
+     * \param [in]  aPenalizedShearModulus penalized elastic shear modulus
+     * \param [out] aCauchyStress          Cauchy stress tensor
+    **********************************************************************************/
     template<typename StrainT, typename ControlT, typename StressT>
     DEVICE_TYPE
     inline void operator()
@@ -167,15 +193,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_computeCauchyStress3D
 
     // 3. TEST RESULTS
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{153,159,9,171,0,0}, {306,318,18,342,0,0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{153,159,165,12,15,18}, {306,318,330,24,30,36}};
     auto tHostCauchyStress = Kokkos::create_mirror(tCauchyStress);
     Kokkos::deep_copy(tHostCauchyStress, tCauchyStress);
     for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for (unsigned int tDofIndex = 0; tDofIndex < tNumStressTerms; tDofIndex++)
         {
-            //TEST_FLOATING_EQUALITY(tHostCauchyStress(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
-            printf("HostCauchyStress(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostCauchyStress(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostCauchyStress(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            //printf("HostCauchyStress(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostCauchyStress(tCellIndex, tDofIndex));
         }
     }
 }
@@ -258,15 +284,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_computeCauchyStress1D
 
     // 3. TEST RESULTS
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{153}, {306}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{12.33333333}, {24.66666667}};
     auto tHostCauchyStress = Kokkos::create_mirror(tCauchyStress);
     Kokkos::deep_copy(tHostCauchyStress, tCauchyStress);
     for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
         for (unsigned int tDofIndex = 0; tDofIndex < tNumStressTerms; tDofIndex++)
         {
-            //TEST_FLOATING_EQUALITY(tHostCauchyStress(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
-            printf("HostCauchyStress(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostCauchyStress(tCellIndex, tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostCauchyStress(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
+            //printf("HostCauchyStress(%d,%d) = %f\n", tCellIndex, tDofIndex, tHostCauchyStress(tCellIndex, tDofIndex));
         }
     }
 }
