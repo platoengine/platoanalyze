@@ -5,7 +5,6 @@
  */
 
 #pragma once
-#include "PlatoUtilities.hpp"
 
 #include "Simp.hpp"
 #include "ToMap.hpp"
@@ -25,6 +24,7 @@
 #include "ComputeStabilization.hpp"
 #include "J2PlasticityUtilities.hpp"
 #include "ComputeDeviatoricStress.hpp"
+#include "ComputePrincipalStresses.hpp"
 #include "ThermoPlasticityUtilities.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "IsotropicMaterialUtilities.hpp"
@@ -272,6 +272,33 @@ private:
         }
     }
 
+    /************************************************************************//**
+     * \brief Compute principal stress components
+     * \param [in]     aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aControls    design variables
+     * \param [in]     aConfig      configuration variables
+     * \param [in/out] aResult      residual evaluation
+    ****************************************************************************/
+    void computePrincipalStresses(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
+                                  const Plato::ScalarMultiVectorT<LocalStateT> &aLocalState,
+                                  const Plato::ScalarMultiVectorT<ControlT> &aControl,
+                                  const Plato::ScalarArray3DT<ConfigT> &aConfig)
+    {
+        if(std::count(mPlotTable.begin(), mPlotTable.end(), "principal stresses"))
+        {
+            Plato::ComputePrincipalStresses<EvaluationType, SimplexPhysicsType> tComputePrincipalStresses;
+            tComputePrincipalStresses.setBulkModulus(mElasticBulkModulus);
+            tComputePrincipalStresses.setShearModulus(mElasticShearModulus);
+            tComputePrincipalStresses.setPenaltySIMP(mElasticPropertiesPenaltySIMP);
+            tComputePrincipalStresses.setMinErsatzSIMP(mElasticPropertiesMinErsatzSIMP);
+
+            const auto tNumCells = mMesh.nelems();
+            Plato::ScalarMultiVectorT<ResultT> tPrincipalStresses("principal stresses", tNumCells, mSpaceDim);
+            tComputePrincipalStresses(aGlobalState, aLocalState, aControl, aConfig, tPrincipalStresses);
+            this->outputData(tPrincipalStresses, "principal stresses");
+        }
+    }
+
 // Public access functions
 public:
     /***************************************************************************//**
@@ -448,6 +475,7 @@ public:
         this->addExternalForces(aCurrentGlobalState, aControls, aConfig, aResult);
 
         // set current output data
+        this->computePrincipalStresses(aCurrentGlobalState, aCurrentLocalState, aControls, aConfig);
         this->outputData(tPlasticMultiplier, "plastic multiplier increment");
         this->outputData(tAccumPlasticStrain, "accumulated plastic strain");
         this->outputData(tDeviatoricStress, "deviatoric stress");

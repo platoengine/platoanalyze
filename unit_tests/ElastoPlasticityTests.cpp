@@ -17,144 +17,6 @@
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
-#include "Eigenvalues.hpp"
-#include "ThermoPlasticityUtilities.hpp"
-
-namespace Plato
-{
-
-template<typename EvaluationType, typename SimplexPhysicsType>
-class ComputePrincipalStresses
-{
-private:
-    static constexpr auto mSpaceDim = EvaluationType::SpatialDim;                      /*!< number of spatial dimensions */
-    static constexpr auto mNumStressTerms = SimplexPhysicsType::mNumStressTerms;       /*!< number of stress/strain components */
-    static constexpr auto mNumDofsPerCell = SimplexPhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
-    static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell;     /*!< number nodes per cell */
-    static constexpr auto mPressureDofOffset = SimplexPhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
-    static constexpr auto mNumGlobalDofsPerNode = SimplexPhysicsType::mNumDofsPerNode; /*!< number of global dofs per node */
-
-    using GlobalStateT = typename EvaluationType::StateScalarType;     /*!< global states forward automatic differentiation (FAD) type */
-    using LocalStateT = typename EvaluationType::LocalStateScalarType; /*!< local state FAD type */
-    using ControlT = typename EvaluationType::ControlScalarType;       /*!< control FAD type */
-    using ConfigT = typename EvaluationType::ConfigScalarType;         /*!< configuration FAD type */
-    using ResultT = typename EvaluationType::ResultScalarType;         /*!< result/output FAD type */
-
-    Plato::Scalar mBulkModulus;   /*!< elastic bulk modulus */
-    Plato::Scalar mShearModulus;  /*!< elastic shear modulus */
-    Plato::Scalar mPenaltySIMP;   /*!< SIMP penalty for elastic properties */
-    Plato::Scalar mMinErsatzSIMP; /*!< SIMP min ersatz stiffness for elastic properties */
-
-private:
-    void initialize(Teuchos::ParameterList &aInputParams)
-    {
-        mBulkModulus = Plato::compute_bulk_modulus(aInputParams);
-        mShearModulus = Plato::compute_shear_modulus(aInputParams);
-    }
-
-public:
-    ComputePrincipalStresses() :
-            mBulkModulus(1),
-            mShearModulus(1),
-            mPenaltySIMP(3),
-            mMinErsatzSIMP(1e-9)
-    {
-    }
-
-    ComputePrincipalStresses(Teuchos::ParameterList &aInputParams) :
-            mBulkModulus(1),
-            mShearModulus(1),
-            mPenaltySIMP(3),
-            mMinErsatzSIMP(1e-9)
-    {
-    }
-
-    void setBulkModulus(const Plato::Scalar& aInput)
-    {
-        mBulkModulus = aInput;
-    }
-
-    void setShearModulus(const Plato::Scalar& aInput)
-    {
-        mShearModulus = aInput;
-    }
-
-    void setPenaltySIMP(const Plato::Scalar& aInput)
-    {
-        mPenaltySIMP = aInput;
-    }
-
-    void setMinErsatzSIMP(const Plato::Scalar& aInput)
-    {
-        mMinErsatzSIMP = aInput;
-    }
-
-    void operator()(const Plato::ScalarMultiVectorT<GlobalStateT>& aGlobalState,
-                    const Plato::ScalarMultiVectorT<LocalStateT>& aLocalState,
-                    const Plato::ScalarMultiVectorT<ControlT>& aControls,
-                    const Plato::ScalarArray3DT<ConfigT>& aConfig,
-                    const Plato::ScalarMultiVectorT<ResultT>& aResult) const
-    {
-        // FAD types
-        using GradScalarT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
-        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
-
-        // local data
-        auto tNumCells = aResult.extent(0);
-        if(tNumCells <= static_cast<Plato::OrdinalType>(0))
-        {
-            std::ostringstream tMsg;
-            tMsg << "PrincipalStresses: Invalid number of cells.  Number of cells is '" << tNumCells << "'.";
-            THROWERR(tMsg.str().c_str())
-        }
-
-        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
-        Plato::ScalarMultiVectorT<ResultT> tCauchyStress("cauchy stress", tNumCells, mNumStressTerms);
-        Plato::ScalarMultiVectorT<GradScalarT> tTotalStrain("total strain", tNumCells, mNumStressTerms);
-        Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
-        Plato::ScalarArray3DT<ConfigT> tConfigGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
-
-        // functors
-        Plato::Eigenvalues<mSpaceDim> tComputePrincipalStresses;
-        Plato::LinearTetCubRuleDegreeOne<mSpaceDim> tCubatureRule;
-        Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
-        Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
-        Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatzSIMP);
-        Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
-
-        // Transfer elasticity parameters to device
-        auto tBulkModulus = mBulkModulus;
-        auto tShearModulus = mShearModulus;
-
-        auto tQuadratureWeight = tCubatureRule.getCubWeight();
-        auto tBasisFunctions = tCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
-        {
-            // compute configuration gradients
-            tComputeGradient(aCellOrdinal, tConfigGradient, aConfig, tCellVolume);
-            tCellVolume(aCellOrdinal) *= tQuadratureWeight;
-
-            // compute elastic strain, i.e. e_elastic = e_total - e_plastic
-            tComputeTotalStrain(aCellOrdinal, tTotalStrain, aGlobalState, tConfigGradient);
-            tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aGlobalState, aLocalState,
-                                                        tBasisFunctions, tTotalStrain, tElasticStrain);
-
-            // compute cauchy stress
-            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControls);
-            ControlT tElasticPropertiesPenalty = tPenaltyFunction(tDensity);
-            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tBulkModulus;
-            ControlT tPenalizedShearModulus = tElasticPropertiesPenalty * tShearModulus;
-            tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
-
-            // compute principal stresses
-            tComputePrincipalStresses(aCellOrdinal, tCauchyStress, aResult, false);
-        },"compute principal stresses");
-    }
-};
-
-}
-
 
 namespace ElastoPlasticityTests
 {
@@ -193,7 +55,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
     Kokkos::deep_copy(tControlWS, 1.0);
 
     // Compute principal stresses
-    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tPrincipalStressWS("control", tNumCells, tSpaceDim);
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tPrincipalStressWS("principal stresses", tNumCells, tSpaceDim);
     Plato::ComputePrincipalStresses<EvalType, PhysicsT> tComputePrincipalStresses;
     tComputePrincipalStresses.setBulkModulus(4);
     tComputePrincipalStresses.setShearModulus(1);
@@ -248,7 +110,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
     Kokkos::deep_copy(tControlWS, 1.0);
 
     // Compute principal stresses
-    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tPrincipalStressWS("control", tNumCells, tSpaceDim);
+    Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tPrincipalStressWS("principal stresses", tNumCells, tSpaceDim);
     Plato::ComputePrincipalStresses<EvalType, PhysicsT> tComputePrincipalStresses;
     tComputePrincipalStresses.setBulkModulus(4);
     tComputePrincipalStresses.setShearModulus(1);
