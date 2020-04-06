@@ -208,7 +208,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
     {
         for (size_t tDim = 0; tDim < tSpaceDim; tDim++)
         {
-            printf("(%d,%d) = %f\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
+            printf("(%d,%d) = %e\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
             //TEST_FLOATING_EQUALITY(tHostPrincipalStressWS(tCell, tDim), tGold[tCell][tDim], tTolerance);
         }
     }
@@ -263,7 +263,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
     {
         for (size_t tDim = 0; tDim < tSpaceDim; tDim++)
         {
-            printf("(%d,%d) = %f\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
+            printf("(%d,%d) = %e\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
             //TEST_FLOATING_EQUALITY(tHostPrincipalStressWS(tCell, tDim), tGold[tCell][tDim], tTolerance);
         }
     }
