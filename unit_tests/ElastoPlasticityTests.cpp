@@ -18,8 +18,243 @@
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
 
+namespace Plato
+{
+
+/******************************************************************************//**
+ *
+ * \tparam SpaceDim number of spatial dimensions
+ *
+ * \brief Compute deviatoric stress:
+ *
+ * \f$ \sigma_{ij} = \sigma_{ij} - \frac{\sigma_{kk}}{3}\delta_{ij} \f$,
+ * or
+ * \f$ 2*\mu*\epsilon_{ij} - \frac{\epsilon_{kk}}{3}\delta_{ij} \f$
+ *
+ * where, \f$ \epsilon_{ij} \f$ is the strain tensor, \f$ \sigma_{ij} \f$ is the
+ * stress tensor, \f$ \sigma_{kk} \f$ is the trace of the stress tensor, \f$ \mu \f$
+ * is the shear modulus, \f$ and \epsilon_{kk} \f$ is the trace of the strain tensor.
+ *
+**********************************************************************************/
+template<Plato::OrdinalType SpaceDim>
+class ComputeDeviatoricStress
+{
+public:
+    /******************************************************************************//**
+     * \brief Functor constructor
+    **********************************************************************************/
+    ComputeDeviatoricStress(){}
+
+    /******************************************************************************//**
+     * \brief Compute the deviatoric stress
+     * \param [in]  aCellOrdinal           cell/element index
+     * \param [in]  aPenalizedShearModulus penalized elastic shear modulus
+     * \param [in]  aStrain                elastic strain tensor
+     * \param [out] aStress                deviatoric stress tensor
+    **********************************************************************************/
+    template<typename StrainT, typename ControlT, typename StressT>
+    DEVICE_TYPE inline void
+    operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const ControlT & aPenalizedShearModulus,
+     const Plato::ScalarMultiVectorT<StrainT> & aStrain,
+     const Plato::ScalarMultiVectorT<StressT> & aStress) const;
+};
+// class ComputeDeviatoricStress
+
+/******************************************************************************//**
+ * \brief Compute the deviatoric stress for 1D
+**********************************************************************************/
+template<>
+template<typename StrainT, typename ControlT, typename StressT>
+DEVICE_TYPE inline void
+ComputeDeviatoricStress<1>::operator ()
+(const Plato::OrdinalType & aCellOrdinal,
+ const ControlT & aPenalizedShearModulus,
+ const Plato::ScalarMultiVectorT<StrainT> & aStrain,
+ const Plato::ScalarMultiVectorT<StressT> & aStress) const
+{
+  StrainT tTraceOver3 = aStrain(aCellOrdinal, 0) / static_cast<Plato::Scalar>(3.0);
+
+  // sigma_11
+  aStress(aCellOrdinal, 0) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+                           * (aStrain(aCellOrdinal, 0) - tTraceOver3);
+}
+
+/******************************************************************************//**
+ * \brief Compute the deviatoric stress for 2D - plane strain
+**********************************************************************************/
+template<>
+template<typename StrainT, typename ControlT, typename StressT>
+DEVICE_TYPE inline void
+ComputeDeviatoricStress<2>::operator ()
+(const Plato::OrdinalType & aCellOrdinal,
+ const ControlT & aPenalizedShearModulus,
+ const Plato::ScalarMultiVectorT<StrainT> & aStrain,
+ const Plato::ScalarMultiVectorT<StressT> & aStress) const
+{
+  StrainT tTraceOver3 = (aStrain(aCellOrdinal, 0) + aStrain(aCellOrdinal, 1)
+          + aStrain(aCellOrdinal, 3)) / static_cast<Plato::Scalar>(3.0);
+
+  // sigma_11
+  aStress(aCellOrdinal, 0) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+                                        * (aStrain(aCellOrdinal, 0) - tTraceOver3);
+
+  // sigma_22
+  aStress(aCellOrdinal, 1) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+                                        * (aStrain(aCellOrdinal, 1) - tTraceOver3);
+
+  // sigma_12
+  aStress(aCellOrdinal, 2) = aPenalizedShearModulus * aStrain(aCellOrdinal, 2);
+
+  // sigma_33 - out-of-plane stress
+  aStress(aCellOrdinal, 3) = (static_cast<Plato::Scalar>(2.0) * aPenalizedShearModulus)
+                                        * (aStrain(aCellOrdinal, 3) - tTraceOver3);
+}
+
+/******************************************************************************//**
+ * \brief Compute the deviatoric stress for 3D
+**********************************************************************************/
+template<>
+template<typename StrainT, typename ControlT, typename StressT>
+DEVICE_TYPE inline void
+ComputeDeviatoricStress<3>::operator()
+(const Plato::OrdinalType & aCellOrdinal,
+ const ControlT & aPenalizedShearModulus,
+ const Plato::ScalarMultiVectorT<StrainT> & aStrain,
+ const Plato::ScalarMultiVectorT<StressT> & aStress) const
+{
+  StrainT tTraceOver3 = (  aStrain(aCellOrdinal, 0) + aStrain(aCellOrdinal, 1)
+                                + aStrain(aCellOrdinal, 2) ) / static_cast<Plato::Scalar>(3.0);
+  aStress(aCellOrdinal, 0) = (2.0 * aPenalizedShearModulus) * (aStrain(aCellOrdinal, 0) -
+                                                                         tTraceOver3);
+  aStress(aCellOrdinal, 1) = (2.0 * aPenalizedShearModulus) * (aStrain(aCellOrdinal, 1) -
+                                                                         tTraceOver3);
+  aStress(aCellOrdinal, 2) = (2.0 * aPenalizedShearModulus) * (aStrain(aCellOrdinal, 2) -
+                                                                         tTraceOver3);
+  aStress(aCellOrdinal, 3) = aPenalizedShearModulus * aStrain(aCellOrdinal, 3);
+  aStress(aCellOrdinal, 4) = aPenalizedShearModulus * aStrain(aCellOrdinal, 4);
+  aStress(aCellOrdinal, 5) = aPenalizedShearModulus * aStrain(aCellOrdinal, 5);
+}
+
+}
+
 namespace ElastoPlasticityTests
 {
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_DeviatoricStress1D)
+{
+    constexpr Plato::OrdinalType tNumCells = 1;
+    constexpr Plato::OrdinalType tSpaceDim = 1;
+    constexpr Plato::OrdinalType tNumStressTerms = 1;
+
+    Plato::ScalarMultiVector tElasticStrain("elastic strain", tNumCells, tNumStressTerms);
+    auto tHostElasticStrain = Kokkos::create_mirror(tElasticStrain);
+    for (unsigned int i = 0; i < tNumCells; ++i)
+        for (unsigned int j = 0; j < tNumStressTerms; ++j)
+        {
+            tHostElasticStrain(i, j) = (i + 1.0) * (j + 1.0);
+            //printf("ElasticStrain(%d,%d) = %f\n", i,j,tHostElasticStrain(i, j));
+        }
+    Kokkos::deep_copy(tElasticStrain, tHostElasticStrain);
+
+    Plato::ScalarMultiVector tDeviatoricStress("deviatoric stress", tNumCells, tNumStressTerms);
+
+    Plato::ComputeDeviatoricStress<tSpaceDim> tComputeDeviatoricStress;
+
+    Plato::Scalar tShearModulus = 3.5;
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    {
+        tComputeDeviatoricStress(tCellOrdinal, tElasticStrain, tShearModulus, tDeviatoricStress);
+    }, "Unit Test");
+
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<Plato::Scalar> tGold = {0.0};
+    auto tHostDeviatoricStress = Kokkos::create_mirror(tDeviatoricStress);
+    Kokkos::deep_copy(tHostDeviatoricStress, tDeviatoricStress);
+
+    Plato::OrdinalType tCellIndex = 0;
+    for(Plato::OrdinalType tDofIndex = 0; tDofIndex < tNumStressTerms; ++tDofIndex)
+        TEST_FLOATING_EQUALITY(tHostDeviatoricStress(tCellIndex, tDofIndex), tGold[tDofIndex], tTolerance);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_DeviatoricStress2D)
+{
+    constexpr Plato::OrdinalType tNumCells = 1;
+    constexpr Plato::OrdinalType tSpaceDim = 2;
+    constexpr Plato::OrdinalType tNumStressTerms = 4;
+
+    Plato::ScalarMultiVector tElasticStrain("elastic strain", tNumCells, tNumStressTerms);
+    auto tHostElasticStrain = Kokkos::create_mirror(tElasticStrain);
+    for (unsigned int i = 0; i < tNumCells; ++i)
+        for (unsigned int j = 0; j < tNumStressTerms; ++j)
+        {
+            tHostElasticStrain(i, j) = (i + 1.0) * (j + 1.0);
+            //printf("ElasticStrain(%d,%d) = %f\n", i,j,tHostElasticStrain(i, j));
+        }
+    Kokkos::deep_copy(tElasticStrain, tHostElasticStrain);
+
+    Plato::ScalarMultiVector tDeviatoricStress("deviatoric stress", tNumCells, tNumStressTerms);
+
+    Plato::ComputeDeviatoricStress<tSpaceDim> tComputeDeviatoricStress;
+
+    Plato::Scalar tShearModulus = 3.5;
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    {
+        tComputeDeviatoricStress(tCellOrdinal, tElasticStrain, tShearModulus, tDeviatoricStress);
+    }, "Unit Test");
+
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<Plato::Scalar> tGold = {-9.33333,-2.33333,10.5,11.6667};
+    auto tHostDeviatoricStress = Kokkos::create_mirror(tDeviatoricStress);
+    Kokkos::deep_copy(tHostDeviatoricStress, tDeviatoricStress);
+
+    Plato::OrdinalType tCellIndex = 0;
+    for(Plato::OrdinalType tDofIndex = 0; tDofIndex < tNumStressTerms; ++tDofIndex)
+        TEST_FLOATING_EQUALITY(tHostDeviatoricStress(tCellIndex, tDofIndex), tGold[tDofIndex], tTolerance);
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_DeviatoricStress3D)
+{
+    constexpr Plato::OrdinalType tNumCells = 1;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    constexpr Plato::OrdinalType tNumStressTerms = 6;
+
+    Plato::ScalarMultiVector tElasticStrain("elastic strain", tNumCells, tNumStressTerms);
+    auto tHostElasticStrain = Kokkos::create_mirror(tElasticStrain);
+    for (unsigned int i = 0; i < tNumCells; ++i)
+        for (unsigned int j = 0; j < tNumStressTerms; ++j)
+        {
+            tHostElasticStrain(i, j) = (i + 1.0) * (j + 1.0);
+            //printf("(%d,%d) = %f\n", i,j,tHostElasticStrain(i, j));
+        }
+    Kokkos::deep_copy(tElasticStrain, tHostElasticStrain);
+
+    Plato::ScalarMultiVector tDeviatoricStress("deviatoric stress", tNumCells, tNumStressTerms);
+
+    Plato::ComputeDeviatoricStress<tSpaceDim> tComputeDeviatoricStress;
+
+    Plato::Scalar tShearModulus = 3.5;
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & tCellOrdinal)
+    {
+        tComputeDeviatoricStress(tCellOrdinal, tElasticStrain, tShearModulus, tDeviatoricStress);
+    }, "Unit Test");
+
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    std::vector<Plato::Scalar> tGold = {-7.0,0.0,7.0,14.0,17.5,21.0};
+    auto tHostDeviatoricStress = Kokkos::create_mirror(tDeviatoricStress);
+    Kokkos::deep_copy(tHostDeviatoricStress, tDeviatoricStress);
+
+    Plato::OrdinalType tCellIndex = 0;
+    for(Plato::OrdinalType tDofIndex = 0; tDofIndex < tNumStressTerms; ++tDofIndex)
+        TEST_FLOATING_EQUALITY(tHostDeviatoricStress(tCellIndex, tDofIndex), tGold[tDofIndex], tTolerance);
+}
 
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_computeCauchyStress3D)

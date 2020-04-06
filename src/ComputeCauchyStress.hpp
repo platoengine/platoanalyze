@@ -12,6 +12,9 @@ namespace Plato
 {
 
 /******************************************************************************//**
+ *
+ * \tparam SpaceDim number of spatial dimensions
+ *
  * \brief Compute the Cauchy stress tensor:
  *
  * \f$ \sigma_{ij} = \mu(\epsilon_{ij} + \epsilon_{ji}) + \lambda\delta{ij}\epsilon_{kk} \f$,
@@ -21,14 +24,11 @@ namespace Plato
  * Here, \f$ \epsilon_{ij} \f$ is the strain tensor, \f$ \mu \f$ is the shear modulus,
  * \f$ \epsilon_{kk} \f$ is the trace of the strain tensor, and K is the bulk modulus.
  *
- * \tparam SpaceDim number of spatial dimensions
- *
 **********************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 class ComputeCauchyStress
 {
 public:
-
     /******************************************************************************//**
      * \brief Functor constructor
     **********************************************************************************/
@@ -37,11 +37,11 @@ public:
     /******************************************************************************//**
      * \brief Compute the Cauchy stress tensor:
      *
-     * \param [in]  aCellOrdinal cell/element index
-     * \param [in]  aElasticStrain elastic strain tensor
+     * \param [in]  aCellOrdinal           cell/element index
      * \param [in]  aPenalizedBulkModulus  penalized elastic bulk modulus
      * \param [in]  aPenalizedShearModulus penalized elastic shear modulus
-     * \param [out] aCauchyStress          Cauchy stress tensor
+     * \param [in]  aStrain                elastic strain tensor
+     * \param [out] aStress                Cauchy stress tensor
     **********************************************************************************/
     template<typename StrainT, typename ControlT, typename StressT>
     DEVICE_TYPE
