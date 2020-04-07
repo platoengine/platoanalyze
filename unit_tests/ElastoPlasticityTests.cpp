@@ -27,7 +27,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_NewtonRaphsonStoppingC
     auto tCriterion = Plato::newton_raphson_stopping_criterion("absolute residual norm");
     TEST_EQUALITY(tCriterion, Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM);
 
-    auto tCriterion = Plato::newton_raphson_stopping_criterion("relative residual norm");
+    tCriterion = Plato::newton_raphson_stopping_criterion("relative residual norm");
     TEST_EQUALITY(tCriterion, Plato::NewtonRaphson::RELATIVE_RESIDUAL_NORM);
 
     TEST_THROW(Plato::newton_raphson_stopping_criterion("absolute displacement norm"), std::runtime_error);
