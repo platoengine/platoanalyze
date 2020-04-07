@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <locale>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -33,8 +34,8 @@ struct NewtonRaphson
 
     enum measure_t
     {
-        RESIDUAL_NORM = 0,
-        DISPLACEMENT_NORM = 1,
+        DISPLACEMENT_NORM = 0,
+        ABSOLUTE_RESIDUAL_NORM = 1,
         RELATIVE_RESIDUAL_NORM = 2,
     };
 };
@@ -76,15 +77,48 @@ struct NewtonRaphsonOutputData
     **********************************************************************************/
     NewtonRaphsonOutputData() :
         mWriteOutput(true),
-        mCurrentNorm(1.0),
-        mReferenceNorm(0.0),
-        mRelativeNorm(1.0),
+        mCurrentNorm(std::numeric_limits<Plato::Scalar>::max()),
+        mReferenceNorm(std::numeric_limits<Plato::Scalar>::max()),
+        mRelativeNorm(std::numeric_limits<Plato::Scalar>::max()),
         mCurrentIteration(0),
         mStopingCriterion(Plato::NewtonRaphson::DID_NOT_CONVERGE),
-        mStoppingMeasure(Plato::NewtonRaphson::RESIDUAL_NORM)
+        mStoppingMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM)
     {}
 };
 // struct NewtonRaphsonOutputData
+
+
+/******************************************************************************//**
+ * \brief Return Newton-Raphson solver's stopping criterion
+ * \param [in] aInput string with stopping criterion
+ * \return stopping criterion enum
+**********************************************************************************/
+inline Plato::NewtonRaphson::measure_t newton_raphson_stopping_criterion(const std::string& aInput)
+{
+    // convert string to upper case
+    std::string tCopy = aInput;
+    std::for_each(tCopy.begin(), tCopy.end(), [](char & aChar)
+    {
+        aChar = std::toupper(aChar);
+    });
+
+    if(tCopy.compare("ABSOLUTE RESIDUAL NORM") == 0)
+    {
+        return Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM;
+    }
+    else if(tCopy.compare("RELATIVE RESIDUAL NORM") == 0)
+    {
+        return Plato::NewtonRaphson::RELATIVE_RESIDUAL_NORM;
+    }
+    else
+    {
+        std::ostringstream tMsg;
+        tMsg << "Newton-Raphson Stopping Criterion '" << aInput.c_str() << "' is not defined as a valid stopping criterion. "
+                << "Valid Options: 'ABSOLUTE RESIDUAL NORM' and 'RELATIVE RESIDUAL NORM'";
+        THROWERR(tMsg.str().c_str())
+    }
+}
+// function newton_raphson_stopping_criterion
 
 /******************************************************************************//**
  * \brief Writes a brief sentence explaining why the Newton-Raphson solver stopped.
@@ -195,6 +229,15 @@ inline void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOu
 **********************************************************************************/
 inline void compute_relative_residual_norm_error(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
 {
+    if(std::isfinite(aOutputData.mCurrentNorm) == false)
+    {
+        THROWERR("Relative Error Calculation: Current norm value is not a finite number.")
+    }
+    if(std::isfinite(aOutputData.mReferenceNorm) == false)
+    {
+        THROWERR("Relative Error Calculation: Reference norm value is not a finite number.")
+    }
+
     if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
     {
         aOutputData.mReferenceNorm = Plato::norm(aResidual);
@@ -202,10 +245,6 @@ inline void compute_relative_residual_norm_error(const Plato::ScalarVector & aRe
     }
     else
     {
-        if(std::isfinite(aOutputData.mCurrentNorm) == false)
-        {
-            THROWERR("Relative Error Calculation: Current norm value is not a finite number.")
-        }
         aOutputData.mCurrentNorm = Plato::norm(aResidual);
         aOutputData.mRelativeNorm = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm) / std::abs(aOutputData.mReferenceNorm);
         aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
@@ -225,6 +264,15 @@ inline void compute_relative_residual_norm_error(const Plato::ScalarVector & aRe
 **********************************************************************************/
 inline void compute_absolute_residual_norm_error(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
 {
+    if(std::isfinite(aOutputData.mCurrentNorm) == false)
+    {
+        THROWERR("Relative Error Calculation: Current norm value is not a finite number.")
+    }
+    if(std::isfinite(aOutputData.mReferenceNorm) == false)
+    {
+        THROWERR("Relative Error Calculation: Reference norm value is not a finite number.")
+    }
+
     if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
     {
         aOutputData.mReferenceNorm = Plato::norm(aResidual);

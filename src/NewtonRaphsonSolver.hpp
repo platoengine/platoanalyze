@@ -57,6 +57,7 @@ private:
     bool mUseAbsoluteTolerance;   /*!< use absolute stopping tolerance flag */
     bool mWriteSolverDiagnostics; /*!< write solver diagnostics flag */
     std::ofstream mSolverDiagnosticsFile; /*!< output solver diagnostics */
+    Plato::NewtonRaphson::measure_t mStopMeasure; /*!< solver stopping criterion measure */
 
 // private functions
 private:
@@ -339,6 +340,46 @@ private:
         return (tStop);
     }
 
+    /***************************************************************************//**
+     * \brief Evaluate solver's stopping measure
+     * \param [in] aGlobalResidual assembled residual
+     * \param [in] aOutputData     c++ struct with solver's diagnostics
+    *******************************************************************************/
+    void computeStoppingCriterion(const Plato::ScalarVector& aResidual, Plato::NewtonRaphsonOutputData& aOutputData)
+    {
+        switch(aOutputData.mStoppingMeasure)
+        {
+            case Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM:
+            {
+                Plato::compute_absolute_residual_norm_error(aResidual, aOutputData);
+                break;
+            }
+            case Plato::NewtonRaphson::RELATIVE_RESIDUAL_NORM:
+            {
+                Plato::compute_relative_residual_norm_error(aResidual, aOutputData);
+                break;
+            }
+            default:
+            {
+                Plato::compute_absolute_residual_norm_error(aResidual, aOutputData);
+                break;
+            }
+        }
+    }
+
+    /***************************************************************************//**
+     * \brief Finalize initialization of member data
+     * \param [in] aInputs input parameters database
+    *******************************************************************************/
+    void initialize(Teuchos::ParameterList& aInputs)
+    {
+        this->openDiagnosticsFile();
+        auto tInitialNumTimeSteps = Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20);
+        mDirichletValuesMultiplier = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(tInitialNumTimeSteps);
+        auto tStopMeasure = Plato::ParseTools::getSubParam<std::string>(aInputs, "Newton-Raphson", "Stopping Measure", "absolute residual norm")
+        mStopMeasure = Plato::newton_raphson_stopping_criterion(tStopMeasure);
+    }
+
 // public functions
 public:
     /***************************************************************************//**
@@ -350,15 +391,14 @@ public:
         mWorksetBase(aMesh),
         mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-6)),
         mDirichletValuesMultiplier(1),
-        mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 1e-10)),
+        mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 5e-7)),
         mMaxNumSolverIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Newton-Raphson", "Maximum Number Iterations", 10)),
         mCurrentSolverIter(0),
         mUseAbsoluteTolerance(false),
-        mWriteSolverDiagnostics(true)
+        mWriteSolverDiagnostics(true),
+        mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM)
     {
-        this->openDiagnosticsFile();
-        auto tInitialNumTimeSteps = Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20);
-        mDirichletValuesMultiplier = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(tInitialNumTimeSteps);
+        this->initialize(aInputs);
     }
 
     /***************************************************************************//**
@@ -369,11 +409,12 @@ public:
         mWorksetBase(aMesh),
         mStoppingTolerance(1e-6),
         mDirichletValuesMultiplier(1),
-        mCurrentResidualNormTolerance(1e-10),
+        mCurrentResidualNormTolerance(5e-7),
         mMaxNumSolverIter(20),
         mCurrentSolverIter(0),
         mUseAbsoluteTolerance(false),
-        mWriteSolverDiagnostics(true)
+        mWriteSolverDiagnostics(true),
+        mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM)
     {
         this->openDiagnosticsFile();
     }
@@ -451,6 +492,7 @@ public:
     {
         bool tNewtonRaphsonConverged = false;
         Plato::NewtonRaphsonOutputData tOutputData;
+        tOutputData.mStoppingMeasure = mStopMeasure;
         auto tNumCells = mLocalEquation->numCells();
         Plato::ScalarArray3D tInvLocalJacobianT("Inverse Transpose DhDc", tNumCells, mNumLocalDofsPerCell, mNumLocalDofsPerCell);
 
@@ -476,7 +518,7 @@ public:
             this->applyConstraints(tGlobalJacobian, tGlobalResidual);
 
             // check convergence
-            Plato::compute_relative_residual_norm_error(tGlobalResidual, tOutputData);
+            this->computeStoppingCriterion(tGlobalResidual, tOutputData);
             Plato::print_newton_raphson_diagnostics(tOutputData, mSolverDiagnosticsFile);
 
             const bool tStop = this->checkStoppingCriterion(tOutputData);
