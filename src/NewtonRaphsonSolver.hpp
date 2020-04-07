@@ -376,7 +376,7 @@ private:
         this->openDiagnosticsFile();
         auto tInitialNumTimeSteps = Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20);
         mDirichletValuesMultiplier = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(tInitialNumTimeSteps);
-        auto tStopMeasure = Plato::ParseTools::getSubParam<std::string>(aInputs, "Newton-Raphson", "Stopping Measure", "absolute residual norm")
+        auto tStopMeasure = Plato::ParseTools::getSubParam<std::string>(aInputs, "Newton-Raphson", "Stopping Measure", "absolute residual norm");
         mStopMeasure = Plato::newton_raphson_stopping_criterion(tStopMeasure);
     }
 
