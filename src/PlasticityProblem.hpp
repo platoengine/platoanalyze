@@ -217,10 +217,10 @@ public:
         for(Plato::OrdinalType tSnapshot = 0; tSnapshot < tDisplacements.extent(0); tSnapshot++)
         {
             auto tPressSubView = Kokkos::subview(tPressure, tSnapshot, Kokkos::ALL());
-            auto tDispSubView = Kokkos::subview(tDisplacements, tSnapshot, Kokkos::ALL());
-            auto tForceSubView = Kokkos::subview(mReactionForce, tSnapshot, Kokkos::ALL());
             aMesh.add_tag(Omega_h::VERT, "Pressure", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tPressSubView)));
+            auto tForceSubView = Kokkos::subview(mReactionForce, tSnapshot, Kokkos::ALL());
             aMesh.add_tag(Omega_h::VERT, "Reaction Force", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tForceSubView)));
+            auto tDispSubView = Kokkos::subview(tDisplacements, tSnapshot, Kokkos::ALL());
             aMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubView)));
             Plato::add_element_state_tags(aMesh, mDataMap, tSnapshot);
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, mSpaceDim);

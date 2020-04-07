@@ -27,7 +27,7 @@ struct NewtonRaphson
     {
         DID_NOT_CONVERGE = 0,
         MAX_NUMBER_ITERATIONS = 1,
-        RELATIVE_NORM_TOLERANCE = 2,
+        NORM_MEASURE_TOLERANCE = 2,
         CURRENT_NORM_TOLERANCE = 3,
         NaN_NORM_VALUE = 4,
     };
@@ -65,7 +65,7 @@ struct NewtonRaphsonOutputData
 {
     bool mWriteOutput;              /*!< flag: true = write output; false = do not write output */
     Plato::Scalar mCurrentNorm;     /*!< current norm */
-    Plato::Scalar mRelativeNorm;    /*!< relative norm */
+    Plato::Scalar mNormMeasure;    /*!< relative norm */
     Plato::Scalar mReferenceNorm;   /*!< reference norm */
 
     Plato::OrdinalType mCurrentIteration;             /*!< current Newton-Raphson solver iteration */
@@ -79,7 +79,7 @@ struct NewtonRaphsonOutputData
         mWriteOutput(true),
         mCurrentNorm(std::numeric_limits<Plato::Scalar>::max()),
         mReferenceNorm(std::numeric_limits<Plato::Scalar>::max()),
-        mRelativeNorm(std::numeric_limits<Plato::Scalar>::max()),
+        mNormMeasure(std::numeric_limits<Plato::Scalar>::max()),
         mCurrentIteration(0),
         mStopingCriterion(Plato::NewtonRaphson::DID_NOT_CONVERGE),
         mStoppingMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM)
@@ -144,9 +144,9 @@ inline void print_newton_raphson_stop_criterion(const Plato::NewtonRaphsonOutput
             aOutputFile << "\n\n****** Newton-Raphson solver stopping due to exceeding maximum number of iterations. ******\n\n";
             break;
         }
-        case Plato::NewtonRaphson::RELATIVE_NORM_TOLERANCE:
+        case Plato::NewtonRaphson::NORM_MEASURE_TOLERANCE:
         {
-            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to relative norm tolerance being met. ******\n\n";
+            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to norm measure being met. ******\n\n";
             break;
         }
         case Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE:
@@ -191,7 +191,7 @@ inline void print_newton_raphson_diagnostics(const Plato::NewtonRaphsonOutputDat
     }
 
     aOutputFile << std::scientific << std::setprecision(6) << aOutputData.mCurrentIteration << std::setw(20)
-        << aOutputData.mCurrentNorm << std::setw(20) << aOutputData.mRelativeNorm << "\n" << std::flush;
+        << aOutputData.mCurrentNorm << std::setw(20) << aOutputData.mNormMeasure << "\n" << std::flush;
 }
 // function print_newton_raphson_diagnostics
 
@@ -246,7 +246,7 @@ inline void compute_relative_residual_norm_error(const Plato::ScalarVector & aRe
     else
     {
         aOutputData.mCurrentNorm = Plato::norm(aResidual);
-        aOutputData.mRelativeNorm = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm) / std::abs(aOutputData.mReferenceNorm);
+        aOutputData.mNormMeasure = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm) / std::abs(aOutputData.mReferenceNorm);
         aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
     }
 }
@@ -281,7 +281,7 @@ inline void compute_absolute_residual_norm_error(const Plato::ScalarVector & aRe
     else
     {
         aOutputData.mCurrentNorm = Plato::norm(aResidual);
-        aOutputData.mRelativeNorm = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm);
+        aOutputData.mNormMeasure = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm);
         aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
     }
 }

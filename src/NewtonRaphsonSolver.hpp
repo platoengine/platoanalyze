@@ -316,10 +316,10 @@ private:
     {
         bool tStop = false;
 
-        if(aOutputData.mRelativeNorm < mStoppingTolerance)
+        if(aOutputData.mNormMeasure < mStoppingTolerance)
         {
             tStop = true;
-            aOutputData.mStopingCriterion = Plato::NewtonRaphson::RELATIVE_NORM_TOLERANCE;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::NORM_MEASURE_TOLERANCE;
         }
         else if(aOutputData.mCurrentNorm < mCurrentResidualNormTolerance)
         {
@@ -331,7 +331,7 @@ private:
             tStop = true;
             aOutputData.mStopingCriterion = Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS;
         }
-        else if(!std::isfinite(aOutputData.mCurrentNorm) || !std::isfinite(aOutputData.mRelativeNorm))
+        else if(!std::isfinite(aOutputData.mCurrentNorm) || !std::isfinite(aOutputData.mNormMeasure))
         {
             tStop = true;
             aOutputData.mStopingCriterion = Plato::NewtonRaphson::NaN_NORM_VALUE;
