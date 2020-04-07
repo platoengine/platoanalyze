@@ -184,11 +184,46 @@ inline void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOu
 // function print_newton_raphson_diagnostics_header
 
 /******************************************************************************//**
- * \brief Computes the relative residual norm criterion.
+ * \brief Computes relative residual norm criterion, i.e.
+ *
+ * \f$ \mbox{relative error} = \frac{\Vert \hat{\alpha} - \alpha \Vert}{\Vert \hat{\alpha} \Vert} \f$,
+ *
+ * where \f$ \hat{\alpha} \f$ is an approximation of the true answer \f$ \alpha \f$.
+ *
  * \param [in]     aResidual   current residual vector
  * \param [in,out] aOutputData C++ structure with Newton-Raphson solver output data
 **********************************************************************************/
-inline void compute_relative_residual_norm_criterion(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
+inline void compute_relative_residual_norm_error(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
+{
+    if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
+    {
+        aOutputData.mReferenceNorm = Plato::norm(aResidual);
+        aOutputData.mCurrentNorm = aOutputData.mReferenceNorm;
+    }
+    else
+    {
+        if(std::isfinite(aOutputData.mCurrentNorm) == false)
+        {
+            THROWERR("Relative Error Calculation: Current norm value is not a finite number.")
+        }
+        aOutputData.mCurrentNorm = Plato::norm(aResidual);
+        aOutputData.mRelativeNorm = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm) / std::abs(aOutputData.mReferenceNorm);
+        aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
+    }
+}
+// function compute_relative_residual_norm_error
+
+/******************************************************************************//**
+ * \brief Computes absolute residual norm criterion.
+ *
+ * \f$ \mbox{absolute error} = \Vert \hat{\alpha} - \alpha \Vert \f$,
+ *
+ * where \f$ \hat{\alpha} \f$ is an approximation of the true answer \f$ \alpha \f$.
+ *
+ * \param [in]     aResidual   current residual vector
+ * \param [in,out] aOutputData C++ structure with Newton-Raphson solver output data
+**********************************************************************************/
+inline void compute_absolute_residual_norm_error(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
 {
     if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
     {
@@ -198,11 +233,11 @@ inline void compute_relative_residual_norm_criterion(const Plato::ScalarVector &
     else
     {
         aOutputData.mCurrentNorm = Plato::norm(aResidual);
-        aOutputData.mRelativeNorm = std::abs(aOutputData.mCurrentNorm - aOutputData.mReferenceNorm);
+        aOutputData.mRelativeNorm = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm);
         aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
     }
 }
-// function compute_relative_residual_norm_criterion
+// function compute_relative_residual_norm_error
 
 }
 // namespace Plato

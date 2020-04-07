@@ -476,7 +476,7 @@ public:
             this->applyConstraints(tGlobalJacobian, tGlobalResidual);
 
             // check convergence
-            Plato::compute_relative_residual_norm_criterion(tGlobalResidual, tOutputData);
+            Plato::compute_relative_residual_norm_error(tGlobalResidual, tOutputData);
             Plato::print_newton_raphson_diagnostics(tOutputData, mSolverDiagnosticsFile);
 
             const bool tStop = this->checkStoppingCriterion(tOutputData);
