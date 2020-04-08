@@ -53,10 +53,10 @@
 
 
 /******************************************************************************//**
- * @brief 
+ * @brief
 
  * @param [in]
- * @return 
+ * @return
 **********************************************************************************/
 
 namespace Plato {
@@ -111,10 +111,13 @@ class EpetraSystem
         std::vector<int> tNumEntries(tNumRows, 0);
         auto tRowMap_host = Kokkos::create_mirror_view(tInMatrix.rowMap());
         Kokkos::deep_copy(tRowMap_host, tInMatrix.rowMap());
+        int tMaxNumEntries = 0;
         for(int iRow=0; iRow<tNumRows; iRow++)
         {
             tNumEntries[iRow] = tRowMap_host[iRow+1] - tRowMap_host[iRow];
+            if(tNumEntries[iRow] > tMaxNumEntries) tMaxNumEntries = tNumEntries[iRow];
         }
+        auto tNumColsPerBlock = tInMatrix.numColsPerBlock();
 
         auto tRetVal = std::make_shared<Epetra_VbrMatrix>(Copy, *mBlockRowMap, tNumEntries.data());
 
@@ -124,20 +127,28 @@ class EpetraSystem
         auto tEntries_host = Kokkos::create_mirror_view(tInMatrix.entries());
         Kokkos::deep_copy(tEntries_host, tInMatrix.entries());
 
-        auto tNumColsPerBlock = tInMatrix.numColsPerBlock();
         auto tNumRowsPerBlock = tInMatrix.numRowsPerBlock();
         auto tNumEntriesPerBlock = tNumColsPerBlock*tNumRowsPerBlock;
         bool tSumInto = false;
 
+        std::vector<int> tColIndices(tMaxNumEntries,0);
+        std::vector<Plato::Scalar> tBlockEntries(tNumEntriesPerBlock,0.0);
+
         for(int iRow=0; iRow<tNumRows; iRow++)
         {
+
+            auto tNumEntries = tRowMap_host(iRow+1) - tRowMap_host(iRow);
+            auto tBegin = tRowMap_host(iRow);
+            for(int i=0; i<tNumEntries; i++) tColIndices[i] = tColMap_host(tBegin++);
+            tRetVal->BeginInsertGlobalValues(iRow, tNumEntries, tColIndices.data());
             for(int iEntryOrd=tRowMap_host(iRow); iEntryOrd<tRowMap_host(iRow+1); iEntryOrd++)
             {
-                auto iCol = tColMap_host(iEntryOrd);
-                auto tVals = &(tEntries_host(iEntryOrd*tNumEntriesPerBlock));
-                tRetVal->DirectSubmitBlockEntry(iRow, iCol, tVals, tNumColsPerBlock,
-                                                tNumRowsPerBlock, tNumColsPerBlock, tSumInto);
+                auto tBlockEntryOrd = iEntryOrd*tNumEntriesPerBlock;
+                for(int j=0; j<tNumEntriesPerBlock; j++)
+                  tBlockEntries[j] = tEntries_host(tBlockEntryOrd+j);
+                tRetVal->SubmitBlockEntry(tBlockEntries.data(), tNumRowsPerBlock, tNumRowsPerBlock, tNumColsPerBlock);
             }
+            tRetVal->EndSubmitEntries();
         }
 
         tRetVal->FillComplete();
@@ -162,11 +173,6 @@ class EpetraSystem
 
         return tRetVal;
     }
-
-    virtual Epetra_Map dofRowMap()         const {}
-    virtual Epetra_Map dofOverlapRowMap()  const {}
-    virtual Epetra_Map nodeRowMap()        const {}
-    virtual Epetra_Map nodeOverlapRowMap() const {}
 };
 
 
@@ -175,22 +181,46 @@ class EpetraSystem
 **********************************************************************************/
 class EpetraLinearSolver : public AbstractSolver
 {
-    rcp<EpetraSystem>         mSystem;
+    rcp<EpetraSystem> mSystem;
+
+    const Teuchos::ParameterList& mSolverParams;
+
+    int mIterations;
+    Plato::Scalar mTolerance;
 
   public:
     /******************************************************************************//**
      * @brief EpetraLinearSolver constructor
-    
+
      This constructor takes an abstract Mesh and creates a new System.
     **********************************************************************************/
     EpetraLinearSolver(
-        Teuchos::ParameterList& aSolverPparams,
+        Teuchos::ParameterList& aSolverParams,
         Omega_h::Mesh&          aMesh,
         Comm::Machine           aMachine,
         int                     aDofsPerNode
     ) :
+        mSolverParams(aSolverParams),
         mSystem(std::make_shared<EpetraSystem>(aMesh, aMachine, aDofsPerNode))
-    {}
+    {
+        if(mSolverParams.isType<int>("Iterations"))
+        {
+            mIterations = mSolverParams.get<int>("Iterations");
+        }
+        else
+        {
+            mIterations = 100;
+        }
+
+        if(mSolverParams.isType<double>("Tolerance"))
+        {
+            mTolerance = mSolverParams.get<double>("Tolerance");
+        }
+        else
+        {
+            mTolerance = 1e-6;
+        }
+    }
 
     /******************************************************************************//**
      * @brief Solve the linear system
@@ -208,7 +238,27 @@ class EpetraLinearSolver : public AbstractSolver
         Epetra_LinearProblem tProblem(&tVbrRowMatrix, tSolution.get(), tForcing.get());
         AztecOO tSolver(tProblem);
 
-        tSolver.Iterate( 10, 1e-8 );
+        setupSolver(tSolver);
+
+        tSolver.Iterate( mIterations, mTolerance );
+    }
+
+    void setupSolver(AztecOO& aSolver)
+    {
+        int tDisplayIterations = 0;
+        if(mSolverParams.isType<int>("Display Iterations"))
+        {
+            tDisplayIterations = mSolverParams.get<int>("Display Iterations");
+        }
+
+        aSolver.SetAztecOption(AZ_output, tDisplayIterations);
+
+        // defaults (TODO: add options)
+        aSolver.SetAztecOption(AZ_precond, AZ_ilu);
+        aSolver.SetAztecOption(AZ_subdomain_solve, AZ_ilu);
+        aSolver.SetAztecOption(AZ_precond, AZ_dom_decomp);
+        aSolver.SetAztecOption(AZ_scaling, AZ_row_sum);
+        aSolver.SetAztecOption(AZ_solver, AZ_gmres);
     }
 };
 
@@ -219,7 +269,7 @@ class EpetraLinearSolver : public AbstractSolver
 
 
 /******************************************************************************/
-/*! 
+/*!
   \brief 3D Thermoelastic problem
 */
 /******************************************************************************/
@@ -230,8 +280,8 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Thermoelastic3D )
 
   // create test mesh
   //
-  constexpr int meshWidth=2;
-  constexpr int spaceDim=3;
+  constexpr int meshWidth=8;
+  constexpr int spaceDim=2;
   auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   // create mesh based density from host data
@@ -278,13 +328,46 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Thermoelastic3D )
     "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
+    "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
+    "    <ParameterList  name='Traction Vector Boundary Condition'>                          \n"
+    "      <Parameter name='Type'   type='string'        value='Uniform'/>                   \n"
+    "      <Parameter name='Values' type='Array(double)' value='{1e3, 0}'/>                  \n"
+    "      <Parameter name='Sides'  type='string'        value='Load'/>                      \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
+    "  <ParameterList  name='Essential Boundary Conditions'>                                 \n"
+    "    <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
+    "      <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+    "      <Parameter  name='Index'    type='int'    value='0'/>                             \n"
+    "      <Parameter  name='Sides'    type='string' value='Fix'/>                           \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
+    "      <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+    "      <Parameter  name='Index'    type='int'    value='1'/>                             \n"
+    "      <Parameter  name='Sides'    type='string' value='Fix'/>                           \n"
+    "    </ParameterList>                                                                    \n"
+    "    <ParameterList  name='Fixed Potential Boundary Condition'>                          \n"
+    "      <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
+    "      <Parameter  name='Index'    type='int'    value='2'/>                             \n"
+    "      <Parameter  name='Sides'    type='string' value='Fix'/>                           \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
     "  <ParameterList name='Linear Solver'>                                                  \n"
+    "    <Parameter name='Display Iterations' type='int' value='10'/>                        \n"
+    "    <Parameter name='Iterations' type='int' value='50'/>                                \n"
+    "    <Parameter name='Tolerance' type='double' value='1e-6'/>                            \n"
     "  </ParameterList>                                                                      \n"
     "</ParameterList>                                                                        \n"
   );
 
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
+  Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 5 /* class id */);
+  tMeshSets[Omega_h::SIDE_SET]["Load"] = Omega_h::collect_marked(tMarksLoad);
+
+  Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 3 /* class id */);
+  tMeshSets[Omega_h::SIDE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
+
   Plato::VectorFunction<::Plato::Thermomechanics<spaceDim>>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
@@ -301,8 +384,10 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Thermoelastic3D )
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
+  int tDofsPerNode = jacobian->numRowsPerBlock();
+
   auto tSolverParams = params->sublist("Linear Solver");
-  Plato::Devel::EpetraLinearSolver tSolver(tSolverParams, *mesh, tMachine, /*dofs=*/ 4);
+  Plato::Devel::EpetraLinearSolver tSolver(tSolverParams, *mesh, tMachine, tDofsPerNode);
   tSolver.solve(*jacobian, state, residual);
 
 }
