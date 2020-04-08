@@ -52,7 +52,7 @@ namespace Plato {
 void run(
     Omega_h::Library*       lib_osh,
     Teuchos::ParameterList& problem,
-    comm::Machine           machine);
+    Comm::Machine           machine);
 }
 
 #endif /* #ifndef TESTHOST_HPP */

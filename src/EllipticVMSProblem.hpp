@@ -71,21 +71,26 @@ public:
      * @param [in] aMeshSets side sets database
      * @param [in] aInputParams input parameters database
     **********************************************************************************/
-    EllipticVMSProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams) :
-            mEqualityConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
-            mStateProjection(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
-            mNumSteps      (Plato::ParseTools::getSubParam<int>   (aInputParams, "Time Stepping", "Number Time Steps",    1  )),
-            mTimeStep      (Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Time Step",     1.0)),
-            mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Number Iterations", 2  )),
-            mConstraint(nullptr),
-            mObjective(nullptr),
-            mResidual("MyResidual", mEqualityConstraint.size()),
-            mStates("States", mNumSteps, mEqualityConstraint.size()),
-            mJacobian(Teuchos::null),
-            mProjResidual("MyProjResidual", mStateProjection.size()),
-            mProjPGrad("Projected PGrad", mStateProjection.size()),
-            mProjectState("Project State", aMesh.nverts()),
-            mProjJacobian(Teuchos::null)
+    EllipticVMSProblem(
+      Omega_h::Mesh& aMesh,
+      Omega_h::MeshSets& aMeshSets,
+      Teuchos::ParameterList& aInputParams,
+      Comm::Machine aMachine
+    ) :
+      mEqualityConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
+      mStateProjection(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
+      mNumSteps      (Plato::ParseTools::getSubParam<int>   (aInputParams, "Time Stepping", "Number Time Steps",    1  )),
+      mTimeStep      (Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Time Step",     1.0)),
+      mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Number Iterations", 2  )),
+      mConstraint(nullptr),
+      mObjective(nullptr),
+      mResidual("MyResidual", mEqualityConstraint.size()),
+      mStates("States", mNumSteps, mEqualityConstraint.size()),
+      mJacobian(Teuchos::null),
+      mProjResidual("MyProjResidual", mStateProjection.size()),
+      mProjPGrad("Projected PGrad", mStateProjection.size()),
+      mProjectState("Project State", aMesh.nverts()),
+      mProjJacobian(Teuchos::null)
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
     }

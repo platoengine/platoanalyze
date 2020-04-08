@@ -49,8 +49,8 @@
 namespace Plato {
 
 #if defined(KOKKOS_HAVE_CUDA)
-void run_cuda_query(comm::Machine machine) {
-  const size_t comm_rank = comm::rank(machine);
+void run_cuda_query(Comm::Machine machine) {
+  const size_t comm_rank = Comm::rank(machine);
   std::cout << "P" << comm_rank
             << ": Cuda device_count = " << Kokkos::Cuda::detect_device_count()
             << std::endl;
@@ -60,8 +60,8 @@ void run_cuda_query(comm::Machine machine) {
 void run(
     Omega_h::Library*       lib_osh,
     Teuchos::ParameterList& problem,
-    comm::Machine           machine) {
-  if (comm::rank(machine) == 0) {
+    Comm::Machine           machine) {
+  if (Comm::rank(machine) == 0) {
 
     std::cout << "\nRunning Plato Analyze version " 
               << version_major << "." 
@@ -73,18 +73,15 @@ void run(
 
   }
 
-  auto output_viz = problem.get<std::string>("Output Viz");
-  auto input_mesh = problem.get<std::string>("Input Mesh");
-
   auto physicsString = problem.get<std::string>("Physics", "Default");
   if (problem.get<bool>("Query")) {
-    if (comm::rank(machine) == 0) {
+    if (Comm::rank(machine) == 0) {
       const unsigned numa_count = Kokkos::hwloc::get_available_numa_count();
       const unsigned cores_per_numa =
           Kokkos::hwloc::get_available_cores_per_numa();
       const unsigned threads_per_core =
           Kokkos::hwloc::get_available_threads_per_core();
-      std::cout << "P" << comm::rank(machine) << ": hwloc { NUMA[" << numa_count
+      std::cout << "P" << Comm::rank(machine) << ": hwloc { NUMA[" << numa_count
                 << "]"
                 << " CORE[" << cores_per_numa << "]"
                 << " PU[" << threads_per_core << "] }" << std::endl;
@@ -94,7 +91,8 @@ void run(
 #endif
   } else {
     if(physicsString == "Plato Driver"){
-      ::Plato::driver(lib_osh, problem, input_mesh, output_viz);
+//      ::Plato::driver(lib_osh, problem, input_mesh, output_viz);
+      ::Plato::driver(lib_osh, problem, machine);
     } else
     {
       PLATO_THROW_IF(true, "Unrecognized Physics " << physicsString);

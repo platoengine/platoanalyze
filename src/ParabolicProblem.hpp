@@ -25,6 +25,7 @@
 #include "ScalarFunctionBaseFactory.hpp"
 #include "ScalarFunctionIncBaseFactory.hpp"
 
+#include "alg/ParallelComm.hpp"
 #ifdef HAVE_AMGX
 #include "alg/AmgXSparseLinearProblem.hpp"
 #endif
@@ -67,18 +68,23 @@ private:
 
 public:
     /******************************************************************************/
-    ParabolicProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aParamList) :
-            mEqualityConstraint(aMesh, aMeshSets, mDataMap, aParamList, aParamList.get < std::string > ("PDE Constraint")),
-            mNumSteps(aParamList.sublist("Time Integration").get<int>("Number Time Steps")),
-            mTimeStep(aParamList.sublist("Time Integration").get<Plato::Scalar>("Time Step")),
-            mConstraint(nullptr),
-            mObjective(nullptr),
-            mResidual("MyResidual", mEqualityConstraint.size()),
-            mStates("States", mNumSteps, mEqualityConstraint.size()),
-            mJacobian(Teuchos::null),
-            mJacobianP(Teuchos::null),
-            mComputedFields(Teuchos::null),
-            mIsSelfAdjoint(aParamList.get<bool>("Self-Adjoint", false))
+    ParabolicProblem(
+      Omega_h::Mesh& aMesh,
+      Omega_h::MeshSets& aMeshSets,
+      Teuchos::ParameterList& aParamList,
+      Plato::Comm::Machine aMachine
+    ) :
+      mEqualityConstraint(aMesh, aMeshSets, mDataMap, aParamList, aParamList.get < std::string > ("PDE Constraint")),
+      mNumSteps(aParamList.sublist("Time Integration").get<int>("Number Time Steps")),
+      mTimeStep(aParamList.sublist("Time Integration").get<Plato::Scalar>("Time Step")),
+      mConstraint(nullptr),
+      mObjective(nullptr),
+      mResidual("MyResidual", mEqualityConstraint.size()),
+      mStates("States", mNumSteps, mEqualityConstraint.size()),
+      mJacobian(Teuchos::null),
+      mJacobianP(Teuchos::null),
+      mComputedFields(Teuchos::null),
+      mIsSelfAdjoint(aParamList.get<bool>("Self-Adjoint", false))
     /******************************************************************************/
     {
         this->initialize(aMesh, aMeshSets, aParamList);

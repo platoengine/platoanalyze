@@ -49,9 +49,10 @@ public:
      * @param [in] aInputParams xml metadata
      * @returns shared pointer to a PLATO problem
      **********************************************************************************/
-    std::shared_ptr<Plato::AbstractProblem> create(Omega_h::Mesh& aMesh,
-                                                   Omega_h::MeshSets& aMeshSets,
-                                                   Teuchos::ParameterList& aInputParams)
+    std::shared_ptr<Plato::AbstractProblem> create(Omega_h::Mesh&          aMesh,
+                                                   Omega_h::MeshSets&      aMeshSets,
+                                                   Teuchos::ParameterList& aInputParams,
+                                                   Comm::Machine           aMachine)
     {
 
         auto tProblemSpecs = aInputParams.sublist("Plato Problem");
@@ -62,11 +63,11 @@ public:
         {
             if(tProblemPDE == "Elliptic")
             {
-                return std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs, aMachine);
             }
             if(tProblemPDE == "Hyperbolic")
             {
-                return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs, aMachine);
             }
             else
             {
@@ -79,7 +80,7 @@ public:
         {
             if(tProblemPDE == "Elliptic")
             {
-                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs, aMachine);
             }
             else
             {
@@ -92,11 +93,11 @@ public:
         {
             if(tProblemPDE == "Heat Equation")
             {
-                return std::make_shared < ParabolicProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < ParabolicProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs, aMachine);
             }
             else if(tProblemPDE == "Thermostatics")
             {
-                return std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs, aMachine);
             }
             else
             {
@@ -111,13 +112,13 @@ public:
         }
         else if(tProblemPhysics == "Electromechanical")
         {
-            return std::make_shared < EllipticProblem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+            return std::make_shared < EllipticProblem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs, aMachine);
         }
         else if(tProblemPhysics == "Stabilized Thermomechanical")
         {
             if(tProblemPDE == "Elliptic")
             {
-                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs, aMachine);
             }
             else
             {
@@ -130,11 +131,11 @@ public:
         {
             if(tProblemPDE == "Parabolic")
             {
-                return std::make_shared < ParabolicProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < ParabolicProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs, aMachine);
             }
             else if(tProblemPDE == "Elliptic")
             {
-                return std::make_shared < EllipticProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs);
+                return std::make_shared < EllipticProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tProblemSpecs, aMachine);
             }
             else
             {

@@ -562,7 +562,7 @@ private:
     Omega_h::Assoc mAssoc;
     Omega_h::Library mLibOsh;
     Omega_h::MeshSets mMeshSets;
-    Plato::comm::Machine mMachine;
+    Plato::Comm::Machine mMachine;
 
     std::string mCurrentProblemName;
     Teuchos::RCP<ProblemDefinition> mDefaultProblem;

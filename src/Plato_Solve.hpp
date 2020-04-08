@@ -3,6 +3,7 @@
 
 #include "PlatoMathFunctors.hpp"
 
+#include "alg/ParallelComm.hpp"
 #ifdef HAVE_AMGX
 #include "alg/AmgXSparseLinearProblem.hpp"
 #endif

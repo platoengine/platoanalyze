@@ -19,6 +19,7 @@
 #include "ScalarFunctionBaseFactory.hpp"
 #include "AnalyzeMacros.hpp"
 
+#include "alg/ParallelComm.hpp"
 #ifdef HAVE_AMGX
 #include "alg/AmgXSparseLinearProblem.hpp"
 #endif
@@ -62,14 +63,19 @@ public:
      * @param [in] aMeshSets side sets database
      * @param [in] aInputParams input parameters database
     **********************************************************************************/
-    EllipticProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams) :
-            mEqualityConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
-            mConstraint(nullptr),
-            mObjective(nullptr),
-            mResidual("MyResidual", mEqualityConstraint.size()),
-            mStates("States", static_cast<Plato::OrdinalType>(1), mEqualityConstraint.size()),
-            mJacobian(Teuchos::null),
-            mIsSelfAdjoint(aInputParams.get<bool>("Self-Adjoint", false))
+    EllipticProblem(
+      Omega_h::Mesh& aMesh,
+      Omega_h::MeshSets& aMeshSets,
+      Teuchos::ParameterList& aInputParams,
+      Comm::Machine aMachine
+    ) :
+      mEqualityConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
+      mConstraint(nullptr),
+      mObjective(nullptr),
+      mResidual("MyResidual", mEqualityConstraint.size()),
+      mStates("States", static_cast<Plato::OrdinalType>(1), mEqualityConstraint.size()),
+      mJacobian(Teuchos::null),
+      mIsSelfAdjoint(aInputParams.get<bool>("Self-Adjoint", false))
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
     }

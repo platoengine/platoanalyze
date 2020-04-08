@@ -70,7 +70,9 @@ namespace Plato
         HyperbolicProblem(
           Omega_h::Mesh& aMesh,
           Omega_h::MeshSets& aMeshSets,
-          Teuchos::ParameterList& aParamList) :
+          Teuchos::ParameterList& aParamList,
+          Comm::Machine aMachine
+        ) :
             mEqualityConstraint   (aMesh, aMeshSets, mDataMap, aParamList, 
                                    aParamList.get<std::string>("PDE Constraint")),
             mNewmarkIntegrator    (aParamList.sublist("Time Integration")),

@@ -47,9 +47,9 @@
 
 namespace Plato {
 Teuchos::ParameterList input_file_parsing(
-    int argc, char **argv, comm::Machine const &machine);
+    int argc, char **argv, Comm::Machine const &machine);
 void input_file_echo(
     Teuchos::ParameterList &problem,
     Teuchos::Time &         time_main,
-    comm::Machine const &   machine);
+    Comm::Machine const &   machine);
 }  // namespace Plato
