@@ -12,9 +12,7 @@
 #include "AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "ExpInstMacros.hpp"
-//#include "VonMisesLocalMeasure.hpp"
 #include "AbstractLocalMeasure.hpp"
-//#include "LocalMeasureFactory.hpp"
 
 namespace Plato
 {
