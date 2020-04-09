@@ -2952,10 +2952,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tConstraintValue = tPlasticityProblem.constraintValue(tControls, tSolution);
-    TEST_FLOATING_EQUALITY(tConstraintValue, -0.539482, tTolerance);
+    TEST_FLOATING_EQUALITY(tConstraintValue, -2.26875, tTolerance);
 
     auto tConstraintGrad = tPlasticityProblem.constraintGradient(tControls, tSolution);
-    std::vector<Plato::Scalar> tGold = {-9.273792e-01, -4.636896e-01, -9.273792e-01, -4.636896e-01};
+    std::vector<Plato::Scalar> tGold = {-4.07475, -2.03738, -4.07475, -2.03738};
     auto tHostGrad = Kokkos::create_mirror(tConstraintGrad);
     Kokkos::deep_copy(tHostGrad, tConstraintGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
