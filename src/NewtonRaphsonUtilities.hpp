@@ -246,7 +246,7 @@ inline void compute_relative_residual_norm_error(const Plato::ScalarVector & aRe
     else
     {
         aOutputData.mCurrentNorm = Plato::norm(aResidual);
-        aOutputData.mNormMeasure = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm) / std::abs(aOutputData.mReferenceNorm);
+        aOutputData.mNormMeasure = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm) / std::abs(aOutputData.mCurrentNorm);
         aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
     }
 }
