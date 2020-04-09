@@ -21,6 +21,7 @@
 #include <fstream>
 #include <type_traits>
 
+#include "AnalyzeMacros.hpp"
 #include <alg/CrsLinearProblem.hpp>
 #include <alg/ParallelComm.hpp>
 #include "Simp.hpp"
@@ -67,6 +68,12 @@ using rcp = std::shared_ptr<ClassT>;
 
 /******************************************************************************//**
  * @brief Abstract solver interface
+
+  Note that the solve() function takes 'native' matrix and vector types.  A next
+  step would be to adopt generic matrix and vector interfaces that we can wrap
+  around Epetra types, Tpetra types, Kokkos view-based types, etc.
+
+
 **********************************************************************************/
 class AbstractSolver
 {
@@ -129,7 +136,6 @@ class EpetraSystem
 
         auto tNumRowsPerBlock = tInMatrix.numRowsPerBlock();
         auto tNumEntriesPerBlock = tNumColsPerBlock*tNumRowsPerBlock;
-        bool tSumInto = false;
 
         std::vector<int> tColIndices(tMaxNumEntries,0);
         std::vector<Plato::Scalar> tBlockEntries(tNumEntriesPerBlock,0.0);
@@ -176,6 +182,156 @@ class EpetraSystem
 };
 
 
+#ifdef HAVE_AMGX
+#include <amgx_c.h>
+/******************************************************************************//**
+ * @brief Concrete AmgXLinearSolver
+**********************************************************************************/
+class AmgXLinearSolver : public AbstractSolver
+{
+  private:
+
+    AMGX_matrix_handle    mMatrixHandle;
+    AMGX_vector_handle    mForcingHandle;
+    AMGX_vector_handle    mSolutionHandle;
+    AMGX_solver_handle    mSolverHandle;
+    AMGX_config_handle    mConfigHandle;
+    AMGX_resources_handle mResources;
+
+    int mDofsPerNode;
+
+    Plato::ScalarVector mSolution;
+
+    static void initializeAMGX()
+    {
+        AMGX_SAFE_CALL(AMGX_initialize());
+        AMGX_SAFE_CALL(AMGX_initialize_plugins());
+        AMGX_SAFE_CALL(AMGX_install_signal_handler());
+    }
+
+    static std::string loadConfigString(std::string aConfigFile)
+    {
+      std::string configString;
+
+      std::ifstream infile;
+      infile.open(aConfigFile, std::ifstream::in);
+      if(infile){
+        std::string line;
+        std::stringstream config;
+        while (std::getline(infile, line)){
+          std::istringstream iss(line);
+          config << iss.str();
+        }
+        configString = config.str();
+      }
+      return configString;
+    }
+
+  public:
+    AmgXLinearSolver(
+        const Teuchos::ParameterList& aSolverParams,
+        int aDofsPerNode
+    ) : mDofsPerNode(aDofsPerNode)
+    {
+      initializeAMGX();
+
+      std::string tConfigFile("amgx.json");
+      if(aSolverParams.isType<std::string>("Configuration File"))
+      {
+          tConfigFile = aSolverParams.get<std::string>("Configuration File");
+      }
+      auto tConfigString = loadConfigString(tConfigFile);
+      AMGX_config_create(&mConfigHandle, tConfigString.c_str());
+
+      // everything currently assumes exactly one MPI rank.
+      MPI_Comm mpi_comm = MPI_COMM_SELF;
+      int ndevices = 1;
+      int devices[1];
+      //it is critical to specify the current device, which is not always zero
+      cudaGetDevice(&devices[0]);
+      AMGX_resources_create(
+          &mResources, mConfigHandle, &mpi_comm, ndevices, devices);
+
+      AMGX_matrix_create(&mMatrixHandle,   mResources, AMGX_mode_dDDI);
+      AMGX_vector_create(&mForcingHandle,  mResources, AMGX_mode_dDDI);
+      AMGX_vector_create(&mSolutionHandle, mResources, AMGX_mode_dDDI);
+      AMGX_solver_create(&mSolverHandle,   mResources, AMGX_mode_dDDI, mConfigHandle);
+    }
+
+    void solve(
+        Plato::CrsMatrix<int> aA,
+        Plato::ScalarVector   aX,
+        Plato::ScalarVector   aB
+    ) {
+
+//#ifndef NDEBUG
+      check_inputs(aA, aX, aB);
+//#endif
+
+      mSolution = aX;
+      auto N = aX.size();
+      auto nnz = aA.columnIndices().size();
+
+      const int *row_map = aA.rowMap().data();
+      const int *col_map = aA.columnIndices().data();
+      const void *data   = aA.entries().data();
+      const void *diag   = nullptr; // no exterior diagonal
+      AMGX_matrix_upload_all(mMatrixHandle, N/mDofsPerNode, nnz, mDofsPerNode, mDofsPerNode, row_map, col_map, data, diag);
+
+      AMGX_vector_upload(mForcingHandle, aB.size()/mDofsPerNode, mDofsPerNode, aB.data());
+      AMGX_vector_upload(mSolutionHandle, aX.size()/mDofsPerNode, mDofsPerNode, aX.data());
+
+      AMGX_solver_setup(mSolverHandle, mMatrixHandle);
+
+      int err = cudaDeviceSynchronize();
+      assert(err == cudaSuccess);
+      auto solverErr = AMGX_solver_solve(mSolverHandle, mForcingHandle, mSolutionHandle);
+      AMGX_vector_download(mSolutionHandle, mSolution.data());
+    }
+
+    ~AmgXLinearSolver()
+    {
+      AMGX_solver_destroy    (mSolverHandle);
+      AMGX_matrix_destroy    (mMatrixHandle);
+      AMGX_vector_destroy    (mForcingHandle);
+      AMGX_vector_destroy    (mSolutionHandle);
+      AMGX_resources_destroy (mResources);
+
+      AMGX_SAFE_CALL(AMGX_config_destroy(mConfigHandle));
+      AMGX_SAFE_CALL(AMGX_finalize_plugins());
+      AMGX_SAFE_CALL(AMGX_finalize());
+    }
+
+    void check_inputs(const Plato::CrsMatrix<int> A, Plato::ScalarVector x, const Plato::ScalarVector b)
+    {
+      auto ndofs = int(x.extent(0));
+      assert(int(b.extent(0)) == ndofs);
+      assert(ndofs % mDofsPerNode == 0);
+      auto nblocks = ndofs / mDofsPerNode;
+      auto row_map = A.rowMap();
+      assert(int(row_map.extent(0)) == nblocks + 1);
+      auto col_inds = A.columnIndices();
+      auto nnz = int(col_inds.extent(0));
+      assert(int(A.entries().extent(0)) == nnz * mDofsPerNode * mDofsPerNode);
+      assert(cudaSuccess == cudaDeviceSynchronize());
+      Kokkos::parallel_for(Kokkos::RangePolicy<int>(0, nblocks), KOKKOS_LAMBDA(int i) {
+        auto begin = row_map(i);
+        assert(0 <= begin);
+        auto end = row_map(i + 1);
+        assert(begin <= end);
+        if (i == nblocks - 1) assert(end == nnz);
+        else assert(end < nnz);
+        for (int ij = begin; ij < end; ++ij) {
+          auto j = col_inds(ij);
+          assert(0 <= j);
+          assert(j < nblocks);
+        }
+      }, "check_inputs");
+      assert(cudaSuccess == cudaDeviceSynchronize());
+    }
+};
+#endif // HAVE_AMGX
+
 /******************************************************************************//**
  * @brief Concrete EpetraLinearSolver
 **********************************************************************************/
@@ -195,7 +351,7 @@ class EpetraLinearSolver : public AbstractSolver
      This constructor takes an abstract Mesh and creates a new System.
     **********************************************************************************/
     EpetraLinearSolver(
-        Teuchos::ParameterList& aSolverParams,
+        const Teuchos::ParameterList& aSolverParams,
         Omega_h::Mesh&          aMesh,
         Comm::Machine           aMachine,
         int                     aDofsPerNode
@@ -263,6 +419,55 @@ class EpetraLinearSolver : public AbstractSolver
 };
 
 
+/******************************************************************************//**
+ * @brief Solver factory for AbstractSolvers
+**********************************************************************************/
+class SolverFactory
+{
+    const Teuchos::ParameterList& mSolverParams;
+
+  public:
+    SolverFactory(
+        Teuchos::ParameterList& aSolverParams
+    ) : mSolverParams(aSolverParams) { }
+
+    rcp<AbstractSolver>
+    create(
+        Omega_h::Mesh&          aMesh,
+        Comm::Machine           aMachine,
+        int                     aDofsPerNode
+    )
+    {
+        std::string tSolverType;
+        if(mSolverParams.isType<std::string>("Solver"))
+        {
+            tSolverType = mSolverParams.get<std::string>("Solver");
+        }
+        else
+        {
+#ifdef HAVE_AMGX
+            tSolverType = "AmgX";
+#else
+            tSolverType = "AztecOO";
+#endif
+        }
+
+        if(tSolverType == "AztecOO")
+        {
+            return std::make_shared<Plato::Devel::EpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
+        }
+        else
+        if(tSolverType == "AmgX")
+        {
+#ifdef HAVE_AMGX
+            return std::make_shared<Plato::Devel::AmgXLinearSolver>(mSolverParams, aDofsPerNode);
+#else
+            THROWERR("Not compiled with AmgX");
+#endif
+        }
+        THROWERR("Requested solver type not found");
+    }
+};
 
 }
 }
@@ -353,6 +558,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Thermoelastic3D )
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
     "  <ParameterList name='Linear Solver'>                                                  \n"
+    "    <Parameter name='Solver' type='string' value='AztecOO'/>                            \n"
     "    <Parameter name='Display Iterations' type='int' value='10'/>                        \n"
     "    <Parameter name='Iterations' type='int' value='50'/>                                \n"
     "    <Parameter name='Tolerance' type='double' value='1e-6'/>                            \n"
@@ -386,8 +592,29 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Thermoelastic3D )
 
   int tDofsPerNode = jacobian->numRowsPerBlock();
 
-  auto tSolverParams = params->sublist("Linear Solver");
-  Plato::Devel::EpetraLinearSolver tSolver(tSolverParams, *mesh, tMachine, tDofsPerNode);
-  tSolver.solve(*jacobian, state, residual);
+  Teuchos::RCP<Teuchos::ParameterList> tAmgXParams =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Linear Solver'>                                     \n"
+    "  <Parameter name='Solver' type='string' value='AmgX'/>                  \n"
+    "  <Parameter name='Configuration File' type='string' value='amgx.json'/> \n"
+    "</ParameterList>                                                         \n"
+  );
+
+  {
+    Plato::Devel::SolverFactory tSolverFactory(*tAmgXParams);
+
+    auto tSolver = tSolverFactory.create(*mesh, tMachine, tDofsPerNode);
+
+    tSolver->solve(*jacobian, state, residual);
+  }
+
+  {
+    auto tSolverParams = params->sublist("Linear Solver");
+    Plato::Devel::SolverFactory tSolverFactory(tSolverParams);
+
+    auto tSolver = tSolverFactory.create(*mesh, tMachine, tDofsPerNode);
+
+    tSolver->solve(*jacobian, state, residual);
+  }
 
 }
