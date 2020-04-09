@@ -1933,16 +1933,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual2D_Elastic)
     Kokkos::deep_copy(tHostResidualWS, tResidualWS);
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
-          { -37654.3209876543, -9259.2592592593, 39839.6319632724, 28395.0617283951, -9876.5432098765,
-            -70403.459902529, 9259.2592592593, 19135.8024691358, 8341.6057170345 },
-          { 16666.6666666667, 5555.5555555556, -15749.01312293, -11111.111111111, 14814.8148148148,
-            0.000000756, -5555.5555555556, -20370.3703703704, 15749.013122174 }
+          { -3.108974e-01, -9.615385e-02, 2.003656e-01, 2.147436e-01, -2.243590e-02,
+            -3.967844e-01, 9.615385e-02, 1.185897e-01, 2.975214e-02},
+          { 1.250000e-01, 5.769231e-02, -8.530661e-02, -6.730769e-02, 1.057692e-01,
+            5.459658e-07, -5.769231e-02, -1.634615e-01, 8.530606e-02}
         };
     for(Plato::OrdinalType tCellIndex=0; tCellIndex < tNumCells; tCellIndex++)
     {
         for(Plato::OrdinalType tDofIndex=0; tDofIndex< PhysicsT::mNumDofsPerCell; tDofIndex++)
         {
-            //printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostElastoPlasticityResidual(tCellIndex, tDofIndex));
+            //printf("residual(%d,%d) = %.10f\n", tCellIndex, tDofIndex, tHostResidualWS(tCellIndex, tDofIndex));
             TEST_FLOATING_EQUALITY(tHostResidualWS(tCellIndex, tDofIndex), tGold[tCellIndex][tDofIndex], tTolerance);
         }
     }
