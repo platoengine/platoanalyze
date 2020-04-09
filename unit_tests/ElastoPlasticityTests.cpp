@@ -3200,13 +3200,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tObjValue = tPlasticityProblem.constraintValue(tControls, tSolution);
-    TEST_FLOATING_EQUALITY(tObjValue, -5.394823e-01, tTolerance);
+    TEST_FLOATING_EQUALITY(tObjValue, -2.26875, tTolerance);
 
     auto tObjGrad = tPlasticityProblem.constraintGradient(tControls, tSolution);
     std::vector<Plato::Scalar> tGold = 
-        {-8.694180e-02, -1.159224e-01, -2.898060e-02, -1.738836e-01, -5.796120e-02, -2.898060e-02, -5.796120e-02, -2.898060e-02, -1.159224e-01,
-         -1.738836e-01, -5.796120e-02, -2.898060e-02, -5.796120e-02, -3.477672e-01, -1.738836e-01, -1.159224e-01, -1.738836e-01, -1.159224e-01,
-         -8.694180e-02, -1.159224e-01, -1.738836e-01, -1.738836e-01, -5.796120e-02, -2.898060e-02, -5.796120e-02, -1.159224e-01, -2.898060e-02  };
+        {
+         -3.820080e-01, -5.093440e-01, -1.273360e-01, -7.640161e-01, -2.546720e-01, -1.273360e-01, -2.546720e-01, -1.273360e-01, -5.093440e-01,
+         -7.640161e-01, -2.546720e-01, -1.273360e-01, -2.546720e-01, -1.528032e+00, -7.640161e-01, -5.093440e-01, -7.640161e-01, -5.093440e-01,
+         -3.820080e-01, -5.093440e-01, -7.640161e-01, -7.640161e-01, -2.546720e-01, -1.273360e-01, -2.546720e-01, -5.093440e-01, -1.273360e-01
+        };
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
