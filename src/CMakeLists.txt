@@ -71,13 +71,7 @@ endif()
 target_include_directories(analyzelib PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 set(LINK_LIBS
-    kokkoscore
-    kokkoskernels
-    kokkoscontainers
-    teuchoscore
-    teuchoscomm
-    teuchosparameterlist
-    teuchosparser
+    ${Trilinos_LIBRARIES}
     Omega_h::omega_h
     ${Trilinos_TPL_LIBRARIES}
     ${Trilinos_EXTRA_LD_FLAGS}

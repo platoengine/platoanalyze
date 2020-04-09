@@ -22,9 +22,10 @@
 #include <type_traits>
 
 #include "AnalyzeMacros.hpp"
-#include <alg/CrsLinearProblem.hpp>
+#include <alg/AmgXSparseLinearProblem.hpp>
 #include <alg/ParallelComm.hpp>
 #include "Simp.hpp"
+#include "EssentialBCs.hpp"
 #include "ScalarProduct.hpp"
 #include "SimplexFadTypes.hpp"
 #include "WorksetBase.hpp"
@@ -32,11 +33,11 @@
 #include "PhysicsScalarFunction.hpp"
 #include "StateValues.hpp"
 #include "ApplyConstraints.hpp"
-#include "SimplexThermomechanics.hpp"
-#include "Thermomechanics.hpp"
+#include "SimplexMechanics.hpp"
+#include "Mechanics.hpp"
 #include "ComputedField.hpp"
 #include "ImplicitFunctors.hpp"
-#include "LinearThermoelasticMaterial.hpp"
+#include "LinearElasticMaterial.hpp"
 
 #include <fenv.h>
 #include <memory>
@@ -110,7 +111,7 @@ class EpetraSystem
     }
 
     /******************************************************************************//**
-     * @brief Convert from abstract Matrix to MatrixT template type
+     * @brief Convert from Plato::CrsMatrix<int> to Epetra_VbrMatrix
     **********************************************************************************/
     rcp<Epetra_VbrMatrix> fromMatrix(Plato::CrsMatrix<int> tInMatrix) const
     {
@@ -163,7 +164,7 @@ class EpetraSystem
     }
 
     /******************************************************************************//**
-     * @brief Convert from abstract Vector to VectorT template type
+     * @brief Convert from ScalarVector to Epetra_Vector
     **********************************************************************************/
     rcp<Epetra_Vector> fromVector(Plato::ScalarVector tInVector) const
     {
@@ -178,6 +179,18 @@ class EpetraSystem
         Kokkos::deep_copy(tDataHostView, tInVector);
 
         return tRetVal;
+    }
+    /******************************************************************************//**
+     * @brief Convert from Epetra_Vector to ScalarVector
+    **********************************************************************************/
+    void toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVector) const
+    {
+        Plato::Scalar* tInData;
+        tInVector->ExtractView(&tInData);
+        auto tLength = tInVector->MyLength();
+        Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
+          tInVector_host(tInData, tLength);
+        Kokkos::deep_copy(tOutVector, tInVector_host);
     }
 };
 
@@ -264,9 +277,9 @@ class AmgXLinearSolver : public AbstractSolver
         Plato::ScalarVector   aB
     ) {
 
-//#ifndef NDEBUG
+#ifndef NDEBUG
       check_inputs(aA, aX, aB);
-//#endif
+#endif
 
       mSolution = aX;
       auto N = aX.size();
@@ -348,7 +361,7 @@ class EpetraLinearSolver : public AbstractSolver
     /******************************************************************************//**
      * @brief EpetraLinearSolver constructor
 
-     This constructor takes an abstract Mesh and creates a new System.
+     This constructor takes an Omega_h::Mesh and creates a new System.
     **********************************************************************************/
     EpetraLinearSolver(
         const Teuchos::ParameterList& aSolverParams,
@@ -397,6 +410,8 @@ class EpetraLinearSolver : public AbstractSolver
         setupSolver(tSolver);
 
         tSolver.Iterate( mIterations, mTolerance );
+
+        mSystem->toVector(aX, tSolution);
     }
 
     void setupSolver(AztecOO& aSolver)
@@ -475,10 +490,10 @@ class SolverFactory
 
 /******************************************************************************/
 /*!
-  \brief 3D Thermoelastic problem
+  \brief 2D Elastic problem
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST( SolverInterfaceTests, Thermoelastic3D )
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 {
   feclearexcept(FE_ALL_EXCEPT);
   feenableexcept(FE_INVALID | FE_OVERFLOW);
@@ -489,81 +504,61 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Thermoelastic3D )
   constexpr int spaceDim=2;
   auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
-  // create mesh based density from host data
-  //
-  int tNumDofsPerNode = (spaceDim+1);
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
   int tNumNodes = mesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  // create mesh based density
+  //
   Plato::ScalarVector control("density", tNumDofs);
   Kokkos::deep_copy(control, 1.0);
 
-  // create mesh based temperature from host data
+  // create mesh based state
   //
-  Plato::ScalarVector state("temperature", tNumDofs);
-  Kokkos::deep_copy(state, 1.0);
+  Plato::ScalarVector state("state", tNumDofs);
+  Kokkos::deep_copy(state, 0.0);
 
   // create material model
   //
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>                     \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Thermoelastic Energy'/>  \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                             \n"
-    "  <ParameterList name='Elliptic'>                                                       \n"
-    "    <ParameterList name='Penalty Function'>                                             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                            \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='My Internal Thermoelastic Energy'>                               \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>                      \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Thermoelastic Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                             \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                            \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
-    "    <ParameterList  name='Traction Vector Boundary Condition'>                          \n"
-    "      <Parameter name='Type'   type='string'        value='Uniform'/>                   \n"
-    "      <Parameter name='Values' type='Array(double)' value='{1e3, 0}'/>                  \n"
-    "      <Parameter name='Sides'  type='string'        value='Load'/>                      \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList  name='Essential Boundary Conditions'>                                 \n"
-    "    <ParameterList  name='X Fixed Displacement Boundary Condition'>                     \n"
-    "      <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
-    "      <Parameter  name='Index'    type='int'    value='0'/>                             \n"
-    "      <Parameter  name='Sides'    type='string' value='Fix'/>                           \n"
-    "    </ParameterList>                                                                    \n"
-    "    <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
-    "      <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
-    "      <Parameter  name='Index'    type='int'    value='1'/>                             \n"
-    "      <Parameter  name='Sides'    type='string' value='Fix'/>                           \n"
-    "    </ParameterList>                                                                    \n"
-    "    <ParameterList  name='Fixed Potential Boundary Condition'>                          \n"
-    "      <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
-    "      <Parameter  name='Index'    type='int'    value='2'/>                             \n"
-    "      <Parameter  name='Sides'    type='string' value='Fix'/>                           \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Linear Solver'>                                                  \n"
-    "    <Parameter name='Solver' type='string' value='AztecOO'/>                            \n"
-    "    <Parameter name='Display Iterations' type='int' value='10'/>                        \n"
-    "    <Parameter name='Iterations' type='int' value='50'/>                                \n"
-    "    <Parameter name='Tolerance' type='double' value='1e-6'/>                            \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
+    "<ParameterList name='Plato Problem'>                                    \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
+    "  <ParameterList name='Elliptic'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "  <ParameterList name='Material Model'>                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "  <ParameterList  name='Natural Boundary Conditions'>                   \n"
+    "    <ParameterList  name='Traction Vector Boundary Condition'>          \n"
+    "      <Parameter name='Type'   type='string'        value='Uniform'/>   \n"
+    "      <Parameter name='Values' type='Array(double)' value='{1e3, 0}'/>  \n"
+    "      <Parameter name='Sides'  type='string'        value='Load'/>      \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "  <ParameterList  name='Essential Boundary Conditions'>                 \n"
+    "    <ParameterList  name='X Fixed Displacement Boundary Condition'>     \n"
+    "      <Parameter  name='Type'     type='string' value='Zero Value'/>    \n"
+    "      <Parameter  name='Index'    type='int'    value='0'/>             \n"
+    "      <Parameter  name='Sides'    type='string' value='Fix'/>           \n"
+    "    </ParameterList>                                                    \n"
+    "    <ParameterList  name='Y Fixed Displacement Boundary Condition'>     \n"
+    "      <Parameter  name='Type'     type='string' value='Zero Value'/>    \n"
+    "      <Parameter  name='Index'    type='int'    value='1'/>             \n"
+    "      <Parameter  name='Sides'    type='string' value='Fix'/>           \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "</ParameterList>                                                        \n"
   );
 
   Plato::DataMap tDataMap;
@@ -572,9 +567,10 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Thermoelastic3D )
   tMeshSets[Omega_h::SIDE_SET]["Load"] = Omega_h::collect_marked(tMarksLoad);
 
   Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 3 /* class id */);
-  tMeshSets[Omega_h::SIDE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
+  tMeshSets[Omega_h::NODE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
 
-  Plato::VectorFunction<::Plato::Thermomechanics<spaceDim>>
+
+  Plato::VectorFunction<SimplexPhysics>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
@@ -585,36 +581,105 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Thermoelastic3D )
   //
   auto jacobian = vectorFunction.gradient_u(state, control);
 
+  // parse constraints
+  //
+  Plato::LocalOrdinalVector mBcDofs;
+  Plato::ScalarVector mBcValues;
+  Plato::EssentialBCs<SimplexPhysics>
+      tEssentialBoundaryConditions(params->sublist("Essential Boundary Conditions",false));
+  tEssentialBoundaryConditions.get(tMeshSets, mBcDofs, mBcValues);
+  Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, mBcDofs, mBcValues);
 
   MPI_Comm myComm;
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  int tDofsPerNode = jacobian->numRowsPerBlock();
 
-  Teuchos::RCP<Teuchos::ParameterList> tAmgXParams =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Linear Solver'>                                     \n"
-    "  <Parameter name='Solver' type='string' value='AmgX'/>                  \n"
-    "  <Parameter name='Configuration File' type='string' value='amgx.json'/> \n"
-    "</ParameterList>                                                         \n"
-  );
-
+  // *** use old AmgX solver interface *** //
   {
-    Plato::Devel::SolverFactory tSolverFactory(*tAmgXParams);
+    using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
+    auto tConfigString = AmgXLinearProblem::getConfigString();
+    auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*jacobian, state, residual, tConfigString));
+    tSolver->solve();
+    tSolver = Teuchos::null;
+  }
+  Plato::ScalarVector stateOldAmgX("state", tNumDofs);
+  Kokkos::deep_copy(stateOldAmgX, state);
 
-    auto tSolver = tSolverFactory.create(*mesh, tMachine, tDofsPerNode);
+
+
+  // *** use new AmgX solver interface *** //
+  //
+  Kokkos::deep_copy(state, 0.0);
+  {
+    Teuchos::RCP<Teuchos::ParameterList> tSolverParams =
+      Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Linear Solver'>                                     \n"
+      "  <Parameter name='Solver' type='string' value='AmgX'/>                  \n"
+      "  <Parameter name='Configuration File' type='string' value='amgx.json'/> \n"
+      "</ParameterList>                                                         \n"
+    );
+
+    Plato::Devel::SolverFactory tSolverFactory(*tSolverParams);
+
+    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
 
     tSolver->solve(*jacobian, state, residual);
   }
+  Plato::ScalarVector stateNewAmgX("state", tNumDofs);
+  Kokkos::deep_copy(stateNewAmgX, state);
 
+
+
+  // *** use Epetra solver interface *** //
+  //
+  Kokkos::deep_copy(state, 0.0);
   {
-    auto tSolverParams = params->sublist("Linear Solver");
-    Plato::Devel::SolverFactory tSolverFactory(tSolverParams);
+    Teuchos::RCP<Teuchos::ParameterList> tSolverParams =
+      Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Linear Solver'>                              \n"
+      "  <Parameter name='Solver' type='string' value='AztecOO'/>        \n"
+      "  <Parameter name='Display Iterations' type='int' value='10'/>    \n"
+      "  <Parameter name='Iterations' type='int' value='50'/>            \n"
+      "  <Parameter name='Tolerance' type='double' value='1e-6'/>        \n"
+      "</ParameterList>                                                  \n"
+    );
 
-    auto tSolver = tSolverFactory.create(*mesh, tMachine, tDofsPerNode);
+    Plato::Devel::SolverFactory tSolverFactory(*tSolverParams);
+
+    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
 
     tSolver->solve(*jacobian, state, residual);
   }
+  Plato::ScalarVector stateEpetra("state", tNumDofs);
+  Kokkos::deep_copy(stateEpetra, state);
+
+
+
+
+  // compare solutions
+  //
+  auto stateOldAmgX_host = Kokkos::create_mirror_view(stateOldAmgX);
+  Kokkos::deep_copy(stateOldAmgX_host, stateOldAmgX);
+
+  auto stateNewAmgX_host = Kokkos::create_mirror_view(stateNewAmgX);
+  Kokkos::deep_copy(stateNewAmgX_host, stateNewAmgX);
+
+  auto stateEpetra_host = Kokkos::create_mirror_view(stateEpetra);
+  Kokkos::deep_copy(stateEpetra_host, stateEpetra);
+
+
+  int tLength = stateOldAmgX_host.size();
+  for(int i=0; i<tLength; i++){
+      TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateNewAmgX_host(i), 1.0e-15);
+      TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateEpetra_host(i), 1.0e-15);
+      std::cout << std::setprecision(18) << stateOldAmgX_host(i) << " "
+                << std::setprecision(18) << stateNewAmgX_host(i) << " "
+                << std::setprecision(18) << stateEpetra_host(i) << std::endl;
+  }
+
+
+
+
 
 }

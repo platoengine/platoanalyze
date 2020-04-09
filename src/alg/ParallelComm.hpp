@@ -54,6 +54,7 @@ namespace Plato {
 namespace Comm {
 
 struct Machine {
+  Teuchos::RCP<Teuchos::GlobalMPISession> mpiSession;
   Teuchos::RCP<const Teuchos::Comm<int>>  teuchosComm;
   std::shared_ptr<Epetra_Comm> epetraComm;
 
