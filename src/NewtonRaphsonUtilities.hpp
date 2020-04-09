@@ -227,7 +227,7 @@ inline void print_newton_raphson_diagnostics_header(const Plato::NewtonRaphsonOu
  * \param [in]     aResidual   current residual vector
  * \param [in,out] aOutputData C++ structure with Newton-Raphson solver output data
 **********************************************************************************/
-inline void compute_relative_residual_norm_error(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
+inline void compute_relative_residual_norm_error(Plato::NewtonRaphsonOutputData & aOutputData)
 {
     if(std::isfinite(aOutputData.mCurrentNorm) == false)
     {
@@ -240,12 +240,10 @@ inline void compute_relative_residual_norm_error(const Plato::ScalarVector & aRe
 
     if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
     {
-        aOutputData.mReferenceNorm = Plato::norm(aResidual);
-        aOutputData.mCurrentNorm = aOutputData.mReferenceNorm;
+        aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
     }
     else
     {
-        aOutputData.mCurrentNorm = Plato::norm(aResidual);
         aOutputData.mNormMeasure = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm) / std::abs(aOutputData.mCurrentNorm);
         aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
     }
@@ -262,7 +260,7 @@ inline void compute_relative_residual_norm_error(const Plato::ScalarVector & aRe
  * \param [in]     aResidual   current residual vector
  * \param [in,out] aOutputData C++ structure with Newton-Raphson solver output data
 **********************************************************************************/
-inline void compute_absolute_residual_norm_error(const Plato::ScalarVector & aResidual, Plato::NewtonRaphsonOutputData & aOutputData)
+inline void compute_absolute_residual_norm_error(Plato::NewtonRaphsonOutputData & aOutputData)
 {
     if(std::isfinite(aOutputData.mCurrentNorm) == false)
     {
@@ -275,12 +273,10 @@ inline void compute_absolute_residual_norm_error(const Plato::ScalarVector & aRe
 
     if(aOutputData.mCurrentIteration == static_cast<Plato::OrdinalType>(0))
     {
-        aOutputData.mReferenceNorm = Plato::norm(aResidual);
-        aOutputData.mCurrentNorm = aOutputData.mReferenceNorm;
+        aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
     }
     else
     {
-        aOutputData.mCurrentNorm = Plato::norm(aResidual);
         aOutputData.mNormMeasure = std::abs(aOutputData.mReferenceNorm - aOutputData.mCurrentNorm);
         aOutputData.mReferenceNorm = aOutputData.mCurrentNorm;
     }

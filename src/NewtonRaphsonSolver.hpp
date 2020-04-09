@@ -342,26 +342,25 @@ private:
 
     /***************************************************************************//**
      * \brief Evaluate solver's stopping measure
-     * \param [in] aGlobalResidual assembled residual
      * \param [in] aOutputData     c++ struct with solver's diagnostics
     *******************************************************************************/
-    void computeStoppingCriterion(const Plato::ScalarVector& aResidual, Plato::NewtonRaphsonOutputData& aOutputData)
+    void computeStoppingCriterion(Plato::NewtonRaphsonOutputData& aOutputData)
     {
         switch(aOutputData.mStoppingMeasure)
         {
             case Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM:
             {
-                Plato::compute_absolute_residual_norm_error(aResidual, aOutputData);
+                Plato::compute_absolute_residual_norm_error(aOutputData);
                 break;
             }
             case Plato::NewtonRaphson::RELATIVE_RESIDUAL_NORM:
             {
-                Plato::compute_relative_residual_norm_error(aResidual, aOutputData);
+                Plato::compute_relative_residual_norm_error(aOutputData);
                 break;
             }
             default:
             {
-                Plato::compute_absolute_residual_norm_error(aResidual, aOutputData);
+                Plato::compute_absolute_residual_norm_error(aOutputData);
                 break;
             }
         }
@@ -518,7 +517,8 @@ public:
             this->applyConstraints(tGlobalJacobian, tGlobalResidual);
 
             // check convergence
-            this->computeStoppingCriterion(tGlobalResidual, tOutputData);
+            tOutputData.mCurrentNorm = Plato::norm(tGlobalResidual);
+            this->computeStoppingCriterion(tOutputData);
             Plato::print_newton_raphson_diagnostics(tOutputData, mSolverDiagnosticsFile);
 
             const bool tStop = this->checkStoppingCriterion(tOutputData);
