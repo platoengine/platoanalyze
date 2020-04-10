@@ -22,6 +22,22 @@
 namespace PlatoUtestHelpers
 {
 
+/******************************************************************************//**
+ * @brief get view from device
+ *
+ * @param[in] aView data on device
+ * @returns Mirror on host
+**********************************************************************************/
+template <typename ViewType>
+typename ViewType::HostMirror
+get(ViewType aView)
+{
+    using RetType = typename ViewType::HostMirror;
+    RetType tView = Kokkos::create_mirror(aView);
+    Kokkos::deep_copy(tView, aView);
+    return tView;
+}
+
 void finalizeOmegaH();
 void initializeOmegaH(int *argc , char ***argv);
 Teuchos::RCP<Omega_h::Library> getLibraryOmegaH();
@@ -522,6 +538,47 @@ inline void set_dof_in_scalar_vector(const Plato::ScalarVector & aVector,
         }
         , "fill specific vector entry globally");
 }
+
+inline std::vector<std::vector<Plato::Scalar>>
+toFull( Teuchos::RCP<Plato::CrsMatrixType> aInMatrix )
+{
+    using Plato::OrdinalType;
+    using Plato::Scalar;
+
+    std::vector<std::vector<Scalar>>
+        retMatrix(aInMatrix->numRows(),std::vector<Scalar>(aInMatrix->numCols(),0.0));
+
+    auto tNumRowsPerBlock = aInMatrix->numRowsPerBlock();
+    auto tNumColsPerBlock = aInMatrix->numColsPerBlock();
+    auto tBlockSize = tNumRowsPerBlock*tNumColsPerBlock;
+
+    auto tRowMap = get(aInMatrix->rowMap());
+    auto tColMap = get(aInMatrix->columnIndices());
+    auto tValues = get(aInMatrix->entries());
+
+    auto tNumRows = tRowMap.extent(0)-1;
+    for(OrdinalType iRowIndex=0; iRowIndex<tNumRows; iRowIndex++)
+    {
+        auto tFrom = tRowMap(iRowIndex);
+        auto tTo   = tRowMap(iRowIndex+1);
+        for(auto iColMapEntryIndex=tFrom; iColMapEntryIndex<tTo; iColMapEntryIndex++)
+        {
+            auto tBlockColIndex = tColMap(iColMapEntryIndex);
+            for(OrdinalType iLocalRowIndex=0; iLocalRowIndex<tNumRowsPerBlock; iLocalRowIndex++)
+            {
+                auto tRowIndex = iRowIndex * tNumRowsPerBlock + iLocalRowIndex;
+                for(OrdinalType iLocalColIndex=0; iLocalColIndex<tNumColsPerBlock; iLocalColIndex++)
+                {
+                    auto tColIndex = tBlockColIndex * tNumColsPerBlock + iLocalColIndex;
+                    auto tSparseIndex = iColMapEntryIndex * tBlockSize + iLocalRowIndex * tNumColsPerBlock + iLocalColIndex;
+                    retMatrix[tRowIndex][tColIndex] = tValues[tSparseIndex];
+                }
+            }
+        }
+    }
+    return retMatrix;
+}
+
 
 } // namespace PlatoUtestHelpers
 

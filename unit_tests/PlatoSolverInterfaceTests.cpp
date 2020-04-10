@@ -22,7 +22,6 @@
 #include <type_traits>
 
 #include "AnalyzeMacros.hpp"
-#include <alg/AmgXSparseLinearProblem.hpp>
 #include <alg/ParallelComm.hpp>
 #include "Simp.hpp"
 #include "EssentialBCs.hpp"
@@ -38,6 +37,10 @@
 #include "ComputedField.hpp"
 #include "ImplicitFunctors.hpp"
 #include "LinearElasticMaterial.hpp"
+
+#ifdef HAVE_AMGX
+#include <alg/AmgXSparseLinearProblem.hpp>
+#endif
 
 #include <fenv.h>
 #include <memory>
@@ -139,8 +142,8 @@ class EpetraSystem
         auto tNumEntriesPerBlock = tNumColsPerBlock*tNumRowsPerBlock;
 
         std::vector<int> tColIndices(tMaxNumEntries,0);
-        std::vector<Plato::Scalar> tBlockEntries(tNumEntriesPerBlock,0.0);
 
+        Epetra_SerialDenseMatrix tBlockEntry(tNumRowsPerBlock, tNumColsPerBlock);
         for(int iRow=0; iRow<tNumRows; iRow++)
         {
 
@@ -151,9 +154,14 @@ class EpetraSystem
             for(int iEntryOrd=tRowMap_host(iRow); iEntryOrd<tRowMap_host(iRow+1); iEntryOrd++)
             {
                 auto tBlockEntryOrd = iEntryOrd*tNumEntriesPerBlock;
-                for(int j=0; j<tNumEntriesPerBlock; j++)
-                  tBlockEntries[j] = tEntries_host(tBlockEntryOrd+j);
-                tRetVal->SubmitBlockEntry(tBlockEntries.data(), tNumRowsPerBlock, tNumRowsPerBlock, tNumColsPerBlock);
+                for(int j=0; j<tNumRowsPerBlock; j++)
+                {
+                    for(int k=0; k<tNumColsPerBlock; k++)
+                    {
+                        tBlockEntry(j,k) = tEntries_host(tBlockEntryOrd+j*tNumColsPerBlock+k);
+                    }
+                }
+                tRetVal->SubmitBlockEntry(tBlockEntry);
             }
             tRetVal->EndSubmitEntries();
         }
@@ -484,13 +492,129 @@ class SolverFactory
     }
 };
 
+
+std::vector<std::vector<Plato::Scalar>>
+toFull(rcp<Epetra_VbrMatrix> aInMatrix)
+{
+    int tNumMatrixRows = aInMatrix->NumGlobalRows();
+
+    std::vector<std::vector<Plato::Scalar>>
+        tRetMatrix(tNumMatrixRows, std::vector<Plato::Scalar>(tNumMatrixRows, 0.0));
+
+    for(int iMatrixRow=0; iMatrixRow<tNumMatrixRows; iMatrixRow++)
+    {
+        int tNumEntriesThisRow = 0;
+        aInMatrix->NumMyRowEntries(iMatrixRow, tNumEntriesThisRow);
+        int tNumEntriesFound = 0;
+        std::vector<Plato::Scalar> tVals(tNumEntriesThisRow,0);
+        std::vector<int> tInds(tNumEntriesThisRow,0);
+        aInMatrix->ExtractMyRowCopy(iMatrixRow, tNumEntriesThisRow, tNumEntriesFound, tVals.data(), tInds.data());
+        for(int iEntry=0; iEntry<tNumEntriesFound; iEntry++)
+        {
+            tRetMatrix[iMatrixRow][tInds[iEntry]] = tVals[iEntry];
+        }
+    }
+    return tRetMatrix;
 }
+} // end namespace Devel
+} // end namespace Plato
+
+/******************************************************************************/
+/*!
+  \brief Test matrix conversion
+
+  Create an EpetraSystem then convert a 2D elasticity jacobian from a
+  Plato::CrsMatrix<int> to an Epetra_VbrMatrix.  Then, convert both to a full
+  matrix and compare entries.  Test passes if entries are the same.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversion )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  //
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  // create mesh based density
+  //
+  Plato::ScalarVector control("density", tNumDofs);
+  Kokkos::deep_copy(control, 1.0);
+
+  // create mesh based state
+  //
+  Plato::ScalarVector state("state", tNumDofs);
+  Kokkos::deep_copy(state, 0.0);
+
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> params =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                    \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
+    "  <ParameterList name='Elliptic'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "  <ParameterList name='Material Model'>                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "</ParameterList>                                                        \n"
+  );
+
+  Plato::DataMap tDataMap;
+  Omega_h::MeshSets tMeshSets;
+
+  Plato::VectorFunction<SimplexPhysics>
+    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+
+  // compute and test constraint value
+  //
+  auto jacobian = vectorFunction.gradient_u(state, control);
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::Devel::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  auto tEpetra_VbrMatrix = tSystem.fromMatrix(*jacobian);
+
+  auto tFullEpetra = Plato::Devel::toFull(tEpetra_VbrMatrix);
+  auto tFullPlato  = PlatoUtestHelpers::toFull(jacobian);
+
+  for(int iRow=0; iRow<tFullEpetra.size(); iRow++)
+  {
+      for(int iCol=0; iCol<tFullEpetra[iRow].size(); iCol++)
+      {
+          TEST_FLOATING_EQUALITY(tFullEpetra[iRow][iCol], tFullPlato[iRow][iCol], 1.0e-15);
+      }
+  }
 }
 
 
 /******************************************************************************/
 /*!
   \brief 2D Elastic problem
+
+  Construct a linear system and solve it with the old AmgX interface, the new
+  AmgX interface, and the Epetra interface.  Test passes if all solutions are
+  the same.
 */
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
@@ -595,6 +719,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   Plato::Comm::Machine tMachine(myComm);
 
 
+#ifdef HAVE_AMGX
   // *** use old AmgX solver interface *** //
   {
     using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
@@ -628,7 +753,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   }
   Plato::ScalarVector stateNewAmgX("state", tNumDofs);
   Kokkos::deep_copy(stateNewAmgX, state);
-
+#endif
 
 
   // *** use Epetra solver interface *** //
@@ -639,9 +764,9 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
       Teuchos::getParametersFromXmlString(
       "<ParameterList name='Linear Solver'>                              \n"
       "  <Parameter name='Solver' type='string' value='AztecOO'/>        \n"
-      "  <Parameter name='Display Iterations' type='int' value='10'/>    \n"
+      "  <Parameter name='Display Iterations' type='int' value='0'/>     \n"
       "  <Parameter name='Iterations' type='int' value='50'/>            \n"
-      "  <Parameter name='Tolerance' type='double' value='1e-6'/>        \n"
+      "  <Parameter name='Tolerance' type='double' value='1e-14'/>       \n"
       "</ParameterList>                                                  \n"
     );
 
@@ -657,6 +782,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
 
 
+#ifdef HAVE_AMGX
   // compare solutions
   //
   auto stateOldAmgX_host = Kokkos::create_mirror_view(stateOldAmgX);
@@ -671,13 +797,13 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
   int tLength = stateOldAmgX_host.size();
   for(int i=0; i<tLength; i++){
-      TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateNewAmgX_host(i), 1.0e-15);
-      TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateEpetra_host(i), 1.0e-15);
-      std::cout << std::setprecision(18) << stateOldAmgX_host(i) << " "
-                << std::setprecision(18) << stateNewAmgX_host(i) << " "
-                << std::setprecision(18) << stateEpetra_host(i) << std::endl;
+      if( stateOldAmgX_host(i) > 1e-18 )
+      {
+          TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateNewAmgX_host(i), 1.0e-15);
+          TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateEpetra_host(i), 1.0e-12);
+      }
   }
-
+#endif
 
 
 
