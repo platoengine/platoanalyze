@@ -51,19 +51,22 @@ private:
     static constexpr auto mNumNodesPerCell      = SimplexPhysicsType::mNumNodesPerCell; /*!< number nodes per cell */
     static constexpr auto mNumGlobalDofsPerNode = SimplexPhysicsType::mNumDofsPerNode;  /*!< number global degrees of freedom per node */
 
-    using ResultT = typename EvaluationType::ResultScalarType;                     /*!< result variables automatic differentiation type */
-    using ConfigT = typename EvaluationType::ConfigScalarType;                     /*!< config variables automatic differentiation type */
-    using ControlT = typename EvaluationType::ControlScalarType;                   /*!< control variables automatic differentiation type */
-    using LocalStateT = typename EvaluationType::LocalStateScalarType;             /*!< local state variables automatic differentiation type */
-    using GlobalStateT = typename EvaluationType::StateScalarType;                 /*!< global state variables automatic differentiation type */
-    using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType;     /*!< local state variables automatic differentiation type */
-    using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;         /*!< global state variables automatic differentiation type */
+    using ResultT = typename EvaluationType::ResultScalarType;                 /*!< result variables automatic differentiation type */
+    using ConfigT = typename EvaluationType::ConfigScalarType;                 /*!< config variables automatic differentiation type */
+    using ControlT = typename EvaluationType::ControlScalarType;               /*!< control variables automatic differentiation type */
+    using LocalStateT = typename EvaluationType::LocalStateScalarType;         /*!< local state variables automatic differentiation type */
+    using GlobalStateT = typename EvaluationType::StateScalarType;             /*!< global state variables automatic differentiation type */
+    using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType; /*!< local state variables automatic differentiation type */
+    using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
 
-    Plato::Scalar mElasticBulkModulus;                                             /*!< elastic bulk modulus */
-    Plato::Scalar mElasticShearModulus;                                            /*!< elastic shear modulus */
-    Plato::Scalar mElasticPropertiesPenaltySIMP;                                   /*!< SIMP penalty for elastic properties */
-    Plato::Scalar mElasticPropertiesMinErsatzSIMP;                                 /*!< SIMP min ersatz stiffness for elastic properties */
-    Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule;                     /*!< simplex linear cubature rule */
+    Plato::Scalar mBulkModulus;              /*!< elastic bulk modulus */
+    Plato::Scalar mShearModulus;             /*!< elastic shear modulus */
+    Plato::Scalar mPenaltySIMP;              /*!< SIMP penalty for elastic properties */
+    Plato::Scalar mMinErsatzSIMP;            /*!< SIMP min ersatz stiffness for elastic properties */
+    Plato::Scalar mMultiplierOnPenaltySIMP;  /*!< continuation parameter: multiplier on SIMP penalty for elastic properties */
+    Plato::Scalar mUpperBoundOnPenaltySIMP;  /*!< continuation parameter: upper bound on SIMP penalty for elastic properties */
+
+    Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule;  /*!< simplex linear cubature rule */
 
 // public access functions
 public:
@@ -82,10 +85,12 @@ public:
                          Teuchos::ParameterList& aInputParams,
                          std::string& aName) :
             Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
-            mElasticBulkModulus(-1.0),
-            mElasticShearModulus(-1.0),
-            mElasticPropertiesPenaltySIMP(3),
-            mElasticPropertiesMinErsatzSIMP(1e-9),
+            mBulkModulus(-1.0),
+            mShearModulus(-1.0),
+            mPenaltySIMP(3),
+            mMinErsatzSIMP(1e-9),
+            mMultiplierOnPenaltySIMP(1.1),
+            mUpperBoundOnPenaltySIMP(4),
             mCubatureRule()
     {
         this->parsePenaltyModelParams(aInputParams);
@@ -105,10 +110,12 @@ public:
                          Plato::DataMap & aDataMap,
                          std::string aName = "") :
             Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
-            mElasticBulkModulus(1.0),
-            mElasticShearModulus(1.0),
-            mElasticPropertiesPenaltySIMP(3),
-            mElasticPropertiesMinErsatzSIMP(1e-9),
+            mBulkModulus(1.0),
+            mShearModulus(1.0),
+            mPenaltySIMP(3),
+            mMinErsatzSIMP(1e-9),
+            mMultiplierOnPenaltySIMP(1.1),
+            mUpperBoundOnPenaltySIMP(4),
             mCubatureRule()
     {
     }
@@ -149,7 +156,7 @@ public:
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
         Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
-        Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
+        Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatzSIMP);
 
         // allocate local containers used to evaluate criterion
         auto tNumCells = this->getMesh().nelems();
@@ -161,8 +168,8 @@ public:
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
 
         // transfer member data to device
-        auto tElasticBulkModulus = mElasticBulkModulus;
-        auto tElasticShearModulus = mElasticShearModulus;
+        auto tElasticBulkModulus = mBulkModulus;
+        auto tElasticShearModulus = mShearModulus;
 
         auto tQuadratureWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -196,6 +203,20 @@ public:
         }, "plastic work criterion");
     }
 
+    /******************************************************************************//**
+     * \brief Update physics-based data within a frequency of optimization iterations
+     * \param [in] aGlobalState global state variables
+     * \param [in] aLocalState  local state variables
+     * \param [in] aControl     control variables, e.g. design variables
+    **********************************************************************************/
+    void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
+                       const Plato::ScalarMultiVector & aLocalState,
+                       const Plato::ScalarVector & aControl) override
+    {
+        // update SIMP penalty parameter
+        mPenaltySIMP = mPenaltySIMP >= mUpperBoundOnPenaltySIMP ? mPenaltySIMP : mMultiplierOnPenaltySIMP * mPenaltySIMP;
+    }
+
 private:
     /**********************************************************************//**
      * \brief Parse elastic material properties
@@ -207,8 +228,10 @@ private:
         if(aInputParams.isSublist(tFunctionName) == true)
         {
             Teuchos::ParameterList tInputData = aInputParams.sublist(tFunctionName);
-            mElasticPropertiesPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
-            mElasticPropertiesMinErsatzSIMP = tInputData.get<Plato::Scalar>("Minimum Value", 1e-9);
+            mPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
+            mMinErsatzSIMP = tInputData.get<Plato::Scalar>("Minimum Value", 1e-9);
+            mMultiplierOnPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Continuation Multiplier", 1.1);
+            mUpperBoundOnPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Penalty Exponent Upper Bound", 4.0);
         }
         else
         {
@@ -247,8 +270,8 @@ private:
             auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
             auto tPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
             auto tElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
-            mElasticBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
-            mElasticShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
+            mBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
+            mShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
         }
         else
         {

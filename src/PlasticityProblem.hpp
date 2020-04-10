@@ -309,6 +309,9 @@ public:
     {
         mObjective->updateProblem(aGlobalState, mLocalStates, aControls);
         mConstraint->updateProblem(aGlobalState, mLocalStates, aControls);
+        mLocalEquation->updateProblem(aGlobalState, mLocalStates, aControls);
+        mGlobalEquation->updateProblem(aGlobalState, mLocalStates, aControls);
+        mProjectionEquation->updateProblem(aGlobalState, mLocalStates, aControls);
     }
 
     /***************************************************************************//**

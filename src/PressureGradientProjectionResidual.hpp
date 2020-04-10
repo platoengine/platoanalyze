@@ -124,6 +124,16 @@ public:
 
         }, "Projected pressure gradient residual");
     }
+
+    /******************************************************************************//**
+     * \brief Update physics-based data within a frequency of optimization iterations
+     * \param [in] aState    global state variables
+     * \param [in] aControl  control variables, e.g. design variables
+    **********************************************************************************/
+    void updateProblem(const Plato::ScalarMultiVector & aState, const Plato::ScalarVector & aControl)
+    {
+        mApplyVectorWeighting.update();
+    }
 };
 // class PressureGradientProjectionResidual
 

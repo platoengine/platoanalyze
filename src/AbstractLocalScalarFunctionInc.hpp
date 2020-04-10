@@ -109,7 +109,7 @@ public:
              Plato::Scalar aTimeStep = 0.0) = 0;
 
     /******************************************************************************//**
-     * \brief Update physics-based data in between optimization iterations
+     * \brief Update physics-based data within a frequency of optimization iterations
      * \param [in] aGlobalState global state variables
      * \param [in] aLocalState  local state variables
      * \param [in] aControl     control variables, e.g. design variables

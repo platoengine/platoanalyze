@@ -88,6 +88,18 @@ public:
                      const Plato::ScalarMultiVector & aControl,
                      const Plato::ScalarArray3D     & aConfig,
                            Plato::Scalar              aTimeStep = 0.0) const = 0;
+
+    /******************************************************************************//**
+     * \brief Update physics-based data within a frequency of optimization iterations
+     * \param [in] aGlobalState global state variables
+     * \param [in] aLocalState  local state variables
+     * \param [in] aControl     control variables, e.g. design variables
+    **********************************************************************************/
+    virtual void
+    updateProblem(const Plato::ScalarMultiVector & aGlobalState,
+                  const Plato::ScalarMultiVector & aLocalState,
+                  const Plato::ScalarVector & aControl)
+    { return; }
 };
 
 } // namespace Plato

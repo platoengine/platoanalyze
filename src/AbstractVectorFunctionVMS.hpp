@@ -79,6 +79,15 @@ public:
              const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType> & aConfig,
              Plato::ScalarMultiVectorT<typename EvaluationType::ResultScalarType> & aResult,
              Plato::Scalar aTimeStep = 0.0) const = 0;
+
+    /******************************************************************************//**
+     * \brief Update physics-based data within a frequency of optimization iterations
+     * \param [in] aGlobalState global state variables
+     * \param [in] aControl     control variables, e.g. design variables
+    **********************************************************************************/
+    virtual void
+    updateProblem(const Plato::ScalarMultiVector & aState, const Plato::ScalarVector & aControl)
+    { return; }
 };
 // class AbstractVectorFunctionVMS
 

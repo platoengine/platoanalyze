@@ -86,8 +86,11 @@ private:
     Plato::Scalar mPressureScaling;                /*!< Pressure scaling term */
     Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
-    Plato::Scalar mElasticPropertiesPenaltySIMP;   /*!< SIMP penalty for elastic properties */
-    Plato::Scalar mElasticPropertiesMinErsatzSIMP; /*!< SIMP min ersatz stiffness for elastic properties */
+
+    Plato::Scalar mPenaltySIMP;             /*!< SIMP penalty for elastic properties */
+    Plato::Scalar mMinErsatzSIMP;           /*!< SIMP min ersatz stiffness for elastic properties */
+    Plato::Scalar mMultiplierOnPenaltySIMP; /*!< continuation parameter: multiplier on SIMP penalty for elastic properties */
+    Plato::Scalar mUpperBoundOnPenaltySIMP; /*!< continuation parameter: upper bound on SIMP penalty for elastic properties */
 
     std::vector<std::string> mPlotTable;           /*!< array of output element data identifiers*/
 
@@ -141,8 +144,10 @@ private:
             if(tResidualParams.isSublist("Penalty Function"))
             {
                 auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
-                mElasticPropertiesPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Exponent", 3.0);
-                mElasticPropertiesMinErsatzSIMP = tPenaltyParams.get<Plato::Scalar>("Minimum Value", 1e-9);
+                mPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Exponent", 1.0);
+                mMinErsatzSIMP = tPenaltyParams.get<Plato::Scalar>("Minimum Value", 1e-9);
+                mMultiplierOnPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Continuation Multiplier", 1.1);
+                mUpperBoundOnPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Penalty Exponent Upper Bound", 4.0);
             }
         }
         else
@@ -289,8 +294,8 @@ private:
             Plato::ComputePrincipalStresses<EvaluationType, SimplexPhysicsType> tComputePrincipalStresses;
             tComputePrincipalStresses.setBulkModulus(mElasticBulkModulus);
             tComputePrincipalStresses.setShearModulus(mElasticShearModulus);
-            tComputePrincipalStresses.setPenaltySIMP(mElasticPropertiesPenaltySIMP);
-            tComputePrincipalStresses.setMinErsatzSIMP(mElasticPropertiesMinErsatzSIMP);
+            tComputePrincipalStresses.setPenaltySIMP(mPenaltySIMP);
+            tComputePrincipalStresses.setMinErsatzSIMP(mMinErsatzSIMP);
 
             const auto tNumCells = mMesh.nelems();
             Plato::ScalarMultiVectorT<ResultT> tPrincipalStresses("principal stresses", tNumCells, mSpaceDim);
@@ -319,8 +324,10 @@ public:
         mPressureScaling(1.0),
         mElasticBulkModulus(-1.0),
         mElasticShearModulus(-1.0),
-        mElasticPropertiesPenaltySIMP(3),
-        mElasticPropertiesMinErsatzSIMP(1e-9),
+        mPenaltySIMP(3),
+        mMinErsatzSIMP(1e-9),
+        mMultiplierOnPenaltySIMP(1.1),
+        mUpperBoundOnPenaltySIMP(4),
         mBodyLoads(nullptr),
         mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
         mNeumannLoads(nullptr)
@@ -390,7 +397,7 @@ public:
         Plato::StressDivergence<mSpaceDim, mNumGlobalDofsPerNode, mMechDofOffset> tStressDivergence;
         Plato::ProjectToNode<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tProjectVolumeStrain;
         Plato::FluxDivergence<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tStabilizedDivergence;
-        Plato::MSIMP tPenaltyFunction(mElasticPropertiesPenaltySIMP, mElasticPropertiesMinErsatzSIMP);
+        Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatzSIMP);
 
         Plato::ScalarVectorT<ResultT> tPressure("L2 pressure", tNumCells);
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
@@ -484,6 +491,20 @@ public:
         this->outputData(tCauchyStress, "elastic stress");
         this->outputData(tBackStress, "backstress");
         this->outputData(tPressure, "pressure");
+    }
+
+    /******************************************************************************//**
+     * \brief Update physics-based data within a frequency of optimization iterations
+     * \param [in] aGlobalState global state variables
+     * \param [in] aLocalState  local state variables
+     * \param [in] aControl     control variables, e.g. design variables
+    **********************************************************************************/
+    void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
+                       const Plato::ScalarMultiVector & aLocalState,
+                       const Plato::ScalarVector & aControl) override
+    {
+        // update SIMP penalty parameter
+        mPenaltySIMP = mPenaltySIMP >= mUpperBoundOnPenaltySIMP ? mPenaltySIMP : mMultiplierOnPenaltySIMP * mPenaltySIMP;
     }
 };
 // class InfinitesimalStrainPlasticityResidual

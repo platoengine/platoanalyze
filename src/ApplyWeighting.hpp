@@ -18,95 +18,131 @@ template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumTerms, typename Pena
 class ApplyWeighting: public Plato::Simplex<SpaceDim>
 {
 private:
-    using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
-
-    PenaltyFunction mPenaltyFunction;
+    using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
+    PenaltyFunction mPenaltyFunction; /*!< penalty model used for topology optimization - density discretization */
 
 public:
-
-    ApplyWeighting(PenaltyFunction penaltyFunction) :
-        mPenaltyFunction(penaltyFunction)
+    /******************************************************************************//**
+     * \brief Default Constructor
+     * \param [in] aPenaltyFunction penalty function interface
+    **********************************************************************************/
+    ApplyWeighting(PenaltyFunction aPenaltyFunction) :
+        mPenaltyFunction(aPenaltyFunction)
     {
     }
 
+    /******************************************************************************//**
+     * \brief Update penalty model parameters within a frequency of optimization iterations
+    **********************************************************************************/
+    void update()
+    {
+        mPenaltyFunction->update();
+    }
+
+    /******************************************************************************//**
+     * \brief Evaluate penalty model
+     * \param [in] aCellOrdinal cell/element ordinal
+     * \param [in] aInputOutput penalized 2D view
+     * \param [in] aControl     control, i.e. design, variables
+    **********************************************************************************/
     template<typename InputScalarType, typename WeightScalarType>
-    DEVICE_TYPE inline void operator()(Plato::OrdinalType cellOrdinal,
-                                       Kokkos::View<InputScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const &inputOutput,
-                                       Kokkos::View<WeightScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const &rho) const
+    DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
+                                       Kokkos::View<InputScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const & aInputOutput,
+                                       Kokkos::View<WeightScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const & aControl) const
     {
-
         // apply weighting
         //
-        WeightScalarType cellDensity = 0.0;
-        for (Plato::OrdinalType iNode = 0; iNode < mNumNodesPerCell; iNode++)
+        WeightScalarType tCellDensity = 0.0;
+        for (Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
         {
-            cellDensity += rho(cellOrdinal, iNode);
+            tCellDensity += aControl(aCellOrdinal, tNode);
         }
-        cellDensity = (cellDensity / mNumNodesPerCell);
-        for (Plato::OrdinalType iTerm = 0; iTerm < NumTerms; iTerm++)
+        tCellDensity = (tCellDensity / mNumNodesPerCell);
+        for (Plato::OrdinalType tTerm = 0; tTerm < NumTerms; tTerm++)
         {
-            inputOutput(cellOrdinal, iTerm) *= mPenaltyFunction(cellDensity);
+            aInputOutput(aCellOrdinal, tTerm) *= mPenaltyFunction(tCellDensity);
         }
     }
 
+    /******************************************************************************//**
+     * \brief Evaluate penalty model
+     * \param [in] aCellOrdinal cell/element ordinal
+     * \param [in] aInput       input 2D view
+     * \param [in] aOutput      penalized 2D view
+     * \param [in] aControl     control, i.e. design, variables
+    **********************************************************************************/
     template<typename InputScalarType, typename OutputScalarType, typename WeightScalarType>
-    DEVICE_TYPE inline void operator()(Plato::OrdinalType cellOrdinal,
-                                       Plato::ScalarMultiVectorT<InputScalarType> const &input,
-                                       Plato::ScalarMultiVectorT<OutputScalarType> const &output,
-                                       Plato::ScalarMultiVectorT<WeightScalarType> const &rho) const
+    DEVICE_TYPE inline void
+    operator()(Plato::OrdinalType aCellOrdinal,
+               Plato::ScalarMultiVectorT<InputScalarType> const &aInput,
+               Plato::ScalarMultiVectorT<OutputScalarType> const &aOutput,
+               Plato::ScalarMultiVectorT<WeightScalarType> const &aControl) const
     {
-
         // apply weighting
         //
-        WeightScalarType cellDensity = 0.0;
-        for (Plato::OrdinalType iNode = 0; iNode < mNumNodesPerCell; iNode++)
+        WeightScalarType tCellDensity = 0.0;
+        for (Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
         {
-            cellDensity += rho(cellOrdinal, iNode);
+            tCellDensity += aControl(aCellOrdinal, tNode);
         }
-        cellDensity = (cellDensity / mNumNodesPerCell);
-        for (Plato::OrdinalType iTerm = 0; iTerm < NumTerms; iTerm++)
+        tCellDensity = (tCellDensity / mNumNodesPerCell);
+        for (Plato::OrdinalType tTerm = 0; tTerm < NumTerms; tTerm++)
         {
-            output(cellOrdinal, iTerm) = mPenaltyFunction(cellDensity) * input(cellOrdinal, iTerm);
+            aOutput(aCellOrdinal, tTerm) = mPenaltyFunction(tCellDensity) * aInput(aCellOrdinal, tTerm);
         }
     }
 
+    /******************************************************************************//**
+     * \brief Evaluate penalty model
+     * \param [in] aCellOrdinal cell/element ordinal
+     * \param [in] aResult      penalized 1D view
+     * \param [in] aControl     control, i.e. design, variables
+    **********************************************************************************/
     template<typename ResultScalarType, typename WeightScalarType>
-    DEVICE_TYPE inline void operator()(Plato::OrdinalType cellOrdinal,
-                                       Plato::ScalarVectorT<ResultScalarType> const &result,
-                                       Plato::ScalarMultiVectorT<WeightScalarType> const &rho) const
+    DEVICE_TYPE inline
+    void operator()(Plato::OrdinalType aCellOrdinal,
+                    Plato::ScalarVectorT<ResultScalarType> const &aResult,
+                    Plato::ScalarMultiVectorT<WeightScalarType> const &aControl) const
     {
-
         // apply weighting
         //
-        WeightScalarType cellDensity = 0.0;
-        for (Plato::OrdinalType iNode = 0; iNode < mNumNodesPerCell; iNode++)
+        WeightScalarType tCellDensity = 0.0;
+        for (Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
         {
-            cellDensity += rho(cellOrdinal, iNode);
+            tCellDensity += aControl(aCellOrdinal, tNode);
         }
-        cellDensity = (cellDensity / mNumNodesPerCell);
-        result(cellOrdinal) *= mPenaltyFunction(cellDensity);
+        tCellDensity = (tCellDensity / mNumNodesPerCell);
+        aResult(aCellOrdinal) *= mPenaltyFunction(tCellDensity);
     }
 
+    /******************************************************************************//**
+     * \brief Evaluate penalty model
+     * \param [in] aCellOrdinal cell/element ordinal
+     * \param [in] aInput       input 1D view
+     * \param [in] aOutput      penalized 1D view
+     * \param [in] aControl     control, i.e. design, variables
+    **********************************************************************************/
     template<typename InputScalarType, typename OutputScalarType, typename WeightScalarType>
-    DEVICE_TYPE inline void operator()(Plato::OrdinalType cellOrdinal,
-                                       Plato::ScalarVectorT<InputScalarType> const &input,
-                                       Plato::ScalarVectorT<OutputScalarType> &output,
-                                       Plato::ScalarMultiVectorT<WeightScalarType> const &rho) const
+    DEVICE_TYPE inline void
+    operator()(Plato::OrdinalType aCellOrdinal,
+               Plato::ScalarVectorT<InputScalarType> const &aInput,
+               Plato::ScalarVectorT<OutputScalarType> &aOutput,
+               Plato::ScalarMultiVectorT<WeightScalarType> const &aControl) const
     {
-
         // apply weighting
         //
-        WeightScalarType cellDensity = 0.0;
-        for (Plato::OrdinalType iNode = 0; iNode < mNumNodesPerCell; iNode++)
+        WeightScalarType tCellDensity = 0.0;
+        for (Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
         {
-            cellDensity += rho(cellOrdinal, iNode);
+            tCellDensity += aControl(aCellOrdinal, tNode);
         }
-        cellDensity = (cellDensity / mNumNodesPerCell);
-        output(cellOrdinal) = mPenaltyFunction(cellDensity) * input(cellOrdinal);
+        tCellDensity = (tCellDensity / mNumNodesPerCell);
+        aOutput(aCellOrdinal) = mPenaltyFunction(tCellDensity) * aInput(aCellOrdinal);
     }
 };
 // class ApplyWeighting
 
-}// namespace Plato
+}
+// namespace Plato
 
 #endif

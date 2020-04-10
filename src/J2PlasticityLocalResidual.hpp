@@ -28,7 +28,7 @@ template<typename EvaluationType, typename SimplexPhysicsType>
 class J2PlasticityLocalResidual : 
   public Plato::AbstractLocalVectorFunctionInc<EvaluationType>
 {
-  private:
+private:
     static constexpr auto mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
 
     static constexpr auto mNumDofsPerNode      = SimplexPhysicsType::mNumDofsPerNode;       /*!< number global degrees of freedom per node */
@@ -58,9 +58,13 @@ class J2PlasticityLocalResidual :
 
     Plato::Scalar mElasticPropertiesPenaltySIMP;   /*!< SIMP penalty for elastic properties */
     Plato::Scalar mElasticPropertiesMinErsatzSIMP; /*!< SIMP min ersatz stiffness for elastic properties */
+    Plato::Scalar mMultiplierOnElasticPropertiesPenaltySIMP; /*!< continuation parameter: multiplier on SIMP penalty for elastic properties */
+    Plato::Scalar mUpperBoundOnElasticPropertiesPenaltySIMP; /*!< continuation parameter: upper bound on SIMP penalty for elastic properties */
 
     Plato::Scalar mPlasticPropertiesPenaltySIMP;   /*!< SIMP penalty for plastic properties */
     Plato::Scalar mPlasticPropertiesMinErsatzSIMP; /*!< SIMP min ersatz stiffness for plastic properties */
+    Plato::Scalar mMultiplierOnPlasticPropertiesPenaltySIMP; /*!< continuation parameter: multiplier on SIMP penalty for plastic properties */
+    Plato::Scalar mUpperBoundOnPlasticPropertiesPenaltySIMP; /*!< continuation parameter: upper bound on SIMP penalty for plastic properties */
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule; /*!< linear tet cubature rule */
 
@@ -174,11 +178,15 @@ class J2PlasticityLocalResidual :
           mHardeningModulusKinematic = tJ2PlasticitySubList.get<Plato::Scalar>("Hardening Modulus Kinematic");
           mInitialYieldStress        = tJ2PlasticitySubList.get<Plato::Scalar>("Initial Yield Stress");
 
-          mElasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Penalty Exponent", 3.0);
+          mElasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Penalty Exponent", 1.0);
           mElasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Minimum Ersatz", 1e-9);
+          mMultiplierOnElasticPropertiesPenaltySIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Continuation Multiplier", 1.1);
+          mUpperBoundOnElasticPropertiesPenaltySIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Penalty Exponent Upper Bound", 4.0);
 
-          mPlasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Penalty Exponent", 2.5);
+          mPlasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Penalty Exponent", 0.5);
           mPlasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Minimum Ersatz", 1e-9);
+          mMultiplierOnPlasticPropertiesPenaltySIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Continuation Multiplier", 1.1);
+          mUpperBoundOnPlasticPropertiesPenaltySIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Penalty Exponent Upper Bound", 3.5);
         }
         else
         {
@@ -202,7 +210,7 @@ class J2PlasticityLocalResidual :
         }
     }
 
-  public:
+public:
     /**************************************************************************//**
     * \brief Constructor
     * \param [in] aMesh mesh data base
@@ -466,10 +474,30 @@ class J2PlasticityLocalResidual :
         }
       }, "Update local state dofs");
     }
+
+    /******************************************************************************//**
+     * \brief Update physics-based data within a frequency of optimization iterations
+     * \param [in] aGlobalState global state variables
+     * \param [in] aLocalState  local state variables
+     * \param [in] aControl     control variables, e.g. design variables
+    **********************************************************************************/
+    void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
+                       const Plato::ScalarMultiVector & aLocalState,
+                       const Plato::ScalarVector & aControl) override
+    {
+        // elastic properties SIMP penalty
+        mElasticPropertiesPenaltySIMP = mElasticPropertiesPenaltySIMP >= mUpperBoundOnElasticPropertiesPenaltySIMP ?
+                mElasticPropertiesPenaltySIMP : mMultiplierOnElasticPropertiesPenaltySIMP * mElasticPropertiesPenaltySIMP;
+
+        // plastic properties SIMP penalty
+        mPlasticPropertiesPenaltySIMP = mPlasticPropertiesPenaltySIMP >= mUpperBoundOnPlasticPropertiesPenaltySIMP ?
+                mPlasticPropertiesPenaltySIMP : mMultiplierOnPlasticPropertiesPenaltySIMP * mPlasticPropertiesPenaltySIMP;
+    }
 };
 // class J2PlasticityLocalResidual
 
-} // namespace Plato
+}
+// namespace Plato
 
 #include "SimplexPlasticity.hpp"
 #include "SimplexThermoPlasticity.hpp"
