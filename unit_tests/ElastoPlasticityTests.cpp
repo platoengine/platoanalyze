@@ -2719,7 +2719,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPressure2D_PlasticSteps)
 {
-    const bool tOutputData = true; // for debugging purpose, set true to enable Paraview output
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
     const bool tDeleteSolverStats = false; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,10,2);
