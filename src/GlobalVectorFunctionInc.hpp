@@ -1248,6 +1248,28 @@ public:
         auto tOutput = this->assembleTransposeJacobianPressGrad(tJacobianWS);
         return (tOutput);
     }
+
+    /***************************************************************************//**
+     * \brief Update physics-based parameters within a frequency of optimization iterations
+     * \param [in] aGlobalStates global states for all time steps
+     * \param [in] aLocalStates  local states for all time steps
+     * \param [in] aControls     current controls, i.e. design variables
+     * \param [in] aTimeStep     current time step increment
+    *******************************************************************************/
+    void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
+                       const Plato::ScalarMultiVector & aLocalStates,
+                       const Plato::ScalarVector & aControls,
+                       Plato::Scalar aTimeStep = 0.0) const
+    {
+        mGlobalResidual->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mGlobalJacobianX->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mGlobalJacobianZ->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mGlobalJacobianCC->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mGlobalJacobianPC->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mGlobalJacobianCU->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mGlobalJacobianPU->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mGlobalJacProjPressGrad->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+    }
 };
 // class GlobalVectorFunctionInc
 

@@ -105,11 +105,13 @@ public:
      * \param [in] aGlobalState global state variables
      * \param [in] aLocalState  local state variables
      * \param [in] aControl     control variables, e.g. design variables
+     * \param [in] aTimeStep    pseudo time step
     **********************************************************************************/
     virtual void
     updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                   const Plato::ScalarMultiVector & aLocalState,
-                  const Plato::ScalarVector & aControl)
+                  const Plato::ScalarVector & aControl,
+                  Plato::Scalar aTimeStep = 0.0)
     { return; }
 };
 // class AbstractGlobalVectorFunctionInc

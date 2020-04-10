@@ -483,7 +483,8 @@ public:
     **********************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                        const Plato::ScalarMultiVector & aLocalState,
-                       const Plato::ScalarVector & aControl) override
+                       const Plato::ScalarVector & aControl,
+                       Plato::Scalar aTimeStep = 0.0) override
     {
         // elastic properties SIMP penalty
         mElasticPropertiesPenaltySIMP = mElasticPropertiesPenaltySIMP >= mUpperBoundOnElasticPropertiesPenaltySIMP ?

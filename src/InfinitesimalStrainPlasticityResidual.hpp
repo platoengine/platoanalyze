@@ -501,7 +501,8 @@ public:
     **********************************************************************************/
     void updateProblem(const Plato::ScalarMultiVector & aGlobalState,
                        const Plato::ScalarMultiVector & aLocalState,
-                       const Plato::ScalarVector & aControl) override
+                       const Plato::ScalarVector & aControl,
+                       Plato::Scalar aTimeStep = 0.0) override
     {
         // update SIMP penalty parameter
         mPenaltySIMP = mPenaltySIMP >= mUpperBoundOnPenaltySIMP ? mPenaltySIMP : mMultiplierOnPenaltySIMP * mPenaltySIMP;

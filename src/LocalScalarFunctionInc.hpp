@@ -149,7 +149,7 @@ public:
                                                 Plato::Scalar aTimeStep = 0.0) const = 0;
 
     /***************************************************************************//**
-     * \brief Update physics-based parameters within an optimization iteration
+     * \brief Update physics-based parameters within a frequency of optimization iterations
      * \param [in] aGlobalStates global states for all time steps
      * \param [in] aLocalStates  local states for all time steps
      * \param [in] aControls     current controls, i.e. design variables

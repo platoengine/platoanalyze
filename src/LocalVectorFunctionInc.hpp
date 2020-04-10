@@ -959,6 +959,27 @@ public:
 
       return tOutputJacobian;
     }
+
+    /***************************************************************************//**
+     * \brief Update physics-based parameters within a frequency of optimization iterations
+     * \param [in] aGlobalStates global states for all time steps
+     * \param [in] aLocalStates  local states for all time steps
+     * \param [in] aControls     current controls, i.e. design variables
+     * \param [in] aTimeStep     current time step increment
+    *******************************************************************************/
+    void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
+                       const Plato::ScalarMultiVector & aLocalStates,
+                       const Plato::ScalarVector & aControls,
+                       Plato::Scalar aTimeStep = 0.0) const
+    {
+        mLocalVectorFunctionResidual->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mLocalVectorFunctionJacobianU->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mLocalVectorFunctionJacobianUP->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mLocalVectorFunctionJacobianC->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mLocalVectorFunctionJacobianCP->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mLocalVectorFunctionJacobianX->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+        mLocalVectorFunctionJacobianZ->updateProblem(aGlobalStates, aLocalStates, aControls, aTimeStep);
+    }
 };
 // class LocalVectorFunctionInc
 

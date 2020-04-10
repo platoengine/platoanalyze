@@ -56,7 +56,8 @@ private:
 
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual */
-    Plato::Scalar mDispControlConstant;           /*!< current pseudo time step */
+    Plato::Scalar mDispControlConstant;           /*!< displacement control constant */
+    Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step */
     Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
 
     Plato::ScalarVector mPressure;                /*!< projected pressure field */
@@ -92,6 +93,7 @@ public:
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
+            mCurrentPseudoTimeStep(0.0),
             mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "Expansion Multiplier", 2)),
             mPressure("Previous Pressure Field", aMesh.nverts()),
             mLocalStates("Local States", mNumPseudoTimeSteps, mLocalEquation->size()),
@@ -120,6 +122,7 @@ public:
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
+            mCurrentPseudoTimeStep(0.0),
             mNumPseudoTimeStepMultiplier(2),
             mPressure("Pressure Field", aMesh.nverts()),
             mLocalStates("Local States", mNumPseudoTimeSteps, aMesh.nelems() * mNumLocalDofsPerCell),
@@ -307,11 +310,11 @@ public:
     void updateProblem(const Plato::ScalarVector & aControls,
                        const Plato::ScalarMultiVector & aGlobalState) override
     {
-        mObjective->updateProblem(aGlobalState, mLocalStates, aControls);
-        mConstraint->updateProblem(aGlobalState, mLocalStates, aControls);
-        mLocalEquation->updateProblem(aGlobalState, mLocalStates, aControls);
-        mGlobalEquation->updateProblem(aGlobalState, mLocalStates, aControls);
-        mProjectionEquation->updateProblem(aGlobalState, mLocalStates, aControls);
+        mObjective->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+        mConstraint->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+        mLocalEquation->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+        mGlobalEquation->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+        mProjectionEquation->updateProblem(aGlobalState, aControls, mCurrentPseudoTimeStep);
     }
 
     /***************************************************************************//**
@@ -728,8 +731,9 @@ private:
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
         {
             std::stringstream tMsg;
+            mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(tCurrentStepIndex + 1);
             tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << ", TOTAL TIME = "
-                << mPseudoTimeStep * static_cast<Plato::Scalar>(tCurrentStepIndex + 1) << "\n";
+                 << mCurrentPseudoTimeStep << "\n";
             mNewtonSolver->appendOutputMessage(tMsg);
 
             tCurrentState.mCurrentStepIndex = tCurrentStepIndex;

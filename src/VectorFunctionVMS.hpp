@@ -865,6 +865,23 @@ public:
       Plato::transform_ad_type_to_pod_3Dview<mNumStateDofsPerCell, mNumNodesPerCell>(mNumCells, tJacobianWS, tOutputJacobian);
       return tOutputJacobian;
     }
+
+    /***************************************************************************//**
+     * \brief Update physics-based parameters within a frequency of optimization iterations
+     * \param [in] aStates     global states for all time steps
+     * \param [in] aControls   current controls, i.e. design variables
+     * \param [in] aTimeStep   current time step increment
+    *******************************************************************************/
+    void updateProblem(const Plato::ScalarMultiVector & aStates,
+                       const Plato::ScalarVector & aControls,
+                       Plato::Scalar aTimeStep = 0.0) const
+    {
+        mVectorFunctionVMSResidual->updateProblem(aStates, aControls, aTimeStep);
+        mVectorFunctionVMSJacobianU->updateProblem(aStates, aControls, aTimeStep);
+        mVectorFunctionVMSJacobianN->updateProblem(aStates, aControls, aTimeStep);
+        mVectorFunctionVMSJacobianX->updateProblem(aStates, aControls, aTimeStep);
+        mVectorFunctionVMSJacobianZ->updateProblem(aStates, aControls, aTimeStep);
+    }
 };
 // class VectorFunctionVMS
 
