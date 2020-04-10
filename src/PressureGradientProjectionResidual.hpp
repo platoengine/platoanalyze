@@ -127,10 +127,13 @@ public:
 
     /******************************************************************************//**
      * \brief Update physics-based data within a frequency of optimization iterations
-     * \param [in] aState    global state variables
-     * \param [in] aControl  control variables, e.g. design variables
+     * \param [in] aState     global state variables
+     * \param [in] aControl   control variables, e.g. design variables
+     * \param [in] aTimeStep  pseudo time step
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarMultiVector & aState, const Plato::ScalarVector & aControl)
+    void updateProblem(const Plato::ScalarMultiVector & aState,
+                       const Plato::ScalarVector & aControl,
+                       Plato::Scalar aTimeStep = 0.0) override
     {
         mApplyVectorWeighting.update();
     }
