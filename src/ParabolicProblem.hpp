@@ -26,9 +26,9 @@
 #include "ScalarFunctionIncBaseFactory.hpp"
 
 #include "alg/ParallelComm.hpp"
-#ifdef HAVE_AMGX
-#include "alg/AmgXSparseLinearProblem.hpp"
-#endif
+#include "alg/PlatoSolverFactory.hpp"
+
+namespace Plato {
 
 /**********************************************************************************/
 template<typename SimplexPhysics>
@@ -66,6 +66,7 @@ private:
     Plato::LocalOrdinalVector mBcDofs;
     Plato::ScalarVector mBcValues;
 
+    rcp<Plato::AbstractSolver> mSolver;
 public:
     /******************************************************************************/
     ParabolicProblem(
@@ -88,6 +89,9 @@ public:
     /******************************************************************************/
     {
         this->initialize(aMesh, aMeshSets, aParamList);
+
+        Plato::SolverFactory tSolverFactory(aParamList.sublist("Linear Solver"));
+        mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
     }
 
     /******************************************************************************//**
@@ -160,16 +164,12 @@ public:
           mJacobian = mEqualityConstraint.gradient_u(tState, tPrevState, aControl, mTimeStep);
           this->applyConstraints(mJacobian, mResidual);
 
-#ifdef HAVE_AMGX
-          using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
-          auto tConfigString = AmgXLinearProblem::getConfigString();
           Plato::ScalarVector deltaT("increment", tState.extent(0));
           Plato::fill(static_cast<Plato::Scalar>(0.0), deltaT);
-          auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, deltaT, mResidual, tConfigString));
-          tSolver->solve();
-          tSolver = Teuchos::null;
+
+          mSolver->solve(*mJacobian, deltaT, mResidual);
+
           Plato::axpy(-1.0, deltaT, tState);
-#endif
 
         }
         return mStates;
@@ -306,13 +306,8 @@ public:
             // adjoint problem uses transpose of global stiffness, but we're assuming the constrained
             // system is symmetric.
 
-#ifdef HAVE_AMGX
-            typedef Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode> AmgXLinearProblem;
-            auto tConfigString = AmgXLinearProblem::getConfigString();
-            auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tAdjoint, tPartialObjectiveWRT_State, tConfigString));
-            tSolver->solve();
-            tSolver = Teuchos::null;
-#endif
+            mSolver->solve(*mJacobian, tAdjoint, tPartialObjectiveWRT_State);
+
             // compute dQ^k/d\phi: partial of PDE wrt control at step k.
             // dQ^k/d\phi is returned transposed, nxm.  n=z.size() and m=u.size().
             auto tPartialPDE_WRT_Control = mEqualityConstraint.gradient_z(tState, tPrevState, aControl, mTimeStep);
@@ -374,13 +369,7 @@ public:
             // adjoint problem uses transpose of global stiffness, but we're assuming the constrained
             // system is symmetric.
 
-#ifdef HAVE_AMGX
-            typedef Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode> AmgXLinearProblem;
-            auto tConfigString = AmgXLinearProblem::getConfigString();
-            auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tAdjoint, tPartialObjectiveWRT_State, tConfigString));
-            tSolver->solve();
-            tSolver = Teuchos::null;
-#endif
+            mSolver->solve(*mJacobian, tAdjoint, tPartialObjectiveWRT_State);
 
             // compute dQ^k/dx: partial of PDE wrt config.
             // dQ^k/dx is returned transposed, nxm.  n=x.size() and m=u.size().
@@ -568,14 +557,16 @@ private:
     }
 };
 
+} // end namespace Plato
+
 #ifdef PLATOANALYZE_1D
-extern template class ParabolicProblem<::Plato::Thermal<1>>;
+extern template class Plato::ParabolicProblem<::Plato::Thermal<1>>;
 #endif
 #ifdef PLATOANALYZE_2D
-extern template class ParabolicProblem<::Plato::Thermal<2>>;
+extern template class Plato::ParabolicProblem<::Plato::Thermal<2>>;
 #endif
 #ifdef PLATOANALYZE_3D
-extern template class ParabolicProblem<::Plato::Thermal<3>>;
+extern template class Plato::ParabolicProblem<::Plato::Thermal<3>>;
 #endif
 
 #endif // PLATO_PROBLEM_HPP

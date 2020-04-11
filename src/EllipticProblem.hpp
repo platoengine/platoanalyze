@@ -20,9 +20,7 @@
 #include "AnalyzeMacros.hpp"
 
 #include "alg/ParallelComm.hpp"
-#ifdef HAVE_AMGX
-#include "alg/AmgXSparseLinearProblem.hpp"
-#endif
+#include "alg/PlatoSolverFactory.hpp"
 
 namespace Plato
 {
@@ -56,6 +54,8 @@ private:
     Plato::LocalOrdinalVector mBcDofs; /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
     Plato::ScalarVector mBcValues; /*!< values associated with the Dirichlet boundary conditions */
 
+    rcp<Plato::AbstractSolver> mSolver;
+
 public:
     /******************************************************************************//**
      * @brief PLATO problem constructor
@@ -78,6 +78,9 @@ public:
       mIsSelfAdjoint(aInputParams.get<bool>("Self-Adjoint", false))
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
+
+        Plato::SolverFactory tSolverFactory(aInputParams.sublist("Linear Solver"));
+        mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
     }
 
     /******************************************************************************//**
@@ -165,14 +168,7 @@ public:
         mJacobian = mEqualityConstraint.gradient_u(tStatesSubView, aControl);
         this->applyConstraints(mJacobian, mResidual);
 
-#ifdef HAVE_AMGX
-        using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
-        auto tConfigString = AmgXLinearProblem::getConfigString();
-        Plato::scale(-1.0, mResidual);
-        auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tStatesSubView, mResidual, tConfigString));
-        tSolver->solve();
-        tSolver = Teuchos::null;
-#endif
+        mSolver->solve(*mJacobian, tStatesSubView, mResidual);
 
         mResidual = mEqualityConstraint.value(tStatesSubView, aControl);
 
@@ -301,13 +297,8 @@ public:
             // system is symmetric.
 
             Plato::ScalarVector tAdjointSubView = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-#ifdef HAVE_AMGX
-            typedef Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode> AmgXLinearProblem;
-            auto tConfigString = AmgXLinearProblem::getConfigString();
-            auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State, tConfigString));
-            tSolver->solve();
-            tSolver = Teuchos::null;
-#endif
+
+            mSolver->solve(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State);
 
             // compute dgdz: partial of PDE wrt state.
             // dgdz is returned transposed, nxm.  n=z.size() and m=u.size().
@@ -360,13 +351,8 @@ public:
 
             Plato::ScalarVector
               tAdjointSubView = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-#ifdef HAVE_AMGX
-            typedef Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode> AmgXLinearProblem;
-            auto tConfigString = AmgXLinearProblem::getConfigString();
-            auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State, tConfigString));
-            tSolver->solve();
-            tSolver = Teuchos::null;
-#endif
+
+            mSolver->solve(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State);
 
             // compute dgdx: partial of PDE wrt config.
             // dgdx is returned transposed, nxm.  n=x.size() and m=u.size().

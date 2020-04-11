@@ -56,7 +56,7 @@ Machine::Machine(MPI_Comm& localComm) {
 Machine::Machine(int *argc, char ***argv) {
   mpiSession = Teuchos::rcp(new Teuchos::GlobalMPISession(argc, argv));
   teuchosComm = Teuchos::DefaultComm<int>::getComm();
-  epetraComm = std::make_shared<Epetra_SerialComm>();
+  epetraComm = std::make_shared<Epetra_MpiComm>(MPI_COMM_WORLD);
 }
 
 unsigned size(Machine const& machine) {

@@ -21,6 +21,7 @@
 #include "ParseTools.hpp"
 #include "Plato_Solve.hpp"
 
+#include "alg/PlatoSolverFactory.hpp"
 #include "ScalarFunctionBaseFactory.hpp"
 #include "ScalarFunctionIncBaseFactory.hpp"
 
@@ -59,10 +60,10 @@ private:
     Plato::ScalarVector mEta;
     Teuchos::RCP<Plato::CrsMatrixType> mProjJacobian; /*!< Jacobian matrix */
 
-
-
     Plato::LocalOrdinalVector mBcDofs; /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
     Plato::ScalarVector mBcValues; /*!< values associated with the Dirichlet boundary conditions */
+
+    rcp<Plato::AbstractSolver> mSolver;
 
 public:
     /******************************************************************************//**
@@ -93,6 +94,9 @@ public:
       mProjJacobian(Teuchos::null)
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
+
+        Plato::SolverFactory tSolverFactory(aInputParams.sublist("Linear Solver"));
+        mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
     }
 
     /******************************************************************************//**
@@ -193,7 +197,7 @@ public:
 
                 this->applyConstraints(mJacobian, mResidual);
 
-                Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobian, tStateIncrement, mResidual);
+                mSolver->solve(*mJacobian, tStateIncrement, mResidual);
 
                 // update the state with the new increment
                 Plato::update(-1.0, tStateIncrement, 1.0, tState);
@@ -360,7 +364,7 @@ public:
             this->applyConstraints(mJacobian, t_df_du);
 
             Plato::ScalarVector tLambda = Kokkos::subview(mLambda, tStepIndex, Kokkos::ALL());
-            Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobian, tLambda, t_df_du);
+            mSolver->solve(*mJacobian, tLambda, t_df_du);
 
             // compute adjoint variable for projection equation
             Plato::fill(static_cast<Plato::Scalar>(0.0), mProjResidual);
@@ -447,7 +451,7 @@ public:
             this->applyConstraints(mJacobian, t_df_du);
 
             Plato::ScalarVector tLambda = Kokkos::subview(mLambda, tStepIndex, Kokkos::ALL());
-            Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobian, tLambda, t_df_du);
+            mSolver->solve(*mJacobian, tLambda, t_df_du);
 
             // compute adjoint variable for projection equation
             Plato::fill(static_cast<Plato::Scalar>(0.0), mProjResidual);

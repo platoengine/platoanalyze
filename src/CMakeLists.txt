@@ -40,6 +40,9 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     alg/Cubature.cpp 
     alg/ParallelComm.cpp 
     alg/AmgXConfigs.cpp 
+    alg/EpetraLinearSolver.cpp
+    alg/AmgXLinearSolver.cpp
+    alg/PlatoSolverFactory.cpp
     ScalarFunctionBaseFactory.cpp 
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
     hyperbolic/HyperbolicPhysicsScalarFunction.cpp
