@@ -159,6 +159,10 @@ public:
         mLocalScalarFunctionContainer.push_back(aInput);
     }
 
+    /******************************************************************************//**
+     * \brief Return user defined name
+     * return user defined name
+    **********************************************************************************/
     std::string name() const override
     {
         return (mWeigthedSumFunctionName);
