@@ -69,7 +69,7 @@ private:
         if (tFunctionNames.size() != tFunctionWeights.size())
         {
             const auto tErrorString = std::string("Number of 'Functions' in '") + mWeigthedSumFunctionName
-                + "' parameter list does not equal the number of 'Weights'";
+                + "' parameter list does not match the number of 'Weights'";
             THROWERR(tErrorString)
         }
 
