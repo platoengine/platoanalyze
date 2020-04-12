@@ -61,8 +61,22 @@ private:
 
         auto tProblemFunctionName = aInputParams.sublist(mWeigthedSumFunctionName);
         mWriteDiagnostics = tProblemFunctionName.get<bool>("Write Diagnostics", false);
+
+        if(tProblemFunctionName.isParameter("Functions") == false)
+        {
+            const auto tErrorString = std::string("WeightedLocalScalarFunction: 'Functions' Keyword is not defined. ") +
+                + "Used the 'Functions' keyword to define each weighted function.";
+            THROWERR(tErrorString)
+        }
         auto tFunctionNamesTeuchos = tProblemFunctionName.get<Teuchos::Array<std::string>>("Functions");
         auto tFunctionNames = tFunctionNamesTeuchos.toVector();
+
+        if(tProblemFunctionName.isParameter("Weights") == false)
+        {
+            const auto tErrorString = std::string("WeightedLocalScalarFunction: 'Weights' Keyword is not defined. ") +
+                + "Used the 'Weights' keyword to define the weight of each weighted function.";
+            THROWERR(tErrorString)
+        }
         auto tFunctionWeightsTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
         auto tFunctionWeights = tFunctionWeightsTeuchos.toVector();
 
