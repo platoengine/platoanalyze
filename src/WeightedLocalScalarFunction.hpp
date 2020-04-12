@@ -98,6 +98,7 @@ public:
                                 Teuchos::ParameterList &aInputParams,
                                 std::string &aName) :
         mWeigthedSumFunctionName(aName),
+        mWriteDiagnostics(false),
         mDataMap(aDataMap),
         mWorksetBase(aMesh)
     {
