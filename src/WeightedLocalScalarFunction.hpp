@@ -60,7 +60,7 @@ private:
         mLocalScalarFunctionContainer.clear();
 
         auto tProblemFunctionName = aInputParams.sublist(mWeigthedSumFunctionName);
-        mWriteDiagnostics = tProblemFunctionName.get<bool>("Write Diagnostics", true);
+        mWriteDiagnostics = tProblemFunctionName.get<bool>("Write Diagnostics", false);
         auto tFunctionNamesTeuchos = tProblemFunctionName.get<Teuchos::Array<std::string>>("Functions");
         auto tFunctionNames = tFunctionNamesTeuchos.toVector();
         auto tFunctionWeightsTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
