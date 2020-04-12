@@ -374,34 +374,6 @@ public:
         {
             this->copyFieldFromAnalyze(mConstraintGradientZ, aSharedField);
         }
-        else if(aName == "Adjoint")
-        {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tAdjoint,/*component=*/0, /*stride=*/1);
-            this->copyFieldFromAnalyze(tScalarField, aSharedField);
-        }
-        else if(aName == "Adjoint X")
-        {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tAdjoint,/*component=*/0, /*stride=*/mNumSolutionDofs);
-            this->copyFieldFromAnalyze(tScalarField, aSharedField);
-        }
-        else if(aName == "Adjoint Y")
-        {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tAdjoint,/*component=*/1, /*stride=*/mNumSolutionDofs);
-            this->copyFieldFromAnalyze(tScalarField, aSharedField);
-        }
-        else if(aName == "Adjoint Z")
-        {
-            const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-            auto tScalarField = getVectorComponent(tAdjoint,/*component=*/2, /*stride=*/mNumSolutionDofs);
-            this->copyFieldFromAnalyze(tScalarField, aSharedField);
-        }
         else if(aName == "Solution")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
@@ -543,7 +515,6 @@ private:
     std::shared_ptr<Plato::AbstractProblem> mProblem;
 
     Plato::ScalarVector mControl;
-    Plato::ScalarMultiVector mAdjoint;
     Plato::ScalarMultiVector mGlobalState;
     Plato::ScalarMultiVector mCoords;
 

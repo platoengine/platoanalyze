@@ -137,7 +137,6 @@ createProblem(ProblemDefinition& aDefinition){
     #endif
   }
 
-  mAdjoint         = mProblem->getAdjoint();
   mGlobalState     = mProblem->getGlobalState();
   mNumSolutionDofs = mProblem->getNumSolutionDofs();
 
