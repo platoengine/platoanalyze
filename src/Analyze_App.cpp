@@ -102,7 +102,7 @@ createProblem(ProblemDefinition& aDefinition)
   if(aDefinition.params.isParameter("Input Mesh") == false)
   {
       std::string tMsg = std::string("Analyze Application: 'Input Mesh' keyword was not defined. ")
-          + "Use the 'Input Mesh' keyword to provide the name of the mesh file."";
+          + "Use the 'Input Mesh' keyword to provide the name of the mesh file.";
       THROWERR(tMsg)
   }
   auto tInputMesh = aDefinition.params.get<std::string>("Input Mesh");
@@ -501,7 +501,7 @@ ComputeObjective(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Probl
 void MPMD_App::ComputeObjective::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Objective Operation.\n");
     }
@@ -534,7 +534,7 @@ ComputeObjectiveX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
 void MPMD_App::ComputeObjectiveX::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute ObjectiveX Operation.\n");
     }
@@ -571,7 +571,7 @@ ComputeObjectiveP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
 void MPMD_App::ComputeObjectiveP::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute ObjectiveP Operation.\n");
     }
@@ -615,7 +615,7 @@ ComputeObjectiveValue(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<
 void MPMD_App::ComputeObjectiveValue::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Objective Value Operation.\n");
     }
@@ -646,7 +646,7 @@ ComputeObjectiveGradient(MPMD_App* aMyApp, Plato::InputData& aOpNode,  Teuchos::
 void MPMD_App::ComputeObjectiveGradient::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Objective Gradient Operation.\n");
     }
@@ -676,7 +676,7 @@ ComputeObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
 void MPMD_App::ComputeObjectiveGradientX::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Objective GradientX Operation.\n");
     }
@@ -713,7 +713,7 @@ MapObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<
 void MPMD_App::MapObjectiveGradientX::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Map Objective GradientX Operation.\n");
     }
@@ -758,7 +758,7 @@ ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
 void MPMD_App::ComputeObjectiveGradientP::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Map Objective GradientP Operation.\n");
     }
@@ -799,7 +799,7 @@ ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
 void MPMD_App::ComputeConstraint::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Constraint Operation.\n");
     }
@@ -842,7 +842,7 @@ ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aOpNode,
 void MPMD_App::ComputeConstraintX::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute ConstraintX Operation.\n");
     }
@@ -895,7 +895,7 @@ MPMD_App::ComputeConstraintP::ComputeConstraintP(MPMD_App* aMyApp,
 void MPMD_App::ComputeConstraintP::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute ConstraintP Operation.\n");
     }
@@ -944,7 +944,7 @@ ComputeConstraintValue(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP
 void MPMD_App::ComputeConstraintValue::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Constraint Value Operation.\n");
     }
@@ -979,7 +979,7 @@ ComputeConstraintGradient(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
 void MPMD_App::ComputeConstraintGradient::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Constraint Gradient Operation.\n");
     }
@@ -1009,7 +1009,7 @@ ComputeConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos:
 void MPMD_App::ComputeConstraintGradientX::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Constraint GradientX Operation.\n");
     }
@@ -1044,7 +1044,7 @@ MapConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP
 void MPMD_App::MapConstraintGradientX::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Map Constraint GradientX Operation.\n");
     }
@@ -1084,7 +1084,7 @@ ComputeConstraintGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos:
 void MPMD_App::ComputeConstraintGradientP::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Constraint GradientP Operation.\n");
     }
@@ -1134,7 +1134,7 @@ ComputeSolution(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Proble
 void MPMD_App::ComputeSolution::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Solution Operation.\n");
     }
@@ -1170,7 +1170,7 @@ Reinitialize(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDe
 void MPMD_App::Reinitialize::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Reinitialize Operation.\n");
     }
@@ -1270,7 +1270,7 @@ UpdateProblem(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemD
 void MPMD_App::UpdateProblem::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Update Problem Operation.\n");
     }
@@ -1311,7 +1311,7 @@ ComputeFiniteDifference(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RC
 void MPMD_App::ComputeFiniteDifference::operator()()
 /******************************************************************************/
 {
-    if(mDebugAnalyzeApp == true)
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Compute Finite Difference Operation.\n");
     }
