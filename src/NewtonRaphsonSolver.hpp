@@ -11,6 +11,7 @@
 #include "ParseTools.hpp"
 #include "Plato_Solve.hpp"
 #include "AnalyzeMacros.hpp"
+#include "PlatoUtilities.hpp"
 #include "ApplyConstraints.hpp"
 #include "NewtonRaphsonUtilities.hpp"
 #include "LocalVectorFunctionInc.hpp"
@@ -54,6 +55,7 @@ private:
     Plato::ScalarVector mDirichletValues;     /*!< Dirichlet boundary conditions values */
     Plato::LocalOrdinalVector mDirichletDofs; /*!< Dirichlet boundary conditions degrees of freedom */
 
+    bool mDebugFlag;              /*!< debug problem flag */
     bool mUseAbsoluteTolerance;   /*!< use absolute stopping tolerance flag */
     bool mWriteSolverDiagnostics; /*!< write solver diagnostics flag */
     std::ofstream mSolverDiagnosticsFile; /*!< output solver diagnostics */
@@ -122,6 +124,17 @@ private:
         if(mCurrentSolverIter == static_cast<Plato::OrdinalType>(0))
         {
             Plato::update(mDirichletValuesMultiplier, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
+        }
+
+        if(mDebugFlag == true)
+        {
+            // Only used for debugging purposes
+            printf("Newton Raphson Solver: Apply Constraints");
+            Plato::print(mDirichletDofs, "Dirichlet Dofs");
+            Plato::print(mDirichletValues, "Dirichlet Values");
+            printf("Newton Raphson Solver: Displacement Control Multiplier: %e\n", mDirichletValuesMultiplier);
+            Plato::print(tDispControlledDirichletValues, "Disp Controlled Dirichlet Values");
+
         }
 
         if(aMatrix->isBlockMatrix())
@@ -393,6 +406,7 @@ public:
         mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 5e-7)),
         mMaxNumSolverIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Newton-Raphson", "Maximum Number Iterations", 10)),
         mCurrentSolverIter(0),
+        mDebugFlag(aInputs.get<bool>("Debug",false)),
         mUseAbsoluteTolerance(false),
         mWriteSolverDiagnostics(true),
         mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM)
@@ -411,6 +425,7 @@ public:
         mCurrentResidualNormTolerance(5e-7),
         mMaxNumSolverIter(20),
         mCurrentSolverIter(0),
+        mDebugFlag(false),
         mUseAbsoluteTolerance(false),
         mWriteSolverDiagnostics(true),
         mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM)
@@ -424,6 +439,15 @@ public:
     ~NewtonRaphsonSolver()
     {
         this->closeDiagnosticsFile();
+    }
+
+    /***************************************************************************//**
+     * \brief Set debug flag, which activate console output of diagnostics.
+     * \param [in] aInput debug flag
+    *******************************************************************************/
+    void debug(const bool & aInput)
+    {
+        mDebugFlag = aInput;
     }
 
     /***************************************************************************//**
