@@ -1368,7 +1368,7 @@ void MPMD_App::exportDataMap(const Plato::data::layout_t & aDataLayout, std::vec
     if(mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Export Data Map Function.\n");
-        std::string tMsg = "Export Data Map with Layout'" + Plato::getLayout(aDataLayout) + "'\n";
+        std::string tMsg = "Export Data Map with Layout '" + aDataLayout + "'\n";
         printf(tMsg.c_str());
     }
 
