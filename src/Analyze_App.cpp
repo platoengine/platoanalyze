@@ -1355,7 +1355,7 @@ void MPMD_App::exportData(const std::string& aName, Plato::SharedData& aSharedFi
     if(mDebugAnalyzeApp == true)
     {
         printf("Analyze Application: Export Data Function.\n");
-        std::string tMsg = std::string("Import Data '") + aName + "'\n";
+        std::string tMsg = std::string("Export Data '") + aName + "'\n";
         printf(tMsg.c_str());
     }
     this->exportDataT(aName, aSharedField);
