@@ -310,11 +310,19 @@ public:
     void updateProblem(const Plato::ScalarVector & aControls,
                        const Plato::ScalarMultiVector & aGlobalState) override
     {
-        mObjective->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
-        mConstraint->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
         mLocalEquation->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
         mGlobalEquation->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
         mProjectionEquation->updateProblem(aGlobalState, aControls, mCurrentPseudoTimeStep);
+
+        if(mObjective != nullptr)
+        {
+            mObjective->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+        }
+
+        if(mConstraint != nullptr)
+        {
+            mConstraint->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+        }
     }
 
     /***************************************************************************//**
