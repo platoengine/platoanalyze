@@ -20,6 +20,7 @@
 
 #include "Mechanics.hpp"
 #include "Thermal.hpp"
+#include "PlatoUtilities.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/ParseInput.hpp"
 
@@ -452,6 +453,11 @@ private:
         // get data from data layer
         std::vector<Plato::Scalar> tHostData(aSharedField.size());
         aSharedField.getData(tHostData);
+        if(mDebugAnalyzeApp == true)
+        {
+            printf("Analyze Application: Copy Field Into Analyze.\n");
+            Plato::print_standard_vector_1D(tHostData, "host data");
+        }
 
         // push data from host to device
         Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> tHostView(tHostData.data(), tHostData.size());
@@ -460,6 +466,11 @@ private:
         Kokkos::deep_copy(tDeviceView, tHostView);
 
         Kokkos::deep_copy(aDeviceData, tDeviceView);
+        if(mDebugAnalyzeApp == true)
+        {
+            printf("Analyze Application: Copy Field Into Analyze.\n");
+            Plato::print(aDeviceData, "device data");
+        }
     }
 
     /******************************************************************************/
@@ -467,6 +478,11 @@ private:
     void copyFieldFromAnalyze(const Plato::ScalarVector & aDeviceData, SharedDataT& aSharedField)
     /******************************************************************************/
     {
+        if(mDebugAnalyzeApp == true)
+        {
+            printf("Analyze Application: Copy Field From Analyze.\n");
+            Plato::print(aDeviceData, "device data");
+        }
         // create kokkos::view around std::vector
         auto tLength = aSharedField.size();
         std::vector<Plato::Scalar> tHostData(tLength);
@@ -476,6 +492,11 @@ private:
         Kokkos::deep_copy(tDataHostView, aDeviceData);
 
         // copy from host to data layer
+        if(mDebugAnalyzeApp == true)
+        {
+            printf("Analyze Application: Copy Field From Analyze.\n");
+            Plato::print_standard_vector_1D(tHostData, "host data");
+        }
         aSharedField.setData(tHostData);
     }
 
@@ -506,6 +527,7 @@ private:
     Omega_h::MeshSets mMeshSets;
     Plato::comm::Machine mMachine;
 
+    bool mDebugAnalyzeApp;
     std::string mCurrentProblemName;
     Teuchos::RCP<ProblemDefinition> mDefaultProblem;
     std::map<std::string, Teuchos::RCP<ProblemDefinition>> mProblemDefinitions;

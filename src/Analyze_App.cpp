@@ -1,3 +1,5 @@
+#include <limits>
+
 #include <Omega_h_file.hpp>
 
 #include "Analyze_App.hpp"
@@ -10,12 +12,14 @@
 
 /******************************************************************************/
 MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
+        mDebugAnalyzeApp(false),
         mObjectiveValue(std::numeric_limits<Plato::Scalar>::max()),
         mConstraintValue(std::numeric_limits<Plato::Scalar>::max()),
         mLibOsh(&aArgc, &aArgv, aLocalComm),
         mMachine(aLocalComm),
         mNumSpatialDims(0),
-        mMesh(&mLibOsh)
+        mMesh(&mLibOsh),
+        mNumSolutionDofs(0)
 /******************************************************************************/
 {
   // parse app file
@@ -26,12 +30,11 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
 
   auto tInputParams = Plato::input_file_parsing(aArgc, aArgv, mMachine);
 
-  auto problemName = tInputParams.sublist("Runtime").get<std::string>("Input Config");
-  mDefaultProblem = Teuchos::rcp(new ProblemDefinition(problemName));
+  auto tProblemName = tInputParams.sublist("Runtime").get<std::string>("Input Config");
+  mDefaultProblem = Teuchos::rcp(new ProblemDefinition(tProblemName));
   mDefaultProblem->params = tInputParams;
 
   this->createProblem(*mDefaultProblem);
-
 
   // parse/create the ESP instance(s)
   auto tESPInputs = mInputData.getByName<Plato::InputData>("ESP");
@@ -85,14 +88,25 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
 /******************************************************************************/
 void
 MPMD_App::
-createProblem(ProblemDefinition& aDefinition){
+createProblem(ProblemDefinition& aDefinition)
 /******************************************************************************/
+{
+  if(mDebugAnalyzeApp == true)
+  {
+      printf("Analyze Application: Create Analyze Problem\n");
+  }
 
   mCurrentProblemName = aDefinition.name;
 
-  auto input_mesh = aDefinition.params.get<std::string>("Input Mesh");
+  if(aDefinition.params.isParameter("Input Mesh") == false)
+  {
+      std::string tMsg = std::string("Analyze Application: 'Input Mesh' keyword was not defined. ")
+          + "Use the 'Input Mesh' keyword to provide the name of the mesh file."";
+      THROWERR(tMsg)
+  }
+  auto tInputMesh = aDefinition.params.get<std::string>("Input Mesh");
 
-  mMesh = Omega_h::read_mesh_file(input_mesh, mLibOsh.world());
+  mMesh = Omega_h::read_mesh_file(tInputMesh, mLibOsh.world());
   mMesh.set_parting(Omega_h_Parting::OMEGA_H_GHOSTED);
 
   Omega_h::Assoc tAssoc;
@@ -107,6 +121,7 @@ createProblem(ProblemDefinition& aDefinition){
   }
   mMeshSets = Omega_h::invert(&mMesh, tAssoc);
 
+  mDebugAnalyzeApp = aDefinition.params.get<bool>("Debug", false);
   mNumSpatialDims = aDefinition.params.get<int>("Spatial Dimension");
 
   if (mNumSpatialDims == 3)
@@ -158,6 +173,10 @@ createProblem(ProblemDefinition& aDefinition){
 void MPMD_App::initialize()
 /******************************************************************************/
 {
+  if(mDebugAnalyzeApp == true)
+  {
+      printf("Analyze Application: Initialize");
+  }
 
   auto tNumLocalVals = mMesh.nverts();
 
@@ -336,13 +355,20 @@ MPMD_App::LocalOp*
 MPMD_App::getOperation(const std::string & aOperationName)
 /******************************************************************************/
 {
-  auto tIterator = mOperationMap.find(aOperationName);
-  if(tIterator == mOperationMap.end()){
-    std::stringstream tErrorMsg;
-    tErrorMsg << "Request for operation ('" << aOperationName << "') that doesn't exist.";
-    throw Plato::LogicException(tErrorMsg.str());
-  }
-  return tIterator->second;
+    if(mDebugAnalyzeApp == true)
+    {
+        std::string tMsg = std::string("Analyze Application: Get Operation '") + aOperationName + "'.\n";
+        printf(tMsg.c_str());
+    }
+
+    auto tIterator = mOperationMap.find(aOperationName);
+    if(tIterator == mOperationMap.end())
+    {
+        std::stringstream tErrorMsg;
+        tErrorMsg << "Request for operation ('" << aOperationName << "') that doesn't exist.";
+        throw Plato::LogicException(tErrorMsg.str());
+    }
+    return tIterator->second;
 }
 
 /******************************************************************************/
@@ -350,19 +376,25 @@ void
 MPMD_App::compute(const std::string & aOperationName)
 /******************************************************************************/
 {
-  LocalOp *tOperation = this->getOperation(aOperationName);
+    if(mDebugAnalyzeApp == true)
+    {
+        std::string tMsg = std::string("Analyze Application: Compute '") + aOperationName + "'.\n";
+        printf(tMsg.c_str());
+    }
 
-  // if a different problem definition is needed, create it
-  //
-  auto tProblemDefinition = tOperation->getProblemDefinition();
-  if( tProblemDefinition->name != mCurrentProblemName || tProblemDefinition->modified  )
-  {
-    this->createProblem(*tProblemDefinition);
-  }
+    LocalOp *tOperation = this->getOperation(aOperationName);
 
-  // call the operation
-  //
-  (*tOperation)();
+    // if a different problem definition is needed, create it
+    //
+    auto tProblemDefinition = tOperation->getProblemDefinition();
+    if(tProblemDefinition->name != mCurrentProblemName || tProblemDefinition->modified)
+    {
+        this->createProblem(*tProblemDefinition);
+    }
+
+    // call the operation
+    //
+    (*tOperation)();
 }
 
 /******************************************************************************/
@@ -372,21 +404,21 @@ LocalOp(MPMD_App* aMyApp, Plato::InputData& aOperationNode, Teuchos::RCP<Problem
         mDef(aOpDef)
 /******************************************************************************/
 {
-  // parse parameters
-  for( auto &pNode : aOperationNode.getByName<Plato::InputData>("Parameter") )
-  {
-    auto tName   = Plato::Get::String(pNode, "ArgumentName");
-    auto tTarget = Plato::Get::String(pNode, "Target");
-    auto tValue  = Plato::Get::Double(pNode, "InitialValue");
-
-    if( mParameters.count(tName) )
+    // parse parameters
+    for(auto &pNode : aOperationNode.getByName<Plato::InputData>("Parameter"))
     {
-      Plato::ParsingException pe("ArgumentNames must be unique.");
-      throw pe;
-    }
+        auto tName = Plato::Get::String(pNode, "ArgumentName");
+        auto tTarget = Plato::Get::String(pNode, "Target");
+        auto tValue = Plato::Get::Double(pNode, "InitialValue");
 
-    mParameters[tName] = Teuchos::rcp(new Parameter(tName, tTarget, tValue));
-  }
+        if(mParameters.count(tName))
+        {
+            Plato::ParsingException tParsingException("ArgumentNames must be unique.");
+            throw tParsingException;
+        }
+
+        mParameters[tName] = Teuchos::rcp(new Parameter(tName, tTarget, tValue));
+    }
 }
 
 /******************************************************************************/
@@ -405,16 +437,21 @@ MPMD_App::ESP_Op::
 ESP_Op(MPMD_App* aMyApp, Plato::InputData& aNode)
 /******************************************************************************/
 {
-  #ifdef PLATO_ESP
+    if(aMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: ESP Operation Constructor.\n");
+    }
+
+#ifdef PLATO_ESP
     mESPName = Plato::Get::String(aNode,"ESPName");
     auto& tESP = aMyApp->mESP;
     if( tESP.count(mESPName) == 0 )
     {
         throw Plato::ParsingException("Requested ESP model that doesn't exist.");
     }
-  #else
+#else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
-  #endif
+#endif
 }
 
 
@@ -424,26 +461,31 @@ MPMD_App::LocalOp::
 updateParameters(std::string aName, Plato::Scalar aValue)
 /******************************************************************************/
 {
-  if( mParameters.count(aName) == 0 )
-  {
-    std::stringstream ss;
-    ss << "Attempted to update a parameter ('" << aName << "') that wasn't defined for this operation";
-    Plato::ParsingException pe(ss.str());
-    throw pe;
-  }
-  else
-  {
-    auto it = mParameters.find(aName);
-    auto pm = it->second;
-    pm->mValue = aValue;
-
-    // if a target is given, update the problem definition
-    if ( pm->mTarget.empty() == false )
+    if(mMyApp->mDebugAnalyzeApp == true)
     {
-        parseInline(mDef->params, pm->mTarget, pm->mValue);
-        mDef->modified = true;
+        printf("Analyze Application: Update Parameter Operation.\n");
     }
-  }
+
+    if(mParameters.count(aName) == 0)
+    {
+        std::stringstream tSS;
+        tSS << "Attempted to update a parameter ('" << aName << "') that wasn't defined for this operation";
+        Plato::ParsingException tParsingException(tSS.str());
+        throw tParsingException;
+    }
+    else
+    {
+        auto tIterator = mParameters.find(aName);
+        auto tParam = tIterator->second;
+        tParam->mValue = aValue;
+
+        // if a target is given, update the problem definition
+        if(tParam->mTarget.empty() == false)
+        {
+            parseInline(mDef->params, tParam->mTarget, tParam->mValue);
+            mDef->modified = true;
+        }
+    }
 }
 
 /******************************************************************************/
@@ -458,10 +500,25 @@ ComputeObjective(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Probl
 void MPMD_App::ComputeObjective::operator()()
 /******************************************************************************/
 {
-  mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Objective Operation.\n");
+    }
 
-  mMyApp->mObjectiveValue      = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mGlobalState);
-  mMyApp->mObjectiveGradientZ = mMyApp->mProblem->objectiveGradient(mMyApp->mControl, mMyApp->mGlobalState);
+    mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
+    mMyApp->mObjectiveValue = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mGlobalState);
+    mMyApp->mObjectiveGradientZ = mMyApp->mProblem->objectiveGradient(mMyApp->mControl, mMyApp->mGlobalState);
+
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Objective Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Objective Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Objective Operation - Print Objective GradientZ.\n");
+        Plato::print(mMyApp->mObjectiveGradientZ, "objective gradient Z");
+        printf("Analyze Application - Compute Objective Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+    }
 }
 
 /******************************************************************************/
@@ -476,10 +533,25 @@ ComputeObjectiveX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
 void MPMD_App::ComputeObjectiveX::operator()()
 /******************************************************************************/
 {
-  mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute ObjectiveX Operation.\n");
+    }
 
-  mMyApp->mObjectiveValue      = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mGlobalState);
-  mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
+    mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
+    mMyApp->mObjectiveValue = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mGlobalState);
+    mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
+
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Objective X Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Objective X Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Objective X Operation - Print Objective GradientX.\n");
+        Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
+        printf("Analyze Application - Compute Objective X Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+    }
 }
 
 /******************************************************************************/
@@ -487,30 +559,46 @@ MPMD_App::ComputeObjectiveP::
 ComputeObjectiveP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
         LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Objective Gradient")
 {
-  #ifdef PLATO_ESP
+#ifdef PLATO_ESP
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
-  #else
+#else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
-  #endif
+#endif
 }
 /******************************************************************************/
 void MPMD_App::ComputeObjectiveP::operator()()
 /******************************************************************************/
 {
-  #ifdef PLATO_ESP
-    mMyApp->mState = mMyApp->mProblem->solution(mMyApp->mControl);
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute ObjectiveP Operation.\n");
+    }
+
+#ifdef PLATO_ESP
+    mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
 
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
 
-    mMyApp->mObjectiveValue     = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mState);
-    mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
+    mMyApp->mObjectiveValue = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mGlobalState);
+    mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
 
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mapToParameters(tESP, tGradP, mMyApp->mObjectiveGradientX);
-  #else
+
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Objective P Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Objective P Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Objective P Operation - Print Objective GradientX.\n");
+        Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
+        printf("Analyze Application - Compute Objective P Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+    }
+#else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
-  #endif
+#endif
 }
 
 
@@ -526,8 +614,22 @@ ComputeObjectiveValue(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<
 void MPMD_App::ComputeObjectiveValue::operator()()
 /******************************************************************************/
 {
-  mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
-  mMyApp->mObjectiveValue = mMyApp->mProblem->objectiveValue(mMyApp->mControl,mMyApp->mGlobalState);
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Objective Value Operation.\n");
+    }
+
+    mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
+    mMyApp->mObjectiveValue = mMyApp->mProblem->objectiveValue(mMyApp->mControl, mMyApp->mGlobalState);
+
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Objective Value Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Objective Value Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Objective Value Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+    }
 }
 
 /******************************************************************************/
@@ -543,7 +645,22 @@ ComputeObjectiveGradient(MPMD_App* aMyApp, Plato::InputData& aOpNode,  Teuchos::
 void MPMD_App::ComputeObjectiveGradient::operator()()
 /******************************************************************************/
 {
-  mMyApp->mObjectiveGradientZ = mMyApp->mProblem->objectiveGradient(mMyApp->mControl, mMyApp->mGlobalState);
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Objective Gradient Operation.\n");
+    }
+
+    mMyApp->mObjectiveGradientZ = mMyApp->mProblem->objectiveGradient(mMyApp->mControl, mMyApp->mGlobalState);
+
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Objective Gradient Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Objective Gradient Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Objective Gradient Operation - Print Objective GradientZ.\n");
+        Plato::print(mMyApp->mObjectiveGradientZ, "objective gradient Z");
+    }
 }
 
 /******************************************************************************/
@@ -558,7 +675,22 @@ ComputeObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
 void MPMD_App::ComputeObjectiveGradientX::operator()()
 /******************************************************************************/
 {
-  mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Objective GradientX Operation.\n");
+    }
+
+    mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
+
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Objective Gradient X Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Objective Gradient X Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Objective Gradient X Operation - Print Objective GradientX.\n");
+        Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
+    }
 }
 
 /******************************************************************************/
@@ -580,19 +712,28 @@ MapObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<
 void MPMD_App::MapObjectiveGradientX::operator()()
 /******************************************************************************/
 {
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Map Objective GradientX Operation.\n");
+    }
     auto tDfDX = Kokkos::create_mirror_view(mMyApp->mObjectiveGradientX);
     Kokkos::deep_copy(tDfDX, mMyApp->mObjectiveGradientX);
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Map Objective GradientX Operation - Print Objective GradientX.\n");
+        Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
+    }
 
+    Plato::OrdinalType tEntryIndex = 0;
     auto& tOutputVector = mMyApp->mValuesMap[mStrOutputName];
-    int tEntryIndex = 0;
     for( const auto& tInputName : mStrInputNames )
     {
         Plato::Scalar tValue(0.0);
         const auto& tDXDp = mMyApp->mValuesMap[tInputName];
         auto tNumData = tDXDp.size();
-        for( int i=0; i<tNumData; i++)
+        for( Plato::OrdinalType tIndex=0; tIndex<tNumData; tIndex++)
         {
-            tValue += tDfDX[i]*tDXDp[i];
+            tValue += tDfDX[tIndex]*tDXDp[tIndex];
         }
         tOutputVector[tEntryIndex++] = tValue;
     }
@@ -603,12 +744,12 @@ MPMD_App::ComputeObjectiveGradientP::
 ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
         LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Objective Gradient")
 {
-  #ifdef PLATO_ESP
+#ifdef PLATO_ESP
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
-  #else
+#else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
-  #endif
+#endif
 }
 /******************************************************************************/
 
@@ -616,15 +757,28 @@ ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
 void MPMD_App::ComputeObjectiveGradientP::operator()()
 /******************************************************************************/
 {
-  #ifdef PLATO_ESP
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Map Objective GradientP Operation.\n");
+    }
+#ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
     mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Objective GradientP Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Objective GradientP Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Objective GradientP Operation - Print Constraint GradientX.\n");
+        Plato::print(mMyApp->mObjectiveGradientX, "constraint gradient X");
+    }
 
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mapToParameters(tESP, tGradP, mMyApp->mObjectiveGradientX);
-  #else
+#else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
-  #endif
+#endif
 }
 
 /******************************************************************************/
@@ -633,6 +787,10 @@ ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
         LocalOp(aMyApp, aOpNode, aOpDef)
 {
     mTarget = Plato::Get::Double(aOpNode, "Target");
+    if( mTarget <= std::abs(std::numeric_limits<Plato::Scalar>::epsilon()) )
+    {
+        THROWERR("Analyze Application: Target Value is not defined.")
+    }
 }
 /******************************************************************************/
 
@@ -640,15 +798,29 @@ ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
 void MPMD_App::ComputeConstraint::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintValue  = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
-  mMyApp->mConstraintValue -= mTarget;
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Constraint Operation.\n");
+    }
+    mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
+    mMyApp->mConstraintValue -= mTarget;
+    mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mGlobalState);
 
-  mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mGlobalState);
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Constraint Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Constraint Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Constraint Operation - Print Constraint GradientZ.\n");
+        Plato::print(mMyApp->mConstraintGradientZ, "constraint gradient Z");
+        printf("Analyze Application - Compute Constraint Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+    }
 
-  std::stringstream ss;
-  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+    std::stringstream tSS;
+    tSS << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
 #ifdef PLATO_CONSOLE
-  Plato::Console::Status(ss.str());
+    Plato::Console::Status(tSS.str());
 #endif
 }
 
@@ -659,61 +831,102 @@ ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aOpNode,
 /******************************************************************************/
 {
     mTarget = Plato::Get::Double(aOpNode, "Target");
+    if( mTarget <= std::abs(std::numeric_limits<Plato::Scalar>::epsilon()) )
+    {
+        THROWERR("Analyze Application: Target Value is not defined.")
+    }
 }
 
 /******************************************************************************/
 void MPMD_App::ComputeConstraintX::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintValue  = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
-  mMyApp->mConstraintValue -= mTarget;
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute ConstraintX Operation.\n");
+    }
+    mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
+    mMyApp->mConstraintValue -= mTarget;
+    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalState);
 
-  mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalState);
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute ConstraintX Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute ConstraintX Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute ConstraintX Operation - Print Constraint GradientX.\n");
+        Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
+        printf("Analyze Application - Compute ConstraintX Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+    }
 
-  std::stringstream ss;
-  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+    std::stringstream tSS;
+    tSS << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
 #ifdef PLATO_CONSOLE
-  Plato::Console::Status(ss.str());
+    Plato::Console::Status(tSS.str());
 #endif
 }
 
 /******************************************************************************/
-MPMD_App::ComputeConstraintP::
-ComputeConstraintP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDefinition> aOpDef) :
-LocalOp(aMyApp, aOpNode, aOpDef), ESP_Op(aMyApp, aOpNode), mStrGradientP("Constraint Gradient")
+MPMD_App::ComputeConstraintP::ComputeConstraintP(MPMD_App* aMyApp,
+                                                 Plato::InputData& aOpNode,
+                                                 Teuchos::RCP<ProblemDefinition> aOpDef) :
+        LocalOp(aMyApp, aOpNode, aOpDef),
+        ESP_Op(aMyApp, aOpNode),
+        mStrGradientP("Constraint Gradient"),
+        mTarget(0.)
 /******************************************************************************/
 {
-  #ifdef PLATO_ESP
+#ifdef PLATO_ESP
     mTarget = Plato::Get::Double(aOpNode, "Target");
+    if( mTarget <= std::abs(std::numeric_limits<Plato::Scalar>::epsilon()) )
+    {
+        THROWERR("Analyze Application: Target Value is not defined.")
+    }
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
-  #else
+#else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
-  #endif
+#endif
 }
 
 /******************************************************************************/
 void MPMD_App::ComputeConstraintP::operator()()
 /******************************************************************************/
 {
-  #ifdef PLATO_ESP
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute ConstraintP Operation.\n");
+    }
+#ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
-    mMyApp->mConstraintValue  = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
+    mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
     mMyApp->mConstraintValue -= mTarget;
 
     mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
 
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute ConstraintP Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute ConstraintP Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute ConstraintP Operation - Print Constraint GradientX.\n");
+        Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
+        printf("Analyze Application - Compute ConstraintP Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+    }
+
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mapToParameters(tESP, tGradP, mMyApp->mConstraintGradientX);
 
-    std::stringstream ss;
-    ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+    std::stringstream tSS;
+    tSS << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
 #ifdef PLATO_CONSOLE
-    Plato::Console::Status(ss.str());
+    Plato::Console::Status(tSS.str());
 #endif
-  #else
+#else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
-  #endif
+#endif
 }
 
 
@@ -730,13 +943,26 @@ ComputeConstraintValue(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP
 void MPMD_App::ComputeConstraintValue::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl,mMyApp->mGlobalState);
-  mMyApp->mConstraintValue -= mTarget;
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Constraint Value Operation.\n");
+    }
+    mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
+    mMyApp->mConstraintValue -= mTarget;
 
-  std::stringstream ss;
-  ss << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Constraint Value Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Constraint Value Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Constraint Value Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+    }
+
+    std::stringstream tSS;
+    tSS << "Plato:: Constraint value = " << mMyApp->mConstraintValue << std::endl;
 #ifdef PLATO_CONSOLE
-  Plato::Console::Status(ss.str());
+    Plato::Console::Status(tSS.str());
 #endif
 }
 
@@ -752,7 +978,22 @@ ComputeConstraintGradient(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
 void MPMD_App::ComputeConstraintGradient::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mGlobalState);
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Constraint Gradient Operation.\n");
+    }
+
+    mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mGlobalState);
+
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Constraint Gradient Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Constraint Gradient Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Constraint Gradient Operation - Print Constraint GradientZ.\n");
+        Plato::print(mMyApp->mConstraintGradientZ, "constraint gradient Z");
+    }
 }
 
 /******************************************************************************/
@@ -767,7 +1008,20 @@ ComputeConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos:
 void MPMD_App::ComputeConstraintGradientX::operator()()
 /******************************************************************************/
 {
-  mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalState);
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Constraint GradientX Operation.\n");
+    }
+    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalState);
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Constraint GradientX Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Constraint GradientX Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Constraint GradientX Operation - Print Constraint GradientX.\n");
+        Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
+    }
 }
 
 /******************************************************************************/
@@ -789,6 +1043,10 @@ MapConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP
 void MPMD_App::MapConstraintGradientX::operator()()
 /******************************************************************************/
 {
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Map Constraint GradientX Operation.\n");
+    }
     auto tDgDX = Kokkos::create_mirror_view(mMyApp->mConstraintGradientX);
     Kokkos::deep_copy(tDgDX, mMyApp->mConstraintGradientX);
 
@@ -825,15 +1083,29 @@ ComputeConstraintGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos:
 void MPMD_App::ComputeConstraintGradientP::operator()()
 /******************************************************************************/
 {
-  #ifdef PLATO_ESP
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Constraint GradientP Operation.\n");
+    }
+#ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
     mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
 
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Constraint GradientP Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Constraint GradientP Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+        printf("Analyze Application - Compute Constraint GradientP Operation - Print Constraint GradientX.\n");
+        Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
+    }
+
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mapToParameters(tESP, tGradP, mMyApp->mConstraintGradientX);
-  #else
+#else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
-  #endif
+#endif
 }
 
 /******************************************************************************/
@@ -861,14 +1133,27 @@ ComputeSolution(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Proble
 void MPMD_App::ComputeSolution::operator()()
 /******************************************************************************/
 {
-  mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Solution Operation.\n");
+    }
 
-  // optionally, write solution
-  if ( mWriteNativeOutput )
-  {
-    auto tStateDataMap = mMyApp->mProblem->getDataMap();
-    Plato::write(mDef->params, mVizFilePath, mMyApp->mGlobalState, mMyApp->mControl, tStateDataMap, mMyApp->mMesh);
-  }
+    mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
+
+    if(mMyApp->mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application - Compute Solution Operation - Print Controls.\n");
+        Plato::print(mMyApp->mControl, "controls");
+        printf("Analyze Application - Compute Solution Operation - Print Global State.\n");
+        Plato::print(mMyApp->mGlobalState, "global state");
+    }
+
+    // optionally, write solution
+    if(mWriteNativeOutput)
+    {
+        auto tStateDataMap = mMyApp->mProblem->getDataMap();
+        Plato::write(mDef->params, mVizFilePath, mMyApp->mGlobalState, mMyApp->mControl, tStateDataMap, mMyApp->mMesh);
+    }
 }
 
 /******************************************************************************/
@@ -884,6 +1169,11 @@ Reinitialize(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemDe
 void MPMD_App::Reinitialize::operator()()
 /******************************************************************************/
 {
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Reinitialize Operation.\n");
+    }
+
     auto& tInputState = mMyApp->mValuesMap[mStrParameters];
     if ( hasChanged(tInputState) )
     {
@@ -979,6 +1269,10 @@ UpdateProblem(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<ProblemD
 void MPMD_App::UpdateProblem::operator()()
 /******************************************************************************/
 {
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Update Problem Operation.\n");
+    }
     mMyApp->mProblem->updateProblem(mMyApp->mControl, mMyApp->mGlobalState);
 }
 
@@ -1016,6 +1310,10 @@ ComputeFiniteDifference(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RC
 void MPMD_App::ComputeFiniteDifference::operator()()
 /******************************************************************************/
 {
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Compute Finite Difference Operation.\n");
+    }
     int tIndex=0;
     Plato::Scalar tDelta=0.0;
     if( mParameters.count("Perturbed Index") )
@@ -1039,6 +1337,12 @@ void MPMD_App::finalize() { }
 void MPMD_App::importData(const std::string& aName, const Plato::SharedData& aSharedField)
 /******************************************************************************/
 {
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Import Data Function.\n");
+        std::string tMsg = std::string("Import Data '") + aName + "'\n";
+        printf(tMsg.c_str());
+    }
     this->importDataT(aName, aSharedField);
 }
 
@@ -1047,6 +1351,12 @@ void MPMD_App::importData(const std::string& aName, const Plato::SharedData& aSh
 void MPMD_App::exportData(const std::string& aName, Plato::SharedData& aSharedField)
 /******************************************************************************/
 {
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Export Data Function.\n");
+        std::string tMsg = std::string("Import Data '") + aName + "'\n";
+        printf(tMsg.c_str());
+    }
     this->exportDataT(aName, aSharedField);
 }
 
@@ -1054,6 +1364,13 @@ void MPMD_App::exportData(const std::string& aName, Plato::SharedData& aSharedFi
 void MPMD_App::exportDataMap(const Plato::data::layout_t & aDataLayout, std::vector<int> & aMyOwnedGlobalIDs)
 /******************************************************************************/
 {
+    if(mDebugAnalyzeApp == true)
+    {
+        printf("Analyze Application: Export Data Map Function.\n");
+        std::string tMsg = "Export Data Map with Layout'" + Plato::get_data_latout(aDataLayout) + "'\n";
+        printf(tMsg.c_str());
+    }
+
     if(aDataLayout == Plato::data::layout_t::SCALAR_FIELD)
     {
         Plato::OrdinalType tNumLocalVals = mMesh.nverts();

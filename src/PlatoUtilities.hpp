@@ -15,6 +15,23 @@ namespace Plato
 {
 
 /******************************************************************************//**
+ * \brief Print 1D standard vector to terminal - host function
+ * \param [in] aInput 1D standard vector
+ * \param [in] aName  container name (default = "")
+**********************************************************************************/
+inline void print_standard_vector_1D
+(const std::vector<Plato::Scalar> & aInput, std::string aName = "Data")
+{
+    auto tSize = aInput.size();
+    for(Plato::OrdinalType tIndex = 0; tIndex < tSize; tIndex++)
+    {
+        auto tEntry = tIndex + static_cast<Plato::OrdinalType>(1);
+        printf("%s: X(%d) = %e\n", aName, tEntry, aInput[tIndex]);
+    }
+}
+// print_array_1D_device
+
+/******************************************************************************//**
  * \brief Print input 1D container to terminal - device function
  * \param [in] aInput 1D container
  * \param [in] aName  container name (default = "")
