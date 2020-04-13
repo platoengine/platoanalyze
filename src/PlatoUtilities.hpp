@@ -22,11 +22,12 @@ namespace Plato
 inline void print_standard_vector_1D
 (const std::vector<Plato::Scalar> & aInput, std::string aName = "Data")
 {
-    auto tSize = aInput.size();
+    printf("PRINT %s\n", aName.c_str());
+    Plato::OrdinalType tSize = aInput.size();
     for(Plato::OrdinalType tIndex = 0; tIndex < tSize; tIndex++)
     {
         auto tEntry = tIndex + static_cast<Plato::OrdinalType>(1);
-        printf("%s: X(%d) = %e\n", aName, tEntry, aInput[tIndex]);
+        printf("X(%d) = %e\n", tEntry, aInput[tIndex]);
     }
 }
 // print_array_1D_device
