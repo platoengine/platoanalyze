@@ -20,6 +20,7 @@
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
+#include "NoPenalty.hpp"
 #include "AnalyzeMacros.hpp"
 #include "J2PlasticityLocalResidual.hpp"
 #include "Plato_AugLagStressCriterionQuadratic.hpp"
@@ -113,6 +114,12 @@ struct FunctionFactory
             if(tPenaltyType == "Heaviside")
             {
                 return std::make_shared<Plato::ThermoelastostaticResidual<EvaluationType, Plato::Heaviside>>
+                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+            }
+            else
+            if(tPenaltyType == "NoPenalty")
+            {
+                return std::make_shared<Plato::ThermoelastostaticResidual<EvaluationType, Plato::NoPenalty>>
                          (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
             }
             else

@@ -493,6 +493,12 @@ public:
     }
 
     /******************************************************************************//**
+     * @brief Get the scalar field size in lgr (this is used for non-fixed data sizes
+     * going through file system
+     **********************************************************************************/
+    void getScalarFieldHostMirror(const std::string& aName, typename Plato::ScalarVector::HostMirror & aHostMirror);
+
+    /******************************************************************************//**
      * @brief Return 2D container of coordinates (Node ID, Dimension)
      * @return 2D container of coordinates
     **********************************************************************************/
@@ -881,6 +887,56 @@ private:
     friend class ComputeFiniteDifference;
     /******************************************************************************/
 
+
+    /******************************************************************************/
+
+    // Reload mesh operator
+    //
+    /******************************************************************************/
+    class ReloadMesh : public LocalOp
+    {
+    public:	
+        ReloadMesh(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string m_reloadMeshFile;
+    };
+    friend class ReloadMesh;
+    /******************************************************************************/
+
+    /******************************************************************************/
+
+    // HDF5 Output sub-class
+    //
+    /******************************************************************************/
+    class OutputToHDF5 : public LocalOp
+    {
+    public:
+        OutputToHDF5(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string              mHdfFileName;
+        std::vector<std::string> mSharedDataName;
+    };
+    friend class OutputToHDF5;
+
+    /******************************************************************************/
+
+    // Visualization
+    //
+    /******************************************************************************/
+    class Visualization : public LocalOp
+    {
+    public:
+        Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        // file output
+        std::string mOutputFile;
+        // output gradients
+        bool mOutputGradients;
+    };
+    friend class Visualization;
 #ifdef PLATO_GEOMETRY
     // MLS sub-class
     //

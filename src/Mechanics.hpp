@@ -14,6 +14,7 @@
 #include "ElastostaticResidual.hpp"
 #include "InternalElasticEnergy.hpp"
 #include "EffectiveEnergy.hpp"
+#include "SurfaceArea.hpp"
 #include "Volume.hpp"
 #include "StressPNorm.hpp"
 #include "IntermediateDensityPenalty.hpp"
@@ -26,6 +27,7 @@
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
+#include "NoPenalty.hpp"
 
 namespace Plato
 {
@@ -93,6 +95,12 @@ elastostatics_residual(Omega_h::Mesh& aMesh,
     if(tPenaltyType == "Heaviside")
     {
         tOutput = std::make_shared<Plato::ElastostaticResidual<EvaluationType, Plato::Heaviside>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams);
+    }
+    else
+    if(tPenaltyType == "NoPenalty")
+    {
+        tOutput = std::make_shared<Plato::ElastostaticResidual<EvaluationType, Plato::NoPenalty>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams);
     }
     return (tOutput);
@@ -207,6 +215,12 @@ internal_elastic_energy(Omega_h::Mesh& aMesh,
         tOutput = std::make_shared<Plato::InternalElasticEnergy<EvaluationType, Plato::Heaviside>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
     }
+    else
+    if(tPenaltyType == "NoPenalty")
+    {
+        tOutput = std::make_shared<Plato::InternalElasticEnergy<EvaluationType, Plato::NoPenalty>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
+    }
     return (tOutput);
 }
 // function internal_elastic_energy
@@ -245,6 +259,12 @@ stress_p_norm(Omega_h::Mesh& aMesh,
     if(tPenaltyType == "Heaviside")
     {
         tOutput = std::make_shared<Plato::StressPNorm<EvaluationType, Plato::Heaviside>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
+    }
+    else
+    if(tPenaltyType == "NoPenalty")
+    {
+        tOutput = std::make_shared<Plato::StressPNorm<EvaluationType, Plato::NoPenalty>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
     }
     return (tOutput);
@@ -287,6 +307,12 @@ effective_energy(Omega_h::Mesh& aMesh,
         tOutput = std::make_shared<Plato::EffectiveEnergy<EvaluationType, Plato::Heaviside>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
     }
+    else
+    if(tPenaltyType == "NoPenalty")
+    {
+        tOutput = std::make_shared<Plato::EffectiveEnergy<EvaluationType, Plato::NoPenalty>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
+    }
     return (tOutput);
 }
 // function effective_energy
@@ -327,9 +353,35 @@ volume(Omega_h::Mesh& aMesh,
         tOutput = std::make_shared<Plato::Volume<EvaluationType, Plato::Heaviside>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
     }
+    else
+    if(tPenaltyType == "NoPenalty")
+    {
+        tOutput = std::make_shared<Plato::Volume<EvaluationType, Plato::NoPenalty>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
+    }
     return (tOutput);
 }
 // function volume
+
+/******************************************************************************//**
+ * @brief Create surface area scalar function
+ * @param [in] aMesh mesh database
+ * @param [in] aMeshSets side sets database
+ * @param [in] aDataMap PLATO Analyze physics-based database
+ * @param [in] aInputParams input parameters
+ * @param [in] aFuncType vector function name
+**********************************************************************************/
+template<typename EvaluationType>
+inline std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
+surface_area(Omega_h::Mesh& aMesh,
+       Omega_h::MeshSets& aMeshSets,
+       Plato::DataMap& aDataMap,
+       Teuchos::ParameterList & aInputParams,
+       std::string & aFuncName)
+{
+    return std::make_shared<Plato::SurfaceArea<EvaluationType>>(aMesh, aMeshSets, aDataMap, aInputParams, aFuncName);
+}
+// function surface area
 
 /******************************************************************************//**
  * @brief Factory for linear mechanics problem

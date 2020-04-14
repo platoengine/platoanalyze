@@ -20,6 +20,7 @@
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
+#include "NoPenalty.hpp"
 
 namespace Plato
 {
@@ -60,6 +61,12 @@ struct FunctionFactory
             if(tPenaltyType == "Heaviside")
             {
                 return std::make_shared<Plato::StabilizedThermoelastostaticResidual<EvaluationType, Plato::Heaviside>>
+                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+            }
+            else
+            if(tPenaltyType == "NoPenalty")
+            {
+                return std::make_shared<Plato::StabilizedThermoelastostaticResidual<EvaluationType, Plato::NoPenalty>>
                          (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
             }
             else

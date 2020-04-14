@@ -2,6 +2,7 @@
 
 #include "Analyze_App.hpp"
 #include "AnalyzeOutput.hpp"
+#include "HDF5IO.hpp"
 #include <PlatoProblemFactory.hpp>
 
 #ifdef PLATO_CONSOLE
@@ -284,6 +285,19 @@ void MPMD_App::initialize()
     if(tStrFunction == "ComputeFiniteDifference"){
       mOperationMap[tStrName] = new ComputeFiniteDifference(this, tOperationNode, opDef);
     } else
+    if(tStrFunction == "ReloadMesh")
+    {
+      mOperationMap[tStrName] = new ReloadMesh(this, tOperationNode, opDef);
+    } else
+    if(tStrFunction == "OutputToHDF5")
+    {
+      mOperationMap[tStrName] = new OutputToHDF5(this, tOperationNode, opDef);
+    } else
+    if(tStrFunction == "Visualization")
+    {
+      mOperationMap[tStrName] = new Visualization(this, tOperationNode, opDef);
+    }
+    else
     if(tStrFunction == "ComputeMLSField"){
   #ifdef PLATO_GEOMETRY
       auto tMLSName = Plato::Get::String(tOperationNode,"MLSName");
@@ -1053,7 +1067,85 @@ void MPMD_App::ComputeFiniteDifference::operator()()
     auto tInitialValue = mMyApp->mValuesMap[mStrInitialValue][0];
     outVector[tIndex] = (tPerturbedValue - tInitialValue) / tDelta;
 }
+/******************************************************************************/
+MPMD_App::ReloadMesh::ReloadMesh(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef):
+        LocalOp(aMyApp, aNode, aOpDef),
+        m_reloadMeshFile("")
+/******************************************************************************/
+{
+    m_reloadMeshFile = Plato::Get::String(aNode,"ReloadFile");
 
+}
+/******************************************************************************/
+void MPMD_App::ReloadMesh::operator()()
+/******************************************************************************/
+{
+    auto tInputParams = mMyApp->mDefaultProblem->params;
+
+    auto problemName = tInputParams.sublist("Runtime").get<std::string>("Input Config");
+    mMyApp->mDefaultProblem = Teuchos::rcp(new ProblemDefinition(problemName));
+    mMyApp->mDefaultProblem->params = tInputParams;
+
+    mMyApp->createProblem(*mMyApp->mDefaultProblem);
+}
+
+/******************************************************************************/
+MPMD_App::OutputToHDF5::OutputToHDF5(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef):
+LocalOp(aMyApp, aNode, aOpDef)
+/******************************************************************************/
+{
+    mHdfFileName = Plato::Get::String(aNode,"FileName");
+
+    for(auto tInputNode : aNode.getByName<Plato::InputData>("Input"))
+    {
+        std::string tName = Plato::Get::String(tInputNode, "SharedDataName");
+        mSharedDataName.push_back(tName);
+    }
+}
+/******************************************************************************/
+void
+MPMD_App::OutputToHDF5::operator()()
+/******************************************************************************/
+{
+    // create file
+    hid_t tFileId = Plato::create_hdf5_file( mHdfFileName );
+
+    // iterate through shared data and add to file
+    for(auto tSD:mSharedDataName)
+    {
+        // initialize a host view
+        Plato::ScalarVector::HostMirror tScalarFieldHostMirror;
+
+        // get a view to the data
+        mMyApp->getScalarFieldHostMirror(tSD,tScalarFieldHostMirror);
+
+        // write to hdf5
+        herr_t tErrCode;
+        Plato::save_scalar_vector_to_hdf5_file(tFileId, tSD,tScalarFieldHostMirror,tErrCode);
+    }
+
+    // close the file
+    herr_t tErrCode = Plato::close_hdf5_file( tFileId );
+}
+
+/******************************************************************************/
+MPMD_App::Visualization::Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef):
+        LocalOp(aMyApp, aNode, aOpDef)
+{
+    mOutputFile = Plato::Get::String(aNode, "OutputFile");
+
+}
+/******************************************************************************/
+
+/******************************************************************************/
+void MPMD_App::Visualization::operator()()
+{
+    std::string tProblemPhysics     = mMyApp->mDefaultProblem->params.get<std::string>("Physics");
+    Plato::ScalarMultiVector tState = mMyApp->mProblem->getState();
+    Plato::DataMap tDataMap = mMyApp->mProblem->getDataMap();
+    Plato::output<3>(mMyApp->mDefaultProblem->params, mOutputFile,tState, tDataMap, mMyApp->mMesh);
+
+}
 /******************************************************************************/
 void MPMD_App::finalize() { }
 /******************************************************************************/
@@ -1212,6 +1304,103 @@ setParameterValue( Teuchos::ParameterList& params,
   {
       params.set<Plato::Scalar>(token,value);
   }
+}
+
+/******************************************************************************/
+void MPMD_App::getScalarFieldHostMirror(const    std::string & aName,
+                                        typename Plato::ScalarVector::HostMirror & aHostMirror)
+/******************************************************************************/
+{
+    Plato::ScalarVector tDeviceData;
+
+    if(aName == "Objective Gradient")
+    {
+        tDeviceData = mObjectiveGradientZ;
+    }
+    else if(aName == "Constraint Gradient")
+    {
+        tDeviceData = mConstraintGradientZ;
+    }
+    else if(aName == "Adjoint")
+    {
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
+        tDeviceData = getVectorComponent(tAdjoint,/*component=*/0, /*stride=*/1);
+    }
+    else if(aName == "Adjoint X")
+    {
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
+        tDeviceData = getVectorComponent(tAdjoint,/*component=*/0, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Adjoint Y")
+    {
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
+        tDeviceData = getVectorComponent(tAdjoint,/*component=*/1, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Adjoint Z")
+    {
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
+        tDeviceData = getVectorComponent(tAdjoint,/*component=*/2, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Solution")
+    {
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
+        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
+    }
+    else if(aName == "Solution X")
+    {
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
+        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Solution Y")
+    {
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
+        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Solution Z")
+    {
+        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
+        auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
+        tDeviceData = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Objective GradientX X")
+    {
+        tDeviceData = getVectorComponent(mObjectiveGradientX,/*component=*/0, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Objective GradientX Y")
+    {
+        tDeviceData = getVectorComponent(mObjectiveGradientX,/*component=*/1, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Objective GradientX Z")
+    {
+        tDeviceData = getVectorComponent(mObjectiveGradientX,/*component=*/2, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Constraint GradientX X")
+    {
+        tDeviceData = getVectorComponent(mConstraintGradientX,/*component=*/0, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Constraint GradientX Y")
+    {
+        tDeviceData = getVectorComponent(mConstraintGradientX,/*component=*/1, /*stride=*/mNumSpatialDims);
+    }
+    else if(aName == "Constraint GradientX Z")
+    {
+        tDeviceData = getVectorComponent(mConstraintGradientX,/*component=*/2, /*stride=*/mNumSpatialDims);
+    }
+
+    // create a mirror
+    aHostMirror = Kokkos::create_mirror(tDeviceData);
+
+
+    // copy to host from device
+    Kokkos::deep_copy(aHostMirror, tDeviceData);
+
 }
 
 /******************************************************************************/

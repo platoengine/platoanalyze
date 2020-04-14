@@ -11,7 +11,7 @@
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "ExpInstMacros.hpp"
-
+#include "NoPenalty.hpp"
 namespace Plato
 {
 
