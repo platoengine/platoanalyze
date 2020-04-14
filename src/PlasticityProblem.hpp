@@ -781,9 +781,9 @@ private:
     *******************************************************************************/
     void updateDispAndLoadControlMultipliers(const Plato::OrdinalType& aInput)
     {
-        auto tMultiplier = mPseudoTimeStep * static_cast<Plato::Scalar>(aInput + 1);
-        mNewtonSolver->setDirichletValuesMultiplier(tMultiplier);
-        mDataMap.mScalarValues["LoadControlConstant"] = tMultiplier;
+        mNewtonSolver->setDirichletValuesMultiplier(mPseudoTimeStep);
+        auto tLoadControlConstant = mPseudoTimeStep * static_cast<Plato::Scalar>(aInput + 1);
+        mDataMap.mScalarValues["LoadControlConstant"] = tLoadControlConstant;
     }
 
     /***************************************************************************//**
