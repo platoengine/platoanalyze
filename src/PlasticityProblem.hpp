@@ -773,6 +773,9 @@ private:
 
         mNewtonSolver->appendLocalEquation(mLocalEquation);
         mNewtonSolver->appendGlobalEquation(mGlobalEquation);
+
+        std::stringstream tMsg("\n\n**** NEW NEWTON-RAPHSON SOLVE ****\n\n");
+        mNewtonSolver->appendOutputMessage(tMsg);
     }
 
     /***************************************************************************//**
