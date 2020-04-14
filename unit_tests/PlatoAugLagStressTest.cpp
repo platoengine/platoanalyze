@@ -918,7 +918,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_VonMises3D)
 
     Plato::ScalarVector tCellVonMises("Von Mises Stress", tNumCells);
 
-    Plato::VonMisesYield<tSpaceDim> tVonMises;
+    Plato::VonMisesYieldFunction<tSpaceDim> tVonMises;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType tCellOrdinal)
             {
                 tVonMises(tCellOrdinal, tCellCauchyStress, tCellVonMises);
@@ -952,7 +952,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_VonMises2D)
 
     Plato::ScalarVector tCellVonMises("Von Mises Stress", tNumCells);
 
-    Plato::VonMisesYield<tSpaceDim> tVonMises;
+    Plato::VonMisesYieldFunction<tSpaceDim> tVonMises;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType tCellOrdinal)
             {
                 tVonMises(tCellOrdinal, tCellCauchyStress, tCellVonMises);
@@ -982,7 +982,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_VonMises1D)
 
     Plato::ScalarVector tCellVonMises("Von Mises Stress", tNumCells);
 
-    Plato::VonMisesYield<tSpaceDim> tVonMises;
+    Plato::VonMisesYieldFunction<tSpaceDim> tVonMises;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType tCellOrdinal)
             {
                 tVonMises(tCellOrdinal, tCellCauchyStress, tCellVonMises);
