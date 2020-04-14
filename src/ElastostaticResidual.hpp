@@ -17,7 +17,7 @@
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "ToMap.hpp"
-#include "Plato_VonMisesYield.hpp"
+#include "VonMisesYieldFunction.hpp"
 
 #include "ElasticModelFactory.hpp"
 #include "NaturalBCs.hpp"
@@ -215,7 +215,7 @@ public:
     void outputVonMises(const Plato::ScalarMultiVectorT<ResultScalarType> & aCauchyStress) const
     {
             auto tNumCells = mMesh.nelems();
-            Plato::VonMisesYield<mSpaceDim> tComputeVonMises;
+            Plato::VonMisesYieldFunction<mSpaceDim> tComputeVonMises;
             Plato::ScalarVectorT<ResultScalarType> tVonMises("Von Mises", tNumCells);
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {

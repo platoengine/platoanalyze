@@ -1,5 +1,5 @@
 /*
- * Plato_VonMisesYield.hpp
+ * VonMisesYieldFunction.hpp
  *
  *  Created on: Feb 10, 2019
  */
@@ -12,16 +12,16 @@ namespace Plato
 {
 
 /******************************************************************************//**
- * \brief Compute Von Mises yield criterion
+ * \brief Von Mises yield criterion class
 **********************************************************************************/
 template<Plato::OrdinalType SpatialDim>
-class VonMisesYield
+class VonMisesYieldFunction
 {
 public:
     /******************************************************************************//**
      * \brief Constructor
     **********************************************************************************/
-    VonMisesYield(){}
+    VonMisesYieldFunction(){}
 
     /******************************************************************************//**
      * \brief Compute Von Mises yield criterion
@@ -35,7 +35,7 @@ public:
                const Plato::ScalarMultiVectorT<Inputype> & aCauchyStress,
                const Plato::ScalarVectorT<ResultType> & aVonMisesStress) const;
 };
-// class VonMisesYield
+// class VonMisesYieldFunction
 
 /******************************************************************************//**
  * \brief Von Mises yield criterion for 3D problems
@@ -50,7 +50,7 @@ public:
 template<>
 template<typename Inputype, typename ResultType>
 DEVICE_TYPE inline void
-VonMisesYield<3>::operator()(const Plato::OrdinalType & aCellOrdinal,
+VonMisesYieldFunction<3>::operator()(const Plato::OrdinalType & aCellOrdinal,
         const Plato::ScalarMultiVectorT<Inputype> & aCauchyStress,
         const Plato::ScalarVectorT<ResultType> & aVonMisesStress) const
 {
@@ -85,7 +85,7 @@ VonMisesYield<3>::operator()(const Plato::OrdinalType & aCellOrdinal,
 template<>
 template<typename Inputype, typename ResultType>
 DEVICE_TYPE inline void
-VonMisesYield<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
+VonMisesYieldFunction<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
         const Plato::ScalarMultiVectorT<Inputype> & aCauchyStress,
         const Plato::ScalarVectorT<ResultType> & aVonMisesStress) const
 {
@@ -112,7 +112,7 @@ VonMisesYield<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
 template<>
 template<typename Inputype, typename ResultType>
 DEVICE_TYPE inline void
-VonMisesYield<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
+VonMisesYieldFunction<1>::operator()(const Plato::OrdinalType & aCellOrdinal,
         const Plato::ScalarMultiVectorT<Inputype> & aCauchyStress,
         const Plato::ScalarVectorT<ResultType> & aVonMisesStress) const
 {

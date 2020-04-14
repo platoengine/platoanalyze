@@ -18,8 +18,8 @@
 #include "LinearStress.hpp"
 #include "SimplexFadTypes.hpp"
 #include "PlatoMathHelpers.hpp"
-#include "Plato_VonMisesYield.hpp"
 #include "Plato_TopOptFunctors.hpp"
+#include "VonMisesYieldFunction.hpp"
 #include "AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
@@ -270,7 +270,7 @@ public:
 
         Plato::MSIMP tSIMP(mPenalty, mMinErsatzValue);
         Plato::Strain<mSpaceDim> tComputeCauchyStrain;
-        Plato::VonMisesYield<mSpaceDim> tComputeVonMises;
+        Plato::VonMisesYieldFunction<mSpaceDim> tComputeVonMises;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::LinearStress<mSpaceDim> tComputeCauchyStress(mCellStiffMatrix);
 
@@ -355,7 +355,7 @@ public:
         // Create Cauchy stress functors
         Plato::Strain<mSpaceDim> tComputeCauchyStrain;
         Plato::MSIMP tSIMP(mPenalty, mMinErsatzValue);
-        Plato::VonMisesYield<mSpaceDim> tComputeVonMises;
+        Plato::VonMisesYieldFunction<mSpaceDim> tComputeVonMises;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::LinearStress<mSpaceDim> tComputeCauchyStress(mCellStiffMatrix);
 

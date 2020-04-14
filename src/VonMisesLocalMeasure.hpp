@@ -3,13 +3,13 @@
 #include "AbstractLocalMeasure.hpp"
 #include <Omega_h_matrix.hpp>
 #include "LinearStress.hpp"
-#include "Plato_VonMisesYield.hpp"
 #include "Strain.hpp"
 #include "ImplicitFunctors.hpp"
 #include <Teuchos_ParameterList.hpp>
 #include "SimplexFadTypes.hpp"
 #include "ElasticModelFactory.hpp"
 #include "ExpInstMacros.hpp"
+#include "VonMisesYieldFunction.hpp"
 
 namespace Plato
 {
@@ -74,7 +74,7 @@ public:
         using StrainT = typename Plato::fad_type_t<SimplexPhysics, StateT, ConfigT>;
 
         Plato::Strain<mSpaceDim> tComputeCauchyStrain;
-        Plato::VonMisesYield<mSpaceDim> tComputeVonMises;
+        Plato::VonMisesYieldFunction<mSpaceDim> tComputeVonMises;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::LinearStress<mSpaceDim> tComputeCauchyStress(mCellStiffMatrix);
 

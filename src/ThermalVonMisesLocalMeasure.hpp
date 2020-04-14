@@ -1,7 +1,7 @@
 #pragma once
 
 #include "AbstractLocalMeasure.hpp"
-#include "Plato_VonMisesYield.hpp"
+#include "VonMisesYieldFunction.hpp"
 #include "ImplicitFunctors.hpp"
 #include <Teuchos_ParameterList.hpp>
 #include "SimplexFadTypes.hpp"
@@ -90,7 +90,7 @@ public:
         const Plato::OrdinalType tNumCells = aResultWS.size();
         using StrainT = typename Plato::fad_type_t<SimplexPhysics, StateT, ConfigT>;
 
-        Plato::VonMisesYield<mSpaceDim>          tComputeVonMises;
+        Plato::VonMisesYieldFunction<mSpaceDim>  tComputeVonMises;
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::TMKinematics<mSpaceDim>           tKinematics;
         Plato::TMKinetics<mSpaceDim>             tKinetics(mMaterialModel);
