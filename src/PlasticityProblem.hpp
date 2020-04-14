@@ -359,7 +359,14 @@ public:
                 tMsg << "\n**** Forward Solve Was Not Successful ****\n";
                 mNewtonSolver->appendOutputMessage(tMsg);
                 this->resizeTimeDependentStates();
-                break;
+                if(mNumPseudoTimeSteps > mMaxNumPseudoTimeSteps)
+                {
+                    std::stringstream tMsg;
+                    tMsg << "\n**** Maximum Number of Pseudo Time Steps Was Reached. "
+                            << "Plasticity Problem failed to converge to a solution. ****\n";
+                    mNewtonSolver->appendOutputMessage(tMsg);
+                    break;
+                }
             }
         }
 
