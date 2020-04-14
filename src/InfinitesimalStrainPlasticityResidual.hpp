@@ -511,7 +511,7 @@ public:
         std::ostringstream tMsg;
         tMsg << "Infinitesimal Strain Plasticity Residual: New penalty parameter is set to '" << mPenaltySIMP
                 << "'. Previous penalty parameter was '" << tPreviousPenaltySIMP << "'.\n";
-        REPORT(tMsg)
+        REPORT(tMsg.str().c_str())
     }
 };
 // class InfinitesimalStrainPlasticityResidual

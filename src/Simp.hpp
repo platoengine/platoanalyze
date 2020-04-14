@@ -58,7 +58,7 @@ public:
         std::ostringstream tMsg;
         tMsg << "Modified Solid Isotropic Material Penalization Model: New penalty parameter is set to '"
                 << mPenaltyParam << "'. Previous penalty parameter was '" << tPreviousPenalty << "'.\n";
-        REPORT(tMsg)
+        REPORT(tMsg.str().c_str())
     }
 
     /******************************************************************************//**

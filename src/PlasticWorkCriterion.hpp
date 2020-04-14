@@ -221,7 +221,7 @@ public:
         std::ostringstream tMsg;
         tMsg << "Plastic Work Criterion: New penalty parameter is set to '" << mPenaltySIMP
                 << "'. Previous penalty parameter was '" << tPreviousPenaltySIMP << "'.\n";
-        REPORT(tMsg)
+        REPORT(tMsg.str().c_str())
     }
 
 private:

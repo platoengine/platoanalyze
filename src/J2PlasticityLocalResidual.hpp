@@ -210,6 +210,40 @@ private:
         }
     }
 
+    /**************************************************************************//**
+    * \brief Update SIMP model used on the elastic properties.
+    ******************************************************************************/
+    void updateElasticPropertiesPenaltyModel()
+    {
+        auto tPreviousElasticPropertiesPenalty = mElasticPropertiesPenaltySIMP;
+        auto tSuggestedElasticPropertiesPenalty = tPreviousElasticPropertiesPenalty + mAdditiveContinuationElasticProperties;
+        mElasticPropertiesPenaltySIMP = tSuggestedElasticPropertiesPenalty >= mUpperBoundOnElasticPropertiesPenaltySIMP ?
+                mUpperBoundOnElasticPropertiesPenaltySIMP : tSuggestedElasticPropertiesPenalty;
+
+        std::ostringstream tMsg;
+        tMsg << "J2 Plasticity Local Residual: New penalty parameter for the elastic properties is set to '"
+             << mElasticPropertiesPenaltySIMP << "'. Previous penalty parameter was '" << tPreviousElasticPropertiesPenalty
+             << "'.\n";
+        REPORT(tMsg.str().c_str())
+    }
+
+    /**************************************************************************//**
+    * \brief Update SIMP model used on the plastic properties.
+    ******************************************************************************/
+    void updatePlasticPropertiesPenaltyModel()
+    {
+        auto tPreviousPlasticPropertiesPenalty = mPlasticPropertiesPenaltySIMP;
+        auto tSuggestedPlasticPropertiesPenalty = tPreviousPlasticPropertiesPenalty + mAdditiveContinuationPlasticProperties;
+        mPlasticPropertiesPenaltySIMP = tSuggestedPlasticPropertiesPenalty >= mUpperBoundOnPlasticPropertiesPenaltySIMP ?
+                mUpperBoundOnPlasticPropertiesPenaltySIMP : tSuggestedPlasticPropertiesPenalty;
+
+        std::ostringstream tMsg;
+        tMsg << "J2 Plasticity Local Residual: New penalty parameter for the plastic properties is set to '"
+             << mPlasticPropertiesPenaltySIMP << "'. Previous penalty parameter was '" << tPreviousPlasticPropertiesPenalty
+             << "'.\n";
+        REPORT(tMsg.str().c_str())
+    }
+
 public:
     /**************************************************************************//**
     * \brief Constructor
@@ -486,27 +520,8 @@ public:
                        const Plato::ScalarVector & aControl,
                        Plato::Scalar aTimeStep = 0.0) override
     {
-        // elastic properties SIMP penalty
-        auto tPreviousElasticPropertiesPenalty = mElasticPropertiesPenaltySIMP;
-        auto tSuggestedElasticPropertiesPenalty = tPreviousElasticPropertiesPenalty + mAdditiveContinuationElasticProperties;
-        mElasticPropertiesPenaltySIMP = tSuggestedElasticPropertiesPenalty >= mUpperBoundOnElasticPropertiesPenaltySIMP ?
-                mUpperBoundOnElasticPropertiesPenaltySIMP : tSuggestedElasticPropertiesPenalty;
-        std::ostringstream tMsgOne;
-        tMsgOne << "J2 Plasticity Local Residual: New penalty parameter for the elastic properties is set to '"
-             << mElasticPropertiesPenaltySIMP << "'. Previous penalty parameter was '" << tPreviousElasticPropertiesPenalty
-             << "'.\n";
-        REPORT(tMsgOne)
-
-        // plastic properties SIMP penalty
-        auto tPreviousPlasticPropertiesPenalty = mPlasticPropertiesPenaltySIMP;
-        auto tSuggestedPlasticPropertiesPenalty = tPreviousPlasticPropertiesPenalty + mAdditiveContinuationPlasticProperties;
-        mPlasticPropertiesPenaltySIMP = tSuggestedPlasticPropertiesPenalty >= mUpperBoundOnPlasticPropertiesPenaltySIMP ?
-                mUpperBoundOnPlasticPropertiesPenaltySIMP : tSuggestedPlasticPropertiesPenalty;
-        std::ostringstream tMsgTwo;
-        tMsgTwo << "J2 Plasticity Local Residual: New penalty parameter for the plastic properties is set to '"
-             << mPlasticPropertiesPenaltySIMP << "'. Previous penalty parameter was '" << tPreviousPlasticPropertiesPenalty
-             << "'.\n";
-        REPORT(tMsgTwo)
+        this->updateElasticPropertiesPenaltyModel();
+        this->updatePlasticPropertiesPenaltyModel();
     }
 };
 // class J2PlasticityLocalResidual
