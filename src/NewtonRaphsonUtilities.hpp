@@ -30,6 +30,7 @@ struct NewtonRaphson
         NORM_MEASURE_TOLERANCE = 2,
         CURRENT_NORM_TOLERANCE = 3,
         NaN_NORM_VALUE = 4,
+        INFINITE_NORM_VALUE = 5,
     };
 
     enum measure_t

@@ -333,6 +333,33 @@ private:
     }
 
     /***************************************************************************//**
+      * \brief Check if Newton-Raphson solver converged.
+      * \param [in\out] aOutputData C++ structure with the solver output diagnostics
+     *******************************************************************************/
+    bool didNewtonRaphsonSolverConverge(Plato::NewtonRaphsonOutputData & aOutputData)
+    {
+        bool tConverged = false;
+        switch(aOutputData.mStopingCriterion)
+        {
+            case Plato::NewtonRaphson::NORM_MEASURE_TOLERANCE:
+            case Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE:
+            case Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS:
+            {
+                tConverged = true;
+                break;
+            }
+            case Plato::NewtonRaphson::INFINITE_NORM_VALUE:
+            case Plato::NewtonRaphson::NaN_NORM_VALUE:
+            default:
+            {
+                tConverged = false;
+                break;
+            }
+        }
+        return (tConverged);
+    }
+
+    /***************************************************************************//**
       * \brief Check Newton-Raphson solver stopping criteria
       * \param [in\out] aOutputData C++ structure with the solver output diagnostics
      *******************************************************************************/
@@ -349,6 +376,11 @@ private:
         {
             tStop = true;
             aOutputData.mStopingCriterion = Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE;
+        }
+        else if(aOutputData.mCurrentNorm >= static_cast<Plato::Scalar>(1e20))
+        {
+            tStop = true;
+            aOutputData.mStopingCriterion = Plato::NewtonRaphson::INFINITE_NORM_VALUE;
         }
         else if(aOutputData.mCurrentIteration >= mMaxNumSolverIter)
         {
@@ -559,7 +591,7 @@ public:
             const bool tStop = this->checkStoppingCriterion(tOutputData);
             if(tStop == true)
             {
-                tNewtonRaphsonConverged = true;
+                tNewtonRaphsonConverged = this->didNewtonRaphsonSolverConverge(tOutputData);
                 break;
             }
 

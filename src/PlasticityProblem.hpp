@@ -58,7 +58,7 @@ private:
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual */
     Plato::Scalar mDispControlConstant;           /*!< displacement control constant */
     Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step */
-    Plato::Scalar mNumPseudoTimeStepMultiplier;   /*!< number of pseudo time step multiplier */
+    Plato::Scalar mPseudoTimeStepMultiplier;      /*!< dynamically increases number of pseudo time steps if Newton solver did not converge */
 
     Plato::ScalarVector mPressure;                /*!< projected pressure field */
     Plato::ScalarMultiVector mLocalStates;        /*!< local state variables */
@@ -94,7 +94,7 @@ public:
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
             mCurrentPseudoTimeStep(0.0),
-            mNumPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "Expansion Multiplier", 2)),
+            mPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "Expansion Multiplier", 2)),
             mPressure("Previous Pressure Field", aMesh.nverts()),
             mLocalStates("Local States", mNumPseudoTimeSteps, mLocalEquation->size()),
             mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalEquation->size()),
@@ -123,7 +123,7 @@ public:
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
             mCurrentPseudoTimeStep(0.0),
-            mNumPseudoTimeStepMultiplier(2),
+            mPseudoTimeStepMultiplier(2),
             mPressure("Pressure Field", aMesh.nverts()),
             mLocalStates("Local States", mNumPseudoTimeSteps, aMesh.nelems() * mNumLocalDofsPerCell),
             mGlobalStates("Global States", mNumPseudoTimeSteps, aMesh.nverts() * mNumGlobalDofsPerNode),
@@ -358,6 +358,7 @@ public:
                 std::stringstream tMsg;
                 tMsg << "\n**** Forward Solve Was Not Successful ****\n";
                 mNewtonSolver->appendOutputMessage(tMsg);
+                this->resizeTimeDependentStates();
                 break;
             }
         }
@@ -709,6 +710,20 @@ private:
     }
 
     /***************************************************************************//**
+     * \brief Resize time-dependent state containers and decrease pseudo-time step.
+    *******************************************************************************/
+    void resizeTimeDependentStates()
+    {
+        mNumPseudoTimeSteps = static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mPseudoTimeStepMultiplier);
+        mPseudoTimeStep = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
+
+        Kokkos::resize(mLocalStates, mNumPseudoTimeSteps, mLocalEquation->size());
+        Kokkos::resize(mGlobalStates, mNumPseudoTimeSteps, mGlobalEquation->size());
+        Kokkos::resize(mReactionForce, mNumPseudoTimeSteps, mGlobalEquation->numNodes());
+        Kokkos::resize(mProjectedPressGrad, mNumPseudoTimeSteps, mProjectionEquation->size());
+    }
+
+    /***************************************************************************//**
      * \brief Initialize Newton-Raphson solver
     *******************************************************************************/
     void initializeNewtonSolver()
@@ -735,7 +750,7 @@ private:
 
         this->initializeNewtonSolver();
 
-        bool tToleranceSatisfied = false;
+        bool tForwardProblemSolved = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
         {
             std::stringstream tMsg;
@@ -761,18 +776,17 @@ private:
             {
                 std::stringstream tMsg;
                 tMsg << "**** Newton-Raphson Solver did not converge at time step #"
-                    << tCurrentStepIndex << ".  Number of pseudo time steps will be increased to "
-                    << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mNumPseudoTimeStepMultiplier) << ". ****\n\n";
+                    << tCurrentStepIndex << ".  Number of pseudo time steps will be increased to '"
+                    << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mPseudoTimeStepMultiplier) << "'. ****\n\n";
                 mNewtonSolver->appendOutputMessage(tMsg);
-                return tToleranceSatisfied;
+                return tForwardProblemSolved;
             }
 
             // update projected pressure gradient state
             this->updateProjectedPressureGradient(aControls, tCurrentState);
         }
-
-        tToleranceSatisfied = true;
-        return tToleranceSatisfied;
+        tForwardProblemSolved = true;
+        return tForwardProblemSolved;
     }
 
     /***************************************************************************//**
