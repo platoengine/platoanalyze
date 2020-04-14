@@ -94,6 +94,24 @@ DEVICE_TYPE inline void print_array_3D_device
 // print_array_3D_device
 
 /******************************************************************************//**
+ * \brief Print input 1D container of ordinals to terminal/console - host function
+ * \param [in] aInput 1D container of ordinals
+ * \param [in] aName  container name (default = "")
+**********************************************************************************/
+inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, std::string aName = "")
+{
+    printf("PRINT %s\n", aName.c_str());
+
+    Plato::OrdinalType tSize = aInput.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        printf("X[%d] = %d\n", aIndex + static_cast<Plato::OrdinalType>(1), aInput(aIndex));
+    }, "print array ordinals 1D");
+    printf("\n");
+}
+// function print
+
+/******************************************************************************//**
  * \brief Print input 1D container to terminal - host function
  * \param [in] aInput 1D container
  * \param [in] aName  container name (default = "")

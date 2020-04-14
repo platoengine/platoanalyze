@@ -129,12 +129,11 @@ private:
         if(mDebugFlag == true)
         {
             // Only used for debugging purposes
-            printf("Newton Raphson Solver: Apply Constraints");
-            Plato::print(mDirichletDofs, "Dirichlet Dofs");
+            printf("Newton Raphson Solver: Apply Constraints\n");
+            Plato::print_array_ordinals_1D(mDirichletDofs, "Dirichlet Dofs");
             Plato::print(mDirichletValues, "Dirichlet Values");
             printf("Newton Raphson Solver: Displacement Control Multiplier: %e\n", mDirichletValuesMultiplier);
             Plato::print(tDispControlledDirichletValues, "Disp Controlled Dirichlet Values");
-
         }
 
         if(aMatrix->isBlockMatrix())
@@ -164,7 +163,17 @@ private:
         const Plato::Scalar tAlpha = 1.0;
         Plato::fill(static_cast<Plato::Scalar>(0.0), aStates.mDeltaGlobalState);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(aMatrix, aStates.mDeltaGlobalState, aResidual, mUseAbsoluteTolerance);
+
+        if(mDebugFlag == true)
+        {
+            Plato::print(aStates.mDeltaGlobalState, "Delta State");
+            Plato::print(aStates.mCurrentGlobalState, "Current Global State - Before Update");
+        }
         Plato::update(tAlpha, aStates.mDeltaGlobalState, tAlpha, aStates.mCurrentGlobalState);
+        if(mDebugFlag == true)
+        {
+            Plato::print(aStates.mCurrentGlobalState, "Current Global State - After Update");
+        }
     }
 
     /***************************************************************************//**
