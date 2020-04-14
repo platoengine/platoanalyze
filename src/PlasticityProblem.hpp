@@ -74,6 +74,8 @@ private:
     std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver;         /*!< Newton-Raphson solve interface */
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
 
+    bool mStopOptimization; /*!< stops optimization problem if Newton-Raphson solver fails to converge during an optimization run */
+
 // public functions
 public:
     /***************************************************************************//**
@@ -102,7 +104,8 @@ public:
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEquation->size()),
             mWorksetBase(aMesh),
             mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs)),
-            mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs))
+            mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs)),
+            mStopOptimization(false)
     {
         this->initialize(aMesh, aMeshSets, aInputs);
     }
@@ -131,7 +134,8 @@ public:
             mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, aMesh.nverts() * mNumPressGradDofsPerNode),
             mWorksetBase(aMesh),
             mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh)),
-            mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh))
+            mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh)),
+            mStopOptimization(false)
     {
     }
 
@@ -365,6 +369,7 @@ public:
                     tMsg << "\n**** Maximum Number of Pseudo Time Steps Was Reached. "
                             << "Plasticity Problem failed to converge to a solution. ****\n";
                     mNewtonSolver->appendOutputMessage(tMsg);
+                    mStopOptimization = true;
                     break;
                 }
             }
@@ -397,6 +402,7 @@ public:
             THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         auto tOutput = this->evaluateCriterion(*mObjective, aGlobalState, mLocalStates, aControls);
 
         return (tOutput);
@@ -418,6 +424,7 @@ public:
             THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         auto tOutput = this->evaluateCriterion(*mObjective, mGlobalStates, mLocalStates, aControls);
 
         return (tOutput);
@@ -445,6 +452,7 @@ public:
             THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         auto tOutput = this->evaluateCriterion(*mConstraint, mGlobalStates, mLocalStates, aControls);
 
         return (tOutput);
@@ -466,6 +474,7 @@ public:
             THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         auto tOutput = this->evaluateCriterion(*mConstraint, mGlobalStates, mLocalStates, aControls);
 
         return tOutput;
@@ -487,6 +496,7 @@ public:
             THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         auto tTotalDerivative = this->objectiveGradient(aControls, mGlobalStates);
 
         return tTotalDerivative;
@@ -514,6 +524,7 @@ public:
             THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         mAdjointSolver->appendScalarFunction(mObjective);
 
         auto tNumNodes = mGlobalEquation->numNodes();
@@ -540,6 +551,7 @@ public:
             THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         auto tTotalDerivative = this->objectiveGradientX(aControls, mGlobalStates);
 
         return tTotalDerivative;
@@ -567,8 +579,8 @@ public:
             THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         mAdjointSolver->appendScalarFunction(mObjective);
-
         Plato::ScalarVector tTotalDerivative("Total Derivative", mNumConfigDofsPerCell);
         this->backwardTimeIntegration(Plato::PartialDerivative::CONFIGURATION, aControls, tTotalDerivative);
         this->addCriterionPartialDerivativeX(*mObjective, aControls, tTotalDerivative);
@@ -619,8 +631,8 @@ public:
             THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         mAdjointSolver->appendScalarFunction(mConstraint);
-
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarVector tTotalDerivative("Total Derivative", tNumNodes);
         this->backwardTimeIntegration(Plato::PartialDerivative::CONTROL, aControls, tTotalDerivative);
@@ -645,6 +657,7 @@ public:
             THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         auto tTotalDerivative = this->constraintGradientX(aControls, mGlobalStates);
 
         return tTotalDerivative;
@@ -672,8 +685,8 @@ public:
            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
+        this->shouldOptimizationProblemStop();
         mAdjointSolver->appendScalarFunction(mConstraint);
-
         Plato::ScalarVector tTotalDerivative("Total Derivative", mNumConfigDofsPerCell);
         this->backwardTimeIntegration(Plato::PartialDerivative::CONFIGURATION, aControls, tTotalDerivative);
         this->addCriterionPartialDerivativeX(*mConstraint, aControls, tTotalDerivative);
@@ -714,6 +727,21 @@ private:
     {
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
         this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
+    }
+
+    /***************************************************************************//**
+     * \brief Checks if optimization problem should be stop due to Newton-Raphson
+     * solver's failure to converge during optimization.
+    *******************************************************************************/
+    void shouldOptimizationProblemStop()
+    {
+        if(mStopOptimization == true)
+        {
+            std::stringstream tMsg;
+            tMsg << "\n**** Plasticity Problem: Newton-Raphson solver failed to converge during optimization. "
+                    << "Optimization results are going to be impacted by the solver's failure to converge. ****\n";
+            THROWERR(tMsg.str().c_str())
+        }
     }
 
     /***************************************************************************//**
