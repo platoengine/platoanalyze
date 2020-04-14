@@ -346,12 +346,13 @@ public:
             THROWERR("PLASTICITY PROBLEM: INPUT CONTROL VECTOR IS EMPTY.")
         }
 
-        bool tGlobalStateComputed = false;
-        while (tGlobalStateComputed == false)
+        bool tStop = false;
+        while (tStop == false)
         {
-            tGlobalStateComputed = this->solveForwardProblem(aControls);
-            if (tGlobalStateComputed == true)
+            bool tDidSolverConverge = this->solveForwardProblem(aControls);
+            if (tDidSolverConverge == true)
             {
+                tStop = true;
                 std::stringstream tMsg;
                 tMsg << "\n**** Forward Solve Was Successful ****\n";
                 mNewtonSolver->appendOutputMessage(tMsg);
@@ -365,6 +366,7 @@ public:
                 this->resizeTimeDependentStates();
                 if(mNumPseudoTimeSteps > mMaxNumPseudoTimeSteps)
                 {
+                    tStop = true;
                     std::stringstream tMsg;
                     tMsg << "\n**** Maximum Number of Pseudo Time Steps Was Reached. "
                             << "Plasticity Problem failed to converge to a solution. ****\n";
