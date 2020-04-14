@@ -360,16 +360,19 @@ public:
             }
             else
             {
-                std::stringstream tMsg;
-                tMsg << "\n**** Forward Solve Was Not Successful ****\n";
-                mNewtonSolver->appendOutputMessage(tMsg);
                 this->resizeTimeDependentStates();
+                std::stringstream tMsg;
+                tMsg << "\n**** Forward Solve Was Not Successful ****\n"
+                        << "Number of pseudo time steps will be increased to '" << mNumPseudoTimeSteps << "'\n.";
+                printf(tMsg.str().c_str());
+                mNewtonSolver->appendOutputMessage(tMsg);
                 if(mNumPseudoTimeSteps > mMaxNumPseudoTimeSteps)
                 {
                     tStop = true;
                     std::stringstream tMsg;
                     tMsg << "\n**** Maximum Number of Pseudo Time Steps Was Reached. "
                             << "Plasticity Problem failed to converge to a solution. ****\n";
+                    printf(tMsg.str().c_str());
                     mNewtonSolver->appendOutputMessage(tMsg);
                     mStopOptimization = true;
                     break;
