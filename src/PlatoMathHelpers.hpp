@@ -137,6 +137,46 @@ inline void fill(const Plato::Scalar & aInput, const VectorT & aVector)
 // function fill
 
 /******************************************************************************//**
+ * \brief Set all the elements to a scalar value
+ * \param [in] aMultiplier scalar multiplier
+ * \param [in] aOrdinals   list of entry ordinals
+ * \param [in] aValues     list of scalar values
+ * \param [out] aVector    1D container
+**********************************************************************************/
+template<typename VectorT>
+inline void fill(const Plato::Scalar & aMultiplier,
+                 const Plato::LocalOrdinalVector & aOrdinals,
+                 const Plato::ScalarVector & aValues,
+                 const VectorT & aOutput)
+{
+    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("BLAS 1 Fill: INPUT VECTOR IS EMPTY, I.E. SIZE <= 0.")
+    }
+
+    if(std::isfinite(aMultiplier) == false)
+    {
+        THROWERR("BLAS 1 Fill: Detected a non-finite scalar multiplier.")
+    }
+
+    if(aOrdinals.size() == aValues.size())
+    {
+        std::ostringstream tMsg;
+        tMsg << "BLAS 1 Fill: Dimension mismatch, input list of ordinals and values have different size."
+                << "List of ordinals has '" << aOrdinals.size() << "' entries and list of values "
+                << "has '" << aValues.size() << "' entries.";
+        THROWERR(tMsg.str().c_str())
+    }
+
+    const Plato::OrdinalType tNumLocalVals = aOutput.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumLocalVals), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
+    {
+        aOutput(aOrdinals(aIndex)) = aMultiplier * aValues(aIndex);
+    }, "fill vector");
+}
+// function fill
+
+/******************************************************************************//**
  * \brief Copy input 1D container into output 1D container
  * \param [in] aInput 1D container
  * \param [out] aOutput 1D container

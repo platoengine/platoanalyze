@@ -102,8 +102,8 @@ private:
     {
         auto tNumCells = mLocalEquation->numCells();
         auto tDhDc = mLocalEquation->gradient_c(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
-                                                  aStates.mCurrentLocalState , aStates.mPreviousLocalState,
-                                                  aControls, aStates.mCurrentStepIndex);
+                                                aStates.mCurrentLocalState , aStates.mPreviousLocalState,
+                                                aControls, aStates.mCurrentStepIndex);
         Plato::blas3::inverse<mNumLocalDofsPerCell, mNumLocalDofsPerCell>(tNumCells, tDhDc, Output);
     }
 
@@ -169,7 +169,10 @@ private:
             Plato::print(aStates.mDeltaGlobalState, "Delta State");
             Plato::print(aStates.mCurrentGlobalState, "Current Global State - Before Update");
         }
+
         Plato::update(tAlpha, aStates.mDeltaGlobalState, tAlpha, aStates.mCurrentGlobalState);
+        Plato::fill(mDirichletValuesMultiplier, mDirichletDofs, mDirichletValues, aStates.mCurrentGlobalState);
+
         if(mDebugFlag == true)
         {
             Plato::print(aStates.mCurrentGlobalState, "Current Global State - After Update");
