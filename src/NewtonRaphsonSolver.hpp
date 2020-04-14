@@ -171,7 +171,7 @@ private:
         }
 
         Plato::update(tAlpha, aStates.mDeltaGlobalState, tAlpha, aStates.mCurrentGlobalState);
-        Plato::fill(mDirichletValuesMultiplier, mDirichletDofs, mDirichletValues, aStates.mCurrentGlobalState);
+        /*Plato::fill(mDirichletValuesMultiplier, mDirichletDofs, mDirichletValues, aStates.mCurrentGlobalState)*/;
 
         if(mDebugFlag == true)
         {

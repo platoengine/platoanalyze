@@ -58,6 +58,48 @@ void run_cuda_query(comm::Machine machine)
 }
 #endif
 
+/******************************************************************************//**
+ * \brief Manages Check for input mesh file errors.
+ * \param [in] aProblem input file parameter list
+ **********************************************************************************/
+void error_check(Teuchos::ParameterList& aProblem)
+{
+    if(aProblem.isParameter("Input Mesh") == false)
+    {
+        std::stringstream tMsg;
+        tMsg << "Input Mesh Error: 'Input Mesh' Parameter Keyword is NOT defined.";
+        THROWERR(tMsg.str().c_str())
+    }
+    auto tInputMesh = aProblem.get<std::string>("Input Mesh");
+
+    auto tPosition = tInputMesh.find(".exo");
+    if(tPosition == std::string::npos)
+    {
+        std::stringstream tMsg;
+        tMsg << "Input Mesh Error: 'Input Mesh' file extension was not provided. "  <<
+                "'Input Mesh' argument is set to '" << tInputMesh << "'. File extension .exo is missing. " <<
+                "'Input Mesh' argument should be defined as follows: 'filename.exo'.";
+        THROWERR(tMsg.str().c_str())
+    }
+
+    auto tPhysicsString = aProblem.get<std::string>("Physics", "Plato Driver");
+    if(tPhysicsString != "Plato Driver")
+    {
+        std::stringstream tMsg;
+        tMsg << "Input File Error: 'Physics' Parameter Keyword is NOT defined. "
+            << "The 'Physics' Parameter Keyword is set to " << tPhysicsString.c_str()
+            << ". The 'Physics' Parameter Keyword should be set to 'Plato Driver'.";
+        THROWERR(tMsg.str().c_str())
+    }
+}
+// function error_check
+
+/******************************************************************************//**
+ * \brief Run a Plato Analyze problem
+ * \param [in] aOmegaHLib pointer to Omega_h library
+ * \param [in] aProblem   input file parameter list
+ * \param [in] aMachine   MPI wrapper
+ **********************************************************************************/
 void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::Machine aMachine)
 {
     if(comm::rank(aMachine) == 0)
@@ -70,26 +112,15 @@ void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::M
         aProblem.print(std::cout);
     }
 
-    
-    auto tOutput_viz = aProblem.get<std::string>("Output Viz");
-    if(aProblem.isParameter("Input Mesh") == false)
-    {
-        std::stringstream tMsg;
-        tMsg << "Input File Error: 'Input Mesh' Parameter Keyword is NOT defined.";
-        THROWERR(tMsg.str().c_str())
-    }
-    auto tInput_mesh = aProblem.get<std::string>("Input Mesh");
-
-    auto physicsString = aProblem.get<std::string>("Physics", "Plato Driver");
     if(aProblem.get<bool>("Query"))
     {
         if(comm::rank(aMachine) == 0)
         {
-            const unsigned numa_count = Kokkos::hwloc::get_available_numa_count();
-            const unsigned cores_per_numa = Kokkos::hwloc::get_available_cores_per_numa();
-            const unsigned threads_per_core = Kokkos::hwloc::get_available_threads_per_core();
-            std::cout << "P" << comm::rank(aMachine) << ": hwloc { NUMA[" << numa_count << "]" << " CORE[" << cores_per_numa
-                      << "]" << " PU[" << threads_per_core << "] }" << std::endl;
+            const unsigned tNumaCount = Kokkos::hwloc::get_available_numa_count();
+            const unsigned tCoresPerNuma = Kokkos::hwloc::get_available_cores_per_numa();
+            const unsigned tThreadsPerCore = Kokkos::hwloc::get_available_threads_per_core();
+            std::cout << "P" << comm::rank(aMachine) << ": hwloc { NUMA[" << tNumaCount << "]" << " CORE[" << tCoresPerNuma
+                      << "]" << " PU[" << tThreadsPerCore << "] }" << std::endl;
         }
 #if defined(KOKKOS_HAVE_CUDA)
         Plato::run_cuda_query(aMachine);
@@ -97,19 +128,13 @@ void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::M
     }
     else
     {
-        if(physicsString == "Plato Driver")
-        {
-            ::Plato::driver(aOmegaHLib, aProblem, tInput_mesh, tOutput_viz);
-        }
-        else
-        {
-            std::stringstream tMsg;
-            tMsg << "Input File Error: 'Physics' Parameter Keyword is NOT defined. " 
-                << "The 'Physics' Parameter Keyword is set to " << physicsString.c_str() 
-                << ". The 'Physics' Parameter Keyword should be set to 'Plato Driver'.";
-            THROWERR(tMsg.str().c_str())
-        }
+        Plato::error_check(aProblem);
+        auto tOutputViz = aProblem.get<std::string>("Output Viz");
+        auto tInputMesh = aProblem.get<std::string>("Input Mesh");
+        ::Plato::driver(aOmegaHLib, aProblem, tInputMesh, tOutputViz);
     }
 }
+// function run
+
 }
-//----------------------------------------------------------------------------
+// namespace Plato
