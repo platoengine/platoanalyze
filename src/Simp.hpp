@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <Teuchos_ParameterList.hpp>
 
+#include "AnalyzeMacros.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato
@@ -14,10 +15,10 @@ namespace Plato
 class MSIMP
 {
 private:
-    Plato::Scalar mMinValue;                 /*!< minimum ersatz material */
-    Plato::Scalar mPenaltyParam;             /*!< penalty parameter */
-    Plato::Scalar mMultiplierOnPenaltyParam; /*!< continuation parameter: multiplier on penalty parameter */
-    Plato::Scalar mUpperBoundOnPenaltyParam; /*!< continuation parameter: upper bound on penalty parameter */
+    Plato::Scalar mMinValue;                  /*!< minimum ersatz material */
+    Plato::Scalar mPenaltyParam;              /*!< penalty parameter */
+    Plato::Scalar mUpperBoundOnPenaltyParam;  /*!< continuation parameter: upper bound on penalty parameter */
+    Plato::Scalar mAdditiveContinuationValue; /*!< continuation parameter: multiplier on penalty parameter */
 
 public:
     /******************************************************************************//**
@@ -28,8 +29,8 @@ public:
     explicit MSIMP(const Plato::Scalar & aPenalty, const Plato::Scalar & aMinValue) :
             mMinValue(aMinValue),
             mPenaltyParam(aPenalty),
-            mMultiplierOnPenaltyParam(1.0),
-            mUpperBoundOnPenaltyParam(3.0)
+            mUpperBoundOnPenaltyParam(3.0),
+            mAdditiveContinuationValue(0.1)
     {
     }
 
@@ -40,9 +41,9 @@ public:
     explicit MSIMP(Teuchos::ParameterList & aInputParams)
     {
         mPenaltyParam = aInputParams.get<Plato::Scalar>("Exponent", 3.0);
-        mMinValue = aInputParams.get<Plato::Scalar>("Minimum Value", 0.0);
-        mMultiplierOnPenaltyParam = aInputParams.get<Plato::Scalar>("Continuation Multiplier", 1.0);
+        mMinValue = aInputParams.get<Plato::Scalar>("Minimum Value", 1e-9);
         mUpperBoundOnPenaltyParam = aInputParams.get<Plato::Scalar>("Penalty Exponent Upper Bound", 3.0);
+        mAdditiveContinuationValue = aInputParams.get<Plato::Scalar>("Additive Continuation", 0.1);
     }
 
     /******************************************************************************//**
@@ -50,7 +51,14 @@ public:
     **********************************************************************************/
     void update()
     {
-        mPenaltyParam = mPenaltyParam >= mUpperBoundOnPenaltyParam ? mPenaltyParam : mMultiplierOnPenaltyParam * mPenaltyParam;
+        // update SIMP penalty parameter
+        auto tPreviousPenalty = mPenaltyParam;
+        auto tSuggestedPenalty = tPreviousPenalty + mAdditiveContinuationValue;
+        mPenaltyParam = tSuggestedPenalty >= mUpperBoundOnPenaltyParam ? mUpperBoundOnPenaltyParam : tSuggestedPenalty;
+        std::ostringstream tMsg;
+        tMsg << "Modified Solid Isotropic Material Penalization Model: New penalty parameter is set to '"
+                << mPenaltyParam << "'. Previous penalty parameter was '" << tPreviousPenalty << "'.\n";
+        REPORT(tMsg)
     }
 
     /******************************************************************************//**
@@ -72,6 +80,13 @@ public:
             mMinValue = 1e-9; // default value
         }
         mMinValue = tParamMapIterator->second;
+
+        tParamMapIterator = aInputs.find("Additive Continuation");
+        if(tParamMapIterator == aInputs.end())
+        {
+            mAdditiveContinuationValue = 0.1; // default value
+        }
+        mAdditiveContinuationValue = tParamMapIterator->second;
     }
 
     /******************************************************************************//**
@@ -90,6 +105,15 @@ public:
     void setMinimumErsatzMaterial(const Plato::Scalar & aInput)
     {
         mMinValue = aInput;
+    }
+
+    /******************************************************************************//**
+     * \brief Set additive continuation value
+     * \param [in] aInput additive continuation value
+    **********************************************************************************/
+    void setAdditiveContinuationValue(const Plato::Scalar & aInput)
+    {
+        mAdditiveContinuationValue = aInput;
     }
 
     /******************************************************************************//**

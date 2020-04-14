@@ -61,11 +61,11 @@ private:
 
     Plato::Scalar mBulkModulus;              /*!< elastic bulk modulus */
     Plato::Scalar mShearModulus;             /*!< elastic shear modulus */
-    Plato::Scalar mPenaltyParam;              /*!< SIMP penalty for elastic properties */
 
-    Plato::Scalar mMinErsatz;            /*!< SIMP min ersatz stiffness for elastic properties */
-    Plato::Scalar mMultiplierOnPenalty;  /*!< continuation parameter: multiplier on SIMP penalty for elastic properties */
-    Plato::Scalar mUpperBoundOnPenalty;  /*!< continuation parameter: upper bound on SIMP penalty for elastic properties */
+    Plato::Scalar mPenaltySIMP;                /*!< SIMP penalty for elastic properties */
+    Plato::Scalar mMinErsatz;                  /*!< SIMP min ersatz stiffness for elastic properties */
+    Plato::Scalar mUpperBoundOnPenaltySIMP;    /*!< continuation parameter: upper bound on SIMP penalty for elastic properties */
+    Plato::Scalar mAdditiveContinuationParam;  /*!< continuation parameter: multiplier on SIMP penalty for elastic properties */
 
     Plato::LinearTetCubRuleDegreeOne<mSpaceDim> mCubatureRule;  /*!< simplex linear cubature rule */
 
@@ -88,10 +88,10 @@ public:
             Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
             mBulkModulus(-1.0),
             mShearModulus(-1.0),
-            mPenaltyParam(3),
+            mPenaltySIMP(3),
             mMinErsatz(1e-9),
-            mMultiplierOnPenalty(1.1),
-            mUpperBoundOnPenalty(4),
+            mUpperBoundOnPenaltySIMP(4),
+            mAdditiveContinuationParam(0.1),
             mCubatureRule()
     {
         this->parsePenaltyModelParams(aInputParams);
@@ -113,10 +113,10 @@ public:
             Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
             mBulkModulus(1.0),
             mShearModulus(1.0),
-            mPenaltyParam(3),
+            mPenaltySIMP(3),
             mMinErsatz(1e-9),
-            mMultiplierOnPenalty(1.1),
-            mUpperBoundOnPenalty(4),
+            mUpperBoundOnPenaltySIMP(4),
+            mAdditiveContinuationParam(0.1),
             mCubatureRule()
     {
     }
@@ -157,7 +157,7 @@ public:
         Plato::ComputeDeviatoricStrain<mSpaceDim> tComputeDeviatoricStrain;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
-        Plato::MSIMP tPenaltyFunction(mPenaltyParam, mMinErsatz);
+        Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatz);
 
         // allocate local containers used to evaluate criterion
         auto tNumCells = this->getMesh().nelems();
@@ -208,8 +208,13 @@ public:
                        const Plato::ScalarMultiVector & aLocalState,
                        const Plato::ScalarVector & aControl) override
     {
-        // update SIMP penalty parameter
-        mPenaltyParam = mPenaltyParam >= mUpperBoundOnPenalty ? mPenaltyParam : mMultiplierOnPenalty * mPenaltyParam;
+        auto tPreviousPenaltySIMP = mPenaltySIMP;
+        auto tSuggestedPenaltySIMP = tPreviousPenaltySIMP + mAdditiveContinuationParam;
+        mPenaltySIMP = tSuggestedPenaltySIMP >= mUpperBoundOnPenaltySIMP ? mUpperBoundOnPenaltySIMP : tSuggestedPenaltySIMP;
+        std::ostringstream tMsg;
+        tMsg << "Elastic Work Criterion: New penalty parameter is set to '" << mPenaltySIMP
+                << "'. Previous penalty parameter was '" << tPreviousPenaltySIMP << "'.\n";
+        REPORT(tMsg)
     }
 
 private:
@@ -223,10 +228,10 @@ private:
         if(aInputParams.isSublist(tFunctionName) == true)
         {
             Teuchos::ParameterList tInputData = aInputParams.sublist(tFunctionName);
-            mPenaltyParam = tInputData.get<Plato::Scalar>("Exponent", 3.0);
+            mPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
             mMinErsatz = tInputData.get<Plato::Scalar>("Minimum Value", 1e-9);
-            mMultiplierOnPenalty = tInputData.get<Plato::Scalar>("Continuation Multiplier", 1.1);
-            mUpperBoundOnPenalty = tInputData.get<Plato::Scalar>("Penalty Exponent Upper Bound", 4.0);
+            mAdditiveContinuationParam = tInputData.get<Plato::Scalar>("Additive Continuation", 1.1);
+            mUpperBoundOnPenaltySIMP = tInputData.get<Plato::Scalar>("Penalty Exponent Upper Bound", 4.0);
         }
         else
         {

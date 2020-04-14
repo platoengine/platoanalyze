@@ -87,10 +87,10 @@ private:
     Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
 
-    Plato::Scalar mPenaltySIMP;             /*!< SIMP penalty for elastic properties */
-    Plato::Scalar mMinErsatzSIMP;           /*!< SIMP min ersatz stiffness for elastic properties */
-    Plato::Scalar mMultiplierOnPenaltySIMP; /*!< continuation parameter: multiplier on SIMP penalty for elastic properties */
-    Plato::Scalar mUpperBoundOnPenaltySIMP; /*!< continuation parameter: upper bound on SIMP penalty for elastic properties */
+    Plato::Scalar mPenaltySIMP;               /*!< SIMP penalty for elastic properties */
+    Plato::Scalar mMinErsatzSIMP;             /*!< SIMP min ersatz stiffness for elastic properties */
+    Plato::Scalar mUpperBoundOnPenaltySIMP;   /*!< continuation parameter: upper bound on SIMP penalty for elastic properties */
+    Plato::Scalar mAdditiveContinuationParam; /*!< continuation parameter: multiplier on SIMP penalty for elastic properties */
 
     std::vector<std::string> mPlotTable;           /*!< array of output element data identifiers*/
 
@@ -146,8 +146,8 @@ private:
                 auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
                 mPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Exponent", 1.0);
                 mMinErsatzSIMP = tPenaltyParams.get<Plato::Scalar>("Minimum Value", 1e-9);
-                mMultiplierOnPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Continuation Multiplier", 1.1);
                 mUpperBoundOnPenaltySIMP = tPenaltyParams.get<Plato::Scalar>("Penalty Exponent Upper Bound", 4.0);
+                mAdditiveContinuationParam = tPenaltyParams.get<Plato::Scalar>("Additive Continuation", 0.1);
             }
         }
         else
@@ -326,8 +326,8 @@ public:
         mElasticShearModulus(-1.0),
         mPenaltySIMP(3),
         mMinErsatzSIMP(1e-9),
-        mMultiplierOnPenaltySIMP(1.1),
         mUpperBoundOnPenaltySIMP(4),
+        mAdditiveContinuationParam(0.1),
         mBodyLoads(nullptr),
         mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
         mNeumannLoads(nullptr)
@@ -505,7 +505,13 @@ public:
                        Plato::Scalar aTimeStep = 0.0) override
     {
         // update SIMP penalty parameter
-        mPenaltySIMP = mPenaltySIMP >= mUpperBoundOnPenaltySIMP ? mPenaltySIMP : mMultiplierOnPenaltySIMP * mPenaltySIMP;
+        auto tPreviousPenaltySIMP = mPenaltySIMP;
+        auto tSuggestedPenaltySIMP = tPreviousPenaltySIMP + mAdditiveContinuationParam;
+        mPenaltySIMP = tSuggestedPenaltySIMP >= mUpperBoundOnPenaltySIMP ? mUpperBoundOnPenaltySIMP : tSuggestedPenaltySIMP;
+        std::ostringstream tMsg;
+        tMsg << "Infinitesimal Strain Plasticity Residual: New penalty parameter is set to '" << mPenaltySIMP
+                << "'. Previous penalty parameter was '" << tPreviousPenaltySIMP << "'.\n";
+        REPORT(tMsg)
     }
 };
 // class InfinitesimalStrainPlasticityResidual

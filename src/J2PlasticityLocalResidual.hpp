@@ -56,14 +56,14 @@ private:
     Plato::Scalar mHardeningModulusKinematic;      /*!< kinematic hardening modulus */
     Plato::Scalar mInitialYieldStress;             /*!< initial yield stress */
 
-    Plato::Scalar mElasticPropertiesPenaltySIMP;   /*!< SIMP penalty for elastic properties */
-    Plato::Scalar mElasticPropertiesMinErsatzSIMP; /*!< SIMP min ersatz stiffness for elastic properties */
-    Plato::Scalar mMultiplierOnElasticPropertiesPenaltySIMP; /*!< continuation parameter: multiplier on SIMP penalty for elastic properties */
+    Plato::Scalar mElasticPropertiesPenaltySIMP;             /*!< SIMP penalty for elastic properties */
+    Plato::Scalar mElasticPropertiesMinErsatzSIMP;           /*!< SIMP min ersatz stiffness for elastic properties */
+    Plato::Scalar mAdditiveContinuationElasticProperties;    /*!< continuation parameter: multiplier on SIMP penalty for elastic properties */
     Plato::Scalar mUpperBoundOnElasticPropertiesPenaltySIMP; /*!< continuation parameter: upper bound on SIMP penalty for elastic properties */
 
-    Plato::Scalar mPlasticPropertiesPenaltySIMP;   /*!< SIMP penalty for plastic properties */
-    Plato::Scalar mPlasticPropertiesMinErsatzSIMP; /*!< SIMP min ersatz stiffness for plastic properties */
-    Plato::Scalar mMultiplierOnPlasticPropertiesPenaltySIMP; /*!< continuation parameter: multiplier on SIMP penalty for plastic properties */
+    Plato::Scalar mPlasticPropertiesPenaltySIMP;             /*!< SIMP penalty for plastic properties */
+    Plato::Scalar mPlasticPropertiesMinErsatzSIMP;           /*!< SIMP min ersatz stiffness for plastic properties */
+    Plato::Scalar mAdditiveContinuationPlasticProperties;    /*!< continuation parameter: multiplier on SIMP penalty for plastic properties */
     Plato::Scalar mUpperBoundOnPlasticPropertiesPenaltySIMP; /*!< continuation parameter: upper bound on SIMP penalty for plastic properties */
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule; /*!< linear tet cubature rule */
@@ -180,12 +180,12 @@ private:
 
           mElasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Penalty Exponent", 1.0);
           mElasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Minimum Ersatz", 1e-9);
-          mMultiplierOnElasticPropertiesPenaltySIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Continuation Multiplier", 1.1);
+          mAdditiveContinuationElasticProperties = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Additive Continuation", 0.1);
           mUpperBoundOnElasticPropertiesPenaltySIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Elastic Properties Penalty Exponent Upper Bound", 4.0);
 
           mPlasticPropertiesPenaltySIMP   = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Penalty Exponent", 0.5);
-          mPlasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Minimum Ersatz", 1e-9);
-          mMultiplierOnPlasticPropertiesPenaltySIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Continuation Multiplier", 1.1);
+          mPlasticPropertiesMinErsatzSIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Minimum Ersatz", 1e-4);
+          mAdditiveContinuationPlasticProperties = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Additive Continuation", 0.1);
           mUpperBoundOnPlasticPropertiesPenaltySIMP = tJ2PlasticitySubList.get<Plato::Scalar>("Plastic Properties Penalty Exponent Upper Bound", 3.5);
         }
         else
@@ -487,12 +487,26 @@ public:
                        Plato::Scalar aTimeStep = 0.0) override
     {
         // elastic properties SIMP penalty
-        mElasticPropertiesPenaltySIMP = mElasticPropertiesPenaltySIMP >= mUpperBoundOnElasticPropertiesPenaltySIMP ?
-                mElasticPropertiesPenaltySIMP : mMultiplierOnElasticPropertiesPenaltySIMP * mElasticPropertiesPenaltySIMP;
+        auto tPreviousElasticPropertiesPenalty = mElasticPropertiesPenaltySIMP;
+        auto tSuggestedElasticPropertiesPenalty = tPreviousElasticPropertiesPenalty + mAdditiveContinuationElasticProperties;
+        mElasticPropertiesPenaltySIMP = tSuggestedElasticPropertiesPenalty >= mUpperBoundOnElasticPropertiesPenaltySIMP ?
+                mUpperBoundOnElasticPropertiesPenaltySIMP : tSuggestedElasticPropertiesPenalty;
+        std::ostringstream tMsgOne;
+        tMsgOne << "J2 Plasticity Local Residual: New penalty parameter for the elastic properties is set to '"
+             << mElasticPropertiesPenaltySIMP << "'. Previous penalty parameter was '" << tPreviousElasticPropertiesPenalty
+             << "'.\n";
+        REPORT(tMsgOne)
 
         // plastic properties SIMP penalty
-        mPlasticPropertiesPenaltySIMP = mPlasticPropertiesPenaltySIMP >= mUpperBoundOnPlasticPropertiesPenaltySIMP ?
-                mPlasticPropertiesPenaltySIMP : mMultiplierOnPlasticPropertiesPenaltySIMP * mPlasticPropertiesPenaltySIMP;
+        auto tPreviousPlasticPropertiesPenalty = mPlasticPropertiesPenaltySIMP;
+        auto tSuggestedPlasticPropertiesPenalty = tPreviousPlasticPropertiesPenalty + mAdditiveContinuationPlasticProperties;
+        mPlasticPropertiesPenaltySIMP = tSuggestedPlasticPropertiesPenalty >= mUpperBoundOnPlasticPropertiesPenaltySIMP ?
+                mUpperBoundOnPlasticPropertiesPenaltySIMP : tSuggestedPlasticPropertiesPenalty;
+        std::ostringstream tMsgTwo;
+        tMsgTwo << "J2 Plasticity Local Residual: New penalty parameter for the plastic properties is set to '"
+             << mPlasticPropertiesPenaltySIMP << "'. Previous penalty parameter was '" << tPreviousPlasticPropertiesPenalty
+             << "'.\n";
+        REPORT(tMsgTwo)
     }
 };
 // class J2PlasticityLocalResidual
