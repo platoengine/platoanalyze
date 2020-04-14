@@ -159,10 +159,10 @@ inline void fill(const Plato::Scalar & aMultiplier,
         THROWERR("BLAS 1 Fill: Detected a non-finite scalar multiplier.")
     }
 
-    if(aOrdinals.size() == aValues.size())
+    if(aOrdinals.size() != aValues.size())
     {
         std::ostringstream tMsg;
-        tMsg << "BLAS 1 Fill: Dimension mismatch, input list of ordinals and values have different size."
+        tMsg << "BLAS 1 Fill: Dimension mismatch, input list of ordinals and values have different size. "
                 << "List of ordinals has '" << aOrdinals.size() << "' entries and list of values "
                 << "has '" << aValues.size() << "' entries.";
         THROWERR(tMsg.str().c_str())
