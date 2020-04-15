@@ -761,6 +761,7 @@ private:
         if(mNumPseudoTimeSteps >= mMaxNumPseudoTimeSteps)
         {
             mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
+            mMaxNumPseudoTimeStepsReached = true;
         }
         mPseudoTimeStep = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
 
