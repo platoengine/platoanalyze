@@ -75,6 +75,7 @@ private:
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
 
     bool mStopOptimization; /*!< stops optimization problem if Newton-Raphson solver fails to converge during an optimization run */
+    bool mMaxNumPseudoTimeStepsReached; /*!< use to check if maximum number of allowable pseudo time steps has been reached */
 
 // public functions
 public:
@@ -105,7 +106,8 @@ public:
             mWorksetBase(aMesh),
             mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs)),
             mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs)),
-            mStopOptimization(false)
+            mStopOptimization(false),
+            mMaxNumPseudoTimeStepsReached(false)
     {
         this->initialize(aMesh, aMeshSets, aInputs);
     }
@@ -135,7 +137,8 @@ public:
             mWorksetBase(aMesh),
             mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh)),
             mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh)),
-            mStopOptimization(false)
+            mStopOptimization(false),
+            mMaxNumPseudoTimeStepsReached(false)
     {
     }
 
@@ -360,23 +363,23 @@ public:
             }
             else
             {
-                this->resizeTimeDependentStates();
-                std::stringstream tMsg;
-                tMsg << "\n**** Forward Solve Was Not Successful ****\n"
-                        << "Number of pseudo time steps will be increased to '" << mNumPseudoTimeSteps << "'\n.";
-                printf(tMsg.str().c_str());
-                mNewtonSolver->appendOutputMessage(tMsg);
-                if(mNumPseudoTimeSteps > mMaxNumPseudoTimeSteps)
+                if(mMaxNumPseudoTimeStepsReached == true)
                 {
                     tStop = true;
                     std::stringstream tMsg;
                     tMsg << "\n**** Maximum Number of Pseudo Time Steps Was Reached. "
                             << "Plasticity Problem failed to converge to a solution. ****\n";
-                    printf(tMsg.str().c_str());
+                    REPORT(tMsg.str().c_str());
                     mNewtonSolver->appendOutputMessage(tMsg);
                     mStopOptimization = true;
                     break;
                 }
+                this->resizeTimeDependentStates();
+                std::stringstream tMsg;
+                tMsg << "\n**** Forward Solve Was Not Successful ****\n"
+                        << "Number of pseudo time steps will be increased to '" << mNumPseudoTimeSteps << "'\n.";
+                REPORT(tMsg.str().c_str());
+                mNewtonSolver->appendOutputMessage(tMsg);
             }
         }
 
@@ -755,6 +758,10 @@ private:
     void resizeTimeDependentStates()
     {
         mNumPseudoTimeSteps = static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mPseudoTimeStepMultiplier);
+        if(mNumPseudoTimeSteps >= mMaxNumPseudoTimeSteps)
+        {
+            mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
+        }
         mPseudoTimeStep = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
 
         Kokkos::resize(mLocalStates, mNumPseudoTimeSteps, mLocalEquation->size());
