@@ -343,11 +343,11 @@ private:
         {
             case Plato::NewtonRaphson::NORM_MEASURE_TOLERANCE:
             case Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE:
-            case Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS:
             {
                 tConverged = true;
                 break;
             }
+            case Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS:
             case Plato::NewtonRaphson::INFINITE_NORM_VALUE:
             case Plato::NewtonRaphson::NaN_NORM_VALUE:
             default:

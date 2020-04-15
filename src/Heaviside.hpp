@@ -17,11 +17,11 @@ namespace Plato
 **********************************************************************************/
 class Heaviside
 {
-    Plato::Scalar mPenaltyParam;             /*!< penalty parameter */
-    Plato::Scalar mRegLength;                /*!< regularization length */
-    Plato::Scalar mMinValue;                 /*!< minimum Ersatz material */
-    Plato::Scalar mMultiplierOnPenaltyParam; /*!< continuation parameter: multiplier on penalty parameter */
-    Plato::Scalar mUpperBoundOnPenaltyParam; /*!< continuation parameter: upper bound on penalty parameter */
+    Plato::Scalar mPenaltyParam;              /*!< penalty parameter */
+    Plato::Scalar mRegLength;                 /*!< regularization length */
+    Plato::Scalar mMinValue;                  /*!< minimum Ersatz material */
+    Plato::Scalar mUpperBoundOnPenaltyParam;  /*!< continuation parameter: upper bound on penalty parameter */
+    Plato::Scalar mAdditiveContinuationValue; /*!< additive continuation parameter */
 
 public:
     /******************************************************************************//**
@@ -34,8 +34,8 @@ public:
             mPenaltyParam(aPenalty),
             mRegLength(aRegLength),
             mMinValue(aMinValue),
-            mMultiplierOnPenaltyParam(1.0),
-            mUpperBoundOnPenaltyParam(3.0)
+            mUpperBoundOnPenaltyParam(3.0),
+            mAdditiveContinuationValue(0.1)
     {
     }
 
@@ -48,7 +48,7 @@ public:
         mPenaltyParam = aParamList.get<Plato::Scalar>("Exponent", 1.0);
         mRegLength = aParamList.get<Plato::Scalar>("Regularization Length", 1.0);
         mMinValue = aParamList.get<Plato::Scalar>("Minimum Value", 0.0);
-        mMultiplierOnPenaltyParam = aParamList.get<Plato::Scalar>("Continuation Multiplier", 1.0);
+        mAdditiveContinuationValue = aParamList.get<Plato::Scalar>("Additive Continuation", 0.1);
         mUpperBoundOnPenaltyParam = aParamList.get<Plato::Scalar>("Penalty Exponent Upper Bound", 1.0);
     }
 
@@ -57,7 +57,14 @@ public:
     **********************************************************************************/
     void update()
     {
-        mPenaltyParam = mPenaltyParam >= mUpperBoundOnPenaltyParam ? mPenaltyParam : mMultiplierOnPenaltyParam * mPenaltyParam;
+        // update SIMP penalty parameter
+        auto tPreviousPenalty = mPenaltyParam;
+        auto tSuggestedPenalty = tPreviousPenalty + mAdditiveContinuationValue;
+        mPenaltyParam = tSuggestedPenalty >= mUpperBoundOnPenaltyParam ? mUpperBoundOnPenaltyParam : tSuggestedPenalty;
+        std::ostringstream tMsg;
+        tMsg << "Heaviside Penalization Model: New penalty parameter is set to '" << mPenaltyParam
+                << "'. Previous penalty parameter was '" << tPreviousPenalty << "'.\n";
+        REPORT(tMsg.str().c_str())
     }
 
     /******************************************************************************//**
@@ -86,6 +93,13 @@ public:
             mMinValue = 1.0; // default value
         }
         mMinValue = tParamMapIterator->second;
+
+        tParamMapIterator = aInputs.find("Additive Continuation");
+        if(tParamMapIterator == aInputs.end())
+        {
+            mAdditiveContinuationValue = 0.1; // default value
+        }
+        mAdditiveContinuationValue = tParamMapIterator->second;
     }
 
     /******************************************************************************//**

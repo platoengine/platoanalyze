@@ -18,7 +18,7 @@ private:
     Plato::Scalar mMinValue;                  /*!< minimum ersatz material */
     Plato::Scalar mPenaltyParam;              /*!< penalty parameter */
     Plato::Scalar mUpperBoundOnPenaltyParam;  /*!< continuation parameter: upper bound on penalty parameter */
-    Plato::Scalar mAdditiveContinuationValue; /*!< continuation parameter: multiplier on penalty parameter */
+    Plato::Scalar mAdditiveContinuationValue; /*!< additive continuation parameter */
 
 public:
     /******************************************************************************//**
