@@ -798,8 +798,8 @@ private:
         {
             std::stringstream tMsg;
             mCurrentPseudoTimeStep = mPseudoTimeStep * static_cast<Plato::Scalar>(tCurrentStepIndex + 1);
-            tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << ", TOTAL TIME = "
-                 << mCurrentPseudoTimeStep << "\n";
+            tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << " OUT OF '" << mNumPseudoTimeSteps
+                 << "', TOTAL TIME = " << mCurrentPseudoTimeStep << "\n";
             mNewtonSolver->appendOutputMessage(tMsg);
 
             tCurrentState.mCurrentStepIndex = tCurrentStepIndex;
