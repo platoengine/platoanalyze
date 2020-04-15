@@ -819,8 +819,9 @@ private:
             {
                 std::stringstream tMsg;
                 tMsg << "**** Newton-Raphson Solver did not converge at time step #"
-                    << tCurrentStepIndex << ".  Number of pseudo time steps will be increased to '"
-                    << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mPseudoTimeStepMultiplier) << "'. ****\n\n";
+                     << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1)
+                     << ".  Number of pseudo time steps will be increased to '"
+                     << static_cast<Plato::OrdinalType>(mNumPseudoTimeSteps * mPseudoTimeStepMultiplier) << "'. ****\n\n";
                 mNewtonSolver->appendOutputMessage(tMsg);
                 return tForwardProblemSolved;
             }
