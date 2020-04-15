@@ -142,22 +142,22 @@ inline void print_newton_raphson_stop_criterion(const Plato::NewtonRaphsonOutput
     {
         case Plato::NewtonRaphson::MAX_NUMBER_ITERATIONS:
         {
-            aOutputFile << "\n\n****** Newton-Raphson solver stopping due to exceeding maximum number of iterations. ******\n\n";
+            aOutputFile << "\n\n****** Newton-Raphson solver stopping due to exceeding the maximum number of iterations. ******\n\n";
             break;
         }
         case Plato::NewtonRaphson::NORM_MEASURE_TOLERANCE:
         {
-            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to norm measure being met. ******\n\n";
+            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to the norm of the stopping measure tolerance being met. ******\n\n";
             break;
         }
         case Plato::NewtonRaphson::CURRENT_NORM_TOLERANCE:
         {
-            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to current norm tolerance being met. ******\n\n";
+            aOutputFile << "\n\n******  Newton-Raphson algorithm stopping due to the current norm tolerance being met. ******\n\n";
             break;
         }
         case Plato::NewtonRaphson::NaN_NORM_VALUE:
         {
-            aOutputFile << "\n\n******  MAJOR FAILURE: Newton-Raphson algorithm stopping due to NaN norm value detected. ******\n\n";
+            aOutputFile << "\n\n******  MAJOR FAILURE: Newton-Raphson algorithm stopping due to NaN norm values detected. ******\n\n";
             break;
         }
         case Plato::NewtonRaphson::DID_NOT_CONVERGE:
