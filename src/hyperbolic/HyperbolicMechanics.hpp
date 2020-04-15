@@ -8,6 +8,7 @@
 #include "hyperbolic/HyperbolicAbstractScalarFunction.hpp"
 #include "hyperbolic/ElastomechanicsResidual.hpp"
 #include "hyperbolic/HyperbolicInternalElasticEnergy.hpp"
+#include "hyperbolic/HyperbolicStressPNorm.hpp"
 
 namespace Plato
 {
@@ -65,7 +66,8 @@ namespace Plato
       )
       /******************************************************************************/
       {
-        if( strScalarFunctionType == "Internal Elastic Energy" ){
+        if( strScalarFunctionType == "Internal Elastic Energy" )
+        {
           auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
           std::string penaltyType = penaltyParams.get<std::string>("Type");
           if( penaltyType == "SIMP" ){
@@ -82,7 +84,29 @@ namespace Plato
           } else {
             throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
           }
-        } else {
+        }
+        else
+        if( strScalarFunctionType == "Stress P-Norm" )
+        {
+          auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
+          std::string penaltyType = penaltyParams.get<std::string>("Type");
+          if( penaltyType == "SIMP" ){
+            return std::make_shared<Plato::Hyperbolic::StressPNorm<EvaluationType, Plato::MSIMP>>
+                     (aMesh, aMeshSets, aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+          } else
+          if( penaltyType == "RAMP" ){
+            return std::make_shared<Plato::Hyperbolic::StressPNorm<EvaluationType, Plato::RAMP>>
+                     (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+          } else
+          if( penaltyType == "Heaviside" ){
+            return std::make_shared<Plato::Hyperbolic::StressPNorm<EvaluationType, Plato::Heaviside>>
+                     (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+          } else {
+            throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
+          }
+        }
+        else
+        {
           throw std::runtime_error("Unknown 'Objective' specified in 'Plato Problem' ParameterList");
         }
       }

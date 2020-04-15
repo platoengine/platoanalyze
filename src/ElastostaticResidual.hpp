@@ -16,6 +16,7 @@
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
+#include "NoPenalty.hpp"
 #include "ToMap.hpp"
 #include "VonMisesYieldFunction.hpp"
 

@@ -343,6 +343,72 @@ class ComputeCellVolume
   }
 
 
+  /******************************************************************************/
+  template<Plato::OrdinalType SpaceDim>
+  class ComputeSurfaceArea
+  {
+    private:
+      Omega_h::Matrix<SpaceDim, SpaceDim> jacobian, jacobianInverse;
+    public:
+      ComputeSurfaceArea(){}
+
+
+
+      template<typename ScalarType>
+      DEVICE_TYPE inline void
+      operator()(Plato::OrdinalType aCellOrdinal,
+                 int*               aCellLocalNodeOrdinals,
+                 Plato::ScalarArray3DT<ScalarType> config,
+                 ScalarType& sideArea) const;
+  };
+
+
+    template<>
+    template<typename ScalarType>
+    DEVICE_TYPE inline void
+    ComputeSurfaceArea<3>::operator()(Plato::OrdinalType aCellOrdinal,
+                                      int*                aCellLocalNodeOrdinals,
+                                      Plato::ScalarArray3DT<ScalarType> config,
+                                      ScalarType& sideArea) const
+    {
+
+        ScalarType ab0 = config(aCellOrdinal,aCellLocalNodeOrdinals[2],0) - config(aCellOrdinal,aCellLocalNodeOrdinals[0],0);
+        ScalarType ab1 = config(aCellOrdinal,aCellLocalNodeOrdinals[2],1) - config(aCellOrdinal,aCellLocalNodeOrdinals[0],1);
+        ScalarType ab2 = config(aCellOrdinal,aCellLocalNodeOrdinals[2],2) - config(aCellOrdinal,aCellLocalNodeOrdinals[0],2);
+
+        ScalarType bc0 = config(aCellOrdinal,aCellLocalNodeOrdinals[1],0) - config(aCellOrdinal,aCellLocalNodeOrdinals[2],0);
+        ScalarType bc1 = config(aCellOrdinal,aCellLocalNodeOrdinals[1],1) - config(aCellOrdinal,aCellLocalNodeOrdinals[2],1);
+        ScalarType bc2 = config(aCellOrdinal,aCellLocalNodeOrdinals[1],2) - config(aCellOrdinal,aCellLocalNodeOrdinals[2],2);
+
+
+        ScalarType Cross0 = ab1 * bc2 - ab2 * bc1;
+        ScalarType Cross1 = ab2 * bc0 - ab0 * bc2;
+        ScalarType Cross2 = ab0 * bc1 - ab1 * bc0;
+
+        sideArea = sqrt(Cross0*Cross0 + Cross1*Cross1 + Cross2*Cross2)/2;
+    }
+
+    template<>
+    template<typename ScalarType>
+    DEVICE_TYPE inline void
+    ComputeSurfaceArea<2>::operator()(Plato::OrdinalType aCellOrdinal,
+                                      int*                aCellLocalNodeOrdinals,
+                                      Plato::ScalarArray3DT<ScalarType> config,
+                                      ScalarType& sideArea) const
+    {
+    }
+
+    template<>
+    template<typename ScalarType>
+    DEVICE_TYPE inline void
+    ComputeSurfaceArea<1>::operator()(Plato::OrdinalType aCellOrdinal,
+                                      int*                aCellLocalNodeOrdinals,
+                                      Plato::ScalarArray3DT<ScalarType> config,
+                                      ScalarType& sideArea) const
+    {
+    }
+
+
 /******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 class ComputeGradient

@@ -18,6 +18,7 @@
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
+#include "NoPenalty.hpp"
 
 namespace Plato
 {
@@ -58,6 +59,12 @@ stabilized_elastostatics_residual(Omega_h::Mesh& aMesh,
     if(tPenaltyType == "Heaviside")
     {
         tOutput = std::make_shared<Plato::StabilizedElastostaticResidual<EvaluationType, Plato::Heaviside>>
+                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams);
+    }
+    else
+    if(tPenaltyType == "NoPenalty")
+    {
+        tOutput = std::make_shared<Plato::StabilizedElastostaticResidual<EvaluationType, Plato::NoPenalty>>
                     (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams);
     }
     return (tOutput);
@@ -131,6 +138,12 @@ struct FunctionFactory
                 tOutput = std::make_shared<Plato::StabilizedElastostaticEnergy<EvaluationType, Plato::Heaviside>>
                             (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aFuncName);
             }
+            else
+            if(tPenaltyType == "NoPenalty")
+            {
+                tOutput = std::make_shared<Plato::StabilizedElastostaticEnergy<EvaluationType, Plato::NoPenalty>>
+                            (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aFuncName);
+            }
         }
         else
         {
@@ -176,6 +189,12 @@ struct FunctionFactory
             if(tPenaltyType == "Heaviside")
             {
                 tOutput = std::make_shared<Plato::Volume<EvaluationType, Plato::Heaviside>>
+                            (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
+            }
+            else
+            if(tPenaltyType == "NoPenalty")
+            {
+                tOutput = std::make_shared<Plato::Volume<EvaluationType, Plato::NoPenalty>>
                             (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
             }
         }

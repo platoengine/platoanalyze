@@ -30,6 +30,14 @@
 #include "Plato_MLS.hpp"
 #endif
 
+#ifdef PLATO_MESHMAP
+  #include "Plato_MeshMap.hpp"
+  typedef Plato::Geometry::MeshMap<Plato::Scalar> MeshMapType;
+#else
+  typedef int MeshMapType;
+#endif
+
+
 #ifdef PLATO_ESP
 #include "Plato_ESP.hpp"
 typedef Plato::Geometry::ESP<double, Plato::ScalarVectorT<double>::HostMirror> ESPType;
@@ -199,6 +207,12 @@ public:
         if(aName == "Topology")
         {
             this->copyFieldIntoAnalyze(mControl, aSharedField);
+            if(mMeshMap != nullptr)
+            {
+                Plato::ScalarVector tMappedControl("mapped", mControl.extent(0));;
+                apply(mMeshMap, mControl, tMappedControl);
+                Kokkos::deep_copy(mControl, tMappedControl);
+            }
         }
         else if(aName == "Solution")
         {
@@ -367,12 +381,28 @@ public:
     template<typename SharedDataT>
     void exportScalarField(const std::string& aName, SharedDataT& aSharedField)
     {
-        if(aName == "Objective Gradient")
+        if(aName == "Topology")
         {
+            this->copyFieldFromAnalyze(mControl, aSharedField);
+        }
+        else if(aName == "Objective Gradient")
+        {
+            if(mMeshMap != nullptr && mObjectiveGradientZ.extent(0) != 0)
+            {
+                Plato::ScalarVector tObjectiveGradientZ("unmapped", mObjectiveGradientZ.extent(0));
+                applyT(mMeshMap, mObjectiveGradientZ, tObjectiveGradientZ);
+                Kokkos::deep_copy(mObjectiveGradientZ, tObjectiveGradientZ);
+            }
             this->copyFieldFromAnalyze(mObjectiveGradientZ, aSharedField);
         }
         else if(aName == "Constraint Gradient")
         {
+            if(mMeshMap != nullptr && mConstraintGradientZ.extent(0) != 0)
+            {
+                Plato::ScalarVector tConstraintGradientZ("unmapped", mConstraintGradientZ.extent(0));
+                applyT(mMeshMap, mConstraintGradientZ, tConstraintGradientZ);
+                Kokkos::deep_copy(mConstraintGradientZ, tConstraintGradientZ);
+            }
             this->copyFieldFromAnalyze(mConstraintGradientZ, aSharedField);
         }
         else if(aName == "Solution")
@@ -434,6 +464,12 @@ public:
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
     }
+
+    /******************************************************************************//**
+     * @brief Get the scalar field size in lgr (this is used for non-fixed data sizes
+     * going through file system
+     **********************************************************************************/
+    void getScalarFieldHostMirror(const std::string& aName, typename Plato::ScalarVector::HostMirror & aHostMirror);
 
     /******************************************************************************//**
      * @brief Return 2D container of coordinates (Node ID, Dimension)
@@ -553,6 +589,24 @@ private:
 
     std::map<std::string,std::shared_ptr<ESPType>> mESP;
     void mapToParameters(std::shared_ptr<ESPType> aESP, std::vector<Plato::Scalar>& mGradientP, Plato::ScalarVector mGradientX);
+
+    std::shared_ptr<MeshMapType> mMeshMap;
+    inline void apply(decltype(mMeshMap) aMeshMap, const Plato::ScalarVector & aInput, Plato::ScalarVector aOutput)
+    {
+#ifdef PLATO_MESHMAP
+        aMeshMap->apply(aInput, aOutput);
+#else
+        THROWERR("Not compiled with MeshMap.");
+#endif
+    }
+    void applyT(decltype(mMeshMap) aMeshMap, const Plato::ScalarVector & aInput, Plato::ScalarVector aOutput)
+    {
+#ifdef PLATO_MESHMAP
+        aMeshMap->applyT(aInput, aOutput);
+#else
+        THROWERR("Not compiled with MeshMap.");
+#endif
+    }
 
 #ifdef PLATO_GEOMETRY
     struct MLSstruct
@@ -826,6 +880,56 @@ private:
     friend class ComputeFiniteDifference;
     /******************************************************************************/
 
+
+    /******************************************************************************/
+
+    // Reload mesh operator
+    //
+    /******************************************************************************/
+    class ReloadMesh : public LocalOp
+    {
+    public:	
+        ReloadMesh(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string m_reloadMeshFile;
+    };
+    friend class ReloadMesh;
+    /******************************************************************************/
+
+    /******************************************************************************/
+
+    // HDF5 Output sub-class
+    //
+    /******************************************************************************/
+    class OutputToHDF5 : public LocalOp
+    {
+    public:
+        OutputToHDF5(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string              mHdfFileName;
+        std::vector<std::string> mSharedDataName;
+    };
+    friend class OutputToHDF5;
+
+    /******************************************************************************/
+
+    // Visualization
+    //
+    /******************************************************************************/
+    class Visualization : public LocalOp
+    {
+    public:
+        Visualization(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        // file output
+        std::string mOutputFile;
+        // output gradients
+        bool mOutputGradients;
+    };
+    friend class Visualization;
 #ifdef PLATO_GEOMETRY
     // MLS sub-class
     //

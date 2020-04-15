@@ -16,6 +16,7 @@
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
+#include "NoPenalty.hpp"
 
 namespace Plato
 {
@@ -54,6 +55,10 @@ struct FunctionFactory
             if(tPenaltyType == "Heaviside")
             {
                 return std::make_shared<Plato::ElectroelastostaticResidual<EvaluationType, Plato::Heaviside>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+            }
+            if(tPenaltyType == "NoPenalty")
+            {
+                return std::make_shared<Plato::ElectroelastostaticResidual<EvaluationType, Plato::NoPenalty>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
             }
             else
             {
@@ -95,6 +100,10 @@ struct FunctionFactory
             {
                 return std::make_shared<Plato::InternalElectroelasticEnergy<EvaluationType, Plato::Heaviside>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
+            if(tPenaltyType == "NoPenalty")
+            {
+                return std::make_shared<Plato::InternalElectroelasticEnergy<EvaluationType, Plato::NoPenalty>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+            }
             else
             {
                 throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
@@ -119,6 +128,11 @@ struct FunctionFactory
                 return std::make_shared<Plato::EMStressPNorm<EvaluationType, Plato::Heaviside>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else
+            if(tPenaltyType == "NoPenalty")
+            {
+                return std::make_shared<Plato::EMStressPNorm<EvaluationType, Plato::NoPenalty>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+            }
+            else
             {
                 throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
             }
@@ -140,6 +154,11 @@ struct FunctionFactory
             if(tPenaltyType == "Heaviside")
             {
                 return std::make_shared<Plato::Volume<EvaluationType, Plato::Heaviside>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+            }
+            else
+            if(tPenaltyType == "NoPenalty")
+            {
+                return std::make_shared<Plato::Volume<EvaluationType, Plato::NoPenalty>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else
             {
