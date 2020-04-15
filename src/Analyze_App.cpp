@@ -800,7 +800,7 @@ void MPMD_App::ComputeObjectiveGradientP::operator()()
     }
 #ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
-    mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mState);
+    mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
     if(mMyApp->mDebugAnalyzeApp == true)
     {
         printf("Analyze Application - Compute Objective GradientP Operation - Print Controls.\n");
@@ -937,10 +937,10 @@ void MPMD_App::ComputeConstraintP::operator()()
     }
 #ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
-    mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mState);
+    mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
     mMyApp->mConstraintValue -= mTarget;
 
-    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
+    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalState);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
@@ -1126,7 +1126,7 @@ void MPMD_App::ComputeConstraintGradientP::operator()()
     }
 #ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
-    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mState);
+    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalState);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
@@ -1438,7 +1438,7 @@ MPMD_App::Visualization::Visualization(MPMD_App* aMyApp, Plato::InputData& aNode
 void MPMD_App::Visualization::operator()()
 {
     std::string tProblemPhysics     = mMyApp->mDefaultProblem->params.get<std::string>("Physics");
-    Plato::ScalarMultiVector tState = mMyApp->mProblem->getState();
+    Plato::ScalarMultiVector tState = mMyApp->mProblem->getGlobalState();
     Plato::DataMap tDataMap = mMyApp->mProblem->getDataMap();
     Plato::output<3>(mMyApp->mDefaultProblem->params, mOutputFile,tState, tDataMap, mMyApp->mMesh);
 
@@ -1635,52 +1635,28 @@ void MPMD_App::getScalarFieldHostMirror(const    std::string & aName,
     {
         tDeviceData = mConstraintGradientZ;
     }
-    else if(aName == "Adjoint")
-    {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tAdjoint,/*component=*/0, /*stride=*/1);
-    }
-    else if(aName == "Adjoint X")
-    {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tAdjoint,/*component=*/0, /*stride=*/mNumSpatialDims);
-    }
-    else if(aName == "Adjoint Y")
-    {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tAdjoint,/*component=*/1, /*stride=*/mNumSpatialDims);
-    }
-    else if(aName == "Adjoint Z")
-    {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        Plato::ScalarVector tAdjoint = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-        tDeviceData = getVectorComponent(tAdjoint,/*component=*/2, /*stride=*/mNumSpatialDims);
-    }
     else if(aName == "Solution")
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
     }
     else if(aName == "Solution X")
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         tDeviceData = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSpatialDims);
     }
     else if(aName == "Solution Y")
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         tDeviceData = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSpatialDims);
     }
     else if(aName == "Solution Z")
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mState, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
         tDeviceData = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSpatialDims);
     }
     else if(aName == "Objective GradientX X")
