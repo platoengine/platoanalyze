@@ -491,7 +491,7 @@ private:
         aSharedField.getData(tHostData);
         if(mDebugAnalyzeApp == true)
         {
-            printf("Analyze Application: Copy Field Into Analyze.\n");
+            REPORT("Analyze Application: Copy Field Into Analyze.\n");
             Plato::print_standard_vector_1D(tHostData, "host data");
         }
 
@@ -504,7 +504,7 @@ private:
         Kokkos::deep_copy(aDeviceData, tDeviceView);
         if(mDebugAnalyzeApp == true)
         {
-            printf("Analyze Application: Copy Field Into Analyze.\n");
+            REPORT("Analyze Application: Copy Field Into Analyze.\n");
             Plato::print(aDeviceData, "device data");
         }
     }
@@ -516,7 +516,7 @@ private:
     {
         if(mDebugAnalyzeApp == true)
         {
-            printf("Analyze Application: Copy Field From Analyze.\n");
+            REPORT("Analyze Application: Copy Field From Analyze.\n");
             Plato::print(aDeviceData, "device data");
         }
         // create kokkos::view around std::vector
@@ -530,7 +530,7 @@ private:
         // copy from host to data layer
         if(mDebugAnalyzeApp == true)
         {
-            printf("Analyze Application: Copy Field From Analyze.\n");
+            REPORT("Analyze Application: Copy Field From Analyze.\n");
             Plato::print_standard_vector_1D(tHostData, "host data");
         }
         aSharedField.setData(tHostData);
@@ -546,9 +546,9 @@ public:
         int tNumData = aDeviceData.extent(0);
         Plato::ScalarVector tCopy("copy", tNumData);
         Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumData), LAMBDA_EXPRESSION(int datumOrdinal)
-                {
-                    tCopy(datumOrdinal) = aDeviceData(datumOrdinal,aIndex);
-                }, "get subview");
+        {
+            tCopy(datumOrdinal) = aDeviceData(datumOrdinal,aIndex);
+        }, "get subview");
 
         copyFieldFromAnalyze(tCopy, aSharedField);
     }

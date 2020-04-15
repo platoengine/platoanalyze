@@ -117,7 +117,7 @@ createProblem(ProblemDefinition& aDefinition)
 {
   if(mDebugAnalyzeApp == true)
   {
-      printf("Analyze Application: Create Analyze Problem\n");
+      REPORT("Analyze Application: Create Analyze Problem\n");
   }
 
   mCurrentProblemName = aDefinition.name;
@@ -199,7 +199,7 @@ void MPMD_App::initialize()
 {
   if(mDebugAnalyzeApp == true)
   {
-      printf("Analyze Application: Initialize");
+      REPORT("Analyze Application: Initialize");
   }
 
   auto tNumLocalVals = mMesh.nverts();
@@ -395,7 +395,7 @@ MPMD_App::getOperation(const std::string & aOperationName)
     if(mDebugAnalyzeApp == true)
     {
         std::string tMsg = std::string("Analyze Application: Get Operation '") + aOperationName + "'.\n";
-        printf(tMsg.c_str());
+        REPORT(tMsg.c_str());
     }
 
     auto tIterator = mOperationMap.find(aOperationName);
@@ -416,7 +416,7 @@ MPMD_App::compute(const std::string & aOperationName)
     if(mDebugAnalyzeApp == true)
     {
         std::string tMsg = std::string("Analyze Application: Compute '") + aOperationName + "'.\n";
-        printf(tMsg.c_str());
+        REPORT(tMsg.c_str());
     }
 
     LocalOp *tOperation = this->getOperation(aOperationName);
@@ -476,7 +476,7 @@ ESP_Op(MPMD_App* aMyApp, Plato::InputData& aNode)
 {
     if(aMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: ESP Operation Constructor.\n");
+        REPORT("Analyze Application: ESP Operation Constructor.\n");
     }
 
 #ifdef PLATO_ESP
@@ -500,7 +500,7 @@ updateParameters(std::string aName, Plato::Scalar aValue)
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Update Parameter Operation.\n");
+        REPORT("Analyze Application: Update Parameter Operation.\n");
     }
 
     if(mParameters.count(aName) == 0)
@@ -539,7 +539,7 @@ void MPMD_App::ComputeObjective::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Objective Operation.\n");
+        REPORT("Analyze Application: Compute Objective Operation.\n");
     }
 
     mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
@@ -548,13 +548,13 @@ void MPMD_App::ComputeObjective::operator()()
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Objective Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Objective Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Objective Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Objective Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Objective Operation - Print Objective GradientZ.\n");
+        REPORT("Analyze Application - Compute Objective Operation - Print Objective GradientZ.\n");
         Plato::print(mMyApp->mObjectiveGradientZ, "objective gradient Z");
-        printf("Analyze Application - Compute Objective Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+        REPORT("Analyze Application - Compute Objective Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
     }
 }
 
@@ -572,7 +572,7 @@ void MPMD_App::ComputeObjectiveX::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute ObjectiveX Operation.\n");
+        REPORT("Analyze Application: Compute ObjectiveX Operation.\n");
     }
 
     mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
@@ -581,13 +581,13 @@ void MPMD_App::ComputeObjectiveX::operator()()
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Objective X Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Objective X Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Objective X Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Objective X Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Objective X Operation - Print Objective GradientX.\n");
+        REPORT("Analyze Application - Compute Objective X Operation - Print Objective GradientX.\n");
         Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
-        printf("Analyze Application - Compute Objective X Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+        REPORT("Analyze Application - Compute Objective X Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
     }
 }
 
@@ -609,7 +609,7 @@ void MPMD_App::ComputeObjectiveP::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute ObjectiveP Operation.\n");
+        REPORT("Analyze Application: Compute ObjectiveP Operation.\n");
     }
 
 #ifdef PLATO_ESP
@@ -625,13 +625,13 @@ void MPMD_App::ComputeObjectiveP::operator()()
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Objective P Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Objective P Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Objective P Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Objective P Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Objective P Operation - Print Objective GradientX.\n");
+        REPORT("Analyze Application - Compute Objective P Operation - Print Objective GradientX.\n");
         Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
-        printf("Analyze Application - Compute Objective P Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+        REPORT("Analyze Application - Compute Objective P Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
     }
 #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
@@ -653,7 +653,7 @@ void MPMD_App::ComputeObjectiveValue::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Objective Value Operation.\n");
+        REPORT("Analyze Application: Compute Objective Value Operation.\n");
     }
 
     mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
@@ -661,11 +661,11 @@ void MPMD_App::ComputeObjectiveValue::operator()()
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Objective Value Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Objective Value Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Objective Value Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Objective Value Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Objective Value Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+        REPORT("Analyze Application - Compute Objective Value Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
     }
 }
 
@@ -684,18 +684,18 @@ void MPMD_App::ComputeObjectiveGradient::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Objective Gradient Operation.\n");
+        REPORT("Analyze Application: Compute Objective Gradient Operation.\n");
     }
 
     mMyApp->mObjectiveGradientZ = mMyApp->mProblem->objectiveGradient(mMyApp->mControl, mMyApp->mGlobalState);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Objective Gradient Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Objective Gradient Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Objective Gradient Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Objective Gradient Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Objective Gradient Operation - Print Objective GradientZ.\n");
+        REPORT("Analyze Application - Compute Objective Gradient Operation - Print Objective GradientZ.\n");
         Plato::print(mMyApp->mObjectiveGradientZ, "objective gradient Z");
     }
 }
@@ -714,18 +714,18 @@ void MPMD_App::ComputeObjectiveGradientX::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Objective GradientX Operation.\n");
+        REPORT("Analyze Application: Compute Objective GradientX Operation.\n");
     }
 
     mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Objective Gradient X Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Objective Gradient X Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Objective Gradient X Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Objective Gradient X Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Objective Gradient X Operation - Print Objective GradientX.\n");
+        REPORT("Analyze Application - Compute Objective Gradient X Operation - Print Objective GradientX.\n");
         Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
     }
 }
@@ -751,13 +751,13 @@ void MPMD_App::MapObjectiveGradientX::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Map Objective GradientX Operation.\n");
+        REPORT("Analyze Application: Map Objective GradientX Operation.\n");
     }
     auto tDfDX = Kokkos::create_mirror_view(mMyApp->mObjectiveGradientX);
     Kokkos::deep_copy(tDfDX, mMyApp->mObjectiveGradientX);
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Map Objective GradientX Operation - Print Objective GradientX.\n");
+        REPORT("Analyze Application - Map Objective GradientX Operation - Print Objective GradientX.\n");
         Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
     }
 
@@ -796,18 +796,18 @@ void MPMD_App::ComputeObjectiveGradientP::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Map Objective GradientP Operation.\n");
+        REPORT("Analyze Application: Map Objective GradientP Operation.\n");
     }
 #ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
     mMyApp->mObjectiveGradientX = mMyApp->mProblem->objectiveGradientX(mMyApp->mControl, mMyApp->mGlobalState);
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Objective GradientP Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Objective GradientP Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Objective GradientP Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Objective GradientP Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Objective GradientP Operation - Print Constraint GradientX.\n");
+        REPORT("Analyze Application - Compute Objective GradientP Operation - Print Constraint GradientX.\n");
         Plato::print(mMyApp->mObjectiveGradientX, "constraint gradient X");
     }
 
@@ -826,7 +826,7 @@ ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
     mTarget = Plato::Get::Double(aOpNode, "Target");
     if( mTarget <= std::abs(std::numeric_limits<Plato::Scalar>::epsilon()) )
     {
-        THROWERR("Analyze Application: Target Value is not defined.")
+        REPORT("Analyze Application: Target Value is not defined.")
     }
 }
 /******************************************************************************/
@@ -837,7 +837,7 @@ void MPMD_App::ComputeConstraint::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Constraint Operation.\n");
+        REPORT("Analyze Application: Compute Constraint Operation.\n");
     }
     mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
     mMyApp->mConstraintValue -= mTarget;
@@ -845,13 +845,13 @@ void MPMD_App::ComputeConstraint::operator()()
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Constraint Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Constraint Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Constraint Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Constraint Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Constraint Operation - Print Constraint GradientZ.\n");
+        REPORT("Analyze Application - Compute Constraint Operation - Print Constraint GradientZ.\n");
         Plato::print(mMyApp->mConstraintGradientZ, "constraint gradient Z");
-        printf("Analyze Application - Compute Constraint Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+        REPORT("Analyze Application - Compute Constraint Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
     }
 
     std::stringstream tSS;
@@ -880,7 +880,7 @@ void MPMD_App::ComputeConstraintX::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute ConstraintX Operation.\n");
+        REPORT("Analyze Application: Compute ConstraintX Operation.\n");
     }
     mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
     mMyApp->mConstraintValue -= mTarget;
@@ -888,13 +888,13 @@ void MPMD_App::ComputeConstraintX::operator()()
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute ConstraintX Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute ConstraintX Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute ConstraintX Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute ConstraintX Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute ConstraintX Operation - Print Constraint GradientX.\n");
+        REPORT("Analyze Application - Compute ConstraintX Operation - Print Constraint GradientX.\n");
         Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
-        printf("Analyze Application - Compute ConstraintX Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+        REPORT("Analyze Application - Compute ConstraintX Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
     }
 
     std::stringstream tSS;
@@ -933,7 +933,7 @@ void MPMD_App::ComputeConstraintP::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute ConstraintP Operation.\n");
+        REPORT("Analyze Application: Compute ConstraintP Operation.\n");
     }
 #ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
@@ -944,13 +944,13 @@ void MPMD_App::ComputeConstraintP::operator()()
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute ConstraintP Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute ConstraintP Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute ConstraintP Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute ConstraintP Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute ConstraintP Operation - Print Constraint GradientX.\n");
+        REPORT("Analyze Application - Compute ConstraintP Operation - Print Constraint GradientX.\n");
         Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
-        printf("Analyze Application - Compute ConstraintP Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+        REPORT("Analyze Application - Compute ConstraintP Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
     }
 
     auto tESP = mMyApp->mESP[mESPName];
@@ -982,18 +982,18 @@ void MPMD_App::ComputeConstraintValue::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Constraint Value Operation.\n");
+        REPORT("Analyze Application: Compute Constraint Value Operation.\n");
     }
     mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalState);
     mMyApp->mConstraintValue -= mTarget;
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Constraint Value Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Constraint Value Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Constraint Value Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Constraint Value Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Constraint Value Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+        REPORT("Analyze Application - Compute Constraint Value Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
     }
 
     std::stringstream tSS;
@@ -1017,18 +1017,18 @@ void MPMD_App::ComputeConstraintGradient::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Constraint Gradient Operation.\n");
+        REPORT("Analyze Application: Compute Constraint Gradient Operation.\n");
     }
 
     mMyApp->mConstraintGradientZ = mMyApp->mProblem->constraintGradient(mMyApp->mControl, mMyApp->mGlobalState);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Constraint Gradient Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Constraint Gradient Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Constraint Gradient Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Constraint Gradient Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Constraint Gradient Operation - Print Constraint GradientZ.\n");
+        REPORT("Analyze Application - Compute Constraint Gradient Operation - Print Constraint GradientZ.\n");
         Plato::print(mMyApp->mConstraintGradientZ, "constraint gradient Z");
     }
 }
@@ -1047,16 +1047,16 @@ void MPMD_App::ComputeConstraintGradientX::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Constraint GradientX Operation.\n");
+        REPORT("Analyze Application: Compute Constraint GradientX Operation.\n");
     }
     mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalState);
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Constraint GradientX Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Constraint GradientX Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Constraint GradientX Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Constraint GradientX Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Constraint GradientX Operation - Print Constraint GradientX.\n");
+        REPORT("Analyze Application - Compute Constraint GradientX Operation - Print Constraint GradientX.\n");
         Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
     }
 }
@@ -1082,7 +1082,7 @@ void MPMD_App::MapConstraintGradientX::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Map Constraint GradientX Operation.\n");
+        REPORT("Analyze Application: Map Constraint GradientX Operation.\n");
     }
     auto tDgDX = Kokkos::create_mirror_view(mMyApp->mConstraintGradientX);
     Kokkos::deep_copy(tDgDX, mMyApp->mConstraintGradientX);
@@ -1122,7 +1122,7 @@ void MPMD_App::ComputeConstraintGradientP::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Constraint GradientP Operation.\n");
+        REPORT("Analyze Application: Compute Constraint GradientP Operation.\n");
     }
 #ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
@@ -1130,11 +1130,11 @@ void MPMD_App::ComputeConstraintGradientP::operator()()
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Constraint GradientP Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Constraint GradientP Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Constraint GradientP Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Constraint GradientP Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        printf("Analyze Application - Compute Constraint GradientP Operation - Print Constraint GradientX.\n");
+        REPORT("Analyze Application - Compute Constraint GradientP Operation - Print Constraint GradientX.\n");
         Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
     }
 
@@ -1172,16 +1172,16 @@ void MPMD_App::ComputeSolution::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Solution Operation.\n");
+        REPORT("Analyze Application: Compute Solution Operation.\n");
     }
 
     mMyApp->mGlobalState = mMyApp->mProblem->solution(mMyApp->mControl);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application - Compute Solution Operation - Print Controls.\n");
+        REPORT("Analyze Application - Compute Solution Operation - Print Controls.\n");
         Plato::print(mMyApp->mControl, "controls");
-        printf("Analyze Application - Compute Solution Operation - Print Global State.\n");
+        REPORT("Analyze Application - Compute Solution Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
     }
 
@@ -1208,7 +1208,7 @@ void MPMD_App::Reinitialize::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Reinitialize Operation.\n");
+        REPORT("Analyze Application: Reinitialize Operation.\n");
     }
 
     auto& tInputState = mMyApp->mValuesMap[mStrParameters];
@@ -1308,7 +1308,7 @@ void MPMD_App::UpdateProblem::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Update Problem Operation.\n");
+        REPORT("Analyze Application: Update Problem Operation.\n");
     }
     mMyApp->mProblem->updateProblem(mMyApp->mControl, mMyApp->mGlobalState);
 }
@@ -1349,7 +1349,7 @@ void MPMD_App::ComputeFiniteDifference::operator()()
 {
     if(mMyApp->mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Compute Finite Difference Operation.\n");
+        REPORT("Analyze Application: Compute Finite Difference Operation.\n");
     }
     int tIndex=0;
     Plato::Scalar tDelta=0.0;
@@ -1454,9 +1454,9 @@ void MPMD_App::importData(const std::string& aName, const Plato::SharedData& aSh
 {
     if(mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Import Data Function.\n");
+        REPORT("Analyze Application: Import Data Function.\n");
         std::string tMsg = std::string("Import Data '") + aName + "'\n";
-        printf(tMsg.c_str());
+        REPORT(tMsg.c_str());
     }
     this->importDataT(aName, aSharedField);
 }
@@ -1468,9 +1468,9 @@ void MPMD_App::exportData(const std::string& aName, Plato::SharedData& aSharedFi
 {
     if(mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Export Data Function.\n");
+        REPORT("Analyze Application: Export Data Function.\n");
         std::string tMsg = std::string("Export Data '") + aName + "'\n";
-        printf(tMsg.c_str());
+        REPORT(tMsg.c_str());
     }
     this->exportDataT(aName, aSharedField);
 }
@@ -1481,7 +1481,7 @@ void MPMD_App::exportDataMap(const Plato::data::layout_t & aDataLayout, std::vec
 {
     if(mDebugAnalyzeApp == true)
     {
-        printf("Analyze Application: Export Data Map Function.\n");
+        REPORT("Analyze Application: Export Data Map Function.\n");
     }
 
     if(aDataLayout == Plato::data::layout_t::SCALAR_FIELD)
