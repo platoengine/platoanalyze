@@ -554,7 +554,9 @@ void MPMD_App::ComputeObjective::operator()()
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
         REPORT("Analyze Application - Compute Objective Operation - Print Objective GradientZ.\n");
         Plato::print(mMyApp->mObjectiveGradientZ, "objective gradient Z");
-        REPORT("Analyze Application - Compute Objective Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+        std::ostringstream tMsg;
+        tMsg << "Analyze Application - Compute Objective Operation - Objective Value '" << mMyApp->mObjectiveValue << "'.\n";
+        REPORT(tMsg.str().c_str());
     }
 }
 
@@ -587,7 +589,9 @@ void MPMD_App::ComputeObjectiveX::operator()()
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
         REPORT("Analyze Application - Compute Objective X Operation - Print Objective GradientX.\n");
         Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
-        REPORT("Analyze Application - Compute Objective X Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+        std::ostringstream tMsg;
+        tMsg << "Analyze Application - Compute Objective X Operation - Objective Value '" << mMyApp->mObjectiveValue << "'.\n";
+        REPORT(tMsg.str().c_str());
     }
 }
 
@@ -665,7 +669,9 @@ void MPMD_App::ComputeObjectiveValue::operator()()
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Objective Value Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        REPORT("Analyze Application - Compute Objective Value Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+        std::ostringstream tMsg;
+        tMsg << "Analyze Application - Compute Objective Value Operation - Objective Value '" << mMyApp->mObjectiveValue << "'.\n";
+        REPORT(tMsg.str().c_str());
     }
 }
 
@@ -851,7 +857,9 @@ void MPMD_App::ComputeConstraint::operator()()
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
         REPORT("Analyze Application - Compute Constraint Operation - Print Constraint GradientZ.\n");
         Plato::print(mMyApp->mConstraintGradientZ, "constraint gradient Z");
-        REPORT("Analyze Application - Compute Constraint Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+        std::ostringstream tMsg;
+        tMsg << "Analyze Application - Compute Constraint Operation - Constraint Value '" << mMyApp->mConstraintValue << "'.\n";
+        REPORT(tMsg.str().c_str());
     }
 
     std::stringstream tSS;
@@ -894,7 +902,9 @@ void MPMD_App::ComputeConstraintX::operator()()
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
         REPORT("Analyze Application - Compute ConstraintX Operation - Print Constraint GradientX.\n");
         Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
-        REPORT("Analyze Application - Compute ConstraintX Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+        std::ostringstream tMsg;
+        tMsg << "Analyze Application - Compute ConstraintX Operation - Constraint Value '" << mMyApp->mConstraintValue << "'.\n";
+        REPORT(tMsg.str().c_str());
     }
 
     std::stringstream tSS;
@@ -993,7 +1003,9 @@ void MPMD_App::ComputeConstraintValue::operator()()
         Plato::print(mMyApp->mControl, "controls");
         REPORT("Analyze Application - Compute Constraint Value Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
-        REPORT("Analyze Application - Compute Constraint Value Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+        std::ostringstream tMsg;
+        tMsg << "Analyze Application - Compute Constraint Value Operation - Constraint Value '" << mMyApp->mConstraintValue << "'.\n";
+        REPORT(tMsg.str().c_str());
     }
 
     std::stringstream tSS;
