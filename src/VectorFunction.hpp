@@ -56,12 +56,12 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Constructor
-    * @param [in] aMesh mesh data base
-    * @param [in] aMeshSets mesh sets data base
-    * @param [in] aDataMap problem-specific data map 
-    * @param [in] aParamList Teuchos parameter list with input data
-    * @param [in] aProblemType problem type 
+    * \brief Constructor
+    * \param [in] aMesh mesh data base
+    * \param [in] aMeshSets mesh sets data base
+    * \param [in] aDataMap problem-specific data map
+    * \param [in] aParamList Teuchos parameter list with input data
+    * \param [in] aProblemType problem type
     *
     ******************************************************************************/
     VectorFunction(Omega_h::Mesh& aMesh,
@@ -84,11 +84,9 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     }
 
     /**************************************************************************//**
-    *
-    * @brief Constructor
-    * @param [in] aMesh mesh data base
-    * @param [in] aDataMap problem-specific data map 
-    *
+    * \brief Constructor
+    * \param [in] aMesh mesh data base
+    * \param [in] aDataMap problem-specific data map
     ******************************************************************************/
     VectorFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
             Plato::WorksetBase<PhysicsT>(aMesh),
@@ -100,31 +98,55 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     {
     }
 
+    /**************************************************************************//**
+    * \brief Return number of nodes on the mesh
+    * \return number of nodes
+    ******************************************************************************/
     Plato::OrdinalType numNodes() const
     {
         return (mNumNodes);
     }
 
+    /**************************************************************************//**
+    * \brief Return number of elements/cells on the mesh
+    * \return number of elements
+    ******************************************************************************/
     Plato::OrdinalType numCells() const
     {
         return (mNumCells);
     }
 
+    /**************************************************************************//**
+    * \brief Return total number of global degrees of freedom
+    * \return total number of global degrees of freedom
+    ******************************************************************************/
     Plato::OrdinalType numDofsPerCell() const
     {
         return (mNumDofsPerCell);
     }
 
+    /**************************************************************************//**
+    * \brief Return total number of nodes per cell/element
+    * \return total number of nodes per cell/element
+    ******************************************************************************/
     Plato::OrdinalType numNodesPerCell() const
     {
         return (mNumNodesPerCell);
     }
 
+    /**************************************************************************//**
+    * \brief Return number of degrees of freedom per node
+    * \return number of degrees of freedom per node
+    ******************************************************************************/
     Plato::OrdinalType numDofsPerNode() const
     {
         return (mNumDofsPerNode);
     }
 
+    /**************************************************************************//**
+    * \brief Return number of control vectors/fields, e.g. number of materials.
+    * \return number of control vectors
+    ******************************************************************************/
     Plato::OrdinalType numControlsPerNode() const
     {
         return (mNumControl);
@@ -132,9 +154,9 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Allocate residual evaluator
-    * @param [in] aResidual residual evaluator
-    * @param [in] aJacobian Jacobian evaluator
+    * \brief Allocate residual evaluator
+    * \param [in] aResidual residual evaluator
+    * \param [in] aJacobian Jacobian evaluator
     *
     ******************************************************************************/
     void allocateResidual(const std::shared_ptr<Plato::AbstractVectorFunction<Residual>>& aResidual,
@@ -146,8 +168,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Allocate partial derivative with respect to control evaluator
-    * @param [in] aGradientZ partial derivative with respect to control evaluator
+    * \brief Allocate partial derivative with respect to control evaluator
+    * \param [in] aGradientZ partial derivative with respect to control evaluator
     *
     ******************************************************************************/
     void allocateJacobianZ(const std::shared_ptr<Plato::AbstractVectorFunction<GradientZ>>& aGradientZ)
@@ -157,8 +179,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Allocate partial derivative with respect to configuration evaluator
-    * @param [in] GradientX partial derivative with respect to configuration evaluator
+    * \brief Allocate partial derivative with respect to configuration evaluator
+    * \param [in] GradientX partial derivative with respect to configuration evaluator
     *
     ******************************************************************************/
     void allocateJacobianX(const std::shared_ptr<Plato::AbstractVectorFunction<GradientX>>& aGradientX)
@@ -168,7 +190,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Return local number of degrees of freedom
+    * \brief Return local number of degrees of freedom
     *
     ******************************************************************************/
     Plato::OrdinalType size() const
