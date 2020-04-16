@@ -108,7 +108,7 @@ inline Plato::Scalar norm(const VecOneT & aVector)
     if(aVector.size() <= static_cast<Plato::OrdinalType>(0))
     {
         std::stringstream tMsg;
-        tMsg << "BLAS 1 NORM: INPUT VECTOR WITH LABEL '" << aVector.label() << "' IS EMPTY.\n"
+        tMsg << "BLAS 1 NORM: INPUT VECTOR WITH LABEL '" << aVector.label() << "' IS EMPTY.\n";
         THROWERR(tMsg.str().c_str())
     }
     const auto tDot = Plato::dot(aVector, aVector);
@@ -128,7 +128,7 @@ inline void fill(const Plato::Scalar & aInput, const VectorT & aVector)
     if(aVector.size() <= static_cast<Plato::OrdinalType>(0))
     {
         std::stringstream tMsg;
-        tMsg << "BLAS 1 FILL: INPUT VECTOR WITH LABEL '" << aVector.label() << "' IS EMPTY.\n"
+        tMsg << "BLAS 1 FILL: INPUT VECTOR WITH LABEL '" << aVector.label() << "' IS EMPTY.\n";
         THROWERR(tMsg.str().c_str())
     }
 
@@ -161,14 +161,14 @@ inline void fill(const Plato::Scalar & aMultiplier,
     if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
     {
         std::stringstream tMsg;
-        tMsg << "BLAS 1 FILL: OUTPUT VECTOR WITH LABEL '" << aOutput.label() << "' IS EMPTY.\n"
+        tMsg << "BLAS 1 FILL: OUTPUT VECTOR WITH LABEL '" << aOutput.label() << "' IS EMPTY.\n";
         THROWERR(tMsg.str().c_str())
     }
 
     if(aValues.size() <= static_cast<Plato::OrdinalType>(0))
     {
         std::stringstream tMsg;
-        tMsg << "BLAS 1 FILL: INPUT VECTOR WITH LABEL '" << aValues.label() << "' IS EMPTY.\n"
+        tMsg << "BLAS 1 FILL: INPUT VECTOR WITH LABEL '" << aValues.label() << "' IS EMPTY.\n";
         THROWERR(tMsg.str().c_str())
     }
 
