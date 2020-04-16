@@ -747,7 +747,7 @@ private:
 
             auto tLength = mEqualityConstraint.size();
             mLambda = Plato::ScalarMultiVector("Lambda", mNumSteps, tLength);
-
+            tLength = mStateProjection.size();
             mEta = Plato::ScalarVector("Eta", tLength);
         }
     }
