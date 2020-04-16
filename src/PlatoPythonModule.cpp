@@ -80,8 +80,6 @@ class SharedValue : public SharedData
 
 struct Analyze {
     PyObject_HEAD
-    std::string mInputfileName;
-    std::string mInstanceName;
     std::shared_ptr<MPMD_App> mMPMDApp;
     std::vector<int> mLocalNodeIDs;
     std::vector<int> mLocalElemIDs;
@@ -287,10 +285,8 @@ Analyze_init(Analyze *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    self->mInputfileName = std::string{inputfileName};
+    std::string strInputfileName{inputfileName};
     std::string strAppfileName{appfileName};
-    self->mInstanceName  = std::string{instanceName};
-
 
     // construct artificial argc and argv for initializing mpi, kokkos, and the MPMD_App
     //
@@ -300,7 +296,7 @@ Analyze_init(Analyze *self, PyObject *args, PyObject *kwds)
     char* arg0 = strdup(exeName);
     argv[0] = arg0;
     std::stringstream inArgs;
-    inArgs << "--input-config=" << self->mInputfileName;
+    inArgs << "--input-config=" << strInputfileName;
     char* arg1 = strdup(inArgs.str().c_str());
     argv[1] = arg1;
     argv[argc] = NULL;
@@ -340,7 +336,7 @@ static PyMemberDef Analyze_members[] = {
 static PyObject *
 Analyze_name(Analyze* self)
 {
-    PyObject *result = Py_BuildValue("s", self->mInstanceName.c_str());
+    PyObject *result = Py_BuildValue("s", "PlatoPython");
 
     return result;
 }
