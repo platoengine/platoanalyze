@@ -8,6 +8,7 @@
 #ifndef SRC_PLATO_SURFACEAREA_HPP_
 #define SRC_PLATO_SURFACEAREA_HPP_
 
+#include "BLAS1.hpp"
 #include "AbstractScalarFunction.hpp"
 #include "ApplyWeighting.hpp"
 #include "ImplicitFunctors.hpp"
@@ -80,7 +81,7 @@ class SurfaceArea : public Plato::AbstractScalarFunction<EvaluationType>
       Plato::ComputeSurfaceArea<SpaceDim> tComputeCellSurfaceArea;
 
       // fill the vector with 0s
-      Plato::fill(0.0,  aResult);
+      Plato::blas1::fill(0.0,  aResult);
 
       Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numFaces), LAMBDA_EXPRESSION(int iFace)
       {

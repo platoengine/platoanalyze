@@ -7,6 +7,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
+#include "BLAS1.hpp"
 #include "NaturalBCs.hpp"
 #include "EssentialBCs.hpp"
 #include "ImplicitFunctors.hpp"
@@ -147,7 +148,7 @@ public:
         for(Plato::OrdinalType tStepIndex = 1; tStepIndex < mNumSteps; tStepIndex++) {
           Plato::ScalarVector tState = Kokkos::subview(mGlobalState, tStepIndex, Kokkos::ALL());
           Plato::ScalarVector tPrevState = Kokkos::subview(mGlobalState, tStepIndex-1, Kokkos::ALL());
-          Plato::fill(static_cast<Plato::Scalar>(0.0), tState);
+          Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tState);
 
           mResidual = mEqualityConstraint.value(tState, tPrevState, aControl, mTimeStep);
 
@@ -290,7 +291,7 @@ public:
                 // multiply dQ^{k+1}/dT^k by lagrange multiplier from k+1 and add to dFdT^k
                 Plato::MatrixTimesVectorPlusVector(mJacobianP, tNextAdjoint, tPartialObjectiveWRT_State);
             }
-            Plato::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
 
             // compute dQ^k/dT^k: partial of PDE at k wrt state current state, k.
             mJacobian = mEqualityConstraint.gradient_u(tState, tPrevState, aControl, mTimeStep);
@@ -358,7 +359,7 @@ public:
                 // multiply dQ^{k+1}/dT^k by lagrange multiplier from k+1 and add to dFdT^k
                 Plato::MatrixTimesVectorPlusVector(mJacobianP, tNextAdjoint, tPartialObjectiveWRT_State);
             }
-            Plato::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
 
             // compute dQ^k/dT^k: partial of PDE at k wrt state current state, k.
             mJacobian = mEqualityConstraint.gradient_u(tState, tPrevState, aControl, mTimeStep);

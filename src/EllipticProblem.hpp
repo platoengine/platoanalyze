@@ -9,6 +9,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
+#include "BLAS1.hpp"
 #include "NaturalBCs.hpp"
 #include "EssentialBCs.hpp"
 #include "ImplicitFunctors.hpp"
@@ -207,10 +208,10 @@ public:
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
         auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
-        Plato::fill(static_cast<Plato::Scalar>(0.0), tStatesSubView);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tStatesSubView);
 
         mResidual = mPDE->value(tStatesSubView, aControl);
-        Plato::scale(-1.0, mResidual);
+        Plato::blas1::scale(-1.0, mResidual);
 
         mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
         this->applyConstraints(mJacobian, mResidual);
@@ -224,7 +225,7 @@ public:
 #endif
 
         mResidual = mPDE->value(tStatesSubView, aControl);
-        Plato::scale(-1.0, mResidual);
+        Plato::blas1::scale(-1.0, mResidual);
 
         return mStates;
     }
@@ -340,13 +341,13 @@ public:
         auto tPartialObjectiveWRT_Control = mObjective->gradient_z(tStatesSubView, aControl);
         if(mIsSelfAdjoint)
         {
-            Plato::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_Control);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_Control);
         }
         else
         {
             // compute dfdu: partial of objective wrt u
             auto tPartialObjectiveWRT_State = mObjective->gradient_u(tStatesSubView, aControl);
-            Plato::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
 
             // compute dgdu: partial of PDE wrt state
             mJacobian = mPDE->gradient_u_T(tStatesSubView, aControl);
@@ -399,13 +400,13 @@ public:
 
         if(mIsSelfAdjoint)
         {
-            Plato::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_Config);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_Config);
         }
         else
         {
             // compute dfdu: partial of objective wrt u
             auto tPartialObjectiveWRT_State = mObjective->gradient_u(tStatesSubView, aControl);
-            Plato::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
 
             // compute dgdu: partial of PDE wrt state
             mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
@@ -616,7 +617,7 @@ private:
     void applyAdjointConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
     {
         Plato::ScalarVector tDirichletValues("Dirichlet Values For Adjoint Problem", mBcValues.size());
-        Plato::scale(static_cast<Plato::Scalar>(0.0), tDirichletValues);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(0.0), tDirichletValues);
         if(mJacobian->isBlockMatrix())
         {
             Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tDirichletValues);

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "BLAS1.hpp"
 #include "BLAS2.hpp"
 #include "BLAS3.hpp"
 #include "ParseTools.hpp"
@@ -120,10 +121,10 @@ private:
         }
 
         Plato::ScalarVector tDispControlledDirichletValues("Dirichlet Values", mDirichletValues.size());
-        Plato::fill(0.0, tDispControlledDirichletValues);
+        Plato::blas1::fill(0.0, tDispControlledDirichletValues);
         if(mCurrentSolverIter == static_cast<Plato::OrdinalType>(0))
         {
-            Plato::update(mDirichletValuesMultiplier, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
+            Plato::blas1::update(mDirichletValuesMultiplier, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
         }
 
         if(mDebugFlag == true)
@@ -161,7 +162,7 @@ private:
                             Plato::CurrentStates &aStates)
     {
         const Plato::Scalar tAlpha = 1.0;
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aStates.mDeltaGlobalState);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStates.mDeltaGlobalState);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(aMatrix, aStates.mDeltaGlobalState, aResidual, mUseAbsoluteTolerance);
 
         if(mDebugFlag == true)
@@ -170,7 +171,7 @@ private:
             Plato::print(aStates.mCurrentGlobalState, "Current Global State - Before Update");
         }
 
-        Plato::update(tAlpha, aStates.mDeltaGlobalState, tAlpha, aStates.mCurrentGlobalState);
+        Plato::blas1::update(tAlpha, aStates.mDeltaGlobalState, tAlpha, aStates.mCurrentGlobalState);
 
         if(mDebugFlag == true)
         {
@@ -316,7 +317,7 @@ private:
         mWorksetBase.assembleResidual(tLocalResidualTerm, tLocalResidualContribution);
 
         // add local residual contribution to global residual, i.e. r - DrDc*inv(DhDc)*h
-        Plato::axpy(static_cast<Plato::Scalar>(-1.0), tLocalResidualContribution, tGlobalResidual);
+        Plato::blas1::axpy(static_cast<Plato::Scalar>(-1.0), tLocalResidualContribution, tGlobalResidual);
 
         return (tGlobalResidual);
     }
@@ -328,8 +329,8 @@ private:
     void initializeSolver(Plato::CurrentStates & aStates)
     {
         mCurrentSolverIter = 0;
-        Plato::update(1.0, aStates.mPreviousLocalState, 0.0, aStates.mCurrentLocalState);
-        Plato::update(1.0, aStates.mPreviousGlobalState, 0.0, aStates.mCurrentGlobalState);
+        Plato::blas1::update(1.0, aStates.mPreviousLocalState, 0.0, aStates.mCurrentLocalState);
+        Plato::blas1::update(1.0, aStates.mPreviousGlobalState, 0.0, aStates.mCurrentGlobalState);
     }
 
     /***************************************************************************//**
@@ -575,7 +576,7 @@ public:
 
             // assemble residual
             auto tGlobalResidual = this->assembleResidual(aControls, aStates, tInvLocalJacobianT);
-            Plato::scale(static_cast<Plato::Scalar>(-1.0), tGlobalResidual);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1.0), tGlobalResidual);
 
             // assemble tangent stiffness matrix
             auto tGlobalJacobian = this->assembleTangentMatrix(aControls, aStates, tInvLocalJacobianT);
@@ -584,7 +585,7 @@ public:
             this->applyConstraints(tGlobalJacobian, tGlobalResidual);
 
             // check convergence
-            tOutputData.mCurrentNorm = Plato::norm(tGlobalResidual);
+            tOutputData.mCurrentNorm = Plato::blas1::norm(tGlobalResidual);
             this->computeStoppingCriterion(tOutputData);
             Plato::print_newton_raphson_diagnostics(tOutputData, mSolverDiagnosticsFile);
 

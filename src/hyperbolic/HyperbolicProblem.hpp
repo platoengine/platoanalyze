@@ -11,6 +11,7 @@ signature?
 
 **/
 
+#include "BLAS1.hpp"
 #include "EssentialBCs.hpp"
 #include "AnalyzeMacros.hpp"
 #include "SimplexMechanics.hpp"
@@ -192,7 +193,7 @@ namespace Plato
 
               // -R_{u}
               mResidual  = mEqualityConstraint.value(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
-              Plato::scale(-1.0, mResidual);
+              Plato::blas1::scale(-1.0, mResidual);
 
               // R_{v}
               mResidualV = mNewmarkIntegrator.v_value(tDisplacement, tDisplacementPrev,
@@ -223,34 +224,34 @@ namespace Plato
               auto tR_vu = mNewmarkIntegrator.v_grad_u(mTimeStep);
 
               // R_{u,u^N} += R_{u,v^N} R_{v,u^N}
-              Plato::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
+              Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
 
               // R_{a,u^N}
               auto tR_au = mNewmarkIntegrator.a_grad_u(mTimeStep);
 
               // R_{u,u^N} += R_{u,a^N} R_{a,u^N}
-              Plato::axpy(-tR_au, mJacobianA->entries(), mJacobianU->entries());
+              Plato::blas1::axpy(-tR_au, mJacobianA->entries(), mJacobianU->entries());
 
               this->applyVelocityConstraints(mJacobianU, mResidual, mTimeStep);
 
               Plato::ScalarVector tDeltaD("increment", tDisplacement.extent(0));
-              Plato::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
+              Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
 
               // compute displacement increment:
               Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobianU, tDeltaD, mResidual);
 
               // compute and add velocity increment: \Delta v = - ( R_{v} + R_{v,u} \Delta u )
-              Plato::axpy(tR_vu, tDeltaD, mResidualV);
+              Plato::blas1::axpy(tR_vu, tDeltaD, mResidualV);
               // a_{k+1} = a_{k} + \Delta a
-              Plato::axpy(-1.0, mResidualV, tVelocity);
+              Plato::blas1::axpy(-1.0, mResidualV, tVelocity);
 
               // compute and add acceleration increment: \Delta a = - ( R_{a} + R_{a,u} \Delta u )
-              Plato::axpy(tR_au, tDeltaD, mResidualA);
+              Plato::blas1::axpy(tR_au, tDeltaD, mResidualA);
               // a_{k+1} = a_{k} + \Delta a
-              Plato::axpy(-1.0, mResidualA, tAcceleration);
+              Plato::blas1::axpy(-1.0, mResidualA, tAcceleration);
 
               // add displacement increment
-              Plato::axpy(1.0, tDeltaD, tDisplacement);
+              Plato::blas1::axpy(1.0, tDeltaD, tDisplacement);
 
               if ( mSaveState )
               {
@@ -402,54 +403,54 @@ namespace Plato
                     auto tR_vu_prev = mNewmarkIntegrator.v_grad_u_prev(mTimeStep);
 
                     // F_{,u^k} += L_{v}^{k+1} R_{v,u^k}^{k+1}
-                    Plato::axpy(tR_vu_prev, tAdjoint_V_next, t_dFdu);
+                    Plato::blas1::axpy(tR_vu_prev, tAdjoint_V_next, t_dFdu);
 
                     // R_{a,u^k}^{k+1}
                     auto tR_au_prev = mNewmarkIntegrator.a_grad_u_prev(mTimeStep);
 
                     // F_{,u^k} += L_{a}^{k+1} R_{a,u^k}^{k+1}
-                    Plato::axpy(tR_au_prev, tAdjoint_A_next, t_dFdu);
+                    Plato::blas1::axpy(tR_au_prev, tAdjoint_A_next, t_dFdu);
 
 
                     // R_{v,v^k}^{k+1}
                     auto tR_vv_prev = mNewmarkIntegrator.v_grad_v_prev(mTimeStep);
 
                     // F_{,v^k} += L_{v}^{k+1} R_{v,v^k}^{k+1}
-                    Plato::axpy(tR_vv_prev, tAdjoint_V_next, t_dFdv);
+                    Plato::blas1::axpy(tR_vv_prev, tAdjoint_V_next, t_dFdv);
 
                     // R_{a,v^k}^{k+1}
                     auto tR_av_prev = mNewmarkIntegrator.a_grad_v_prev(mTimeStep);
 
                     // F_{,v^k} += L_{a}^{k+1} R_{a,v^k}^{k+1}
-                    Plato::axpy(tR_av_prev, tAdjoint_A_next, t_dFdv);
+                    Plato::blas1::axpy(tR_av_prev, tAdjoint_A_next, t_dFdv);
 
 
                     // R_{v,a^k}^{k+1}
                     auto tR_va_prev = mNewmarkIntegrator.v_grad_a_prev(mTimeStep);
 
                     // F_{,a^k} += L_{v}^{k+1} R_{v,a^k}^{k+1}
-                    Plato::axpy(tR_va_prev, tAdjoint_V_next, t_dFda);
+                    Plato::blas1::axpy(tR_va_prev, tAdjoint_V_next, t_dFda);
 
                     // R_{a,a^k}^{k+1}
                     auto tR_aa_prev = mNewmarkIntegrator.a_grad_a_prev(mTimeStep);
 
                     // F_{,a^k} += L_{a}^{k+1} R_{a,a^k}^{k+1}
-                    Plato::axpy(tR_aa_prev, tAdjoint_A_next, t_dFda);
+                    Plato::blas1::axpy(tR_aa_prev, tAdjoint_A_next, t_dFda);
 
                 }
-                Plato::scale(static_cast<Plato::Scalar>(-1), t_dFdu);
+                Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_dFdu);
 
                 // R_{v,u^k}
                 auto tR_vu = mNewmarkIntegrator.v_grad_u(mTimeStep);
 
                 // -F_{,u^k} += R_{v,u^k}^k F_{,v^k}
-                Plato::axpy(tR_vu, t_dFdv, t_dFdu);
+                Plato::blas1::axpy(tR_vu, t_dFdv, t_dFdu);
 
                 // R_{a,u^k}
                 auto tR_au = mNewmarkIntegrator.a_grad_u(mTimeStep);
 
                 // -F_{,u^k} += R_{a,u^k}^k F_{,a^k}
-                Plato::axpy(tR_au, t_dFda, t_dFdu);
+                Plato::blas1::axpy(tR_au, t_dFda, t_dFdu);
 
                 // R_{u,u^k}
                 mJacobianU = mEqualityConstraint.gradient_u(tU, tV, tA, aControl, mTimeStep);
@@ -461,10 +462,10 @@ namespace Plato
                 mJacobianA = mEqualityConstraint.gradient_a(tU, tV, tA, aControl, mTimeStep);
 
                 // R_{u,u^k} -= R_{v,u^k} R_{u,v^k}
-                Plato::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
+                Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
 
                 // R_{u,u^k} -= R_{a,u^k} R_{u,a^k}
-                Plato::axpy(-tR_au, mJacobianA->entries(), mJacobianU->entries());
+                Plato::blas1::axpy(-tR_au, mJacobianA->entries(), mJacobianU->entries());
 
                 this->applyConstraints(mJacobianU, t_dFdu);
 
@@ -473,13 +474,13 @@ namespace Plato
 
                 // L_v^k
                 Plato::MatrixTimesVectorPlusVector(mJacobianV, tAdjoint_U, t_dFdv);
-                Plato::fill(0.0, tAdjoint_V);
-                Plato::axpy(-1.0, t_dFdv, tAdjoint_V);
+                Plato::blas1::fill(0.0, tAdjoint_V);
+                Plato::blas1::axpy(-1.0, t_dFdv, tAdjoint_V);
 
                 // L_a^k
                 Plato::MatrixTimesVectorPlusVector(mJacobianA, tAdjoint_U, t_dFda);
-                Plato::fill(0.0, tAdjoint_A);
-                Plato::axpy(-1.0, t_dFda, tAdjoint_A);
+                Plato::blas1::fill(0.0, tAdjoint_A);
+                Plato::blas1::axpy(-1.0, t_dFda, tAdjoint_A);
 
                 // R^k_{,z}
                 auto t_dRdz = mEqualityConstraint.gradient_z(tU, tV, tA, aControl, mTimeStep);
@@ -553,54 +554,54 @@ namespace Plato
                     auto tR_vu_prev = mNewmarkIntegrator.v_grad_u_prev(mTimeStep);
 
                     // F_{,u^k} += L_{v}^{k+1} R_{v,u^k}^{k+1}
-                    Plato::axpy(tR_vu_prev, tAdjoint_V_next, t_dFdu);
+                    Plato::blas1::axpy(tR_vu_prev, tAdjoint_V_next, t_dFdu);
 
                     // R_{a,u^k}^{k+1}
                     auto tR_au_prev = mNewmarkIntegrator.a_grad_u_prev(mTimeStep);
 
                     // F_{,u^k} += L_{a}^{k+1} R_{a,u^k}^{k+1}
-                    Plato::axpy(tR_au_prev, tAdjoint_A_next, t_dFdu);
+                    Plato::blas1::axpy(tR_au_prev, tAdjoint_A_next, t_dFdu);
 
 
                     // R_{v,v^k}^{k+1}
                     auto tR_vv_prev = mNewmarkIntegrator.v_grad_v_prev(mTimeStep);
 
                     // F_{,v^k} += L_{v}^{k+1} R_{v,v^k}^{k+1}
-                    Plato::axpy(tR_vv_prev, tAdjoint_V_next, t_dFdv);
+                    Plato::blas1::axpy(tR_vv_prev, tAdjoint_V_next, t_dFdv);
 
                     // R_{a,v^k}^{k+1}
                     auto tR_av_prev = mNewmarkIntegrator.a_grad_v_prev(mTimeStep);
 
                     // F_{,v^k} += L_{a}^{k+1} R_{a,v^k}^{k+1}
-                    Plato::axpy(tR_av_prev, tAdjoint_A_next, t_dFdv);
+                    Plato::blas1::axpy(tR_av_prev, tAdjoint_A_next, t_dFdv);
 
 
                     // R_{v,a^k}^{k+1}
                     auto tR_va_prev = mNewmarkIntegrator.v_grad_a_prev(mTimeStep);
 
                     // F_{,a^k} += L_{v}^{k+1} R_{v,a^k}^{k+1}
-                    Plato::axpy(tR_va_prev, tAdjoint_V_next, t_dFda);
+                    Plato::blas1::axpy(tR_va_prev, tAdjoint_V_next, t_dFda);
 
                     // R_{a,a^k}^{k+1}
                     auto tR_aa_prev = mNewmarkIntegrator.a_grad_a_prev(mTimeStep);
 
                     // F_{,a^k} += L_{a}^{k+1} R_{a,a^k}^{k+1}
-                    Plato::axpy(tR_aa_prev, tAdjoint_A_next, t_dFda);
+                    Plato::blas1::axpy(tR_aa_prev, tAdjoint_A_next, t_dFda);
 
                 }
-                Plato::scale(static_cast<Plato::Scalar>(-1), t_dFdu);
+                Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_dFdu);
 
                 // R_{v,u^k}
                 auto tR_vu = mNewmarkIntegrator.v_grad_u(mTimeStep);
 
                 // -F_{,u^k} += R_{v,u^k}^k F_{,v^k}
-                Plato::axpy(tR_vu, t_dFdv, t_dFdu);
+                Plato::blas1::axpy(tR_vu, t_dFdv, t_dFdu);
 
                 // R_{a,u^k}
                 auto tR_au = mNewmarkIntegrator.a_grad_u(mTimeStep);
 
                 // -F_{,u^k} += R_{a,u^k}^k F_{,a^k}
-                Plato::axpy(tR_au, t_dFda, t_dFdu);
+                Plato::blas1::axpy(tR_au, t_dFda, t_dFdu);
 
                 // R_{u,u^k}
                 mJacobianU = mEqualityConstraint.gradient_u(tU, tV, tA, aControl, mTimeStep);
@@ -612,10 +613,10 @@ namespace Plato
                 mJacobianA = mEqualityConstraint.gradient_a(tU, tV, tA, aControl, mTimeStep);
 
                 // R_{u,u^k} -= R_{v,u^k} R_{u,v^k}
-                Plato::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
+                Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
 
                 // R_{u,u^k} -= R_{a,u^k} R_{u,a^k}
-                Plato::axpy(-tR_au, mJacobianA->entries(), mJacobianU->entries());
+                Plato::blas1::axpy(-tR_au, mJacobianA->entries(), mJacobianU->entries());
 
                 this->applyConstraints(mJacobianU, t_dFdu);
 
@@ -624,13 +625,13 @@ namespace Plato
 
                 // L_v^k
                 Plato::MatrixTimesVectorPlusVector(mJacobianV, tAdjoint_U, t_dFdv);
-                Plato::fill(0.0, tAdjoint_V);
-                Plato::axpy(-1.0, t_dFdv, tAdjoint_V);
+                Plato::blas1::fill(0.0, tAdjoint_V);
+                Plato::blas1::axpy(-1.0, t_dFdv, tAdjoint_V);
 
                 // L_a^k
                 Plato::MatrixTimesVectorPlusVector(mJacobianA, tAdjoint_U, t_dFda);
-                Plato::fill(0.0, tAdjoint_A);
-                Plato::axpy(-1.0, t_dFda, tAdjoint_A);
+                Plato::blas1::fill(0.0, tAdjoint_A);
+                Plato::blas1::axpy(-1.0, t_dFda, tAdjoint_A);
 
                 // R^k_{,x}
                 auto t_dRdx = mEqualityConstraint.gradient_x(tU, tV, tA, aControl, mTimeStep);

@@ -63,8 +63,8 @@
 #include <cstddef>
 #include <cstdlib>
 
+#include "BLAS1.hpp"
 #include "Plato_GeometryModel.hpp"
-#include "PlatoMathHelpers.hpp"
 
 namespace Plato
 {
@@ -273,7 +273,7 @@ private:
     {
         auto tMyLevelSet = Kokkos::subview(mHamiltonJacobiFields.mLevelSet, Kokkos::ALL(), mHamiltonJacobiFields.mCurrentState);
         auto tMyOutput = Kokkos::subview(mHamiltonJacobiFields.mLevelSetHistory, Kokkos::ALL(), mStep);
-        Plato::copy(tMyLevelSet, tMyOutput);
+        Plato::blas1::copy(tMyLevelSet, tMyOutput);
     }
 
     /******************************************************************************//**

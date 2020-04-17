@@ -187,8 +187,6 @@ class InternalThermoelasticEnergyInc :
 
     Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpaceDim>> mMaterialModel;
 
-    Plato::Scalar mQuadratureWeight;
-
     IndicatorFunctionType mIndicatorFunction;
     ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
     ApplyWeighting<SpaceDim, SpaceDim,        IndicatorFunctionType> mApplyFluxWeighting;

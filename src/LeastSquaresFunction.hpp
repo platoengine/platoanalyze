@@ -6,6 +6,7 @@
 
 #include <Omega_h_mesh.hpp>
 
+#include "BLAS1.hpp"
 #include "WorksetBase.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "ScalarFunctionBaseFactory.hpp"
@@ -279,7 +280,7 @@ public:
         Plato::ScalarVector tGradientU ("gradient state", tNumDofs);
         if (mGradientWRTStateIsZero)
         {
-            Plato::fill(0.0, tGradientU);
+            Plato::blas1::fill(0.0, tGradientU);
         }
         else
         {

@@ -17,6 +17,7 @@
 #include <Teuchos_Array.hpp>
 #include <Teuchos_ParameterList.hpp>
 
+#include "BLAS1.hpp"
 #include "EssentialBCs.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
@@ -281,7 +282,7 @@ public:
             assert(mResidual.size() == mNumStates);
             auto tMyStatesSubView = Kokkos::subview(mGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
-            Plato::fill(static_cast<Plato::Scalar>(0.0), tMyStatesSubView);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tMyStatesSubView);
             auto tMyFrequency = mFreqArray[tFreqIndex];
             mResidual = mEquality->value(tMyStatesSubView, aControl, tMyFrequency);
             this->applyBoundaryLoads(mResidual);
@@ -454,8 +455,8 @@ public:
         }
 
         // compute dfdu: partial of objective wrt u and dfdz: partial of objective wrt z
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mGradState);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mGradControl);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mGradState);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mGradControl);
         const Plato::OrdinalType tNumFreqs = mFreqArray.size();
         for(Plato::OrdinalType tFreqIndex = 0; tFreqIndex < tNumFreqs; tFreqIndex++)
         {
@@ -464,13 +465,13 @@ public:
             assert(tMyStatesSubView.size() == mNumStates);
 
             auto tPartialObjectiveWrtState = mObjective->gradient_u(tMyStatesSubView, aControl, tMyFrequency);
-            Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
 
             auto tPartialObjectiveWrtControl = mObjective->gradient_z(tMyStatesSubView, aControl, tMyFrequency);
-            Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtControl, static_cast<Plato::Scalar>(1.0), mGradControl);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtControl, static_cast<Plato::Scalar>(1.0), mGradControl);
         }
 
-        Plato::scale(static_cast<Plato::Scalar>(-1), mGradState);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mGradState);
         this->addResidualContribution(Plato::partial::CONTROL, aControl, aGlobalState, mGradControl);
 
         return mGradControl;
@@ -516,8 +517,8 @@ public:
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
 
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mGradState);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mGradConfig);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mGradState);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mGradConfig);
         const Plato::OrdinalType tNumFreqs = mFreqArray.size();
         for(Plato::OrdinalType tFreqIndex = 0; tFreqIndex < tNumFreqs; tFreqIndex++)
         {
@@ -527,14 +528,14 @@ public:
             auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
             auto tPartialObjectiveWrtConfig = mObjective->gradient_x(tMyStatesSubView, aControl, tMyFrequency);
-            Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtConfig, static_cast<Plato::Scalar>(1.0), mGradConfig);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtConfig, static_cast<Plato::Scalar>(1.0), mGradConfig);
 
             // Compute partial derivative of objective function wrt state for this time step
             auto tPartialObjectiveWrtState = mObjective->gradient_u(tMyStatesSubView, aControl, tMyFrequency);
-            Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
         }
 
-        Plato::scale(static_cast<Plato::Scalar>(-1), mGradState);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mGradState);
         this->addResidualContribution(Plato::partial::CONFIGURATION, aControl, aGlobalState, mGradConfig);
 
         return mGradConfig;
@@ -581,8 +582,8 @@ public:
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
 
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mGradState);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mGradControl);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mGradState);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mGradControl);
         const Plato::OrdinalType tNumFreqs = mFreqArray.size();
         for(Plato::OrdinalType tFreqIndex = 0; tFreqIndex < tNumFreqs; tFreqIndex++)
         {
@@ -591,13 +592,13 @@ public:
             auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
             auto tPartialObjectiveWrtState = mConstraint->gradient_u(tMyStatesSubView, aControl, tMyFrequency);
-            Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
 
             auto tPartialConstraintWrtControl = mConstraint->gradient_z(tMyStatesSubView, aControl, tMyFrequency);
-            Plato::update(static_cast<Plato::Scalar>(1.0), tPartialConstraintWrtControl, static_cast<Plato::Scalar>(1.0), mGradControl);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialConstraintWrtControl, static_cast<Plato::Scalar>(1.0), mGradControl);
         }
 
-        Plato::scale(static_cast<Plato::Scalar>(-1), mGradState);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mGradState);
         this->addResidualContribution(Plato::partial::CONTROL, aControl, aGlobalState, mGradControl);
 
         return mGradControl;
@@ -643,8 +644,8 @@ public:
             throw std::runtime_error(tErrorMessage.str().c_str());
         }
 
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mGradState);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mGradConfig);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mGradState);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mGradConfig);
         const Plato::OrdinalType tNumFreqs = mFreqArray.size();
         for(Plato::OrdinalType tFreqIndex = 0; tFreqIndex < tNumFreqs; tFreqIndex++)
         {
@@ -654,14 +655,14 @@ public:
             auto tMyStatesSubView = Kokkos::subview(aGlobalState, tFreqIndex, Kokkos::ALL());
             assert(tMyStatesSubView.size() == mNumStates);
             auto tPartialObjectiveWrtConfig = mConstraint->gradient_x(tMyStatesSubView, aControl, tMyFrequency);
-            Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtConfig, static_cast<Plato::Scalar>(1.0), mGradConfig);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtConfig, static_cast<Plato::Scalar>(1.0), mGradConfig);
 
             // Compute partial derivative of objective function wrt state for this time step
             auto tPartialObjectiveWrtState = mConstraint->gradient_u(tMyStatesSubView, aControl, tMyFrequency);
-            Plato::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tPartialObjectiveWrtState, static_cast<Plato::Scalar>(1.0), mGradState);
         }
 
-        Plato::scale(static_cast<Plato::Scalar>(-1), mGradState);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mGradState);
         this->addResidualContribution(Plato::partial::CONFIGURATION, aControl, aGlobalState, mGradConfig);
 
         return mGradConfig;
@@ -776,7 +777,7 @@ private:
             // adjoint problem \lambda = (dg/du)-*(df/du) uses transpose of global stiffness,
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
             Plato::ScalarVector tAdjoint = Kokkos::subview(mMyAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-            Plato::fill(static_cast<Plato::Scalar>(0.0), tAdjoint);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tAdjoint);
 #ifdef HAVE_AMGX
             using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, mNumDofsPerNode>;
             auto tConfigString = Plato::get_config_string();

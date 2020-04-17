@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "BLAS1.hpp"
 #include "BLAS2.hpp"
 #include "BLAS3.hpp"
 #include "ParseTools.hpp"
@@ -418,9 +419,9 @@ private:
         // Assemble -( DfDu_k + DfDup + (DpDup_T * gamma_{k+1}) - F_k^{local} )
         auto tNumGlobalAdjointVars = mGlobalEquation->size();
         Plato::ScalarVector tGlobalResidual("global adjoint residual", tNumGlobalAdjointVars);
-        Plato::fill(static_cast<Plato::Scalar>(0), tGlobalResidual);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0), tGlobalResidual);
         mWorksetBase.assembleVectorGradientU(tDfDu, tGlobalResidual);
-        Plato::scale(static_cast<Plato::Scalar>(-1), tGlobalResidual);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tGlobalResidual);
 
         return (tGlobalResidual);
     }
@@ -438,7 +439,7 @@ private:
         }
 
         Plato::ScalarVector tDirichletValues("Dirichlet Values", mDirichletDofs.size());
-        Plato::scale(static_cast<Plato::Scalar>(0.0), tDirichletValues);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(0.0), tDirichletValues);
 
         if(aMatrix->isBlockMatrix())
         {
@@ -694,7 +695,7 @@ public:
         auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
         if(aStateVars.mCurrentStepIndex == tLastStepIndex)
         {
-            Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mProjPressGradAdjoint);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mProjPressGradAdjoint);
             return;
         }
 
@@ -708,14 +709,14 @@ public:
         auto tNumProjPressGradDofs = mProjectionEquation->size();
         Plato::ScalarVector tResidual("Projected Pressure Gradient Residual", tNumProjPressGradDofs);
         Plato::MatrixTimesVectorPlusVector(tDrDp_T, aAdjointVars.mPreviousGlobalAdjoint, tResidual);
-        Plato::scale(static_cast<Plato::Scalar>(-1), tResidual);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tResidual);
 
         // Solve for current projected pressure gradient adjoint, i.e.
         //   gamma_k =  INV(tDpDp_k^T) * (tDrDp_{k+1}^T * lambda_{k+1})
         auto tProjJacobian = mProjectionEquation->gradient_u_T(aStateVars.mProjectedPressGrad, aStateVars.mPressure,
                                                                aControls, aStateVars.mCurrentStepIndex);
 
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mProjPressGradAdjoint);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mProjPressGradAdjoint);
         Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointVars.mProjPressGradAdjoint, tResidual);
     }
 
@@ -741,7 +742,7 @@ public:
         this->applyConstraints(tJacobian, tResidual);
 
         // Solve for lambda_k = (K_{tangent})_k^{-T} * F_k^{adjoint}
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mCurrentGlobalAdjoint);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mCurrentGlobalAdjoint);
         Plato::Solve::Consistent<mNumGlobalDofsPerNode>(tJacobian, aAdjointVars.mCurrentGlobalAdjoint, tResidual, false);
     }
 

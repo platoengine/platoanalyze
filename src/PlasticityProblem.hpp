@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include "BLAS1.hpp"
 #include "EssentialBCs.hpp"
 #include "OmegaHUtilities.hpp"
 #include "NewtonRaphsonSolver.hpp"
@@ -867,11 +868,11 @@ private:
         }
 
         // copy projection state, i.e. pressure
-        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mPressure);
+        Plato::blas1::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, mPressure);
 
         // compute projected pressure gradient
         auto tNextProjectedPressureGradient = Kokkos::subview(mProjectedPressGrad, tNextStepIndex, Kokkos::ALL());
-        Plato::fill(0.0, tNextProjectedPressureGradient);
+        Plato::blas1::fill(0.0, tNextProjectedPressureGradient);
         auto tProjResidual = mProjectionEquation->value(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
         auto tProjJacobian = mProjectionEquation->gradient_u(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
         Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aStateData.mProjectedPressGrad, tProjResidual);
@@ -896,7 +897,7 @@ private:
         {
             auto tLength = aStates.extent(1);
             aOutput = Plato::ScalarVector("Local State t=i-1", tLength);
-            Plato::fill(0.0, aOutput);
+            Plato::blas1::fill(0.0, aOutput);
         }
     }
 
@@ -1060,10 +1061,10 @@ private:
         this->getPreviousState(aStateData.mCurrentStepIndex, mGlobalStates, aStateData.mPreviousGlobalState);
 
         // SET ENTRIES IN CURRENT STATES TO ZERO
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentLocalState);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentGlobalState);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), aStateData.mProjectedPressGrad);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), mPressure);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentLocalState);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentGlobalState);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mProjectedPressGrad);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mPressure);
     }
 
     /***************************************************************************//**
@@ -1082,7 +1083,7 @@ private:
             auto tNumVerts = mGlobalEquation->getMesh().nverts();
             aStateData.mPressure = Plato::ScalarVector("Current Pressure Field", tNumVerts);
         }
-        Plato::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, aStateData.mPressure);
+        Plato::blas1::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, aStateData.mPressure);
 
         // GET PREVIOUS STATE.
         this->getPreviousState(aStateData.mCurrentStepIndex, mLocalStates, aStateData.mPreviousLocalState);
@@ -1097,9 +1098,9 @@ private:
     {
         // NOTE: CURRENT ADJOINT VARIABLES ARE UPDATED AT SOLVE TIME. THERE IS NO NEED TO SET THEM TO ZERO HERE.
         const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 0.0;
-        Plato::update(tAlpha, aAdjointStates.mCurrentLocalAdjoint, tBeta, aAdjointStates.mPreviousLocalAdjoint);
-        Plato::update(tAlpha, aAdjointStates.mCurrentGlobalAdjoint, tBeta, aAdjointStates.mPreviousGlobalAdjoint);
-        Plato::update(tAlpha, aAdjointStates.mProjPressGradAdjoint, tBeta, aAdjointStates.mPreviousProjPressGradAdjoint);
+        Plato::blas1::update(tAlpha, aAdjointStates.mCurrentLocalAdjoint, tBeta, aAdjointStates.mPreviousLocalAdjoint);
+        Plato::blas1::update(tAlpha, aAdjointStates.mCurrentGlobalAdjoint, tBeta, aAdjointStates.mPreviousGlobalAdjoint);
+        Plato::blas1::update(tAlpha, aAdjointStates.mProjPressGradAdjoint, tBeta, aAdjointStates.mPreviousProjPressGradAdjoint);
     }
 
     /***************************************************************************//**

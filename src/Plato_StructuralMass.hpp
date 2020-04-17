@@ -6,9 +6,9 @@
 
 #pragma once
 
+#include "BLAS1.hpp"
 #include "Simplex.hpp"
 #include "ImplicitFunctors.hpp"
-#include "PlatoMathHelpers.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
@@ -73,7 +73,7 @@ public:
         },"Compute Structural Mass");
 
         aOutput = 0;
-        Plato::local_sum(tTotalMass, aOutput);
+        Plato::blas1::local_sum(tTotalMass, aOutput);
     }
 };
 // class StructuralMass

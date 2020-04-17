@@ -8,6 +8,7 @@
 
 #include <Omega_h_mesh.hpp>
 
+#include "BLAS1.hpp"
 #include "WorksetBase.hpp"
 #include "SimplexFadTypes.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -31,17 +32,17 @@ inline Plato::Scalar test_objective_grad_wrt_control(PlatoProblem & aProblem, Om
     // Allocate Data
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
-    Plato::fill(0.5, tControls);
+    Plato::blas1::fill(0.5, tControls);
 
     Plato::ScalarVector tStep = Plato::ScalarVector("Step", tNumVerts);
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.025, 0.05, tHostStep);
+    Plato::blas1::random(0.025, 0.05, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
 
     // Compute gradient
     auto tGlobalStates = aProblem.solution(tControls);
     auto tObjGradZ = aProblem.objectiveGradient(tControls, tGlobalStates);
-    auto tGradientDotStep = Plato::dot(tObjGradZ, tStep);
+    auto tGradientDotStep = Plato::blas1::dot(tObjGradZ, tStep);
 
     std::ostringstream tOutput;
     tOutput << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
@@ -57,23 +58,23 @@ inline Plato::Scalar test_objective_grad_wrt_control(PlatoProblem & aProblem, Om
         auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
 
         // four point finite difference approximation
-        Plato::update(1.0, tControls, 0.0, tTrialControl);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
         auto tValuePlus1Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
-        Plato::update(1.0, tControls, 0.0, tTrialControl);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
         auto tValueMinus1Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
-        Plato::update(1.0, tControls, 0.0, tTrialControl);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
         auto tValuePlus2Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
-        Plato::update(1.0, tControls, 0.0, tTrialControl);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
         auto tValueMinus2Eps = aProblem.objectiveValue(tTrialControl, tGlobalStates);
 
@@ -107,17 +108,17 @@ inline Plato::Scalar test_constraint_grad_wrt_control(PlatoProblem & aProblem, O
     // Allocate Data
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
-    Plato::fill(0.5, tControls);
+    Plato::blas1::fill(0.5, tControls);
 
     Plato::ScalarVector tStep = Plato::ScalarVector("Step", tNumVerts);
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.025, 0.05, tHostStep);
+    Plato::blas1::random(0.025, 0.05, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
 
     // Compute gradient
     auto tGlobalStates = aProblem.solution(tControls);
     auto tConstraintGradZ = aProblem.constraintGradient(tControls, tGlobalStates);
-    auto tGradientDotStep = Plato::dot(tConstraintGradZ, tStep);
+    auto tGradientDotStep = Plato::blas1::dot(tConstraintGradZ, tStep);
 
     std::ostringstream tOutput;
     tOutput << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step"
@@ -133,23 +134,23 @@ inline Plato::Scalar test_constraint_grad_wrt_control(PlatoProblem & aProblem, O
         auto tEpsilon = static_cast<Plato::Scalar>(1) / std::pow(static_cast<Plato::Scalar>(10), tIndex);
 
         // four point finite difference approximation
-        Plato::update(1.0, tControls, 0.0, tTrialControl);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
         auto tValuePlus1Eps = aProblem.constraintValue(tTrialControl, tGlobalStates);
 
-        Plato::update(1.0, tControls, 0.0, tTrialControl);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
         auto tValueMinus1Eps = aProblem.constraintValue(tTrialControl, tGlobalStates);
 
-        Plato::update(1.0, tControls, 0.0, tTrialControl);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
         auto tValuePlus2Eps = aProblem.constraintValue(tTrialControl, tGlobalStates);
 
-        Plato::update(1.0, tControls, 0.0, tTrialControl);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControls, 0.0, tTrialControl);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         tGlobalStates = aProblem.solution(tTrialControl);
         auto tValueMinus2Eps = aProblem.constraintValue(tTrialControl, tGlobalStates);
 
@@ -203,7 +204,7 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
-    Plato::random(0.5, 0.75, tHostControl);
+    Plato::blas1::random(0.5, 0.75, tHostControl);
     Kokkos::deep_copy(tControl, tHostControl);
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     tWorksetBase.worksetControl(tControl, tControlWS);
@@ -212,7 +213,7 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tState("State", tTotalNumDofs);
     auto tHostState = Kokkos::create_mirror(tState);
-    Plato::random(1, 5, tHostState);
+    Plato::blas1::random(1, 5, tHostState);
     Kokkos::deep_copy(tState, tHostState);
     Plato::ScalarMultiVectorT<StateT> tStateWS("state workset", tNumCells, tDofsPerCell);
     tWorksetBase.worksetState(tState, tStateWS);
@@ -229,9 +230,9 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
 
     Plato::ScalarVector tStep("step", tNumVerts);
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.05, 0.1, tHostStep);
+    Plato::blas1::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    Plato::Scalar tGradientDotStep = Plato::dot(tPartialZ, tStep);
+    Plato::Scalar tGradientDotStep = Plato::blas1::dot(tPartialZ, tStep);
 
     std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step" << std::setw(18) << "FD Approx"
                << std::setw(20) << "abs(Error)" << "\n";
@@ -242,31 +243,31 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
         Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) /
                 std::pow(static_cast<Plato::Scalar>(10), tIndex);
         // four point finite difference approximation
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialControl);
         tWorksetBase.worksetControl(tTrialControl, tControlWS);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
         aCriterion.evaluate(tStateWS, tControlWS, tConfigWS, tResultWS);
         Plato::Scalar tObjFuncValueOne = Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResultWS);
 
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialControl);
         tWorksetBase.worksetControl(tTrialControl, tControlWS);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
         aCriterion.evaluate(tStateWS, tControlWS, tConfigWS, tResultWS);
         Plato::Scalar tObjFuncValueTwo = Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResultWS);
 
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         tWorksetBase.worksetControl(tTrialControl, tControlWS);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
         aCriterion.evaluate(tStateWS, tControlWS, tConfigWS, tResultWS);
         Plato::Scalar tObjFuncValueThree = Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResultWS);
 
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         tWorksetBase.worksetControl(tTrialControl, tControlWS);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
         aCriterion.evaluate(tStateWS, tControlWS, tConfigWS, tResultWS);
         Plato::Scalar tObjFuncValueFour = Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResultWS);
 
@@ -310,7 +311,7 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::AbstractScalarFunct
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
-    Plato::random(0.5, 0.75, tHostControl);
+    Plato::blas1::random(0.5, 0.75, tHostControl);
     Kokkos::deep_copy(tControl, tHostControl);
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     tWorksetBase.worksetControl(tControl, tControlWS);
@@ -319,7 +320,7 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::AbstractScalarFunct
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tState("State", tTotalNumDofs);
     auto tHostState = Kokkos::create_mirror(tState);
-    Plato::random(1, 5, tHostState);
+    Plato::blas1::random(1, 5, tHostState);
     Kokkos::deep_copy(tState, tHostState);
     Plato::ScalarMultiVectorT<StateT> tStateWS("state workset", tNumCells, tDofsPerCell);
     tWorksetBase.worksetState(tState, tStateWS);
@@ -335,9 +336,9 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::AbstractScalarFunct
 
     Plato::ScalarVector tStep("step", tTotalNumDofs);
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.05, 0.1, tHostStep);
+    Plato::blas1::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    Plato::Scalar tGradientDotStep = Plato::dot(tPartialU, tStep);
+    Plato::Scalar tGradientDotStep = Plato::blas1::dot(tPartialU, tStep);
 
     std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step" << std::setw(18) << "FD Approx"
                << std::setw(20) << "abs(Error)" << "\n";
@@ -350,31 +351,31 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::AbstractScalarFunct
         Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) /
                 std::pow(static_cast<Plato::Scalar>(10), tIndex);
         // four point finite difference approximation
-        Plato::update(1.0, tState, 0.0, tTrialState);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialState);
+        Plato::blas1::update(1.0, tState, 0.0, tTrialState);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialState);
         tWorksetBase.worksetState(tTrialState, tStateWS);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
         aCriterion.evaluate(tStateWS, tControlWS, tConfigWS, tResultWS);
         Plato::Scalar tObjFuncValueOne = Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResultWS);
 
-        Plato::update(1.0, tState, 0.0, tTrialState);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialState);
+        Plato::blas1::update(1.0, tState, 0.0, tTrialState);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialState);
         tWorksetBase.worksetState(tTrialState, tStateWS);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
         aCriterion.evaluate(tStateWS, tControlWS, tConfigWS, tResultWS);
         Plato::Scalar tObjFuncValueTwo = Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResultWS);
 
-        Plato::update(1.0, tState, 0.0, tTrialState);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialState);
+        Plato::blas1::update(1.0, tState, 0.0, tTrialState);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialState);
         tWorksetBase.worksetState(tTrialState, tStateWS);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
         aCriterion.evaluate(tStateWS, tControlWS, tConfigWS, tResultWS);
         Plato::Scalar tObjFuncValueThree = Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResultWS);
 
-        Plato::update(1.0, tState, 0.0, tTrialState);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialState);
+        Plato::blas1::update(1.0, tState, 0.0, tTrialState);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialState);
         tWorksetBase.worksetState(tTrialState, tStateWS);
-        Plato::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tResultWS);
         aCriterion.evaluate(tStateWS, tControlWS, tConfigWS, tResultWS);
         Plato::Scalar tObjFuncValueFour = Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResultWS);
 
@@ -409,14 +410,14 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
-    Plato::random(0.5, 0.75, tHostControl);
+    Plato::blas1::random(0.5, 0.75, tHostControl);
     Kokkos::deep_copy(tControl, tHostControl);
 
     // Create state workset
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tState("State", tTotalNumDofs);
     auto tHostState = Kokkos::create_mirror(tState);
-    Plato::random(1, 5, tHostState);
+    Plato::blas1::random(1, 5, tHostState);
     Kokkos::deep_copy(tState, tHostState);
 
     // FINITE DIFFERENCE TEST
@@ -425,9 +426,9 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
 
     Plato::ScalarVector tStep("step", tNumVerts);
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.05, 0.1, tHostStep);
+    Plato::blas1::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    Plato::Scalar tGradientDotStep = Plato::dot(tPartialZ, tStep);
+    Plato::Scalar tGradientDotStep = Plato::blas1::dot(tPartialZ, tStep);
 
     std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step" << std::setw(18) << "FD Approx"
                << std::setw(20) << "abs(Error)" << "\n";
@@ -438,20 +439,20 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
         Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) /
                 std::pow(static_cast<Plato::Scalar>(10), tIndex);
         // four point finite difference approximation
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialControl);
         Plato::Scalar tObjFuncValueOne = aScalarFuncBase.value(tState, tTrialControl, 0.0);
 
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialControl);
         Plato::Scalar tObjFuncValueTwo = aScalarFuncBase.value(tState, tTrialControl, 0.0);
 
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         Plato::Scalar tObjFuncValueThree = aScalarFuncBase.value(tState, tTrialControl, 0.0);
 
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         Plato::Scalar tObjFuncValueFour = aScalarFuncBase.value(tState, tTrialControl, 0.0);
 
         Plato::Scalar tNumerator = -tObjFuncValueThree + static_cast<Plato::Scalar>(8.) * tObjFuncValueOne
@@ -486,23 +487,23 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::ScalarFunctionBase 
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
-    Plato::random(0.5, 0.75, tHostControl);
+    Plato::blas1::random(0.5, 0.75, tHostControl);
     Kokkos::deep_copy(tControl, tHostControl);
 
     // Create state workset
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tState("State", tTotalNumDofs);
     auto tHostState = Kokkos::create_mirror(tState);
-    Plato::random(1, 5, tHostState);
+    Plato::blas1::random(1, 5, tHostState);
     Kokkos::deep_copy(tState, tHostState);
 
     Plato::ScalarVector tPartialU = aScalarFuncBase.gradient_u(tState, tControl, 0.0);
 
     Plato::ScalarVector tStep("step", tTotalNumDofs);
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.05, 0.1, tHostStep);
+    Plato::blas1::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
-    Plato::Scalar tGradientDotStep = Plato::dot(tPartialU, tStep);
+    Plato::Scalar tGradientDotStep = Plato::blas1::dot(tPartialU, tStep);
 
     std::cout << std::right << std::setw(18) << "\nStep Size" << std::setw(20) << "Grad'*Step" << std::setw(18) << "FD Approx"
                << std::setw(20) << "abs(Error)" << "\n";
@@ -515,20 +516,20 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::ScalarFunctionBase 
         Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) /
                 std::pow(static_cast<Plato::Scalar>(10), tIndex);
         // four point finite difference approximation
-        Plato::update(1.0, tState, 0.0, tTrialState);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialState);
+        Plato::blas1::update(1.0, tState, 0.0, tTrialState);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialState);
         Plato::Scalar tObjFuncValueOne = aScalarFuncBase.value(tTrialState, tControl, 0.0);
 
-        Plato::update(1.0, tState, 0.0, tTrialState);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialState);
+        Plato::blas1::update(1.0, tState, 0.0, tTrialState);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialState);
         Plato::Scalar tObjFuncValueTwo = aScalarFuncBase.value(tTrialState, tControl, 0.0);
 
-        Plato::update(1.0, tState, 0.0, tTrialState);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialState);
+        Plato::blas1::update(1.0, tState, 0.0, tTrialState);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialState);
         Plato::Scalar tObjFuncValueThree = aScalarFuncBase.value(tTrialState, tControl, 0.0);
 
-        Plato::update(1.0, tState, 0.0, tTrialState);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialState);
+        Plato::blas1::update(1.0, tState, 0.0, tTrialState);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialState);
         Plato::Scalar tObjFuncValueFour = aScalarFuncBase.value(tTrialState, tControl, 0.0);
 
         Plato::Scalar tNumerator = -tObjFuncValueThree + static_cast<Plato::Scalar>(8.) * tObjFuncValueOne
@@ -664,33 +665,33 @@ test_partial_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<S
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
-    Plato::random(0.5, 0.75, tHostControl);
+    Plato::blas1::random(0.5, 0.75, tHostControl);
     Kokkos::deep_copy(tControl, tHostControl);
 
     // Create global state workset
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
     auto tHostGlobalState = Kokkos::create_mirror(tGlobalState);
-    Plato::random(1, 5, tHostGlobalState);
+    Plato::blas1::random(1, 5, tHostGlobalState);
     Kokkos::deep_copy(tGlobalState, tHostGlobalState);
 
     // Create previous global state workset
     Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
     auto tHostPrevGlobalState = Kokkos::create_mirror(tPrevGlobalState);
-    Plato::random(1, 5, tHostPrevGlobalState);
+    Plato::blas1::random(1, 5, tHostPrevGlobalState);
     Kokkos::deep_copy(tPrevGlobalState, tHostPrevGlobalState);
 
     // Create local state workset
     const Plato::OrdinalType tTotalNumLocalDofs = tNumCells * tLocalDofsPerCell;
     Plato::ScalarVector tLocalState("Local State", tTotalNumLocalDofs);
     auto tHostLocalState = Kokkos::create_mirror(tLocalState);
-    Plato::random(1.0, 2.0, tHostLocalState);
+    Plato::blas1::random(1.0, 2.0, tHostLocalState);
     Kokkos::deep_copy(tLocalState, tHostLocalState);
 
     // Create previous local state workset
     Plato::ScalarVector tPrevLocalState("Previous Local State", tTotalNumLocalDofs);
     auto tHostPrevLocalState = Kokkos::create_mirror(tPrevLocalState);
-    Plato::random(0.1, 0.9, tHostPrevLocalState);
+    Plato::blas1::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
     Plato::ScalarArray3D tPartialU =
@@ -703,7 +704,7 @@ test_partial_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<S
 
     Plato::ScalarVector tStep("global state step", tTotalNumDofs); 
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.5, 1.0, tHostStep);
+    Plato::blas1::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
     Plato::ScalarVector tGradientDotStep =
             Plato::global_workset_matrix_vector_multiply(tPartialU, tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumDofs);
@@ -722,23 +723,23 @@ test_partial_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<S
         Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) /
                 std::pow(static_cast<Plato::Scalar>(10), tIndex);
         // four point finite difference approximation
-        Plato::update(1.0, tGlobalState, 0.0, tTrialGlobalState);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialGlobalState);
+        Plato::blas1::update(1.0, tGlobalState, 0.0, tTrialGlobalState);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialGlobalState);
         Plato::ScalarVector tVectorValueOne = aLocalVectorFuncInc.value(tTrialGlobalState, tPrevGlobalState,
                                                                         tLocalState, tPrevLocalState,
                                                                         tControl, 0.0);
-        Plato::update(1.0, tGlobalState, 0.0, tTrialGlobalState);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialGlobalState);
+        Plato::blas1::update(1.0, tGlobalState, 0.0, tTrialGlobalState);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialGlobalState);
         Plato::ScalarVector tVectorValueTwo = aLocalVectorFuncInc.value(tTrialGlobalState, tPrevGlobalState,
                                                                         tLocalState, tPrevLocalState,
                                                                         tControl, 0.0);
-        Plato::update(1.0, tGlobalState, 0.0, tTrialGlobalState);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialGlobalState);
+        Plato::blas1::update(1.0, tGlobalState, 0.0, tTrialGlobalState);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialGlobalState);
         Plato::ScalarVector tVectorValueThree = aLocalVectorFuncInc.value(tTrialGlobalState, tPrevGlobalState,
                                                                           tLocalState, tPrevLocalState,
                                                                           tControl, 0.0);
-        Plato::update(1.0, tGlobalState, 0.0, tTrialGlobalState);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialGlobalState);
+        Plato::blas1::update(1.0, tGlobalState, 0.0, tTrialGlobalState);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialGlobalState);
         Plato::ScalarVector tVectorValueFour = aLocalVectorFuncInc.value(tTrialGlobalState, tPrevGlobalState,
                                                                          tLocalState, tPrevLocalState,
                                                                          tControl, 0.0);
@@ -762,7 +763,7 @@ test_partial_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<S
         }, "compute error");
 
         Plato::Scalar tL1Error = 0.0;
-        Plato::local_sum(tErrorVector, tL1Error);
+        Plato::blas1::local_sum(tErrorVector, tL1Error);
 
         std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) 
                   << tEpsilon << std::setw(19)
@@ -796,33 +797,33 @@ test_partial_prev_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunction
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
-    Plato::random(0.5, 0.75, tHostControl);
+    Plato::blas1::random(0.5, 0.75, tHostControl);
     Kokkos::deep_copy(tControl, tHostControl);
 
     // Create global state workset
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
     auto tHostGlobalState = Kokkos::create_mirror(tGlobalState);
-    Plato::random(1, 5, tHostGlobalState);
+    Plato::blas1::random(1, 5, tHostGlobalState);
     Kokkos::deep_copy(tGlobalState, tHostGlobalState);
 
     // Create previous global state workset
     Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
     auto tHostPrevGlobalState = Kokkos::create_mirror(tPrevGlobalState);
-    Plato::random(1, 5, tHostPrevGlobalState);
+    Plato::blas1::random(1, 5, tHostPrevGlobalState);
     Kokkos::deep_copy(tPrevGlobalState, tHostPrevGlobalState);
 
     // Create local state workset
     const Plato::OrdinalType tTotalNumLocalDofs = tNumCells * tLocalDofsPerCell;
     Plato::ScalarVector tLocalState("Local State", tTotalNumLocalDofs);
     auto tHostLocalState = Kokkos::create_mirror(tLocalState);
-    Plato::random(1.0, 2.0, tHostLocalState);
+    Plato::blas1::random(1.0, 2.0, tHostLocalState);
     Kokkos::deep_copy(tLocalState, tHostLocalState);
 
     // Create previous local state workset
     Plato::ScalarVector tPrevLocalState("Previous Local State", tTotalNumLocalDofs);
     auto tHostPrevLocalState = Kokkos::create_mirror(tPrevLocalState);
-    Plato::random(0.1, 0.9, tHostPrevLocalState);
+    Plato::blas1::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
     Plato::ScalarArray3D tPartialUP =
@@ -835,7 +836,7 @@ test_partial_prev_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunction
 
     Plato::ScalarVector tStep("prev global state step", tTotalNumDofs); 
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.5, 1.0, tHostStep);
+    Plato::blas1::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
     Plato::ScalarVector tGradientDotStep =
             Plato::global_workset_matrix_vector_multiply(tPartialUP, tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumDofs);
@@ -854,23 +855,23 @@ test_partial_prev_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunction
         Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) /
                 std::pow(static_cast<Plato::Scalar>(10), tIndex);
         // four point finite difference approximation
-        Plato::update(1.0, tPrevGlobalState, 0.0, tTrialPrevGlobalState);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialPrevGlobalState);
+        Plato::blas1::update(1.0, tPrevGlobalState, 0.0, tTrialPrevGlobalState);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialPrevGlobalState);
         Plato::ScalarVector tVectorValueOne = aLocalVectorFuncInc.value(tGlobalState, tTrialPrevGlobalState,
                                                                         tLocalState, tPrevLocalState,
                                                                         tControl, 0.0);
-        Plato::update(1.0, tPrevGlobalState, 0.0, tTrialPrevGlobalState);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialPrevGlobalState);
+        Plato::blas1::update(1.0, tPrevGlobalState, 0.0, tTrialPrevGlobalState);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialPrevGlobalState);
         Plato::ScalarVector tVectorValueTwo = aLocalVectorFuncInc.value(tGlobalState, tTrialPrevGlobalState,
                                                                         tLocalState, tPrevLocalState,
                                                                         tControl, 0.0);
-        Plato::update(1.0, tPrevGlobalState, 0.0, tTrialPrevGlobalState);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialPrevGlobalState);
+        Plato::blas1::update(1.0, tPrevGlobalState, 0.0, tTrialPrevGlobalState);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialPrevGlobalState);
         Plato::ScalarVector tVectorValueThree = aLocalVectorFuncInc.value(tGlobalState, tTrialPrevGlobalState,
                                                                           tLocalState, tPrevLocalState,
                                                                           tControl, 0.0);
-        Plato::update(1.0, tPrevGlobalState, 0.0, tTrialPrevGlobalState);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialPrevGlobalState);
+        Plato::blas1::update(1.0, tPrevGlobalState, 0.0, tTrialPrevGlobalState);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialPrevGlobalState);
         Plato::ScalarVector tVectorValueFour = aLocalVectorFuncInc.value(tGlobalState, tTrialPrevGlobalState,
                                                                          tLocalState, tPrevLocalState,
                                                                          tControl, 0.0);
@@ -895,7 +896,7 @@ test_partial_prev_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunction
         }, "compute error");
 
         Plato::Scalar tL1Error = 0.0;
-        Plato::local_sum(tErrorVector, tL1Error);
+        Plato::blas1::local_sum(tErrorVector, tL1Error);
 
         std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) 
                   << tEpsilon << std::setw(19)
@@ -928,33 +929,33 @@ test_partial_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<Si
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
-    Plato::random(0.5, 0.75, tHostControl);
+    Plato::blas1::random(0.5, 0.75, tHostControl);
     Kokkos::deep_copy(tControl, tHostControl);
 
     // Create global state workset
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
     auto tHostGlobalState = Kokkos::create_mirror(tGlobalState);
-    Plato::random(1, 5, tHostGlobalState);
+    Plato::blas1::random(1, 5, tHostGlobalState);
     Kokkos::deep_copy(tGlobalState, tHostGlobalState);
 
     // Create previous global state workset
     Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
     auto tHostPrevGlobalState = Kokkos::create_mirror(tPrevGlobalState);
-    Plato::random(1, 5, tHostPrevGlobalState);
+    Plato::blas1::random(1, 5, tHostPrevGlobalState);
     Kokkos::deep_copy(tPrevGlobalState, tHostPrevGlobalState);
 
     // Create local state workset
     const Plato::OrdinalType tTotalNumLocalDofs = tNumCells * tLocalDofsPerCell;
     Plato::ScalarVector tLocalState("Local State", tTotalNumLocalDofs);
     auto tHostLocalState = Kokkos::create_mirror(tLocalState);
-    Plato::random(1.0, 2.0, tHostLocalState);
+    Plato::blas1::random(1.0, 2.0, tHostLocalState);
     Kokkos::deep_copy(tLocalState, tHostLocalState);
 
     // Create previous local state workset
     Plato::ScalarVector tPrevLocalState("Previous Local State", tTotalNumLocalDofs);
     auto tHostPrevLocalState = Kokkos::create_mirror(tPrevLocalState);
-    Plato::random(0.1, 0.9, tHostPrevLocalState);
+    Plato::blas1::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
     Plato::ScalarArray3D tPartialC =
@@ -964,7 +965,7 @@ test_partial_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<Si
 
     Plato::ScalarVector tStep("local state step", tTotalNumLocalDofs); 
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.5, 1.0, tHostStep);
+    Plato::blas1::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
     Plato::ScalarVector tGradientDotStep = Plato::local_workset_matrix_vector_multiply(tPartialC, tStep);
 
@@ -982,23 +983,23 @@ test_partial_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<Si
         Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) /
                 std::pow(static_cast<Plato::Scalar>(10), tIndex);
         // four point finite difference approximation
-        Plato::update(1.0, tLocalState, 0.0, tTrialLocalState);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialLocalState);
+        Plato::blas1::update(1.0, tLocalState, 0.0, tTrialLocalState);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialLocalState);
         Plato::ScalarVector tVectorValueOne = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                         tTrialLocalState, tPrevLocalState,
                                                                         tControl, 0.0);
-        Plato::update(1.0, tLocalState, 0.0, tTrialLocalState);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialLocalState);
+        Plato::blas1::update(1.0, tLocalState, 0.0, tTrialLocalState);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialLocalState);
         Plato::ScalarVector tVectorValueTwo = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                         tTrialLocalState, tPrevLocalState,
                                                                         tControl, 0.0);
-        Plato::update(1.0, tLocalState, 0.0, tTrialLocalState);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialLocalState);
+        Plato::blas1::update(1.0, tLocalState, 0.0, tTrialLocalState);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialLocalState);
         Plato::ScalarVector tVectorValueThree = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                           tTrialLocalState, tPrevLocalState,
                                                                           tControl, 0.0);
-        Plato::update(1.0, tLocalState, 0.0, tTrialLocalState);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialLocalState);
+        Plato::blas1::update(1.0, tLocalState, 0.0, tTrialLocalState);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialLocalState);
         Plato::ScalarVector tVectorValueFour = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                          tTrialLocalState, tPrevLocalState,
                                                                          tControl, 0.0);
@@ -1023,7 +1024,7 @@ test_partial_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<Si
         }, "compute error");
 
         Plato::Scalar tL1Error = 0.0;
-        Plato::local_sum(tErrorVector, tL1Error);
+        Plato::blas1::local_sum(tErrorVector, tL1Error);
 
         std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) 
                   << tEpsilon << std::setw(19)
@@ -1056,33 +1057,33 @@ test_partial_prev_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionI
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
-    Plato::random(0.5, 0.75, tHostControl);
+    Plato::blas1::random(0.5, 0.75, tHostControl);
     Kokkos::deep_copy(tControl, tHostControl);
 
     // Create global state workset
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
     auto tHostGlobalState = Kokkos::create_mirror(tGlobalState);
-    Plato::random(1, 5, tHostGlobalState);
+    Plato::blas1::random(1, 5, tHostGlobalState);
     Kokkos::deep_copy(tGlobalState, tHostGlobalState);
 
     // Create previous global state workset
     Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
     auto tHostPrevGlobalState = Kokkos::create_mirror(tPrevGlobalState);
-    Plato::random(1, 5, tHostPrevGlobalState);
+    Plato::blas1::random(1, 5, tHostPrevGlobalState);
     Kokkos::deep_copy(tPrevGlobalState, tHostPrevGlobalState);
 
     // Create local state workset
     const Plato::OrdinalType tTotalNumLocalDofs = tNumCells * tLocalDofsPerCell;
     Plato::ScalarVector tLocalState("Local State", tTotalNumLocalDofs);
     auto tHostLocalState = Kokkos::create_mirror(tLocalState);
-    Plato::random(1.0, 2.0, tHostLocalState);
+    Plato::blas1::random(1.0, 2.0, tHostLocalState);
     Kokkos::deep_copy(tLocalState, tHostLocalState);
 
     // Create previous local state workset
     Plato::ScalarVector tPrevLocalState("Previous Local State", tTotalNumLocalDofs);
     auto tHostPrevLocalState = Kokkos::create_mirror(tPrevLocalState);
-    Plato::random(0.1, 0.9, tHostPrevLocalState);
+    Plato::blas1::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
     Plato::ScalarArray3D tPartialCP =
@@ -1092,7 +1093,7 @@ test_partial_prev_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionI
 
     Plato::ScalarVector tStep("previous local state step", tTotalNumLocalDofs); 
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.5, 1.0, tHostStep);
+    Plato::blas1::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
     Plato::ScalarVector tGradientDotStep = Plato::local_workset_matrix_vector_multiply(tPartialCP, tStep);
 
@@ -1110,23 +1111,23 @@ test_partial_prev_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionI
         Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) /
                 std::pow(static_cast<Plato::Scalar>(10), tIndex);
         // four point finite difference approximation
-        Plato::update(1.0, tPrevLocalState, 0.0, tTrialPrevLocalState);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialPrevLocalState);
+        Plato::blas1::update(1.0, tPrevLocalState, 0.0, tTrialPrevLocalState);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialPrevLocalState);
         Plato::ScalarVector tVectorValueOne = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                         tLocalState, tTrialPrevLocalState,
                                                                         tControl, 0.0);
-        Plato::update(1.0, tPrevLocalState, 0.0, tTrialPrevLocalState);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialPrevLocalState);
+        Plato::blas1::update(1.0, tPrevLocalState, 0.0, tTrialPrevLocalState);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialPrevLocalState);
         Plato::ScalarVector tVectorValueTwo = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                         tLocalState, tTrialPrevLocalState,
                                                                         tControl, 0.0);
-        Plato::update(1.0, tPrevLocalState, 0.0, tTrialPrevLocalState);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialPrevLocalState);
+        Plato::blas1::update(1.0, tPrevLocalState, 0.0, tTrialPrevLocalState);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialPrevLocalState);
         Plato::ScalarVector tVectorValueThree = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                           tLocalState, tTrialPrevLocalState,
                                                                           tControl, 0.0);
-        Plato::update(1.0, tPrevLocalState, 0.0, tTrialPrevLocalState);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialPrevLocalState);
+        Plato::blas1::update(1.0, tPrevLocalState, 0.0, tTrialPrevLocalState);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialPrevLocalState);
         Plato::ScalarVector tVectorValueFour = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                          tLocalState, tTrialPrevLocalState,
                                                                          tControl, 0.0);
@@ -1151,7 +1152,7 @@ test_partial_prev_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionI
         }, "compute error");
 
         Plato::Scalar tL1Error = 0.0;
-        Plato::local_sum(tErrorVector, tL1Error);
+        Plato::blas1::local_sum(tErrorVector, tL1Error);
 
         std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) 
                   << tEpsilon << std::setw(19)
@@ -1184,33 +1185,33 @@ test_partial_local_vect_func_inc_wrt_control(Omega_h::Mesh & aMesh, Plato::Local
     const Plato::OrdinalType tNumVerts = aMesh.nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
     auto tHostControl = Kokkos::create_mirror(tControl);
-    Plato::random(0.5, 0.75, tHostControl);
+    Plato::blas1::random(0.5, 0.75, tHostControl);
     Kokkos::deep_copy(tControl, tHostControl);
 
     // Create global state workset
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
     auto tHostGlobalState = Kokkos::create_mirror(tGlobalState);
-    Plato::random(1, 5, tHostGlobalState);
+    Plato::blas1::random(1, 5, tHostGlobalState);
     Kokkos::deep_copy(tGlobalState, tHostGlobalState);
 
     // Create previous global state workset
     Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
     auto tHostPrevGlobalState = Kokkos::create_mirror(tPrevGlobalState);
-    Plato::random(1, 5, tHostPrevGlobalState);
+    Plato::blas1::random(1, 5, tHostPrevGlobalState);
     Kokkos::deep_copy(tPrevGlobalState, tHostPrevGlobalState);
 
     // Create local state workset
     const Plato::OrdinalType tTotalNumLocalDofs = tNumCells * tLocalDofsPerCell;
     Plato::ScalarVector tLocalState("Local State", tTotalNumLocalDofs);
     auto tHostLocalState = Kokkos::create_mirror(tLocalState);
-    Plato::random(1.0, 2.0, tHostLocalState);
+    Plato::blas1::random(1.0, 2.0, tHostLocalState);
     Kokkos::deep_copy(tLocalState, tHostLocalState);
 
     // Create previous local state workset
     Plato::ScalarVector tPrevLocalState("Previous Local State", tTotalNumLocalDofs);
     auto tHostPrevLocalState = Kokkos::create_mirror(tPrevLocalState);
-    Plato::random(0.1, 0.9, tHostPrevLocalState);
+    Plato::blas1::random(0.1, 0.9, tHostPrevLocalState);
     Kokkos::deep_copy(tPrevLocalState, tHostPrevLocalState);
 
     Plato::ScalarArray3D tPartialZ =
@@ -1224,7 +1225,7 @@ test_partial_local_vect_func_inc_wrt_control(Omega_h::Mesh & aMesh, Plato::Local
 
     Plato::ScalarVector tStep("control step", tNumVerts); 
     auto tHostStep = Kokkos::create_mirror(tStep);
-    Plato::random(0.05, 0.1, tHostStep);
+    Plato::blas1::random(0.05, 0.1, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
     Plato::ScalarVector tGradientDotStep =
         Plato::control_workset_matrix_vector_multiply(tPartialZ, tStep, tEntryOrdinal, tTotalNumLocalDofs);
@@ -1243,23 +1244,23 @@ test_partial_local_vect_func_inc_wrt_control(Omega_h::Mesh & aMesh, Plato::Local
         Plato::Scalar tEpsilon = tEpsilon = static_cast<Plato::Scalar>(1) /
                 std::pow(static_cast<Plato::Scalar>(10), tIndex);
         // four point finite difference approximation
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(tEpsilon, tStep, 1.0, tTrialControl);
         Plato::ScalarVector tVectorValueOne = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                         tLocalState, tPrevLocalState,
                                                                         tTrialControl, 0.0);
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(-tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(-tEpsilon, tStep, 1.0, tTrialControl);
         Plato::ScalarVector tVectorValueTwo = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                         tLocalState, tPrevLocalState,
                                                                         tTrialControl, 0.0);
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         Plato::ScalarVector tVectorValueThree = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                           tLocalState, tPrevLocalState,
                                                                           tTrialControl, 0.0);
-        Plato::update(1.0, tControl, 0.0, tTrialControl);
-        Plato::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
+        Plato::blas1::update(1.0, tControl, 0.0, tTrialControl);
+        Plato::blas1::update(-2.0 * tEpsilon, tStep, 1.0, tTrialControl);
         Plato::ScalarVector tVectorValueFour = aLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                          tLocalState, tPrevLocalState,
                                                                          tTrialControl, 0.0);
@@ -1284,7 +1285,7 @@ test_partial_local_vect_func_inc_wrt_control(Omega_h::Mesh & aMesh, Plato::Local
         }, "compute error");
 
         Plato::Scalar tL1Error = 0.0;
-        Plato::local_sum(tErrorVector, tL1Error);
+        Plato::blas1::local_sum(tErrorVector, tL1Error);
 
         std::cout << std::right << std::scientific << std::setprecision(8) << std::setw(14) 
                   << tEpsilon << std::setw(19)

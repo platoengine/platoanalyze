@@ -12,6 +12,7 @@
 #include "ElasticModelFactory.hpp"
 
 #include "Simp.hpp"
+#include "BLAS1.hpp"
 #include "ToMap.hpp"
 #include "Strain.hpp"
 #include "WorksetBase.hpp"
@@ -78,7 +79,7 @@ private:
 
         this->readInputs(aInputParams);
 
-        Plato::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
+        Plato::blas1::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
     }
 
     /******************************************************************************//**
@@ -155,7 +156,7 @@ public:
             mAugLagPenaltyExpansionMultiplier(1.05),
             mLagrangeMultipliers("Lagrange Multipliers", aMesh.nelems())
     {
-        Plato::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
+        Plato::blas1::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
     }
 
     /******************************************************************************//**
@@ -226,7 +227,7 @@ public:
     void setLagrangeMultipliers(const Plato::ScalarVector & aInput)
     {
         assert(aInput.size() == mLagrangeMultipliers.size());
-        Plato::copy(aInput, mLagrangeMultipliers);
+        Plato::blas1::copy(aInput, mLagrangeMultipliers);
     }
 
     /******************************************************************************//**
@@ -439,7 +440,7 @@ public:
             tTotalMass(aCellOrdinal) = tCellMass * tCellMaterialDensity * tCellVolume * tCubWeight;
         },"Compute Structural Mass");
 
-        Plato::local_sum(tTotalMass, mMassNormalizationMultiplier);
+        Plato::blas1::local_sum(tTotalMass, mMassNormalizationMultiplier);
     }
 };
 // class AugLagStressCriterionGeneral

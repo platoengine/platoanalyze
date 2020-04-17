@@ -7,6 +7,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
+#include "BLAS1.hpp"
 #include "BLAS2.hpp"
 #include "NaturalBCs.hpp"
 #include "EssentialBCs.hpp"
@@ -207,9 +208,9 @@ public:
         { THROWERR("Elliptic VMS Problem: Essential Boundary Conditions Dofs array is empty.") }
 
         Plato::ScalarVector tBcValues("Dirichlet Values", mBcValues.size());
-        Plato::fill(0.0, tBcValues);
+        Plato::blas1::fill(0.0, tBcValues);
         if(mCurrentNewtonStep == static_cast<Plato::OrdinalType>(0))
-        { Plato::update(static_cast<Plato::Scalar>(1.), mBcValues, static_cast<Plato::Scalar>(0.), tBcValues); }
+        { Plato::blas1::update(static_cast<Plato::Scalar>(1.), mBcValues, static_cast<Plato::Scalar>(0.), tBcValues); }
 
         if(mJacobian->isBlockMatrix())
         {
@@ -235,7 +236,7 @@ public:
         { THROWERR("Elliptic VMS Problem: Essential Boundary Conditions Dofs array is empty.") }
 
         Plato::ScalarVector tBcValues("Dirichlet Values", mBcValues.size());
-        Plato::scale(static_cast<Plato::Scalar>(0.0), tBcValues);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(0.0), tBcValues);
 
         if(aMatrix->isBlockMatrix())
         {
@@ -272,9 +273,9 @@ public:
         {
             // compute the projected pressure gradient
             Plato::ScalarVector tState = Kokkos::subview(mGlobalState, tStepIndex, Kokkos::ALL());
-            Plato::fill(static_cast<Plato::Scalar>(0.0), tState);
-            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
-            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjectState);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tState);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjectState);
 
             // inner loop for load/time steps
             for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
@@ -287,7 +288,7 @@ public:
 
                 // compute the state solution
                 mResidual = mEqualityConstraint.value      (tState, mProjPGrad, aControl);
-                Plato::scale(static_cast<Plato::Scalar>(-1.0), mResidual);
+                Plato::blas1::scale(static_cast<Plato::Scalar>(-1.0), mResidual);
                 mJacobian = mEqualityConstraint.gradient_u (tState, mProjPGrad, aControl);
 
                 this->applyConstraints(mJacobian, mResidual);
@@ -295,11 +296,11 @@ public:
                 Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobian, tStateIncrement, mResidual);
 
                 // update the state with the new increment
-                Plato::update(static_cast<Plato::Scalar>(1.0), tStateIncrement, static_cast<Plato::Scalar>(1.0), tState);
+                Plato::blas1::update(static_cast<Plato::Scalar>(1.0), tStateIncrement, static_cast<Plato::Scalar>(1.0), tState);
 
                 // copy projection state
-                Plato::extract<SimplexPhysics::mNumDofsPerNode,
-                               SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tState, mProjectState);
+                Plato::blas1::extract<SimplexPhysics::mNumDofsPerNode,
+                                      SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tState, mProjectState);
             }
 
             mResidual = mEqualityConstraint.value(tState, mProjPGrad, aControl);
@@ -429,14 +430,14 @@ public:
         {
             // compute dfdu: partial of objective wrt u
             auto t_df_du = mObjective->gradient_u(aGlobalState, aControl, mTimeStep, tStepIndex);
-            Plato::scale(static_cast<Plato::Scalar>(-1), t_df_du);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_df_du);
 
             // compute nodal projection of pressure gradient
             Plato::ScalarVector tStateAtStepK = Kokkos::subview(aGlobalState, tStepIndex, Kokkos::ALL());
-            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
             // extract projection state
-            Plato::extract<SimplexPhysics::mNumDofsPerNode,
-                           SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tStateAtStepK, mProjectState);
+            Plato::blas1::extract<SimplexPhysics::mNumDofsPerNode,
+                                  SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tStateAtStepK, mProjectState);
             mProjResidual = mStateProjection.value      (mProjPGrad, mProjectState, aControl);
             mProjJacobian = mStateProjection.gradient_u (mProjPGrad, mProjectState, aControl);
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPGrad, mProjResidual);
@@ -460,9 +461,9 @@ public:
             Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobian, tLambda, t_df_du);
 
             // compute adjoint variable for projection equation
-            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjResidual);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjResidual);
             Plato::MatrixTimesVectorPlusVector(t_dg_dPI_T, tLambda, mProjResidual);
-            Plato::scale(static_cast<Plato::Scalar>(-1), mProjResidual);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mProjResidual);
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mEta, mProjResidual);
 
             // compute dgdz: partial of PDE wrt state.
@@ -514,16 +515,16 @@ public:
         {
             // compute dfdu: partial of objective wrt u
             auto t_df_du = mObjective->gradient_u(aGlobalState, aControl, mTimeStep, tStepIndex);
-            Plato::scale(static_cast<Plato::Scalar>(-1), t_df_du);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_df_du);
 
             // compute nodal projection of pressure gradient
             Plato::ScalarVector tStateAtStepK = Kokkos::subview(aGlobalState, tStepIndex, Kokkos::ALL());
-            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
             auto mProjResidual = mStateProjection.value      (mProjPGrad, tStateAtStepK, aControl);
             auto mProjJacobian = mStateProjection.gradient_u (mProjPGrad, tStateAtStepK, aControl);
             // extract projection state
-            Plato::extract<SimplexPhysics::mNumDofsPerNode,
-                           SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tStateAtStepK, mProjectState);
+            Plato::blas1::extract<SimplexPhysics::mNumDofsPerNode,
+                                  SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tStateAtStepK, mProjectState);
             mProjResidual = mStateProjection.value      (mProjPGrad, mProjectState, aControl);
             mProjJacobian = mStateProjection.gradient_u (mProjPGrad, mProjectState, aControl);
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPGrad, mProjResidual);
@@ -547,9 +548,9 @@ public:
             Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobian, tLambda, t_df_du);
 
             // compute adjoint variable for projection equation
-            Plato::fill(static_cast<Plato::Scalar>(0.0), mProjResidual);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjResidual);
             Plato::MatrixTimesVectorPlusVector(t_dg_dPI_T, tLambda, mProjResidual);
-            Plato::scale(static_cast<Plato::Scalar>(-1), mProjResidual);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mProjResidual);
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mEta, mProjResidual);
 
             // compute dgdx: partial of PDE wrt configuration

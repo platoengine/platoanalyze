@@ -9,6 +9,7 @@
 #include <Omega_h_vector.hpp>
 #include <Omega_h_eigen.hpp>
 
+#include "BLAS1.hpp"
 #include "WorksetBase.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "ScalarFunctionBaseFactory.hpp"
@@ -18,7 +19,6 @@
 #include "WeightedSumFunction.hpp"
 #include "MassMoment.hpp"
 #include "AnalyzeMacros.hpp"
-#include "PlatoMathHelpers.hpp"
 
 #include <Teuchos_ParameterList.hpp>
 
@@ -833,18 +833,18 @@ public:
 
         Plato::Scalar tXmin;
         Plato::Scalar tXmax;
-        Plato::min(tXCoordinates, tXmin);
-        Plato::max(tXCoordinates, tXmax);
+        Plato::blas1::min(tXCoordinates, tXmin);
+        Plato::blas1::max(tXCoordinates, tXmax);
 
         Plato::Scalar tYmin;
         Plato::Scalar tYmax;
-        Plato::min(tYCoordinates, tYmin);
-        Plato::max(tYCoordinates, tYmax);
+        Plato::blas1::min(tYCoordinates, tYmin);
+        Plato::blas1::max(tYCoordinates, tYmax);
 
         Plato::Scalar tZmin;
         Plato::Scalar tZmax;
-        Plato::min(tZCoordinates, tZmin);
-        Plato::max(tZCoordinates, tZmax);
+        Plato::blas1::min(tZCoordinates, tZmin);
+        Plato::blas1::max(tZCoordinates, tZmax);
 
         mMeshExtentX = std::abs(tXmax - tXmin);
         mMeshExtentY = std::abs(tYmax - tYmin);

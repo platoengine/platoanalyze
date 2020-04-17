@@ -2166,7 +2166,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
     // 4. Solve problem
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
 
     std::vector<std::vector<Plato::Scalar>> tGold =
@@ -2312,7 +2312,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     // 4. Solution
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
@@ -2485,7 +2485,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 4. Solution
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results
@@ -2658,7 +2658,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 4. Solution
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 5. Test results - test only final time step
@@ -2830,7 +2830,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     // 4. Solution
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls);
 
     // 6. Output Data
@@ -2947,7 +2947,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
     // 4. Evaluate Objective Function
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
@@ -3195,7 +3195,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
     // 4. Evaluate Objective Function
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
@@ -3448,7 +3448,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
     // 4. Evaluate Objective Function
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
@@ -3696,7 +3696,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
     // 4. Evaluate Objective Function
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);

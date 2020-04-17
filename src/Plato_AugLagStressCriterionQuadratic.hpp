@@ -5,6 +5,7 @@
 
 #include "Simp.hpp"
 #include "ToMap.hpp"
+#include "BLAS1.hpp"
 #include "WorksetBase.hpp"
 #include "SimplexFadTypes.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -63,7 +64,7 @@ private:
     {
         this->readInputs(aInputParams);
 
-        Plato::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
+        Plato::blas1::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
     }
 
     /******************************************************************************//**
@@ -137,7 +138,7 @@ public:
             mLocalMeasureEvaluationType(nullptr),
             mLocalMeasurePODType(nullptr)
     {
-        Plato::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
+        Plato::blas1::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
     }
 
     /******************************************************************************//**
@@ -202,7 +203,7 @@ public:
     void setLagrangeMultipliers(const Plato::ScalarVector & aInput)
     {
         assert(aInput.size() == mLagrangeMultipliers.size());
-        Plato::copy(aInput, mLagrangeMultipliers);
+        Plato::blas1::copy(aInput, mLagrangeMultipliers);
     }
 
     /******************************************************************************//**

@@ -6,8 +6,7 @@
 //
 //
 
-#ifndef CRS_LINEAR_PROBLEM_HPP
-#define CRS_LINEAR_PROBLEM_HPP
+#pragma once
 
 #include "alg/CrsMatrix.hpp"
 #include <Kokkos_Core.hpp>
@@ -15,7 +14,8 @@
 namespace Plato {
 
 template <class Ordinal>
-class CrsLinearProblem {
+class CrsLinearProblem
+{
  private:
   typedef Kokkos::View<Scalar *, MemSpace>          Vector;
   typedef Kokkos::View<Scalar **, Kokkos::LayoutRight, MemSpace>         MultiVector;
@@ -26,6 +26,7 @@ class CrsLinearProblem {
  public:
   CrsLinearProblem(const Matrix &Aa, Vector &ex, const Vector &be)
       : _A(Aa), _x(ex), _b(be) {}
+  virtual ~CrsLinearProblem(){}
 
   Matrix &A() { return _A; }
   Vector &b() { return _b; }
@@ -35,7 +36,8 @@ class CrsLinearProblem {
   // concrete subclasses should know how to solve:
   virtual int solve() = 0;
 };
+// class CrsLinearProblem
 
-}  // namespace Plato
+}
+// namespace Plato
 
-#endif
