@@ -8,6 +8,7 @@
 
 #include "PlatoTestHelpers.hpp"
 
+#include "BLAS1.hpp"
 #include "Plato_Diagnostics.hpp"
 #include "ScalarFunctionBase.hpp"
 #include "WeightedSumFunction.hpp"
@@ -36,12 +37,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassInsteadOfVolume2D)
     const Plato::Scalar tPseudoDensity = 0.8;
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(tPseudoDensity, tControl);
+    Plato::blas1::fill(tPseudoDensity, tControl);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
 
     // ALLOCATE PLATO CRITERION
     Plato::DataMap tDataMap;
@@ -91,12 +92,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassInsteadOfVolume3D)
     const Plato::Scalar tPseudoDensity = 0.8;
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(tPseudoDensity, tControl);
+    Plato::blas1::fill(tPseudoDensity, tControl);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
 
     // ALLOCATE PLATO CRITERION
     Plato::DataMap tDataMap;
@@ -140,12 +141,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3D)
     const Plato::Scalar tPseudoDensity = 0.8;
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(tPseudoDensity, tControl);
+    Plato::blas1::fill(tPseudoDensity, tControl);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
 
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
@@ -198,12 +199,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3DNormalized)
     const Plato::Scalar tPseudoDensity = 0.8;
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(tPseudoDensity, tControl);
+    Plato::blas1::fill(tPseudoDensity, tControl);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
 
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
@@ -259,12 +260,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesGradZ_3D)
     const Plato::Scalar tPseudoDensity = 0.8;
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(tPseudoDensity, tControl);
+    Plato::blas1::fill(tPseudoDensity, tControl);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
 
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
@@ -307,12 +308,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesGradU_3D) // All state de
     const Plato::Scalar tPseudoDensity = 0.8;
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(tPseudoDensity, tControl);
+    Plato::blas1::fill(tPseudoDensity, tControl);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
 
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
