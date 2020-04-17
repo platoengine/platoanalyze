@@ -3200,14 +3200,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tObjValue = tPlasticityProblem.constraintValue(tControls, tSolution);
-    TEST_FLOATING_EQUALITY(tObjValue, -2.26875, tTolerance);
+    TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
 
     auto tObjGrad = tPlasticityProblem.constraintGradient(tControls, tSolution);
     std::vector<Plato::Scalar> tGold = 
         {
-         -3.820080e-01, -5.093440e-01, -1.273360e-01, -7.640161e-01, -2.546720e-01, -1.273360e-01, -2.546720e-01, -1.273360e-01, -5.093440e-01,
-         -7.640161e-01, -2.546720e-01, -1.273360e-01, -2.546720e-01, -1.528032e+00, -7.640161e-01, -5.093440e-01, -7.640161e-01, -5.093440e-01,
-         -3.820080e-01, -5.093440e-01, -7.640161e-01, -7.640161e-01, -2.546720e-01, -1.273360e-01, -2.546720e-01, -5.093440e-01, -1.273360e-01
+         -0.0869418, -0.115922, -0.0289806, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.0289806, -0.115922,
+         -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.347767, -0.173884, -0.115922, -0.173884, -0.115922,
+         -0.0869418, -0.115922, -0.173884, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.115922, -0.0289806
         };
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
@@ -3701,14 +3701,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tObjValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
-    TEST_FLOATING_EQUALITY(tObjValue, -2.26875, tTolerance);
+    TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
 
     auto tObjGrad = tPlasticityProblem.objectiveGradient(tControls, tSolution);
     std::vector<Plato::Scalar> tGold = 
         {
-         -3.820080e-01, -5.093440e-01, -1.273360e-01, -7.640161e-01, -2.546720e-01, -1.273360e-01, -2.546720e-01, -1.273360e-01, -5.093440e-01,
-         -7.640161e-01, -2.546720e-01, -1.273360e-01, -2.546720e-01, -1.528032e+00, -7.640161e-01, -5.093440e-01, -7.640161e-01, -5.093440e-01,
-         -3.820080e-01, -5.093440e-01, -7.640161e-01, -7.640161e-01, -2.546720e-01, -1.273360e-01, -2.546720e-01, -5.093440e-01, -1.273360e-01
+         -0.0869418, -0.115922, -0.0289806, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.0289806, -0.115922,
+         -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.347767, -0.173884, -0.115922, -0.173884, -0.115922,
+         -0.0869418, -0.115922, -0.173884, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.115922, -0.0289806
         };
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
