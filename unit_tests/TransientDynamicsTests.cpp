@@ -99,7 +99,7 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
 
   int tNumDofs = cSpaceDim*tMesh->nverts();
   Plato::ScalarVector tControl("control", tNumDofs);
-  Plato::fill(1.0, tControl);
+  Plato::blas1::fill(1.0, tControl);
 
 
   /*****************************************************
@@ -274,7 +274,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_NoMass )
 
   int tNumDofs = cSpaceDim*tMesh->nverts();
   Plato::ScalarVector tControl("control", tNumDofs);
-  Plato::fill(1.0, tControl);
+  Plato::blas1::fill(1.0, tControl);
 
   // create mesh based displacement from host data
   //
@@ -286,10 +286,10 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_NoMass )
   auto tU = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
 
   Plato::ScalarVector tV("Velocity", tNumDofs);
-  Plato::fill(0.0, tV);
+  Plato::blas1::fill(0.0, tV);
 
   Plato::ScalarVector tA("Acceleration", tNumDofs);
-  Plato::fill(1000.0, tA);
+  Plato::blas1::fill(1000.0, tA);
 
   auto tTimeStep = tInputParams->sublist("Time Integration").get<Plato::Scalar>("Time Step");
 
@@ -512,7 +512,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_WithMass )
 
   int tNumDofs = cSpaceDim*tMesh->nverts();
   Plato::ScalarVector tControl("control", tNumDofs);
-  Plato::fill(1.0, tControl);
+  Plato::blas1::fill(1.0, tControl);
 
   // create mesh based displacement from host data
   //
@@ -524,10 +524,10 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_WithMass )
   auto tU = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
 
   Plato::ScalarVector tV("Velocity", tNumDofs);
-  Plato::fill(0.0, tV);
+  Plato::blas1::fill(0.0, tV);
 
   Plato::ScalarVector tA("Acceleration", tNumDofs);
-  Plato::fill(1000.0, tA);
+  Plato::blas1::fill(1000.0, tA);
 
   auto tTimeStep = tInputParams->sublist("Time Integration").get<Plato::Scalar>("Time Step");
 
@@ -727,22 +727,22 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, NewmarkIntegrator )
   Plato::Scalar tU_Prev_val = 3.0, tV_Prev_val = 2.0, tA_Prev_val = 1.0;
 
   Plato::ScalarVector tU("Displacement", tNumDofs);
-  Plato::fill(tU_val, tU);
+  Plato::blas1::fill(tU_val, tU);
 
   Plato::ScalarVector tV("Velocity", tNumDofs);
-  Plato::fill(tV_val, tV);
+  Plato::blas1::fill(tV_val, tV);
 
   Plato::ScalarVector tA("Acceleration", tNumDofs);
-  Plato::fill(tA_val, tA);
+  Plato::blas1::fill(tA_val, tA);
 
   Plato::ScalarVector tU_Prev("Previous Displacement", tNumDofs);
-  Plato::fill(tU_Prev_val, tU_Prev);
+  Plato::blas1::fill(tU_Prev_val, tU_Prev);
 
   Plato::ScalarVector tV_Prev("Previous Velocity", tNumDofs);
-  Plato::fill(tV_Prev_val, tV_Prev);
+  Plato::blas1::fill(tV_Prev_val, tV_Prev);
 
   Plato::ScalarVector tA_Prev("Previous Acceleration", tNumDofs);
-  Plato::fill(tA_Prev_val, tA_Prev);
+  Plato::blas1::fill(tA_Prev_val, tA_Prev);
 
   auto tTimeStep = tIntegratorParams.get<Plato::Scalar>("Time Step");
   auto tGamma    = tIntegratorParams.get<Plato::Scalar>("Newmark Gamma");
@@ -929,7 +929,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
   auto tNumSteps = tInputParams->sublist("Time Integration").get<int>("Number Time Steps");
 
   Plato::ScalarVector tControl("control", tNumDofs);
-  Plato::fill(1.0, tControl);
+  Plato::blas1::fill(1.0, tControl);
 
   Plato::ScalarMultiVector tU("Displacement", tNumSteps, tNumDofs);
   Plato::ScalarMultiVector tV("Velocity",     tNumSteps, tNumDofs);

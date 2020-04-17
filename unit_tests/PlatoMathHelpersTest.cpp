@@ -17,6 +17,7 @@
 #include "PlatoTestHelpers.hpp"
 #include "Teuchos_UnitTestHarness.hpp"
 
+#include "BLAS1.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoMathFunctors.hpp"
 #include "Mechanics.hpp"
@@ -968,7 +969,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_InverseMultiply_1)
   PlatoDevel::setMatrixData(tMatrix, tRowMap, tColMap, tValues);
 
   Plato::ScalarVector tDiagonals("diagonals", 12);
-  Plato::fill( 1.0, tDiagonals ); 
+  Plato::blas1::fill( 1.0, tDiagonals );
   
   PlatoDevel::InverseMultiply( tMatrix, tDiagonals );
   std::vector<Plato::Scalar> tGoldMatrixEntries =
@@ -999,7 +1000,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_InverseMultiply_2)
   PlatoDevel::setMatrixData(tMatrix, tRowMap, tColMap, tValues);
 
   Plato::ScalarVector tDiagonals("diagonals", 12);
-  Plato::fill( 2.0, tDiagonals ); 
+  Plato::blas1::fill( 2.0, tDiagonals );
   
   PlatoDevel::InverseMultiply( tMatrix, tDiagonals );
   std::vector<Plato::Scalar> tGoldMatrixEntries =
@@ -1226,7 +1227,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_CondenseMatrix_2)
   Plato::ScalarVector N("project p grad", tProjector->size());
   Plato::ScalarVector z("control",        tNverts);
   Plato::ScalarVector p("nodal pressure", tNverts);
-  Plato::fill(1.0, z);
+  Plato::blas1::fill(1.0, z);
 
   //                                        u, n, z
   auto t_dg_du_T = tResidual->gradient_u_T (U, N, z);
@@ -1492,11 +1493,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_dot)
 {
   constexpr Plato::OrdinalType tNumElems = 10;
   Plato::ScalarVector tVecA("Vec A", tNumElems);
-  Plato::fill(1.0, tVecA);
+  Plato::blas1::fill(1.0, tVecA);
   Plato::ScalarVector tVecB("Vec B", tNumElems);
-  Plato::fill(2.0, tVecB);
+  Plato::blas1::fill(2.0, tVecB);
 
-  const Plato::Scalar tOutput = Plato::dot(tVecA, tVecB);
+  const Plato::Scalar tOutput = Plato::blas1::dot(tVecA, tVecB);
 
   constexpr Plato::Scalar tTolerance = 1e-4;
   TEST_FLOATING_EQUALITY(20., tOutput, tTolerance);
@@ -1506,9 +1507,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_norm)
 {
   constexpr Plato::OrdinalType tNumElems = 10;
   Plato::ScalarVector tVecA("Vec A", tNumElems);
-  Plato::fill(1.0, tVecA);
+  Plato::blas1::fill(1.0, tVecA);
 
-  const Plato::Scalar tOutput = Plato::norm(tVecA);
+  const Plato::Scalar tOutput = Plato::blas1::norm(tVecA);
   constexpr Plato::Scalar tTolerance = 1e-6;
   TEST_FLOATING_EQUALITY(3.16227766016838, tOutput, tTolerance);
 }
@@ -1517,10 +1518,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_sum)
 {
   constexpr Plato::OrdinalType tNumElems = 10;
   Plato::ScalarVector tVecA("Vec", tNumElems);
-  Plato::fill(1.0, tVecA);
+  Plato::blas1::fill(1.0, tVecA);
 
   Plato::Scalar tOutput = 0.0;
-  Plato::local_sum(tVecA, tOutput);
+  Plato::blas1::local_sum(tVecA, tOutput);
 
   constexpr Plato::Scalar tTolerance = 1e-4;
   TEST_FLOATING_EQUALITY(10., tOutput, tTolerance);
@@ -1537,7 +1538,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_fill)
   int numVerts = mesh->nverts();
   
   Plato::ScalarVector tSomeVector("some vector", numVerts);
-  Plato::fill(2.0, tSomeVector);
+  Plato::blas1::fill(2.0, tSomeVector);
 
   auto tSomeVectorHost = Kokkos::create_mirror_view(tSomeVector);
   Kokkos::deep_copy(tSomeVectorHost, tSomeVector);
@@ -1556,10 +1557,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_copy)
   int numVerts = mesh->nverts();
   
   Plato::ScalarVector tSomeVector("some vector", numVerts);
-  Plato::fill(2.0, tSomeVector);
+  Plato::blas1::fill(2.0, tSomeVector);
 
   Plato::ScalarVector tSomeOtherVector("some other vector", numVerts);
-  Plato::copy(tSomeVector, tSomeOtherVector);
+  Plato::blas1::copy(tSomeVector, tSomeOtherVector);
 
   auto tSomeVectorHost = Kokkos::create_mirror_view(tSomeVector);
   Kokkos::deep_copy(tSomeVectorHost, tSomeVector);
@@ -1580,8 +1581,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_scale)
   int numVerts = mesh->nverts();
   
   Plato::ScalarVector tSomeVector("some vector", numVerts);
-  Plato::fill(1.0, tSomeVector);
-  Plato::scale(2.0, tSomeVector);
+  Plato::blas1::fill(1.0, tSomeVector);
+  Plato::blas1::scale(2.0, tSomeVector);
 
   auto tSomeVectorHost = Kokkos::create_mirror_view(tSomeVector);
   Kokkos::deep_copy(tSomeVectorHost, tSomeVector);
@@ -1601,9 +1602,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_update)
   
   Plato::ScalarVector tVector_A("vector a", numVerts);
   Plato::ScalarVector tVector_B("vector b", numVerts);
-  Plato::fill(1.0, tVector_A);
-  Plato::fill(2.0, tVector_B);
-  Plato::update(2.0, tVector_A, 3.0, tVector_B);
+  Plato::blas1::fill(1.0, tVector_A);
+  Plato::blas1::fill(2.0, tVector_B);
+  Plato::blas1::update(2.0, tVector_A, 3.0, tVector_B);
 
   auto tVector_B_Host = Kokkos::create_mirror_view(tVector_B);
   Kokkos::deep_copy(tVector_B_Host, tVector_B);

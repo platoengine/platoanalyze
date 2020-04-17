@@ -28,6 +28,7 @@
 #include <alg/CrsLinearProblem.hpp>
 #include <alg/ParallelComm.hpp>
 #include <Simp.hpp>
+#include <BLAS1.hpp>
 #include <ApplyWeighting.hpp>
 #include <SimplexFadTypes.hpp>
 #include <WorksetBase.hpp>
@@ -707,7 +708,7 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, StabilizedThermomechResidual3D )
   );
 
   // copy projection state
-  Plato::extract<Plato::StabilizedThermomechanics<spaceDim>::mNumDofsPerNode,
+  Plato::blas1::extract<Plato::StabilizedThermomechanics<spaceDim>::mNumDofsPerNode,
                  Plato::StabilizedThermomechanics<spaceDim>::ProjectorT::SimplexT::mProjectionDof>(tState, tProjectState);
 
 
@@ -896,8 +897,8 @@ TEUCHOS_UNIT_TEST( PlatoMathFunctors, RowSumSolve )
   Plato::ScalarVector tProjectState ("state",     tNumNodes);
   Plato::ScalarVector tProjPGrad    ("ProjPGrad", tNumNodes*spaceDim);
   Plato::ScalarVector tControl      ("Control",   tNumNodes);
-  Plato::fill( 1.0, tControl );
-  Plato::fill( 0.0, tProjPGrad );
+  Plato::blas1::fill( 1.0, tControl );
+  Plato::blas1::fill( 0.0, tProjPGrad );
   Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumNodes), LAMBDA_EXPRESSION(const int & aNodeOrdinal)
   {
      tProjectState(aNodeOrdinal) = 1.0*aNodeOrdinal;

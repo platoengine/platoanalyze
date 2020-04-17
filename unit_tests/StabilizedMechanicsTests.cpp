@@ -175,7 +175,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     // 4. Solve problem
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
-    Plato::fill(1.0, tControls);
+    Plato::blas1::fill(1.0, tControls);
     auto tSolution = tEllipticVMSProblem.solution(tControls);
 
     // 5. Test Results

@@ -11,6 +11,7 @@
 
 #include "Plato_Diagnostics.hpp"
 
+#include "BLAS1.hpp"
 #include "Strain.hpp"
 #include "LocalVectorFunctionInc.hpp"
 #include "J2PlasticityLocalResidual.hpp"
@@ -1015,13 +1016,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(0.9, tControl);
+    Plato::blas1::fill(0.9, tControl);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
     // Create global state workset
     const Plato::OrdinalType tNumNodalDofs = tDofsPerCell * tNumCells;
     Plato::ScalarVector tGlobalState("global state", tNumNodalDofs);
-    Plato::fill(0.0, tGlobalState);
+    Plato::blas1::fill(0.0, tGlobalState);
 
     Plato::OrdinalType tDispX = 0;
     Plato::OrdinalType tDispY = 1;
@@ -1039,7 +1040,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     // Create local state workset
     const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
     Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
-    Plato::fill(0.0, tLocalState);
+    Plato::blas1::fill(0.0, tLocalState);
     Plato::OrdinalType tPlasticStrainXX = 2;
     Plato::OrdinalType tPlasticStrainYY = 3;
     Plato::OrdinalType tPlasticStrainXY = 4;
@@ -1131,13 +1132,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(0.9, tControl);
+    Plato::blas1::fill(0.9, tControl);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
     // Create global state workset
     const Plato::OrdinalType tNumNodalDofs = tDofsPerCell * tNumCells;
     Plato::ScalarVector tGlobalState("global state", tNumNodalDofs);
-    Plato::fill(0.0, tGlobalState);
+    Plato::blas1::fill(0.0, tGlobalState);
 
     Plato::OrdinalType tDispX = 0;
     Plato::OrdinalType tDispY = 1;
@@ -1151,7 +1152,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     // Create local state workset
     const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
     Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
-    Plato::fill(0.0, tLocalState);
+    Plato::blas1::fill(0.0, tLocalState);
     Plato::OrdinalType tPlasticStrainXX = 2;
     Plato::OrdinalType tPlasticStrainYY = 3;
     Plato::OrdinalType tPlasticStrainXY = 4;
@@ -1243,13 +1244,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(0.9, tControl);
+    Plato::blas1::fill(0.9, tControl);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
     // Create global state workset
     const Plato::OrdinalType tNumNodalDofs = tDofsPerCell * tNumCells;
     Plato::ScalarVector tGlobalState("global state", tNumNodalDofs);
-    Plato::fill(0.0, tGlobalState);
+    Plato::blas1::fill(0.0, tGlobalState);
 
     Plato::OrdinalType tDispX = 0;
     Plato::OrdinalType tDispY = 1;
@@ -1273,7 +1274,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     // Create local state workset
     const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
     Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
-    Plato::fill(0.0, tLocalState);
+    Plato::blas1::fill(0.0, tLocalState);
     Plato::OrdinalType tPlasticStrainXX = 2;
     Plato::OrdinalType tPlasticStrainYY = 3;
     Plato::OrdinalType tPlasticStrainZZ = 4;
@@ -1373,13 +1374,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(0.9, tControl);
+    Plato::blas1::fill(0.9, tControl);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
     // Create global state workset
     const Plato::OrdinalType tNumNodalDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("global state", tNumNodalDofs);
-    Plato::fill(0.0, tGlobalState);
+    Plato::blas1::fill(0.0, tGlobalState);
 
     Plato::OrdinalType tDispX = 0;
     Plato::OrdinalType tDispY = 1;
@@ -1399,7 +1400,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     // Create local state workset
     const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
     Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
-    Plato::fill(0.0, tLocalState);
+    Plato::blas1::fill(0.0, tLocalState);
     Plato::OrdinalType tPlasticStrainXX = 2;
     Plato::OrdinalType tPlasticStrainYY = 3;
     Plato::OrdinalType tPlasticStrainZZ = 4;
@@ -1948,12 +1949,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
     // Create control
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(0.9, tControl);
+    Plato::blas1::fill(0.9, tControl);
 
     // Create global state
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
-    Plato::fill(0.0, tGlobalState);
+    Plato::blas1::fill(0.0, tGlobalState);
     Plato::OrdinalType tDispX = 0;
     Plato::OrdinalType tDispY = 1;
     Plato::OrdinalType tDispZ = 2;
@@ -1969,12 +1970,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
 
     // Create previous global state
     Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
-    Plato::fill(0.0, tPrevGlobalState);
+    Plato::blas1::fill(0.0, tPrevGlobalState);
 
     // Create local state
     const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
     Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
-    Plato::fill(0.0, tLocalState);
+    Plato::blas1::fill(0.0, tLocalState);
     Plato::OrdinalType tAccumulatedPlasticStrain   = 0;
     Plato::OrdinalType tPlasticMultiplierIncrement = 1;
     Plato::OrdinalType tPlasticStrainXX = 2;
@@ -2007,7 +2008,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
     // Create previous local state
     
     Plato::ScalarVector tPrevLocalState("Previous Local State", tNumLocalDofs);
-    Plato::fill(0.0, tPrevLocalState);
+    Plato::blas1::fill(0.0, tPrevLocalState);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tAccumulatedPlasticStrain, 0.2);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tPlasticMultiplierIncrement, 0.75);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tPlasticStrainXX, 0.0);
@@ -2088,12 +2089,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
     // Create control
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(0.9, tControl);
+    Plato::blas1::fill(0.9, tControl);
 
     // Create global state
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
-    Plato::fill(0.0, tGlobalState);
+    Plato::blas1::fill(0.0, tGlobalState);
     Plato::OrdinalType tDispX = 0;
     Plato::OrdinalType tDispY = 1;
     set_dof_value_in_vector_on_boundary_2D(*tMesh, "x1", tGlobalState, tDofsPerNode, tDispY, 0.1);
@@ -2101,12 +2102,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
 
     // Create previous global state
     Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
-    Plato::fill(0.0, tPrevGlobalState);
+    Plato::blas1::fill(0.0, tPrevGlobalState);
 
     // Create local state
     const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
     Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
-    Plato::fill(0.0, tLocalState);
+    Plato::blas1::fill(0.0, tLocalState);
     Plato::OrdinalType tAccumulatedPlasticStrain   = 0;
     Plato::OrdinalType tPlasticMultiplierIncrement = 1;
     Plato::OrdinalType tPlasticStrainXX = 2;
@@ -2131,7 +2132,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
     // Create previous local state
     
     Plato::ScalarVector tPrevLocalState("Previous Local State", tNumLocalDofs);
-    Plato::fill(0.0, tPrevLocalState);
+    Plato::blas1::fill(0.0, tPrevLocalState);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tAccumulatedPlasticStrain, 0.2);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tPlasticMultiplierIncrement, 0.75);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tPlasticStrainXX, 0.0);
@@ -2208,12 +2209,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState3D)
     // Create control
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(0.9, tControl);
+    Plato::blas1::fill(0.9, tControl);
 
     // Create global state
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
-    Plato::fill(0.0, tGlobalState);
+    Plato::blas1::fill(0.0, tGlobalState);
     Plato::OrdinalType tDispX = 0;
     Plato::OrdinalType tDispY = 1;
     Plato::OrdinalType tDispZ = 2;
@@ -2226,12 +2227,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState3D)
 
     // Create previous global state
     Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
-    Plato::fill(0.0, tPrevGlobalState);
+    Plato::blas1::fill(0.0, tPrevGlobalState);
 
     // Create local state
     const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
     Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
-    Plato::fill(0.0, tLocalState);
+    Plato::blas1::fill(0.0, tLocalState);
     Plato::OrdinalType tAccumulatedPlasticStrain   = 0;
     Plato::OrdinalType tPlasticMultiplierIncrement = 1;
     Plato::OrdinalType tPlasticStrainXX = 2;
@@ -2250,7 +2251,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState3D)
     // Create previous local state
     
     Plato::ScalarVector tPrevLocalState("Previous Local State", tNumLocalDofs);
-    Plato::fill(0.0, tPrevLocalState);
+    Plato::blas1::fill(0.0, tPrevLocalState);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tAccumulatedPlasticStrain, 0.2);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tPlasticMultiplierIncrement, 0.75);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tPlasticStrainXX, 0.0);
@@ -2331,12 +2332,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState2D)
     // Create control
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(0.9, tControl);
+    Plato::blas1::fill(0.9, tControl);
 
     // Create global state
     const Plato::OrdinalType tTotalNumDofs = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tGlobalState("Global State", tTotalNumDofs);
-    Plato::fill(0.0, tGlobalState);
+    Plato::blas1::fill(0.0, tGlobalState);
     Plato::OrdinalType tDispX = 0;
     Plato::OrdinalType tDispY = 1;
     set_dof_value_in_vector_on_boundary_2D(*tMesh, "x1", tGlobalState, tDofsPerNode, tDispY, 0.2);
@@ -2344,12 +2345,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState2D)
 
     // Create previous global state
     Plato::ScalarVector tPrevGlobalState("Previous Global State", tTotalNumDofs);
-    Plato::fill(0.0, tPrevGlobalState);
+    Plato::blas1::fill(0.0, tPrevGlobalState);
 
     // Create local state
     const Plato::OrdinalType tNumLocalDofs = tNumLocalDofsPerCell * tNumCells;
     Plato::ScalarVector tLocalState("local state", tNumLocalDofs);
-    Plato::fill(0.0, tLocalState);
+    Plato::blas1::fill(0.0, tLocalState);
     Plato::OrdinalType tAccumulatedPlasticStrain   = 0;
     Plato::OrdinalType tPlasticMultiplierIncrement = 1;
     Plato::OrdinalType tPlasticStrainXX = 2;
@@ -2364,7 +2365,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState2D)
     // Create previous local state
     
     Plato::ScalarVector tPrevLocalState("Previous Local State", tNumLocalDofs);
-    Plato::fill(0.0, tPrevLocalState);
+    Plato::blas1::fill(0.0, tPrevLocalState);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tAccumulatedPlasticStrain, 0.2);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tPlasticMultiplierIncrement, 0.75);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tPlasticStrainXX, 0.0);

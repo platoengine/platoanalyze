@@ -160,13 +160,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_EvaluateVonMises)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(1.0, tControl);
+    Plato::blas1::fill(1.0, tControl);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
             {   tState(aOrdinal) *= static_cast<Plato::Scalar>(aOrdinal);}, "fill state");
     Plato::ScalarMultiVectorT<StateT> tStateWS("state workset", tNumCells, tDofsPerCell);
@@ -182,7 +182,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_EvaluateVonMises)
 
     // SET INPUT DATA
     Plato::ScalarVector tLagrangeMultipliers("Lagrange Multiplier", tNumCells);
-    Plato::fill(0.1, tLagrangeMultipliers);
+    Plato::blas1::fill(0.1, tLagrangeMultipliers);
     tCriterion.setLagrangeMultipliers(tLagrangeMultipliers);
 
     constexpr Plato::Scalar tYoungsModulus = 1;
@@ -238,13 +238,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_EvaluateTensileEnergyDe
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(1.0, tControl);
+    Plato::blas1::fill(1.0, tControl);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
     //Plato::fill(0.0, tState);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
             { tState(aOrdinal) *= static_cast<Plato::Scalar>(aOrdinal) * 2; }, "fill state");
@@ -261,7 +261,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_EvaluateTensileEnergyDe
 
     // SET INPUT DATA
     Plato::ScalarVector tLagrangeMultipliers("lagrange multipliers", tNumCells);
-    Plato::fill(0.1, tLagrangeMultipliers);
+    Plato::blas1::fill(0.1, tLagrangeMultipliers);
     tCriterion.setLagrangeMultipliers(tLagrangeMultipliers);
     tCriterion.setAugLagPenalty(1.5);
 
@@ -309,12 +309,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_EvalTensileEnergyScalar
     // Create control workset
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(1.0, tControl);
+    Plato::blas1::fill(1.0, tControl);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
             { tState(aOrdinal) *= static_cast<Plato::Scalar>(aOrdinal) * 2; }, "fill state");
 
@@ -328,7 +328,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_EvalTensileEnergyScalar
 
     // SET INPUT DATA
     Plato::ScalarVector tLagrangeMultipliers("lagrange multipliers", tNumCells);
-    Plato::fill(0.1, tLagrangeMultipliers);
+    Plato::blas1::fill(0.1, tLagrangeMultipliers);
     tCriterion->setLagrangeMultipliers(tLagrangeMultipliers);
     tCriterion->setAugLagPenalty(1.5);
 
@@ -380,7 +380,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_CheckThermalVonMises3D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     const Plato::OrdinalType tNumDofs  = tNumVerts * tDofsPerNode;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.0, tState);
+    Plato::blas1::fill(0.0, tState);
     Plato::OrdinalType tDofStride = tDofsPerNode;
     Plato::OrdinalType tDofToSet = Plato::SimplexThermomechanics<tSpaceDim>::mTDofOffset;
     Plato::Scalar tTemperature = 11.0;
@@ -587,13 +587,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_EvaluateTensileEnergyDe
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(1.0, tControl);
+    Plato::blas1::fill(1.0, tControl);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
     //Plato::fill(0.0, tState);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
             { tState(aOrdinal) *= static_cast<Plato::Scalar>(aOrdinal); }, "fill state");
@@ -610,7 +610,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_EvaluateTensileEnergyDe
 
     // SET INPUT DATA
     Plato::ScalarVector tLagrangeMultipliers("lagrange multipliers", tNumCells);
-    Plato::fill(0.1, tLagrangeMultipliers);
+    Plato::blas1::fill(0.1, tLagrangeMultipliers);
     tCriterion.setLagrangeMultipliers(tLagrangeMultipliers);
     tCriterion.setAugLagPenalty(1.5);
 
@@ -784,7 +784,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_UpdateMultipliers1)
     // Create control workset
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("controls", tNumVerts);
-    Plato::fill(1.0, tControl);
+    Plato::blas1::fill(1.0, tControl);
     Plato::ScalarMultiVectorT<Plato::Scalar> tControlWS("control workset", tNumCells, tNumNodesPerCell);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
@@ -857,7 +857,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_UpdateMultipliers2)
     // Create control workset
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("controls", tNumVerts);
-    Plato::fill(0.5, tControl);
+    Plato::blas1::fill(0.5, tControl);
     Plato::ScalarMultiVectorT<Plato::Scalar> tControlWS("control workset", tNumCells, tNumNodesPerCell);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
@@ -1043,13 +1043,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_CriterionEval_3D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, tNodesPerCell);
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(1.0, tControl);
+    Plato::blas1::fill(1.0, tControl);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
             {   tState(aOrdinal) *= static_cast<Plato::Scalar>(aOrdinal);}, "fill state");
     Plato::ScalarMultiVectorT<StateT> tStateWS("state workset", tNumCells, tDofsPerCell);
@@ -1065,10 +1065,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_CriterionEval_3D)
 
     // SET INPUT DATA
     Plato::ScalarVector tMassMultipliers("Mass Multiplier", tNumCells);
-    Plato::fill(0.01, tMassMultipliers);
+    Plato::blas1::fill(0.01, tMassMultipliers);
     tCriterion.setMassMultipliers(tMassMultipliers);
     Plato::ScalarVector tLagrangeMultipliers("Lagrange Multiplier", tNumCells);
-    Plato::fill(0.1, tLagrangeMultipliers);
+    Plato::blas1::fill(0.1, tLagrangeMultipliers);
     tCriterion.setLagrangeMultipliers(tLagrangeMultipliers);
 
     constexpr Plato::Scalar tYoungsModulus = 1;
@@ -1109,7 +1109,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_FiniteDiff_CriterionGradZ_2D)
     // SET INPUT DATA
     const Plato::OrdinalType tNumCells = tMesh->nelems();
     Plato::ScalarVector tMassMultipliers("Mass Multiplier", tNumCells);
-    Plato::fill(0.1, tMassMultipliers);
+    Plato::blas1::fill(0.1, tMassMultipliers);
     tCriterion.setMassMultipliers(tMassMultipliers);
 
     constexpr Plato::Scalar tYoungsModulus = 1;
@@ -1136,7 +1136,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_FiniteDiff_CriterionGradU_2D)
     // SET INPUT DATA
     const Plato::OrdinalType tNumCells = tMesh->nelems();
     Plato::ScalarVector tMassMultipliers("Mass Multiplier", tNumCells);
-    Plato::fill(0.1, tMassMultipliers);
+    Plato::blas1::fill(0.1, tMassMultipliers);
     tCriterion.setMassMultipliers(tMassMultipliers);
 
     constexpr Plato::Scalar tYoungsModulus = 1;
@@ -1168,7 +1168,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_FiniteDiff_CriterionGradZ_3D)
     // SET INPUT DATA
     const Plato::OrdinalType tNumCells = tMesh->nelems();
     Plato::ScalarVector tMassMultipliers("Mass Multiplier", tNumCells);
-    Plato::fill(0.1, tMassMultipliers);
+    Plato::blas1::fill(0.1, tMassMultipliers);
     tCriterion.setMassMultipliers(tMassMultipliers);
 
     constexpr Plato::Scalar tYoungsModulus = 1;
@@ -1200,7 +1200,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_FiniteDiff_CriterionGradU_3D)
     // SET INPUT DATA
     const Plato::OrdinalType tNumCells = tMesh->nelems();
     Plato::ScalarVector tMassMultipliers("Mass Multiplier", tNumCells);
-    Plato::fill(0.1, tMassMultipliers);
+    Plato::blas1::fill(0.1, tMassMultipliers);
     tCriterion.setMassMultipliers(tMassMultipliers);
 
     constexpr Plato::Scalar tYoungsModulus = 1;
@@ -1227,7 +1227,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_UpdateMultipliers1)
     // SET INPUT DATA
     const Plato::OrdinalType tNumCells = tMesh->nelems();
     Plato::ScalarVector tMassMultipliers("Mass Multiplier", tNumCells);
-    Plato::fill(0.01, tMassMultipliers);
+    Plato::blas1::fill(0.01, tMassMultipliers);
     tCriterion.setMassMultipliers(tMassMultipliers);
 
     constexpr Plato::Scalar tYoungsModulus = 1;
@@ -1249,7 +1249,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_UpdateMultipliers1)
     // Create control workset
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("controls", tNumVerts);
-    Plato::fill(1.0, tControl);
+    Plato::blas1::fill(1.0, tControl);
     Plato::ScalarMultiVectorT<Plato::Scalar> tControlWS("control workset", tNumCells, tNumNodesPerCell);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
@@ -1304,7 +1304,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_UpdateMultipliers2)
     // SET INPUT DATA
     const Plato::OrdinalType tNumCells = tMesh->nelems();
     Plato::ScalarVector tMassMultipliers("Mass Multiplier", tNumCells);
-    Plato::fill(0.01, tMassMultipliers);
+    Plato::blas1::fill(0.01, tMassMultipliers);
     tCriterion.setMassMultipliers(tMassMultipliers);
 
     constexpr Plato::Scalar tYoungsModulus = 1;
@@ -1326,7 +1326,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLag_UpdateMultipliers2)
     // Create control workset
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("controls", tNumVerts);
-    Plato::fill(0.5, tControl);
+    Plato::blas1::fill(0.5, tControl);
     Plato::ScalarMultiVectorT<Plato::Scalar> tControlWS("control workset", tNumCells, tNumNodesPerCell);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
@@ -1517,7 +1517,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagGeneral_UpdateProbelm1)
     // Create control workset
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("controls", tNumVerts);
-    Plato::fill(1.0, tControl);
+    Plato::blas1::fill(1.0, tControl);
     Plato::ScalarMultiVectorT<Plato::Scalar> tControlWS("control workset", tNumCells, tNumNodesPerCell);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
@@ -1585,7 +1585,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagGeneral_UpdateProblem2)
     // Create control workset
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("controls", tNumVerts);
-    Plato::fill(0.5, tControl);
+    Plato::blas1::fill(0.5, tControl);
     Plato::ScalarMultiVectorT<Plato::Scalar> tControlWS("control workset", tNumCells, tNumNodesPerCell);
     tWorksetBase.worksetControl(tControl, tControlWS);
 
@@ -1675,12 +1675,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPlusTensileEnergy2D)
     const Plato::Scalar tPseudoDensity = 1.0;
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Controls", tNumVerts);
-    Plato::fill(tPseudoDensity, tControl);
+    Plato::blas1::fill(tPseudoDensity, tControl);
 
     // Create state workset
     const Plato::OrdinalType tNumDofs = tNumVerts * tSpaceDim;
     Plato::ScalarVector tState("States", tNumDofs);
-    Plato::fill(0.1, tState);
+    Plato::blas1::fill(0.1, tState);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
             { tState(aOrdinal) *= static_cast<Plato::Scalar>(aOrdinal) * 2; }, "fill state");
 
@@ -1698,7 +1698,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPlusTensileEnergy2D)
     const std::shared_ptr<Plato::AugLagStressCriterionQuadratic<Residual,Plato::SimplexMechanics<tSpaceDim>>> tTensileEnergyCriterion = 
     std::make_shared<Plato::AugLagStressCriterionQuadratic<Residual,Plato::SimplexMechanics<tSpaceDim>>>(*tMesh, tMeshSets, tDataMap);
     Plato::ScalarVector tLagrangeMultipliers("lagrange multipliers", tNumCells);
-    Plato::fill(0.1, tLagrangeMultipliers);
+    Plato::blas1::fill(0.1, tLagrangeMultipliers);
     tTensileEnergyCriterion->setLagrangeMultipliers(tLagrangeMultipliers);
     tTensileEnergyCriterion->setAugLagPenalty(1.5);
     constexpr Plato::Scalar tYoungsModulus = 1.0;

@@ -375,7 +375,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InertialForcesFunctor)
 
     // ALLOCATE AND INITIALIZE CELL VOLUMES VIEW
     Plato::ScalarVectorT<Plato::Scalar> tCellVolumes("CellVolumes", tNumCells);
-    Plato::fill(static_cast<Plato::Scalar>(1), tCellVolumes);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tCellVolumes);
 
     // ALLOCATE AND INITIALIZE INERTIAL FORCES VIEW
     const Plato::OrdinalType tNumDofs = 12;
@@ -425,7 +425,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComplexInertialEnergy)
     Kokkos::deep_copy(tStateValues, tHostStateValues);
 
     Plato::ScalarVectorT<Plato::Scalar> tCellVolumes("CellVolumes", tNumCells);
-    Plato::fill(static_cast<Plato::Scalar>(1), tCellVolumes);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tCellVolumes);
 
     const Plato::Scalar tOmega = 1;
     const Plato::Scalar tDensity = 2;
@@ -529,7 +529,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicCompliance)
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     TEST_EQUALITY(tSizeGold, tNumControls);
     Plato::ScalarVector tControlValues("ControlValues", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControlValues);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
     
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
@@ -576,7 +576,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradZ)
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     TEST_EQUALITY(tSizeGold, tNumControls);
     Plato::ScalarVector tControlValues("ControlValues", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControlValues);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
@@ -635,7 +635,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradX)
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     TEST_EQUALITY(tSizeGold, tNumControls);
     Plato::ScalarVector tControlValues("ControlValues", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControlValues);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
@@ -693,7 +693,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradU)
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     TEST_EQUALITY(tSizeGold, tNumControls);
     Plato::ScalarVector tControlValues("ControlValues", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControlValues);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
@@ -767,7 +767,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeValue)
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     TEST_EQUALITY(tSizeGold, tNumControls);
     Plato::ScalarVector tControlValues("ControlValues", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControlValues);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
@@ -814,7 +814,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradZ)
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     TEST_EQUALITY(tSizeGold, tNumControls);
     Plato::ScalarVector tControlValues("ControlValues", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControlValues);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
@@ -870,7 +870,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradU)
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     TEST_EQUALITY(tSizeGold, tNumControls);
     Plato::ScalarVector tControlValues("ControlValues", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControlValues);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
@@ -922,7 +922,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradX)
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     TEST_EQUALITY(tSizeGold, tNumControls);
     Plato::ScalarVector tControlValues("ControlValues", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControlValues);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControlValues);
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
@@ -1175,7 +1175,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointStructuralDynamicsResidual)
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     TEST_EQUALITY(tSizeGold, tNumControls);
     Plato::ScalarVector tControlValues("ControlValues", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1.0), tControlValues);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1.0), tControlValues);
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
@@ -1316,7 +1316,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfitValue)
     // ALLOCATE CONTROLS FOR ELASTOSTATICS EXAMPLE
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControls);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST VALUE FUNCTION
     const Plato::Scalar tTolerance = 1e-4;
@@ -1372,7 +1372,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradZ)
     // ALLOCATE CONTROLS FOR ELASTOSTATICS EXAMPLE
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControls);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST GRADIENT WRT CONTROLS
     auto tGrad = tScalarFunction.gradient_z(tStates, tControls, tFreqArray[0]);
@@ -1434,7 +1434,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradX)
     // ALLOCATE CONTROLS FOR ELASTOSTATICS EXAMPLE
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControls);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST GRADIENT WRT CONFIGURATION
     auto tGrad = tScalarFunction.gradient_x(tStates, tControls, tFreqArray[0]);
@@ -1496,7 +1496,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradU)
     // ALLOCATE CONTROLS FOR ELASTOSTATICS EXAMPLE
     const Plato::OrdinalType tNumControls = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumControls);
-    Plato::fill(static_cast<Plato::Scalar>(1), tControls);
+    Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST GRADIENT WRT STATES
     auto tGrad = tScalarFunction.gradient_u(tStates, tControls, tFreqArray[0]);
