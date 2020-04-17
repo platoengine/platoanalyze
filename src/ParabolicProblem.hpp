@@ -159,11 +159,11 @@ public:
           using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
           auto tConfigString = Plato::get_config_string();
           Plato::ScalarVector deltaT("increment", tState.extent(0));
-          Plato::fill(static_cast<Plato::Scalar>(0.0), deltaT);
+          Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), deltaT);
           auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*mJacobian, deltaT, mResidual, tConfigString));
           tSolver->solve();
           tSolver = Teuchos::null;
-          Plato::axpy(-1.0, deltaT, tState);
+          Plato::blas1::axpy(-1.0, deltaT, tState);
 #endif
 
         }
