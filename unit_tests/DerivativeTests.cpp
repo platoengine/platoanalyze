@@ -2028,7 +2028,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
     // SOLVE ELASTOSTATICS EQUATIONS
     auto tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControl("Control", tNumVerts);
-    Plato::fill(1.0, tControl);
+    Plato::blas1::fill(1.0, tControl);
     tElasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
     auto tElasticitySolution = tElasticityProblem.solution(tControl);
 

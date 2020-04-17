@@ -587,7 +587,7 @@ Teuchos::RCP<Plato::CrsMatrixType> createSquareMatrix()
   //
   Plato::ScalarVector u("state", spaceDim*nverts);
   Plato::ScalarVector z("control", nverts);
-  Plato::fill(1.0, z);
+  Plato::blas1::fill(1.0, z);
 
   // create residual function
   //
