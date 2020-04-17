@@ -400,6 +400,7 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
     "  <ParameterList name='Parabolic'>                                                      \n"
     "    <ParameterList name='Penalty Function'>                                             \n"
     "      <Parameter name='Exponent' type='double' value='1.0'/>                            \n"
+    "      <Parameter name='Minimum Value' type='double' value='0.0'/>                       \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
     "    </ParameterList>                                                                    \n"
     "  </ParameterList>                                                                      \n"
