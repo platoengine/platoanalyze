@@ -635,7 +635,9 @@ void MPMD_App::ComputeObjectiveP::operator()()
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
         REPORT("Analyze Application - Compute Objective P Operation - Print Objective GradientX.\n");
         Plato::print(mMyApp->mObjectiveGradientX, "objective gradient X");
-        REPORT("Analyze Application - Compute Objective P Operation - Objective Value = %e.\n", mMyApp->mObjectiveValue);
+        std::ostringstream tMsg;
+        tMsg << "Analyze Application - Compute Objective P Operation - Objective Value = " << mMyApp->mObjectiveValue << std::endl;
+        REPORT(tMsg.str().c_str());
     }
 #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
@@ -832,7 +834,7 @@ ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
     mTarget = Plato::Get::Double(aOpNode, "Target");
     if( mTarget <= std::abs(std::numeric_limits<Plato::Scalar>::epsilon()) )
     {
-        REPORT("Analyze Application: Target Value is not defined.")
+        REPORT("Analyze Application: Target Value (optional) is not defined.")
     }
 }
 /******************************************************************************/
@@ -878,7 +880,7 @@ ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aOpNode,
     mTarget = Plato::Get::Double(aOpNode, "Target");
     if( mTarget <= std::abs(std::numeric_limits<Plato::Scalar>::epsilon()) )
     {
-        THROWERR("Analyze Application: Target Value is not defined.")
+        REPORT("Analyze Application: Target Value (optional) is not defined.")
     }
 }
 
@@ -928,7 +930,7 @@ MPMD_App::ComputeConstraintP::ComputeConstraintP(MPMD_App* aMyApp,
     mTarget = Plato::Get::Double(aOpNode, "Target");
     if( mTarget <= std::abs(std::numeric_limits<Plato::Scalar>::epsilon()) )
     {
-        THROWERR("Analyze Application: Target Value is not defined.")
+        REPORT("Analyze Application: Target Value (optional) is not defined.")
     }
     auto tESP = mMyApp->mESP[mESPName];
     mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
@@ -960,7 +962,9 @@ void MPMD_App::ComputeConstraintP::operator()()
         Plato::print_array_2D(mMyApp->mGlobalState, "global state");
         REPORT("Analyze Application - Compute ConstraintP Operation - Print Constraint GradientX.\n");
         Plato::print(mMyApp->mConstraintGradientX, "constraint gradient X");
-        REPORT("Analyze Application - Compute ConstraintP Operation - Print Constraint Value = %e.\n",mMyApp->mConstraintValue);
+        std::ostringstream tMsg;
+        tMsg << "Analyze Application - Compute ConstraintP Operation - Constraint Value = " << mMyApp->mConstraintValue << std::endl;
+        REPORT(tMsg.str().c_str());
     }
 
     auto tESP = mMyApp->mESP[mESPName];
