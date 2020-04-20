@@ -222,7 +222,7 @@ private:
     **************************************************************************/
     void parsePressureTermScaling(Teuchos::ParameterList & aMatParamList)
     {
-        if (aMatParamList.isType<Plato::Scalar>("Pressure Scaling"))
+        if (aMatParamList.isParameter("Pressure Scaling"))
         {
             mPressureScaling = aMatParamList.get<Plato::Scalar>("Pressure Scaling");
         }
