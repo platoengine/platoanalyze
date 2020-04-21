@@ -201,6 +201,7 @@ private:
     void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
         auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
+        mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
         if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
         {
             auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
@@ -208,27 +209,10 @@ private:
             mElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
             mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
             mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
-            this->parsePressureTermScaling(tMaterialInputs);
         }
         else
         {
             THROWERR("Infinitesimal Strain Plasticity Residual: 'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
-        }
-    }
-
-    /**********************************************************************//**
-     * \brief Parse pressure scaling, needed to improve the condition number.
-     * \param [in] aMatParamList material model inputs, i.e. parameter list
-    **************************************************************************/
-    void parsePressureTermScaling(Teuchos::ParameterList & aMatParamList)
-    {
-        if (aMatParamList.isParameter("Pressure Scaling"))
-        {
-            mPressureScaling = aMatParamList.get<Plato::Scalar>("Pressure Scaling");
-        }
-        else
-        {
-            mPressureScaling = mElasticBulkModulus;
         }
     }
 

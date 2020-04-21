@@ -25,19 +25,29 @@ class PressureGradient : public Plato::Simplex<SpaceDim>
 {
 private:
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
+    Plato::Scalar mPressureScaling; /*!< Pressure scaling term used to improve condition number, which may be high due to poor scaling */
 
 public:
     /******************************************************************************//**
+     * \brief Default constructor
+     * \param [in] aInput pressure scaling
+    **********************************************************************************/
+    PressureGradient(Plato::Scalar aInput = 1.0) :
+            mPressureScaling(aInput)
+    {
+    }
+
+    /******************************************************************************//**
      * \brief Compute pressure gradient at cubature point, i.e. integration point
-     * \param [in] aCellOrdinal cell (i.e. element) ordinal
-     * \param [in/out] aPressureGrad pressure gradient workset
-     * \param [in] aState state workset
-     * \param [in] aGradient configuration gradient workset
+     * \param [in] aCellOrdinal    cell (i.e. element) ordinal
+     * \param [out] aPressureGrad  pressure gradient workset
+     * \param [in] aPressure       pressure state workset
+     * \param [in] aGradient       configuration gradient workset
     **********************************************************************************/
     template<typename ResultScalarType, typename StateScalarType, typename GradientScalarType>
     DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
                                        Plato::ScalarMultiVectorT<ResultScalarType> const& aPressureGrad,
-                                       Plato::ScalarMultiVectorT<StateScalarType> const& aState,
+                                       Plato::ScalarMultiVectorT<StateScalarType> const& aPressure,
                                        Plato::ScalarArray3DT<GradientScalarType> const& aGradient) const
     {
         for(Plato::OrdinalType tDimIndex = 0; tDimIndex < SpaceDim; tDimIndex++)
@@ -45,8 +55,8 @@ public:
             aPressureGrad(aCellOrdinal, tDimIndex) = 0.0;
             for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < mNumNodesPerCell; tNodeIndex++)
             {
-                aPressureGrad(aCellOrdinal, tDimIndex) += aState(aCellOrdinal, tNodeIndex)
-                        * aGradient(aCellOrdinal, tNodeIndex, tDimIndex);
+                aPressureGrad(aCellOrdinal, tDimIndex) += mPressureScaling * aPressure(aCellOrdinal, tNodeIndex)
+                                                          * aGradient(aCellOrdinal, tNodeIndex, tDimIndex);
             }
         }
     }

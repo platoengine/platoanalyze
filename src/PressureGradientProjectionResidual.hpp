@@ -44,6 +44,19 @@ private:
     Plato::ApplyWeighting<mSpaceDim, mSpaceDim, IndicatorFunctionType> mApplyVectorWeighting; /*!< apply penalty to vector function */
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule; /*!< cubature integration rule interface */
 
+    Plato::Scalar mPressureScaling; /*!< Pressure scaling term */
+
+private:
+    /***************************************************************************//**
+     * \brief Initialize member data
+     * \param [in] aProblemParams input XML data, i.e. parameter list
+    *******************************************************************************/
+    void initialize(Teuchos::ParameterList &aProblemParams)
+    {
+        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
+        mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+    }
+
 public:
     /******************************************************************************//**
      * \brief Constructor
@@ -61,8 +74,10 @@ public:
             Plato::AbstractVectorFunctionVMS<EvaluationType>(aMesh, aMeshSets, aDataMap),
             mIndicatorFunction(aPenaltyParams),
             mApplyVectorWeighting(mIndicatorFunction),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>()),
+            mPressureScaling(1.0)
     {
+        this->initialize(aProblemParams);
     }
 
     /******************************************************************************//**
@@ -83,8 +98,8 @@ public:
     {
         auto tNumCells = mMesh.nelems();
 
-        Plato::PressureGradient<mSpaceDim> tComputePressureGradient;
         Plato::ComputeGradientWorkset < mSpaceDim > tComputeGradient;
+        Plato::PressureGradient<mSpaceDim> tComputePressureGradient(mPressureScaling);
         Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0, mSpaceDim> tInterpolatePressGradFromNodal;
 
         Plato::ScalarVectorT<ConfigScalarType> tCellVolume("cell weight", tNumCells);
