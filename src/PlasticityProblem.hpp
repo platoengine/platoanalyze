@@ -741,6 +741,11 @@ private:
     {
         this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
         this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
+        if(mNumPseudoTimeSteps >= mMaxNumPseudoTimeSteps)
+        {
+            mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
+            mMaxNumPseudoTimeStepsReached = true;
+        }
     }
 
     /***************************************************************************//**

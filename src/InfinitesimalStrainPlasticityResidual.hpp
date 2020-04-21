@@ -222,7 +222,7 @@ private:
     **************************************************************************/
     void parsePressureTermScaling(Teuchos::ParameterList & aMatParamList)
     {
-        if (aMatParamList.isType<Plato::Scalar>("Pressure Scaling"))
+        if (aMatParamList.isParameter("Pressure Scaling"))
         {
             mPressureScaling = aMatParamList.get<Plato::Scalar>("Pressure Scaling");
         }
@@ -488,9 +488,8 @@ public:
         this->outputData(tDeviatoricStress, "deviatoric stress");
         this->outputData(tElasticStrain, "elastic strain");
         this->outputData(tPlasticStrain, "plastic strain");
-        this->outputData(tCauchyStress, "elastic stress");
+        this->outputData(tCauchyStress, "cauchy stress");
         this->outputData(tBackStress, "backstress");
-        this->outputData(tPressure, "pressure");
     }
 
     /******************************************************************************//**
