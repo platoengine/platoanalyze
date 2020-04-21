@@ -231,9 +231,9 @@ public:
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
         Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
-        Plato::blas2::scale(mPressureScaling, tPressure);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalStates, tPressure);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
+        Plato::blas2::scale(mPressureScaling, tPressure);
 
         Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &aMesh, mSpaceDim);
         for(Plato::OrdinalType tSnapshot = 0; tSnapshot < tDisplacements.extent(0); tSnapshot++)
