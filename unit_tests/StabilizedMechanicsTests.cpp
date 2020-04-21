@@ -121,8 +121,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     "</ParameterList>                                                                     \n"
     );
 
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
     using PhysicsT = Plato::StabilizedMechanics<tSpaceDim>;
-    Plato::EllipticVMSProblem<PhysicsT> tEllipticVMSProblem(*tMesh, tMeshSets, *tParamList);
+    Plato::EllipticVMSProblem<PhysicsT> tEllipticVMSProblem(*tMesh, tMeshSets, *tParamList, tMachine);
 
     // 2. Get Dirichlet Boundary Conditions
     Plato::OrdinalType tDispDofX = 0;

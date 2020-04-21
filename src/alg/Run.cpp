@@ -49,9 +49,9 @@ namespace Plato
 {
 
 #if defined(KOKKOS_HAVE_CUDA)
-void run_cuda_query(comm::Machine machine)
+void run_cuda_query(Comm::Machine machine)
 {
-    const size_t comm_rank = comm::rank(machine);
+    const size_t comm_rank = Comm::rank(machine);
     std::cout << "P" << comm_rank
     << ": Cuda device_count = " << Kokkos::Cuda::detect_device_count()
     << std::endl;
@@ -100,9 +100,12 @@ void error_check(Teuchos::ParameterList& aProblem)
  * \param [in] aProblem   input file parameter list
  * \param [in] aMachine   MPI wrapper
  **********************************************************************************/
-void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::Machine aMachine)
+void run(
+    Omega_h::Library*       aOmegaHLib,
+    Teuchos::ParameterList& aProblem,
+    Comm::Machine           aMachine)
 {
-    if(comm::rank(aMachine) == 0)
+    if(Comm::rank(aMachine) == 0)
     {
 
         std::cout << "\nRunning Plato Analyze version " << version_major << "."
@@ -114,12 +117,12 @@ void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::M
 
     if(aProblem.get<bool>("Query"))
     {
-        if(comm::rank(aMachine) == 0)
+        if(Comm::rank(aMachine) == 0)
         {
             const unsigned tNumaCount = Kokkos::hwloc::get_available_numa_count();
             const unsigned tCoresPerNuma = Kokkos::hwloc::get_available_cores_per_numa();
             const unsigned tThreadsPerCore = Kokkos::hwloc::get_available_threads_per_core();
-            std::cout << "P" << comm::rank(aMachine) << ": hwloc { NUMA[" << tNumaCount << "]" << " CORE[" << tCoresPerNuma
+            std::cout << "P" << Comm::rank(aMachine) << ": hwloc { NUMA[" << tNumaCount << "]" << " CORE[" << tCoresPerNuma
                       << "]" << " PU[" << tThreadsPerCore << "] }" << std::endl;
         }
 #if defined(KOKKOS_HAVE_CUDA)
@@ -129,9 +132,7 @@ void run(Omega_h::Library* aOmegaHLib, Teuchos::ParameterList& aProblem, comm::M
     else
     {
         Plato::error_check(aProblem);
-        auto tOutputViz = aProblem.get<std::string>("Output Viz");
-        auto tInputMesh = aProblem.get<std::string>("Input Mesh");
-        ::Plato::driver(aOmegaHLib, aProblem, tInputMesh, tOutputViz);
+        ::Plato::driver(aOmegaHLib, aProblem, aMachine);
     }
 }
 // function run

@@ -507,6 +507,35 @@ if(PLATOANALUZE_ENABLE_AD_TEST AND NOT AMGX_FOUND)
   target_include_directories(ADTest PRIVATE ${Trilinos_INCLUDE_DIRS} ${FASTPOSIT_INCLUDE_DIRS})
 endif()
 
+################################################################################
+set(SolverInterfaceTests_SOURCES
+  PlatoSolverInterfaceTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(SolverInterfaceTests_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(SolverInterfaceUnitTests
+  ${SolverInterfaceTests_SOURCES}
+  ${SolverInterfaceTests_HEADERS}
+)
+
+target_link_libraries(SolverInterfaceUnitTests
+  analyzelib
+  ${PLATO_LIBS}
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+  )
+target_include_directories(SolverInterfaceUnitTests PRIVATE "${PLATOENGINE_PREFIX}/include")
+target_include_directories(SolverInterfaceUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/SolverInterfaceUnitTests)
+add_test(NAME runSolverInterfaceUnitTests COMMAND ${ES_MPI_TEST})
+################################################################################
+
 if(PLATOANALYZE_ENABLE_MPMD)
   set(AnalyzeApp_HEADERS
     ${CMAKE_SOURCE_DIR}/src/Analyze_App.hpp

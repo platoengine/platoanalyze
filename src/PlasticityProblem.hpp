@@ -86,29 +86,34 @@ public:
      * \param [in] aMeshSets side sets database
      * \param [in] aInputs input parameters database
     *******************************************************************************/
-    PlasticityProblem(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputs) :
-            mLocalEquation(std::make_shared<Plato::LocalVectorFunctionInc<PlasticityT>>(aMesh, aMeshSets, mDataMap, aInputs)),
-            mGlobalEquation(std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(aMesh, aMeshSets, mDataMap, aInputs, aInputs.get<std::string>("PDE Constraint"))),
-            mProjectionEquation(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(aMesh, aMeshSets, mDataMap, aInputs, std::string("State Gradient Projection"))),
-            mObjective(nullptr),
-            mConstraint(nullptr),
-            mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
-            mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
-            mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
-            mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
-            mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
-            mCurrentPseudoTimeStep(0.0),
-            mPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "Expansion Multiplier", 2)),
-            mPressure("Previous Pressure Field", aMesh.nverts()),
-            mLocalStates("Local States", mNumPseudoTimeSteps, mLocalEquation->size()),
-            mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalEquation->size()),
-            mReactionForce("Reaction Force", mNumPseudoTimeSteps, aMesh.nverts()),
-            mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEquation->size()),
-            mWorksetBase(aMesh),
-            mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs)),
-            mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs)),
-            mStopOptimization(false),
-            mMaxNumPseudoTimeStepsReached(false)
+    PlasticityProblem(
+      Omega_h::Mesh& aMesh,
+      Omega_h::MeshSets& aMeshSets,
+      Teuchos::ParameterList& aInputs,
+      Comm::Machine aMachine
+    ) :
+      mLocalEquation(std::make_shared<Plato::LocalVectorFunctionInc<PlasticityT>>(aMesh, aMeshSets, mDataMap, aInputs)),
+      mGlobalEquation(std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(aMesh, aMeshSets, mDataMap, aInputs, aInputs.get<std::string>("PDE Constraint"))),
+      mProjectionEquation(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(aMesh, aMeshSets, mDataMap, aInputs, std::string("State Gradient Projection"))),
+      mObjective(nullptr),
+      mConstraint(nullptr),
+      mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
+      mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
+      mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
+      mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
+      mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
+      mCurrentPseudoTimeStep(0.0),
+      mPseudoTimeStepMultiplier(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "Expansion Multiplier", 2)),
+      mPressure("Previous Pressure Field", aMesh.nverts()),
+      mLocalStates("Local States", mNumPseudoTimeSteps, mLocalEquation->size()),
+      mGlobalStates("Global States", mNumPseudoTimeSteps, mGlobalEquation->size()),
+      mReactionForce("Reaction Force", mNumPseudoTimeSteps, aMesh.nverts()),
+      mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEquation->size()),
+      mWorksetBase(aMesh),
+      mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs)),
+      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs)),
+      mStopOptimization(false),
+      mMaxNumPseudoTimeStepsReached(false)
     {
         this->initialize(aMesh, aMeshSets, aInputs);
     }

@@ -152,7 +152,8 @@ createProblem(ProblemDefinition& aDefinition)
   {
     #ifdef PLATOANALYZE_3D
     Plato::ProblemFactory<3> tProblemFactory;
-    mProblem = tProblemFactory.create(mMesh, mMeshSets, aDefinition.params);
+    mProblem = nullptr; // otherwise destructor of previous problem not called
+    mProblem = tProblemFactory.create(mMesh, mMeshSets, aDefinition.params, mMachine);
     #else
     throw Plato::ParsingException("3D physics is not compiled.");
     #endif
@@ -161,7 +162,8 @@ createProblem(ProblemDefinition& aDefinition)
   {
     #ifdef PLATOANALYZE_2D
     Plato::ProblemFactory<2> tProblemFactory;
-    mProblem = tProblemFactory.create(mMesh, mMeshSets, aDefinition.params);
+    mProblem = nullptr; // otherwise destructor of previous problem not called
+    mProblem = tProblemFactory.create(mMesh, mMeshSets, aDefinition.params, mMachine);
     #else
     throw Plato::ParsingException("2D physics is not compiled.");
     #endif
@@ -170,7 +172,8 @@ createProblem(ProblemDefinition& aDefinition)
   {
     #ifdef PLATOANALYZE_1D
     Plato::ProblemFactory<1> tProblemFactory;
-    mProblem = tProblemFactory.create(mMesh, mMeshSets, aDefinition.params);
+    mProblem = nullptr; // otherwise destructor of previous problem not called
+    mProblem = tProblemFactory.create(mMesh, mMeshSets, aDefinition.params, mMachine);
     #else
     throw Plato::ParsingException("1D physics is not compiled.");
     #endif

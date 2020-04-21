@@ -17,6 +17,7 @@ signature?
 #include "SimplexMechanics.hpp"
 #include "ScalarFunctionBase.hpp"
 #include "PlatoAbstractProblem.hpp"
+#include "alg/PlatoSolverFactory.hpp"
 
 #include "hyperbolic/Newmark.hpp"
 #include "hyperbolic/HyperbolicMechanics.hpp"
@@ -66,12 +67,15 @@ namespace Plato
         Plato::LocalOrdinalVector mVelocityBcDofs;
         Plato::ScalarVector mVelocityBcValues;
 
+        rcp<Plato::AbstractSolver> mSolver;
       public:
         /******************************************************************************/
         HyperbolicProblem(
           Omega_h::Mesh& aMesh,
           Omega_h::MeshSets& aMeshSets,
-          Teuchos::ParameterList& aParamList) :
+          Teuchos::ParameterList& aParamList,
+          Comm::Machine aMachine
+        ) :
             mEqualityConstraint   (aMesh, aMeshSets, mDataMap, aParamList, 
                                    aParamList.get<std::string>("PDE Constraint")),
             mNewmarkIntegrator    (aParamList.sublist("Time Integration")),
@@ -108,6 +112,10 @@ namespace Plato
                 mAdjoints_V = Plato::ScalarMultiVector("MyAdjoint V", mNumSteps, tLength);
                 mAdjoints_A = Plato::ScalarMultiVector("MyAdjoint A", mNumSteps, tLength);
             }
+
+            Plato::SolverFactory tSolverFactory(aParamList.sublist("Linear Solver"));
+            mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
+
         }
         /******************************************************************************//**
          * @brief Return number of degrees of freedom in solution.
@@ -238,7 +246,7 @@ namespace Plato
               Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
 
               // compute displacement increment:
-              Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobianU, tDeltaD, mResidual);
+              mSolver->solve(*mJacobianU, tDeltaD, mResidual);
 
               // compute and add velocity increment: \Delta v = - ( R_{v} + R_{v,u} \Delta u )
               Plato::blas1::axpy(tR_vu, tDeltaD, mResidualV);
@@ -470,7 +478,7 @@ namespace Plato
                 this->applyConstraints(mJacobianU, t_dFdu);
 
                 // L_u^k
-                Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobianU, tAdjoint_U, t_dFdu);
+                mSolver->solve(*mJacobianU, tAdjoint_U, t_dFdu);
 
                 // L_v^k
                 Plato::MatrixTimesVectorPlusVector(mJacobianV, tAdjoint_U, t_dFdv);
@@ -621,7 +629,7 @@ namespace Plato
                 this->applyConstraints(mJacobianU, t_dFdu);
 
                 // L_u^k
-                Plato::Solve::Consistent<SimplexPhysics::mNumDofsPerNode>(mJacobianU, tAdjoint_U, t_dFdu);
+                mSolver->solve(*mJacobianU, tAdjoint_U, t_dFdu);
 
                 // L_v^k
                 Plato::MatrixTimesVectorPlusVector(mJacobianV, tAdjoint_U, t_dFdv);

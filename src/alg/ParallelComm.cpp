@@ -42,20 +42,22 @@
 #include <Teuchos_DefaultComm.hpp>
 #include <Teuchos_CommHelpers.hpp>
 
-namespace Plato {
-namespace comm {
 
-Machine::Machine(int *argc, char ***argv) {
-  mpiSession = Teuchos::rcp(new Teuchos::GlobalMPISession(argc, argv));
-  teuchosComm = Teuchos::DefaultComm<int>::getComm();
-}
+namespace Plato {
+namespace Comm {
 
 Machine::Machine(MPI_Comm& localComm) {
   mpiSession = Teuchos::null;
   teuchosComm = Teuchos::rcp(new Teuchos::MpiComm<int>(localComm));
+  epetraComm = std::make_shared<Epetra_MpiComm>(localComm);
+
 }
 
-Machine::Machine() : mpiSession(), teuchosComm() {}
+Machine::Machine(int *argc, char ***argv) {
+  mpiSession = Teuchos::rcp(new Teuchos::GlobalMPISession(argc, argv));
+  teuchosComm = Teuchos::DefaultComm<int>::getComm();
+  epetraComm = std::make_shared<Epetra_MpiComm>(MPI_COMM_WORLD);
+}
 
 unsigned size(Machine const& machine) {
   return (machine.teuchosComm)->getSize();
@@ -93,4 +95,4 @@ void allReduce(
       *(machine.teuchosComm), Teuchos::REDUCE_SUM, n, local, global);
 }
 
-}}  //end namespace Plato::comm
+}}  //end namespace Plato::Comm

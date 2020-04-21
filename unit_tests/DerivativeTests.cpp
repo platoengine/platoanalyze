@@ -1997,7 +1997,12 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
       "  </ParameterList>                                                            \n"
       "</ParameterList>                                                              \n"
     );
-    Plato::EllipticProblem<Plato::Mechanics<tSpaceDim>> tElasticityProblem(*tMesh, tMeshSets, *tElasticityParams);
+    MPI_Comm myComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+    Plato::Comm::Machine tMachine(myComm);
+
+    Plato::EllipticProblem<Plato::Mechanics<tSpaceDim>>
+        tElasticityProblem(*tMesh, tMeshSets, *tElasticityParams, tMachine);
 
     // SET ESSENTIAL/DIRICHLET BOUNDARY CONDITIONS 
     Plato::OrdinalType tDispDofX = 0;
@@ -2054,7 +2059,11 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
     constexpr Plato::Scalar tTolerance = 1e-8;
     for(Plato::OrdinalType tDofIndex=0; tDofIndex < tHostSolution.size(); tDofIndex++)
     {
-        //printf("solution(%d,%d) = %.10e\n", tTimeStep, tDofIndex, tHostSolution(tDofIndex));
-        TEST_FLOATING_EQUALITY(tHostSolution(tDofIndex), tGold[tDofIndex], tTolerance);
+        if(tGold[tDofIndex] == 0.0){
+            TEST_ASSERT(fabs(tHostSolution(tDofIndex)) < 1e-12);
+        } else {
+            //printf("solution(%d,%d) = %.10e\n", tTimeStep, tDofIndex, tHostSolution(tDofIndex));
+            TEST_FLOATING_EQUALITY(tHostSolution(tDofIndex), tGold[tDofIndex], tTolerance);
+        }
     }
 }

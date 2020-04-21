@@ -50,7 +50,7 @@
 int main(int aArgc, char** aArgv) {
   Plato::enable_floating_point_exceptions();
 
-  Plato::comm::Machine tMachine(&aArgc, &aArgv);
+  Plato::Comm::Machine tMachine(&aArgc, &aArgv);
 
   Kokkos::initialize(aArgc, aArgv);
 

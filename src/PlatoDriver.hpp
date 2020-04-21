@@ -35,9 +35,9 @@ namespace Plato
 *******************************************************************************/
 template<const Plato::OrdinalType SpatialDim>
 void run(Teuchos::ParameterList& aInputData,
-         Omega_h::Mesh& aMesh,
-         Omega_h::MeshSets& aMeshSets,
-         const std::string & aVizFilePath)
+         Comm::Machine           aMachine,
+         Omega_h::Mesh&          aMesh,
+         Omega_h::MeshSets&      aMeshSets)
 {
     // create mesh based density from host data
     std::vector<Plato::Scalar> tControlHost(aMesh.nverts(), 1.0);
@@ -46,11 +46,12 @@ void run(Teuchos::ParameterList& aInputData,
 
     // Solve Plato problem
     Plato::ProblemFactory<SpatialDim> tProblemFactory;
-    std::shared_ptr<::Plato::AbstractProblem> tPlatoProblem = tProblemFactory.create(aMesh, aMeshSets, aInputData);
+    std::shared_ptr<::Plato::AbstractProblem> tPlatoProblem = tProblemFactory.create(aMesh, aMeshSets, aInputData, aMachine);
     auto tSolution     = tPlatoProblem->solution(tControl);
     auto tStateDataMap = tPlatoProblem->getDataMap();
 
-    Plato::output<SpatialDim>(aInputData, aVizFilePath, tSolution, tStateDataMap, aMesh);
+    auto tOutputViz = aInputData.get<std::string>("Output Viz");
+    Plato::output<SpatialDim>(aInputData, tOutputViz, tSolution, tStateDataMap, aMesh);
 }
 // function run
 
@@ -66,12 +67,13 @@ void run(Teuchos::ParameterList& aInputData,
  * \param [in] aVizFilePath output visualization file path
 *******************************************************************************/
 template<const Plato::OrdinalType SpatialDim>
-void driver(Omega_h::Library* aLibOSH,
+void driver(Omega_h::Library*        aLibOSH,
             Teuchos::ParameterList & aInputData,
-            const std::string& aInputFile,
-            const std::string& aVizFilePath)
+            Comm::Machine            aMachine)
 {
-    Omega_h::Mesh tMesh = Omega_h::read_mesh_file(aInputFile, aLibOSH->world());
+    auto tInputMesh = aInputData.get<std::string>("Input Mesh");
+
+    Omega_h::Mesh tMesh = Omega_h::read_mesh_file(tInputMesh, aLibOSH->world());
     tMesh.set_parting(Omega_h_Parting::OMEGA_H_GHOSTED);
 
     Omega_h::Assoc tAssoc;
@@ -86,7 +88,7 @@ void driver(Omega_h::Library* aLibOSH,
     }
     Omega_h::MeshSets tMeshSets = Omega_h::invert(&tMesh, tAssoc);
     
-    Plato::run<SpatialDim>(aInputData, tMesh, tMeshSets, aVizFilePath);
+    Plato::run<SpatialDim>(aInputData, aMachine, tMesh, tMeshSets);
 }
 // function driver
 
@@ -100,8 +102,7 @@ void driver(Omega_h::Library* aLibOSH,
 *******************************************************************************/
 void driver(Omega_h::Library* aLibOmegaH,
             Teuchos::ParameterList & aInputData,
-            const std::string& aInputFilename,
-            const std::string& aVizFilePath)
+            Comm::Machine            aMachine)
 {
     const Plato::OrdinalType tSpaceDim = aInputData.get<Plato::OrdinalType>("Spatial Dimension", 3);
 
@@ -109,7 +110,7 @@ void driver(Omega_h::Library* aLibOmegaH,
     if(tSpaceDim == static_cast<Plato::OrdinalType>(3))
     {
         #ifdef PLATOANALYZE_3D
-        driver<3>(aLibOmegaH, aInputData, aInputFilename, aVizFilePath);
+        driver<3>(aLibOmegaH, aInputData, aMachine);
         #else
         throw std::runtime_error("3D physics option is not compiled.");
         #endif
@@ -117,7 +118,7 @@ void driver(Omega_h::Library* aLibOmegaH,
     else if(tSpaceDim == static_cast<Plato::OrdinalType>(2))
     {
         #ifdef PLATOANALYZE_2D
-        driver<2>(aLibOmegaH, aInputData, aInputFilename, aVizFilePath);
+        driver<2>(aLibOmegaH, aInputData, aMachine);
         #else
         throw std::runtime_error("2D physics option is not compiled.");
         #endif
@@ -125,7 +126,7 @@ void driver(Omega_h::Library* aLibOmegaH,
     else if(tSpaceDim == static_cast<Plato::OrdinalType>(1))
     {
         #ifdef PLATOANALYZE_1D
-        driver<1>(aLibOmegaH, aInputData, aInputFilename, aVizFilePath);
+        driver<1>(aLibOmegaH, aInputData, aMachine);
         #else
         throw std::runtime_error("1D physics option is not compiled.");
         #endif

@@ -49,9 +49,10 @@ public:
      * \param [in] aInputParams xml metadata
      * \returns shared pointer to a PLATO problem
      **********************************************************************************/
-    std::shared_ptr<Plato::AbstractProblem> create(Omega_h::Mesh& aMesh,
-                                                   Omega_h::MeshSets& aMeshSets,
-                                                   Teuchos::ParameterList& aInputParams)
+    std::shared_ptr<Plato::AbstractProblem> create(Omega_h::Mesh&          aMesh,
+                                                   Omega_h::MeshSets&      aMeshSets,
+                                                   Teuchos::ParameterList& aInputParams,
+                                                   Comm::Machine           aMachine)
     {
 
         auto tInputData = aInputParams.sublist("Plato Problem");
@@ -62,19 +63,19 @@ public:
         {
             if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                auto tOutput = std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
             else 
             if(tPDE == "Hyperbolic")
             {
-                return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
             else
             if(tPDE == "Infinite Strain Plasticity")
             {
-                auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainPlasticity<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainPlasticity<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
@@ -89,7 +90,7 @@ public:
         {
             if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
@@ -104,11 +105,11 @@ public:
         {
             if(tPDE == "Heat Equation")
             {
-                return std::make_shared < ParabolicProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                return std::make_shared < ParabolicProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
             else if(tPDE == "Thermostatics")
             {
-                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
@@ -121,11 +122,11 @@ public:
         }
         else if(tPhysics == "StructuralDynamics")
         {
-//            return std::make_shared<Plato::StructuralDynamicsProblem<Plato::StructuralDynamics<SpatialDim>>>(aMesh, aMeshSets, tProblemSpecs);
+//            return std::make_shared<Plato::StructuralDynamicsProblem<Plato::StructuralDynamics<SpatialDim>>>(aMesh, aMeshSets, tInputData);
         }
         else if(tPhysics == "Electromechanical")
         {
-            auto tOutput = std::make_shared < EllipticProblem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+            auto tOutput = std::make_shared < EllipticProblem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
             return tOutput;
         }
@@ -133,7 +134,7 @@ public:
         {
             if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
@@ -148,11 +149,11 @@ public:
         {
             if(tPDE == "Parabolic")
             {
-                return std::make_shared < ParabolicProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                return std::make_shared < ParabolicProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
             else if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData);
+                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }

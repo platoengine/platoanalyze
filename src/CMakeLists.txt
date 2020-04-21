@@ -40,6 +40,9 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     alg/Cubature.cpp 
     alg/ParallelComm.cpp 
     alg/AmgXConfigs.cpp 
+    alg/EpetraLinearSolver.cpp
+    alg/AmgXLinearSolver.cpp
+    alg/PlatoSolverFactory.cpp
     ScalarFunctionBaseFactory.cpp 
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
     hyperbolic/HyperbolicPhysicsScalarFunction.cpp
@@ -82,13 +85,7 @@ endif()
 target_include_directories(analyzelib PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 set(LINK_LIBS
-    kokkoscore
-    kokkoskernels
-    kokkoscontainers
-    teuchoscore
-    teuchoscomm
-    teuchosparameterlist
-    teuchosparser
+    ${Trilinos_LIBRARIES}
     Omega_h::omega_h
     ${Trilinos_TPL_LIBRARIES}
     ${Trilinos_EXTRA_LD_FLAGS}

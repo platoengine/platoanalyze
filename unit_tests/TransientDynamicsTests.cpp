@@ -93,9 +93,13 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
     "</ParameterList>                                                          \n"
   );
 
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
   auto* tHyperbolicProblem =
     new Plato::HyperbolicProblem<Plato::Hyperbolic::Mechanics<cSpaceDim>>
-    (*tMesh, tMeshSets, *tInputParams);
+    (*tMesh, tMeshSets, *tInputParams, tMachine);
 
   TEST_ASSERT(tHyperbolicProblem != nullptr);
 

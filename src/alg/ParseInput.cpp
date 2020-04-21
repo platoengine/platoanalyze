@@ -63,12 +63,12 @@ namespace Plato {
 void add_timings(
     Teuchos::ParameterList &problem,
     Teuchos::Time &         time_main,
-    comm::Machine const &   machine) {
+    Comm::Machine const &   machine) {
   Teuchos::ParameterList &runtime = problem.sublist("Runtime");
   const std::string       time_doc =
       "Number of seconds of execution time on processor 0.";
   const Plato::Scalar sec = time_main.stop();
-  if (comm::rank(machine) == 0) {
+  if (Comm::rank(machine) == 0) {
     std::cout << "\nTotal Plato Execution Time: " << sec << " seconds\n";
   }
   runtime.set("Execution Time in Sec", sec, time_doc);
@@ -125,20 +125,20 @@ Teuchos::ParameterList setParameters(
 }
 
 Teuchos::ParameterList add_input_file(
-    const Teuchos::ParameterList &problem, comm::Machine const &machine) {
+    const Teuchos::ParameterList &problem, Comm::Machine const &machine) {
   auto &                 runtime = problem.sublist("Runtime");
   auto                   filename = runtime.get<std::string>("Input Config");
   Teuchos::ParameterList file_input = problem;
-  if (comm::rank(machine) == 0) {
+  if (Comm::rank(machine) == 0) {
     std::cout << " Reading input File: " << filename << std::endl;
   }
-  auto comm = machine.teuchosComm;
-  Omega_h::update_parameters_from_file(filename, &file_input, *comm);
+  auto Comm = machine.teuchosComm;
+  Omega_h::update_parameters_from_file(filename, &file_input, *Comm);
   return file_input;
 }
 
 Teuchos::ParameterList input_file_parsing(
-    int argc, char **argv, comm::Machine const &machine) {
+    int argc, char **argv, Comm::Machine const &machine) {
   const bool throwExceptions = false;
   const bool recogniseAllOptions = true;
   const bool addOutputSetupOptions = false;
@@ -208,11 +208,11 @@ static std::string get_extension(std::string const &filepath) {
 void input_file_echo(
     Teuchos::ParameterList &problem,
     Teuchos::Time &         time_main,
-    comm::Machine const &   machine) {
+    Comm::Machine const &   machine) {
   add_timings(problem, time_main, machine);
   std::string os;
   unused(problem, "", os);
-  if (comm::rank(machine) == 0) {
+  if (Comm::rank(machine) == 0) {
     std::cout << std::endl;
     if (os.empty())
       std::cout << " No Unused Parameters:" << std::endl;
