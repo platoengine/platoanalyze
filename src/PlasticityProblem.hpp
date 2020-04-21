@@ -758,7 +758,7 @@ private:
             mMaxNumPseudoTimeStepsReached = true;
         }
 
-        if(aInputParams.isSublist("MaterialModel") == false)
+        if(aInputParams.isSublist("Material Model") == false)
         {
             THROWERR("Plasticity Problem: 'Material Model' Parameter Sublist is not defined.")
         }
