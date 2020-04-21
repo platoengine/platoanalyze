@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "BLAS1.hpp"
+#include "BLAS2.hpp"
 #include "EssentialBCs.hpp"
 #include "OmegaHUtilities.hpp"
 #include "NewtonRaphsonSolver.hpp"
@@ -56,6 +57,7 @@ private:
     Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps */
 
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
+    Plato::Scalar mPressureScaling;               /*!< pressure term scaling */
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual */
     Plato::Scalar mDispControlConstant;           /*!< displacement control constant */
     Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step */
@@ -85,12 +87,13 @@ public:
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aInputs input parameters database
+     * \param [in] aMachine MPI communicator wrapper
     *******************************************************************************/
     PlasticityProblem(
       Omega_h::Mesh& aMesh,
       Omega_h::MeshSets& aMeshSets,
       Teuchos::ParameterList& aInputs,
-      Comm::Machine aMachine
+      Comm::Machine& aMachine
     ) :
       mLocalEquation(std::make_shared<Plato::LocalVectorFunctionInc<PlasticityT>>(aMesh, aMeshSets, mDataMap, aInputs)),
       mGlobalEquation(std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(aMesh, aMeshSets, mDataMap, aInputs, aInputs.get<std::string>("PDE Constraint"))),
@@ -100,6 +103,7 @@ public:
       mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
       mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
       mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
+      mPressureScaling(1.0),
       mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
       mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
       mCurrentPseudoTimeStep(0.0),
@@ -131,6 +135,7 @@ public:
             mNumPseudoTimeSteps(20),
             mMaxNumPseudoTimeSteps(80),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
+            mPressureScaling(1.0),
             mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
             mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
             mCurrentPseudoTimeStep(0.0),
@@ -226,6 +231,7 @@ public:
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
         Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
+        Plato::blas2::scale(mPressureScaling, tPressure);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalStates, tPressure);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
 
@@ -738,7 +744,9 @@ public:
 private:
     /***************************************************************************//**
      * \brief Initialize member data
-     * \param [in] aControls current set of controls, i.e. design variables
+     * \param [in] aMesh         mesh database
+     * \param [in] aMeshSets     side/node sets database
+     * \param [in] aInputParams  input parameter list
     *******************************************************************************/
     void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
@@ -749,6 +757,13 @@ private:
             mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
             mMaxNumPseudoTimeStepsReached = true;
         }
+
+        if(aInputParams.isSublist("MaterialModel") == false)
+        {
+            THROWERR("Plasticity Problem: 'Material Model' Parameter Sublist is not defined.")
+        }
+        auto tMaterialInputs = aInputParams.get<Teuchos::ParameterList>("Material Model");
+        mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
     }
 
     /***************************************************************************//**
