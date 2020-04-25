@@ -285,7 +285,7 @@ DEVICE_TYPE inline Omega_h::Vector<3> unit_normal_vector
 template<class T>
 Omega_h::Write<T> create_omega_h_write_array(std::string aName, Plato::OrdinalType aEntryCount)
 {
-  Kokkos::View<T*, Kokkos::LayoutRight, Plato::MemSpace> view(aName, aEntryCount);
+  Kokkos::View<T*, Kokkos::LayoutRight, Kokkos::DefaultExecutionSpace::memory_space> view(aName, aEntryCount);
   return Omega_h::Write<T>(view);
 }
 // function create_omega_h_write_array
