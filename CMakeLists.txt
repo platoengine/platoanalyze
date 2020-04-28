@@ -289,6 +289,14 @@ if (PLATOANALYZE_ENABLE_MPMD)
     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_ESP_LIB} ${OCSM_LIB} ${ESP_LIB} ${OCSM_LIB})
   endif()
 
+  option(PLATOANALYZE_ENABLE_TPETRA "Enable Tpetra" OFF)
+  if (PLATOANALYZE_ENABLE_TPETRA)
+    find_package(Tpetra REQUIRED)
+    message("adding define: -DPLATO_TPETRA")
+    add_definitions(-DPLATO_TPETRA)
+    set(PLATO_LIBS ${PLATO_LIBS} tpetra)
+  endif()
+
   target_link_libraries(Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
   target_link_libraries(analyze_MPMD Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
 

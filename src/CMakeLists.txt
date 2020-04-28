@@ -3,7 +3,6 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/AnalyzeConfig.hpp
   @ONLY)
 
-# file(GLOB_RECURSE ANALYZE_SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp 
     CustomMaterial.cpp 
     ExpressionEvaluator.cpp 
@@ -72,6 +71,10 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     InfinitesimalStrainPlasticityResidual.cpp 
     ElasticWorkCriterion.cpp 
     PlasticWorkCriterion.cpp)
+
+if (PLATOANALYZE_ENABLE_TPETRA)
+  set(ANALYZE_SOURCES ${ANALYZE_SOURCES} alg/TpetraLinearSolver.cpp) 
+endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${Trilinos_INCLUDE_DIRS})

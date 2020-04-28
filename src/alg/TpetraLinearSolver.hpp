@@ -1,22 +1,22 @@
-#ifndef PLATO_EPETRA_SOLVER_HPP
-#define PLATO_EPETRA_SOLVER_HPP
+#ifndef PLATO_TPETRA_SOLVER_HPP
+#define PLATO_TPETRA_SOLVER_HPP
 
 #include "PlatoAbstractSolver.hpp"
 #include "alg/ParallelComm.hpp"
 
 #include <Omega_h_mesh.hpp>
 
-#include <AztecOO.h>
-#include <Epetra_Map.h>
-#include <Epetra_Vector.h>
-#include <Epetra_MpiComm.h>
-#include <Epetra_VbrMatrix.h>
-#include <Epetra_VbrRowMatrix.h>
-#include <Epetra_LinearProblem.h>
 #include <Teuchos_ParameterList.hpp>
-
+#include <Teuchos_Comm.hpp>
+#include <Tpetra_Core.hpp>
+#include <Tpetra_Vector.hpp>
+#include <Tpetra_CrsMatrix.hpp>
 
 namespace Plato {
+
+  using Tpetra_Map = Tpetra::Map<Plato::OrdinalType, Plato::OrdinalType>;
+  using Tpetra_Vector = Tpetra::Vector<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
+  using Tpetra_Matrix = Tpetra::CrsMatrix<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
 
 /******************************************************************************//**
  * @brief Abstract system interface
@@ -24,13 +24,13 @@ namespace Plato {
    This class contains the node and dof map information and permits persistence
    of this information between solutions.
 **********************************************************************************/
-class EpetraSystem
+class TpetraSystem
 {
-    rcp<Epetra_BlockMap> mBlockRowMap;
-    rcp<Epetra_Comm>     mComm;
+  Teuchos::RCP<Tpetra_Map> mMap;
+  Teuchos::RCP<const Teuchos::Comm<int>>  mComm;
 
   public:
-    EpetraSystem(
+    TpetraSystem(
         Omega_h::Mesh& aMesh,
         Comm::Machine  aMachine,
         int            aDofsPerNode
@@ -39,33 +39,33 @@ class EpetraSystem
     /******************************************************************************//**
      * @brief Convert from Plato::CrsMatrix<int> to Epetra_VbrMatrix
     **********************************************************************************/
-    rcp<Epetra_VbrMatrix>
+    Teuchos::RCP<Tpetra_Matrix>
     fromMatrix(Plato::CrsMatrix<int> tInMatrix) const;
 
     /******************************************************************************//**
-     * @brief Convert from ScalarVector to Epetra_Vector
+     * @brief Convert from ScalarVector to Tpetra_Vector
     **********************************************************************************/
-    rcp<Epetra_Vector>
+    Teuchos::RCP<Tpetra_Vector>
     fromVector(Plato::ScalarVector tInVector) const;
 
     /******************************************************************************//**
-     * @brief Convert from Epetra_Vector to ScalarVector
+     * @brief Convert from Tpetra_Vector to ScalarVector
     **********************************************************************************/
     void
-    toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVector) const;
+    toVector(Plato::ScalarVector tOutVector, Teuchos::RCP<Tpetra_Vector> tInVector) const;
 
     /******************************************************************************//**
-     * @brief get EpetraSystem map 
+     * @brief get TpetraSystem map 
     **********************************************************************************/
-    rcp<Epetra_BlockMap> getMap() const {return mBlockRowMap;}
+    Teuchos::RCP<Tpetra_Map> getMap() const {return mMap;}
 };
 
 /******************************************************************************//**
- * @brief Concrete EpetraLinearSolver
+ * @brief Concrete TpetraLinearSolver
 **********************************************************************************/
-class EpetraLinearSolver : public AbstractSolver
+class TpetraLinearSolver : public AbstractSolver
 {
-    rcp<EpetraSystem> mSystem;
+    Teuchos::RCP<TpetraSystem> mSystem;
 
     Teuchos::ParameterList mSolverParams;
 
@@ -74,11 +74,11 @@ class EpetraLinearSolver : public AbstractSolver
 
   public:
     /******************************************************************************//**
-     * @brief EpetraLinearSolver constructor
+     * @brief TpetraLinearSolver constructor
 
      This constructor takes an Omega_h::Mesh and creates a new System.
     **********************************************************************************/
-    EpetraLinearSolver(
+    TpetraLinearSolver(
         const Teuchos::ParameterList& aSolverParams,
         Omega_h::Mesh&          aMesh,
         Comm::Machine           aMachine,
@@ -93,13 +93,13 @@ class EpetraLinearSolver : public AbstractSolver
         Plato::CrsMatrix<int> aA,
         Plato::ScalarVector   aX,
         Plato::ScalarVector   aB
-    );
+    ){};
 
-    /******************************************************************************//**
-     * @brief Setup the AztecOO solver
-    **********************************************************************************/
-    void
-    setupSolver(AztecOO& aSolver);
+    // /******************************************************************************//**
+    //  * @brief Setup the AztecOO solver
+    // **********************************************************************************/
+    // void
+    // setupSolver(AztecOO& aSolver);
 };
 
 } // end namespace Plato

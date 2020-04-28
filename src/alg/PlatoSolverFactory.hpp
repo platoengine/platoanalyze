@@ -3,6 +3,7 @@
 
 #include "alg/AmgXLinearSolver.hpp"
 #include "alg/EpetraLinearSolver.hpp"
+#include "alg/TpetraLinearSolver.hpp"
 
 namespace Plato {
 

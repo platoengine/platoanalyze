@@ -26,9 +26,12 @@ EpetraSystem::EpetraSystem(
 rcp<Epetra_VbrMatrix>
 EpetraSystem::fromMatrix(Plato::CrsMatrix<int> tInMatrix) const
 {
+    auto tRowMap_host = Kokkos::create_mirror_view(tInMatrix.rowMap());
+    auto tNumRowsPerBlock = tInMatrix.numRowsPerBlock();
+    auto tNumBlocks = tRowMap_host.extent(0)-1;
+
     int tNumRows = mBlockRowMap->NumMyElements();
     std::vector<int> tNumEntries(tNumRows, 0);
-    auto tRowMap_host = Kokkos::create_mirror_view(tInMatrix.rowMap());
     Kokkos::deep_copy(tRowMap_host, tInMatrix.rowMap());
     int tMaxNumEntries = 0;
     for(int iRow=0; iRow<tNumRows; iRow++)
@@ -46,7 +49,6 @@ EpetraSystem::fromMatrix(Plato::CrsMatrix<int> tInMatrix) const
     auto tEntries_host = Kokkos::create_mirror_view(tInMatrix.entries());
     Kokkos::deep_copy(tEntries_host, tInMatrix.entries());
 
-    auto tNumRowsPerBlock = tInMatrix.numRowsPerBlock();
     auto tNumEntriesPerBlock = tNumColsPerBlock*tNumRowsPerBlock;
 
     std::vector<int> tColIndices(tMaxNumEntries,0);
@@ -86,6 +88,8 @@ rcp<Epetra_Vector>
 EpetraSystem::fromVector(Plato::ScalarVector tInVector) const
 {
     auto tRetVal = std::make_shared<Epetra_Vector>(*mBlockRowMap);
+    if(tInVector.extent(0) != tRetVal->MyLength())
+      throw std::domain_error("ScalarVector size does not match EpetraSystem map\n");
 
     Plato::Scalar* tRetValData;
     tRetVal->ExtractView(&tRetValData);
@@ -103,9 +107,12 @@ EpetraSystem::fromVector(Plato::ScalarVector tInVector) const
 void 
 EpetraSystem::toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVector) const
 {
+    auto tLength = tInVector->MyLength();
+    auto tTemp = std::make_shared<Epetra_Vector>(*mBlockRowMap);
+    if(tLength != tTemp->MyLength())
+      throw std::domain_error("Epetra_Vector map does not match EpetraSystem map.");
     Plato::Scalar* tInData;
     tInVector->ExtractView(&tInData);
-    auto tLength = tInVector->MyLength();
     Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
       tInVector_host(tInData, tLength);
     Kokkos::deep_copy(tOutVector, tInVector_host);
