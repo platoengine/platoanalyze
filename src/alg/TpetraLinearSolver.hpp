@@ -93,7 +93,7 @@ class TpetraLinearSolver : public AbstractSolver
         Plato::CrsMatrix<int> aA,
         Plato::ScalarVector   aX,
         Plato::ScalarVector   aB
-    ){};
+    );
 
     // /******************************************************************************//**
     //  * @brief Setup the AztecOO solver

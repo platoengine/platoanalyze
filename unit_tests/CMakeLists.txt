@@ -264,7 +264,7 @@ add_test(NAME runPlasticityUnitTests COMMAND ${ES_MPI_TEST})
     )
   target_include_directories(OmegaHUtilitiesTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
-  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/OmegaHUtilitiesUnitTests)
+  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/OmegaHUtilitiesTests)
   add_test(NAME runOmegaHUtilitiesUnitTests COMMAND ${ES_MPI_TEST})
 #end: OmegaHUtilitiesTests unit test
 

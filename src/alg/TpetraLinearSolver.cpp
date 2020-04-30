@@ -1,6 +1,13 @@
 #include "TpetraLinearSolver.hpp"
+#include <BelosTpetraAdapter.hpp>
+#include <BelosSolverFactory.hpp>
+#include <Amesos2.hpp>
+// #include <supermatrix.h>
 
 namespace Plato {
+  using Tpetra_Map = Tpetra::Map<Plato::OrdinalType, Plato::OrdinalType>;
+  using Tpetra_Vector = Tpetra::Vector<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
+  using Tpetra_Matrix = Tpetra::CrsMatrix<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
 
 /******************************************************************************//**
  * @brief get view from device
@@ -163,29 +170,100 @@ TpetraLinearSolver::TpetraLinearSolver(
     }
 }
 
-// /******************************************************************************//**
-//  * @brief Solve the linear system
-// **********************************************************************************/
-// void
-// EpetraLinearSolver::solve(
-//     Plato::CrsMatrix<int> aA,
-//     Plato::ScalarVector   aX,
-//     Plato::ScalarVector   aB
-// ) {
-//     auto tMatrix = mSystem->fromMatrix(aA);
-//     auto tSolution = mSystem->fromVector(aX);
-//     auto tForcing = mSystem->fromVector(aB);
+template<class MV, class OP>
+void
+belosSolve (std::ostream& out, MV& X, const MV& B, const OP& A) 
+{
+  using Teuchos::ParameterList;
+  using Teuchos::parameterList;
+  using Teuchos::RCP; 
+  using Teuchos::rcp;
+  using Teuchos::rcpFromRef; // Make a "weak" RCP from a reference.
+  typedef typename MV::scalar_type scalar_type;
 
-//     Epetra_VbrRowMatrix tVbrRowMatrix(tMatrix.get());
-//     Epetra_LinearProblem tProblem(&tVbrRowMatrix, tSolution.get(), tForcing.get());
-//     AztecOO tSolver(tProblem);
+  // Make an empty new parameter list.
+  RCP<ParameterList> solverParams = parameterList();
 
-//     setupSolver(tSolver);
+  // Set some GMRES parameters.
+  //
+  // "Num Blocks" = Maximum number of Krylov vectors to store.  This
+  // is also the restart length.  "Block" here refers to the ability
+  // of this particular solver (and many other Belos solvers) to solve
+  // multiple linear systems at a time, even though we may only be
+  // solving one linear system in this example.
+  //
+  // "Maximum Iterations": Maximum total number of iterations,
+  // including restarts.
+  //
+  // "Convergence Tolerance": By default, this is the relative
+  // residual 2-norm, although you can change the meaning of the
+  // convergence tolerance using other parameters.
+  solverParams->set ("Num Blocks", 40);
+  solverParams->set ("Maximum Iterations", 400);
+  solverParams->set ("Convergence Tolerance", 1.0e-8);
 
-//     tSolver.Iterate( mIterations, mTolerance );
+  // Create the GMRES solver using a "factory" and 
+  // the list of solver parameters created above.
+  Belos::SolverFactory<scalar_type, MV, OP> factory;
+  RCP<Belos::SolverManager<scalar_type, MV, OP> > solver = 
+    factory.create ("GMRES", solverParams);
 
-//     mSystem->toVector(aX, tSolution);
-// }
+  // Create a LinearProblem struct with the problem to solve.
+  // A, X, B, and M are passed by (smart) pointer, not copied.
+  typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
+  RCP<problem_type> problem = 
+    rcp (new problem_type (rcpFromRef (A), rcpFromRef (X), rcpFromRef (B)));
+  // You don't have to call this if you don't have a preconditioner.
+  // If M is null, then Belos won't use a (right) preconditioner.
+  // problem->setRightPrec (M);
+  // Tell the LinearProblem to make itself ready to solve.
+  problem->setProblem ();
+
+  // Tell the solver what problem you want to solve.
+  solver->setProblem (problem);
+
+  // Attempt to solve the linear system.  result == Belos::Converged 
+  // means that it was solved to the desired tolerance.  This call 
+  // overwrites X with the computed approximate solution.
+  Belos::ReturnType result = solver->solve();
+
+  // Ask the solver how many iterations the last solve() took.
+  const int numIters = solver->getNumIters();
+
+  if (result == Belos::Converged) {
+    std::cout << "The Belos solve took " << numIters << " iteration(s) to reach "
+      "a relative residual tolerance of " << 1.0e-8 << "." << std::endl;
+  } else {
+    std::cout << "The Belos solve took " << numIters << " iteration(s), but did not reach "
+      "a relative residual tolerance of " << 1.0e-8 << "." << std::endl;
+  }
+}
+
+/******************************************************************************//**
+ * @brief Solve the linear system
+**********************************************************************************/
+void
+TpetraLinearSolver::solve(
+    Plato::CrsMatrix<int> aA,
+    Plato::ScalarVector   aX,
+    Plato::ScalarVector   aB
+)
+{
+  typedef Tpetra::CrsMatrix<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType> matrix_type;
+  typedef Tpetra::Operator<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType> op_type;
+  typedef Tpetra::MultiVector<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType> vec_type;
+  typedef Tpetra::Map<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType> map_type;
+
+
+  Teuchos::RCP<const matrix_type> A = mSystem->fromMatrix(aA);
+
+  Teuchos::RCP<vec_type> X = mSystem->fromVector(aX); // Set to zeros by default.
+  Teuchos::RCP<vec_type> B = mSystem->fromVector(aB);
+
+  // Solve the linear system using Belos.
+  belosSolve<vec_type, op_type> (std::cout, *X, *B, *A);
+  // mSystem->toVector(aX,X);
+}
 
 // /******************************************************************************//**
 //  * @brief Setup the AztecOO solver

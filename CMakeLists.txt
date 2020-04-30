@@ -7,6 +7,11 @@ IF (DEFINED Trilinos_PREFIX)
   SET(CMAKE_PREFIX_PATH ${Trilinos_PREFIX} ${CMAKE_PREFIX_PATH})
 ENDIF()
 
+IF (DEFINED SuperLU_PREFIX)
+  message("superlu prefix defined\n")
+  SET(CMAKE_PREFIX_PATH ${SuperLU_PREFIX} ${CMAKE_PREFIX_PATH})
+ENDIF()
+
 #silences warnings about the system not supporting shared libraries
 #http://stackoverflow.com/questions/12264299/cmake-on-linux-target-platform-does-not-support-dynamic-linking
 SET_PROPERTY(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
@@ -206,7 +211,6 @@ if (PLATOANALYZE_3D)
   message("-- Plato: 3d physics added")
 endif()
 
-ADD_SUBDIRECTORY(src)
 
 ###### PLATO ANALYZE APP + PLATO ENGINE EXECUTABLE ######
 option(PLATOANALYZE_ENABLE_MPMD "Enable the Plato interface MPMD executable" OFF)
@@ -289,12 +293,32 @@ if (PLATOANALYZE_ENABLE_MPMD)
     set(PLATO_LIBS ${PLATO_LIBS} ${PLATO_GEOMETRY_ESP_LIB} ${OCSM_LIB} ${ESP_LIB} ${OCSM_LIB})
   endif()
 
+  IF (DEFINED SuperLU_PREFIX)
+    FIND_PATH(SuperLU_INCLUDE_DIR NAMES supermatrix.h PATHS ${SuperLU_PREFIX}/include)
+    IF (NOT SuperLU_INCLUDE_DIR)
+      MESSAGE(FATAL_ERROR "Couldn't find SuperLU header!")
+    ENDIF()
+    FIND_LIBRARY(SuperLU_LIB NAMES superlu_4.3 PATHS ${SuperLU_PREFIX}/lib)
+    IF (NOT SuperLU_LIB)
+      MESSAGE(FATAL_ERROR "Couldn't find SuperLU library!")
+    ENDIF()
+    SET(SuperLU_INCLUDE_DIRS "${SuperLU_INCLUDE_DIR}")
+    SET(SuperLU_LIBRARIES "${SuperLU_LIB}")
+    SET(SuperLU_FOUND TRUE) # a bit of a hack; would be better to check that it actually exists!
+    MESSAGE("-- Found SuperLU!")
+    MESSAGE("-- SuperLU_INCLUDE_DIRS = ${SuperLU_INCLUDE_DIRS}")
+    MESSAGE("-- SuperLU_LIBRARIES = ${SuperLU_LIBRARIES}")
+  ENDIF()
+
   option(PLATOANALYZE_ENABLE_TPETRA "Enable Tpetra" OFF)
   if (PLATOANALYZE_ENABLE_TPETRA)
     find_package(Tpetra REQUIRED)
+    find_package(Belos REQUIRED)
+    find_package(Amesos2 REQUIRED)
+    include_directories( ${SuperLU_INCLUDE_DIRS} )
     message("adding define: -DPLATO_TPETRA")
     add_definitions(-DPLATO_TPETRA)
-    set(PLATO_LIBS ${PLATO_LIBS} tpetra)
+    set(PLATO_LIBS ${PLATO_LIBS} ${SuperLU_LIBRARIES} tpetra belos amesos2)
   endif()
 
   target_link_libraries(Analyze_App ${PLATO_LIBS} ${PLATO_LIBS} analyzelib)
@@ -350,6 +374,7 @@ function(build_mpi_test_string RESULT_NAME num_mpi_proc)
   set(${RESULT_NAME} ${PLATOANALYZE_MPIEXEC} ${PLATOANALYZE_RANKS_PER_NODE_FLAG} ${PLATOANALYZE_RANKS_PER_NODE} ${PLATOANALYZE_RANKS_FLAG} ${num_mpi_proc} ${VALGRIND} ${ARGN} PARENT_SCOPE)
 endfunction(build_mpi_test_string)
 
+ADD_SUBDIRECTORY(src)
 
 option(PLATOANALYZE_UNIT_TEST "Flag to enable unit tests" ON)
 if( PLATOANALYZE_UNIT_TEST)
