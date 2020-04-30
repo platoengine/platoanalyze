@@ -18,7 +18,7 @@
 #include "NoPenalty.hpp"
 #include "ExpVolume.hpp"
 #include "DynamicCompliance.hpp"
-#include "AbstractVectorFunction.hpp"
+#include "elliptic/AbstractVectorFunction.hpp"
 #include "StructuralDynamicsResidual.hpp"
 #include "HyperbolicTangentProjection.hpp"
 #include "AdjointStructuralDynamicsResidual.hpp"
@@ -34,7 +34,7 @@ struct FunctionFactory
 {
     /******************************************************************************/
     template<typename EvaluationType>
-    std::shared_ptr<AbstractVectorFunction<EvaluationType>>
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<EvaluationType>>
     createVectorFunction(Omega_h::Mesh& aMesh, 
                          Omega_h::MeshSets& aMeshSets, 
                          Plato::DataMap& aDataMap, 
@@ -112,7 +112,7 @@ struct FunctionFactory
     }
     /******************************************************************************/
     template<typename EvaluationType>
-    std::shared_ptr<AbstractScalarFunction<EvaluationType>>
+    std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
     createScalarFunction(Omega_h::Mesh& aMesh, 
                          Omega_h::MeshSets& aMeshSets, 
                          Plato::DataMap& aDataMap, 

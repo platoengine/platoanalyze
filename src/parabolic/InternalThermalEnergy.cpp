@@ -1,4 +1,4 @@
-#include "InternalThermalEnergy.hpp"
+#include "parabolic/InternalThermalEnergy.hpp"
 #include "ExpInstMacros.hpp"
 
 #ifdef PLATOANALYZE_1D

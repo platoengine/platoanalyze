@@ -16,14 +16,14 @@
 #include "Thermal.hpp"
 #include "Mechanics.hpp"
 #include "parabolic/VectorFunction.hpp"
-#include "../ScalarFunctionBase.hpp"
+#include "elliptic/ScalarFunctionBase.hpp"
 #include "parabolic/ScalarFunctionBase.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "ComputedField.hpp"
 
-#include "../ScalarFunctionBaseFactory.hpp"
+#include "elliptic/ScalarFunctionBaseFactory.hpp"
 #include "parabolic/ScalarFunctionBaseFactory.hpp"
 
 #include "alg/ParallelComm.hpp"
@@ -50,11 +50,9 @@ private:
     Plato::OrdinalType mNumSteps;
     Plato::Scalar mTimeStep;
 
-    using ScalarFunctionBase = Plato::ScalarFunctionBase;
-
     // optional
     std::shared_ptr<const Plato::Parabolic::ScalarFunctionBase> mObjective;
-    std::shared_ptr<const ScalarFunctionBase>    mConstraint;
+    std::shared_ptr<const Plato::Elliptic::ScalarFunctionBase>  mConstraint;
 
     Plato::ScalarMultiVector mAdjoints;
     Plato::ScalarVector mResidual;
@@ -537,7 +535,7 @@ private:
             }
         }
 
-        Plato::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
+        Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
         Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tParabolicFunctionBaseFactory;
         if(aParamList.isType<std::string>("Constraint"))
         {

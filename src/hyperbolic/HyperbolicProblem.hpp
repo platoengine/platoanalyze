@@ -15,7 +15,6 @@ signature?
 #include "EssentialBCs.hpp"
 #include "AnalyzeMacros.hpp"
 #include "SimplexMechanics.hpp"
-#include "ScalarFunctionBase.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/PlatoSolverFactory.hpp"
 
@@ -45,7 +44,6 @@ namespace Plato
 
         bool mSaveState;
 
-        std::shared_ptr<const Plato::ScalarFunctionBase> mConstraint;
         std::shared_ptr<const Plato::Hyperbolic::ScalarFunctionBase> mObjective;
 
         Plato::ScalarVector      mResidual;
@@ -82,7 +80,6 @@ namespace Plato
             mNumSteps     (aParamList.sublist("Time Integration").get<int>("Number Time Steps")),
             mTimeStep     (aParamList.sublist("Time Integration").get<Plato::Scalar>("Time Step")),
             mSaveState    (aParamList.sublist("Hyperbolic").isType<Teuchos::Array<std::string>>("Plottable")),
-            mConstraint   (nullptr),
             mObjective    (nullptr),
             mResidual     ("MyResidual", mEqualityConstraint.size()),
             mDisplacement ("Displacement", mNumSteps, mEqualityConstraint.size()),

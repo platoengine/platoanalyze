@@ -16,7 +16,7 @@
 #include "ApplyConstraints.hpp"
 
 #include "VectorFunctionVMS.hpp"
-#include "ScalarFunctionBase.hpp"
+#include "elliptic/ScalarFunctionBase.hpp"
 #include "parabolic/ScalarFunctionBase.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
@@ -25,7 +25,7 @@
 #include "Plato_Solve.hpp"
 
 #include "alg/PlatoSolverFactory.hpp"
-#include "ScalarFunctionBaseFactory.hpp"
+#include "elliptic/ScalarFunctionBaseFactory.hpp"
 #include "parabolic/ScalarFunctionBaseFactory.hpp"
 
 namespace Plato
@@ -47,7 +47,7 @@ private:
     Plato::VectorFunctionVMS<typename SimplexPhysics::ProjectorT> mStateProjection; /*!< projection interface */
 
     // optional
-    std::shared_ptr<const Plato::ScalarFunctionBase>    mConstraint; /*!< constraint constraint interface */
+    std::shared_ptr<const Plato::Elliptic::ScalarFunctionBase>    mConstraint; /*!< constraint constraint interface */
     std::shared_ptr<const Plato::Parabolic::ScalarFunctionBase> mObjective;  /*!< objective constraint interface */
 
     Plato::OrdinalType mNumSteps, mNumNewtonSteps, mCurrentNewtonStep;
@@ -741,12 +741,12 @@ private:
             mNumNewtonSteps = 2;
         }
 
-        Plato::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
+        Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tEllipticFunctionBaseFactory;
         Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tParabolicFunctionBaseFactory;
         if(aInputParams.isType<std::string>("Constraint"))
         {
             std::string tName = aInputParams.get<std::string>("Constraint");
-            mConstraint = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+            mConstraint = tEllipticFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
         }
 
         if(aInputParams.isType<std::string>("Objective"))

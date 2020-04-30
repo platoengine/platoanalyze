@@ -15,7 +15,7 @@
 
 #include <Teuchos_ParameterList.hpp>
 
-#include "EllipticProblem.hpp"
+#include "elliptic/Problem.hpp"
 #include "EllipticVMSProblem.hpp"
 #include "parabolic/Problem.hpp"
 #include "AnalyzeMacros.hpp"
@@ -63,7 +63,7 @@ public:
         {
             if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticProblem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+                auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
@@ -109,7 +109,7 @@ public:
             }
             else if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+                auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
@@ -126,7 +126,7 @@ public:
         }
         else if(tPhysics == "Electromechanical")
         {
-            auto tOutput = std::make_shared < EllipticProblem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+            auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
             return tOutput;
         }
@@ -153,7 +153,7 @@ public:
             }
             else if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+                auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }

@@ -5,7 +5,7 @@
 
 #include "Mechanics.hpp"
 #include "EssentialBCs.hpp"
-#include "VectorFunction.hpp"
+#include "elliptic/VectorFunction.hpp"
 #include "ApplyConstraints.hpp"
 #include "SimplexMechanics.hpp"
 #include "LinearElasticMaterial.hpp"
@@ -113,7 +113,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversion )
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
 
-  Plato::VectorFunction<SimplexPhysics>
+  Plato::Elliptic::VectorFunction<SimplexPhysics>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
@@ -227,7 +227,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   tMeshSets[Omega_h::NODE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
 
 
-  Plato::VectorFunction<SimplexPhysics>
+  Plato::Elliptic::VectorFunction<SimplexPhysics>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value

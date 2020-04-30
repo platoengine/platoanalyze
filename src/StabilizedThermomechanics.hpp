@@ -9,7 +9,7 @@
 #include "Simplex.hpp"
 #include "SimplexProjection.hpp"
 #include "AbstractVectorFunctionVMS.hpp"
-#include "AbstractScalarFunction.hpp"
+#include "elliptic/AbstractScalarFunction.hpp"
 #include "parabolic/AbstractScalarFunction.hpp"
 #include "Projection.hpp"
 #include "StabilizedThermoelastostaticResidual.hpp"
@@ -98,7 +98,7 @@ struct FunctionFactory
     }
     /******************************************************************************/
     template<typename EvaluationType>
-    std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
+    std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
     createScalarFunction(Omega_h::Mesh& aMesh,
                          Omega_h::MeshSets& aMeshSets,
                          Plato::DataMap& aDataMap, 
