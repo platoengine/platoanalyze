@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PLATO_SCALAR_FUNCTION_BASE_HPP
+#define PLATO_SCALAR_FUNCTION_BASE_HPP
 
 #include "PlatoStaticsTypes.hpp"
 
@@ -91,3 +92,5 @@ public:
 
 }
 // namespace Plato
+
+#endif

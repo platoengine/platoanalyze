@@ -17,7 +17,7 @@
 
 #include "VectorFunctionVMS.hpp"
 #include "ScalarFunctionBase.hpp"
-#include "ScalarFunctionIncBase.hpp"
+#include "parabolic/ScalarFunctionBase.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
@@ -26,7 +26,7 @@
 
 #include "alg/PlatoSolverFactory.hpp"
 #include "ScalarFunctionBaseFactory.hpp"
-#include "ScalarFunctionIncBaseFactory.hpp"
+#include "parabolic/ScalarFunctionBaseFactory.hpp"
 
 namespace Plato
 {
@@ -48,7 +48,7 @@ private:
 
     // optional
     std::shared_ptr<const Plato::ScalarFunctionBase>    mConstraint; /*!< constraint constraint interface */
-    std::shared_ptr<const Plato::ScalarFunctionIncBase> mObjective;  /*!< objective constraint interface */
+    std::shared_ptr<const Plato::Parabolic::ScalarFunctionBase> mObjective;  /*!< objective constraint interface */
 
     Plato::OrdinalType mNumSteps, mNumNewtonSteps, mCurrentNewtonStep;
     Plato::Scalar mTimeStep;
@@ -742,7 +742,7 @@ private:
         }
 
         Plato::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
-        Plato::ScalarFunctionIncBaseFactory<SimplexPhysics> tFunctionIncBaseFactory;
+        Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tParabolicFunctionBaseFactory;
         if(aInputParams.isType<std::string>("Constraint"))
         {
             std::string tName = aInputParams.get<std::string>("Constraint");
@@ -752,7 +752,7 @@ private:
         if(aInputParams.isType<std::string>("Objective"))
         {
             std::string tName = aInputParams.get<std::string>("Objective");
-            mObjective = tFunctionIncBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+            mObjective = tParabolicFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
 
             auto tLength = mEqualityConstraint.size();
             mLambda = Plato::ScalarMultiVector("Lambda", mNumSteps, tLength);

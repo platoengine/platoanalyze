@@ -18,21 +18,17 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     IsotropicLinearElasticMaterial.cpp 
     OrthotropicLinearElasticMaterial.cpp 
     LinearThermoelasticMaterial.cpp 
-    HeatEquationResidual.cpp 
-    TransientThermomechResidual.cpp 
     InternalThermalEnergy.cpp 
     InternalThermoelasticEnergy.cpp 
     InternalElectroelasticEnergy.cpp 
     InternalElasticEnergy.cpp 
     StabilizedElastostaticEnergy.cpp 
-    TemperatureAverage.cpp 
     FluxPNorm.cpp 
     StressPNorm.cpp 
     EMStressPNorm.cpp 
     EffectiveEnergy.cpp 
     ThermostaticResidual.cpp 
     ElastostaticResidual.cpp 
-    ParabolicProblem.cpp 
     EllipticProblem.cpp 
     EllipticVMSProblem.cpp 
     alg/ParseInput.cpp 
@@ -43,9 +39,6 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     alg/EpetraLinearSolver.cpp
     alg/AmgXLinearSolver.cpp
     alg/PlatoSolverFactory.cpp
-    ScalarFunctionBaseFactory.cpp 
-    hyperbolic/HyperbolicScalarFunctionFactory.cpp
-    hyperbolic/HyperbolicPhysicsScalarFunction.cpp
     WeightedSumFunction.cpp 
     PhysicsScalarFunction.cpp 
     TensileEnergyDensity.cpp 
@@ -57,8 +50,6 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     MassMoment.cpp 
     MassPropertiesFunction.cpp 
     IntermediateDensityPenalty.cpp 
-    ScalarFunctionIncBaseFactory.cpp 
-    PhysicsScalarFunctionInc.cpp 
     J2PlasticityLocalResidual.cpp 
     LocalVectorFunctionInc.cpp 
     NewtonRaphsonSolver.cpp 
@@ -71,7 +62,18 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     WeightedLocalScalarFunction.cpp 
     InfinitesimalStrainPlasticityResidual.cpp 
     ElasticWorkCriterion.cpp 
-    PlasticWorkCriterion.cpp)
+    PlasticWorkCriterion.cpp
+    ScalarFunctionBaseFactory.cpp 
+    parabolic/InternalThermalEnergy.cpp 
+    parabolic/InternalThermoelasticEnergy.cpp 
+    parabolic/TemperatureAverage.cpp 
+    parabolic/Problem.cpp 
+    parabolic/ScalarFunctionBaseFactory.cpp 
+    parabolic/PhysicsScalarFunction.cpp 
+    parabolic/HeatEquationResidual.cpp 
+    parabolic/TransientThermomechResidual.cpp
+    hyperbolic/HyperbolicScalarFunctionFactory.cpp
+    hyperbolic/HyperbolicPhysicsScalarFunction.cpp)
 
 include_directories(${PROJECT_SOURCE_DIR}/src)
 include_directories(${Trilinos_INCLUDE_DIRS})

@@ -10,7 +10,7 @@
 #include "Plato_AugLagStressCriterionGeneral.hpp"
 #include "Plato_AugLagStressCriterion.hpp"
 #include "SimplexMechanics.hpp"
-#include "AbstractScalarFunctionInc.hpp"
+#include "parabolic/AbstractScalarFunction.hpp"
 #include "ElastostaticResidual.hpp"
 #include "InternalElasticEnergy.hpp"
 #include "EffectiveEnergy.hpp"
@@ -419,8 +419,8 @@ struct FunctionFactory
 
     /******************************************************************************/
     template <typename EvaluationType>
-    std::shared_ptr<AbstractScalarFunctionInc<EvaluationType>>
-    createScalarFunctionInc(Omega_h::Mesh& aMesh,
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<EvaluationType>>
+    createScalarFunctionParabolic(Omega_h::Mesh& aMesh,
                             Omega_h::MeshSets& aMeshSets,
                             Plato::DataMap& aDataMap,
                             Teuchos::ParameterList& aParamList,

@@ -1,13 +1,15 @@
-#ifndef HYPERBOLIC_SIMPLEX_FAD_TYPES
-#define HYPERBOLIC_SIMPLEX_FAD_TYPES
+#ifndef PARABOLIC_SIMPLEX_FAD_TYPES
+#define PARABOLIC_SIMPLEX_FAD_TYPES
 
 #include <Sacado.hpp>
 
-#include "../SimplexFadTypes.hpp"
+#include "SimplexFadTypes.hpp"
 
-namespace Plato {
+namespace Plato
+{
 
-namespace Hyperbolic {
+namespace Parabolic
+{
 
 template <typename SimplexPhysicsT>
 struct EvaluationTypes
@@ -20,48 +22,32 @@ struct EvaluationTypes
 template <typename SimplexPhysicsT>
 struct ResidualTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = Plato::Scalar;
+  using StateScalarType          = Plato::Scalar;
+  using PrevStateScalarType      = Plato::Scalar;
   using ControlScalarType        = Plato::Scalar;
   using ConfigScalarType         = Plato::Scalar;
   using ResultScalarType         = Plato::Scalar;
 };
 
 template <typename SimplexPhysicsT>
-struct GradientUTypes : EvaluationTypes<SimplexPhysicsT>
+struct JacobianTypes : EvaluationTypes<SimplexPhysicsT>
 {
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
 
-  using DisplacementScalarType   = SFadType;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = Plato::Scalar;
+  using StateScalarType          = SFadType;
+  using PrevStateScalarType      = Plato::Scalar;
   using ControlScalarType        = Plato::Scalar;
   using ConfigScalarType         = Plato::Scalar;
   using ResultScalarType         = SFadType;
 };
 
 template <typename SimplexPhysicsT>
-struct GradientVTypes : EvaluationTypes<SimplexPhysicsT>
+struct JacobianPTypes : EvaluationTypes<SimplexPhysicsT>
 {
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
 
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = SFadType;
-  using AccelerationScalarType   = Plato::Scalar;
-  using ControlScalarType        = Plato::Scalar;
-  using ConfigScalarType         = Plato::Scalar;
-  using ResultScalarType         = SFadType;
-};
-
-template <typename SimplexPhysicsT>
-struct GradientATypes : EvaluationTypes<SimplexPhysicsT>
-{
-  using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
-
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = SFadType;
+  using StateScalarType          = Plato::Scalar;
+  using PrevStateScalarType      = SFadType;
   using ControlScalarType        = Plato::Scalar;
   using ConfigScalarType         = Plato::Scalar;
   using ResultScalarType         = SFadType;
@@ -72,9 +58,8 @@ struct GradientXTypes : EvaluationTypes<SimplexPhysicsT>
 {
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::ConfigFad;
 
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = Plato::Scalar;
+  using StateScalarType          = Plato::Scalar;
+  using PrevStateScalarType      = Plato::Scalar;
   using ControlScalarType        = Plato::Scalar;
   using ConfigScalarType         = SFadType;
   using ResultScalarType         = SFadType;
@@ -85,26 +70,25 @@ struct GradientZTypes : EvaluationTypes<SimplexPhysicsT>
 {
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::ControlFad;
 
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = Plato::Scalar;
+  using StateScalarType          = Plato::Scalar;
+  using PrevStateScalarType      = Plato::Scalar;
   using ControlScalarType        = SFadType;
   using ConfigScalarType         = Plato::Scalar;
   using ResultScalarType         = SFadType;
 };
 
+
 template <typename SimplexPhysicsT>
 struct Evaluation {
    using Residual       = ResidualTypes<SimplexPhysicsT>;
-   using GradientU      = GradientUTypes<SimplexPhysicsT>;
-   using GradientV      = GradientVTypes<SimplexPhysicsT>;
-   using GradientA      = GradientATypes<SimplexPhysicsT>;
+   using Jacobian       = JacobianTypes<SimplexPhysicsT>;
+   using JacobianP      = JacobianPTypes<SimplexPhysicsT>;
    using GradientZ      = GradientZTypes<SimplexPhysicsT>;
    using GradientX      = GradientXTypes<SimplexPhysicsT>;
 };
-
-}
   
+} // namespace Parabolic
+
 } // namespace Plato
 
 #endif

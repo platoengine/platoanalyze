@@ -1,17 +1,21 @@
-#pragma once
+#ifndef PLATO_PARABOLIC_SCALAR_FUNCTION_BASE_HPP
+#define PLATO_PARABOLIC_SCALAR_FUNCTION_BASE_HPP
 
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato
 {
 
+namespace Parabolic
+{
+
 /******************************************************************************//**
  * \brief Scalar function inc base class
  **********************************************************************************/
-class ScalarFunctionIncBase
+class ScalarFunctionBase
 {
 public:
-    virtual ~ScalarFunctionIncBase(){}
+    virtual ~ScalarFunctionBase(){}
 
     /******************************************************************************//**
      * \fn virtual std::string name() const
@@ -79,8 +83,10 @@ public:
                                            const Plato::ScalarVector & aControl,
                                            Plato::Scalar aTimeStep = 0.0) const = 0;
 };
-// class ScalarFunctionIncBase
+// class ScalarFunctionBase
 
+} // namespace Parabolic
 
-}
-// namespace Plato
+} // namespace Plato
+
+#endif

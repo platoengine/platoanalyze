@@ -4,12 +4,13 @@
 #include "Simplex.hpp"
 #include "SimplexThermal.hpp"
 #include "AbstractVectorFunction.hpp"
-#include "AbstractVectorFunctionInc.hpp"
-#include "AbstractScalarFunctionInc.hpp"
+#include "parabolic/AbstractVectorFunction.hpp"
+#include "parabolic/AbstractScalarFunction.hpp"
+#include "parabolic/HeatEquationResidual.hpp"
+#include "parabolic/InternalThermalEnergy.hpp"
+#include "parabolic/TemperatureAverage.hpp"
 #include "ThermostaticResidual.hpp"
-#include "HeatEquationResidual.hpp"
 #include "InternalThermalEnergy.hpp"
-#include "TemperatureAverage.hpp"
 #include "ThermalFluxRate.hpp"
 #include "FluxPNorm.hpp"
 #include "Volume.hpp"
@@ -54,8 +55,8 @@ struct FunctionFactory{
     }
   }
   template <typename EvaluationType>
-  std::shared_ptr<AbstractVectorFunctionInc<EvaluationType>>
-  createVectorFunctionInc(
+  std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<EvaluationType>>
+  createVectorFunctionParabolic(
     Omega_h::Mesh& aMesh,
     Omega_h::MeshSets& aMeshSets, 
     Plato::DataMap& aDataMap,
@@ -66,13 +67,13 @@ struct FunctionFactory{
       auto penaltyParams = aParamList.sublist(strVectorFunctionType).sublist("Penalty Function");
       std::string penaltyType = penaltyParams.get<std::string>("Type");
       if( penaltyType == "SIMP" ){
-        return std::make_shared<HeatEquationResidual<EvaluationType, Plato::MSIMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams);
+        return std::make_shared<Plato::Parabolic::HeatEquationResidual<EvaluationType, Plato::MSIMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams);
       } else
       if( penaltyType == "RAMP" ){
-        return std::make_shared<HeatEquationResidual<EvaluationType, Plato::RAMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams);
+        return std::make_shared<Plato::Parabolic::HeatEquationResidual<EvaluationType, Plato::RAMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams);
       } else
       if( penaltyType == "Heaviside" ){
-        return std::make_shared<HeatEquationResidual<EvaluationType, Plato::Heaviside>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams);
+        return std::make_shared<Plato::Parabolic::HeatEquationResidual<EvaluationType, Plato::Heaviside>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams);
       } else {
         throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
       }
@@ -140,8 +141,8 @@ struct FunctionFactory{
     }
   }
   template <typename EvaluationType>
-  std::shared_ptr<Plato::AbstractScalarFunctionInc<EvaluationType>>
-  createScalarFunctionInc( 
+  std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<EvaluationType>>
+  createScalarFunctionParabolic( 
     Omega_h::Mesh& aMesh,
     Omega_h::MeshSets& aMeshSets,
     Plato::DataMap& aDataMap,
@@ -156,13 +157,13 @@ struct FunctionFactory{
       auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
       std::string penaltyType = penaltyParams.get<std::string>("Type");
       if( penaltyType == "SIMP" ){
-        return std::make_shared<Plato::InternalThermalEnergyInc<EvaluationType, Plato::MSIMP>>(aMesh, aMeshSets, aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+        return std::make_shared<Plato::Parabolic::InternalThermalEnergy<EvaluationType, Plato::MSIMP>>(aMesh, aMeshSets, aDataMap,aParamList,penaltyParams, strScalarFunctionName);
       } else
       if( penaltyType == "RAMP" ){
-        return std::make_shared<Plato::InternalThermalEnergyInc<EvaluationType, Plato::RAMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+        return std::make_shared<Plato::Parabolic::InternalThermalEnergy<EvaluationType, Plato::RAMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
       } else
       if( penaltyType == "Heaviside" ){
-        return std::make_shared<Plato::InternalThermalEnergyInc<EvaluationType, Plato::Heaviside>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+        return std::make_shared<Plato::Parabolic::InternalThermalEnergy<EvaluationType, Plato::Heaviside>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
       } else {
         throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
       }
@@ -171,13 +172,13 @@ struct FunctionFactory{
       auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
       std::string penaltyType = penaltyParams.get<std::string>("Type");
       if( penaltyType == "SIMP" ){
-        return std::make_shared<Plato::TemperatureAverageInc<EvaluationType, Plato::MSIMP>>(aMesh, aMeshSets, aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+        return std::make_shared<Plato::Parabolic::TemperatureAverage<EvaluationType, Plato::MSIMP>>(aMesh, aMeshSets, aDataMap,aParamList,penaltyParams, strScalarFunctionName);
       } else
       if( penaltyType == "RAMP" ){
-        return std::make_shared<Plato::TemperatureAverageInc<EvaluationType, Plato::RAMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+        return std::make_shared<Plato::Parabolic::TemperatureAverage<EvaluationType, Plato::RAMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
       } else
       if( penaltyType == "Heaviside" ){
-        return std::make_shared<Plato::TemperatureAverageInc<EvaluationType, Plato::Heaviside>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+        return std::make_shared<Plato::Parabolic::TemperatureAverage<EvaluationType, Plato::Heaviside>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
       } else {
         throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
       }

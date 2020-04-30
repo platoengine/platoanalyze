@@ -7,7 +7,7 @@
 #include "StateValues.hpp"
 #include "ImplicitFunctors.hpp"
 #include "SimplexFadTypes.hpp"
-#include "AbstractScalarFunctionInc.hpp"
+#include "parabolic/AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
 #include "Simp.hpp"
@@ -19,11 +19,14 @@
 namespace Plato
 {
 
+namespace Parabolic
+{
+
 /******************************************************************************/
 template<typename EvaluationType, typename IndicatorFunctionType>
-class TemperatureAverageInc : 
+class TemperatureAverage : 
   public Plato::SimplexThermal<EvaluationType::SpatialDim>,
-  public Plato::AbstractScalarFunctionInc<EvaluationType>
+  public Plato::Parabolic::AbstractScalarFunction<EvaluationType>
 /******************************************************************************/
 {
   private:
@@ -33,8 +36,8 @@ class TemperatureAverageInc :
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::AbstractScalarFunctionInc<EvaluationType>::mMesh;
-    using Plato::AbstractScalarFunctionInc<EvaluationType>::mDataMap;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
     using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
@@ -49,13 +52,13 @@ class TemperatureAverageInc :
 
   public:
     /**************************************************************************/
-    TemperatureAverageInc(Omega_h::Mesh& aMesh,
-                        Omega_h::MeshSets& aMeshSets,
-                        Plato::DataMap& aDataMap,
-                        Teuchos::ParameterList& aProblemParams,
-                        Teuchos::ParameterList& aPenaltyParams,
-                        std::string& aFunctionName) :
-            Plato::AbstractScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
+    TemperatureAverage(Omega_h::Mesh& aMesh,
+                       Omega_h::MeshSets& aMeshSets,
+                       Plato::DataMap& aDataMap,
+                       Teuchos::ParameterList& aProblemParams,
+                       Teuchos::ParameterList& aPenaltyParams,
+                       std::string& aFunctionName) :
+            Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
             mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>()),
             mIndicatorFunction(aPenaltyParams),
             mApplyWeighting(mIndicatorFunction) {}
@@ -102,20 +105,22 @@ class TemperatureAverageInc :
       },"temperature");
     }
 };
-// class
+// class TemperatureAverage
 
-} // namespace Plato TemperatureAverageInc
+} // namespace Parabolic
+
+} // namespace Plato
 
 #ifdef PLATOANALYZE_1D
-PLATO_EXPL_DEC(Plato::TemperatureAverageInc, Plato::SimplexThermal, 1)
+PLATO_EXPL_DEC(Plato::Parabolic::TemperatureAverage, Plato::SimplexThermal, 1)
 #endif
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC(Plato::TemperatureAverageInc, Plato::SimplexThermal, 2)
+PLATO_EXPL_DEC(Plato::Parabolic::TemperatureAverage, Plato::SimplexThermal, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC(Plato::TemperatureAverageInc, Plato::SimplexThermal, 3)
+PLATO_EXPL_DEC(Plato::Parabolic::TemperatureAverage, Plato::SimplexThermal, 3)
 #endif
 
 #endif

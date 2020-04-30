@@ -15,25 +15,27 @@
 
 #include "Thermal.hpp"
 #include "Mechanics.hpp"
-#include "VectorFunctionInc.hpp"
-#include "ScalarFunctionBase.hpp"
-#include "ScalarFunctionIncBase.hpp"
+#include "parabolic/VectorFunction.hpp"
+#include "../ScalarFunctionBase.hpp"
+#include "parabolic/ScalarFunctionBase.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "ComputedField.hpp"
 
-#include "ScalarFunctionBaseFactory.hpp"
-#include "ScalarFunctionIncBaseFactory.hpp"
+#include "../ScalarFunctionBaseFactory.hpp"
+#include "parabolic/ScalarFunctionBaseFactory.hpp"
 
 #include "alg/ParallelComm.hpp"
 #include "alg/PlatoSolverFactory.hpp"
 
 namespace Plato {
 
+namespace Parabolic {
+
 /**********************************************************************************/
 template<typename SimplexPhysics>
-class ParabolicProblem: public Plato::AbstractProblem
+class Problem : public Plato::AbstractProblem
 {
 /**********************************************************************************/
 private:
@@ -43,14 +45,16 @@ private:
     static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
 
     // required
-    Plato::VectorFunctionInc<SimplexPhysics> mEqualityConstraint;
+    Plato::Parabolic::VectorFunction<SimplexPhysics> mEqualityConstraint;
 
     Plato::OrdinalType mNumSteps;
     Plato::Scalar mTimeStep;
 
+    using ScalarFunctionBase = Plato::ScalarFunctionBase;
+
     // optional
-    std::shared_ptr<const Plato::ScalarFunctionBase>    mConstraint;
-    std::shared_ptr<const Plato::ScalarFunctionIncBase> mObjective;
+    std::shared_ptr<const Plato::Parabolic::ScalarFunctionBase> mObjective;
+    std::shared_ptr<const ScalarFunctionBase>    mConstraint;
 
     Plato::ScalarMultiVector mAdjoints;
     Plato::ScalarVector mResidual;
@@ -70,7 +74,7 @@ private:
     rcp<Plato::AbstractSolver> mSolver;
 public:
     /******************************************************************************/
-    ParabolicProblem(
+    Problem(
       Omega_h::Mesh& aMesh,
       Omega_h::MeshSets& aMeshSets,
       Teuchos::ParameterList& aParamList,
@@ -534,7 +538,7 @@ private:
         }
 
         Plato::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
-        Plato::ScalarFunctionIncBaseFactory<SimplexPhysics> tFunctionIncBaseFactory;
+        Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tParabolicFunctionBaseFactory;
         if(aParamList.isType<std::string>("Constraint"))
         {
             std::string tName = aParamList.get<std::string>("Constraint");
@@ -544,7 +548,7 @@ private:
         if(aParamList.isType<std::string>("Objective"))
         {
             std::string tName = aParamList.get<std::string>("Objective");
-            mObjective = tFunctionIncBaseFactory.create(aMesh, aMeshSets, mDataMap, aParamList, tName);
+            mObjective = tParabolicFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aParamList, tName);
 
             auto tLength = mEqualityConstraint.size();
             mAdjoints = Plato::ScalarMultiVector("MyAdjoint", mNumSteps, tLength);
@@ -558,16 +562,18 @@ private:
     }
 };
 
+} // end namespace Parabolic
+
 } // end namespace Plato
 
 #ifdef PLATOANALYZE_1D
-extern template class Plato::ParabolicProblem<::Plato::Thermal<1>>;
+extern template class Plato::Parabolic::Problem<::Plato::Thermal<1>>;
 #endif
 #ifdef PLATOANALYZE_2D
-extern template class Plato::ParabolicProblem<::Plato::Thermal<2>>;
+extern template class Plato::Parabolic::Problem<::Plato::Thermal<2>>;
 #endif
 #ifdef PLATOANALYZE_3D
-extern template class Plato::ParabolicProblem<::Plato::Thermal<3>>;
+extern template class Plato::Parabolic::Problem<::Plato::Thermal<3>>;
 #endif
 
 #endif // PLATO_PROBLEM_HPP

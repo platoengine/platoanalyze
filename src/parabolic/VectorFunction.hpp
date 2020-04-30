@@ -1,16 +1,19 @@
-#ifndef VECTOR_FUNCTION_INC_HPP
-#define VECTOR_FUNCTION_INC_HPP
+#ifndef VECTOR_FUNCTION_PARABOLIC_HPP
+#define VECTOR_FUNCTION_PARABOLIC_HPP
 
 #include <memory>
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "WorksetBase.hpp"
-#include "AbstractVectorFunctionInc.hpp"
-#include "SimplexFadTypes.hpp"
+#include "../WorksetBase.hpp"
+#include "parabolic/ParabolicSimplexFadTypes.hpp"
+#include "parabolic/AbstractVectorFunction.hpp"
 
 namespace Plato
+{
+
+namespace Parabolic
 {
 
 /******************************************************************************/
@@ -26,7 +29,7 @@ namespace Plato
 */
 /******************************************************************************/
 template<typename PhysicsT>
-class VectorFunctionInc : public Plato::WorksetBase<PhysicsT>
+class VectorFunction : public Plato::WorksetBase<PhysicsT>
 {
   private:
     using Plato::WorksetBase<PhysicsT>::mNumDofsPerCell;
@@ -40,19 +43,19 @@ class VectorFunctionInc : public Plato::WorksetBase<PhysicsT>
     using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal;
     using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
 
-    using Residual  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual;
-    using Jacobian  = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Jacobian;
-    using JacobianP = typename Plato::Evaluation<typename PhysicsT::SimplexT>::JacobianP;
-    using GradientX = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientX;
-    using GradientZ = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientZ;
+    using Residual  = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::Residual;
+    using Jacobian  = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::Jacobian;
+    using JacobianP = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::JacobianP;
+    using GradientX = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientX;
+    using GradientZ = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientZ;
 
     static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mNumSpatialDims*mNumNodesPerCell;
 
-    std::shared_ptr<Plato::AbstractVectorFunctionInc<Residual>>  mVectorFunctionResidual;
-    std::shared_ptr<Plato::AbstractVectorFunctionInc<Jacobian>>  mVectorFunctionJacobianU;
-    std::shared_ptr<Plato::AbstractVectorFunctionInc<JacobianP>> mVectorFunctionJacobianP;
-    std::shared_ptr<Plato::AbstractVectorFunctionInc<GradientX>> mVectorFunctionJacobianX;
-    std::shared_ptr<Plato::AbstractVectorFunctionInc<GradientZ>> mVectorFunctionJacobianZ;
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<Residual>>  mVectorFunctionResidual;
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<Jacobian>>  mVectorFunctionJacobianU;
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<JacobianP>> mVectorFunctionJacobianP;
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientX>> mVectorFunctionJacobianX;
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientZ>> mVectorFunctionJacobianZ;
 
     Plato::DataMap& mDataMap;
 
@@ -68,7 +71,7 @@ class VectorFunctionInc : public Plato::WorksetBase<PhysicsT>
     * @param [in] aProblemType problem type 
     *
     ******************************************************************************/
-    VectorFunctionInc(Omega_h::Mesh& aMesh,
+    VectorFunction(Omega_h::Mesh& aMesh,
                    Omega_h::MeshSets& aMeshSets,
                    Plato::DataMap& aDataMap,
                    Teuchos::ParameterList& aParamList,
@@ -78,15 +81,11 @@ class VectorFunctionInc : public Plato::WorksetBase<PhysicsT>
     {
       typename PhysicsT::FunctionFactory tFunctionFactory;
 
-      mVectorFunctionResidual = tFunctionFactory.template createVectorFunctionInc<Residual>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-
-      mVectorFunctionJacobianU = tFunctionFactory.template createVectorFunctionInc<Jacobian>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-
-      mVectorFunctionJacobianP = tFunctionFactory.template createVectorFunctionInc<JacobianP>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-
-      mVectorFunctionJacobianZ = tFunctionFactory.template createVectorFunctionInc<GradientZ>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-
-      mVectorFunctionJacobianX = tFunctionFactory.template createVectorFunctionInc<GradientX>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+      mVectorFunctionResidual  = tFunctionFactory.template createVectorFunctionParabolic<Residual >(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+      mVectorFunctionJacobianU = tFunctionFactory.template createVectorFunctionParabolic<Jacobian >(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+      mVectorFunctionJacobianP = tFunctionFactory.template createVectorFunctionParabolic<JacobianP>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+      mVectorFunctionJacobianZ = tFunctionFactory.template createVectorFunctionParabolic<GradientZ>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+      mVectorFunctionJacobianX = tFunctionFactory.template createVectorFunctionParabolic<GradientX>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
     }
 
     /**************************************************************************//**
@@ -96,7 +95,7 @@ class VectorFunctionInc : public Plato::WorksetBase<PhysicsT>
     * @param [in] aDataMap problem-specific data map 
     *
     ******************************************************************************/
-    VectorFunctionInc(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
+    VectorFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
             Plato::WorksetBase<PhysicsT>(aMesh),
             mVectorFunctionResidual(),
             mVectorFunctionJacobianU(),
@@ -114,8 +113,8 @@ class VectorFunctionInc : public Plato::WorksetBase<PhysicsT>
     * @param [in] aJacobian Jacobian evaluator
     *
     ******************************************************************************/
-    void allocateResidual(const std::shared_ptr<Plato::AbstractVectorFunctionInc<Residual>>& aResidual,
-                          const std::shared_ptr<Plato::AbstractVectorFunctionInc<Jacobian>>& aJacobian)
+    void allocateResidual(const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<Residual>>& aResidual,
+                          const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<Jacobian>>& aJacobian)
     {
         mVectorFunctionResidual = aResidual;
         mVectorFunctionJacobianU = aJacobian;
@@ -127,7 +126,7 @@ class VectorFunctionInc : public Plato::WorksetBase<PhysicsT>
     * @param [in] aGradientZ partial derivative with respect to control evaluator
     *
     ******************************************************************************/
-    void allocateJacobianZ(const std::shared_ptr<Plato::AbstractVectorFunctionInc<GradientZ>>& aGradientZ)
+    void allocateJacobianZ(const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientZ>>& aGradientZ)
     {
         mVectorFunctionJacobianZ = aGradientZ; 
     }
@@ -138,7 +137,7 @@ class VectorFunctionInc : public Plato::WorksetBase<PhysicsT>
     * @param [in] GradientX partial derivative with respect to configuration evaluator
     *
     ******************************************************************************/
-    void allocateJacobianX(const std::shared_ptr<Plato::AbstractVectorFunctionInc<GradientX>>& aGradientX)
+    void allocateJacobianX(const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientX>>& aGradientX)
     {
         mVectorFunctionJacobianX = aGradientX; 
     }
@@ -449,7 +448,9 @@ class VectorFunctionInc : public Plato::WorksetBase<PhysicsT>
       return (tJacobianMat);
     }
 };
-// class VectorFunctionInc
+// class VectorFunction
+
+} // namespace Parabolic
 
 } // namespace Plato
 

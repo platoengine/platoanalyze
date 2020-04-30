@@ -8,7 +8,7 @@
 
 #include "SimplexProjection.hpp"
 #include "SimplexStabilizedMechanics.hpp"
-#include "AbstractScalarFunctionInc.hpp"
+#include "parabolic/AbstractScalarFunction.hpp"
 #include "StabilizedElastostaticResidual.hpp"
 #include "StabilizedElastostaticEnergy.hpp"
 #include "Plasticity.hpp"
@@ -107,8 +107,8 @@ struct FunctionFactory
 
     /******************************************************************************/
     template <typename EvaluationType>
-    std::shared_ptr<AbstractScalarFunctionInc<EvaluationType>>
-    createScalarFunctionInc(Omega_h::Mesh& aMesh,
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<EvaluationType>>
+    createScalarFunctionParabolic(Omega_h::Mesh& aMesh,
                             Omega_h::MeshSets& aMeshSets,
                             Plato::DataMap& aDataMap,
                             Teuchos::ParameterList& aParamList,
@@ -116,7 +116,7 @@ struct FunctionFactory
                             std::string aFuncName )
     /******************************************************************************/
     {
-        std::shared_ptr<Plato::AbstractScalarFunctionInc<EvaluationType>> tOutput;
+        std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<EvaluationType>> tOutput;
         auto tPenaltyParams = aParamList.sublist(aFuncName).sublist("Penalty Function");
         if( aFuncType == "Internal Elastic Energy" )
         {

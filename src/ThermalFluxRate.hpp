@@ -8,7 +8,7 @@
 #include "ScalarProduct.hpp"
 #include "SimplexThermal.hpp"
 #include "SimplexFadTypes.hpp"
-#include "AbstractScalarFunctionInc.hpp"
+#include "parabolic/AbstractScalarFunction.hpp"
 
 namespace Plato
 {
@@ -17,7 +17,7 @@ namespace Plato
 template<typename EvaluationType>
 class ThermalFluxRate : 
   public Plato::SimplexThermal<EvaluationType::SpatialDim>,
-  public Plato::AbstractScalarFunctionInc<EvaluationType>
+  public Plato::Parabolic::AbstractScalarFunction<EvaluationType>
 /******************************************************************************/
 {
   private:
@@ -27,9 +27,9 @@ class ThermalFluxRate :
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::AbstractScalarFunctionInc<EvaluationType>::mMesh;
-    using Plato::AbstractScalarFunctionInc<EvaluationType>::mDataMap;
-    using Plato::AbstractScalarFunctionInc<EvaluationType>::mMeshSets;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
     using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
@@ -45,7 +45,7 @@ class ThermalFluxRate :
                     Omega_h::MeshSets& aMeshSets,
                     Plato::DataMap& aDataMap,
                     Teuchos::ParameterList& problemParams) :
-            Plato::AbstractScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, "Thermal Flux Rate"),
+            Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Thermal Flux Rate"),
             mBoundaryLoads(nullptr)
     /**************************************************************************/
     {

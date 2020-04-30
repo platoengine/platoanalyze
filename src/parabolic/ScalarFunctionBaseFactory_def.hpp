@@ -1,10 +1,13 @@
 #pragma once
 
 #include "ScalarFunctionBase.hpp"
-#include "PhysicsScalarFunctionInc.hpp"
+#include "parabolic/PhysicsScalarFunction.hpp"
 #include "AnalyzeMacros.hpp"
 
 namespace Plato
+{
+
+namespace Parabolic
 {
     /******************************************************************************//**
      * @brief Create method
@@ -15,8 +18,8 @@ namespace Plato
      * @param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     template <typename PhysicsT>
-    std::shared_ptr<Plato::ScalarFunctionIncBase> 
-    ScalarFunctionIncBaseFactory<PhysicsT>::create(Omega_h::Mesh& aMesh,
+    std::shared_ptr<Plato::Parabolic::ScalarFunctionBase> 
+    ScalarFunctionBaseFactory<PhysicsT>::create(Omega_h::Mesh& aMesh,
            Omega_h::MeshSets& aMeshSets,
            Plato::DataMap & aDataMap,
            Teuchos::ParameterList& aInputParams,
@@ -27,7 +30,7 @@ namespace Plato
 
         if(tFunctionType == "Scalar Function")
         {
-            return std::make_shared<PhysicsScalarFunctionInc<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<Plato::Parabolic::PhysicsScalarFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
         }
         else
         {
@@ -37,6 +40,6 @@ namespace Plato
         }
     }
 
+} // namespace Parabolic
 
-}
-// namespace Plato
+} // namespace Plato

@@ -1,5 +1,5 @@
-#ifndef ABSTRACT_SCALAR_FUNCTION_INC
-#define ABSTRACT_SCALAR_FUNCTION_INC
+#ifndef PARABOLIC_ABSTRACT_SCALAR_FUNCTION
+#define PARABOLIC_ABSTRACT_SCALAR_FUNCTION
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
@@ -9,13 +9,16 @@
 namespace Plato
 {
 
+namespace Parabolic
+{
+
 /******************************************************************************//**
  * @brief Abstract scalar function (i.e. criterion) interface
  * @tparam EvaluationType evaluation type use to determine automatic differentiation
  *   type for scalar function (e.g. Residual, Jacobian, GradientZ, etc.)
  **********************************************************************************/
 template<typename EvaluationType>
-class AbstractScalarFunctionInc
+class AbstractScalarFunction
 {
 protected:
     Omega_h::Mesh& mMesh; /*!< volume mesh database */
@@ -32,7 +35,7 @@ public:
      * @param [in] aDataMap PLATO Analyze database
      * @param [in] aName name of scalar function
     **********************************************************************************/
-    AbstractScalarFunctionInc(Omega_h::Mesh& aMesh,
+    AbstractScalarFunction(Omega_h::Mesh& aMesh,
                               Omega_h::MeshSets& aMeshSets,
                               Plato::DataMap& aDataMap,
                               std::string aName) :
@@ -46,7 +49,7 @@ public:
     /******************************************************************************//**
      * @brief Destructor
     **********************************************************************************/
-    virtual ~AbstractScalarFunctionInc()
+    virtual ~AbstractScalarFunction()
     {
     }
 
@@ -62,12 +65,12 @@ public:
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType> & aState,
+    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType>     & aState,
              const Plato::ScalarMultiVectorT<typename EvaluationType::PrevStateScalarType> & aPrevState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType> & aControl,
-             const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType> & aConfig,
-             Plato::ScalarVectorT<typename EvaluationType::ResultScalarType> & aResult,
-             Plato::Scalar aTimeStep = 0.0) const = 0;
+             const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType>   & aControl,
+             const Plato::ScalarArray3DT    <typename EvaluationType::ConfigScalarType>    & aConfig,
+                   Plato::ScalarVectorT     <typename EvaluationType::ResultScalarType>    & aResult,
+                   Plato::Scalar aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
      * @brief Post-evaluate time-dependent scalar function after evaluate call
@@ -93,7 +96,9 @@ public:
         return mFunctionName;
     }
 };
-// class AbstractScalarFunctionInc
+// class AbstractScalarFunction
+
+}// namespace Parabolic
 
 }// namespace Plato
 

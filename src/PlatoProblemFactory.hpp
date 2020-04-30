@@ -17,7 +17,7 @@
 
 #include "EllipticProblem.hpp"
 #include "EllipticVMSProblem.hpp"
-#include "ParabolicProblem.hpp"
+#include "parabolic/Problem.hpp"
 #include "AnalyzeMacros.hpp"
 
 #include "Mechanics.hpp"
@@ -103,11 +103,11 @@ public:
         }
         else if(tPhysics == "Thermal")
         {
-            if(tPDE == "Heat Equation")
+            if(tPDE == "Parabolic")
             {
-                return std::make_shared < ParabolicProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+                return std::make_shared < Plato::Parabolic::Problem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
-            else if(tPDE == "Thermostatics")
+            else if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < EllipticProblem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
@@ -149,7 +149,7 @@ public:
         {
             if(tPDE == "Parabolic")
             {
-                return std::make_shared < ParabolicProblem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+                return std::make_shared < Plato::Parabolic::Problem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
             else if(tPDE == "Elliptic")
             {

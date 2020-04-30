@@ -1,5 +1,5 @@
-#ifndef ABSTRACT_VECTOR_FUNCTION_INC_HPP
-#define ABSTRACT_VECTOR_FUNCTION_INC_HPP
+#ifndef ABSTRACT_VECTOR_FUNCTION_PARABOLIC_HPP
+#define ABSTRACT_VECTOR_FUNCTION_PARABOLIC_HPP
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
@@ -9,9 +9,12 @@
 namespace Plato
 {
 
+namespace Parabolic
+{
+
 /******************************************************************************/
 template<typename EvaluationType>
-class AbstractVectorFunctionInc
+class AbstractVectorFunction
 /******************************************************************************/
 {
 protected:
@@ -23,7 +26,7 @@ protected:
 public:
     /******************************************************************************/
     explicit 
-    AbstractVectorFunctionInc(
+    AbstractVectorFunction(
         Omega_h::Mesh& aMesh, 
         Omega_h::MeshSets& aMeshSets,
         Plato::DataMap& aDataMap,
@@ -36,7 +39,7 @@ public:
     {
     }
     /******************************************************************************/
-    virtual ~AbstractVectorFunctionInc()
+    virtual ~AbstractVectorFunction()
     /******************************************************************************/
     {
     }
@@ -76,6 +79,8 @@ public:
              Plato::Scalar aTimeStep = 0.0) const = 0;
     /******************************************************************************/
 };
+
+} // namespace Parabolic
 
 } // namespace Plato
 

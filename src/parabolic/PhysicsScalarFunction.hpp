@@ -6,20 +6,23 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "ScalarFunctionIncBase.hpp"
+#include "parabolic/ScalarFunctionBase.hpp"
 #include "WorksetBase.hpp"
 #include "PlatoStaticsTypes.hpp"
-#include "AbstractScalarFunctionInc.hpp"
+#include "parabolic/AbstractScalarFunction.hpp"
 #include <Teuchos_ParameterList.hpp>
 
 namespace Plato
+{
+
+namespace Parabolic
 {
 
 /******************************************************************************//**
  * @brief Physics scalar function inc class 
  **********************************************************************************/
 template<typename PhysicsT>
-class PhysicsScalarFunctionInc : public ScalarFunctionIncBase, public Plato::WorksetBase<PhysicsT>
+class PhysicsScalarFunction : public Plato::Parabolic::ScalarFunctionBase, public Plato::WorksetBase<PhysicsT>
 {
 private:
     using Plato::WorksetBase<PhysicsT>::mNumDofsPerCell; /*!< number of degree of freedom per cell/element */
@@ -40,18 +43,18 @@ private:
     using GradientX = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientX; /*!< configuration variables automatic differentiation type */
     using GradientZ = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientZ; /*!< control variables automatic differentiation type */
 
-    std::shared_ptr<Plato::AbstractScalarFunctionInc<Residual>> mScalarFunctionValue; /*!< scalar function value interface */
-    std::shared_ptr<Plato::AbstractScalarFunctionInc<Jacobian>> mScalarFunctionGradientU; /*!< scalar function value partial wrt states */
-    std::shared_ptr<Plato::AbstractScalarFunctionInc<JacobianP>> mScalarFunctionGradientP;
-    std::shared_ptr<Plato::AbstractScalarFunctionInc<GradientX>> mScalarFunctionGradientX; /*!< scalar function value partial wrt configuration */
-    std::shared_ptr<Plato::AbstractScalarFunctionInc<GradientZ>> mScalarFunctionGradientZ; /*!< scalar function value partial wrt controls */
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<Residual>> mScalarFunctionValue; /*!< scalar function value interface */
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<Jacobian>> mScalarFunctionGradientU; /*!< scalar function value partial wrt states */
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<JacobianP>> mScalarFunctionGradientP;
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientX>> mScalarFunctionGradientX; /*!< scalar function value partial wrt configuration */
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientZ>> mScalarFunctionGradientZ; /*!< scalar function value partial wrt controls */
 
     Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
 
     std::string mFunctionName;/*!< User defined function name */
 
 	/******************************************************************************//**
-     * @brief Initialization of Physics Scalar Function Inc
+     * @brief Initialization of parabolic Physics Scalar Function
      * @param [in] aInputParams input parameters database
     **********************************************************************************/
     void initialize (Omega_h::Mesh& aMesh, 
@@ -64,19 +67,19 @@ private:
         auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", ""); // Must be a hardcoded type name (e.g. Volume)
 
         mScalarFunctionValue =
-            tFactory.template createScalarFunctionInc<Residual>(
+            tFactory.template createScalarFunctionParabolic<Residual>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientU =
-            tFactory.template createScalarFunctionInc<Jacobian>(
+            tFactory.template createScalarFunctionParabolic<Jacobian>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientP =
-            tFactory.template createScalarFunctionInc<JacobianP>(
+            tFactory.template createScalarFunctionParabolic<JacobianP>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientX =
-            tFactory.template createScalarFunctionInc<GradientX>(
+            tFactory.template createScalarFunctionParabolic<GradientX>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientZ =
-            tFactory.template createScalarFunctionInc<GradientZ>(
+            tFactory.template createScalarFunctionParabolic<GradientZ>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
     }
 
@@ -89,7 +92,7 @@ public:
      * @param [in] aInputParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
-    PhysicsScalarFunctionInc(Omega_h::Mesh& aMesh,
+    PhysicsScalarFunction(Omega_h::Mesh& aMesh,
             Omega_h::MeshSets& aMeshSets,
             Plato::DataMap & aDataMap,
             Teuchos::ParameterList& aInputParams,
@@ -106,7 +109,7 @@ public:
      * @param [in] aMesh mesh database
      * @param [in] aMeshSets side sets database
     **********************************************************************************/
-    PhysicsScalarFunctionInc(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
+    PhysicsScalarFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
             Plato::WorksetBase<PhysicsT>(aMesh),
             mScalarFunctionValue(),
             mScalarFunctionGradientU(),
@@ -122,7 +125,7 @@ public:
      * @brief Allocate scalar function using the residual automatic differentiation type
      * @param [in] aInput scalar function
     **********************************************************************************/
-    void allocateValue(const std::shared_ptr<Plato::AbstractScalarFunctionInc<Residual>>& aInput)
+    void allocateValue(const std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<Residual>>& aInput)
     {
         mScalarFunctionValue = aInput;
     }
@@ -131,7 +134,7 @@ public:
      * @brief Allocate scalar function using the Jacobian automatic differentiation type
      * @param [in] aInput scalar function
     **********************************************************************************/
-    void allocateGradientU(const std::shared_ptr<Plato::AbstractScalarFunctionInc<Jacobian>>& aInput)
+    void allocateGradientU(const std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<Jacobian>>& aInput)
     {
         mScalarFunctionGradientU = aInput;
     }
@@ -140,7 +143,7 @@ public:
      * @brief Allocate scalar function using the Jacobian P automatic differentiation type
      * @param [in] aInput scalar function
     **********************************************************************************/
-    void allocateGradientP(const std::shared_ptr<Plato::AbstractScalarFunctionInc<JacobianP>>& aInput)
+    void allocateGradientP(const std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<JacobianP>>& aInput)
     {
         mScalarFunctionGradientP = aInput;
     }
@@ -149,7 +152,7 @@ public:
      * @brief Allocate scalar function using the GradientZ automatic differentiation type
      * @param [in] aInput scalar function
     **********************************************************************************/
-    void allocateGradientZ(const std::shared_ptr<Plato::AbstractScalarFunctionInc<GradientZ>>& aInput)
+    void allocateGradientZ(const std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientZ>>& aInput)
     {
         mScalarFunctionGradientZ = aInput;
     }
@@ -158,7 +161,7 @@ public:
      * @brief Allocate scalar function using the GradientX automatic differentiation type
      * @param [in] aInput scalar function
     **********************************************************************************/
-    void allocateGradientX(const std::shared_ptr<Plato::AbstractScalarFunctionInc<GradientX>>& aInput)
+    void allocateGradientX(const std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientX>>& aInput)
     {
         mScalarFunctionGradientX = aInput;
     }
@@ -497,25 +500,26 @@ public:
         return mFunctionName;
     }
 };
-//class PhysicsScalarFunctionInc
+//class PhysicsScalarFunction
 
-}
-//namespace Plato
+} // namespace Parabolic
+
+} // namespace Plato
 
 #include "Thermal.hpp"
 #include "Thermomechanics.hpp"
 
 #ifdef PLATOANALYZE_1D
-extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermal<1>>;
-extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermomechanics<1>>;
+extern template class Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermal<1>>;
+extern template class Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermomechanics<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermal<2>>;
-extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermomechanics<2>>;
+extern template class Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermal<2>>;
+extern template class Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermomechanics<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermal<3>>;
-extern template class Plato::PhysicsScalarFunctionInc<::Plato::Thermomechanics<3>>;
+extern template class Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermal<3>>;
+extern template class Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermomechanics<3>>;
 #endif

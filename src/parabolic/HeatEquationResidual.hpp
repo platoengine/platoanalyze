@@ -16,7 +16,7 @@
 #include "NoPenalty.hpp"
 
 #include "LinearThermalMaterial.hpp"
-#include "AbstractVectorFunctionInc.hpp"
+#include "parabolic/AbstractVectorFunction.hpp"
 #include "ImplicitFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "ProjectToNode.hpp"
@@ -29,11 +29,14 @@
 namespace Plato
 {
 
+namespace Parabolic
+{
+
 /******************************************************************************/
 template<typename EvaluationType, typename IndicatorFunctionType>
 class HeatEquationResidual : 
   public Plato::SimplexThermal<EvaluationType::SpatialDim>,
-  public Plato::AbstractVectorFunctionInc<EvaluationType>
+  public Plato::Parabolic::AbstractVectorFunction<EvaluationType>
 /******************************************************************************/
 {
   private:
@@ -43,9 +46,9 @@ class HeatEquationResidual :
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::AbstractVectorFunctionInc<EvaluationType>::mMesh;
-    using Plato::AbstractVectorFunctionInc<EvaluationType>::mDataMap;
-    using Plato::AbstractVectorFunctionInc<EvaluationType>::mMeshSets;
+    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mDataMap;
+    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
     using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
@@ -74,7 +77,7 @@ class HeatEquationResidual :
       Plato::DataMap& aDataMap,
       Teuchos::ParameterList& problemParams,
       Teuchos::ParameterList& penaltyParams) :
-     AbstractVectorFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, {"Temperature"}),
+     Plato::Parabolic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, {"Temperature"}),
      mIndicatorFunction(penaltyParams),
      mApplyFluxWeighting(mIndicatorFunction),
      mApplyMassWeighting(mIndicatorFunction),
@@ -210,18 +213,20 @@ class HeatEquationResidual :
 };
 // class HeatEquationResidual
 
+} // namespace Parabolic
+
 } // namespace Plato
 
 #ifdef PLATOANALYZE_1D
-PLATO_EXPL_DEC_INC(Plato::HeatEquationResidual, Plato::SimplexThermal, 1)
+PLATO_EXPL_DEC_INC(Plato::Parabolic::HeatEquationResidual, Plato::SimplexThermal, 1)
 #endif
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC_INC(Plato::HeatEquationResidual, Plato::SimplexThermal, 2)
+PLATO_EXPL_DEC_INC(Plato::Parabolic::HeatEquationResidual, Plato::SimplexThermal, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC_INC(Plato::HeatEquationResidual, Plato::SimplexThermal, 3)
+PLATO_EXPL_DEC_INC(Plato::Parabolic::HeatEquationResidual, Plato::SimplexThermal, 3)
 #endif
 
 #endif

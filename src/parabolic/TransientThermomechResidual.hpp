@@ -19,7 +19,7 @@
 #include "NoPenalty.hpp"
 
 #include "LinearThermoelasticMaterial.hpp"
-#include "AbstractVectorFunctionInc.hpp"
+#include "parabolic/AbstractVectorFunction.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ProjectToNode.hpp"
 #include "ApplyWeighting.hpp"
@@ -27,11 +27,17 @@
 
 #include "ExpInstMacros.hpp"
 
+namespace Plato
+{
+
+namespace Parabolic
+{
+
 /******************************************************************************/
 template<typename EvaluationType, typename IndicatorFunctionType>
 class TransientThermomechResidual : 
   public Plato::SimplexThermomechanics<EvaluationType::SpatialDim>,
-  public Plato::AbstractVectorFunctionInc<EvaluationType>
+  public Plato::Parabolic::AbstractVectorFunction<EvaluationType>
 /******************************************************************************/
 {
   private:
@@ -48,9 +54,9 @@ class TransientThermomechResidual :
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::AbstractVectorFunctionInc<EvaluationType>::mMesh;
-    using Plato::AbstractVectorFunctionInc<EvaluationType>::mDataMap;
-    using Plato::AbstractVectorFunctionInc<EvaluationType>::mMeshSets;
+    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mDataMap;
+    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
     using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
@@ -62,9 +68,9 @@ class TransientThermomechResidual :
     Plato::Scalar mCellSpecificHeat;
     
     IndicatorFunctionType mIndicatorFunction;
-    Plato::ApplyWeighting<SpaceDim, mNumVoigtTerms,  IndicatorFunctionType> mApplyStressWeighting;
-    Plato::ApplyWeighting<SpaceDim, SpaceDim,         IndicatorFunctionType> mApplyFluxWeighting;
-    Plato::ApplyWeighting<SpaceDim, NThrmDims,        IndicatorFunctionType> mApplyMassWeighting;
+    Plato::ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
+    Plato::ApplyWeighting<SpaceDim, SpaceDim,       IndicatorFunctionType> mApplyFluxWeighting;
+    Plato::ApplyWeighting<SpaceDim, NThrmDims,      IndicatorFunctionType> mApplyMassWeighting;
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>> mBoundaryLoads;
@@ -80,7 +86,7 @@ class TransientThermomechResidual :
       Plato::DataMap& aDataMap,
       Teuchos::ParameterList& aProblemParams,
       Teuchos::ParameterList& aPenaltyParams) :
-     Plato::AbstractVectorFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap,
+     Plato::Parabolic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap,
         {"Displacement X", "Displacement Y", "Displacement Z", "Temperature"}),
      mIndicatorFunction(aPenaltyParams),
      mApplyStressWeighting(mIndicatorFunction),
@@ -238,16 +244,20 @@ class TransientThermomechResidual :
     }
 };
 
+} // namespace Parabolic
+
+} // namespace Plato
+
 #ifdef PLATOANALYZE_1D
-PLATO_EXPL_DEC_INC(TransientThermomechResidual, Plato::SimplexThermomechanics, 1)
+PLATO_EXPL_DEC_INC(Plato::Parabolic::TransientThermomechResidual, Plato::SimplexThermomechanics, 1)
 #endif
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC_INC(TransientThermomechResidual, Plato::SimplexThermomechanics, 2)
+PLATO_EXPL_DEC_INC(Plato::Parabolic::TransientThermomechResidual, Plato::SimplexThermomechanics, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC_INC(TransientThermomechResidual, Plato::SimplexThermomechanics, 3)
+PLATO_EXPL_DEC_INC(Plato::Parabolic::TransientThermomechResidual, Plato::SimplexThermomechanics, 3)
 #endif
 
 #endif
