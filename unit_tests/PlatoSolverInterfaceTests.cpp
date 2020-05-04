@@ -543,7 +543,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra_wrongSize )
 /*!
   \brief Test vector conversion
 
-  Create a TpetraSystem then convert a Plato::ScalarVector to a Tpetra_Vector.
+  Create a TpetraSystem then convert a Plato::ScalarVector to a Tpetra_MultiVector.
   Test passes if entries of both vectors are the same.
 */
 /******************************************************************************/
@@ -582,7 +582,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToTpetraVector )
 
   Kokkos::deep_copy(tTestVectorHostMirror,tTestVector);
 
-  auto tConvertedVectorData = tConvertedVector->getData();
+  auto tConvertedVectorData = tConvertedVector->getData(0);
 
   for(int i = 0; i < tNumDofs; ++i)
   {
@@ -633,7 +633,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToTpetraVector_invalidI
 /*!
   \brief Test vector conversion
 
-  Create an TpetraSystem then convert a Tpetra_Vector to a Plato::ScalarVector.
+  Create an TpetraSystem then convert a Tpetra_MultiVector to a Plato::ScalarVector.
   Test passes if entries of both vectors are the same.
 */
 /******************************************************************************/
@@ -659,7 +659,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector )
 
   Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
 
-  auto tTestVector = Teuchos::rcp(new Plato::Tpetra_Vector(tSystem.getMap()));
+  auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tSystem.getMap(),1));
 
   tTestVector->randomize();
 
@@ -671,7 +671,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector )
 
   Kokkos::deep_copy(tConvertedVectorHostMirror,tConvertedVector);
 
-  auto tTestVectorData = tTestVector->getData();
+  auto tTestVectorData = tTestVector->getData(0);
 
   for(int i = 0; i < tNumDofs; ++i)
   {
@@ -710,7 +710,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector_invali
 
   auto tBogusMap = Teuchos::rcp(new Plato::Tpetra_Map(tNumDofs+1, 0, tMachine.teuchosComm));
 
-  auto tTestVector = Teuchos::rcp(new Plato::Tpetra_Vector(tBogusMap));
+  auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tBogusMap,1));
 
   tTestVector->randomize();
 
@@ -748,7 +748,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector_invali
 
   Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
 
-  auto tTestVector = Teuchos::rcp(new Plato::Tpetra_Vector(tSystem.getMap()));
+  auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tSystem.getMap(),1));
 
   tTestVector->randomize();
 
@@ -941,7 +941,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
       "<ParameterList name='Linear Solver'>                              \n"
       "  <Parameter name='Solver' type='string' value='Belos'/>        \n"
       "  <Parameter name='Display Iterations' type='int' value='0'/>     \n"
-      "  <Parameter name='Iterations' type='int' value='50'/>            \n"
+      "  <Parameter name='Iterations' type='int' value='400'/>            \n"
       "  <Parameter name='Tolerance' type='double' value='1e-14'/>       \n"
       "</ParameterList>                                                  \n"
     );
@@ -955,22 +955,30 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   Plato::ScalarVector stateTpetra("state", tNumDofs);
   Kokkos::deep_copy(stateTpetra, state);
 
-#ifdef HAVE_AMGX
+
   // compare solutions
-  //
-  // auto stateOldAmgX_host = Kokkos::create_mirror_view(stateOldAmgX);
-  // Kokkos::deep_copy(stateOldAmgX_host, stateOldAmgX);
-
-  auto stateNewAmgX_host = Kokkos::create_mirror_view(stateNewAmgX);
-  Kokkos::deep_copy(stateNewAmgX_host, stateNewAmgX);
-
   auto stateEpetra_host = Kokkos::create_mirror_view(stateEpetra);
   Kokkos::deep_copy(stateEpetra_host, stateEpetra);
 
   auto stateTpetra_host = Kokkos::create_mirror_view(stateTpetra);
   Kokkos::deep_copy(stateTpetra_host, stateTpetra);
 
-  int tLength = stateNewAmgX_host.size();
+  int tLength = stateTpetra_host.size();
+  for(int i=0; i<tLength; i++)
+  {
+      if( stateEpetra_host(i) > 1e-18 || stateTpetra_host(i) > 1e-18)
+      {
+          TEST_FLOATING_EQUALITY(stateTpetra_host(i), stateEpetra_host(i), 1.0e-12);
+      }
+  }
+
+#ifdef HAVE_AMGX
+  // auto stateOldAmgX_host = Kokkos::create_mirror_view(stateOldAmgX);
+  // Kokkos::deep_copy(stateOldAmgX_host, stateOldAmgX);
+
+  auto stateNewAmgX_host = Kokkos::create_mirror_view(stateNewAmgX);
+  Kokkos::deep_copy(stateNewAmgX_host, stateNewAmgX);
+
   for(int i=0; i<tLength; i++){
       if( stateNewAmgX_host(i) > 1e-18 )
       {

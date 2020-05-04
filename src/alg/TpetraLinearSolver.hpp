@@ -9,14 +9,15 @@
 #include <Teuchos_ParameterList.hpp>
 #include <Teuchos_Comm.hpp>
 #include <Tpetra_Core.hpp>
-#include <Tpetra_Vector.hpp>
+#include <Tpetra_MultiVector.hpp>
 #include <Tpetra_CrsMatrix.hpp>
 
 namespace Plato {
 
   using Tpetra_Map = Tpetra::Map<Plato::OrdinalType, Plato::OrdinalType>;
-  using Tpetra_Vector = Tpetra::Vector<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
+  using Tpetra_MultiVector = Tpetra::MultiVector<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
   using Tpetra_Matrix = Tpetra::CrsMatrix<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
+  using Tpetra_Operator = Tpetra::Operator<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
 
 /******************************************************************************//**
  * @brief Abstract system interface
@@ -43,16 +44,16 @@ class TpetraSystem
     fromMatrix(Plato::CrsMatrix<int> tInMatrix) const;
 
     /******************************************************************************//**
-     * @brief Convert from ScalarVector to Tpetra_Vector
+     * @brief Convert from ScalarVector to Tpetra_MultiVector
     **********************************************************************************/
-    Teuchos::RCP<Tpetra_Vector>
+    Teuchos::RCP<Tpetra_MultiVector>
     fromVector(Plato::ScalarVector tInVector) const;
 
     /******************************************************************************//**
-     * @brief Convert from Tpetra_Vector to ScalarVector
+     * @brief Convert from Tpetra_MultiVector to ScalarVector
     **********************************************************************************/
     void
-    toVector(Plato::ScalarVector tOutVector, Teuchos::RCP<Tpetra_Vector> tInVector) const;
+    toVector(Plato::ScalarVector tOutVector, Teuchos::RCP<Tpetra_MultiVector> tInVector) const;
 
     /******************************************************************************//**
      * @brief get TpetraSystem map 
@@ -95,11 +96,12 @@ class TpetraLinearSolver : public AbstractSolver
         Plato::ScalarVector   aB
     );
 
-    // /******************************************************************************//**
-    //  * @brief Setup the AztecOO solver
-    // **********************************************************************************/
-    // void
-    // setupSolver(AztecOO& aSolver);
+    /******************************************************************************//**
+     * @brief Setup the Belos solver
+    **********************************************************************************/
+    template<class MV, class OP>
+    void
+    belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B);
 };
 
 } // end namespace Plato
