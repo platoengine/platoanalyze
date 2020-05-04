@@ -1,3 +1,7 @@
+configure_file(  ${CMAKE_CURRENT_SOURCE_DIR}/amgx.json
+                 ${CMAKE_CURRENT_BINARY_DIR}/amgx.json COPYONLY)
+
+
 #begin: Structural dynamics unit test
 set(StructuralDynamics_SOURCES
   StructuralDynamicsTest.cpp
