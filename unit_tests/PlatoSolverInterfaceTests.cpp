@@ -931,7 +931,10 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   Plato::ScalarVector stateEpetra("state", tNumDofs);
   Kokkos::deep_copy(stateEpetra, state);
 
+  auto stateEpetra_host = Kokkos::create_mirror_view(stateEpetra);
+  Kokkos::deep_copy(stateEpetra_host, stateEpetra);
   
+#ifdef PLATO_TPETRA
   // *** use Tpetra solver interface *** //
   //
   Kokkos::deep_copy(state, 0.0);
@@ -955,15 +958,14 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   Plato::ScalarVector stateTpetra("state", tNumDofs);
   Kokkos::deep_copy(stateTpetra, state);
 
-
-  // compare solutions
-  auto stateEpetra_host = Kokkos::create_mirror_view(stateEpetra);
-  Kokkos::deep_copy(stateEpetra_host, stateEpetra);
-
   auto stateTpetra_host = Kokkos::create_mirror_view(stateTpetra);
   Kokkos::deep_copy(stateTpetra_host, stateTpetra);
+#endif
 
-  int tLength = stateTpetra_host.size();
+  // compare solutions
+  int tLength = stateEpetra_host.size();
+
+#ifdef PLATO_TPETRA
   for(int i=0; i<tLength; i++)
   {
       if( stateEpetra_host(i) > 1e-18 || stateTpetra_host(i) > 1e-18)
@@ -971,6 +973,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
           TEST_FLOATING_EQUALITY(stateTpetra_host(i), stateEpetra_host(i), 1.0e-12);
       }
   }
+#endif
 
 #ifdef HAVE_AMGX
   // auto stateOldAmgX_host = Kokkos::create_mirror_view(stateOldAmgX);
@@ -984,7 +987,9 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
       {
           // TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateNewAmgX_host(i), 1.0e-15);
           TEST_FLOATING_EQUALITY(stateNewAmgX_host(i), stateEpetra_host(i), 1.0e-12);
+#ifdef PLATO_TPETRA
           TEST_FLOATING_EQUALITY(stateNewAmgX_host(i), stateTpetra_host(i), 1.0e-12);
+#endif
       }
   }
 #endif
