@@ -30,10 +30,12 @@ SolverFactory::create(
     {
         return std::make_shared<Plato::EpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
     }
+#ifdef PLATO_TPETRA
     if(tSolverType == "Belos")
     {
         return std::make_shared<Plato::TpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
     }
+#endif
     else if(tSolverType == "AmgX")
     {
 #ifdef HAVE_AMGX
