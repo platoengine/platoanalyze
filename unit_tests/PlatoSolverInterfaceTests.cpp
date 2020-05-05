@@ -11,9 +11,6 @@
 #include "LinearElasticMaterial.hpp"
 #include "alg/PlatoSolverFactory.hpp"
 
-#include <BelosTpetraAdapter.hpp>
-#include <BelosSolverFactory.hpp>
-
 #ifdef HAVE_AMGX
 #include <alg/AmgXSparseLinearProblem.hpp>
 #endif
