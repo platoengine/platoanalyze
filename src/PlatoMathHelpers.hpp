@@ -402,13 +402,12 @@ MatrixMatrixMultiply( const Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
 
     typedef Plato::ScalarVectorT<OrdinalType> OrdinalView;
     typedef Plato::ScalarVectorT<Scalar>  ScalarView;
-    typedef Kokkos::DefaultExecutionSpace device;
 
     typedef KokkosKernels::Experimental::KokkosKernelsHandle
         <OrdinalType, OrdinalType, Scalar,
-        typename device::execution_space, 
-        typename device::memory_space,
-        typename device::memory_space > KernelHandle;
+        typename Plato::ExecSpace, 
+        typename Plato::MemSpace,
+        typename Plato::MemSpace > KernelHandle;
 
     KernelHandle tKernel;
     tKernel.set_team_work_size(1);
@@ -487,13 +486,12 @@ MatrixMinusMatrix(      Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
 
     typedef Plato::ScalarVectorT<OrdinalType> OrdinalView;
     typedef Plato::ScalarVectorT<Scalar>  ScalarView;
-    typedef Kokkos::DefaultExecutionSpace device;
 
     typedef KokkosKernels::Experimental::KokkosKernelsHandle
         <OrdinalType, OrdinalType, Scalar,
-        typename device::execution_space, 
-        typename device::memory_space,
-        typename device::memory_space > KernelHandle;
+        typename Plato::ExecSpace, 
+        typename Plato::MemSpace,
+        typename Plato::MemSpace > KernelHandle;
 
     const auto& tMatOne = *aInMatrixOne;
     const auto& tMatTwo = *aInMatrixTwo;

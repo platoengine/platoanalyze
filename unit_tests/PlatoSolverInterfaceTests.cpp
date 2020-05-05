@@ -11,6 +11,9 @@
 #include "LinearElasticMaterial.hpp"
 #include "alg/PlatoSolverFactory.hpp"
 
+#include <BelosTpetraAdapter.hpp>
+#include <BelosSolverFactory.hpp>
+
 #ifdef HAVE_AMGX
 #include <alg/AmgXSparseLinearProblem.hpp>
 #endif
@@ -22,6 +25,12 @@
 namespace Plato {
 namespace Devel {
 
+/******************************************************************************//**
+ * @brief get view from device
+ *
+ * @param[in] aView data on device
+ * @returns Mirror on host
+**********************************************************************************/
 template <typename ClassT>
 using rcp = std::shared_ptr<ClassT>;
 
@@ -61,7 +70,7 @@ toFull(rcp<Epetra_VbrMatrix> aInMatrix)
   matrix and compare entries.  Test passes if entries are the same.
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversion )
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionEpetra )
 {
   feclearexcept(FE_ALL_EXCEPT);
   feenableexcept(FE_INVALID | FE_OVERFLOW);
@@ -139,6 +148,616 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversion )
       }
   }
 }
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Create an EpetraSystem then convert a Plato::ScalarVector to an Epetra_Vector.
+  Test passes if entries of both vectors are the same.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToEpetraVector )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  Plato::ScalarVector tTestVector("test vector", tNumDofs);
+
+  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumDofs), LAMBDA_EXPRESSION(int vectorIndex)
+  {
+    tTestVector(vectorIndex) = (double) vectorIndex;
+  }, "fill vector");
+
+  auto tConvertedVector = tSystem.fromVector(tTestVector);
+
+  auto tTestVectorHostMirror = Kokkos::create_mirror_view(tTestVector);
+
+  Kokkos::deep_copy(tTestVectorHostMirror,tTestVector);
+
+  for(int i = 0; i < tNumDofs; ++i)
+  {
+    TEST_FLOATING_EQUALITY(tTestVectorHostMirror(i), (*tConvertedVector)[i], 1.0e-15);
+  }
+}
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Provide input of incorrect size. Test passes if std::domain_error is thrown.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToEpetraVector_invalidInput )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  Plato::ScalarVector tTestVector("test vector", tNumDofs+1);
+
+  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumDofs), LAMBDA_EXPRESSION(int vectorIndex)
+  {
+    tTestVector(vectorIndex) = (double) vectorIndex;
+  }, "fill vector");
+
+  TEST_THROW(tSystem.fromVector(tTestVector),std::domain_error);
+}
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Create an EpetraSystem then convert an Epetra_Vector to a Plato::ScalarVector.
+  Test passes if entries of both vectors are the same.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromEpetraVector )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  
+  auto tTestVector = std::make_shared<Epetra_Vector>(*(tSystem.getMap()));
+
+  tTestVector->Random();
+
+  Plato::ScalarVector tConvertedVector("converted vector", tNumDofs);
+
+  tSystem.toVector(tConvertedVector, tTestVector);
+
+  auto tConvertedVectorHostMirror = Kokkos::create_mirror_view(tConvertedVector);
+
+  Kokkos::deep_copy(tConvertedVectorHostMirror,tConvertedVector);
+
+  for(int i = 0; i < tNumDofs; ++i)
+  {
+    TEST_FLOATING_EQUALITY((*tTestVector)[i], tConvertedVectorHostMirror(i), 1.0e-15);
+  }
+}
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Provide input of incorrect size. Test passes if std::domain_error is thrown.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromEpetraVector_invalidInput )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  auto tBogusMap = std::make_shared<Epetra_BlockMap>(tNumNodes+1, tNumDofsPerNode, 0, *(tMachine.epetraComm));
+  auto tTestVector = std::make_shared<Epetra_Vector>(*tBogusMap);
+
+  Plato::ScalarVector tConvertedVector("converted vector", tNumDofs+tNumDofsPerNode);
+
+  TEST_THROW(tSystem.toVector(tConvertedVector,tTestVector),std::domain_error);
+}
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Provide output ScalarVector of incorrect size. Test passes if std::range_error is thrown.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromEpetraVector_invalidOutputContainerProvided )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  auto tTestVector = std::make_shared<Epetra_Vector>(*(tSystem.getMap()));
+
+  Plato::ScalarVector tConvertedVector("converted vector", tNumDofs+tNumDofsPerNode);
+
+  TEST_THROW(tSystem.toVector(tConvertedVector,tTestVector),std::range_error);
+}
+
+#ifdef PLATO_TPETRA
+
+/******************************************************************************/
+/*!
+  \brief Test matrix conversion
+
+  Create an TpetraSystem then convert a 2D elasticity jacobian from a
+  Plato::CrsMatrix<int> to an Tpetra_Matrix.  Then, convert both to a full
+  matrix and compare entries.  Test passes if entries are the same.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  //
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  // create mesh based density
+  //
+  Plato::ScalarVector control("density", tNumDofs);
+  Kokkos::deep_copy(control, 1.0);
+
+  // create mesh based state
+  //
+  Plato::ScalarVector state("state", tNumDofs);
+  Kokkos::deep_copy(state, 0.0);
+
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> params =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                    \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
+    "  <ParameterList name='Elliptic'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "  <ParameterList name='Material Model'>                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "</ParameterList>                                                        \n"
+  );
+
+  Plato::DataMap tDataMap;
+  Omega_h::MeshSets tMeshSets;
+
+  Plato::VectorFunction<SimplexPhysics>
+    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+
+  // compute and test constraint value
+  //
+  auto jacobian = vectorFunction.gradient_u(state, control);
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  auto tTpetra_Matrix = tSystem.fromMatrix(*jacobian);
+
+  auto tFullPlato  = PlatoUtestHelpers::toFull(jacobian);
+
+  for(int iRow=0; iRow<tFullPlato.size(); iRow++)
+  {
+    size_t tNumEntriesInRow = tTpetra_Matrix->getNumEntriesInGlobalRow(iRow);
+    Teuchos::Array<Plato::Scalar> tRowValues(tNumEntriesInRow);
+    Teuchos::Array<Plato::OrdinalType> tColumnIndices(tNumEntriesInRow);
+    tTpetra_Matrix->getGlobalRowCopy(iRow, tColumnIndices(), tRowValues(), tNumEntriesInRow);
+
+    std::vector<Plato::Scalar> tTpetraRowValues(tFullPlato[iRow].size(), 0.0);
+    for(size_t i = 0; i < tNumEntriesInRow; ++i)
+    {
+      tTpetraRowValues[tColumnIndices[i]] = tRowValues[i];
+    }
+
+    for(int iCol=0; iCol<tFullPlato[iRow].size(); iCol++)
+    {
+        TEST_FLOATING_EQUALITY(tTpetraRowValues[iCol], tFullPlato[iRow][iCol], 1.0e-15);
+    }
+  }
+}
+
+/******************************************************************************/
+/*!
+  \brief Test matrix conversion mismatch
+
+  Create an TpetraSystem and a 2D elasticity jacobian Plato::CrsMatrix<int>
+  with different sizes. Try to conver the jacobian to a Tpetra_Matrix.
+  Test passes if a std::domain_error is thrown
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra_wrongSize )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  //
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  // create mesh based density
+  //
+  Plato::ScalarVector control("density", tNumDofs);
+  Kokkos::deep_copy(control, 1.0);
+
+  // create mesh based state
+  //
+  Plato::ScalarVector state("state", tNumDofs);
+  Kokkos::deep_copy(state, 0.0);
+
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> params =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                    \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
+    "  <ParameterList name='Elliptic'>                                       \n"
+    "    <ParameterList name='Penalty Function'>                             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "  <ParameterList name='Material Model'>                                 \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "    </ParameterList>                                                    \n"
+    "  </ParameterList>                                                      \n"
+    "</ParameterList>                                                        \n"
+  );
+
+  Plato::DataMap tDataMap;
+  Omega_h::MeshSets tMeshSets;
+
+  Plato::VectorFunction<SimplexPhysics>
+    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+
+  // compute and test constraint value
+  //
+  auto jacobian = vectorFunction.gradient_u(state, control);
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+
+  constexpr int tBogusMeshWidth=3;
+  auto tBogusMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, tBogusMeshWidth);
+
+  Plato::TpetraSystem tSystem(*tBogusMesh, tMachine, tNumDofsPerNode);
+
+  TEST_THROW(tSystem.fromMatrix(*jacobian),std::domain_error);
+}
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Create a TpetraSystem then convert a Plato::ScalarVector to a Tpetra_MultiVector.
+  Test passes if entries of both vectors are the same.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToTpetraVector )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  Plato::ScalarVector tTestVector("test vector", tNumDofs);
+
+  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumDofs), LAMBDA_EXPRESSION(int vectorIndex)
+  {
+    tTestVector(vectorIndex) = (double) vectorIndex;
+  }, "fill vector");
+
+  auto tConvertedVector = tSystem.fromVector(tTestVector);
+
+  auto tTestVectorHostMirror = Kokkos::create_mirror_view(tTestVector);
+
+  Kokkos::deep_copy(tTestVectorHostMirror,tTestVector);
+
+  auto tConvertedVectorData = tConvertedVector->getData(0);
+
+  for(int i = 0; i < tNumDofs; ++i)
+  {
+    TEST_FLOATING_EQUALITY(tTestVectorHostMirror(i), tConvertedVectorData[i], 1.0e-15);
+  }
+}
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Provide input of incorrect size. Test passes if std::domain_error is thrown.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToTpetraVector_invalidInput )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  Plato::ScalarVector tTestVector("test vector", tNumDofs+1);
+
+  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumDofs), LAMBDA_EXPRESSION(int vectorIndex)
+  {
+    tTestVector(vectorIndex) = (double) vectorIndex;
+  }, "fill vector");
+
+  TEST_THROW(tSystem.fromVector(tTestVector),std::domain_error);
+}
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Create an TpetraSystem then convert a Tpetra_MultiVector to a Plato::ScalarVector.
+  Test passes if entries of both vectors are the same.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tSystem.getMap(),1));
+
+  tTestVector->randomize();
+
+  Plato::ScalarVector tConvertedVector("converted vector", tNumDofs);
+
+  tSystem.toVector(tConvertedVector,tTestVector);
+
+  auto tConvertedVectorHostMirror = Kokkos::create_mirror_view(tConvertedVector);
+
+  Kokkos::deep_copy(tConvertedVectorHostMirror,tConvertedVector);
+
+  auto tTestVectorData = tTestVector->getData(0);
+
+  for(int i = 0; i < tNumDofs; ++i)
+  {
+    TEST_FLOATING_EQUALITY(tTestVectorData[i], tConvertedVectorHostMirror(i), 1.0e-15);
+  }
+}
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Provide input of incorrect size. Test passes if std::domain_error is thrown.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector_invalidInput )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  auto tBogusMap = Teuchos::rcp(new Plato::Tpetra_Map(tNumDofs+1, 0, tMachine.teuchosComm));
+
+  auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tBogusMap,1));
+
+  tTestVector->randomize();
+
+  Plato::ScalarVector tConvertedVector("converted vector", tNumDofs+1);
+
+  TEST_THROW(tSystem.toVector(tConvertedVector,tTestVector), std::domain_error);
+}
+
+/******************************************************************************/
+/*!
+  \brief Test vector conversion
+
+  Provide output ScalarVector of incorrect size. Test passes if std::range_error is thrown.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector_invalidOutputContainerProvided )
+{
+  feclearexcept(FE_ALL_EXCEPT);
+  feenableexcept(FE_INVALID | FE_OVERFLOW);
+
+  // create test mesh
+  constexpr int meshWidth=2;
+  constexpr int spaceDim=2;
+  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+
+  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+
+  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
+  int tNumNodes = mesh->nverts();
+  int tNumDofs = tNumNodes*tNumDofsPerNode;
+
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
+
+  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+
+  auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tSystem.getMap(),1));
+
+  tTestVector->randomize();
+
+  Plato::ScalarVector tConvertedVector("converted vector", tNumDofs+1);
+
+  TEST_THROW(tSystem.toVector(tConvertedVector,tTestVector), std::domain_error);
+}
+
+#endif
 
 
 /******************************************************************************/
@@ -253,16 +872,16 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
 
 #ifdef HAVE_AMGX
-  // *** use old AmgX solver interface *** //
-  {
-    using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
-    auto tConfigString = Plato::get_config_string();
-    auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*jacobian, state, residual, tConfigString));
-    tSolver->solve();
-    tSolver = Teuchos::null;
-  }
-  Plato::ScalarVector stateOldAmgX("state", tNumDofs);
-  Kokkos::deep_copy(stateOldAmgX, state);
+  // // *** use old AmgX solver interface *** //
+  // {
+  //   using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, SimplexPhysics::mNumDofsPerNode>;
+  //   auto tConfigString = Plato::get_config_string();
+  //   auto tSolver = Teuchos::rcp(new AmgXLinearProblem(*jacobian, state, residual, tConfigString));
+  //   tSolver->solve();
+  //   tSolver = Teuchos::null;
+  // }
+  // Plato::ScalarVector stateOldAmgX("state", tNumDofs);
+  // Kokkos::deep_copy(stateOldAmgX, state);
 
 
 
@@ -271,18 +890,18 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   Kokkos::deep_copy(state, 0.0);
   {
     Teuchos::RCP<Teuchos::ParameterList> tSolverParams =
-      Teuchos::getParametersFromXmlString(
-      "<ParameterList name='Linear Solver'>                                     \n"
-      "  <Parameter name='Solver' type='string' value='AmgX'/>                  \n"
-      "  <Parameter name='Configuration File' type='string' value='amgx.json'/> \n"
-      "</ParameterList>                                                         \n"
-    );
+     Teuchos::getParametersFromXmlString(
+     "<ParameterList name='Linear Solver'>                                     \n"
+     "  <Parameter name='Solver' type='string' value='AmgX'/>                  \n"
+     "  <Parameter name='Configuration File' type='string' value='amgx.json'/> \n"
+     "</ParameterList>                                                         \n"
+   );
 
-    Plato::SolverFactory tSolverFactory(*tSolverParams);
+   Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+   auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
 
-    tSolver->solve(*jacobian, state, residual);
+   tSolver->solve(*jacobian, state, residual);
   }
   Plato::ScalarVector stateNewAmgX("state", tNumDofs);
   Kokkos::deep_copy(stateNewAmgX, state);
@@ -312,33 +931,62 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   Plato::ScalarVector stateEpetra("state", tNumDofs);
   Kokkos::deep_copy(stateEpetra, state);
 
+  
+  // *** use Tpetra solver interface *** //
+  //
+  Kokkos::deep_copy(state, 0.0);
+  {
+    Teuchos::RCP<Teuchos::ParameterList> tSolverParams =
+      Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Linear Solver'>                              \n"
+      "  <Parameter name='Solver' type='string' value='Belos'/>        \n"
+      "  <Parameter name='Display Iterations' type='int' value='0'/>     \n"
+      "  <Parameter name='Iterations' type='int' value='400'/>            \n"
+      "  <Parameter name='Tolerance' type='double' value='1e-14'/>       \n"
+      "</ParameterList>                                                  \n"
+    );
+
+    Plato::SolverFactory tSolverFactory(*tSolverParams);
+
+    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+
+    tSolver->solve(*jacobian, state, residual);
+  }
+  Plato::ScalarVector stateTpetra("state", tNumDofs);
+  Kokkos::deep_copy(stateTpetra, state);
 
 
+  // compare solutions
+  auto stateEpetra_host = Kokkos::create_mirror_view(stateEpetra);
+  Kokkos::deep_copy(stateEpetra_host, stateEpetra);
+
+  auto stateTpetra_host = Kokkos::create_mirror_view(stateTpetra);
+  Kokkos::deep_copy(stateTpetra_host, stateTpetra);
+
+  int tLength = stateTpetra_host.size();
+  for(int i=0; i<tLength; i++)
+  {
+      if( stateEpetra_host(i) > 1e-18 || stateTpetra_host(i) > 1e-18)
+      {
+          TEST_FLOATING_EQUALITY(stateTpetra_host(i), stateEpetra_host(i), 1.0e-12);
+      }
+  }
 
 #ifdef HAVE_AMGX
-  // compare solutions
-  //
-  auto stateOldAmgX_host = Kokkos::create_mirror_view(stateOldAmgX);
-  Kokkos::deep_copy(stateOldAmgX_host, stateOldAmgX);
+  // auto stateOldAmgX_host = Kokkos::create_mirror_view(stateOldAmgX);
+  // Kokkos::deep_copy(stateOldAmgX_host, stateOldAmgX);
 
   auto stateNewAmgX_host = Kokkos::create_mirror_view(stateNewAmgX);
   Kokkos::deep_copy(stateNewAmgX_host, stateNewAmgX);
 
-  auto stateEpetra_host = Kokkos::create_mirror_view(stateEpetra);
-  Kokkos::deep_copy(stateEpetra_host, stateEpetra);
-
-
-  int tLength = stateOldAmgX_host.size();
   for(int i=0; i<tLength; i++){
-      if( stateOldAmgX_host(i) > 1e-18 )
+      if( stateNewAmgX_host(i) > 1e-18 )
       {
-          TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateNewAmgX_host(i), 1.0e-15);
-          TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateEpetra_host(i), 1.0e-12);
+          // TEST_FLOATING_EQUALITY(stateOldAmgX_host(i), stateNewAmgX_host(i), 1.0e-15);
+          TEST_FLOATING_EQUALITY(stateNewAmgX_host(i), stateEpetra_host(i), 1.0e-12);
+          TEST_FLOATING_EQUALITY(stateNewAmgX_host(i), stateTpetra_host(i), 1.0e-12);
       }
   }
 #endif
-
-
-
 
 }
