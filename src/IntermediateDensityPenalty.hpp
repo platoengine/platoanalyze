@@ -3,7 +3,7 @@
 #include "Simplex.hpp"
 #include "SimplexFadTypes.hpp"
 #include "PlatoStaticsTypes.hpp"
-#include "AbstractScalarFunction.hpp"
+#include "elliptic/AbstractScalarFunction.hpp"
 #include "SimplexMechanics.hpp"
 #include "WorksetBase.hpp"
 #include "Plato_TopOptFunctors.hpp"
@@ -18,7 +18,7 @@ namespace Plato
 /******************************************************************************/
 template<typename EvaluationType>
 class IntermediateDensityPenalty : public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
-                                   public Plato::AbstractScalarFunction<EvaluationType>
+                                   public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
 /******************************************************************************/
 {
   private:
@@ -26,8 +26,8 @@ class IntermediateDensityPenalty : public Plato::SimplexMechanics<EvaluationType
     static constexpr Plato::OrdinalType mNumVoigtTerms = Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms; /*!< number of Voigt terms */
     static constexpr Plato::OrdinalType mNumNodesPerCell = Plato::SimplexMechanics<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell/element */
     
-    using Plato::AbstractScalarFunction<EvaluationType>::mMesh;
-    using Plato::AbstractScalarFunction<EvaluationType>::mDataMap;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType   = typename EvaluationType::StateScalarType;
     using ControlScalarType = typename EvaluationType::ControlScalarType;
@@ -43,7 +43,7 @@ class IntermediateDensityPenalty : public Plato::SimplexMechanics<EvaluationType
            Plato::DataMap& aDataMap, 
            Teuchos::ParameterList& aInputParams,
            std::string aFunctionName) :
-           Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
+           Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
            mPenaltyAmplitude(1.0)
     /**************************************************************************/
     {
@@ -57,7 +57,7 @@ class IntermediateDensityPenalty : public Plato::SimplexMechanics<EvaluationType
     IntermediateDensityPenalty(Omega_h::Mesh& aMesh, 
                Omega_h::MeshSets& aMeshSets,
                Plato::DataMap& aDataMap) :
-               Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "IntermediateDensityPenalty"),
+               Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "IntermediateDensityPenalty"),
                mPenaltyAmplitude(1.0)
     /**************************************************************************/
     {

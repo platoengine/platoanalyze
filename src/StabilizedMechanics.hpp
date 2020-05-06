@@ -6,14 +6,17 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
+#include "parabolic/AbstractScalarFunction.hpp"
+
+#include "elliptic/AbstractScalarFunction.hpp"
+#include "elliptic/Volume.hpp"
+
 #include "SimplexProjection.hpp"
 #include "SimplexStabilizedMechanics.hpp"
-#include "AbstractScalarFunctionInc.hpp"
 #include "StabilizedElastostaticResidual.hpp"
 #include "StabilizedElastostaticEnergy.hpp"
 #include "Plasticity.hpp"
 #include "AnalyzeMacros.hpp"
-#include "Volume.hpp"
 
 #include "Simp.hpp"
 #include "Ramp.hpp"
@@ -107,8 +110,8 @@ struct FunctionFactory
 
     /******************************************************************************/
     template <typename EvaluationType>
-    std::shared_ptr<AbstractScalarFunctionInc<EvaluationType>>
-    createScalarFunctionInc(Omega_h::Mesh& aMesh,
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<EvaluationType>>
+    createScalarFunctionParabolic(Omega_h::Mesh& aMesh,
                             Omega_h::MeshSets& aMeshSets,
                             Plato::DataMap& aDataMap,
                             Teuchos::ParameterList& aParamList,
@@ -116,7 +119,7 @@ struct FunctionFactory
                             std::string aFuncName )
     /******************************************************************************/
     {
-        std::shared_ptr<Plato::AbstractScalarFunctionInc<EvaluationType>> tOutput;
+        std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<EvaluationType>> tOutput;
         auto tPenaltyParams = aParamList.sublist(aFuncName).sublist("Penalty Function");
         if( aFuncType == "Internal Elastic Energy" )
         {
@@ -161,7 +164,7 @@ struct FunctionFactory
      * \param [in] aFuncName scalar function name
     **********************************************************************************/
     template<typename EvaluationType>
-    std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
+    std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
     createScalarFunction(Omega_h::Mesh& aMesh,
                          Omega_h::MeshSets& aMeshSets,
                          Plato::DataMap& aDataMap, 
@@ -169,32 +172,32 @@ struct FunctionFactory
                          std::string aFuncType,
                          std::string aFuncName)
     {
-        std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>> tOutput;
+        std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>> tOutput;
         auto tPenaltyParams = aInputParams.sublist(aFuncName).sublist("Penalty Function");
         if( aFuncType == "Volume" )
         {
             std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "SIMP");
             if(tPenaltyType == "SIMP")
             {
-                tOutput = std::make_shared<Plato::Volume<EvaluationType, Plato::MSIMP>>
+                tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::MSIMP>>
                             (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
             }
             else
             if(tPenaltyType == "RAMP")
             {
-                tOutput = std::make_shared<Plato::Volume<EvaluationType, Plato::RAMP>>
+                tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::RAMP>>
                             (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
             }
             else
             if(tPenaltyType == "Heaviside")
             {
-                tOutput = std::make_shared<Plato::Volume<EvaluationType, Plato::Heaviside>>
+                tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::Heaviside>>
                             (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
             }
             else
             if(tPenaltyType == "NoPenalty")
             {
-                tOutput = std::make_shared<Plato::Volume<EvaluationType, Plato::NoPenalty>>
+                tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::NoPenalty>>
                             (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
             }
         }

@@ -21,7 +21,7 @@
 #include "PlatoMathHelpers.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "VonMisesYieldFunction.hpp"
-#include "AbstractScalarFunction.hpp"
+#include "elliptic/AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
 namespace Plato
@@ -35,15 +35,15 @@ namespace Plato
 template<typename EvaluationType>
 class AugLagStressCriterionGeneral :
         public Plato::SimplexMechanics<EvaluationType::SpatialDim>,
-        public Plato::AbstractScalarFunction<EvaluationType>
+        public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
 {
 private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
     static constexpr Plato::OrdinalType mNumVoigtTerms = Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms; /*!< number of Voigt terms */
     static constexpr Plato::OrdinalType mNumNodesPerCell = Plato::SimplexMechanics<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell/element */
 
-    using Plato::AbstractScalarFunction<EvaluationType>::mMesh; /*!< mesh database */
-    using Plato::AbstractScalarFunction<EvaluationType>::mDataMap; /*!< PLATO Engine output database */
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh; /*!< mesh database */
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap; /*!< PLATO Engine output database */
 
     using StateT = typename EvaluationType::StateScalarType; /*!< state variables automatic differentiation type */
     using ConfigT = typename EvaluationType::ConfigScalarType; /*!< configuration variables automatic differentiation type */
@@ -121,7 +121,7 @@ public:
                                  Plato::DataMap & aDataMap,
                                  Teuchos::ParameterList & aInputParams,
                                  const std::string & aFuncName) :
-            Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFuncName),
+            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFuncName),
             mPenalty(3),
             mStressLimit(1),
             mAugLagPenalty(0.1),
@@ -144,7 +144,7 @@ public:
      * @param [in] aDataMap PLATO Engine and Analyze data map
      **********************************************************************************/
     AugLagStressCriterionGeneral(Omega_h::Mesh & aMesh, Omega_h::MeshSets & aMeshSets, Plato::DataMap & aDataMap) :
-            Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Stress Constraint"),
+            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Stress Constraint"),
             mPenalty(3),
             mStressLimit(1),
             mAugLagPenalty(0.1),

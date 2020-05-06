@@ -19,7 +19,6 @@
 #include "SimplexMechanics.hpp"
 #include "ApplyConstraints.hpp"
 #include "PlatoMathHelpers.hpp"
-#include "ScalarFunctionBase.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"

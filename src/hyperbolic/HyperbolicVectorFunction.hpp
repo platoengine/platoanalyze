@@ -6,7 +6,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
 
-#include "../../src/WorksetBase.hpp"
+#include "../WorksetBase.hpp"
 #include "HyperbolicSimplexFadTypes.hpp"
 #include "HyperbolicAbstractVectorFunction.hpp"
 

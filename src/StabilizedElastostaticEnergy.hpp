@@ -10,7 +10,7 @@
 #include "Kinetics.hpp"
 #include "ImplicitFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
-#include "AbstractScalarFunctionInc.hpp"
+#include "parabolic/AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "ElasticModelFactory.hpp"
 #include "ToMap.hpp"
@@ -33,7 +33,7 @@ namespace Plato
 template<typename EvaluationType, typename IndicatorFunctionType>
 class StabilizedElastostaticEnergy : 
   public Plato::SimplexStabilizedMechanics<EvaluationType::SpatialDim>,
-  public Plato::AbstractScalarFunctionInc<EvaluationType>
+  public Plato::Parabolic::AbstractScalarFunction<EvaluationType>
 {
   private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim;
@@ -49,8 +49,8 @@ class StabilizedElastostaticEnergy :
     using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerNode;
     using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerCell;
 
-    using Plato::AbstractScalarFunctionInc<EvaluationType>::mMesh;
-    using Plato::AbstractScalarFunctionInc<EvaluationType>::mDataMap;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
     using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
@@ -79,7 +79,7 @@ class StabilizedElastostaticEnergy :
                                  Teuchos::ParameterList& aProblemParams,
                                  Teuchos::ParameterList& aPenaltyParams,
                                  std::string&            aFunctionName ) :
-            AbstractScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
+            Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
             mIndicatorFunction(aPenaltyParams),
             mApplyTensorWeighting(mIndicatorFunction),
             mApplyVectorWeighting(mIndicatorFunction),

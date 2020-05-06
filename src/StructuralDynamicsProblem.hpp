@@ -22,8 +22,8 @@
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 
-#include "PhysicsScalarFunction.hpp"
-#include "VectorFunction.hpp"
+#include "elliptic/PhysicsScalarFunction.hpp"
+#include "elliptic/VectorFunction.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "SimplexStructuralDynamics.hpp"
@@ -63,12 +63,12 @@ private:
     Teuchos::RCP<Plato::CrsMatrixType> mJacobian;
 
     // required
-    std::shared_ptr<const Plato::VectorFunction<SimplexPhysics>> mEquality;
+    std::shared_ptr<const Plato::Elliptic::VectorFunction<SimplexPhysics>> mEquality;
 
     // optional
-    std::shared_ptr<const Plato::PhysicsScalarFunction<SimplexPhysics>> mObjective;
-    std::shared_ptr<const Plato::PhysicsScalarFunction<SimplexPhysics>> mConstraint;
-    std::shared_ptr<const Plato::VectorFunction<SimplexPhysics>> mAdjointProb;
+    std::shared_ptr<const Plato::Elliptic::PhysicsScalarFunction<SimplexPhysics>> mObjective;
+    std::shared_ptr<const Plato::Elliptic::PhysicsScalarFunction<SimplexPhysics>> mConstraint;
+    std::shared_ptr<const Plato::Elliptic::VectorFunction<SimplexPhysics>> mAdjointProb;
 
 public:
     /******************************************************************************//**
@@ -118,7 +118,7 @@ public:
      * @param aEquality equality constraint vector function
      *
     **********************************************************************************/
-    StructuralDynamicsProblem(Omega_h::Mesh& aMesh, std::shared_ptr<Plato::VectorFunction<SimplexPhysics>> & aEquality) :
+    StructuralDynamicsProblem(Omega_h::Mesh& aMesh, std::shared_ptr<Plato::Elliptic::VectorFunction<SimplexPhysics>> & aEquality) :
             mNumStates(aMesh.nverts() * mNumDofsPerNode),
             mNumConfig(aMesh.nverts() * mSpatialDim),
             mNumControls(aMesh.nverts()),
@@ -674,24 +674,24 @@ private:
     /******************************************************************************/
     {
         auto tEqualityName = aParamList.get<std::string>("PDE Constraint");
-        mEquality = std::make_shared<Plato::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aParamList, tEqualityName);
+        mEquality = std::make_shared<Plato::Elliptic::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aParamList, tEqualityName);
 
         if(aParamList.isType<std::string>("Constraint"))
         {
             std::string tConstraintName = aParamList.get<std::string>("Constraint");
-            mConstraint = std::make_shared<Plato::PhysicsScalarFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aParamList, tConstraintName);
+            mConstraint = std::make_shared<Plato::Elliptic::PhysicsScalarFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aParamList, tConstraintName);
         }
 
         if(aParamList.isType<std::string>("Objective"))
         {
             std::string tObjectiveName = aParamList.get<std::string>("Objective");
-            mObjective = std::make_shared<Plato::PhysicsScalarFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aParamList, tObjectiveName);
+            mObjective = std::make_shared<Plato::Elliptic::PhysicsScalarFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aParamList, tObjectiveName);
 
             auto tLength = mEquality->size();
             mMyAdjoint = Plato::ScalarMultiVector("MyAdjoint", 1, tLength);
 
             std::string tAdjointName = "StructuralDynamics Adjoint";
-            mAdjointProb = std::make_shared<Plato::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aParamList, tAdjointName);
+            mAdjointProb = std::make_shared<Plato::Elliptic::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aParamList, tAdjointName);
         }
 
         // Parse essential boundary conditions (i.e. Dirichlet)

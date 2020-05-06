@@ -17,22 +17,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     IsotropicLinearElasticMaterial.cpp 
     OrthotropicLinearElasticMaterial.cpp 
     LinearThermoelasticMaterial.cpp 
-    HeatEquationResidual.cpp 
-    TransientThermomechResidual.cpp 
-    InternalThermalEnergy.cpp 
-    InternalThermoelasticEnergy.cpp 
-    InternalElectroelasticEnergy.cpp 
-    InternalElasticEnergy.cpp 
     StabilizedElastostaticEnergy.cpp 
-    TemperatureAverage.cpp 
-    FluxPNorm.cpp 
-    StressPNorm.cpp 
-    EMStressPNorm.cpp 
-    EffectiveEnergy.cpp 
-    ThermostaticResidual.cpp 
-    ElastostaticResidual.cpp 
-    ParabolicProblem.cpp 
-    EllipticProblem.cpp 
     EllipticVMSProblem.cpp 
     alg/ParseInput.cpp 
     alg/Basis.cpp 
@@ -42,22 +27,11 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     alg/EpetraLinearSolver.cpp
     alg/AmgXLinearSolver.cpp
     alg/PlatoSolverFactory.cpp
-    ScalarFunctionBaseFactory.cpp 
-    hyperbolic/HyperbolicScalarFunctionFactory.cpp
-    hyperbolic/HyperbolicPhysicsScalarFunction.cpp
-    WeightedSumFunction.cpp 
-    PhysicsScalarFunction.cpp 
     TensileEnergyDensity.cpp 
     TensileEnergyDensityLocalMeasure.cpp 
     VonMisesLocalMeasure.cpp 
     ThermalVonMisesLocalMeasure.cpp 
-    LeastSquaresFunction.cpp 
-    DivisionFunction.cpp 
-    MassMoment.cpp 
-    MassPropertiesFunction.cpp 
     IntermediateDensityPenalty.cpp 
-    ScalarFunctionIncBaseFactory.cpp 
-    PhysicsScalarFunctionInc.cpp 
     J2PlasticityLocalResidual.cpp 
     LocalVectorFunctionInc.cpp 
     NewtonRaphsonSolver.cpp 
@@ -70,7 +44,35 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     WeightedLocalScalarFunction.cpp 
     InfinitesimalStrainPlasticityResidual.cpp 
     ElasticWorkCriterion.cpp 
-    PlasticWorkCriterion.cpp)
+    PlasticWorkCriterion.cpp
+    elliptic/DivisionFunction.cpp 
+    elliptic/LeastSquaresFunction.cpp 
+    elliptic/WeightedSumFunction.cpp 
+    elliptic/ScalarFunctionBaseFactory.cpp 
+    elliptic/PhysicsScalarFunction.cpp 
+    elliptic/MassPropertiesFunction.cpp 
+    elliptic/MassMoment.cpp 
+    elliptic/FluxPNorm.cpp 
+    elliptic/StressPNorm.cpp 
+    elliptic/EMStressPNorm.cpp 
+    elliptic/EffectiveEnergy.cpp 
+    elliptic/InternalThermalEnergy.cpp 
+    elliptic/InternalThermoelasticEnergy.cpp 
+    elliptic/InternalElectroelasticEnergy.cpp 
+    elliptic/InternalElasticEnergy.cpp 
+    elliptic/Problem.cpp 
+    elliptic/ElastostaticResidual.cpp 
+    elliptic/ThermostaticResidual.cpp 
+    parabolic/InternalThermalEnergy.cpp 
+    parabolic/InternalThermoelasticEnergy.cpp 
+    parabolic/TemperatureAverage.cpp 
+    parabolic/Problem.cpp 
+    parabolic/ScalarFunctionBaseFactory.cpp 
+    parabolic/PhysicsScalarFunction.cpp 
+    parabolic/HeatEquationResidual.cpp 
+    parabolic/TransientThermomechResidual.cpp
+    hyperbolic/HyperbolicScalarFunctionFactory.cpp
+    hyperbolic/HyperbolicPhysicsScalarFunction.cpp)
 
 if (PLATOANALYZE_ENABLE_TPETRA)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES} alg/TpetraLinearSolver.cpp) 

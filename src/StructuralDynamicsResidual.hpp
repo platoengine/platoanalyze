@@ -25,7 +25,7 @@
 #include "PlatoStaticsTypes.hpp"
 #include "ComplexLinearStress.hpp"
 #include "ComplexRayleighDamping.hpp"
-#include "AbstractVectorFunction.hpp"
+#include "elliptic/AbstractVectorFunction.hpp"
 #include "ComplexStressDivergence.hpp"
 #include "SimplexStructuralDynamics.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
@@ -38,7 +38,7 @@ namespace Plato
 template<typename EvaluationType, class PenaltyFunctionType, class ProjectionType>
 class StructuralDynamicsResidual:
         public Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>,
-        public AbstractVectorFunction<EvaluationType>
+        public Plato::Elliptic::AbstractVectorFunction<EvaluationType>
 /******************************************************************************/
 {
 private:
@@ -87,7 +87,7 @@ public:
                                         Plato::DataMap& aDataMap,
                                         Teuchos::ParameterList & aProblemParams,
                                         Teuchos::ParameterList & aPenaltyParams) :
-            AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
+            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
             mDensity(1.0),
             mMassPropDamp(0.0),
             mStiffPropDamp(0.0),
@@ -116,7 +116,7 @@ public:
                                         Omega_h::MeshSets& aMeshSets,
                                         Plato::DataMap& aDataMap,
                                         Teuchos::ParameterList & aProblemParams) :
-            AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
+            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
             mDensity(1.0),
             mMassPropDamp(0.0),
             mStiffPropDamp(0.0),
@@ -143,7 +143,7 @@ public:
     explicit StructuralDynamicsResidual(Omega_h::Mesh& aMesh,
                                         Omega_h::MeshSets& aMeshSets,
                                         Plato::DataMap& aDataMap) :
-            AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
+            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
             mDensity(1.0),
             mMassPropDamp(0.0),
             mStiffPropDamp(0.0),
@@ -312,15 +312,15 @@ public:
         // add body loads contribution
         if(mBodyLoads != nullptr)
         {
-            auto tMesh = AbstractVectorFunction<EvaluationType>::getMesh();
+            auto tMesh = Plato::Elliptic::AbstractVectorFunction<EvaluationType>::getMesh();
             mBodyLoads->get(tMesh, aState, aControl, aResidual);
         }
 
         // add neumann loads contribution
         if( mBoundaryLoads != nullptr )
         {
-            auto tMesh = AbstractVectorFunction<EvaluationType>::getMesh();
-            auto tMeshSets = AbstractVectorFunction<EvaluationType>::getMeshSets();
+            auto tMesh = Plato::Elliptic::AbstractVectorFunction<EvaluationType>::getMesh();
+            auto tMeshSets = Plato::Elliptic::AbstractVectorFunction<EvaluationType>::getMeshSets();
             mBoundaryLoads->get(&tMesh, tMeshSets, aState, aControl, aConfiguration, aResidual);
         }
     }

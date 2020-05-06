@@ -32,8 +32,8 @@
 #include <ScalarProduct.hpp>
 #include <SimplexFadTypes.hpp>
 #include <WorksetBase.hpp>
-#include <VectorFunctionInc.hpp>
-#include <PhysicsScalarFunctionInc.hpp>
+#include <parabolic/VectorFunction.hpp>
+#include <parabolic/PhysicsScalarFunction.hpp>
 #include <StateValues.hpp>
 #include "ApplyConstraints.hpp"
 #include "SimplexThermal.hpp"
@@ -428,7 +428,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, HeatEquationResidual3D )
   //
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::VectorFunctionInc<::Plato::Thermal<spaceDim>>
+  Plato::Parabolic::VectorFunction<::Plato::Thermal<spaceDim>>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
 
@@ -642,7 +642,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, InternalThermalEnergy3D )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::PhysicsScalarFunctionInc<::Plato::Thermal<spaceDim>>
+  Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
     scalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
 
   auto timeStep = params->sublist("Time Integration").get<Plato::Scalar>("Time Step");

@@ -24,7 +24,7 @@
 
 #include "WorksetBase.hpp"
 #include "SimplexFadTypes.hpp"
-#include "AbstractScalarFunction.hpp"
+#include "elliptic/AbstractScalarFunction.hpp"
 #include "SimplexStructuralDynamics.hpp"
 #include "ComputeFrequencyResponseMisfit.hpp"
 
@@ -34,7 +34,7 @@ namespace Plato
 template<typename EvaluationType>
 class FrequencyResponseMisfit :
         public Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim, EvaluationType::NumControls>,
-        public Plato::AbstractScalarFunction<EvaluationType>
+        public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
 {
 private:
     using Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>::mComplexSpaceDim;
@@ -58,7 +58,7 @@ public:
                                      Omega_h::MeshSets& aMeshSets, 
                                      Plato::DataMap aDataMap,
                                      Teuchos::ParameterList & aParamList) :
-            Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Frequency Response Misfit"),
+            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Frequency Response Misfit"),
             mExpStates(),
             mTimeSteps(),
             mGlobalStateEntryOrdinal(Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode>(&aMesh))
@@ -74,7 +74,7 @@ public:
                                      Plato::DataMap aDataMap,
                                      const std::vector<Plato::Scalar> & aTimeSteps,
                                      const Plato::ScalarMultiVector & aExpStates) :
-            Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Frequency Response Misfit"),
+            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Frequency Response Misfit"),
             mExpStates(aExpStates),
             mTimeSteps(aTimeSteps),
             mGlobalStateEntryOrdinal(Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode>(&aMesh))
