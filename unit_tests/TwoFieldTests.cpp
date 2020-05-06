@@ -32,7 +32,7 @@
 #include <ApplyWeighting.hpp>
 #include <SimplexFadTypes.hpp>
 #include <WorksetBase.hpp>
-#include <VectorFunctionInc.hpp>
+#include <parabolic/AbstractVectorFunction.hpp>
 #include <VectorFunctionVMS.hpp>
 #include <StateValues.hpp>
 #include <Plato_Solve.hpp>

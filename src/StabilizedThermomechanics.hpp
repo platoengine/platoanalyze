@@ -9,8 +9,8 @@
 #include "Simplex.hpp"
 #include "SimplexProjection.hpp"
 #include "AbstractVectorFunctionVMS.hpp"
-#include "AbstractScalarFunction.hpp"
-#include "AbstractScalarFunctionInc.hpp"
+#include "elliptic/AbstractScalarFunction.hpp"
+#include "parabolic/AbstractScalarFunction.hpp"
 #include "Projection.hpp"
 #include "StabilizedThermoelastostaticResidual.hpp"
 #include "PressureGradientProjectionResidual.hpp"
@@ -82,12 +82,14 @@ struct FunctionFactory
 
     /******************************************************************************/
     template <typename EvaluationType>
-    std::shared_ptr<AbstractVectorFunctionInc<EvaluationType>>
-    createVectorFunctionInc(Omega_h::Mesh& aMesh,
-                            Omega_h::MeshSets& aMeshSets, 
-                            Plato::DataMap& aDataMap,
-                            Teuchos::ParameterList& aParamList,
-                            std::string strVectorFunctionType )
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<EvaluationType>>
+    createVectorFunctionParabolic(
+        Omega_h::Mesh& aMesh,
+        Omega_h::MeshSets& aMeshSets, 
+        Plato::DataMap& aDataMap,
+        Teuchos::ParameterList& aParamList,
+        std::string strVectorFunctionType
+    )
     /******************************************************************************/
     {
         {
@@ -96,7 +98,7 @@ struct FunctionFactory
     }
     /******************************************************************************/
     template<typename EvaluationType>
-    std::shared_ptr<Plato::AbstractScalarFunction<EvaluationType>>
+    std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
     createScalarFunction(Omega_h::Mesh& aMesh,
                          Omega_h::MeshSets& aMeshSets,
                          Plato::DataMap& aDataMap, 
@@ -111,13 +113,15 @@ struct FunctionFactory
     }
     /******************************************************************************/
     template <typename EvaluationType>
-    std::shared_ptr<AbstractScalarFunctionInc<EvaluationType>>
-    createScalarFunctionInc(Omega_h::Mesh& aMesh,
-                            Omega_h::MeshSets& aMeshSets,
-                            Plato::DataMap& aDataMap,
-                            Teuchos::ParameterList& aParamList,
-                            std::string strScalarFunctionType,
-                            std::string aStrScalarFunctionName )
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<EvaluationType>>
+    createScalarFunctionParabolic(
+        Omega_h::Mesh& aMesh,
+        Omega_h::MeshSets& aMeshSets,
+        Plato::DataMap& aDataMap,
+        Teuchos::ParameterList& aParamList,
+        std::string strScalarFunctionType,
+        std::string aStrScalarFunctionName
+    )
     /******************************************************************************/
     {
         {

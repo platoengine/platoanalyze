@@ -21,7 +21,7 @@
 #include "PlatoStaticsTypes.hpp"
 #include "ComplexLinearStress.hpp"
 #include "ElasticModelFactory.hpp"
-#include "AbstractVectorFunction.hpp"
+#include "elliptic/AbstractVectorFunction.hpp"
 #include "ComplexStressDivergence.hpp"
 #include "SimplexStructuralDynamics.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
@@ -36,7 +36,7 @@ namespace Plato
 template<typename EvaluationType, class PenaltyFunctionType, class ProjectionType>
 class AdjointStructuralDynamicsResidual:
         public Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>,
-        public Plato::AbstractVectorFunction<EvaluationType>
+        public Plato::Elliptic::AbstractVectorFunction<EvaluationType>
 /******************************************************************************/
 {
 private:
@@ -82,7 +82,7 @@ public:
                                                Plato::DataMap& aDataMap,
                                                Teuchos::ParameterList & aProblemParams,
                                                Teuchos::ParameterList& aPenaltyParams) :
-            AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
+            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
             mDensity(aProblemParams.get<Plato::Scalar>("Material Density", 1.0)),
             mMassPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Mass Damping", 0.0)),
             mStiffPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Stiffness Damping", 0.0)),
@@ -109,7 +109,7 @@ public:
                                                Omega_h::MeshSets& aMeshSets, 
                                                Plato::DataMap& aDataMap, 
                                                Teuchos::ParameterList & aProblemParams) :
-            AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
+            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
             mDensity(aProblemParams.get<Plato::Scalar>("Material Density", 1.0)),
             mMassPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Mass Damping", 0.0)),
             mStiffPropDamp(aProblemParams.get<Plato::Scalar>("Rayleigh Stiffness Damping", 0.0)),
@@ -132,7 +132,7 @@ public:
      *
     **********************************************************************************/
     explicit AdjointStructuralDynamicsResidual(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap) :
-            AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
+            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
             mDensity(1),
             mMassPropDamp(0.0),
             mStiffPropDamp(0.0),

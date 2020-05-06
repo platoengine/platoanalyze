@@ -34,13 +34,10 @@
 #include <SimplexFadTypes.hpp>
 #include <SimplexMechanics.hpp>
 #include <WorksetBase.hpp>
-#include <AbstractVectorFunction.hpp>
-#include <VectorFunction.hpp>
-#include <AbstractScalarFunction.hpp>
-#include <InternalElasticEnergy.hpp>
-#include <PhysicsScalarFunction.hpp>
+#include <elliptic/VectorFunction.hpp>
+#include <elliptic/PhysicsScalarFunction.hpp>
 #include "ApplyConstraints.hpp"
-#include "EllipticProblem.hpp"
+#include "elliptic/Problem.hpp"
 #include "Mechanics.hpp"
 #include "Thermal.hpp"
 
@@ -315,7 +312,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
   //
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::VectorFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Elliptic::VectorFunction<::Plato::Mechanics<spaceDim>>
     esVectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
 
@@ -521,7 +518,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
     eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
 
 
@@ -710,7 +707,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
     eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
 
 
@@ -899,7 +896,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
     eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
 
 
@@ -1108,7 +1105,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
     eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
 
 
@@ -1284,7 +1281,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::VectorFunction<::Plato::Thermal<spaceDim>>
+  Plato::Elliptic::VectorFunction<::Plato::Thermal<spaceDim>>
     tsVectorFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("PDE Constraint"));
 
 
@@ -1458,7 +1455,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
+  Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
     eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
 
 
@@ -1610,7 +1607,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
+  Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
     scalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
 
 
@@ -1783,7 +1780,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
     volScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Linear Constraint"));
 
 
@@ -2001,7 +1998,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
     MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
     Plato::Comm::Machine tMachine(myComm);
 
-    Plato::EllipticProblem<Plato::Mechanics<tSpaceDim>>
+    Plato::Elliptic::Problem<Plato::Mechanics<tSpaceDim>>
         tElasticityProblem(*tMesh, tMeshSets, *tElasticityParams, tMachine);
 
     // SET ESSENTIAL/DIRICHLET BOUNDARY CONDITIONS 

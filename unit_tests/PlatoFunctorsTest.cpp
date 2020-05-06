@@ -11,7 +11,7 @@
  
 #include "Mechanics.hpp"
 #include "WorksetBase.hpp"
-#include "VectorFunction.hpp"
+#include "elliptic/VectorFunction.hpp"
 #include "ImplicitFunctors.hpp"
 #include "StructuralDynamics.hpp"
 
@@ -64,14 +64,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeStateWorkset)
 
     // ALLOCATE ELASTOSTATICS VECTOR FUNCTION
     Plato::DataMap tDataMap;
-    Plato::VectorFunction<Plato::Mechanics<tSpaceDim>> tElastostatics(*tMesh, tDataMap);
+    Plato::Elliptic::VectorFunction<Plato::Mechanics<tSpaceDim>> tElastostatics(*tMesh, tDataMap);
 
     // ALLOCATE ELASTOSTATICS RESIDUAL
     Omega_h::MeshSets tMeshSets;
-    std::shared_ptr<Plato::AbstractVectorFunction<ResidualT>> tResidual;
-    tResidual = std::make_shared<Plato::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
-    std::shared_ptr<Plato::AbstractVectorFunction<JacobianU>> tJacobianState;
-    tJacobianState = std::make_shared<Plato::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<ResidualT>> tResidual;
+    tResidual = std::make_shared<Plato::Elliptic::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
+    tJacobianState = std::make_shared<Plato::Elliptic::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
     tElastostatics.allocateResidual(tResidual, tJacobianState);
 
     // SET PROBLEM-RELATED DIMENSIONS
@@ -109,10 +109,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeStateWorkset)
         Plato::fad_type_t<Plato::StructuralDynamics<tSpaceDim>, ResidualT::StateScalarType, ResidualT::ConfigScalarType>;
 
     // ALLOCATE ELASTODYNAMICS RESIDUAL 
-    Plato::VectorFunction<Plato::StructuralDynamics<tSpaceDim>> tElastodynamics(*tMesh, tDataMap);
-    std::shared_ptr<Plato::AbstractVectorFunction<SD_ResidualT>> tResidualSD;
+    Plato::Elliptic::VectorFunction<Plato::StructuralDynamics<tSpaceDim>> tElastodynamics(*tMesh, tDataMap);
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_ResidualT>> tResidualSD;
     tResidualSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    std::shared_ptr<Plato::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
     tJacobianStateSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     tElastodynamics.allocateResidual(tResidualSD, tJacobianStateSD);
 
@@ -179,14 +179,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStrainsToComplexStrains)
     
     // ALLOCATE ELASTOSTATICS VECTOR FUNCTION
     Plato::DataMap tDataMap;
-    Plato::VectorFunction<Plato::Mechanics<tSpaceDim>> tElastostatics(*tMesh, tDataMap);
+    Plato::Elliptic::VectorFunction<Plato::Mechanics<tSpaceDim>> tElastostatics(*tMesh, tDataMap);
 
     // ALLOCATE ELASTOSTATICS RESIDUAL
     Omega_h::MeshSets tMeshSets;
-    std::shared_ptr<Plato::AbstractVectorFunction<ResidualT>> tResidual;
-    tResidual = std::make_shared<Plato::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
-    std::shared_ptr<Plato::AbstractVectorFunction<JacobianU>> tJacobianState;
-    tJacobianState = std::make_shared<Plato::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<ResidualT>> tResidual;
+    tResidual = std::make_shared<Plato::Elliptic::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
+    tJacobianState = std::make_shared<Plato::Elliptic::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
     tElastostatics.allocateResidual(tResidual, tJacobianState);
 
     // SET PROBLEM-RELATED DIMENSIONS
@@ -247,10 +247,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStrainsToComplexStrains)
         Plato::fad_type_t<Plato::StructuralDynamics<tSpaceDim>, ResidualT::StateScalarType, ResidualT::ConfigScalarType>;
     
     // ALLOCATE ELASTODYNAMICS VECTOR FUNCTION
-    Plato::VectorFunction<Plato::StructuralDynamics<tSpaceDim>> tElastodynamics(*tMesh, tDataMap);
-    std::shared_ptr<Plato::AbstractVectorFunction<SD_ResidualT>> tResidualSD;
+    Plato::Elliptic::VectorFunction<Plato::StructuralDynamics<tSpaceDim>> tElastodynamics(*tMesh, tDataMap);
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_ResidualT>> tResidualSD;
     tResidualSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    std::shared_ptr<Plato::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
     tJacobianStateSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     tElastodynamics.allocateResidual(tResidualSD, tJacobianStateSD);
 
@@ -328,14 +328,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStressToComplexStress)
 
     // ALLOCATE ELASTOSTATICS VECTOR FUNCTION
     Plato::DataMap tDataMap;
-    Plato::VectorFunction<Plato::Mechanics<tSpaceDim>> tElastostatics(*tMesh, tDataMap);
+    Plato::Elliptic::VectorFunction<Plato::Mechanics<tSpaceDim>> tElastostatics(*tMesh, tDataMap);
 
     // ALLOCATE ELASTOSTATICS RESIDUAL
     Omega_h::MeshSets tMeshSets;
-    std::shared_ptr<Plato::AbstractVectorFunction<ResidualT>> tResidual;
-    tResidual = std::make_shared<Plato::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
-    std::shared_ptr<Plato::AbstractVectorFunction<JacobianU>> tJacobianState;
-    tJacobianState = std::make_shared<Plato::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<ResidualT>> tResidual;
+    tResidual = std::make_shared<Plato::Elliptic::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
+    tJacobianState = std::make_shared<Plato::Elliptic::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
     tElastostatics.allocateResidual(tResidual, tJacobianState);
     
     // SET PROBLEM-RELATED DIMENSIONS
@@ -409,10 +409,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStressToComplexStress)
         Plato::fad_type_t<Plato::StructuralDynamics<tSpaceDim>, ResidualT::StateScalarType, ResidualT::ConfigScalarType>;
 
     // ALLOCATE ELASTODYNAMICS VECTOR FUNCTION
-    Plato::VectorFunction<Plato::StructuralDynamics<tSpaceDim>> tElastodynamics(*tMesh, tDataMap);
-    std::shared_ptr<Plato::AbstractVectorFunction<SD_ResidualT>> tResidualSD;
+    Plato::Elliptic::VectorFunction<Plato::StructuralDynamics<tSpaceDim>> tElastodynamics(*tMesh, tDataMap);
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_ResidualT>> tResidualSD;
     tResidualSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    std::shared_ptr<Plato::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
     tJacobianStateSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     tElastodynamics.allocateResidual(tResidualSD, tJacobianStateSD);
 
@@ -496,14 +496,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearElasticForcesToComplexElas
 
     // ALLOCATE ELASTOSTATICS VECTOR FUNCTION
     Plato::DataMap tDataMap;
-    Plato::VectorFunction<Plato::Mechanics<tSpaceDim>> tElastostatics(*tMesh, tDataMap);
+    Plato::Elliptic::VectorFunction<Plato::Mechanics<tSpaceDim>> tElastostatics(*tMesh, tDataMap);
     
     // ALLOCATE ELASTOSTATICS RESIDUAL
     Omega_h::MeshSets tMeshSets;
-    std::shared_ptr<Plato::AbstractVectorFunction<ResidualT>> tResidual;
-    tResidual = std::make_shared<Plato::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
-    std::shared_ptr<Plato::AbstractVectorFunction<JacobianU>> tJacobianState;
-    tJacobianState = std::make_shared<Plato::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<ResidualT>> tResidual;
+    tResidual = std::make_shared<Plato::Elliptic::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
+    tJacobianState = std::make_shared<Plato::Elliptic::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
     tElastostatics.allocateResidual(tResidual, tJacobianState);
 
     // SET PROBLEM-RELATED DIMENSIONS
@@ -586,10 +586,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearElasticForcesToComplexElas
         Plato::fad_type_t<Plato::StructuralDynamics<tSpaceDim>, ResidualT::StateScalarType, ResidualT::ConfigScalarType>;
 
     // ALLOCATE ELASTODYNAMICS VECTOR FUNCTION
-    Plato::VectorFunction<Plato::StructuralDynamics<tSpaceDim>> tElastodynamics(*tMesh, tDataMap);
-    std::shared_ptr<Plato::AbstractVectorFunction<SD_ResidualT>> tResidualSD;
+    Plato::Elliptic::VectorFunction<Plato::StructuralDynamics<tSpaceDim>> tElastodynamics(*tMesh, tDataMap);
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_ResidualT>> tResidualSD;
     tResidualSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    std::shared_ptr<Plato::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
+    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
     tJacobianStateSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     tElastodynamics.allocateResidual(tResidualSD, tJacobianStateSD);
 

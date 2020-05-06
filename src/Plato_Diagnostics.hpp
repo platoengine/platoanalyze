@@ -12,8 +12,8 @@
 #include "WorksetBase.hpp"
 #include "SimplexFadTypes.hpp"
 #include "PlatoMathHelpers.hpp"
-#include "AbstractScalarFunction.hpp"
-#include "ScalarFunctionBase.hpp"
+#include "elliptic/AbstractScalarFunction.hpp"
+#include "elliptic/ScalarFunctionBase.hpp"
 #include "LocalVectorFunctionInc.hpp"
 #include "ImplicitFunctors.hpp"
 
@@ -180,7 +180,7 @@ inline Plato::Scalar test_constraint_grad_wrt_control(PlatoProblem & aProblem, O
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
 inline void test_partial_control(Omega_h::Mesh & aMesh,
-                                 Plato::AbstractScalarFunction<EvaluationType> & aCriterion,
+                                 Plato::Elliptic::AbstractScalarFunction<EvaluationType> & aCriterion,
                                  Plato::OrdinalType aSuperscriptLowerBound = 1,
                                  Plato::OrdinalType aSuperscriptUpperBound = 10)
 {
@@ -289,7 +289,7 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
  * \param [in] aCriterion scalar function (i.e. scalar criterion) interface
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
-inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::AbstractScalarFunction<EvaluationType> & aCriterion)
+inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::Elliptic::AbstractScalarFunction<EvaluationType> & aCriterion)
 {
     using StateT = typename EvaluationType::StateScalarType;
     using ConfigT = typename EvaluationType::ConfigScalarType;
@@ -394,7 +394,7 @@ inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::AbstractScalarFunct
 
 template<typename EvaluationType, typename SimplexPhysics>
 inline void test_partial_control(Omega_h::Mesh & aMesh,
-                                 Plato::ScalarFunctionBase & aScalarFuncBase,
+                                 Plato::Elliptic::ScalarFunctionBase & aScalarFuncBase,
                                  Plato::OrdinalType aSuperscriptLowerBound = 1,
                                  Plato::OrdinalType aSuperscriptUpperBound = 10)
 {
@@ -473,7 +473,7 @@ inline void test_partial_control(Omega_h::Mesh & aMesh,
  * \param [in] aCriterion scalar function (i.e. scalar criterion) interface
 **********************************************************************************/
 template<typename EvaluationType, typename SimplexPhysics>
-inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::ScalarFunctionBase & aScalarFuncBase)
+inline void test_partial_state(Omega_h::Mesh & aMesh, Plato::Elliptic::ScalarFunctionBase & aScalarFuncBase)
 {
     using StateT = typename EvaluationType::StateScalarType;
     using ConfigT = typename EvaluationType::ConfigScalarType;

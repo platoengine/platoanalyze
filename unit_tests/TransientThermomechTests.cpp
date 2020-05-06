@@ -32,7 +32,7 @@
 #include <ApplyWeighting.hpp>
 #include <SimplexFadTypes.hpp>
 #include <WorksetBase.hpp>
-#include <VectorFunctionInc.hpp>
+#include <parabolic/VectorFunction.hpp>
 #include <StateValues.hpp>
 #include "ApplyConstraints.hpp"
 #include "SimplexThermal.hpp"
@@ -426,7 +426,7 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
   //
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::VectorFunctionInc<::Plato::Thermomechanics<spaceDim>>
+  Plato::Parabolic::VectorFunction<::Plato::Thermomechanics<spaceDim>>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
 

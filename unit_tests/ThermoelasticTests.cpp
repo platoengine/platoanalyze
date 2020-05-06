@@ -29,8 +29,8 @@
 #include "ScalarProduct.hpp"
 #include "SimplexFadTypes.hpp"
 #include "WorksetBase.hpp"
-#include "VectorFunction.hpp"
-#include "PhysicsScalarFunction.hpp"
+#include "elliptic/VectorFunction.hpp"
+#include "elliptic/PhysicsScalarFunction.hpp"
 #include "StateValues.hpp"
 #include "ApplyConstraints.hpp"
 #include "SimplexThermomechanics.hpp"
@@ -113,7 +113,7 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
 
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::VectorFunction<::Plato::Thermomechanics<spaceDim>>
+  Plato::Elliptic::VectorFunction<::Plato::Thermomechanics<spaceDim>>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
 
@@ -239,7 +239,7 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
 
   // create objective
   //
-  Plato::PhysicsScalarFunction<::Plato::Thermomechanics<spaceDim>>
+  Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<spaceDim>>
     scalarFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("Objective"));
 
   // compute and test objective value

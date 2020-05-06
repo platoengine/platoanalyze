@@ -22,8 +22,8 @@
 #include "PlatoMathFunctors.hpp"
 #include "Mechanics.hpp"
 #include "StabilizedMechanics.hpp"
-#include "PhysicsScalarFunction.hpp"
-#include "VectorFunction.hpp"
+#include "elliptic/PhysicsScalarFunction.hpp"
+#include "elliptic/VectorFunction.hpp"
 #include "VectorFunctionVMS.hpp"
 #include "ApplyProjection.hpp"
 #include "AnalyzeMacros.hpp"
@@ -544,7 +544,7 @@ Teuchos::RCP<Plato::CrsMatrixType> createSquareMatrix()
   //
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::VectorFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Elliptic::VectorFunction<::Plato::Mechanics<spaceDim>>
     tVectorFunction(*mesh, tMeshSets, tDataMap, *gElastostaticsParams, gElastostaticsParams->get<std::string>("PDE Constraint"));
 
   // compute and test objective value
@@ -1621,14 +1621,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
   //
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
     eeScalarFunction(*mesh, tMeshSets, tDataMap, *tParams, tParams->get<std::string>("Objective"));
 
   auto dfdx = eeScalarFunction.gradient_x(u,z);
 
   // create PDE constraint
   //
-  Plato::VectorFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Elliptic::VectorFunction<::Plato::Mechanics<spaceDim>>
     esVectorFunction(*mesh, tMeshSets, tDataMap, *tParams, tParams->get<std::string>("PDE Constraint"));
 
   auto dgdx = esVectorFunction.gradient_x(u,z);

@@ -114,7 +114,7 @@ namespace Plato
 
     /******************************************************************************//**
      * @brief Concrete class for use as the SimplexPhysics template argument in
-     *        EllipticProblem
+     *        Plato::Hyperbolic::Problem
     **********************************************************************************/
     template<Plato::OrdinalType SpaceDimParam>
     class Mechanics: public Plato::SimplexMechanics<SpaceDimParam>

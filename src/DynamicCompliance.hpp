@@ -26,7 +26,7 @@
 #include "ElasticModelFactory.hpp"
 #include "ComplexElasticEnergy.hpp"
 #include "ComplexInertialEnergy.hpp"
-#include "AbstractScalarFunction.hpp"
+#include "elliptic/AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "SimplexStructuralDynamics.hpp"
 #include "IsotropicLinearElasticMaterial.hpp"
@@ -37,7 +37,7 @@ namespace Plato
 template<typename EvaluationType, class PenaltyFuncType, class ProjectionFuncType>
 class DynamicCompliance:
         public Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim, EvaluationType::NumControls>,
-        public Plato::AbstractScalarFunction<EvaluationType>
+        public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
 {
 private:
     using Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>::mNumVoigtTerms;
@@ -69,7 +69,7 @@ public:
                       Plato::DataMap& aDataMap, 
                       Teuchos::ParameterList& aProblemParams,
                       Teuchos::ParameterList& aPenaltyParams) :
-            Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Dynamic Energy"),
+            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Dynamic Energy"),
             mDensity(aProblemParams.get<Plato::Scalar>("Material Density", 1.0)),
             mProjectionFunction(),
             mPenaltyFunction(aPenaltyParams),
@@ -86,7 +86,7 @@ public:
     }
     /**************************************************************************/
     DynamicCompliance(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap) :
-            Plato::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Dynamic Energy"),
+            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Dynamic Energy"),
             mDensity(1.0),
             mProjectionFunction(),
             mPenaltyFunction(3.0, 0.0),
