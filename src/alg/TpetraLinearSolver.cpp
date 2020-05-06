@@ -1,8 +1,7 @@
 #include "TpetraLinearSolver.hpp"
 #include <BelosTpetraAdapter.hpp>
 #include <BelosSolverFactory.hpp>
-#include <Amesos2.hpp>
-// #include <supermatrix.h>
+#include <Ifpack2_Factory.hpp>
 
 namespace Plato {
 /******************************************************************************//**
@@ -166,9 +165,50 @@ TpetraLinearSolver::TpetraLinearSolver(
     }
 }
 
+void getPrecondTypeAndParameters (std::string& precondType, Teuchos::ParameterList& pl)
+{
+  precondType = "ILUT";
+
+  const double fillLevel = 2.0;
+  const double dropTol = 0.0;
+  const double absThreshold = 0.1;
+
+  pl.set ("fact: ilut level-of-fill", fillLevel);
+  pl.set ("fact: drop tolerance", dropTol);
+  pl.set ("fact: absolute threshold", absThreshold);
+}
+
+template<class TpetraMatrixType>
+Teuchos::RCP<Tpetra::Operator<typename TpetraMatrixType::scalar_type,
+                              typename TpetraMatrixType::local_ordinal_type,
+                              typename TpetraMatrixType::global_ordinal_type,
+                              typename TpetraMatrixType::node_type> >
+createPreconditioner (const Teuchos::RCP<const TpetraMatrixType>& A,
+                      const std::string& precondType,
+                      const Teuchos::ParameterList& plist)
+{
+  typedef typename TpetraMatrixType::scalar_type scalar_type;
+  typedef typename TpetraMatrixType::local_ordinal_type local_ordinal_type;
+  typedef typename TpetraMatrixType::global_ordinal_type global_ordinal_type;
+  typedef typename TpetraMatrixType::node_type node_type;
+
+  typedef Ifpack2::Preconditioner<scalar_type, local_ordinal_type, 
+                                  global_ordinal_type, node_type> prec_type;
+
+  Teuchos::RCP<prec_type> prec;
+  Ifpack2::Factory factory;
+  prec = factory.create (precondType, A);
+  prec->setParameters (plist);
+
+  prec->initialize();
+  prec->compute();
+
+  return prec;
+}
+
 template<class MV, class OP>
 void
-TpetraLinearSolver::belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B) 
+TpetraLinearSolver::belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M) 
 {
   // Make an empty new parameter list.
   Teuchos::RCP<Teuchos::ParameterList> solverParams = Teuchos::parameterList();
@@ -222,7 +262,15 @@ TpetraLinearSolver::solve(
 
   std::string tSolverType = mSolverParams.get<std::string>("Solver");
   if(tSolverType == "Belos")
-    belosSolve<Tpetra_MultiVector, Tpetra_Operator> (std::cout, A, X, B);
+  {
+    std::string precondType;
+    Teuchos::ParameterList plist;
+    getPrecondTypeAndParameters (precondType, plist);
+
+    Teuchos::RCP<Tpetra_Operator> M = createPreconditioner<Tpetra_Matrix> (A, precondType, plist);
+
+    belosSolve<Tpetra_MultiVector, Tpetra_Operator> (std::cout, A, X, B, M);
+  }
   else
   {
     std::string tInvalid_solver = "Solver type " + tSolverType + " is not a valid option\n";

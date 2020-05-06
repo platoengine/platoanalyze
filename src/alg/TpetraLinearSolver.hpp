@@ -101,7 +101,7 @@ class TpetraLinearSolver : public AbstractSolver
     **********************************************************************************/
     template<class MV, class OP>
     void
-    belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B);
+    belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M);
 };
 
 } // end namespace Plato
