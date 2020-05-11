@@ -111,6 +111,8 @@ EpetraSystem::toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVec
     auto tTemp = std::make_shared<Epetra_Vector>(*mBlockRowMap);
     if(tLength != tTemp->MyLength())
       throw std::domain_error("Epetra_Vector map does not match EpetraSystem map.");
+    if(tOutVector.extent(0) != tTemp->MyLength())
+      throw std::range_error("ScalarVector does not match EpetraSystem map.");
     Plato::Scalar* tInData;
     tInVector->ExtractView(&tInData);
     Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>

@@ -418,7 +418,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra )
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
 
-  Plato::VectorFunction<SimplexPhysics>
+  Plato::Elliptic::VectorFunction<SimplexPhysics>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
@@ -516,7 +516,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra_wrongSize )
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
 
-  Plato::VectorFunction<SimplexPhysics>
+  Plato::Elliptic::VectorFunction<SimplexPhysics>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
@@ -576,14 +576,16 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToTpetraVector )
   auto tConvertedVector = tSystem.fromVector(tTestVector);
 
   auto tTestVectorHostMirror = Kokkos::create_mirror_view(tTestVector);
-
   Kokkos::deep_copy(tTestVectorHostMirror,tTestVector);
 
-  auto tConvertedVectorData = tConvertedVector->getData(0);
+  auto tConvertedVectorDeviceView2D = tConvertedVector->getLocalViewDevice();
+  auto tConvertedVectorDeviceView1D = Kokkos::subview(tConvertedVectorDeviceView2D,Kokkos::ALL(), 0);
+  auto tConvertedVectorHostMirror = Kokkos::create_mirror_view(tConvertedVectorDeviceView1D);
+  Kokkos::deep_copy(tConvertedVectorHostMirror,tConvertedVectorDeviceView1D);
 
   for(int i = 0; i < tNumDofs; ++i)
   {
-    TEST_FLOATING_EQUALITY(tTestVectorHostMirror(i), tConvertedVectorData[i], 1.0e-15);
+    TEST_FLOATING_EQUALITY(tTestVectorHostMirror(i), tConvertedVectorHostMirror(i), 1.0e-15);
   }
 }
 
@@ -665,14 +667,16 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector )
   tSystem.toVector(tConvertedVector,tTestVector);
 
   auto tConvertedVectorHostMirror = Kokkos::create_mirror_view(tConvertedVector);
-
   Kokkos::deep_copy(tConvertedVectorHostMirror,tConvertedVector);
 
-  auto tTestVectorData = tTestVector->getData(0);
+  auto tTestVectorDeviceView2D = tTestVector->getLocalViewDevice();
+  auto tTestVectorDeviceView1D = Kokkos::subview(tTestVectorDeviceView2D, Kokkos::ALL(), 0);
+  auto tTestVectorHostMirror = Kokkos::create_mirror_view(tTestVectorDeviceView1D); 
+  Kokkos::deep_copy(tTestVectorHostMirror,tTestVectorDeviceView1D);
 
   for(int i = 0; i < tNumDofs; ++i)
   {
-    TEST_FLOATING_EQUALITY(tTestVectorData[i], tConvertedVectorHostMirror(i), 1.0e-15);
+    TEST_FLOATING_EQUALITY(tTestVectorHostMirror(i), tConvertedVectorHostMirror(i), 1.0e-15);
   }
 }
 

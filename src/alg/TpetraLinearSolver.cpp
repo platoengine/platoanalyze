@@ -40,6 +40,93 @@ TpetraSystem::TpetraSystem(
 
 }
 
+// void copyRow(Plato::OrdinalType iLocalRowIndex,
+//                   Plato::OrdinalType iBlockRowIndex,
+//                   Plato::OrdinalType iColMapEntryIndex,
+//                   const Plato::CrsMatrix<int> aInMatrix,
+//                   Teuchos::RCP<Tpetra_Matrix>& aRetVal)
+// {
+
+//   auto tNumColsPerBlock = aInMatrix.numColsPerBlock();
+//   auto tNumRowsPerBlock = aInMatrix.numRowsPerBlock();
+//   auto tBlockSize = tNumRowsPerBlock*tNumColsPerBlock;
+
+//   auto tColMap = aInMatrix.columnIndices();
+//   auto tValues = aInMatrix.entries();
+
+//   Kokkos::View<Plato::OrdinalType, Plato::MemSpace> tGlobalColumnIndicesView("columnIndices",tNumColsPerBlock);
+//   Kokkos::View<Plato::Scalar, Plato::MemSpace> tGlobalColumnValuesView("values",tNumColsPerBlock);
+
+//   Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumColsPerBlock), LAMBDA_EXPRESSION(int iLocalColIndex)
+//   {
+//     Plato::OrdinalType tBlockColIndex = tColMap(iColMapEntryIndex);
+//     Plato::OrdinalType tGlobalColIndex = tBlockColIndex * tNumColsPerBlock + iLocalColIndex;
+//     Plato::OrdinalType tSparseIndex = iColMapEntryIndex * tBlockSize + iLocalRowIndex * tNumColsPerBlock + iLocalColIndex;
+
+//     tGlobalColumnIndicesView(iLocalColIndex) = (int) tGlobalColIndex;
+//     tGlobalColumnValuesView(iLocalColIndex) = (double) tValues(tSparseIndex);
+//   }, "copy row to Tpetra_Matrix");
+
+//   const Kokkos::View<const Plato::OrdinalType*,
+//                Plato::MemSpace,
+//                Kokkos::MemoryUnmanaged>
+//   tGlobalColumnIndicesViewUnmanaged(tGlobalColumnIndicesView.data(), tNumColsPerBlock);
+//   const Kokkos::View<const Plato::Scalar*,
+//                Plato::MemSpace,
+//                Kokkos::MemoryUnmanaged>
+//   tGlobalColumnValuesViewUnmanaged(tGlobalColumnValuesView.data(), tNumColsPerBlock);
+
+//   Tpetra::project2nd<Plato::Scalar,Plato::Scalar> tProject;
+
+//   const Plato::OrdinalType tGlobalRowIndex = iBlockRowIndex * tNumRowsPerBlock + iLocalRowIndex;
+//   aRetVal->transformGlobalValues<Tpetra::project2nd<Plato::Scalar,Plato::Scalar>,Plato::MemSpace>
+//                           (tGlobalRowIndex,tGlobalColumnIndicesView,tGlobalColumnValuesView,tProject);
+// }
+
+// void copyBlock(Plato::OrdinalType iBlockRowIndex,
+//                   Plato::OrdinalType iColMapEntryIndex,
+//                   const Plato::CrsMatrix<int> aInMatrix,
+//                   Teuchos::RCP<Tpetra_Matrix>& aRetVal)
+// {
+//   auto tNumRowsPerBlock = aInMatrix.numRowsPerBlock();
+
+//   for(Plato::OrdinalType iLocalRowIndex=0; iLocalRowIndex<tNumRowsPerBlock; iLocalRowIndex++)
+//     copyRow(iLocalRowIndex, iBlockRowIndex, iColMapEntryIndex, aInMatrix, aRetVal);
+// }
+
+// void copyBlocksInBlockRow(Plato::OrdinalType iBlockRowIndex,
+//                              Kokkos::View<Plato::OrdinalType*, MemSpace>::HostMirror aRowMap,
+//                              const Plato::CrsMatrix<int> aInMatrix,
+//                              Teuchos::RCP<Tpetra_Matrix>& aRetval)
+// {
+//   auto tFrom = aRowMap(iBlockRowIndex);
+//   auto tTo   = aRowMap(iBlockRowIndex+1);
+//   for(auto iColMapEntryIndex=tFrom; iColMapEntryIndex<tTo; iColMapEntryIndex++)
+//     copyBlock(iBlockRowIndex, iColMapEntryIndex, aInMatrix, aRetval);
+// }
+
+// /******************************************************************************//**
+//  * @brief Convert from Plato::CrsMatrix<int> to Tpetra_Matrix
+// **********************************************************************************/
+// Teuchos::RCP<Tpetra_Matrix>
+// TpetraSystem::fromMatrix(const Plato::CrsMatrix<int> aInMatrix) const
+// {
+//   auto tRowMap = get(aInMatrix.rowMap());
+
+//   checkInputMatrixSize(aInMatrix,tRowMap);
+
+//   auto tRetVal = Teuchos::rcp(new Tpetra_Matrix(mMap, 0));
+
+//   auto tNumBlockRows = tRowMap.extent(0)-1;
+
+//   for(Plato::OrdinalType iBlockRowIndex=0; iBlockRowIndex<tNumBlockRows; iBlockRowIndex++)
+//     copyBlocksInBlockRow(iBlockRowIndex,tRowMap,aInMatrix,tRetVal);
+
+//   tRetVal->fillComplete();
+
+//   return tRetVal;
+// }
+
 /******************************************************************************//**
  * @brief Convert from Plato::CrsMatrix<int> to Tpetra_Matrix
 **********************************************************************************/
@@ -55,7 +142,7 @@ TpetraSystem::fromMatrix(Plato::CrsMatrix<int> aInMatrix) const
   auto tRowMap = get(aInMatrix.rowMap());
   auto tColMap = get(aInMatrix.columnIndices());
   auto tValues = get(aInMatrix.entries());
-  
+
   auto tNumRows = tRowMap.extent(0)-1;
   size_t tCrsMatrixGlobalNumRows = tNumRows * tNumRowsPerBlock;
   size_t tTpetraGlobalNumRows = tRetVal->getGlobalNumRows();
@@ -94,29 +181,45 @@ TpetraSystem::fromMatrix(Plato::CrsMatrix<int> aInMatrix) const
 }
 
 /******************************************************************************//**
+ * @brief Check if intput Plato::CrsMatrix is consistent with TpetraSystem map 
+**********************************************************************************/
+void TpetraSystem::checkInputMatrixSize(const Plato::CrsMatrix<int> aInMatrix,
+      Kokkos::View<Plato::OrdinalType*, MemSpace>::HostMirror aRowMap) const
+{
+  auto tTemp = Teuchos::rcp(new Tpetra_Matrix(mMap, 0));
+
+  auto tNumRowsPerBlock = aInMatrix.numRowsPerBlock();
+  auto tNumBlockRows = aRowMap.extent(0)-1;
+
+  size_t tCrsMatrixGlobalNumRows = tNumBlockRows * tNumRowsPerBlock;
+  size_t tTpetraGlobalNumRows = tTemp->getGlobalNumRows();
+  if(tCrsMatrixGlobalNumRows != tTpetraGlobalNumRows)
+    throw std::domain_error("Input Plato::CrsMatrix size does not match TpetraSystem map.\n");
+}
+
+/******************************************************************************//**
  * @brief Convert from ScalarVector to Tpetra_MultiVector
 **********************************************************************************/
 Teuchos::RCP<Tpetra_MultiVector>
-TpetraSystem::fromVector(Plato::ScalarVector tInVector) const
+TpetraSystem::fromVector(const Plato::ScalarVector tInVector) const
 {
-  auto tRetVal = Teuchos::rcp(new Tpetra_MultiVector(mMap, 1));
-  if(tInVector.extent(0) != tRetVal->getLocalLength())
+  auto tOutVector = Teuchos::rcp(new Tpetra_MultiVector(mMap, 1));
+  if(tInVector.extent(0) != tOutVector->getLocalLength())
     throw std::domain_error("ScalarVector size does not match TpetraSystem map\n");
 
-  auto tRetValHostView2D = tRetVal->getLocalViewHost();
-  auto tRetValHostView1D = Kokkos::subview(tRetValHostView2D,Kokkos::ALL(), 0);
+  auto tOutVectorDeviceView2D = tOutVector->getLocalViewDevice();
+  auto tOutVectorDeviceView1D = Kokkos::subview(tOutVectorDeviceView2D,Kokkos::ALL(), 0);
 
-  // copy to host from device
-  Kokkos::deep_copy(tRetValHostView1D, tInVector);
+  Kokkos::deep_copy(tOutVectorDeviceView1D,tInVector);
 
-  return tRetVal;
+  return tOutVector;
 }
 
 /******************************************************************************//**
  * @brief Convert from Tpetra_MultiVector to ScalarVector
 **********************************************************************************/
 void 
-TpetraSystem::toVector(Plato::ScalarVector tOutVector, Teuchos::RCP<Tpetra_MultiVector> tInVector) const
+TpetraSystem::toVector(Plato::ScalarVector& tOutVector, const Teuchos::RCP<Tpetra_MultiVector> tInVector) const
 {
     auto tLength = tInVector->getLocalLength();
     auto tTemp = Teuchos::rcp(new Tpetra_MultiVector(mMap, 1));
@@ -126,10 +229,11 @@ TpetraSystem::toVector(Plato::ScalarVector tOutVector, Teuchos::RCP<Tpetra_Multi
     if(tOutVector.extent(0) != tTemp->getLocalLength())
       throw std::range_error("ScalarVector does not match TpetraSystem map.");
 
-    auto tInVectorHostView2D = tInVector->getLocalViewHost();
-    auto tInVectorHostView1D = Kokkos::subview(tInVectorHostView2D,Kokkos::ALL(), 0);
+    auto tInVectorDeviceView2D = tInVector->getLocalViewDevice();
+    auto tInVectorDeviceView1D = Kokkos::subview(tInVectorDeviceView2D,Kokkos::ALL(), 0);
 
-    Kokkos::deep_copy(tOutVector, tInVectorHostView1D);
+    // tOutVector = tInVectorDeviceView1D;
+    Kokkos::deep_copy(tOutVector,tInVectorDeviceView1D);
 }
 
 /******************************************************************************//**
@@ -227,7 +331,7 @@ TpetraLinearSolver::belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teu
   Teuchos::RCP<problem_type> problem = 
     Teuchos::rcp (new problem_type (A, X, B));
 
-  // problem->setRightPrec (M);
+  problem->setRightPrec (M);
   
   problem->setProblem ();
   solver->setProblem (problem);

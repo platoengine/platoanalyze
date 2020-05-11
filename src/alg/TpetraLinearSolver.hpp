@@ -38,27 +38,31 @@ class TpetraSystem
     );
 
     /******************************************************************************//**
-     * @brief Convert from Plato::CrsMatrix<int> to Epetra_VbrMatrix
+     * @brief Convert from Plato::CrsMatrix<int> to Tpetra_Matrix
     **********************************************************************************/
     Teuchos::RCP<Tpetra_Matrix>
-    fromMatrix(Plato::CrsMatrix<int> tInMatrix) const;
+    fromMatrix(const Plato::CrsMatrix<int> tInMatrix) const;
 
     /******************************************************************************//**
      * @brief Convert from ScalarVector to Tpetra_MultiVector
     **********************************************************************************/
     Teuchos::RCP<Tpetra_MultiVector>
-    fromVector(Plato::ScalarVector tInVector) const;
+    fromVector(const Plato::ScalarVector tInVector) const;
 
     /******************************************************************************//**
      * @brief Convert from Tpetra_MultiVector to ScalarVector
     **********************************************************************************/
     void
-    toVector(Plato::ScalarVector tOutVector, Teuchos::RCP<Tpetra_MultiVector> tInVector) const;
+    toVector(Plato::ScalarVector& tOutVector, const Teuchos::RCP<Tpetra_MultiVector> tInVector) const;
 
     /******************************************************************************//**
      * @brief get TpetraSystem map 
     **********************************************************************************/
     Teuchos::RCP<Tpetra_Map> getMap() const {return mMap;}
+
+  private:
+      void checkInputMatrixSize(const Plato::CrsMatrix<int> aInMatrix,
+      Kokkos::View<Plato::OrdinalType*, MemSpace>::HostMirror aRowMap) const;
 };
 
 /******************************************************************************//**
