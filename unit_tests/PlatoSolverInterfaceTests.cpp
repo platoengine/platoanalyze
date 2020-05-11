@@ -418,7 +418,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra )
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
 
-  Plato::VectorFunction<SimplexPhysics>
+  Plato::Elliptic::VectorFunction<SimplexPhysics>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
@@ -516,7 +516,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra_wrongSize )
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
 
-  Plato::VectorFunction<SimplexPhysics>
+  Plato::Elliptic::VectorFunction<SimplexPhysics>
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
