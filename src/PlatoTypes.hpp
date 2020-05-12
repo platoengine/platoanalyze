@@ -15,11 +15,7 @@ namespace Plato
 using Scalar = double;
 using OrdinalType = int;
 using ExecSpace = Kokkos::DefaultExecutionSpace;
-// #ifdef KOKKOS_ENABLE_CUDA_UVM
-//   using MemSpace = typename Kokkos::CudaSpace;
-// #else
-  using MemSpace = typename ExecSpace::memory_space;
-// #endif
+using MemSpace = typename ExecSpace::memory_space;
 using Layout = Kokkos::LayoutRight;
 
 } // namespace Plato
