@@ -13,7 +13,11 @@ namespace Plato
 {
 
 using Scalar = double;
-using OrdinalType = int;
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+  using OrdinalType = long long int;
+#else
+  using OrdinalType = int;
+#endif
 using ExecSpace = Kokkos::DefaultExecutionSpace;
 using MemSpace = typename ExecSpace::memory_space;
 using Layout = Kokkos::LayoutRight;

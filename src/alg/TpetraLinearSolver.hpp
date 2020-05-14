@@ -14,10 +14,10 @@
 
 namespace Plato {
 
-  using Tpetra_Map = Tpetra::Map<Plato::OrdinalType, Plato::OrdinalType>;
-  using Tpetra_MultiVector = Tpetra::MultiVector<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
-  using Tpetra_Matrix = Tpetra::CrsMatrix<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
-  using Tpetra_Operator = Tpetra::Operator<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
+  using Tpetra_Map = Tpetra::Map<int, Plato::OrdinalType>;
+  using Tpetra_MultiVector = Tpetra::MultiVector<Plato::Scalar, int, Plato::OrdinalType>;
+  using Tpetra_Matrix = Tpetra::CrsMatrix<Plato::Scalar, int, Plato::OrdinalType>;
+  using Tpetra_Operator = Tpetra::Operator<Plato::Scalar, int, Plato::OrdinalType>;
 
 /******************************************************************************//**
  * @brief Abstract system interface
@@ -41,7 +41,7 @@ class TpetraSystem
      * @brief Convert from Plato::CrsMatrix<int> to Tpetra_Matrix
     **********************************************************************************/
     Teuchos::RCP<Tpetra_Matrix>
-    fromMatrix(const Plato::CrsMatrix<int> tInMatrix) const;
+    fromMatrix(const Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const;
 
     /******************************************************************************//**
      * @brief Convert from ScalarVector to Tpetra_MultiVector
@@ -61,8 +61,8 @@ class TpetraSystem
     Teuchos::RCP<Tpetra_Map> getMap() const {return mMap;}
 
   private:
-      void checkInputMatrixSize(const Plato::CrsMatrix<int> aInMatrix,
-      Kokkos::View<Plato::OrdinalType*, MemSpace>::HostMirror aRowMap) const;
+      void checkInputMatrixSize(const Plato::CrsMatrix<Plato::OrdinalType> aInMatrix,
+               Kokkos::View<Plato::OrdinalType*, MemSpace>::HostMirror aRowMap) const;
 };
 
 /******************************************************************************//**
@@ -95,7 +95,7 @@ class TpetraLinearSolver : public AbstractSolver
     **********************************************************************************/
     void
     solve(
-        Plato::CrsMatrix<int> aA,
+        Plato::CrsMatrix<Plato::OrdinalType> aA,
         Plato::ScalarVector   aX,
         Plato::ScalarVector   aB
     );

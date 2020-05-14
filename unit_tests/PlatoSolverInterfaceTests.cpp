@@ -826,12 +826,20 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
     "  <ParameterList  name='Essential Boundary Conditions'>                 \n"
     "    <ParameterList  name='X Fixed Displacement Boundary Condition'>     \n"
     "      <Parameter  name='Type'     type='string' value='Zero Value'/>    \n"
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+    "      <Parameter  name='Index'    type='long long'    value='0'/>       \n"
+#else
     "      <Parameter  name='Index'    type='int'    value='0'/>             \n"
+#endif
     "      <Parameter  name='Sides'    type='string' value='Fix'/>           \n"
     "    </ParameterList>                                                    \n"
     "    <ParameterList  name='Y Fixed Displacement Boundary Condition'>     \n"
     "      <Parameter  name='Type'     type='string' value='Zero Value'/>    \n"
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+    "      <Parameter  name='Index'    type='long long'    value='1'/>       \n"
+#else
     "      <Parameter  name='Index'    type='int'    value='1'/>             \n"
+#endif
     "      <Parameter  name='Sides'    type='string' value='Fix'/>           \n"
     "    </ParameterList>                                                    \n"
     "  </ParameterList>                                                      \n"
