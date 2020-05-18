@@ -72,10 +72,13 @@ class TpetraLinearSolver : public AbstractSolver
 {
     Teuchos::RCP<TpetraSystem> mSystem;
 
-    Teuchos::ParameterList mSolverParams;
+    std::string mSolverPackage;
+    std::string mSolver;
+    std::string mPreconditionerPackage;
+    std::string mPreconditionerType;
 
-    int mIterations;
-    Plato::Scalar mTolerance;
+    Teuchos::ParameterList mSolverOptions;
+    Teuchos::ParameterList mPreconditionerOptions;
 
   public:
     /******************************************************************************//**

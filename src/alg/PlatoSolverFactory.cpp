@@ -2,6 +2,27 @@
 
 namespace Plato {
 
+std::string determineSolverStack(const Teuchos::ParameterList& tSolverParams)
+{
+  std::string tSolverStack;
+  if(tSolverParams.isType<std::string>("Solver Stack"))
+  {
+      tSolverStack = tSolverParams.get<std::string>("Solver Stack");
+  }
+  else
+  {
+#ifdef HAVE_AMGX
+      tSolverStack = "AmgX";
+#elif PLATO_TPETRA
+      tSolverStack = "Tpetra";
+#else
+      tSolverStack = "Epetra";
+#endif
+  }
+
+  return tSolverStack;
+}
+
 /******************************************************************************//**
  * @brief Solver factory for AbstractSolvers
 **********************************************************************************/
@@ -12,39 +33,29 @@ SolverFactory::create(
     int                     aDofsPerNode
 )
 {
-    std::string tSolverType;
-    if(mSolverParams.isType<std::string>("Solver"))
-    {
-        tSolverType = mSolverParams.get<std::string>("Solver");
-    }
-    else
-    {
-#ifdef HAVE_AMGX
-        tSolverType = "AmgX";
-#else
-        tSolverType = "AztecOO";
-#endif
-    }
+  std::string tSolverStack = determineSolverStack(mSolverParams);
 
-    if(tSolverType == "AztecOO")
-    {
-        return std::make_shared<Plato::EpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
-    }
+  if(tSolverStack == "Epetra")
+  {
+      return std::make_shared<Plato::EpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
+  }
+  else if(tSolverStack == "Tpetra")
+  {
 #ifdef PLATO_TPETRA
-    if(tSolverType == "Belos")
-    {
-        return std::make_shared<Plato::TpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
-    }
-#endif
-    else if(tSolverType == "AmgX")
-    {
-#ifdef HAVE_AMGX
-        return std::make_shared<Plato::AmgXLinearSolver>(mSolverParams, aDofsPerNode);
+      return std::make_shared<Plato::TpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
 #else
-        THROWERR("Not compiled with AmgX");
+      THROWERR("Not compiled with Tpetra");
 #endif
-    }
-    THROWERR("Requested solver type not found");
+  }
+  else if(tSolverStack == "AmgX")
+  {
+#ifdef HAVE_AMGX
+      return std::make_shared<Plato::AmgXLinearSolver>(mSolverParams, aDofsPerNode);
+#else
+      THROWERR("Not compiled with AmgX");
+#endif
+  }
+  THROWERR("Requested solver stack not found");
 }
 
 } // end namespace Plato

@@ -245,39 +245,6 @@ TpetraSystem::toVector(Plato::ScalarVector& tOutVector, const Teuchos::RCP<Tpetr
     Kokkos::deep_copy(tOutVector,tInVectorDeviceView1D);
 }
 
-/******************************************************************************//**
- * @brief TpetraLinearSolver constructor
-
- This constructor takes an Omega_h::Mesh and creates a new System.
-**********************************************************************************/
-TpetraLinearSolver::TpetraLinearSolver(
-    const Teuchos::ParameterList& aSolverParams,
-    Omega_h::Mesh&          aMesh,
-    Comm::Machine           aMachine,
-    int                     aDofsPerNode
-) :
-    mSolverParams(aSolverParams),
-    mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode)))
-{
-    if(mSolverParams.isType<int>("Iterations"))
-    {
-        mIterations = mSolverParams.get<int>("Iterations");
-    }
-    else
-    {
-        mIterations = 100;
-    }
-
-    if(mSolverParams.isType<double>("Tolerance"))
-    {
-        mTolerance = mSolverParams.get<double>("Tolerance");
-    }
-    else
-    {
-        mTolerance = 1e-6;
-    }
-}
-
 void getPrecondTypeAndParameters (std::string& precondType, Teuchos::ParameterList& pl)
 {
   precondType = "ILUT";
@@ -296,7 +263,7 @@ Teuchos::RCP<Tpetra::Operator<typename TpetraMatrixType::scalar_type,
                               typename TpetraMatrixType::local_ordinal_type,
                               typename TpetraMatrixType::global_ordinal_type,
                               typename TpetraMatrixType::node_type> >
-createPreconditioner (const Teuchos::RCP<const TpetraMatrixType>& A,
+createIFpack2Preconditioner (const Teuchos::RCP<const TpetraMatrixType>& A,
                       const std::string& precondType,
                       const Teuchos::ParameterList& plist)
 {
@@ -319,22 +286,88 @@ createPreconditioner (const Teuchos::RCP<const TpetraMatrixType>& A,
   return prec;
 }
 
+
+/******************************************************************************//**
+ * @brief TpetraLinearSolver constructor
+
+ This constructor takes an Omega_h::Mesh and creates a new TpetraSystem.
+**********************************************************************************/
+TpetraLinearSolver::TpetraLinearSolver(
+    const Teuchos::ParameterList& aSolverParams,
+    Omega_h::Mesh&          aMesh,
+    Comm::Machine           aMachine,
+    int                     aDofsPerNode
+) : mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode)))
+{
+  if(aSolverParams.isType<std::string>("Solver Package"))
+    mSolverPackage = aSolverParams.get<std::string>("Solver Package");
+  else
+    mSolverPackage = "Belos";
+
+  std::cout << mSolverPackage << std::endl;
+
+  if(aSolverParams.isType<std::string>("Solver"))
+    mSolver = aSolverParams.get<std::string>("Solver");
+  else if (mSolverPackage == "Belos")
+    mSolver = "GMRES";
+  else
+    throw std::invalid_argument("Solver not specified in input parameter list.\n");
+
+  if(aSolverParams.isType<Teuchos::ParameterList>("Solver Options"))
+    mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
+  else if(mSolverPackage == "Belos")
+  {
+    int tMaxIterations;
+    if(aSolverParams.isType<int>("Iterations"))
+      tMaxIterations = aSolverParams.get<int>("Iterations");
+    else
+      tMaxIterations = 50;
+
+    double tTolerance;
+    if(aSolverParams.isType<int>("Tolerance"))
+      tTolerance = aSolverParams.get<double>("Tolerance");
+    else
+      tTolerance = 1e-14;
+
+    mSolverOptions.set ("Num Blocks", 40);
+    mSolverOptions.set ("Maximum Iterations", tMaxIterations);
+    mSolverOptions.set ("Convergence Tolerance", tTolerance);
+  }
+  else
+    throw std::invalid_argument("Solver Options not specified in input parameter list.\n");
+
+  if(aSolverParams.isType<std::string>("Preconditioner Package"))
+    mPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
+  else
+    mPreconditionerPackage = "IFpack2";
+
+  if(aSolverParams.isType<std::string>("Preconditioner Type"))
+    mPreconditionerType = aSolverParams.get<std::string>("Preconditioner Type");
+  else if(mPreconditionerPackage == "IFpack2")
+    mPreconditionerType = "ILUT";
+  else
+    throw std::invalid_argument("Preconditioner Type not specified in input parameter list.\n");
+
+  if(aSolverParams.isType<Teuchos::ParameterList>("Preconditioner Options"))
+    mPreconditionerOptions = aSolverParams.get<Teuchos::ParameterList>("Preconditioner Options");
+  else if(mPreconditionerPackage == "IFpack2" && mPreconditionerType == "ILUT")
+  {
+    mPreconditionerOptions.set ("fact: ilut level-of-fill", 2.0);
+    mPreconditionerOptions.set ("fact: drop tolerance", 0.0);
+    mPreconditionerOptions.set ("fact: absolute threshold", 0.1);
+  }
+  else
+    throw std::invalid_argument("Preconditioner Options not specified in input parameter list.\n");
+}
+
 template<class MV, class OP>
 void
 TpetraLinearSolver::belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M) 
 {
-  // Make an empty new parameter list.
-  Teuchos::RCP<Teuchos::ParameterList> solverParams = Teuchos::parameterList();
-  int tMaxIterations = mSolverParams.get<int>("Iterations");
-  double tTolerance = mSolverParams.get<double>("Tolerance");
-
-  solverParams->set ("Num Blocks", 40);
-  solverParams->set ("Maximum Iterations", tMaxIterations);
-  solverParams->set ("Convergence Tolerance", tTolerance);
-
+  Teuchos::RCP<Teuchos::ParameterList> tSolverOptions = Teuchos::rcp(new Teuchos::ParameterList(mSolverOptions));
   Belos::SolverFactory<Plato::Scalar, MV, OP> factory;
   Teuchos::RCP<Belos::SolverManager<Plato::Scalar, MV, OP> > solver = 
-    factory.create ("GMRES", solverParams);
+    factory.create (mSolver, tSolverOptions);
 
   typedef Belos::LinearProblem<Plato::Scalar, MV, OP> problem_type;
   Teuchos::RCP<problem_type> problem = 
@@ -350,6 +383,7 @@ TpetraLinearSolver::belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teu
   // Ask the solver how many iterations the last solve() took.
   const int numIters = solver->getNumIters();
 
+  const double tTolerance = solver->achievedTol();
   if (result == Belos::Converged) {
     std::cout << "The Belos solve took " << numIters << " iteration(s) to reach "
       "a relative residual tolerance of " << tTolerance << "." << std::endl;
@@ -373,20 +407,20 @@ TpetraLinearSolver::solve(
   Teuchos::RCP<Tpetra_MultiVector> X = mSystem->fromVector(aX);
   Teuchos::RCP<Tpetra_MultiVector> B = mSystem->fromVector(aB);
 
-  std::string tSolverType = mSolverParams.get<std::string>("Solver");
-  if(tSolverType == "Belos")
-  {
-    std::string precondType;
-    Teuchos::ParameterList plist;
-    getPrecondTypeAndParameters (precondType, plist);
-
-    Teuchos::RCP<Tpetra_Operator> M = createPreconditioner<Tpetra_Matrix> (A, precondType, plist);
-
-    belosSolve<Tpetra_MultiVector, Tpetra_Operator> (std::cout, A, X, B, M);
-  }
+  Teuchos::RCP<Tpetra_Operator> M;
+  if(mPreconditionerPackage == "IFpack2")
+    M = createIFpack2Preconditioner<Tpetra_Matrix> (A, mPreconditionerType, mPreconditionerOptions);
   else
   {
-    std::string tInvalid_solver = "Solver type " + tSolverType + " is not a valid option\n";
+    std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage + " is not currently a valid option\n";
+    throw std::invalid_argument(tInvalid_solver);
+  }
+
+  if(mSolverPackage == "Belos")
+    belosSolve<Tpetra_MultiVector, Tpetra_Operator> (std::cout, A, X, B, M);
+  else
+  {
+    std::string tInvalid_solver = "Solver Package " + mSolverPackage + " is not currently a valid option\n";
     throw std::invalid_argument(tInvalid_solver);
   }
   mSystem->toVector(aX,X);
