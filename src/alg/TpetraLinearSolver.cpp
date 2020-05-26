@@ -2,6 +2,10 @@
 #include <BelosTpetraAdapter.hpp>
 #include <BelosSolverFactory.hpp>
 #include <Ifpack2_Factory.hpp>
+#include <MueLu.hpp>
+#include <MueLu_CreateTpetraPreconditioner.hpp>
+#include <Xpetra_CrsMatrix.hpp>
+#include <Xpetra_CrsMatrixWrap.hpp>
 
 namespace Plato {
 /******************************************************************************//**
@@ -304,14 +308,15 @@ TpetraLinearSolver::TpetraLinearSolver(
   else
     mSolverPackage = "Belos";
 
-  std::cout << mSolverPackage << std::endl;
-
-  if(aSolverParams.isType<std::string>("Solver"))
-    mSolver = aSolverParams.get<std::string>("Solver");
-  else if (mSolverPackage == "Belos")
-    mSolver = "GMRES";
-  else
-    throw std::invalid_argument("Solver not specified in input parameter list.\n");
+  if(mSolverPackage != "MueLu")
+  {
+    if(aSolverParams.isType<std::string>("Solver"))
+      mSolver = aSolverParams.get<std::string>("Solver");
+    else if (mSolverPackage == "Belos")
+      mSolver = "GMRES";
+    else
+      throw std::invalid_argument("Solver not specified in input parameter list.\n");
+  }
 
   if(aSolverParams.isType<Teuchos::ParameterList>("Solver Options"))
     mSolverOptions = aSolverParams.get<Teuchos::ParameterList>("Solver Options");
@@ -336,46 +341,54 @@ TpetraLinearSolver::TpetraLinearSolver(
   else
     throw std::invalid_argument("Solver Options not specified in input parameter list.\n");
 
-  if(aSolverParams.isType<std::string>("Preconditioner Package"))
-    mPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
-  else
-    mPreconditionerPackage = "IFpack2";
-
-  if(aSolverParams.isType<std::string>("Preconditioner Type"))
-    mPreconditionerType = aSolverParams.get<std::string>("Preconditioner Type");
-  else if(mPreconditionerPackage == "IFpack2")
-    mPreconditionerType = "ILUT";
-  else
-    throw std::invalid_argument("Preconditioner Type not specified in input parameter list.\n");
-
-  if(aSolverParams.isType<Teuchos::ParameterList>("Preconditioner Options"))
-    mPreconditionerOptions = aSolverParams.get<Teuchos::ParameterList>("Preconditioner Options");
-  else if(mPreconditionerPackage == "IFpack2" && mPreconditionerType == "ILUT")
+  if(mSolverPackage == "MueLu")
   {
-    mPreconditionerOptions.set ("fact: ilut level-of-fill", 2.0);
-    mPreconditionerOptions.set ("fact: drop tolerance", 0.0);
-    mPreconditionerOptions.set ("fact: absolute threshold", 0.1);
+    if(aSolverParams.isType<std::string>("Preconditioner Package") || aSolverParams.isType<std::string>("Preconditioner Type")
+      || aSolverParams.isType<Teuchos::ParameterList>("Preconditioner Options"))
+      throw std::invalid_argument("Cannot use preconditioner with MueLu multigrid solver.\n");
   }
   else
-    throw std::invalid_argument("Preconditioner Options not specified in input parameter list.\n");
+  {
+    if(aSolverParams.isType<std::string>("Preconditioner Package"))
+      mPreconditionerPackage = aSolverParams.get<std::string>("Preconditioner Package");
+    else
+      mPreconditionerPackage = "IFpack2";
+
+    if(aSolverParams.isType<std::string>("Preconditioner Type"))
+      mPreconditionerType = aSolverParams.get<std::string>("Preconditioner Type");
+    else if(mPreconditionerPackage == "IFpack2")
+      mPreconditionerType = "ILUT";
+
+    if(aSolverParams.isType<Teuchos::ParameterList>("Preconditioner Options"))
+      mPreconditionerOptions = aSolverParams.get<Teuchos::ParameterList>("Preconditioner Options");
+    else if(mPreconditionerPackage == "IFpack2" && mPreconditionerType == "ILUT")
+    {
+      mPreconditionerOptions.set ("fact: ilut level-of-fill", 2.0);
+      mPreconditionerOptions.set ("fact: drop tolerance", 0.0);
+      mPreconditionerOptions.set ("fact: absolute threshold", 0.1);
+    }
+    else
+      throw std::invalid_argument("Preconditioner Options not specified in input parameter list.\n");
+  }
 }
 
 template<class MV, class OP>
 void
-TpetraLinearSolver::belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M) 
+TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M) 
 {
+  using scalar_type = typename MV::scalar_type;
   Teuchos::RCP<Teuchos::ParameterList> tSolverOptions = Teuchos::rcp(new Teuchos::ParameterList(mSolverOptions));
-  Belos::SolverFactory<Plato::Scalar, MV, OP> factory;
-  Teuchos::RCP<Belos::SolverManager<Plato::Scalar, MV, OP> > solver = 
+  Belos::SolverFactory<scalar_type, MV, OP> factory;
+  Teuchos::RCP<Belos::SolverManager<scalar_type, MV, OP> > solver = 
     factory.create (mSolver, tSolverOptions);
 
-  typedef Belos::LinearProblem<Plato::Scalar, MV, OP> problem_type;
+  typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
   Teuchos::RCP<problem_type> problem = 
-    Teuchos::rcp (new problem_type (A, X, B));
+    Teuchos::rcp (new problem_type(A, X, B));
 
-  problem->setRightPrec (M);
+  problem->setRightPrec(M);
   
-  problem->setProblem ();
+  problem->setProblem();
   solver->setProblem (problem);
 
   Belos::ReturnType result = solver->solve();
@@ -393,6 +406,58 @@ TpetraLinearSolver::belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teu
   }
 }
 
+template<class MV, class Matrix>
+void
+TpetraLinearSolver::mueLuSolve(Teuchos::RCP<Matrix> A, Teuchos::RCP<MV> X, Teuchos::RCP<MV> B) 
+{
+  using scalar_type = typename MV::scalar_type;
+  using local_ordinal_type = typename MV::local_ordinal_type;
+  using global_ordinal_type = typename MV::global_ordinal_type;
+  using node_type = typename MV::node_type;
+
+  using Xpetra_Map = Xpetra::Map<local_ordinal_type,global_ordinal_type,node_type>;
+  using Xpetra_MultiVector = Xpetra::MultiVector<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+  using Xpetra_TpetraVector = Xpetra::TpetraVector<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+  using Xpetra_CrsMatrix = Xpetra::CrsMatrix<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+  using Xpetra_TpetraCrsMatrix = Xpetra::TpetraCrsMatrix<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+  using Xpetra_CrsMatrixWrap = Xpetra::CrsMatrixWrap<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+  using Xpetra_Matrix = Xpetra::Matrix<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+  using Xpetra_MultiVectorFactory = Xpetra::MultiVectorFactory<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+
+  using MueLu_HierarchyManager = MueLu::HierarchyManager<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+  using MueLu_Hierarchy = MueLu::Hierarchy<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+  using MueLu_ParameterListInterpreter = MueLu::ParameterListInterpreter<scalar_type,local_ordinal_type,global_ordinal_type,node_type>;
+
+  // wrap A as an Xpetra Matrix
+  Teuchos::RCP<Xpetra_CrsMatrix> xcrsA = Teuchos::rcp(new Xpetra_TpetraCrsMatrix(A));
+  Teuchos::RCP<Xpetra_CrsMatrixWrap> xcrsAWrap = Teuchos::rcp(new Xpetra_CrsMatrixWrap(xcrsA));
+  Teuchos::RCP<Xpetra_Matrix> xA = Teuchos::rcp_dynamic_cast<Xpetra_Matrix>(xcrsAWrap);
+
+  // wrap X and B vectors as Xpetra_MultiVectors
+  Teuchos::RCP<Tpetra_Vector> vB = Teuchos::rcp(new Tpetra_Vector(*B,0));
+  Teuchos::RCP<Xpetra_MultiVector> xB = Teuchos::rcp(new Xpetra_TpetraVector(vB));
+  Teuchos::RCP<Tpetra_Vector> vX = Teuchos::rcp(new Tpetra_Vector(*X,0));
+  Teuchos::RCP<Xpetra_MultiVector> xX = Teuchos::rcp(new Xpetra_TpetraVector(vX));
+
+  // create HierarchyManager
+  Teuchos::RCP<MueLu_HierarchyManager> tHManager = Teuchos::rcp(new MueLu_ParameterListInterpreter(mSolverOptions));
+  Teuchos::RCP<MueLu_Hierarchy> H = tHManager->CreateHierarchy();
+
+  // create nullspace vector
+  Teuchos::RCP<const Xpetra_Map> tMap = Xpetra::toXpetra(Teuchos::RCP<const Tpetra_Map>(mSystem->getMap()));
+  Teuchos::RCP<Xpetra_MultiVector> nullspace = Xpetra_MultiVectorFactory::Build(tMap, 1);
+  nullspace->putScalar(1.0);
+
+  // set up Hierarchy
+  H->GetLevel(0)->Set("A", xA);
+  H->GetLevel(0)->Set("Nullspace",nullspace);
+  tHManager->SetupHierarchy(*H);
+
+  // solve
+  H->IsPreconditioner(false);
+  H->Iterate(*xB, *xX, 2);
+}
+
 /******************************************************************************//**
  * @brief Solve the linear system
 **********************************************************************************/
@@ -403,21 +468,28 @@ TpetraLinearSolver::solve(
     Plato::ScalarVector   aB
 )
 {
-  Teuchos::RCP<const Tpetra_Matrix> A = mSystem->fromMatrix(aA);
+  Teuchos::RCP<Tpetra_Matrix> A = mSystem->fromMatrix(aA);
   Teuchos::RCP<Tpetra_MultiVector> X = mSystem->fromVector(aX);
   Teuchos::RCP<Tpetra_MultiVector> B = mSystem->fromVector(aB);
 
   Teuchos::RCP<Tpetra_Operator> M;
-  if(mPreconditionerPackage == "IFpack2")
-    M = createIFpack2Preconditioner<Tpetra_Matrix> (A, mPreconditionerType, mPreconditionerOptions);
-  else
+  if(mSolverPackage != "MueLu")
   {
-    std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage + " is not currently a valid option\n";
-    throw std::invalid_argument(tInvalid_solver);
+    if(mPreconditionerPackage == "IFpack2")
+      M = createIFpack2Preconditioner<Tpetra_Matrix> (A, mPreconditionerType, mPreconditionerOptions);
+    else if(mPreconditionerPackage == "MueLu")
+      M = MueLu::CreateTpetraPreconditioner(static_cast<Teuchos::RCP<Tpetra_Operator>>(A), mPreconditionerOptions);
+    else
+    {
+      std::string tInvalid_solver = "Preconditioner Package " + mPreconditionerPackage + " is not currently a valid option\n";
+      throw std::invalid_argument(tInvalid_solver);
+    }
   }
 
   if(mSolverPackage == "Belos")
-    belosSolve<Tpetra_MultiVector, Tpetra_Operator> (std::cout, A, X, B, M);
+    belosSolve<Tpetra_MultiVector, Tpetra_Operator> (A, X, B, M);
+  else if(mSolverPackage == "MueLu")
+    mueLuSolve<Tpetra_MultiVector, Tpetra_Matrix> (A, X, B);
   else
   {
     std::string tInvalid_solver = "Solver Package " + mSolverPackage + " is not currently a valid option\n";

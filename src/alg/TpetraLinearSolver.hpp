@@ -16,6 +16,7 @@ namespace Plato {
 
   using Tpetra_Map = Tpetra::Map<int, Plato::OrdinalType>;
   using Tpetra_MultiVector = Tpetra::MultiVector<Plato::Scalar, int, Plato::OrdinalType>;
+  using Tpetra_Vector = Tpetra::Vector<Plato::Scalar, int, Plato::OrdinalType>;
   using Tpetra_Matrix = Tpetra::CrsMatrix<Plato::Scalar, int, Plato::OrdinalType>;
   using Tpetra_Operator = Tpetra::Operator<Plato::Scalar, int, Plato::OrdinalType>;
 
@@ -94,7 +95,7 @@ class TpetraLinearSolver : public AbstractSolver
     );
 
     /******************************************************************************//**
-     * @brief Solve the linear system
+     * @brief Interface function to solve the linear system
     **********************************************************************************/
     void
     solve(
@@ -103,12 +104,20 @@ class TpetraLinearSolver : public AbstractSolver
         Plato::ScalarVector   aB
     );
 
+  private:
     /******************************************************************************//**
-     * @brief Setup the Belos solver
+     * @brief Setup the Belos solver and solve
     **********************************************************************************/
     template<class MV, class OP>
     void
-    belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M);
+    belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M);
+
+    /******************************************************************************//**
+     * @brief Setup the MueLu solver and solve
+    **********************************************************************************/
+    template<class MV, class Matrix>
+    void
+    mueLuSolve(Teuchos::RCP<Matrix> A, Teuchos::RCP<MV> X, Teuchos::RCP<MV> B);
 };
 
 } // end namespace Plato
