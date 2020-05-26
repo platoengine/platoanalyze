@@ -970,7 +970,6 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
       "  <Parameter name='Solver Package' type='string' value='Belos'/>  \n"
       "  <Parameter name='Solver' type='string' value='GMRES'/>                       \n"
       "  <ParameterList name='Solver Options'>                                        \n"
-      "    <Parameter name='Num Blocks' type='int' value='40'/>                       \n"
       "    <Parameter name='Maximum Iterations' type='int' value='500'/>              \n"
       "    <Parameter name='Convergence Tolerance' type='double' value='1e-14'/>      \n"
       "  </ParameterList>                                                             \n"
@@ -1190,8 +1189,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_accept_parameterlist_input
       "  <Parameter name='Solver Package' type='string' value='Belos'/>               \n"
       "  <Parameter name='Solver' type='string' value='Pseudoblock CG'/>              \n"
       "  <ParameterList name='Solver Options'>                                        \n"
-      "    <Parameter name='Num Blocks' type='int' value='40'/>                       \n"
-      "    <Parameter name='Maximum Iterations' type='int' value='50'/>               \n"
+      "    <Parameter name='Maximum Iterations' type='int' value='500'/>              \n"
       "    <Parameter name='Convergence Tolerance' type='double' value='1e-14'/>      \n"
       "  </ParameterList>                                                             \n"
       "  <Parameter name='Preconditioner Package' type='string' value='IFpack2'/>     \n"
@@ -1287,7 +1285,6 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_valid_input )
     "  <Parameter name='Solver Package' type='string' value='Belos'/>               \n"
     "  <Parameter name='Solver' type='string' value='Pseudoblock CG'/>              \n"
     "  <ParameterList name='Solver Options'>                                        \n"
-    "    <Parameter name='Num Blocks' type='int' value='40'/>                       \n"
     "    <Parameter name='Maximum Iterations' type='int' value='50'/>               \n"
     "    <Parameter name='Convergence Tolerance' type='double' value='1e-14'/>      \n"
     "  </ParameterList>                                                             \n"
@@ -1330,7 +1327,6 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_missing_solver )
     "  <Parameter name='Solver Stack' type='string' value='Tpetra' />               \n"
     "  <Parameter name='Solver Package' type='string' value='Muelu'/>               \n"
     "  <ParameterList name='Solver Options'>                                        \n"
-    "    <Parameter name='Num Blocks' type='int' value='40'/>                       \n"
     "    <Parameter name='Maximum Iterations' type='int' value='50'/>               \n"
     "    <Parameter name='Convergence Tolerance' type='double' value='1e-14'/>      \n"
     "  </ParameterList>                                                             \n"
@@ -1343,84 +1339,6 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_missing_solver )
     "    <Parameter name='fact: absolute threshold' type='double' value='0.1'/>     \n"
     /*********************************************************************************/
     "  </ParameterList>                                                             \n"
-    "</ParameterList>                                                               \n"
-  );
-
-  Plato::SolverFactory tSolverFactory(*tSolverParams);
-  TEST_THROW(tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode),std::invalid_argument);
-}
-
-/******************************************************************************/
-/*!
-  \brief Test invalid input parameterlist
-*/
-/******************************************************************************/
-TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_missing_solver_options )
-{
-  constexpr int meshWidth=2;
-  constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
-
-  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
-  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-
-  MPI_Comm myComm;
-  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
-  Plato::Comm::Machine tMachine(myComm);
-
-  Teuchos::RCP<Teuchos::ParameterList> tSolverParams =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Linear Solver'>                                           \n"
-    "  <Parameter name='Solver Stack' type='string' value='Tpetra' />               \n"
-    "  <Parameter name='Solver Package' type='string' value='Muelu'/>               \n"
-    "  <Parameter name='Solver' type='string' value='GMRES'/>                       \n"
-    "  <Parameter name='Preconditioner Package' type='string' value='IFpack2'/>     \n"
-    "  <Parameter name='Preconditioner Type' type='string' value='ILUT'/>           \n"
-    "  <ParameterList name='Preconditioner Options'>                                \n"
-    /***IFpack2 intput parameter list goes here***************************************/
-    "    <Parameter name='fact: ilut level-of-fill' type='double' value='2.0'/>     \n"
-    "    <Parameter name='fact: drop tolerance' type='double' value='0.0'/>         \n"
-    "    <Parameter name='fact: absolute threshold' type='double' value='0.1'/>     \n"
-    /*********************************************************************************/
-    "  </ParameterList>                                                             \n"
-    "</ParameterList>                                                               \n"
-  );
-
-  Plato::SolverFactory tSolverFactory(*tSolverParams);
-  TEST_THROW(tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode),std::invalid_argument);
-}
-
-/******************************************************************************/
-/*!
-  \brief Test invalid input parameterlist
-*/
-/******************************************************************************/
-TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_missing_preconditioner_options )
-{
-  constexpr int meshWidth=2;
-  constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
-
-  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
-  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-
-  MPI_Comm myComm;
-  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
-  Plato::Comm::Machine tMachine(myComm);
-
-  Teuchos::RCP<Teuchos::ParameterList> tSolverParams =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Linear Solver'>                                           \n"
-    "  <Parameter name='Solver Stack' type='string' value='Tpetra' />               \n"
-    "  <Parameter name='Solver Package' type='string' value='Belos'/>               \n"
-    "  <Parameter name='Solver' type='string' value='GMRES'/>                       \n"
-    "  <ParameterList name='Solver Options'>                                        \n"
-    "    <Parameter name='Num Blocks' type='int' value='40'/>                       \n"
-    "    <Parameter name='Maximum Iterations' type='int' value='50'/>               \n"
-    "    <Parameter name='Convergence Tolerance' type='double' value='1e-14'/>      \n"
-    "  </ParameterList>                                                             \n"
-    "  <Parameter name='Preconditioner Package' type='string' value='Meulu'/>       \n"
-    "  <Parameter name='Preconditioner Type' type='string' value='ILUT'/>           \n"
     "</ParameterList>                                                               \n"
   );
 

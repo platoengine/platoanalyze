@@ -334,12 +334,9 @@ TpetraLinearSolver::TpetraLinearSolver(
     else
       tTolerance = 1e-14;
 
-    mSolverOptions.set ("Num Blocks", 40);
     mSolverOptions.set ("Maximum Iterations", tMaxIterations);
     mSolverOptions.set ("Convergence Tolerance", tTolerance);
   }
-  else
-    throw std::invalid_argument("Solver Options not specified in input parameter list.\n");
 
   if(mSolverPackage == "MueLu")
   {
@@ -361,14 +358,6 @@ TpetraLinearSolver::TpetraLinearSolver(
 
     if(aSolverParams.isType<Teuchos::ParameterList>("Preconditioner Options"))
       mPreconditionerOptions = aSolverParams.get<Teuchos::ParameterList>("Preconditioner Options");
-    else if(mPreconditionerPackage == "IFpack2" && mPreconditionerType == "ILUT")
-    {
-      mPreconditionerOptions.set ("fact: ilut level-of-fill", 2.0);
-      mPreconditionerOptions.set ("fact: drop tolerance", 0.0);
-      mPreconditionerOptions.set ("fact: absolute threshold", 0.1);
-    }
-    else
-      throw std::invalid_argument("Preconditioner Options not specified in input parameter list.\n");
   }
 }
 
