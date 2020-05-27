@@ -390,8 +390,7 @@ TpetraLinearSolver::belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Te
     std::cout << "The Belos solve took " << numIters << " iteration(s) to reach "
       "a relative residual tolerance of " << tTolerance << "." << std::endl;
   } else {
-    std::cout << "The Belos solve took " << numIters << " iteration(s), but did not reach "
-      "a relative residual tolerance of " << tTolerance << "." << std::endl;
+    std::cout << "The Belos solve took " << numIters << " iteration(s), but did not converge." << std::endl;
   }
 }
 
