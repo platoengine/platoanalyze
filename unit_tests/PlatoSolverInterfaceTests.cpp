@@ -1308,7 +1308,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_valid_input )
   \brief Test invalid input parameterlist
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_missing_solver )
+TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_preconditioner_with_muelu )
 {
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
