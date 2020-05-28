@@ -111,13 +111,6 @@ class TpetraLinearSolver : public AbstractSolver
     template<class MV, class OP>
     void
     belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M);
-
-    /******************************************************************************//**
-     * @brief Setup the MueLu solver and solve
-    **********************************************************************************/
-    template<class MV, class Matrix>
-    void
-    mueLuSolve(Teuchos::RCP<Matrix> A, Teuchos::RCP<MV> X, Teuchos::RCP<MV> B);
 };
 
 } // end namespace Plato
