@@ -20,7 +20,6 @@ using Scalar = double;
 #endif
 using ExecSpace = Kokkos::DefaultExecutionSpace;
 using MemSpace = typename ExecSpace::memory_space;
-using Layout = Kokkos::LayoutRight;
 
 } // namespace Plato
 
