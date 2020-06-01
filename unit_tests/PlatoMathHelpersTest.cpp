@@ -1580,7 +1580,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
   // create mesh based displacement from host data
   //
   auto stateSize = spaceDim*mesh->nverts();
-  Plato::ScalarVector u("state",stateSize);
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, stateSize);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
   auto u_host = Kokkos::create_mirror_view(u);
   Plato::Scalar disp = 0.0, dval = 0.0001;
   for( int i = 0; i<stateSize; i++) u_host(i) = (disp += dval);
@@ -1624,7 +1625,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
     eeScalarFunction(*mesh, tMeshSets, tDataMap, *tParams, tParams->get<std::string>("Objective"));
 
-  auto dfdx = eeScalarFunction.gradient_x(u,z);
+  auto dfdx = eeScalarFunction.gradient_x(Plato::Solution(U),z);
 
   // create PDE constraint
   //
@@ -1645,7 +1646,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
   }
 #endif
 
-  Plato::MatrixTimesVectorPlusVector(dgdx, u, dfdx);
+  Plato::MatrixTimesVectorPlusVector(dgdx, (Plato::ScalarVector)u, dfdx);
 
   auto dfdx_host = Kokkos::create_mirror_view(dfdx);
   Kokkos::deep_copy(dfdx_host, dfdx);

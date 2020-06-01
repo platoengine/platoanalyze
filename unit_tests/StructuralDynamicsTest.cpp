@@ -516,13 +516,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicCompliance)
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
     const Plato::OrdinalType tNumStates = tMesh->nverts() * tNumDofsPerNode;
-    Plato::ScalarVector tStateValues("StateValues", tNumStates);
-    auto tHostStateValues = Kokkos::create_mirror(tStateValues);
+    Plato::ScalarMultiVector tStates("StateValues", /*numSteps=*/1, tNumStates);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     for(Plato::OrdinalType tIndex = 0; tIndex < tNumStates; tIndex++)
     {
-        tHostStateValues(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
     }
-    Kokkos::deep_copy(tStateValues, tHostStateValues);
+    Kokkos::deep_copy(tState, tHostState);
 
     // ALLOCATE CONTROLS
     Plato::OrdinalType tSizeGold = 27;
@@ -533,7 +534,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicCompliance)
     
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tValue = tScalarFunction.value(tStateValues, tControlValues, tAngularFrequency);
+    auto tValue = tScalarFunction.value(Plato::Solution(tStates), tControlValues, tAngularFrequency);
 
     Plato::Scalar tGoldValues = -0.0194453;
     const Plato::Scalar tTolerance = 1e-4;
@@ -563,13 +564,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradZ)
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
     const Plato::OrdinalType tNumStates = tMesh->nverts() * tNumDofsPerNode;
-    Plato::ScalarVector tStateValues("StateValues", tNumStates);
-    auto tHostStateValues = Kokkos::create_mirror(tStateValues);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tNumStates);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     for(Plato::OrdinalType tIndex = 0; tIndex < tNumStates; tIndex++)
     {
-        tHostStateValues(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
     }
-    Kokkos::deep_copy(tStateValues, tHostStateValues);
+    Kokkos::deep_copy(tState, tHostState);
 
     // ALLOCATE CONTROLS
     Plato::OrdinalType tSizeGold = 27;
@@ -580,7 +582,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradZ)
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_z(tStateValues, tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_z(Plato::Solution(tStates), tControlValues, tAngularFrequency);
 
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
@@ -622,13 +624,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradX)
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
     const Plato::OrdinalType tNumStates = tMesh->nverts() * tNumDofsPerNode;
-    Plato::ScalarVector tStateValues("StateValues", tNumStates);
-    auto tHostStateValues = Kokkos::create_mirror(tStateValues);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tNumStates);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     for(Plato::OrdinalType tIndex = 0; tIndex < tNumStates; tIndex++)
     {
-        tHostStateValues(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
     }
-    Kokkos::deep_copy(tStateValues, tHostStateValues);
+    Kokkos::deep_copy(tState, tHostState);
 
     // ALLOCATE CONTROLS
     Plato::OrdinalType tSizeGold = 27;
@@ -639,7 +642,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradX)
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_x(tStateValues, tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_x(Plato::Solution(tStates), tControlValues, tAngularFrequency);
 
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
@@ -680,13 +683,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradU)
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
     const Plato::OrdinalType tNumStates = tMesh->nverts() * tNumDofsPerNode;
-    Plato::ScalarVector tStateValues("StateValues", tNumStates);
-    auto tHostStateValues = Kokkos::create_mirror(tStateValues);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tNumStates);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     for(Plato::OrdinalType tIndex = 0; tIndex < tNumStates; tIndex++)
     {
-        tHostStateValues(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
     }
-    Kokkos::deep_copy(tStateValues, tHostStateValues);
+    Kokkos::deep_copy(tState, tHostState);
 
     // ALLOCATE CONTROLS
     Plato::OrdinalType tSizeGold = 27;
@@ -697,7 +701,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradU)
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_u(tStateValues, tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_u(Plato::Solution(tStates), tControlValues, tAngularFrequency);
 
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
@@ -754,13 +758,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeValue)
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
     const Plato::OrdinalType tNumStates = tMesh->nverts() * tNumDofsPerNode;
-    Plato::ScalarVector tStateValues("StateValues", tNumStates);
-    auto tHostStateValues = Kokkos::create_mirror(tStateValues);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tNumStates);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     for(Plato::OrdinalType tIndex = 0; tIndex < tNumStates; tIndex++)
     {
-        tHostStateValues(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
     }
-    Kokkos::deep_copy(tStateValues, tHostStateValues);
+    Kokkos::deep_copy(tState, tHostState);
 
     // ALLOCATE CONTROLS
     Plato::OrdinalType tSizeGold = 27;
@@ -771,7 +776,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeValue)
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tValue = tScalarFunction.value(tStateValues, tControlValues, tAngularFrequency);
+    auto tValue = tScalarFunction.value(Plato::Solution(tStates), tControlValues, tAngularFrequency);
 
     Plato::Scalar tGoldValues = 1.0;
     const Plato::Scalar tTolerance = 1e-4;
@@ -801,13 +806,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradZ)
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
     const Plato::OrdinalType tNumStates = tMesh->nverts() * tNumDofsPerNode;
-    Plato::ScalarVector tStateValues("StateValues", tNumStates);
-    auto tHostStateValues = Kokkos::create_mirror(tStateValues);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tNumStates);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     for(Plato::OrdinalType tIndex = 0; tIndex < tNumStates; tIndex++)
     {
-        tHostStateValues(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
     }
-    Kokkos::deep_copy(tStateValues, tHostStateValues);
+    Kokkos::deep_copy(tState, tHostState);
 
     // ALLOCATE CONTROLS
     Plato::OrdinalType tSizeGold = 27;
@@ -818,7 +824,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradZ)
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_z(tStateValues, tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_z(Plato::Solution(tStates), tControlValues, tAngularFrequency);
 
     const Plato::Scalar tTolerance = 1e-4;
     auto tHostGrad = Kokkos::create_mirror(tGrad);
@@ -857,13 +863,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradU)
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
     const Plato::OrdinalType tNumStates = tMesh->nverts() * tNumDofsPerNode;
-    Plato::ScalarVector tStateValues("StateValues", tNumStates);
-    auto tHostStateValues = Kokkos::create_mirror(tStateValues);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tNumStates);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     for(Plato::OrdinalType tIndex = 0; tIndex < tNumStates; tIndex++)
     {
-        tHostStateValues(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
     }
-    Kokkos::deep_copy(tStateValues, tHostStateValues);
+    Kokkos::deep_copy(tState, tHostState);
 
     // ALLOCATE CONTROLS
     Plato::OrdinalType tSizeGold = 27;
@@ -874,7 +881,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradU)
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_u(tStateValues, tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_u(Plato::Solution(tStates), tControlValues, tAngularFrequency);
 
     const Plato::Scalar tTolerance = 1e-5;
     auto tHostGrad = Kokkos::create_mirror(tGrad);
@@ -909,13 +916,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradX)
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
     const Plato::OrdinalType tNumStates = tMesh->nverts() * tNumDofsPerNode;
-    Plato::ScalarVector tStateValues("StateValues", tNumStates);
-    auto tHostStateValues = Kokkos::create_mirror(tStateValues);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tNumStates);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     for(Plato::OrdinalType tIndex = 0; tIndex < tNumStates; tIndex++)
     {
-        tHostStateValues(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-3) * static_cast<Plato::Scalar>(tIndex + 1);
     }
-    Kokkos::deep_copy(tStateValues, tHostStateValues);
+    Kokkos::deep_copy(tState, tHostState);
 
     // ALLOCATE CONTROLS
     Plato::OrdinalType tSizeGold = 27;
@@ -926,7 +934,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradX)
 
     // TEST VALUE FUNCTION
     Plato::Scalar tAngularFrequency = 1.0;
-    auto tGrad = tScalarFunction.gradient_x(tStateValues, tControlValues, tAngularFrequency);
+    auto tGrad = tScalarFunction.gradient_x(Plato::Solution(tStates), tControlValues, tAngularFrequency);
 
     const Plato::Scalar tTolerance = 1e-5;
     auto tHostGrad = Kokkos::create_mirror(tGrad);
@@ -1287,18 +1295,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfitValue)
     TEST_EQUALITY(tTotalNumDofs, static_cast<Plato::OrdinalType>(16));
 
     // ALLOCATE STATES FOR ELASTOSTATICS EXAMPLE
-    Plato::ScalarVector tStates("States", tTotalNumDofs);
-    auto tHostStates = Kokkos::create_mirror(tStates);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tTotalNumDofs);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     const Plato::OrdinalType tNumFreq = 1;
     Plato::ScalarMultiVector tExpStates("ExpStates", tNumFreq, tTotalNumDofs);
     auto tMyExpStates = Kokkos::subview(tExpStates, static_cast<Plato::OrdinalType>(tNumFreq - 1), Kokkos::ALL());
     auto tHostMyExpStates = Kokkos::create_mirror(tMyExpStates);
     for(Plato::OrdinalType tIndex = 0; tIndex < tTotalNumDofs; tIndex++)
     {
-        tHostStates(tIndex) = static_cast<Plato::Scalar>(1e-2) * static_cast<Plato::Scalar>(tIndex);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-2) * static_cast<Plato::Scalar>(tIndex);
         tHostMyExpStates(tIndex) = static_cast<Plato::Scalar>(2.5e-2) * static_cast<Plato::Scalar>(tIndex);
     }
-    Kokkos::deep_copy(tStates, tHostStates);
+    Kokkos::deep_copy(tState, tHostState);
     Kokkos::deep_copy(tMyExpStates, tHostMyExpStates);
 
     // ALLOCATE FREQUENCY RESPONSE MISFIT CRITERION
@@ -1321,7 +1330,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfitValue)
     // TEST VALUE FUNCTION
     const Plato::Scalar tTolerance = 1e-4;
     Plato::Scalar tGoldValues = 0.18225;
-    auto tOutput = tScalarFunction.value(tStates, tControls, tFreqArray[0]);
+    auto tOutput = tScalarFunction.value(Plato::Solution(tStates), tControls, tFreqArray[0]);
     TEST_FLOATING_EQUALITY(tOutput, tGoldValues, tTolerance);
 }
 
@@ -1343,18 +1352,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradZ)
     TEST_EQUALITY(tTotalNumDofs, static_cast<Plato::OrdinalType>(16));
 
     // ALLOCATE STATES FOR ELASTOSTATICS EXAMPLE
-    Plato::ScalarVector tStates("States", tTotalNumDofs);
-    auto tHostStates = Kokkos::create_mirror(tStates);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tTotalNumDofs);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     const Plato::OrdinalType tNumFreq = 1;
     Plato::ScalarMultiVector tExpStates("ExpStates", tNumFreq, tTotalNumDofs);
     auto tMyExpStates = Kokkos::subview(tExpStates, static_cast<Plato::OrdinalType>(tNumFreq - 1), Kokkos::ALL());
     auto tHostMyExpStates = Kokkos::create_mirror(tMyExpStates);
     for(Plato::OrdinalType tIndex = 0; tIndex < tTotalNumDofs; tIndex++)
     {
-        tHostStates(tIndex) = static_cast<Plato::Scalar>(1e-2) * static_cast<Plato::Scalar>(tIndex);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-2) * static_cast<Plato::Scalar>(tIndex);
         tHostMyExpStates(tIndex) = static_cast<Plato::Scalar>(2.5e-2) * static_cast<Plato::Scalar>(tIndex);
     }
-    Kokkos::deep_copy(tStates, tHostStates);
+    Kokkos::deep_copy(tState, tHostState);
     Kokkos::deep_copy(tMyExpStates, tHostMyExpStates);
 
     // ALLOCATE FREQUENCY RESPONSE MISFIT CRITERION
@@ -1375,7 +1385,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradZ)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST GRADIENT WRT CONTROLS
-    auto tGrad = tScalarFunction.gradient_z(tStates, tControls, tFreqArray[0]);
+    auto tGrad = tScalarFunction.gradient_z(Plato::Solution(tStates), tControls, tFreqArray[0]);
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
 
@@ -1406,8 +1416,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradX)
     TEST_EQUALITY(tTotalNumDofs, static_cast<Plato::OrdinalType>(16));
 
     // ALLOCATE STATES FOR ELASTOSTATICS EXAMPLE
-    Plato::ScalarVector tStates("States", tTotalNumDofs);
-    auto tHostStates = Kokkos::create_mirror(tStates);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tTotalNumDofs);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     std::vector<Plato::Scalar> tFreqArray = {15.0};
     const Plato::OrdinalType tNumFreq = tFreqArray.size();
     Plato::ScalarMultiVector tExpStates("ExpStates", tNumFreq, tTotalNumDofs);
@@ -1415,10 +1426,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradX)
     auto tHostMyExpStates = Kokkos::create_mirror(tMyExpStates);
     for(Plato::OrdinalType tIndex = 0; tIndex < tTotalNumDofs; tIndex++)
     {
-        tHostStates(tIndex) = static_cast<Plato::Scalar>(1e-2) * static_cast<Plato::Scalar>(tIndex);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-2) * static_cast<Plato::Scalar>(tIndex);
         tHostMyExpStates(tIndex) = static_cast<Plato::Scalar>(2.5e-2) * static_cast<Plato::Scalar>(tIndex);
     }
-    Kokkos::deep_copy(tStates, tHostStates);
+    Kokkos::deep_copy(tState, tHostState);
     Kokkos::deep_copy(tMyExpStates, tHostMyExpStates);
 
     // ALLOCATE FREQUENCY RESPONSE MISFIT CRITERION
@@ -1437,7 +1448,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradX)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST GRADIENT WRT CONFIGURATION
-    auto tGrad = tScalarFunction.gradient_x(tStates, tControls, tFreqArray[0]);
+    auto tGrad = tScalarFunction.gradient_x(Plato::Solution(tStates), tControls, tFreqArray[0]);
     auto tHostGrad = Kokkos::create_mirror(tGrad);
     Kokkos::deep_copy(tHostGrad, tGrad);
 
@@ -1468,8 +1479,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradU)
     TEST_EQUALITY(tTotalNumDofs, static_cast<Plato::OrdinalType>(16));
 
     // ALLOCATE STATES FOR ELASTOSTATICS EXAMPLE
-    Plato::ScalarVector tStates("States", tTotalNumDofs);
-    auto tHostStates = Kokkos::create_mirror(tStates);
+    Plato::ScalarMultiVector tStates("States", /*numSteps=*/1, tTotalNumDofs);
+    auto tState = Kokkos::subview(tStates, 0, Kokkos::ALL());
+    auto tHostState = Kokkos::create_mirror(tState);
     std::vector<Plato::Scalar> tFreqArray = {15.0};
     const Plato::OrdinalType tNumFreq = tFreqArray.size();
     Plato::ScalarMultiVector tExpStates("ExpStates", tNumFreq, tTotalNumDofs);
@@ -1477,10 +1489,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradU)
     auto tHostMyExpStates = Kokkos::create_mirror(tMyExpStates);
     for(Plato::OrdinalType tIndex = 0; tIndex < tTotalNumDofs; tIndex++)
     {
-        tHostStates(tIndex) = static_cast<Plato::Scalar>(1e-2) * static_cast<Plato::Scalar>(tIndex);
+        tHostState(tIndex) = static_cast<Plato::Scalar>(1e-2) * static_cast<Plato::Scalar>(tIndex);
         tHostMyExpStates(tIndex) = static_cast<Plato::Scalar>(2.5e-2) * static_cast<Plato::Scalar>(tIndex);
     }
-    Kokkos::deep_copy(tStates, tHostStates);
+    Kokkos::deep_copy(tState, tHostState);
     Kokkos::deep_copy(tMyExpStates, tHostMyExpStates);
 
     // ALLOCATE FREQUENCY RESPONSE MISFIT CRITERION
@@ -1499,7 +1511,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradU)
     Plato::blas1::fill(static_cast<Plato::Scalar>(1), tControls);
 
     // TEST GRADIENT WRT STATES
-    auto tGrad = tScalarFunction.gradient_u(tStates, tControls, tFreqArray[0]);
+    auto tGrad = tScalarFunction.gradient_u(Plato::Solution(tStates), tControls, tFreqArray[0]);
     TEST_EQUALITY(tGrad.size(), tTotalNumDofs);
 
     auto tHostGrad = Kokkos::create_mirror(tGrad);

@@ -61,7 +61,8 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
   int tNumDofsPerNode = (spaceDim+1);
   int tNumNodes = mesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
-  Plato::ScalarVector state("state", tNumDofs);
+  Plato::ScalarMultiVector states("states", /*numSteps=*/1, tNumDofs);
+  auto state = Kokkos::subview(states, 0, Kokkos::ALL());
   Plato::ScalarVector z("control", tNumDofs);
   Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumNodes), LAMBDA_EXPRESSION(const int & aNodeOrdinal)
   {
@@ -80,7 +81,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                                \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Electroelastostatics'/>     \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>                 \n"
     "  <Parameter name='Objective' type='string' value='My Internal Electroelastic Energy'/>\n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                         \n"
     "  <ParameterList name='My Internal Electroelastic Energy'>                             \n"
@@ -92,7 +93,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
     "      <Parameter name='Type' type='string' value='SIMP'/>                           \n"
     "    </ParameterList>                                                                \n"
     "  </ParameterList>                                                                  \n"
-    "  <ParameterList name='Electroelastostatics'>                                       \n"
+    "  <ParameterList name='Elliptic'>                                                   \n"
     "    <ParameterList name='Penalty Function'>                                         \n"
     "      <Parameter name='Type' type='string' value='SIMP'/>                           \n"
     "      <Parameter name='Exponent' type='double' value='1.0'/>                        \n"
@@ -249,14 +250,14 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
 
   // compute and test objective value
   //
-  auto value = scalarFunction.value(state, z);
+  auto value = scalarFunction.value(Plato::Solution(states), z);
 
   Plato::Scalar value_gold = 21.1519092307692240;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = scalarFunction.gradient_u(state, z);
+  auto grad_u = scalarFunction.gradient_u(Plato::Solution(states), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -283,7 +284,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = scalarFunction.gradient_z(state, z);
+  auto grad_z = scalarFunction.gradient_z(Plato::Solution(states), z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -306,7 +307,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = scalarFunction.gradient_x(state, z);
+  auto grad_x = scalarFunction.gradient_x(Plato::Solution(states), z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);

@@ -6,10 +6,13 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "parabolic/ScalarFunctionBase.hpp"
 #include "WorksetBase.hpp"
 #include "PlatoStaticsTypes.hpp"
+
+#include "parabolic/ScalarFunctionBase.hpp"
+#include "parabolic/ParabolicSimplexFadTypes.hpp"
 #include "parabolic/AbstractScalarFunction.hpp"
+
 #include <Teuchos_ParameterList.hpp>
 
 namespace Plato
@@ -19,7 +22,7 @@ namespace Parabolic
 {
 
 /******************************************************************************//**
- * @brief Physics scalar function inc class 
+ * @brief Physics scalar function inc class
  **********************************************************************************/
 template<typename PhysicsT>
 class PhysicsScalarFunction : public Plato::Parabolic::ScalarFunctionBase, public Plato::WorksetBase<PhysicsT>
@@ -37,17 +40,17 @@ private:
     using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal; /*!< number of degree of freedom per cell/element */
     using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal; /*!< number of degree of freedom per cell/element */
 
-    using Residual = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual; /*!< result variables automatic differentiation type */
-    using Jacobian = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Jacobian; /*!< state variables automatic differentiation type */
-    using JacobianP = typename Plato::Evaluation<typename PhysicsT::SimplexT>::JacobianP;
-    using GradientX = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientX; /*!< configuration variables automatic differentiation type */
-    using GradientZ = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientZ; /*!< control variables automatic differentiation type */
+    using Residual  = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::Residual;
+    using GradientU = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientU;
+    using GradientV = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientV;
+    using GradientX = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientX;
+    using GradientZ = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientZ;
 
-    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<Residual>> mScalarFunctionValue; /*!< scalar function value interface */
-    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<Jacobian>> mScalarFunctionGradientU; /*!< scalar function value partial wrt states */
-    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<JacobianP>> mScalarFunctionGradientP;
-    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientX>> mScalarFunctionGradientX; /*!< scalar function value partial wrt configuration */
-    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientZ>> mScalarFunctionGradientZ; /*!< scalar function value partial wrt controls */
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<Residual>> mScalarFunctionValue;
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientU>> mScalarFunctionGradientU;
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientV>> mScalarFunctionGradientV;
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientX>> mScalarFunctionGradientX;
+    std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientZ>> mScalarFunctionGradientZ;
 
     Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
 
@@ -57,8 +60,8 @@ private:
      * @brief Initialization of parabolic Physics Scalar Function
      * @param [in] aInputParams input parameters database
     **********************************************************************************/
-    void initialize (Omega_h::Mesh& aMesh, 
-                     Omega_h::MeshSets& aMeshSets, 
+    void initialize (Omega_h::Mesh& aMesh,
+                     Omega_h::MeshSets& aMeshSets,
                      Teuchos::ParameterList & aInputParams)
     {
         typename PhysicsT::FunctionFactory tFactory;
@@ -70,10 +73,10 @@ private:
             tFactory.template createScalarFunctionParabolic<Residual>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientU =
-            tFactory.template createScalarFunctionParabolic<Jacobian>(
+            tFactory.template createScalarFunctionParabolic<GradientU>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
-        mScalarFunctionGradientP =
-            tFactory.template createScalarFunctionParabolic<JacobianP>(
+        mScalarFunctionGradientV =
+            tFactory.template createScalarFunctionParabolic<GradientV>(
                 aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientX =
             tFactory.template createScalarFunctionParabolic<GradientX>(
@@ -113,7 +116,7 @@ public:
             Plato::WorksetBase<PhysicsT>(aMesh),
             mScalarFunctionValue(),
             mScalarFunctionGradientU(),
-            mScalarFunctionGradientP(),
+            mScalarFunctionGradientV(),
             mScalarFunctionGradientX(),
             mScalarFunctionGradientZ(),
             mDataMap(aDataMap),
@@ -131,21 +134,21 @@ public:
     }
 
     /******************************************************************************//**
-     * @brief Allocate scalar function using the Jacobian automatic differentiation type
+     * @brief Allocate scalar function using the GradientU automatic differentiation type
      * @param [in] aInput scalar function
     **********************************************************************************/
-    void allocateGradientU(const std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<Jacobian>>& aInput)
+    void allocateGradientU(const std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientU>>& aInput)
     {
         mScalarFunctionGradientU = aInput;
     }
 
     /******************************************************************************//**
-     * @brief Allocate scalar function using the Jacobian P automatic differentiation type
+     * @brief Allocate scalar function using the GradientV automatic differentiation type
      * @param [in] aInput scalar function
     **********************************************************************************/
-    void allocateGradientP(const std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<JacobianP>>& aInput)
+    void allocateGradientV(const std::shared_ptr<Plato::Parabolic::AbstractScalarFunction<GradientV>>& aInput)
     {
-        mScalarFunctionGradientP = aInput;
+        mScalarFunctionGradientV = aInput;
     }
 
     /******************************************************************************//**
@@ -184,35 +187,36 @@ public:
 
     //     mScalarFunctionValue->updateProblem(tStateWS, tControlWS, tConfigWS);
     //     mScalarFunctionGradientU->updateProblem(tStateWS, tControlWS, tConfigWS);
-    //     mScalarFunctionGradientP->updateProblem(tStateWS, tControlWS, tConfigWS);
+    //     mScalarFunctionGradientV->updateProblem(tStateWS, tControlWS, tConfigWS);
     //     mScalarFunctionGradientZ->updateProblem(tStateWS, tControlWS, tConfigWS);
     //     mScalarFunctionGradientX->updateProblem(tStateWS, tControlWS, tConfigWS);
     // }
 
     /******************************************************************************//**
      * @brief Evaluate physics scalar function
-     * @param [in] aStates 2D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return scalar physics function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::ScalarMultiVector & aStates,
-                        const Plato::ScalarVector & aControl,
-                        Plato::Scalar aTimeStep = 0.0) const
+    Plato::Scalar
+    value(const Plato::Solution     & aSolution,
+          const Plato::ScalarVector & aControl,
+                Plato::Scalar         aTimeStep = 0.0) const override
     {
-        using ConfigScalar    = typename Residual::ConfigScalarType;
-        using StateScalar     = typename Residual::StateScalarType;
-        using PrevStateScalar = typename Residual::PrevStateScalarType;
-        using ControlScalar   = typename Residual::ControlScalarType;
-        using ResultScalar    = typename Residual::ResultScalarType;
+        using ConfigScalar   = typename Residual::ConfigScalarType;
+        using StateScalar    = typename Residual::StateScalarType;
+        using StateDotScalar = typename Residual::StateDotScalarType;
+        using ControlScalar  = typename Residual::ControlScalarType;
+        using ResultScalar   = typename Residual::ResultScalarType;
 
         // workset control
-        // 
+        //
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset",mNumCells,mNumNodesPerCell);
         Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
 
         // workset config
-        // 
+        //
         Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
@@ -222,29 +226,32 @@ public:
         mDataMap.scalarVectors[mScalarFunctionValue->getName()] = tResult;
 
 
-        Plato::ScalarMultiVectorT<StateScalar>     tStateWS("state workset",mNumCells,mNumDofsPerCell);
-        Plato::ScalarMultiVectorT<PrevStateScalar> tPrevStateWS("prev state workset",mNumCells,mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateScalar>    tStateWS("state workset",mNumCells,mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset",mNumCells,mNumDofsPerCell);
 
         ResultScalar tReturnVal(0.0);
 
-        auto tNumSteps = aStates.extent(0);
+        auto tStates = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
+
+        auto tNumSteps = tStates.extent(0);
         auto tLastStepIndex = tNumSteps - 1;
         for( decltype(tNumSteps) tStepIndex = tLastStepIndex; tStepIndex > 0; --tStepIndex ){
 
         // workset state
         //
-        auto tState = Kokkos::subview(aStates, tStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(tStates, tStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
-        // workset prev state
+        // workset state dot
         //
-        auto tPrevState = Kokkos::subview(aStates, tStepIndex-1, Kokkos::ALL());
-        Plato::WorksetBase<PhysicsT>::worksetState(tPrevState, tPrevStateWS);
+        auto tStateDot = Kokkos::subview(tStateDots, tStepIndex, Kokkos::ALL());
+        Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
         // evaluate function
         //
         Kokkos::deep_copy(tResult, 0.0);
-        mScalarFunctionValue->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tResult, aTimeStep );
+        mScalarFunctionValue->evaluate( tStateWS, tStateDotWS, tControlWS, tConfigWS, tResult, aTimeStep );
 
         // sum across elements
         //
@@ -258,23 +265,24 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the configuration parameters
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the physics scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::ScalarMultiVector & aStates,
-                                   const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
+    Plato::ScalarVector
+    gradient_x(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::Scalar         aTimeStep = 0.0) const override
     {
-        using ConfigScalar    = typename GradientX::ConfigScalarType;
-        using StateScalar     = typename GradientX::StateScalarType;
-        using PrevStateScalar = typename GradientX::PrevStateScalarType;
-        using ControlScalar   = typename GradientX::ControlScalarType;
-        using ResultScalar    = typename GradientX::ResultScalarType;
+        using ConfigScalar   = typename GradientX::ConfigScalarType;
+        using StateScalar    = typename GradientX::StateScalarType;
+        using StateDotScalar = typename GradientX::StateDotScalarType;
+        using ControlScalar  = typename GradientX::ControlScalarType;
+        using ResultScalar   = typename GradientX::ResultScalarType;
 
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset",mNumCells,mNumDofsPerCell);
-        Plato::ScalarMultiVectorT<PrevStateScalar> tPrevStateWS("previous state workset",mNumCells,mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset",mNumCells,mNumDofsPerCell);
 
         // create return view
         //
@@ -282,12 +290,12 @@ public:
         Plato::ScalarVector tObjGradientX("objective gradient configuration",mNumSpatialDims*mNumNodes);
 
         // workset control
-        // 
+        //
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset",mNumCells,mNumNodesPerCell);
         Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
 
         // workset config
-        // 
+        //
         Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
@@ -295,25 +303,27 @@ public:
         //
         Plato::ScalarVectorT<ResultScalar> tResult("result",mNumCells);
 
+        auto tStates = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
 
-        auto tNumSteps = aStates.extent(0);
+        auto tNumSteps = tStates.extent(0);
         auto tLastStepIndex = tNumSteps - 1;
         for( decltype(tNumSteps) tStepIndex = tLastStepIndex; tStepIndex > 0; --tStepIndex ){
 
         // workset state
         //
-        auto tState = Kokkos::subview(aStates, tStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(tStates, tStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
-        // workset prev state
+        // workset state dot
         //
-        auto tPrevState = Kokkos::subview(aStates, tStepIndex-1, Kokkos::ALL());
-        Plato::WorksetBase<PhysicsT>::worksetState(tPrevState, tPrevStateWS);
+        auto tStateDot = Kokkos::subview(tStateDots, tStepIndex, Kokkos::ALL());
+        Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
         // evaluate function
         //
         Kokkos::deep_copy(tResult, 0.0);
-        mScalarFunctionGradientX->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tResult, aTimeStep );
+        mScalarFunctionGradientX->evaluate( tStateWS, tStateDotWS, tControlWS, tConfigWS, tResult, aTimeStep );
 
         Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>(mNumCells, mConfigEntryOrdinal, tResult, tObjGradientX);
         tObjectiveValue += Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
@@ -327,36 +337,37 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step
      * @param [in] aStepIndex step index
+     * @param [in] aTimeStep time step
      * @return 1D view with the gradient of the physics scalar function wrt the state variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_u(const Plato::ScalarMultiVector & aStates,
-                                   const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep,
-                                   Plato::OrdinalType aStepIndex) const
+    Plato::ScalarVector
+    gradient_u(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::OrdinalType    aStepIndex,
+                     Plato::Scalar         aTimeStep) const override
     {
-        using ConfigScalar    = typename Jacobian::ConfigScalarType;
-        using StateScalar     = typename Jacobian::StateScalarType;
-        using PrevStateScalar = typename Jacobian::PrevStateScalarType;
-        using ControlScalar   = typename Jacobian::ControlScalarType;
-        using ResultScalar    = typename Jacobian::ResultScalarType;
+        using ConfigScalar   = typename GradientU::ConfigScalarType;
+        using StateScalar    = typename GradientU::StateScalarType;
+        using StateDotScalar = typename GradientU::StateDotScalarType;
+        using ControlScalar  = typename GradientU::ControlScalarType;
+        using ResultScalar   = typename GradientU::ResultScalarType;
 
-        assert(aStepIndex < aStates.extent(0));
-        assert(aStates.extent(0) > 1);
-        assert(aStepIndex > 0);
+        auto tStates = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
 
-        auto tNumSteps = aStates.extent(0);
+        assert(aStepIndex < tStates.extent(0));
+        assert(tStates.extent(0) > 0);
 
         // workset control
-        // 
+        //
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset",mNumCells,mNumNodesPerCell);
         Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
 
         // workset config
-        // 
+        //
         Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
@@ -365,20 +376,20 @@ public:
         Plato::ScalarVectorT<ResultScalar> tResult("result",mNumCells);
 
         // workset state
-        // 
+        //
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset",mNumCells,mNumDofsPerCell);
-        auto tState = Kokkos::subview(aStates, aStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(tStates, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
-        // workset prev state
-        // 
-        Plato::ScalarMultiVectorT<PrevStateScalar> tPrevStateWS("previous state workset",mNumCells,mNumDofsPerCell);
-        auto tPrevState = Kokkos::subview(aStates, aStepIndex-1, Kokkos::ALL());
-        Plato::WorksetBase<PhysicsT>::worksetState(tPrevState, tPrevStateWS);
+        // workset state dot
+        //
+        Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset",mNumCells,mNumDofsPerCell);
+        auto tStateDot = Kokkos::subview(tStateDots, aStepIndex, Kokkos::ALL());
+        Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
         // evaluate function
         //
-        mScalarFunctionGradientU->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tResult, aTimeStep );
+        mScalarFunctionGradientU->evaluate( tStateWS, tStateDotWS, tControlWS, tConfigWS, tResult, aTimeStep );
 
         // create and assemble to return view
         //
@@ -386,61 +397,110 @@ public:
         Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, tResult, tObjGradientU);
         Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
 
-        if( aStepIndex+1 < tNumSteps ) {
-
-        // workset next state
-        // 
-        Plato::ScalarMultiVectorT<PrevStateScalar> tNextStateWS("next state workset",mNumCells,mNumDofsPerCell);
-        auto tNextState = Kokkos::subview(aStates, aStepIndex+1, Kokkos::ALL());
-        Plato::WorksetBase<PhysicsT>::worksetState(tNextState, tNextStateWS);
-
-        // evaluate function
-        //
-        Kokkos::deep_copy(tResult, 0.0);
-        mScalarFunctionGradientP->evaluate( tNextStateWS, tStateWS, tControlWS, tConfigWS, tResult, aTimeStep );
-
-        // create and assemble to return view
-        //
-        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, tResult, tObjGradientU);
-        tObjectiveValue += Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
-        }
-
         mScalarFunctionGradientU->postEvaluate( tObjGradientU, tObjectiveValue );
 
         return tObjGradientU;
     }
 
     /******************************************************************************//**
+     * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
+     * @param [in] aControl 1D view of control variables
+     * @param [in] aStepIndex step index
+     * @param [in] aTimeStep time step
+     * @return 1D view with the gradient of the physics scalar function wrt the state variables
+    **********************************************************************************/
+    Plato::ScalarVector
+    gradient_v(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::OrdinalType    aStepIndex,
+                     Plato::Scalar         aTimeStep) const override
+    {
+        using ConfigScalar   = typename GradientV::ConfigScalarType;
+        using StateScalar    = typename GradientV::StateScalarType;
+        using StateDotScalar = typename GradientV::StateDotScalarType;
+        using ControlScalar  = typename GradientV::ControlScalarType;
+        using ResultScalar   = typename GradientV::ResultScalarType;
+
+        auto tStates = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
+
+        assert(aStepIndex < tStates.extent(0));
+        assert(tStates.extent(0) > 0);
+
+        // workset control
+        //
+        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset",mNumCells,mNumNodesPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+
+        // workset config
+        //
+        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+        // create return view
+        //
+        Plato::ScalarVectorT<ResultScalar> tResult("result",mNumCells);
+
+        // workset state
+        //
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset",mNumCells,mNumDofsPerCell);
+        auto tState = Kokkos::subview(tStates, aStepIndex, Kokkos::ALL());
+        Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
+
+        // workset state dot
+        //
+        Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset",mNumCells,mNumDofsPerCell);
+        auto tStateDot = Kokkos::subview(tStateDots, aStepIndex, Kokkos::ALL());
+        Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
+
+        // evaluate function
+        //
+        mScalarFunctionGradientV->evaluate( tStateWS, tStateDotWS, tControlWS, tConfigWS, tResult, aTimeStep );
+
+        // create and assemble to return view
+        //
+        Plato::ScalarVector tObjGradientV("objective gradient state",mNumDofsPerNode*mNumNodes);
+        Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>(mNumCells, mGlobalStateEntryOrdinal, tResult, tObjGradientV);
+        Plato::Scalar tObjectiveValue = Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
+
+        mScalarFunctionGradientV->postEvaluate( tObjGradientV, tObjectiveValue );
+
+        return tObjGradientV;
+    }
+
+    /******************************************************************************//**
      * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the control variables
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the physics scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::ScalarMultiVector & aStates,
-                                   const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
-    {        
-        using ConfigScalar    = typename GradientZ::ConfigScalarType;
-        using StateScalar     = typename GradientZ::StateScalarType;
-        using PrevStateScalar = typename GradientZ::PrevStateScalarType;
-        using ControlScalar   = typename GradientZ::ControlScalarType;
-        using ResultScalar    = typename GradientZ::ResultScalarType;
+    Plato::ScalarVector
+    gradient_z(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::Scalar         aTimeStep = 0.0) const override
+    {
+        using ConfigScalar   = typename GradientZ::ConfigScalarType;
+        using StateScalar    = typename GradientZ::StateScalarType;
+        using StateDotScalar = typename GradientZ::StateDotScalarType;
+        using ControlScalar  = typename GradientZ::ControlScalarType;
+        using ResultScalar   = typename GradientZ::ResultScalarType;
 
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset",mNumCells,mNumDofsPerCell);
-        Plato::ScalarMultiVectorT<PrevStateScalar> tPrevStateWS("previous state workset",mNumCells,mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset",mNumCells,mNumDofsPerCell);
 
         // initialize objective value to zero
         //
         Plato::Scalar tObjectiveValue(0.0);
 
         // workset control
-        // 
+        //
         Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset",mNumCells,mNumNodesPerCell);
         Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
 
         // workset config
-        // 
+        //
         Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
@@ -452,29 +512,31 @@ public:
         //
         Plato::ScalarVector tObjGradientZ("objective gradient control",mNumNodes);
 
-        auto tNumSteps = aStates.extent(0);
+        auto tStates = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
+
+        auto tNumSteps = tStates.extent(0);
         auto tLastStepIndex = tNumSteps - 1;
         for( decltype(tNumSteps) tStepIndex = tLastStepIndex; tStepIndex > 0; --tStepIndex ){
 
-        // workset state
-        //
-        auto tState = Kokkos::subview(aStates, tStepIndex, Kokkos::ALL());
-        Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
+            // workset state
+            //
+            auto tState = Kokkos::subview(tStates, tStepIndex, Kokkos::ALL());
+            Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
-        // workset prev state
-        //
-        auto tPrevState = Kokkos::subview(aStates, tStepIndex-1, Kokkos::ALL());
-        Plato::WorksetBase<PhysicsT>::worksetState(tPrevState, tPrevStateWS);
+            // workset state dot
+            //
+            auto tStateDot = Kokkos::subview(tStateDots, tStepIndex-1, Kokkos::ALL());
+            Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
-        // evaluate function
-        //
-        Kokkos::deep_copy(tResult, 0.0);
-        mScalarFunctionGradientZ->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tResult, aTimeStep );
+            // evaluate function
+            //
+            Kokkos::deep_copy(tResult, 0.0);
+            mScalarFunctionGradientZ->evaluate( tStateWS, tStateDotWS, tControlWS, tConfigWS, tResult, aTimeStep );
 
-        Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, tResult, tObjGradientZ);
+            Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>(mNumCells, mControlEntryOrdinal, tResult, tObjGradientZ);
 
-        tObjectiveValue += Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
-
+            tObjectiveValue += Plato::assemble_scalar_func_value<Plato::Scalar>(mNumCells, tResult);
         }
 
         mScalarFunctionGradientZ->postEvaluate( tObjGradientZ, tObjectiveValue );

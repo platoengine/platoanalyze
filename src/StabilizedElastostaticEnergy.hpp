@@ -10,7 +10,7 @@
 #include "Kinetics.hpp"
 #include "ImplicitFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
-#include "parabolic/AbstractScalarFunction.hpp"
+#include "elliptic/AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "ElasticModelFactory.hpp"
 #include "ToMap.hpp"
@@ -33,7 +33,7 @@ namespace Plato
 template<typename EvaluationType, typename IndicatorFunctionType>
 class StabilizedElastostaticEnergy : 
   public Plato::SimplexStabilizedMechanics<EvaluationType::SpatialDim>,
-  public Plato::Parabolic::AbstractScalarFunction<EvaluationType>
+  public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
 {
   private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim;
@@ -49,11 +49,10 @@ class StabilizedElastostaticEnergy :
     using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerNode;
     using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerCell;
 
-    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMesh;
-    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
-    using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
     using NodeStateScalarType = typename EvaluationType::NodeStateScalarType;
     using ControlScalarType   = typename EvaluationType::ControlScalarType;
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
@@ -79,7 +78,7 @@ class StabilizedElastostaticEnergy :
                                  Teuchos::ParameterList& aProblemParams,
                                  Teuchos::ParameterList& aPenaltyParams,
                                  std::string&            aFunctionName ) :
-            Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
+            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
             mIndicatorFunction(aPenaltyParams),
             mApplyTensorWeighting(mIndicatorFunction),
             mApplyVectorWeighting(mIndicatorFunction),
@@ -96,7 +95,6 @@ class StabilizedElastostaticEnergy :
 
     /**************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT <StateScalarType>     & aStateWS,
-                  const Plato::ScalarMultiVectorT <PrevStateScalarType> & aPrevStateWS,
                   const Plato::ScalarMultiVectorT <ControlScalarType>   & aControlWS,
                   const Plato::ScalarArray3DT     <ConfigScalarType>    & aConfigWS,
                         Plato::ScalarVectorT      <ResultScalarType>    & aResultWS,

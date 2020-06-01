@@ -111,7 +111,8 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
    Test HyperbolicProblem::solution(aControl);
    *****************************************************/
 
-  auto tDisplacements = tHyperbolicProblem->solution(tControl);
+  auto tSolution = tHyperbolicProblem->solution(tControl);
+  auto tDisplacements = tSolution.State;
   auto tDisplacement = Kokkos::subview(tDisplacements, /*tStepIndex*/1, Kokkos::ALL());
 
   auto tDisplacement_Host = Kokkos::create_mirror_view( tDisplacement );
@@ -151,7 +152,7 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
    Test HyperbolicProblem::objectiveValue(aControl, aState);
    *********************************************************/
 
-  tObjectiveValue = tHyperbolicProblem->objectiveValue(tControl, tDisplacements);
+  tObjectiveValue = tHyperbolicProblem->objectiveValue(tControl, tSolution);
   TEST_FLOATING_EQUALITY( tObjectiveValue, tObjectiveValue_gold, 1e-13);
 
 
@@ -171,7 +172,7 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
    Call HyperbolicProblem::objectiveGradient(aControl, aState);
    ************************************************************/
 
-  tObjectiveGradient = tHyperbolicProblem->objectiveGradient(tControl, tDisplacements);
+  tObjectiveGradient = tHyperbolicProblem->objectiveGradient(tControl, tSolution);
 
 
   /*****************************************************
@@ -185,7 +186,7 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
    Call HyperbolicProblem::objectiveGradientX(aControl, aState);
    ************************************************************/
 
-  tObjectiveGradientX = tHyperbolicProblem->objectiveGradientX(tControl, tDisplacements);
+  tObjectiveGradientX = tHyperbolicProblem->objectiveGradientX(tControl, tSolution);
 
 
 
@@ -196,7 +197,7 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
 
   // test constraintValue
   //
-  tConstraintValue = tHyperbolicProblem->constraintValue(tControl, tDisplacements);
+  tConstraintValue = tHyperbolicProblem->constraintValue(tControl, tSolution);
 
 
   // test constraintGradient
@@ -206,7 +207,7 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
 
   // test constraintGradient
   //
-  tConstraintGradient = tHyperbolicProblem->constraintGradient(tControl, tDisplacements);
+  tConstraintGradient = tHyperbolicProblem->constraintGradient(tControl, tSolution);
 
 
   // test constraintGradientX
@@ -216,7 +217,7 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
 
   // test constraintGradientX
   //
-  tConstraintGradientX = tHyperbolicProblem->constraintGradientX(tControl, tDisplacements);
+  tConstraintGradientX = tHyperbolicProblem->constraintGradientX(tControl, tSolution);
 
 }
 
@@ -959,7 +960,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
    Test ScalarFunction value
    **************************************/
 
-  auto tValue = tScalarFunction.value(tU, tV, tA, tControl, tTimeStep);
+  auto tValue = tScalarFunction.value(Plato::Solution(tU, tV, tA), tControl, tTimeStep);
 
   TEST_FLOATING_EQUALITY(tValue, 67.9660714285714391280635, 1.0e-15);
 
@@ -969,7 +970,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
    **************************************/
 
   int tStepIndex = 1;
-  auto tObjGradU = tScalarFunction.gradient_u(tU, tV, tA, tControl, tTimeStep, tStepIndex);
+  auto tObjGradU = tScalarFunction.gradient_u(Plato::Solution(tU, tV, tA), tControl, tStepIndex, tTimeStep);
 
   auto tObjGradU_Host = Kokkos::create_mirror_view( tObjGradU );
   Kokkos::deep_copy( tObjGradU_Host, tObjGradU );
@@ -990,7 +991,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
    Test ScalarFunction gradient wrt X
    **************************************/
 
-  auto tObjGradX = tScalarFunction.gradient_x(tU, tV, tA, tControl, tTimeStep);
+  auto tObjGradX = tScalarFunction.gradient_x(Plato::Solution(tU, tV, tA), tControl, tTimeStep);
 
   auto tObjGradX_Host = Kokkos::create_mirror_view( tObjGradX );
   Kokkos::deep_copy( tObjGradX_Host, tObjGradX );
@@ -1011,7 +1012,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
    Test ScalarFunction gradient wrt Z
    **************************************/
 
-  auto tObjGradZ = tScalarFunction.gradient_z(tU, tV, tA, tControl, tTimeStep);
+  auto tObjGradZ = tScalarFunction.gradient_z(Plato::Solution(tU, tV, tA), tControl, tTimeStep);
 
   auto tObjGradZ_Host = Kokkos::create_mirror_view( tObjGradZ );
   Kokkos::deep_copy( tObjGradZ_Host, tObjGradZ );

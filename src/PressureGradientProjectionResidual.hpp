@@ -53,8 +53,12 @@ private:
     *******************************************************************************/
     void initialize(Teuchos::ParameterList &aProblemParams)
     {
-        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
-        mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        mPressureScaling = 1.0;
+        if (aProblemParams.isType<Teuchos::ParameterList>("Material Model"))
+        {
+            auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
+            mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        }
     }
 
 public:

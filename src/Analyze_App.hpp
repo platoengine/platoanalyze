@@ -217,7 +217,7 @@ public:
         else if(aName == "Solution")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
+            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
             this->copyFieldIntoAnalyze(tStatesSubView, aSharedField);
         }
     }
@@ -408,28 +408,28 @@ public:
         else if(aName == "Solution")
         {
             const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-            auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
+            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/1);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution X")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalState.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
+            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
+            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/0, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Y")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalState.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
+            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
+            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/1, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
         else if(aName == "Solution Z")
         {
-            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalState.extent(0)-1;
-            auto tStatesSubView = Kokkos::subview(mGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
+            const Plato::OrdinalType tTIME_STEP_INDEX = mGlobalSolution.State.extent(0)-1;
+            auto tStatesSubView = Kokkos::subview(mGlobalSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
@@ -572,8 +572,8 @@ private:
 
     std::shared_ptr<Plato::AbstractProblem> mProblem;
 
+    Plato::Solution mGlobalSolution;
     Plato::ScalarVector mControl;
-    Plato::ScalarMultiVector mGlobalState;
     Plato::ScalarMultiVector mCoords;
 
     Plato::Scalar mObjectiveValue;

@@ -71,10 +71,10 @@ public:
 
     /******************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT< typename EvaluationType::StateScalarType     > & aState,
-             const Plato::ScalarMultiVectorT< typename EvaluationType::PrevStateScalarType > & aStatePrev,
-             const Plato::ScalarMultiVectorT< typename EvaluationType::ControlScalarType   > & aControl,
-             const Plato::ScalarArray3DT    < typename EvaluationType::ConfigScalarType    > & aConfig,
+    evaluate(const Plato::ScalarMultiVectorT< typename EvaluationType::StateScalarType    > & aState,
+             const Plato::ScalarMultiVectorT< typename EvaluationType::StateDotScalarType > & aStateDot,
+             const Plato::ScalarMultiVectorT< typename EvaluationType::ControlScalarType  > & aControl,
+             const Plato::ScalarArray3DT    < typename EvaluationType::ConfigScalarType   > & aConfig,
              Plato::ScalarMultiVectorT<typename EvaluationType::ResultScalarType> & aResult,
              Plato::Scalar aTimeStep = 0.0) const = 0;
     /******************************************************************************/

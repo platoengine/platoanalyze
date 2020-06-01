@@ -45,12 +45,18 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     InfinitesimalStrainPlasticityResidual.cpp 
     ElasticWorkCriterion.cpp 
     PlasticWorkCriterion.cpp
+    geometric/DivisionFunction.cpp
+    geometric/GeometryScalarFunction.cpp
+    geometric/LeastSquaresFunction.cpp
+    geometric/MassMoment.cpp
+    geometric/MassPropertiesFunction.cpp
+    geometric/ScalarFunctionBaseFactory.cpp
+    geometric/WeightedSumFunction.cpp
     elliptic/DivisionFunction.cpp 
     elliptic/LeastSquaresFunction.cpp 
     elliptic/WeightedSumFunction.cpp 
     elliptic/ScalarFunctionBaseFactory.cpp 
     elliptic/PhysicsScalarFunction.cpp 
-    elliptic/MassPropertiesFunction.cpp 
     elliptic/MassMoment.cpp 
     elliptic/FluxPNorm.cpp 
     elliptic/StressPNorm.cpp 

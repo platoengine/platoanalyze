@@ -14,7 +14,6 @@
 #include "elliptic/EffectiveEnergy.hpp"
 #include "elliptic/StressPNorm.hpp"
 #include "elliptic/SurfaceArea.hpp"
-#include "elliptic/Volume.hpp"
 
 #include "Plato_AugLagStressCriterionQuadratic.hpp"
 #include "Plato_AugLagStressCriterionGeneral.hpp"
@@ -321,52 +320,6 @@ effective_energy(Omega_h::Mesh& aMesh,
 // function effective_energy
 
 /******************************************************************************//**
- * \brief Create volume criterion
- * \param [in] aMesh mesh database
- * \param [in] aMeshSets side sets database
- * \param [in] aDataMap PLATO Analyze physics-based database
- * \param [in] aInputParams input parameters
- * \param [in] aFuncType vector function name
-**********************************************************************************/
-template<typename EvaluationType>
-inline std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
-volume(Omega_h::Mesh& aMesh,
-       Omega_h::MeshSets& aMeshSets,
-       Plato::DataMap& aDataMap,
-       Teuchos::ParameterList & aInputParams,
-       std::string & aFuncName)
-{
-    std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>> tOutput;
-    auto tPenaltyParams = aInputParams.sublist(aFuncName).sublist("Penalty Function");
-    std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "SIMP");
-    if(tPenaltyType == "SIMP")
-    {
-        tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::MSIMP>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
-    }
-    else
-    if(tPenaltyType == "RAMP")
-    {
-        tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::RAMP>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
-    }
-    else
-    if(tPenaltyType == "Heaviside")
-    {
-        tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::Heaviside>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
-    }
-    else
-    if(tPenaltyType == "NoPenalty")
-    {
-        tOutput = std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::NoPenalty>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams, aFuncName);
-    }
-    return (tOutput);
-}
-// function volume
-
-/******************************************************************************//**
  * \brief Factory for linear mechanics problem
  * @brief Create surface area scalar function
  * @param [in] aMesh mesh database
@@ -474,10 +427,6 @@ struct FunctionFactory
         else if(aFuncType == "Stress Constraint Quadratic")
         {
             return (Plato::MechanicsFactory::stress_constraint_quadratic<EvaluationType>(aMesh, aMeshSets, aDataMap, aInputParams, aFuncName));
-        }
-        else if(aFuncType == "Volume")
-        {
-            return (Plato::MechanicsFactory::volume<EvaluationType>(aMesh, aMeshSets, aDataMap, aInputParams, aFuncName));
         }
         else if(aFuncType == "Density Penalty")
         {

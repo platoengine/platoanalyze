@@ -6,7 +6,7 @@
 #include "SimplexThermal.hpp"
 #include "StateValues.hpp"
 #include "ImplicitFunctors.hpp"
-#include "SimplexFadTypes.hpp"
+#include "parabolic/ParabolicSimplexFadTypes.hpp"
 #include "parabolic/AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
@@ -14,7 +14,7 @@
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
-#include "ExpInstMacros.hpp"
+#include "parabolic/ExpInstMacros.hpp"
 
 namespace Plato
 {
@@ -39,11 +39,11 @@ class TemperatureAverage :
     using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMesh;
     using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
-    using StateScalarType     = typename EvaluationType::StateScalarType;
-    using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
-    using ControlScalarType   = typename EvaluationType::ControlScalarType;
-    using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
-    using ResultScalarType    = typename EvaluationType::ResultScalarType;
+    using StateScalarType    = typename EvaluationType::StateScalarType;
+    using StateDotScalarType = typename EvaluationType::StateDotScalarType;
+    using ControlScalarType  = typename EvaluationType::ControlScalarType;
+    using ConfigScalarType   = typename EvaluationType::ConfigScalarType;
+    using ResultScalarType   = typename EvaluationType::ResultScalarType;
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
 
@@ -66,7 +66,7 @@ class TemperatureAverage :
 
     /**************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<PrevStateScalarType> & aPrevState,
+                  const Plato::ScalarMultiVectorT<StateDotScalarType> & aStateDot,
                   const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
                   const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
                   Plato::ScalarVectorT<ResultScalarType> & aResult,
@@ -112,15 +112,15 @@ class TemperatureAverage :
 } // namespace Plato
 
 #ifdef PLATOANALYZE_1D
-PLATO_EXPL_DEC(Plato::Parabolic::TemperatureAverage, Plato::SimplexThermal, 1)
+PLATO_PARABOLIC_EXPL_DEC(Plato::Parabolic::TemperatureAverage, Plato::SimplexThermal, 1)
 #endif
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC(Plato::Parabolic::TemperatureAverage, Plato::SimplexThermal, 2)
+PLATO_PARABOLIC_EXPL_DEC(Plato::Parabolic::TemperatureAverage, Plato::SimplexThermal, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC(Plato::Parabolic::TemperatureAverage, Plato::SimplexThermal, 3)
+PLATO_PARABOLIC_EXPL_DEC(Plato::Parabolic::TemperatureAverage, Plato::SimplexThermal, 3)
 #endif
 
 #endif

@@ -24,7 +24,7 @@ namespace Hyperbolic
    F = F(\phi, U^k, V^k, A^k, X)
 
    and manages the evaluation of the function and derivatives with respect to 
-   displacement, U^k, velocity, V^k, acceleration, V^k, and control, X.
+   state, U^k, state dot, V^k, state dot dot, V^k, and control, X.
   
 */
 /******************************************************************************/
@@ -168,34 +168,34 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Plato::ScalarVector
-    value(const Plato::ScalarVector & aDisplacement,
-          const Plato::ScalarVector & aVelocity,
-          const Plato::ScalarVector & aAcceleration,
+    value(const Plato::ScalarVector & aState,
+          const Plato::ScalarVector & aStateDot,
+          const Plato::ScalarVector & aStateDotDot,
           const Plato::ScalarVector & aControl,
           Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar       = typename Residual::ConfigScalarType;
-      using DisplacementScalar = typename Residual::DisplacementScalarType;
-      using VelocityScalar     = typename Residual::VelocityScalarType;
-      using AccelerationScalar = typename Residual::AccelerationScalarType;
-      using ControlScalar      = typename Residual::ControlScalarType;
-      using ResultScalar       = typename Residual::ResultScalarType;
+      using ConfigScalar      = typename Residual::ConfigScalarType;
+      using StateScalar       = typename Residual::StateScalarType;
+      using StateDotScalar    = typename Residual::StateDotScalarType;
+      using StateDotDotScalar = typename Residual::StateDotDotScalarType;
+      using ControlScalar     = typename Residual::ControlScalarType;
+      using ResultScalar      = typename Residual::ResultScalarType;
 
-      // Workset displacement
+      // Workset state
       //
-      Plato::ScalarMultiVectorT<DisplacementScalar> tDisplacementWS("Displacement Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aDisplacement, tDisplacementWS);
+      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
-      // Workset velocity
+      // Workset state dot
       //
-      Plato::ScalarMultiVectorT<VelocityScalar> tVelocityWS("Velocity Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aVelocity, tVelocityWS);
+      Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
-      // Workset acceleration
+      // Workset state dot dot
       //
-      Plato::ScalarMultiVectorT<AccelerationScalar> tAccelerationWS("Acceleration Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aAcceleration, tAccelerationWS);
+      Plato::ScalarMultiVectorT<StateDotDotScalar> tStateDotDotWS("StateDotDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDotDot, tStateDotDotWS);
 
       // Workset control
       //
@@ -213,7 +213,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionResidual->evaluate( tDisplacementWS, tVelocityWS, tAccelerationWS, tControlWS, tConfigWS, tResidual, aTimeStep );
+      mVectorFunctionResidual->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tResidual, aTimeStep );
 
       // create and assemble to return view
       //
@@ -225,19 +225,19 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_x(const Plato::ScalarVector & aDisplacement,
-               const Plato::ScalarVector & aVelocity,
-               const Plato::ScalarVector & aAcceleration,
+    gradient_x(const Plato::ScalarVector & aState,
+               const Plato::ScalarVector & aStateDot,
+               const Plato::ScalarVector & aStateDotDot,
                const Plato::ScalarVector & aControl,
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-        using ConfigScalar       = typename GradientX::ConfigScalarType;
-        using DisplacementScalar = typename GradientX::DisplacementScalarType;
-        using VelocityScalar     = typename GradientX::VelocityScalarType;
-        using AccelerationScalar = typename GradientX::AccelerationScalarType;
-        using ControlScalar      = typename GradientX::ControlScalarType;
-        using ResultScalar       = typename GradientX::ResultScalarType;
+        using ConfigScalar      = typename GradientX::ConfigScalarType;
+        using StateScalar       = typename GradientX::StateScalarType;
+        using StateDotScalar    = typename GradientX::StateDotScalarType;
+        using StateDotDotScalar = typename GradientX::StateDotDotScalarType;
+        using ControlScalar     = typename GradientX::ControlScalarType;
+        using ResultScalar      = typename GradientX::ResultScalarType;
 
         // Workset config
         //
@@ -245,20 +245,20 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
             tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
-        // Workset displacement
+        // Workset state
         //
-        Plato::ScalarMultiVectorT<DisplacementScalar> tDisplacementWS("Displacement Workset", mNumCells, mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aDisplacement, tDisplacementWS);
+        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
-        // Workset velocity
+        // Workset state dot
         //
-        Plato::ScalarMultiVectorT<VelocityScalar> tVelocityWS("Velocity Workset", mNumCells, mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aVelocity, tVelocityWS);
+        Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset", mNumCells, mNumDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
-        // Workset acceleration
+        // Workset state dot dot
         //
-        Plato::ScalarMultiVectorT<AccelerationScalar> tAccelerationWS("Acceleration Workset", mNumCells, mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aAcceleration, tAccelerationWS);
+        Plato::ScalarMultiVectorT<StateDotDotScalar> tStateDotDotWS("StateDotDot Workset", mNumCells, mNumDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetState(aStateDotDot, tStateDotDotWS);
 
         // Workset control
         //
@@ -271,7 +271,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
         // evaluate function
         //
-        mVectorFunctionGradientX->evaluate(tDisplacementWS, tVelocityWS, tAccelerationWS, tControlWS, tConfigWS, tJacobian, aTimeStep);
+        mVectorFunctionGradientX->evaluate(tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep);
 
         // create return matrix
         //
@@ -291,19 +291,19 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_u(const Plato::ScalarVector & aDisplacement,
-               const Plato::ScalarVector & aVelocity,
-               const Plato::ScalarVector & aAcceleration,
+    gradient_u(const Plato::ScalarVector & aState,
+               const Plato::ScalarVector & aStateDot,
+               const Plato::ScalarVector & aStateDotDot,
                const Plato::ScalarVector & aControl,
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar       = typename GradientU::ConfigScalarType;
-      using DisplacementScalar = typename GradientU::DisplacementScalarType;
-      using VelocityScalar     = typename GradientU::VelocityScalarType;
-      using AccelerationScalar = typename GradientU::AccelerationScalarType;
-      using ControlScalar      = typename GradientU::ControlScalarType;
-      using ResultScalar       = typename GradientU::ResultScalarType;
+      using ConfigScalar      = typename GradientU::ConfigScalarType;
+      using StateScalar       = typename GradientU::StateScalarType;
+      using StateDotScalar    = typename GradientU::StateDotScalarType;
+      using StateDotDotScalar = typename GradientU::StateDotDotScalarType;
+      using ControlScalar     = typename GradientU::ControlScalarType;
+      using ResultScalar      = typename GradientU::ResultScalarType;
 
       // Workset config
       // 
@@ -311,20 +311,20 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
           tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
       Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
-      // Workset displacement
+      // Workset state
       // 
-      Plato::ScalarMultiVectorT<DisplacementScalar> tDisplacementWS("Displacement Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aDisplacement, tDisplacementWS);
+      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
-      // Workset velocity
+      // Workset state dot
       // 
-      Plato::ScalarMultiVectorT<VelocityScalar> tVelocityWS("Velocity Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aVelocity, tVelocityWS);
+      Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
-      // Workset acceleration
+      // Workset state dot dot
       // 
-      Plato::ScalarMultiVectorT<AccelerationScalar> tAccelerationWS("Acceleration Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aAcceleration, tAccelerationWS);
+      Plato::ScalarMultiVectorT<StateDotDotScalar> tStateDotDotWS("StateDotDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDotDot, tStateDotDotWS);
 
       // Workset control
       // 
@@ -337,7 +337,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionGradientU->evaluate( tDisplacementWS, tVelocityWS, tAccelerationWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientU->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
       // create return matrix
       //
@@ -357,19 +357,19 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_v(const Plato::ScalarVector & aDisplacement,
-               const Plato::ScalarVector & aVelocity,
-               const Plato::ScalarVector & aAcceleration,
+    gradient_v(const Plato::ScalarVector & aState,
+               const Plato::ScalarVector & aStateDot,
+               const Plato::ScalarVector & aStateDotDot,
                const Plato::ScalarVector & aControl,
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar       = typename GradientV::ConfigScalarType;
-      using DisplacementScalar = typename GradientV::DisplacementScalarType;
-      using VelocityScalar     = typename GradientV::VelocityScalarType;
-      using AccelerationScalar = typename GradientV::AccelerationScalarType;
-      using ControlScalar      = typename GradientV::ControlScalarType;
-      using ResultScalar       = typename GradientV::ResultScalarType;
+      using ConfigScalar      = typename GradientV::ConfigScalarType;
+      using StateScalar       = typename GradientV::StateScalarType;
+      using StateDotScalar    = typename GradientV::StateDotScalarType;
+      using StateDotDotScalar = typename GradientV::StateDotDotScalarType;
+      using ControlScalar     = typename GradientV::ControlScalarType;
+      using ResultScalar      = typename GradientV::ResultScalarType;
 
       // Workset config
       // 
@@ -377,20 +377,20 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
           tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
       Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
-      // Workset displacement
+      // Workset state
       // 
-      Plato::ScalarMultiVectorT<DisplacementScalar> tDisplacementWS("Displacement Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aDisplacement, tDisplacementWS);
+      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
-      // Workset velocity
+      // Workset state dot
       // 
-      Plato::ScalarMultiVectorT<VelocityScalar> tVelocityWS("Velocity Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aVelocity, tVelocityWS);
+      Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
-      // Workset acceleration
+      // Workset state dot dot
       // 
-      Plato::ScalarMultiVectorT<AccelerationScalar> tAccelerationWS("Acceleration Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aAcceleration, tAccelerationWS);
+      Plato::ScalarMultiVectorT<StateDotDotScalar> tStateDotDotWS("StateDotDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDotDot, tStateDotDotWS);
 
       // Workset control
       // 
@@ -403,7 +403,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionGradientV->evaluate( tDisplacementWS, tVelocityWS, tAccelerationWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientV->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
       // create return matrix
       //
@@ -423,19 +423,19 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_a(const Plato::ScalarVector & aDisplacement,
-               const Plato::ScalarVector & aVelocity,
-               const Plato::ScalarVector & aAcceleration,
+    gradient_a(const Plato::ScalarVector & aState,
+               const Plato::ScalarVector & aStateDot,
+               const Plato::ScalarVector & aStateDotDot,
                const Plato::ScalarVector & aControl,
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar       = typename GradientA::ConfigScalarType;
-      using DisplacementScalar = typename GradientA::DisplacementScalarType;
-      using VelocityScalar     = typename GradientA::VelocityScalarType;
-      using AccelerationScalar = typename GradientA::AccelerationScalarType;
-      using ControlScalar      = typename GradientA::ControlScalarType;
-      using ResultScalar       = typename GradientA::ResultScalarType;
+      using ConfigScalar      = typename GradientA::ConfigScalarType;
+      using StateScalar       = typename GradientA::StateScalarType;
+      using StateDotScalar    = typename GradientA::StateDotScalarType;
+      using StateDotDotScalar = typename GradientA::StateDotDotScalarType;
+      using ControlScalar     = typename GradientA::ControlScalarType;
+      using ResultScalar      = typename GradientA::ResultScalarType;
 
       // Workset config
       // 
@@ -443,20 +443,20 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
           tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
       Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
-      // Workset displacement
+      // Workset state
       // 
-      Plato::ScalarMultiVectorT<DisplacementScalar> tDisplacementWS("Displacement Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aDisplacement, tDisplacementWS);
+      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
-      // Workset velocity
+      // Workset state dot
       // 
-      Plato::ScalarMultiVectorT<VelocityScalar> tVelocityWS("Velocity Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aVelocity, tVelocityWS);
+      Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
-      // Workset acceleration
+      // Workset state dot dot
       // 
-      Plato::ScalarMultiVectorT<AccelerationScalar> tAccelerationWS("Acceleration Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aAcceleration, tAccelerationWS);
+      Plato::ScalarMultiVectorT<StateDotDotScalar> tStateDotDotWS("StateDotDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDotDot, tStateDotDotWS);
 
       // Workset control
       // 
@@ -469,7 +469,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionGradientA->evaluate( tDisplacementWS, tVelocityWS, tAccelerationWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientA->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
       // create return matrix
       //
@@ -489,19 +489,19 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_z(const Plato::ScalarVectorT<Plato::Scalar> & aDisplacement,
-               const Plato::ScalarVectorT<Plato::Scalar> & aVelocity,
-               const Plato::ScalarVectorT<Plato::Scalar> & aAcceleration,
+    gradient_z(const Plato::ScalarVectorT<Plato::Scalar> & aState,
+               const Plato::ScalarVectorT<Plato::Scalar> & aStateDot,
+               const Plato::ScalarVectorT<Plato::Scalar> & aStateDotDot,
                const Plato::ScalarVectorT<Plato::Scalar> & aControl,
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar       = typename GradientZ::ConfigScalarType;
-      using DisplacementScalar = typename GradientZ::DisplacementScalarType;
-      using VelocityScalar     = typename GradientZ::VelocityScalarType;
-      using AccelerationScalar = typename GradientZ::AccelerationScalarType;
-      using ControlScalar      = typename GradientZ::ControlScalarType;
-      using ResultScalar       = typename GradientZ::ResultScalarType;
+      using ConfigScalar      = typename GradientZ::ConfigScalarType;
+      using StateScalar       = typename GradientZ::StateScalarType;
+      using StateDotScalar    = typename GradientZ::StateDotScalarType;
+      using StateDotDotScalar = typename GradientZ::StateDotDotScalarType;
+      using ControlScalar     = typename GradientZ::ControlScalarType;
+      using ResultScalar      = typename GradientZ::ResultScalarType;
 
       // Workset config
       // 
@@ -514,20 +514,20 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
       Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
       Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
  
-      // Workset displacement
+      // Workset state
       //
-      Plato::ScalarMultiVectorT<DisplacementScalar> tDisplacementWS("Displacement Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aDisplacement, tDisplacementWS);
+      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
-      // Workset velocity
+      // Workset state dot
       //
-      Plato::ScalarMultiVectorT<VelocityScalar> tVelocityWS("Velocity Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aVelocity, tVelocityWS);
+      Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
-      // Workset acceleration
+      // Workset state dot dot
       //
-      Plato::ScalarMultiVectorT<AccelerationScalar> tAccelerationWS("Acceleration Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aAcceleration, tAccelerationWS);
+      Plato::ScalarMultiVectorT<StateDotDotScalar> tStateDotDotWS("StateDotDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDotDot, tStateDotDotWS);
 
       // create result 
       //
@@ -535,7 +535,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function 
       //
-      mVectorFunctionGradientZ->evaluate( tDisplacementWS, tVelocityWS, tAccelerationWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientZ->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
       // create return matrix
       //

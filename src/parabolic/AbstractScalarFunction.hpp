@@ -56,7 +56,7 @@ public:
     /******************************************************************************//**
      * @brief Evaluate time-dependent scalar function
      * @param [in] aState 2D array with current state variables (C,DOF)
-     * @param [in] aPrevState 2D array with previous state variables (C,DOF)
+     * @param [in] aStateDot 2D array with state time rate variables (C,DOF)
      * @param [in] aControl 2D array with control variables (C,N)
      * @param [in] aConfig 3D array with control variables (C,N,D)
      * @param [in] aResult 1D array with control variables (C)
@@ -65,11 +65,11 @@ public:
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType>     & aState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::PrevStateScalarType> & aPrevState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType>   & aControl,
-             const Plato::ScalarArray3DT    <typename EvaluationType::ConfigScalarType>    & aConfig,
-                   Plato::ScalarVectorT     <typename EvaluationType::ResultScalarType>    & aResult,
+    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType>    & aState,
+             const Plato::ScalarMultiVectorT<typename EvaluationType::StateDotScalarType> & aStateDot,
+             const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType>  & aControl,
+             const Plato::ScalarArray3DT    <typename EvaluationType::ConfigScalarType>   & aConfig,
+                   Plato::ScalarVectorT     <typename EvaluationType::ResultScalarType>   & aResult,
                    Plato::Scalar aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**

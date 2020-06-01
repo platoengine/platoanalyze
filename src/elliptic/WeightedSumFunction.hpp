@@ -35,9 +35,9 @@ private:
     using Plato::WorksetBase<PhysicsT>::mNumNodes; /*!< total number of nodes in the mesh */
     using Plato::WorksetBase<PhysicsT>::mNumCells; /*!< total number of cells/elements in the mesh */
 
-    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
-    using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal; /*!< number of degree of freedom per cell/element */
-    using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal; /*!< number of degree of freedom per cell/element */
+    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal;
+    using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
+    using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal;
 
     std::vector<Plato::Scalar> mFunctionWeights; /*!< Vector of function weights */
     std::vector<std::shared_ptr<Plato::Elliptic::ScalarFunctionBase>> mScalarFunctionBaseContainer; /*!< Vector of ScalarFunctionBase objects */
@@ -139,10 +139,14 @@ public:
 
     /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
+     * \param [in] aSolution Plato::Solution composed of state variables
+     * \param [in] aControl 1D view of control variables
+    /******************************************************************************//**
+     * \brief Update physics-based parameters within optimization iterations
      * \param [in] aState 1D view of state variables
      * \param [in] aControl 1D view of control variables
      **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aState, const Plato::ScalarVector & aControl) const
+    void updateProblem(const Plato::ScalarVector & aState, const Plato::ScalarVector & aControl) const override
     {
         for (Plato::OrdinalType tFunctionIndex = 0; tFunctionIndex < mScalarFunctionBaseContainer.size(); ++tFunctionIndex)
         {
@@ -150,16 +154,17 @@ public:
         }
     }
 
+
     /******************************************************************************//**
      * \brief Evaluate weight sum function
-     * \param [in] aState 1D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return scalar function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aState,
+    Plato::Scalar value(const Plato::Solution     & aSolution,
                         const Plato::ScalarVector & aControl,
-                        Plato::Scalar aTimeStep = 0.0) const
+                              Plato::Scalar         aTimeStep = 0.0) const override
     {
         assert(mScalarFunctionBaseContainer.size() == mFunctionWeights.size());
 
@@ -167,7 +172,7 @@ public:
         for (Plato::OrdinalType tFunctionIndex = 0; tFunctionIndex < mScalarFunctionBaseContainer.size(); ++tFunctionIndex)
         {
             const Plato::Scalar tFunctionWeight = mFunctionWeights[tFunctionIndex];
-            Plato::Scalar tFunctionValue = mScalarFunctionBaseContainer[tFunctionIndex]->value(aState, aControl, aTimeStep);
+            Plato::Scalar tFunctionValue = mScalarFunctionBaseContainer[tFunctionIndex]->value(aSolution, aControl, aTimeStep);
             tResult += tFunctionWeight * tFunctionValue;
         }
         return tResult;
@@ -175,21 +180,21 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate gradient of the weight sum function with respect to (wrt) the configuration parameters
-     * \param [in] aState 1D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aState,
+    Plato::ScalarVector gradient_x(const Plato::Solution     & aSolution,
                                    const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
+                                         Plato::Scalar         aTimeStep = 0.0) const override
     {
         const Plato::OrdinalType tNumDofs = mNumSpatialDims * mNumNodes;
         Plato::ScalarVector tGradientX ("gradient configuration", tNumDofs);
         for (Plato::OrdinalType tFunctionIndex = 0; tFunctionIndex < mScalarFunctionBaseContainer.size(); ++tFunctionIndex)
         {
             const Plato::Scalar tFunctionWeight = mFunctionWeights[tFunctionIndex];
-            Plato::ScalarVector tFunctionGradX = mScalarFunctionBaseContainer[tFunctionIndex]->gradient_x(aState, aControl, aTimeStep);
+            Plato::ScalarVector tFunctionGradX = mScalarFunctionBaseContainer[tFunctionIndex]->gradient_x(aSolution, aControl, aTimeStep);
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & tDof)
             {
                 tGradientX(tDof) += tFunctionWeight * tFunctionGradX(tDof);
@@ -200,21 +205,22 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate gradient of the weight sum function with respect to (wrt) the state variables
-     * \param [in] aState 1D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return 1D view with the gradient of the scalar function wrt the state variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_u(const Plato::ScalarVector & aState,
+    Plato::ScalarVector gradient_u(const Plato::Solution     & aSolution,
                                    const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
+                                         Plato::OrdinalType    aStepIndex,
+                                         Plato::Scalar         aTimeStep = 0.0) const override
     {
         const Plato::OrdinalType tNumDofs = mNumDofsPerNode * mNumNodes;
         Plato::ScalarVector tGradientU ("gradient state", tNumDofs);
         for (Plato::OrdinalType tFunctionIndex = 0; tFunctionIndex < mScalarFunctionBaseContainer.size(); ++tFunctionIndex)
         {
             const Plato::Scalar tFunctionWeight = mFunctionWeights[tFunctionIndex];
-            Plato::ScalarVector tFunctionGradU = mScalarFunctionBaseContainer[tFunctionIndex]->gradient_u(aState, aControl, aTimeStep);
+            Plato::ScalarVector tFunctionGradU = mScalarFunctionBaseContainer[tFunctionIndex]->gradient_u(aSolution, aControl, aTimeStep);
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & tDof)
             {
                 tGradientU(tDof) += tFunctionWeight * tFunctionGradU(tDof);
@@ -225,21 +231,21 @@ public:
 
     /******************************************************************************//**
      * \brief Evaluate gradient of the weight sum function with respect to (wrt) the control variables
-     * \param [in] aState 1D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aTimeStep time step (default = 0.0)
      * \return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aState,
+    Plato::ScalarVector gradient_z(const Plato::Solution     & aSolution,
                                    const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
+                                         Plato::Scalar         aTimeStep = 0.0) const override
     {
         const Plato::OrdinalType tNumDofs = mNumNodes;
         Plato::ScalarVector tGradientZ ("gradient control", tNumDofs);
         for (Plato::OrdinalType tFunctionIndex = 0; tFunctionIndex < mScalarFunctionBaseContainer.size(); ++tFunctionIndex)
         {
             const Plato::Scalar tFunctionWeight = mFunctionWeights[tFunctionIndex];
-            Plato::ScalarVector tFunctionGradZ = mScalarFunctionBaseContainer[tFunctionIndex]->gradient_z(aState, aControl, aTimeStep);
+            Plato::ScalarVector tFunctionGradZ = mScalarFunctionBaseContainer[tFunctionIndex]->gradient_z(aSolution, aControl, aTimeStep);
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & tDof)
             {
                 tGradientZ(tDof) += tFunctionWeight * tFunctionGradZ(tDof);

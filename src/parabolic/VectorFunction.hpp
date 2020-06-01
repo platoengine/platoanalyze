@@ -23,9 +23,9 @@ namespace Parabolic
 
    F = F(\phi, U^k, U^{k-1}, X)
 
-   and manages the evaluation of the function and derivatives wrt state, U^k; 
+   and manages the evaluation of the function and derivatives wrt state, U^k;
    previous state, U^{k-1}; and control, X.
-  
+
 */
 /******************************************************************************/
 template<typename PhysicsT>
@@ -44,18 +44,18 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
 
     using Residual  = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::Residual;
-    using Jacobian  = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::Jacobian;
-    using JacobianP = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::JacobianP;
+    using GradientU = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientU;
+    using GradientV = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientV;
     using GradientX = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientX;
     using GradientZ = typename Plato::Parabolic::Evaluation<typename PhysicsT::SimplexT>::GradientZ;
 
     static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mNumSpatialDims*mNumNodesPerCell;
 
     std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<Residual>>  mVectorFunctionResidual;
-    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<Jacobian>>  mVectorFunctionJacobianU;
-    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<JacobianP>> mVectorFunctionJacobianP;
-    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientX>> mVectorFunctionJacobianX;
-    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientZ>> mVectorFunctionJacobianZ;
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientU>> mVectorFunctionGradientU;
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientV>> mVectorFunctionGradientV;
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientX>> mVectorFunctionGradientX;
+    std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientZ>> mVectorFunctionGradientZ;
 
     Plato::DataMap& mDataMap;
 
@@ -66,9 +66,9 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     * @brief Constructor
     * @param [in] aMesh mesh data base
     * @param [in] aMeshSets mesh sets data base
-    * @param [in] aDataMap problem-specific data map 
+    * @param [in] aDataMap problem-specific data map
     * @param [in] aParamList Teuchos parameter list with input data
-    * @param [in] aProblemType problem type 
+    * @param [in] aProblemType problem type
     *
     ******************************************************************************/
     VectorFunction(Omega_h::Mesh& aMesh,
@@ -82,26 +82,26 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
       typename PhysicsT::FunctionFactory tFunctionFactory;
 
       mVectorFunctionResidual  = tFunctionFactory.template createVectorFunctionParabolic<Residual >(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-      mVectorFunctionJacobianU = tFunctionFactory.template createVectorFunctionParabolic<Jacobian >(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-      mVectorFunctionJacobianP = tFunctionFactory.template createVectorFunctionParabolic<JacobianP>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-      mVectorFunctionJacobianZ = tFunctionFactory.template createVectorFunctionParabolic<GradientZ>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-      mVectorFunctionJacobianX = tFunctionFactory.template createVectorFunctionParabolic<GradientX>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+      mVectorFunctionGradientU = tFunctionFactory.template createVectorFunctionParabolic<GradientU>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+      mVectorFunctionGradientV = tFunctionFactory.template createVectorFunctionParabolic<GradientV>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+      mVectorFunctionGradientZ = tFunctionFactory.template createVectorFunctionParabolic<GradientZ>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+      mVectorFunctionGradientX = tFunctionFactory.template createVectorFunctionParabolic<GradientX>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
     }
 
     /**************************************************************************//**
     *
     * @brief Constructor
     * @param [in] aMesh mesh data base
-    * @param [in] aDataMap problem-specific data map 
+    * @param [in] aDataMap problem-specific data map
     *
     ******************************************************************************/
     VectorFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
             Plato::WorksetBase<PhysicsT>(aMesh),
             mVectorFunctionResidual(),
-            mVectorFunctionJacobianU(),
-            mVectorFunctionJacobianP(),
-            mVectorFunctionJacobianX(),
-            mVectorFunctionJacobianZ(),
+            mVectorFunctionGradientU(),
+            mVectorFunctionGradientV(),
+            mVectorFunctionGradientX(),
+            mVectorFunctionGradientZ(),
             mDataMap(aDataMap)
     {
     }
@@ -110,14 +110,14 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     *
     * @brief Allocate residual evaluator
     * @param [in] aResidual residual evaluator
-    * @param [in] aJacobian Jacobian evaluator
+    * @param [in] aGradientU GradientU evaluator
     *
     ******************************************************************************/
     void allocateResidual(const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<Residual>>& aResidual,
-                          const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<Jacobian>>& aJacobian)
+                          const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientU>>& aGradientU)
     {
         mVectorFunctionResidual = aResidual;
-        mVectorFunctionJacobianU = aJacobian;
+        mVectorFunctionGradientU = aGradientU;
     }
 
     /**************************************************************************//**
@@ -126,9 +126,9 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     * @param [in] aGradientZ partial derivative with respect to control evaluator
     *
     ******************************************************************************/
-    void allocateJacobianZ(const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientZ>>& aGradientZ)
+    void allocateGradientZ(const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientZ>>& aGradientZ)
     {
-        mVectorFunctionJacobianZ = aGradientZ; 
+        mVectorFunctionGradientZ = aGradientZ;
     }
 
     /**************************************************************************//**
@@ -137,9 +137,9 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     * @param [in] GradientX partial derivative with respect to configuration evaluator
     *
     ******************************************************************************/
-    void allocateJacobianX(const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientX>>& aGradientX)
+    void allocateGradientX(const std::shared_ptr<Plato::Parabolic::AbstractVectorFunction<GradientX>>& aGradientX)
     {
-        mVectorFunctionJacobianX = aGradientX; 
+        mVectorFunctionGradientX = aGradientX;
     }
 
     /**************************************************************************//**
@@ -165,16 +165,16 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     /**************************************************************************/
     Plato::ScalarVector
     value(const Plato::ScalarVector & aState,
-          const Plato::ScalarVector & aPrevState,
+          const Plato::ScalarVector & aStateDot,
           const Plato::ScalarVector & aControl,
           Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar    = typename Residual::ConfigScalarType;
-      using StateScalar     = typename Residual::StateScalarType;
-      using PrevStateScalar = typename Residual::PrevStateScalarType;
-      using ControlScalar   = typename Residual::ControlScalarType;
-      using ResultScalar    = typename Residual::ResultScalarType;
+      using ConfigScalar   = typename Residual::ConfigScalarType;
+      using StateScalar    = typename Residual::StateScalarType;
+      using StateDotScalar = typename Residual::StateDotScalarType;
+      using ControlScalar  = typename Residual::ControlScalarType;
+      using ResultScalar   = typename Residual::ResultScalarType;
 
       // Workset state
       //
@@ -183,8 +183,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // Workset prev state
       //
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevStateWS("Prev State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aPrevState, tPrevStateWS);
+      Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
       // Workset control
       //
@@ -192,7 +192,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
       Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
 
       // Workset config
-      // 
+      //
       Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
       Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
@@ -202,7 +202,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionResidual->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
+      mVectorFunctionResidual->evaluate( tStateWS, tStateDotWS, tControlWS, tConfigWS, tResidual, aTimeStep );
 
       // create and assemble to return view
       //
@@ -215,16 +215,16 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_x(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aPrevState,
+               const Plato::ScalarVector & aStateDot,
                const Plato::ScalarVector & aControl,
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-        using ConfigScalar    = typename GradientX::ConfigScalarType;
-        using StateScalar     = typename GradientX::StateScalarType;
-        using PrevStateScalar = typename GradientX::PrevStateScalarType;
-        using ControlScalar   = typename GradientX::ControlScalarType;
-        using ResultScalar    = typename GradientX::ResultScalarType;
+        using ConfigScalar   = typename GradientX::ConfigScalarType;
+        using StateScalar    = typename GradientX::StateScalarType;
+        using StateDotScalar = typename GradientX::StateDotScalarType;
+        using ControlScalar  = typename GradientX::ControlScalarType;
+        using ResultScalar   = typename GradientX::ResultScalarType;
 
         // Workset config
         //
@@ -239,8 +239,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
         // Workset prev state
         //
-        Plato::ScalarMultiVectorT<PrevStateScalar> tPrevStateWS("Prev State Workset", mNumCells, mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aPrevState, tPrevStateWS);
+        Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset", mNumCells, mNumDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
         // Workset control
         //
@@ -249,162 +249,162 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
         // create return view
         //
-        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianConfiguration", mNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultScalar> tGradient("GradientConfiguration", mNumCells, mNumDofsPerCell);
 
         // evaluate function
         //
-        mVectorFunctionJacobianX->evaluate(tStateWS, tPrevStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep);
+        mVectorFunctionGradientX->evaluate(tStateWS, tStateDotWS, tControlWS, tConfigWS, tGradient, aTimeStep);
 
         // create return matrix
         //
-        auto tMesh = mVectorFunctionJacobianX->getMesh();
-        Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+        auto tMesh = mVectorFunctionGradientX->getMesh();
+        Teuchos::RCP<Plato::CrsMatrixType> tGradientMat =
                 Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumDofsPerNode>(&tMesh);
 
         // assembly to return matrix
         Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode>
-            tJacobianMatEntryOrdinal(tJacobianMat, &tMesh);
+            tGradientMatEntryOrdinal(tGradientMat, &tMesh);
 
-        auto tJacobianMatEntries = tJacobianMat->entries();
-        Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(mNumDofsPerCell, mNumConfigDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+        auto tGradientMatEntries = tGradientMat->entries();
+        Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(mNumDofsPerCell, mNumConfigDofsPerCell, tGradientMatEntryOrdinal, tGradient, tGradientMatEntries);
 
-        return tJacobianMat;
+        return tGradientMat;
     }
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
     gradient_u(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aPrevState,
+               const Plato::ScalarVector & aStateDot,
                const Plato::ScalarVector & aControl,
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar    = typename Jacobian::ConfigScalarType;
-      using StateScalar     = typename Jacobian::StateScalarType;
-      using PrevStateScalar = typename Jacobian::PrevStateScalarType;
-      using ControlScalar   = typename Jacobian::ControlScalarType;
-      using ResultScalar    = typename Jacobian::ResultScalarType;
+      using ConfigScalar   = typename GradientU::ConfigScalarType;
+      using StateScalar    = typename GradientU::StateScalarType;
+      using StateDotScalar = typename GradientU::StateDotScalarType;
+      using ControlScalar  = typename GradientU::ControlScalarType;
+      using ResultScalar   = typename GradientU::ResultScalarType;
 
       // Workset config
-      // 
+      //
       Plato::ScalarArray3DT<ConfigScalar>
           tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
       Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
       // Workset state
-      // 
+      //
       Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
       Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
       // Workset prev state
-      // 
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevStateWS("Prev State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aPrevState, tPrevStateWS);
+      //
+      Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
       // Workset control
-      // 
+      //
       Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
       Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
 
       // create return view
       //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState",mNumCells,mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<ResultScalar> tGradient("GradientState",mNumCells,mNumDofsPerCell);
 
       // evaluate function
       //
-      mVectorFunctionJacobianU->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientU->evaluate( tStateWS, tStateDotWS, tControlWS, tConfigWS, tGradient, aTimeStep );
 
       // create return matrix
       //
-      auto tMesh = mVectorFunctionJacobianU->getMesh();
-      Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+      auto tMesh = mVectorFunctionGradientU->getMesh();
+      Teuchos::RCP<Plato::CrsMatrixType> tGradientMat =
               Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
 
       // assembly to return matrix
       Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode, mNumDofsPerNode>
-          tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+          tGradientMatEntryOrdinal( tGradientMat, &tMesh );
 
-      auto tJacobianMatEntries = tJacobianMat->entries();
-      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+      auto tGradientMatEntries = tGradientMat->entries();
+      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tGradientMatEntryOrdinal, tGradient, tGradientMatEntries);
 
-      return tJacobianMat;
+      return tGradientMat;
     }
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_p(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aPrevState,
+    gradient_v(const Plato::ScalarVector & aState,
+               const Plato::ScalarVector & aStateDot,
                const Plato::ScalarVector & aControl,
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar    = typename JacobianP::ConfigScalarType;
-      using StateScalar     = typename JacobianP::StateScalarType;
-      using PrevStateScalar = typename JacobianP::PrevStateScalarType;
-      using ControlScalar   = typename JacobianP::ControlScalarType;
-      using ResultScalar    = typename JacobianP::ResultScalarType;
+      using ConfigScalar   = typename GradientV::ConfigScalarType;
+      using StateScalar    = typename GradientV::StateScalarType;
+      using StateDotScalar = typename GradientV::StateDotScalarType;
+      using ControlScalar  = typename GradientV::ControlScalarType;
+      using ResultScalar   = typename GradientV::ResultScalarType;
 
       // Workset config
-      // 
+      //
       Plato::ScalarArray3DT<ConfigScalar>
           tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
       Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
       // Workset state
-      // 
+      //
       Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
       Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
       // Workset prev state
-      // 
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevStateWS("Prev State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aPrevState, tPrevStateWS);
+      //
+      Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
       // Workset control
-      // 
+      //
       Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
       Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
 
       // create return view
       //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState",mNumCells,mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<ResultScalar> tGradient("GradientState",mNumCells,mNumDofsPerCell);
 
       // evaluate function
       //
-      mVectorFunctionJacobianP->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientV->evaluate( tStateWS, tStateDotWS, tControlWS, tConfigWS, tGradient, aTimeStep );
 
       // create return matrix
       //
-      auto tMesh = mVectorFunctionJacobianU->getMesh();
-      Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+      auto tMesh = mVectorFunctionGradientU->getMesh();
+      Teuchos::RCP<Plato::CrsMatrixType> tGradientMat =
               Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
 
       // assembly to return matrix
       Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode, mNumDofsPerNode>
-          tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+          tGradientMatEntryOrdinal( tGradientMat, &tMesh );
 
-      auto tJacobianMatEntries = tJacobianMat->entries();
-      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+      auto tGradientMatEntries = tGradientMat->entries();
+      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tGradientMatEntryOrdinal, tGradient, tGradientMatEntries);
 
-      return tJacobianMat;
+      return tGradientMat;
     }
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_z(const Plato::ScalarVectorT<Plato::Scalar> & aState,
-               const Plato::ScalarVectorT<Plato::Scalar> & aPrevState,
-               const Plato::ScalarVectorT<Plato::Scalar> & aControl,
+    gradient_z(const Plato::ScalarVector & aState,
+               const Plato::ScalarVector & aStateDot,
+               const Plato::ScalarVector & aControl,
                Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      using ConfigScalar    = typename GradientZ::ConfigScalarType;
-      using StateScalar     = typename GradientZ::StateScalarType;
-      using PrevStateScalar = typename GradientZ::PrevStateScalarType;
-      using ControlScalar   = typename GradientZ::ControlScalarType;
-      using ResultScalar    = typename GradientZ::ResultScalarType;
+      using ConfigScalar   = typename GradientZ::ConfigScalarType;
+      using StateScalar    = typename GradientZ::StateScalarType;
+      using StateDotScalar = typename GradientZ::StateDotScalarType;
+      using ControlScalar  = typename GradientZ::ControlScalarType;
+      using ResultScalar   = typename GradientZ::ResultScalarType;
 
       // Workset config
-      // 
+      //
       Plato::ScalarArray3DT<ConfigScalar>
           tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
       Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
@@ -413,7 +413,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
       //
       Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
       Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
- 
+
       // Workset state
       //
       Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
@@ -421,31 +421,31 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // Workset prev state
       //
-      Plato::ScalarMultiVectorT<PrevStateScalar> tPrevStateWS("Prev State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aPrevState, tPrevStateWS);
+      Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset",mNumCells,mNumDofsPerCell);
+      Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
-      // create result 
+      // create result
       //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianControl",mNumCells,mNumDofsPerCell);
+      Plato::ScalarMultiVectorT<ResultScalar> tGradient("GradientControl",mNumCells,mNumDofsPerCell);
 
-      // evaluate function 
+      // evaluate function
       //
-      mVectorFunctionJacobianZ->evaluate( tStateWS, tPrevStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientZ->evaluate( tStateWS, tStateDotWS, tControlWS, tConfigWS, tGradient, aTimeStep );
 
       // create return matrix
       //
-      auto tMesh = mVectorFunctionJacobianZ->getMesh();
-      Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+      auto tMesh = mVectorFunctionGradientZ->getMesh();
+      Teuchos::RCP<Plato::CrsMatrixType> tGradientMat =
               Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumControl, mNumDofsPerNode>( &tMesh );
 
       // assembly to return matrix
       Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode>
-        tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+        tGradientMatEntryOrdinal( tGradientMat, &tMesh );
 
-      auto tJacobianMatEntries = tJacobianMat->entries();
-      Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(mNumDofsPerCell, mNumNodesPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+      auto tGradientMatEntries = tGradientMat->entries();
+      Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(mNumDofsPerCell, mNumNodesPerCell, tGradientMatEntryOrdinal, tGradient, tGradientMatEntries);
 
-      return (tJacobianMat);
+      return (tGradientMat);
     }
 };
 // class VectorFunction

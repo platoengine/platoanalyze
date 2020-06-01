@@ -372,7 +372,7 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
   int tNumNodes = mesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
   Plato::ScalarVector state("state", tNumDofs);
-  Plato::ScalarVector statePrev("prev state", tNumDofs);
+  Plato::ScalarVector stateDot("state dot", tNumDofs);
   Plato::ScalarVector z("control", tNumDofs);
   Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumNodes), LAMBDA_EXPRESSION(const int & aNodeOrdinal)
   {
@@ -382,10 +382,10 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
      state(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal;
      state(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal;
      state(aNodeOrdinal*tNumDofsPerNode+3) = (4e-7)*aNodeOrdinal;
-     statePrev(aNodeOrdinal*tNumDofsPerNode+0) = (4e-7)*aNodeOrdinal;
-     statePrev(aNodeOrdinal*tNumDofsPerNode+1) = (3e-7)*aNodeOrdinal;
-     statePrev(aNodeOrdinal*tNumDofsPerNode+2) = (2e-7)*aNodeOrdinal;
-     statePrev(aNodeOrdinal*tNumDofsPerNode+3) = (1e-7)*aNodeOrdinal;
+     stateDot(aNodeOrdinal*tNumDofsPerNode+0) = (4e-7)*aNodeOrdinal;
+     stateDot(aNodeOrdinal*tNumDofsPerNode+1) = (3e-7)*aNodeOrdinal;
+     stateDot(aNodeOrdinal*tNumDofsPerNode+2) = (2e-7)*aNodeOrdinal;
+     stateDot(aNodeOrdinal*tNumDofsPerNode+3) = (1e-7)*aNodeOrdinal;
 
   }, "state");
 
@@ -418,6 +418,7 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
     "  <ParameterList name='Time Integration'>                                               \n"
     "    <Parameter name='Number Time Steps' type='int' value='3'/>                          \n"
     "    <Parameter name='Time Step' type='double' value='0.5'/>                             \n"
+    "    <Parameter name='Trapezoid Alpha' type='double' value='0.5'/>                       \n"
     "  </ParameterList>                                                                      \n"
     "</ParameterList>                                                                        \n"
   );
@@ -433,19 +434,19 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
   // compute and test value
   //
   auto timeStep = params->sublist("Time Integration").get<Plato::Scalar>("Time Step");
-  auto residual = vectorFunction.value(state, statePrev, z, timeStep);
+  auto residual = vectorFunction.value(state, stateDot, z, timeStep);
 
   auto residual_Host = Kokkos::create_mirror_view( residual );
   Kokkos::deep_copy( residual_Host, residual );
 
   std::vector<Plato::Scalar> residual_gold = { 
-   -18669.59575320513,   -14903.70552884615,   -19551.14663461538,    0.02413541666666667, 
-   -17427.51482371794,   -15745.01001602564,   -16586.51762820513,    0.03118750000000000,
-    1562.601562500000,   -6370.137620192306,   -1682.848557692307,    0.006822916666666667,
-   -20191.77644230769,   -9695.429487179485,   -25641.05689102564,    0.04497656250000000,
-   -3164.858373397435,   -3205.112580128204,   -120.4136618589738,    0.01215104166666667,
-   -2563.956730769230,   -841.4164663461538,   -3325.396033653845,    0.006354166666666668,
-   -1562.213541666663,   -40.32972756410084,   -6570.533653846154,    0.01607031250000000
+   -74678.38301282050, -59614.82211538460, -78204.58653846153, 0.006014583333333334,
+   -69710.05929487177, -62980.04006410255, -66346.07051282052, 0.008424999999999998,
+    6250.406250000000, -25480.55048076922, -6731.394230769230, 0.001677083333333333,
+   -80767.10576923075, -38781.71794871794, -102564.2275641025, 0.01257343750000000,
+   -12659.43349358974, -12820.45032051281, -481.6546474358953, 0.003273958333333333,
+   -10255.82692307692, -3365.665865384615, -13301.58413461538, 0.001520833333333333,
+   -6248.854166666652, -161.3189102564033, -26282.13461538462, 0.004729687500000000
   };
 
   for(int iNode=0; iNode<int(residual_gold.size()); iNode++){
@@ -459,29 +460,29 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
 
   // compute and test gradient wrt state. (i.e., jacobian)
   //
-  auto jacobian = vectorFunction.gradient_u(state, statePrev, z, timeStep);
+  auto jacobian = vectorFunction.gradient_u(state, stateDot, z, timeStep);
 
   auto jac_entries = jacobian->entries();
   auto jac_entriesHost = Kokkos::create_mirror_view( jac_entries );
   Kokkos::deep_copy(jac_entriesHost, jac_entries);
 
   std::vector<Plato::Scalar> gold_jac_entries = {
-    8.81410256410256195e9,  0.00000000000000000,    0.00000000000000000,   13020.8333333333321, 
-    0.00000000000000000,    8.81410256410256195e9,  0.00000000000000000,   13020.8333333333321,
-    0.00000000000000000,    0.00000000000000000,    8.81410256410256195e9, 13020.8333333333321,
-    0.00000000000000000,    0.00000000000000000,    0.00000000000000000,   2468.750000000000000,
-   -1.60256410256410241e9,  8.01282051282051206e8,  0.00000000000000000,   0.00000000000000000,
-    1.20192307692307663e9, -5.60897435897435760e9,  1.20192307692307663e9, 13020.8333333333321, 
-    0.00000000000000000,    8.01282051282051206e8, -1.60256410256410241e9, 0.00000000000000000,
-    0.00000000000000000,    0.00000000000000000,    0.00000000000000000,   739.583333333333371,
-   -1.60256410256410241e9,  0.00000000000000000,    8.01282051282051206e8, 0.00000000000000000,
-    0.00000000000000000,   -1.60256410256410241e9,  8.01282051282051206e8, 0.00000000000000000,
-    1.20192307692307663e9,  1.20192307692307663e9, -5.60897435897435760e9, 13020.8333333333321,
-    0.00000000000000000,    0.00000000000000000,    0.00000000000000000,   739.583333333333371,
-    0.00000000000000000,    8.01282051282051206e8,  8.01282051282051206e8, 0.00000000000000000,
-    1.20192307692307663e9,  0.00000000000000000,   -2.00320512820512772e9, 6510.41666666666606,
-    1.20192307692307663e9, -2.00320512820512772e9,  0.00000000000000000,   6510.41666666666606,
-    0.00000000000000000,    0.00000000000000000,    0.00000000000000000,   781.250000000000000
+    3.52564102564102478e10, 0.00000000000000000,    0.00000000000000000,    52083.3333333333285,
+    0.00000000000000000,    3.52564102564102478e10, 0.00000000000000000,    52083.3333333333285,
+    0.00000000000000000,    0.00000000000000000,    3.52564102564102478e10, 52083.3333333333285,
+    0.00000000000000000,    0.00000000000000000,    0.00000000000000000,    499.999999999999943,
+    -6.41025641025640965e9, 3.20512820512820482e9,  0.00000000000000000,    0.00000000000000000,
+    4.80769230769230652e9, -2.24358974358974304e10, 4.80769230769230652e9,  52083.3333333333285,
+    0.00000000000000000,    3.20512820512820482e9, -6.41025641025640965e9,  0.00000000000000000,
+    0.00000000000000000,    0.00000000000000000,    0.00000000000000000,    -166.66666666666667,
+    -6.41025641025640965e9, 0.00000000000000000,    3.20512820512820482e9,  0.00000000000000000,
+    0.00000000000000000,   -6.41025641025640965e9,  3.20512820512820482e9,  0.00000000000000000,
+    4.80769230769230652e9,  4.80769230769230652e9, -2.24358974358974304e10, 52083.3333333333285,
+    0.00000000000000000,    0.00000000000000000,    0.00000000000000000,    -166.66666666666667,
+    0.00000000000000000,    3.20512820512820482e9,  3.20512820512820482e9,  0.00000000000000000,
+    4.80769230769230652e9,  0.00000000000000000,   -8.01282051282051086e9,  26041.6666666666642,
+    4.80769230769230652e9, -8.01282051282051086e9,  0.00000000000000000,    26041.6666666666642,
+    0.00000000000000000,    0.00000000000000000,    0.00000000000000000,    0.00000000000000000
   };
 
   int jac_entriesSize = gold_jac_entries.size();
@@ -490,40 +491,40 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
   }
 
 
-  // compute and test gradient wrt previous state (i.e., jacobian)
+  // compute and test gradient wrt state dot (i.e., jacobianV)
   //
-  auto jacobian_p = vectorFunction.gradient_p(state, statePrev, z, timeStep);
+  auto jacobian_v = vectorFunction.gradient_v(state, stateDot, z, timeStep);
 
-  auto jac_p_entries = jacobian_p->entries();
-  auto jac_p_entriesHost = Kokkos::create_mirror_view( jac_p_entries );
-  Kokkos::deep_copy(jac_p_entriesHost, jac_p_entries);
+  auto jac_v_entries = jacobian_v->entries();
+  auto jac_v_entriesHost = Kokkos::create_mirror_view( jac_v_entries );
+  Kokkos::deep_copy(jac_v_entriesHost, jac_v_entries);
 
-  std::vector<Plato::Scalar> gold_jac_p_entries = {
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2218.75000000000000,
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -822.916666666666629,
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -822.916666666666629,
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -781.250000000000000
+  std::vector<Plato::Scalar> gold_jac_v_entries = {
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2343.750000000000000,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 781.2500000000000000,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 781.2500000000000000,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 781.2500000000000000
   };
 
-  int jac_p_entriesSize = gold_jac_p_entries.size();
-  for(int i=0; i<jac_p_entriesSize; i++){
-    TEST_FLOATING_EQUALITY(jac_p_entriesHost(i), gold_jac_p_entries[i], 1.0e-15);
+  int jac_v_entriesSize = gold_jac_v_entries.size();
+  for(int i=0; i<jac_v_entriesSize; i++){
+    TEST_FLOATING_EQUALITY(jac_v_entriesHost(i), gold_jac_v_entries[i], 1.0e-15);
   }
 
 
   // compute and test objective gradient wrt control, z
   //
-  auto gradient_z = vectorFunction.gradient_z(state, statePrev, z, timeStep);
+  auto gradient_z = vectorFunction.gradient_z(state, stateDot, z, timeStep);
   
   auto grad_entries = gradient_z->entries();
   auto grad_entriesHost = Kokkos::create_mirror_view( grad_entries );
   Kokkos::deep_copy(grad_entriesHost, grad_entries);
 
   std::vector<Plato::Scalar> gold_grad_entries = {
-   -4667.39893830128131, -3725.92638221153720, -4887.78665865384573, 0.00603385416666666653,
-   -651.022135416666629,  2003.16997195512795,  1051.69831730769238, 0.00163411458333333312,
-    390.647786458333599, -1592.53700921474319, -420.706931089743875, 0.00147135416666666660,
-   -701.095102163461092, -50.0911959134616325, -1231.98677884615336, 0.00114127604166666652
+   -18669.5957532051252, -14903.7055288461488, -19551.1466346153829, 0.00150364583333333340,
+   -2604.08854166666652,  8012.67988782051179,  4206.79326923076951, 0.000694010416666666560,
+    1562.59114583333439, -6370.14803685897277, -1682.82772435897550, 0.000341145833333333329,
+   -2804.38040865384437, -200.364783653846530, -4927.94711538461343, 0.000208723958333333358
   };
 
   int grad_entriesSize = gold_grad_entries.size();
@@ -534,25 +535,25 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto gradient_x = vectorFunction.gradient_x(state, statePrev, z, timeStep);
+  auto gradient_x = vectorFunction.gradient_x(state, stateDot, z, timeStep);
   
   auto grad_x_entries = gradient_x->entries();
   auto grad_x_entriesHost = Kokkos::create_mirror_view( grad_x_entries );
   Kokkos::deep_copy(grad_x_entriesHost, grad_x_entries);
 
   std::vector<Plato::Scalar> gold_grad_x_entries = {
-   -34615.3846153846025, -37980.7692307692196, -79807.6923076922831, -0.0267395833333333305,
-    11858.9743589743539, -8333.33333333333394,  13942.3076923076842, -0.0123645833333333316,
-   -160.256410256407435,  480.769230769233445, -2884.61538461538294, -0.0122083333333333315,
-   -320.512820512819644, -4727.40785256410163, -4647.43589743589473,  0.0000624999999999999742,
-    10015.8693910256370,  16666.6666666666642,  2804.36217948717967, -0.0124062499999999989,
-   -6570.51282051281851, -7131.28525641025590, -320.512820512821236, -0.000187499999999999950, 
-   -19391.0256410256334,  5929.48717948717967,  41426.4643429487041,  0.000604166666666666480,
-   -160.256410256411073, -4647.43589743589564, -14503.1165865384537, -0.000145833333333333318,
-    11217.7664262820472,  10416.5781249999964,  13942.3076923076915, -0.0116875000000000000,
-   -21474.3589743589691,  1362.30448717948912, -881.321714743589837, -0.000187499999999999950,
-    1522.31089743589655,  7532.05128205127949,  15384.6518429487151, -0.00529166666666666674,
-    9935.80889423076587,  5048.04046474358620,  3685.89743589743739, -0.00365104166666666658
+   -138461.538461538410, -151923.076923076878, -319230.769230769132, -0.0143479166666666651,
+    47435.8974358974156, -33333.3333333333358,  55769.2307692307368, -0.00328541666666666522,
+   -641.025641025629739,  1923.07692307693378, -11538.4615384615317, -0.00412916666666666640,
+   -1282.05128205127858, -18909.6314102564065, -18589.7435897435789,  0.000199999999999999982,
+    40063.4775641025481,  66666.6666666666570,  11217.4487179487187, -0.00341874999999999991,
+   -26282.0512820512740, -28525.1410256410236, -1282.05128205128494, -0.000599999999999999947,
+   -77564.1025641025335,  23717.9487179487187,  165705.857371794817,  0.00193333333333333291,
+   -641.025641025644290, -18589.7435897435826, -58012.4663461538148, -0.000466666666666666554,
+    44871.0657051281887,  41666.3124999999854,  55769.2307692307659, -0.00246249999999999985,
+   -85897.4358974358765,  5449.21794871795646, -3525.28685897435935, -0.000599999999999999947,
+    6089.24358974358620,  30128.2051282051179,  61538.6073717948602, -0.000808333333333333647,
+    39743.2355769230635,  20192.1618589743448,  14743.5897435897496, -0.000261458333333333378
   };
 
   int grad_x_entriesSize = gold_grad_x_entries.size();

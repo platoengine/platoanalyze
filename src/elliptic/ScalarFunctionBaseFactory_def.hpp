@@ -5,7 +5,6 @@
 #include "elliptic/PhysicsScalarFunction.hpp"
 #include "elliptic/DivisionFunction.hpp"
 #include "elliptic/LeastSquaresFunction.hpp"
-#include "elliptic/MassPropertiesFunction.hpp"
 #include "AnalyzeMacros.hpp"
 
 namespace Plato
@@ -48,10 +47,6 @@ namespace Elliptic
         else if(tFunctionType == "Scalar Function")
         {
             return std::make_shared<PhysicsScalarFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
-        }
-        else if(tFunctionType == "Mass Properties")
-        {
-            return std::make_shared<MassPropertiesFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
         }
         else
         {

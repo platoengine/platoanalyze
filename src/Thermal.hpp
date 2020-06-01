@@ -16,7 +16,6 @@
 #include "elliptic/ThermostaticResidual.hpp"
 #include "elliptic/InternalThermalEnergy.hpp"
 #include "elliptic/FluxPNorm.hpp"
-#include "elliptic/Volume.hpp"
 
 #include "Simp.hpp"
 #include "Ramp.hpp"
@@ -125,22 +124,8 @@ struct FunctionFactory{
       } else {
         throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
       }
-    } else 
-    if( strScalarFunctionType == "Volume" ){
-      auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
-      std::string penaltyType = penaltyParams.get<std::string>("Type");
-      if( penaltyType == "SIMP" ){
-        return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::MSIMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams,strScalarFunctionName);
-      } else
-      if( penaltyType == "RAMP" ){
-        return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::RAMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams,strScalarFunctionName);
-      } else
-      if( penaltyType == "Heaviside" ){
-        return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::Heaviside>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams,strScalarFunctionName);
-      } else {
-        throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
-      }
-    } else {
+    }
+    else {
       throw std::runtime_error("Unknown 'Objective' specified in 'Plato Problem' ParameterList");
     }
   }

@@ -66,9 +66,9 @@ public:
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::DisplacementScalarType> & aState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::VelocityScalarType>     & aStateDot,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::AccelerationScalarType> & aStateDotDot,
+    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType>        & aState,
+             const Plato::ScalarMultiVectorT<typename EvaluationType::StateDotScalarType>     & aStateDot,
+             const Plato::ScalarMultiVectorT<typename EvaluationType::StateDotDotScalarType>  & aStateDotDot,
              const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType>      & aControl,
              const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType>           & aConfig,
              Plato::ScalarVectorT<typename EvaluationType::ResultScalarType>                  & aResult,

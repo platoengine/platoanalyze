@@ -13,7 +13,6 @@
 #include "elliptic/InternalElectroelasticEnergy.hpp"
 #include "elliptic/ElectroelastostaticResidual.hpp"
 #include "elliptic/EMStressPNorm.hpp"
-#include "elliptic/Volume.hpp"
 
 #include "Simp.hpp"
 #include "Ramp.hpp"
@@ -133,34 +132,6 @@ struct FunctionFactory
             if(tPenaltyType == "NoPenalty")
             {
                 return std::make_shared<Plato::Elliptic::EMStressPNorm<EvaluationType, Plato::NoPenalty>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
-            }
-            else
-            {
-                throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
-            }
-        }
-        else if(aStrScalarFunctionType == "Volume")
-        {
-            auto tPenaltyParams = aParamList.sublist(aStrScalarFunctionName).sublist("Penalty Function");
-            std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "SIMP");
-            if(tPenaltyType == "SIMP")
-            {
-                return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::MSIMP>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
-            }
-            else 
-            if(tPenaltyType == "RAMP")
-            {
-                return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::RAMP>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
-            }
-            else 
-            if(tPenaltyType == "Heaviside")
-            {
-                return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::Heaviside>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
-            }
-            else
-            if(tPenaltyType == "NoPenalty")
-            {
-                return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::NoPenalty>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else
             {

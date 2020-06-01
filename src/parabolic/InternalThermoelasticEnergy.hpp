@@ -1,23 +1,25 @@
 #ifndef PARABOLIC_INTERNAL_THERMOELASTIC_ENERGY_HPP
 #define PARABOLIC_INTERNAL_THERMOELASTIC_ENERGY_HPP
 
-#include "SimplexFadTypes.hpp"
 #include "SimplexThermomechanics.hpp"
+#include "parabolic/ParabolicSimplexFadTypes.hpp"
+#include "parabolic/AbstractScalarFunction.hpp"
+
 #include "ScalarProduct.hpp"
 #include "ApplyWeighting.hpp"
 #include "TMKinematics.hpp"
 #include "TMKinetics.hpp"
 #include "ImplicitFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
-#include "parabolic/AbstractScalarFunction.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "LinearThermoelasticMaterial.hpp"
 #include "ToMap.hpp"
-#include "ExpInstMacros.hpp"
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
+
+#include "parabolic/ExpInstMacros.hpp"
 
 namespace Plato
 {
@@ -51,7 +53,7 @@ class InternalThermoelasticEnergy :
     using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
-    using PrevStateScalarType = typename EvaluationType::PrevStateScalarType;
+    using StateDotScalarType = typename EvaluationType::StateDotScalarType;
     using ControlScalarType   = typename EvaluationType::ControlScalarType;
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
     using ResultScalarType    = typename EvaluationType::ResultScalarType;
@@ -90,7 +92,7 @@ class InternalThermoelasticEnergy :
 
     /**************************************************************************/
     void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<PrevStateScalarType> & aPrevState,
+                  const Plato::ScalarMultiVectorT<StateDotScalarType> & aStateDot,
                   const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
                   const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
                   Plato::ScalarVectorT<ResultScalarType> & aResult,
@@ -162,15 +164,15 @@ class InternalThermoelasticEnergy :
 } // namespace Plato
 
 #ifdef PLATOANALYZE_1D
-PLATO_EXPL_DEC(Plato::Parabolic::InternalThermoelasticEnergy, Plato::SimplexThermomechanics, 1)
+PLATO_PARABOLIC_EXPL_DEC(Plato::Parabolic::InternalThermoelasticEnergy, Plato::SimplexThermomechanics, 1)
 #endif
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC(Plato::Parabolic::InternalThermoelasticEnergy, Plato::SimplexThermomechanics, 2)
+PLATO_PARABOLIC_EXPL_DEC(Plato::Parabolic::InternalThermoelasticEnergy, Plato::SimplexThermomechanics, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC(Plato::Parabolic::InternalThermoelasticEnergy, Plato::SimplexThermomechanics, 3)
+PLATO_PARABOLIC_EXPL_DEC(Plato::Parabolic::InternalThermoelasticEnergy, Plato::SimplexThermomechanics, 3)
 #endif
 
 #endif

@@ -39,12 +39,12 @@ class StressPNorm :
     using Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>::mMesh;
     using Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
-    using DisplacementScalarType = typename EvaluationType::DisplacementScalarType;
-    using VelocityScalarType     = typename EvaluationType::VelocityScalarType;
-    using AccelerationScalarType = typename EvaluationType::AccelerationScalarType;
-    using ControlScalarType      = typename EvaluationType::ControlScalarType;
-    using ConfigScalarType       = typename EvaluationType::ConfigScalarType;
-    using ResultScalarType       = typename EvaluationType::ResultScalarType;
+    using StateScalarType       = typename EvaluationType::StateScalarType;
+    using StateDotScalarType    = typename EvaluationType::StateDotScalarType;
+    using StateDotDotScalarType = typename EvaluationType::StateDotDotScalarType;
+    using ControlScalarType     = typename EvaluationType::ControlScalarType;
+    using ConfigScalarType      = typename EvaluationType::ConfigScalarType;
+    using ResultScalarType      = typename EvaluationType::ResultScalarType;
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
 
@@ -84,12 +84,12 @@ class StressPNorm :
     /**************************************************************************/
     void
     evaluate(
-        const Plato::ScalarMultiVectorT<typename EvaluationType::DisplacementScalarType> & aState,
-        const Plato::ScalarMultiVectorT<typename EvaluationType::VelocityScalarType>     & aStateDot,
-        const Plato::ScalarMultiVectorT<typename EvaluationType::AccelerationScalarType> & aStateDotDot,
-        const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType>      & aControl,
-        const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType>           & aConfig,
-        Plato::ScalarVectorT<typename EvaluationType::ResultScalarType>                  & aResult,
+        const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType>       & aState,
+        const Plato::ScalarMultiVectorT<typename EvaluationType::StateDotScalarType>    & aStateDot,
+        const Plato::ScalarMultiVectorT<typename EvaluationType::StateDotDotScalarType> & aStateDotDot,
+        const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType>     & aControl,
+        const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType>          & aConfig,
+        Plato::ScalarVectorT<typename EvaluationType::ResultScalarType>                 & aResult,
         Plato::Scalar aTimeStep = 0.0
     ) const
     /**************************************************************************/
@@ -102,7 +102,7 @@ class StressPNorm :
 
       using StrainScalarType = 
         typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>,
-                            DisplacementScalarType, ConfigScalarType>;
+                            StateScalarType, ConfigScalarType>;
 
       Plato::ScalarVectorT      <ConfigScalarType> tCellVolume ("cell weight",numCells);
       Plato::ScalarArray3DT     <ConfigScalarType> tGradient   ("gradient",numCells,mNumNodesPerCell,mSpaceDim);

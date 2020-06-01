@@ -19,12 +19,21 @@
 #include "PlatoStaticsTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
 
+#include "Geometrical.hpp"
+#include "geometric/ScalarFunctionBase.hpp"
+#include "geometric/ScalarFunctionBaseFactory.hpp"
+
 #include "elliptic/VectorFunction.hpp"
 #include "elliptic/ScalarFunctionBaseFactory.hpp"
 #include "AnalyzeMacros.hpp"
 
 #include "alg/ParallelComm.hpp"
 #include "alg/PlatoSolverFactory.hpp"
+
+/* Notes:
+ 1.  The updateProblem function should send the MultiVector into objective.
+ 2.  Some of the objective and constraint functions dont use the solution arg.
+*/
 
 namespace Plato
 {
@@ -46,7 +55,7 @@ private:
     std::shared_ptr<Plato::Elliptic::VectorFunction<SimplexPhysics>> mPDE; /*!< equality constraint interface */
 
     // optional
-    std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
+    std::shared_ptr<Plato::Geometric::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> mObjective; /*!< objective constraint interface */
 
     Plato::ScalarMultiVector mAdjoint;
@@ -138,7 +147,7 @@ public:
         mObjective = aObjective;
     }
 
-    void appendConstraint(const std::shared_ptr<Plato::Elliptic::ScalarFunctionBase>& aConstraint)
+    void appendConstraint(const std::shared_ptr<Plato::Geometric::ScalarFunctionBase>& aConstraint)
     {
         mConstraint = aConstraint;
     }
@@ -156,29 +165,30 @@ public:
      * \brief Set state variables
      * \param [in] aGlobalState 2D view of state variables
     **********************************************************************************/
-    void setGlobalState(const Plato::ScalarMultiVector & aGlobalState)
+    void setGlobalSolution(const Plato::Solution & aSolution)
     {
-        assert(aGlobalState.extent(0) == mStates.extent(0));
-        assert(aGlobalState.extent(1) == mStates.extent(1));
-        Kokkos::deep_copy(mStates, aGlobalState);
+        auto tState = aSolution.State;
+        assert(tState.extent(0) == mStates.extent(0));
+        assert(tState.extent(1) == mStates.extent(1));
+        Kokkos::deep_copy(mStates, tState);
     }
 
     /******************************************************************************//**
      * \brief Return 2D view of state variables
      * \return aGlobalState 2D view of state variables
     **********************************************************************************/
-    Plato::ScalarMultiVector getGlobalState()
+    Plato::Solution getGlobalSolution()
     {
-        return mStates;
+        return Plato::Solution(mStates);
     }
 
     /******************************************************************************//**
      * \brief Return 2D view of adjoint variables
      * \return 2D view of adjoint variables
     **********************************************************************************/
-    Plato::ScalarMultiVector getAdjoint()
+    Plato::Adjoint getAdjoint()
     {
-        return mAdjoint;
+        return Plato::Adjoint(mAdjoint);
     }
 
     /******************************************************************************//**
@@ -205,19 +215,20 @@ public:
      * \param [in] aGlobalState 2D container of state variables
      * \param [in] aControl 1D container of control variables
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
+    void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(aGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tStatesSubView = Kokkos::subview(aSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
         mObjective->updateProblem(tStatesSubView, aControl);
     }
 
     /******************************************************************************//**
      * \brief Solve system of equations
      * \param [in] aControl 1D view of control variables
-     * \return 2D view of state variables
+     * \return Plato::Solution composed of state variables
     **********************************************************************************/
-    Plato::ScalarMultiVector solution(const Plato::ScalarVector & aControl)
+    Plato::Solution
+    solution(const Plato::ScalarVector & aControl)
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
         auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
@@ -234,71 +245,45 @@ public:
         mResidual = mPDE->value(tStatesSubView, aControl);
         Plato::blas1::scale(-1.0, mResidual);
 
-        return mStates;
+        return Plato::Solution(mStates);
     }
 
     /******************************************************************************//**
      * \brief Evaluate objective function
      * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \return objective function value
     **********************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::Scalar
+    objectiveValue(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
     {
-        assert(aGlobalState.extent(0) == mStates.extent(0));
-        assert(aGlobalState.extent(1) == mStates.extent(1));
+        assert(aSolution.State.extent(0) == mStates.extent(0));
+        assert(aSolution.State.extent(1) == mStates.extent(1));
 
         if(mObjective == nullptr)
         {
-            const std::string tErrorMessage = "OBJECTIVE POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
+            THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
         }
 
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(aGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
-        auto tObjFuncValue = mObjective->value(tStatesSubView, aControl);
+        auto tObjFuncValue = mObjective->value(aSolution, aControl);
         return tObjFuncValue;
     }
 
     /******************************************************************************//**
-     * \brief Evaluate constraint function
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return constraint function value
-    **********************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
-    {
-        assert(aGlobalState.extent(0) == mStates.extent(0));
-        assert(aGlobalState.extent(1) == mStates.extent(1));
-
-        if(mConstraint == nullptr)
-        {
-            const std::string tErrorMessage = "CONSTRAINT POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
-        }
-
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(aGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
-        return mConstraint->value(tStatesSubView, aControl);
-    }
-
-    /******************************************************************************//**
      * \brief Evaluate objective function
      * \param [in] aControl 1D view of control variables
      * \return objective function value
     **********************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl)
+    Plato::Scalar
+    objectiveValue(const Plato::ScalarVector & aControl)
     {
         if(mObjective == nullptr)
         {
-            const std::string tErrorMessage = "OBJECTIVE POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
+            THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
         }
 
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        Plato::ScalarMultiVector tStates = solution(aControl);
-        auto tStatesSubView = Kokkos::subview(tStates, tTIME_STEP_INDEX, Kokkos::ALL());
-        return mObjective->value(tStatesSubView, aControl);
+        Plato::Solution tSolution = solution(aControl);
+        return mObjective->value(tSolution, aControl);
     }
 
     /******************************************************************************//**
@@ -306,34 +291,31 @@ public:
      * \param [in] aControl 1D view of control variables
      * \return constraint function value
     **********************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControl)
+    Plato::Scalar
+    constraintValue(const Plato::ScalarVector & aControl)
     {
         if(mConstraint == nullptr)
         {
-            const std::string tErrorMessage = "CONSTRAINT POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
+            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
         }
-
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
-        return mConstraint->value(tStatesSubView, aControl);
+        return mConstraint->value(aControl);
     }
 
     /******************************************************************************//**
      * \brief Evaluate objective gradient wrt control variables
      * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \return 1D view - objective gradient wrt control variables
     **********************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::ScalarVector
+    objectiveGradient(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
     {
-        assert(aGlobalState.extent(0) == mStates.extent(0));
-        assert(aGlobalState.extent(1) == mStates.extent(1));
+        assert(aSolution.State.extent(0) == mStates.extent(0));
+        assert(aSolution.State.extent(1) == mStates.extent(1));
 
         if(mObjective == nullptr)
         {
-            const std::string tErrorMessage = "OBJECTIVE POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
+            THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
         }
 
         if(static_cast<Plato::OrdinalType>(mAdjoint.size()) <= static_cast<Plato::OrdinalType>(0))
@@ -344,8 +326,9 @@ public:
 
         // compute dfdz: partial of objective wrt z
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
-        auto tPartialObjectiveWRT_Control = mObjective->gradient_z(tStatesSubView, aControl);
+        auto tStatesSubView = Kokkos::subview(aSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
+
+        auto tPartialObjectiveWRT_Control = mObjective->gradient_z(aSolution, aControl);
         if(mIsSelfAdjoint)
         {
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_Control);
@@ -353,7 +336,7 @@ public:
         else
         {
             // compute dfdu: partial of objective wrt u
-            auto tPartialObjectiveWRT_State = mObjective->gradient_u(tStatesSubView, aControl);
+            auto tPartialObjectiveWRT_State = mObjective->gradient_u(aSolution, aControl, /*stepIndex=*/0);
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
 
             // compute dgdu: partial of PDE wrt state
@@ -384,21 +367,23 @@ public:
      * \param [in] aGlobalState 2D view of state variables
      * \return 1D view - objective gradient wrt configuration variables
     **********************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::ScalarVector
+    objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
     {
-        assert(aGlobalState.extent(0) == mStates.extent(0));
-        assert(aGlobalState.extent(1) == mStates.extent(1));
+        assert(aSolution.State.extent(0) == mStates.extent(0));
+        assert(aSolution.State.extent(1) == mStates.extent(1));
 
         if(mObjective == nullptr)
         {
-            const std::string tErrorMessage = "OBJECTIVE POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
+            THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
+
         }
 
         // compute partial derivative wrt x
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(aGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
-        auto tPartialObjectiveWRT_Config  = mObjective->gradient_x(tStatesSubView, aControl);
+        auto tStatesSubView = Kokkos::subview(aSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
+
+        auto tPartialObjectiveWRT_Config  = mObjective->gradient_x(aSolution, aControl);
 
         if(mIsSelfAdjoint)
         {
@@ -407,7 +392,7 @@ public:
         else
         {
             // compute dfdu: partial of objective wrt u
-            auto tPartialObjectiveWRT_State = mObjective->gradient_u(tStatesSubView, aControl);
+            auto tPartialObjectiveWRT_State = mObjective->gradient_u(aSolution, aControl, /*stepIndex=*/0);
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
 
             // compute dgdu: partial of PDE wrt state
@@ -437,39 +422,14 @@ public:
      * \param [in] aControl 1D view of control variables
      * \return 1D view - constraint partial derivative wrt control variables
     **********************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl)
+    Plato::ScalarVector
+    constraintGradient(const Plato::ScalarVector & aControl)
     {
         if(mConstraint == nullptr)
         {
-            const std::string tErrorMessage = "CONSTRAINT POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
+            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
         }
-
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
-        return mConstraint->gradient_z(tStatesSubView, aControl);
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt control variables
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return 1D view - constraint partial derivative wrt control variables
-    **********************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
-    {
-        assert(aGlobalState.extent(0) == mStates.extent(0));
-        assert(aGlobalState.extent(1) == mStates.extent(1));
-
-        if(mConstraint == nullptr)
-        {
-            const std::string tErrorMessage = "CONSTRAINT POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
-        }
-
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(aGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
-        return mConstraint->gradient_z(tStatesSubView, aControl);
+        return mConstraint->gradient_z(aControl);
     }
 
     /******************************************************************************//**
@@ -477,17 +437,15 @@ public:
      * \param [in] aControl 1D view of control variables
      * \return 1D view - objective partial derivative wrt control variables
     **********************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl)
+    Plato::ScalarVector
+    objectiveGradient(const Plato::ScalarVector & aControl)
     {
         if(mObjective == nullptr)
         {
-            const std::string tErrorMessage = "OBJECTIVE POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
+            THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
         }
 
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
-        return mObjective->gradient_z(tStatesSubView, aControl);
+        return mObjective->gradient_z(Plato::Solution(mStates), aControl);
     }
 
     /******************************************************************************//**
@@ -495,17 +453,15 @@ public:
      * \param [in] aControl 1D view of control variables
      * \return 1D view - objective partial derivative wrt configuration variables
     **********************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl)
+    Plato::ScalarVector
+    objectiveGradientX(const Plato::ScalarVector & aControl)
     {
         if(mObjective == nullptr)
         {
-            const std::string tErrorMessage = "OBJECTIVE POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
+            THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
         }
 
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
-        return mObjective->gradient_x(tStatesSubView, aControl);
+        return mObjective->gradient_x(Plato::Solution(mStates), aControl);
     }
 
     /******************************************************************************//**
@@ -513,39 +469,14 @@ public:
      * \param [in] aControl 1D view of control variables
      * \return 1D view - constraint partial derivative wrt configuration variables
     **********************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl)
+    Plato::ScalarVector
+    constraintGradientX(const Plato::ScalarVector & aControl)
     {
         if(mConstraint == nullptr)
         {
-            const std::string tErrorMessage = "CONSTRAINT POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
+            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
         }
-
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
-        return mConstraint->gradient_x(tStatesSubView, aControl);
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt configuration variables
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return 1D view - constraint partial derivative wrt configuration variables
-    **********************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
-    {
-        assert(aGlobalState.extent(0) == mStates.extent(0));
-        assert(aGlobalState.extent(1) == mStates.extent(1));
-
-        if(mConstraint == nullptr)
-        {
-            const std::string tErrorMessage = "CONSTRAINT POINTER WAS NOT DEFINED BY THE USER.";
-            THROWERR(tErrorMessage)
-        }
-
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(aGlobalState, tTIME_STEP_INDEX, Kokkos::ALL());
-        return mConstraint->gradient_x(tStatesSubView, aControl);
+        return mConstraint->gradient_x(aControl);
     }
 
     /***************************************************************************//**
@@ -594,15 +525,16 @@ private:
         auto tName = aInputParams.get<std::string>("PDE Constraint");
         mPDE = std::make_shared<Plato::Elliptic::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aInputParams, tName);
 
-        Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
         if(aInputParams.isType<std::string>("Constraint"))
         {
+            Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tFunctionBaseFactory;
             std::string tName = aInputParams.get<std::string>("Constraint");
             mConstraint = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
         }
 
         if(aInputParams.isType<std::string>("Objective"))
         {
+            Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
             std::string tName = aInputParams.get<std::string>("Objective");
             mObjective = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
 

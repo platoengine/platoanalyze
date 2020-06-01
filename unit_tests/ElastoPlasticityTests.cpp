@@ -2174,7 +2174,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ElasticSolution3D)
     const Plato::OrdinalType tNumVerts = tMesh->nverts();
     Plato::ScalarVector tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls).State;
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
@@ -2323,7 +2323,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls).State;
 
     // 5. Test results
     Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
@@ -2500,7 +2500,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls).State;
 
     // 5. Test results
     Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
@@ -2677,7 +2677,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls).State;
 
     // 5. Test results - test only final time step
     Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
@@ -2979,10 +2979,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
-    auto tConstraintValue = tPlasticityProblem.constraintValue(tControls, tSolution);
+    auto tConstraintValue = tPlasticityProblem.constraintValue(tControls);
     TEST_FLOATING_EQUALITY(tConstraintValue, -0.539482, tTolerance);
 
-    auto tConstraintGrad = tPlasticityProblem.constraintGradient(tControls, tSolution);
+    auto tConstraintGrad = tPlasticityProblem.constraintGradient(tControls);
     std::vector<Plato::Scalar> tGold = {-0.927379, -0.46369, -0.927379, -0.46369};
     auto tHostGrad = Kokkos::create_mirror(tConstraintGrad);
     Kokkos::deep_copy(tHostGrad, tConstraintGrad);
@@ -3235,10 +3235,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
-    auto tObjValue = tPlasticityProblem.constraintValue(tControls, tSolution);
+    auto tObjValue = tPlasticityProblem.constraintValue(tControls);
     TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
 
-    auto tObjGrad = tPlasticityProblem.constraintGradient(tControls, tSolution);
+    auto tObjGrad = tPlasticityProblem.constraintGradient(tControls);
     std::vector<Plato::Scalar> tGold = 
         {
          -0.0869418, -0.115922, -0.0289806, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.0289806, -0.115922,

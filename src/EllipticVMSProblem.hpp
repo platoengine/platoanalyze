@@ -16,17 +16,19 @@
 #include "ApplyConstraints.hpp"
 
 #include "VectorFunctionVMS.hpp"
-#include "elliptic/ScalarFunctionBase.hpp"
-#include "parabolic/ScalarFunctionBase.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "ParseTools.hpp"
 #include "Plato_Solve.hpp"
-
 #include "alg/PlatoSolverFactory.hpp"
+
+#include "Geometrical.hpp"
+#include "geometric/ScalarFunctionBase.hpp"
+#include "geometric/ScalarFunctionBaseFactory.hpp"
+
+#include "elliptic/ScalarFunctionBase.hpp"
 #include "elliptic/ScalarFunctionBaseFactory.hpp"
-#include "parabolic/ScalarFunctionBaseFactory.hpp"
 
 namespace Plato
 {
@@ -43,12 +45,12 @@ private:
     static constexpr auto mNumGlobalDofsPerNode = SimplexPhysics::mNumDofsPerNode;          /*!< number of global degrees of freedom per node*/
 
     // required
-    Plato::VectorFunctionVMS<SimplexPhysics> mEqualityConstraint; /*!< equality constraint interface */
+    Plato::VectorFunctionVMS<SimplexPhysics> mPDEConstraint; /*!< equality constraint interface */
     Plato::VectorFunctionVMS<typename SimplexPhysics::ProjectorT> mStateProjection; /*!< projection interface */
 
     // optional
-    std::shared_ptr<const Plato::Elliptic::ScalarFunctionBase>    mConstraint; /*!< constraint constraint interface */
-    std::shared_ptr<const Plato::Parabolic::ScalarFunctionBase> mObjective;  /*!< objective constraint interface */
+    std::shared_ptr<const Plato::Geometric::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
+    std::shared_ptr<const Plato::Elliptic::ScalarFunctionBase> mObjective;  /*!< objective constraint interface */
 
     Plato::OrdinalType mNumSteps, mNumNewtonSteps, mCurrentNewtonStep;
     Plato::Scalar mTimeStep;
@@ -82,15 +84,15 @@ public:
       Teuchos::ParameterList& aInputParams,
       Comm::Machine aMachine
     ) :
-      mEqualityConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
+      mPDEConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
       mStateProjection(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
       mNumSteps      (Plato::ParseTools::getSubParam<int>   (aInputParams, "Time Stepping", "Number Time Steps",    1  )),
       mTimeStep      (Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Time Step",     1.0)),
       mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Number Iterations", 2  )),
       mConstraint(nullptr),
       mObjective(nullptr),
-      mResidual("MyResidual", mEqualityConstraint.size()),
-      mGlobalState("States", mNumSteps, mEqualityConstraint.size()),
+      mResidual("MyResidual", mPDEConstraint.size()),
+      mGlobalState("States", mNumSteps, mPDEConstraint.size()),
       mJacobian(Teuchos::null),
       mProjResidual("MyProjResidual", mStateProjection.size()),
       mProjPGrad("Projected PGrad", mStateProjection.size()),
@@ -110,7 +112,7 @@ public:
     *******************************************************************************/
     void saveStates(const std::string& aFilepath, Omega_h::Mesh& aMesh)
     {
-        auto tNumNodes = mEqualityConstraint.numNodes();
+        auto tNumNodes = mPDEConstraint.numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalState.extent(0), tNumNodes);
         Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalState.extent(0), tNumNodes*mSpaceDim);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalState, tPressure);
@@ -145,29 +147,29 @@ public:
      * \brief Set state variables
      * \param [in] aGlobalState 2D view of state variables
     **********************************************************************************/
-    void setGlobalState(const Plato::ScalarMultiVector & aGlobalState)
+    void setGlobalSolution(const Plato::Solution & aSolution)
     {
-        assert(aGlobalState.extent(0) == mGlobalState.extent(0));
-        assert(aGlobalState.extent(1) == mGlobalState.extent(1));
-        Kokkos::deep_copy(mGlobalState, aGlobalState);
+        assert(aSolution.State.extent(0) == mGlobalState.extent(0));
+        assert(aSolution.State.extent(1) == mGlobalState.extent(1));
+        Kokkos::deep_copy(mGlobalState, aSolution.State);
     }
 
     /******************************************************************************//**
      * \brief Return 2D view of state variables
      * \return aGlobalState 2D view of state variables
     **********************************************************************************/
-    Plato::ScalarMultiVector getGlobalState()
+    Plato::Solution getGlobalSolution()
     {
-        return mGlobalState;
+        return Plato::Solution(mGlobalState);
     }
 
     /******************************************************************************//**
      * \brief Return 2D view of adjoint variables
      * \return 2D view of adjoint variables
     **********************************************************************************/
-    Plato::ScalarMultiVector getAdjoint()
+    Plato::Adjoint getAdjoint()
     {
-        return mLambda;
+        return Plato::Adjoint(mLambda);
     }
 
     /***************************************************************************//**
@@ -265,15 +267,16 @@ public:
      * \param [in] aControl 1D container of control variables
      * \param [in] aGlobalState 2D container of state variables
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
+    void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aGlobalSolution)
     { return; }
 
     /******************************************************************************//**
      * \brief Solve system of equations
      * \param [in] aControl 1D view of control variables
-     * \return 2D view of state variables
+     * \return Plato::Solution composed of state variables
     **********************************************************************************/
-    Plato::ScalarMultiVector solution(const Plato::ScalarVector & aControl)
+    Plato::Solution
+    solution(const Plato::ScalarVector & aControl)
     {
 
         Plato::ScalarVector tStateIncrement("State increment", mGlobalState.extent(1));
@@ -297,9 +300,9 @@ public:
                 Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPGrad, mProjResidual);
 
                 // compute the state solution
-                mResidual = mEqualityConstraint.value      (tState, mProjPGrad, aControl);
+                mResidual = mPDEConstraint.value      (tState, mProjPGrad, aControl);
                 Plato::blas1::scale(static_cast<Plato::Scalar>(-1.0), mResidual);
-                mJacobian = mEqualityConstraint.gradient_u (tState, mProjPGrad, aControl);
+                mJacobian = mPDEConstraint.gradient_u (tState, mProjPGrad, aControl);
 
                 this->applyConstraints(mJacobian, mResidual);
 
@@ -313,25 +316,26 @@ public:
                                       SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tState, mProjectState);
             }
 
-            mResidual = mEqualityConstraint.value(tState, mProjPGrad, aControl);
+            mResidual = mPDEConstraint.value(tState, mProjPGrad, aControl);
 
         }
-        return mGlobalState;
+        return Plato::Solution(mGlobalState);
     }
 
     /******************************************************************************//**
      * \brief Evaluate objective function
      * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \return objective function value
     **********************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::Scalar
+    objectiveValue(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
         }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
         }
@@ -340,33 +344,7 @@ public:
             THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
-        return mObjective->value(aGlobalState, aControl, mTimeStep);
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate constraint function
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return constraint function value
-    **********************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
-    {
-        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
-        }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
-        }
-        if(mConstraint == nullptr)
-        {
-            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
-        }
-
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(aGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->value(tState, aControl);
+        return mObjective->value(aSolution, aControl, mTimeStep);
     }
 
     /******************************************************************************//**
@@ -385,8 +363,8 @@ public:
             THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
-        Plato::ScalarMultiVector tStates = solution(aControl);
-        return mObjective->value(tStates, aControl);
+        auto tSolution = solution(aControl);
+        return mObjective->value(tSolution, aControl);
     }
 
     /******************************************************************************//**
@@ -404,25 +382,23 @@ public:
         {
             THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
-
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->value(tState, aControl);
+        return mConstraint->value(aControl);
     }
 
     /******************************************************************************//**
      * \brief Evaluate objective gradient wrt control variables
      * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \return 1D view - objective gradient wrt control variables
     **********************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::ScalarVector
+    objectiveGradient(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
         }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
         }
@@ -432,18 +408,18 @@ public:
         }
 
         // compute dfdz: partial of objective wrt z
-        auto t_df_dz = mObjective->gradient_z(aGlobalState, aControl, mTimeStep);
+        auto t_df_dz = mObjective->gradient_z(aSolution, aControl, mTimeStep);
 
         // outer loop for load/time steps
         auto tLastStepIndex = mNumSteps - 1;
         for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--)
         {
             // compute dfdu: partial of objective wrt u
-            auto t_df_du = mObjective->gradient_u(aGlobalState, aControl, mTimeStep, tStepIndex);
+            auto t_df_du = mObjective->gradient_u(aSolution, aControl, tStepIndex, mTimeStep);
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_df_du);
 
             // compute nodal projection of pressure gradient
-            Plato::ScalarVector tStateAtStepK = Kokkos::subview(aGlobalState, tStepIndex, Kokkos::ALL());
+            Plato::ScalarVector tStateAtStepK = Kokkos::subview(aSolution.State, tStepIndex, Kokkos::ALL());
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
             // extract projection state
             Plato::blas1::extract<SimplexPhysics::mNumDofsPerNode,
@@ -453,13 +429,13 @@ public:
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPGrad, mProjResidual);
 
             // compute dgdu^T: Transpose of partial of PDE wrt state
-            mJacobian = mEqualityConstraint.gradient_u_T(tStateAtStepK, mProjPGrad, aControl);
+            mJacobian = mPDEConstraint.gradient_u_T(tStateAtStepK, mProjPGrad, aControl);
 
             // compute dPdn^T: Transpose of partial of projection residual wrt state
             auto t_dP_dn_T = mStateProjection.gradient_n_T(mProjPGrad, mProjectState, aControl);
 
             // compute dgdPI^T: Transpose of partial of PDE wrt projected pressure gradient
-            auto t_dg_dPI_T = mEqualityConstraint.gradient_n_T(tStateAtStepK, mProjPGrad, aControl);
+            auto t_dg_dPI_T = mPDEConstraint.gradient_n_T(tStateAtStepK, mProjPGrad, aControl);
 
             // compute dgdu^T - dP_dn_T X (mProjJacobian)^-1 X t_dg_dPI_T
             auto tRow = SimplexPhysics::ProjectorT::SimplexT::mProjectionDof;
@@ -478,7 +454,7 @@ public:
 
             // compute dgdz: partial of PDE wrt state.
             // dgdz is returned transposed, nxm.  n=z.size() and m=u.size().
-            auto t_dg_dz = mEqualityConstraint.gradient_z(tStateAtStepK, mProjPGrad, aControl);
+            auto t_dg_dz = mPDEConstraint.gradient_z(tStateAtStepK, mProjPGrad, aControl);
 
             // compute dfdz += dgdz . lambda
             // dPdz is returned transposed, nxm.  n=z.size() and m=u.size().
@@ -498,16 +474,17 @@ public:
     /******************************************************************************//**
      * \brief Evaluate objective gradient wrt configuration variables
      * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \return 1D view - objective gradient wrt configuration variables
     **********************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
+    Plato::ScalarVector
+    objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
     {
         if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
         }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
         }
@@ -517,18 +494,18 @@ public:
         }
 
         // compute dfdx: partial of objective wrt x
-        auto t_df_dx = mObjective->gradient_x(aGlobalState, aControl, mTimeStep);
+        auto t_df_dx = mObjective->gradient_x(aSolution, aControl, mTimeStep);
 
         // outer loop for load/time steps
         auto tLastStepIndex = mNumSteps - 1;
         for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--)
         {
             // compute dfdu: partial of objective wrt u
-            auto t_df_du = mObjective->gradient_u(aGlobalState, aControl, mTimeStep, tStepIndex);
+            auto t_df_du = mObjective->gradient_u(aSolution, aControl, tStepIndex, mTimeStep);
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_df_du);
 
             // compute nodal projection of pressure gradient
-            Plato::ScalarVector tStateAtStepK = Kokkos::subview(aGlobalState, tStepIndex, Kokkos::ALL());
+            Plato::ScalarVector tStateAtStepK = Kokkos::subview(aSolution.State, tStepIndex, Kokkos::ALL());
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjPGrad);
             auto mProjResidual = mStateProjection.value      (mProjPGrad, tStateAtStepK, aControl);
             auto mProjJacobian = mStateProjection.gradient_u (mProjPGrad, tStateAtStepK, aControl);
@@ -540,13 +517,13 @@ public:
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPGrad, mProjResidual);
 
             // compute dgdu^T: Transpose of partial of PDE wrt state
-            mJacobian = mEqualityConstraint.gradient_u_T(tStateAtStepK, mProjPGrad, aControl);
+            mJacobian = mPDEConstraint.gradient_u_T(tStateAtStepK, mProjPGrad, aControl);
 
             // compute dPdn^T: Transpose of partial of projection residual wrt state
             auto t_dP_dn_T = mStateProjection.gradient_n_T(mProjPGrad, mProjectState, aControl);
 
             // compute dgdPI: Transpose of partial of PDE wrt projected pressure gradient
-            auto t_dg_dPI_T = mEqualityConstraint.gradient_n_T(tStateAtStepK, mProjPGrad, aControl);
+            auto t_dg_dPI_T = mPDEConstraint.gradient_n_T(tStateAtStepK, mProjPGrad, aControl);
 
             // compute dgdu^T - dP_dn_T X (mProjJacobian)^-1 X t_dg_dPI_T
             auto tRow = SimplexPhysics::ProjectorT::SimplexT::mProjectionDof;
@@ -565,7 +542,7 @@ public:
 
             // compute dgdx: partial of PDE wrt configuration
             // dgdx is returned transposed, nxm.  n=z.size() and m=u.size().
-            auto t_dg_dx = mEqualityConstraint.gradient_x(tStateAtStepK, mProjPGrad, aControl);
+            auto t_dg_dx = mPDEConstraint.gradient_x(tStateAtStepK, mProjPGrad, aControl);
 
             // compute dfdx += dgdx . lambda
             // dPdx is returned transposed, nxm.  n=z.size() and m=u.size().
@@ -597,36 +574,7 @@ public:
         {
             THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
-
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->gradient_z(tState, aControl);
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt control variables
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return 1D view - constraint partial derivative wrt control variables
-    **********************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
-    {
-        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
-        }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
-        }
-        if(mConstraint == nullptr)
-        {
-            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
-        }
-
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(aGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->gradient_z(tState, aControl);
+        return mConstraint->gradient_z(aControl);
     }
 
     /******************************************************************************//**
@@ -645,7 +593,8 @@ public:
             THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
 
-        return mObjective->gradient_z(mGlobalState, aControl, mTimeStep);
+        auto tSolution = solution(aControl);
+        return objectiveGradient(aControl, tSolution);
     }
 
     /******************************************************************************//**
@@ -663,8 +612,8 @@ public:
         {
             THROWERR("\nOBJECTIVE PTR IS NULL.\n");
         }
-
-        return mObjective->gradient_x(mGlobalState, aControl, mTimeStep);
+        auto tSolution = solution(aControl);
+        return objectiveGradientX(aControl, tSolution);
     }
 
     /******************************************************************************//**
@@ -682,36 +631,7 @@ public:
         {
             THROWERR("\nCONSTRAINT PTR IS NULL.\n");
         }
-
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->gradient_x(tState, aControl);
-    }
-
-    /******************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt configuration variables
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return 1D view - constraint partial derivative wrt configuration variables
-    **********************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
-    {
-        if(aControl.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("\nCONTROL 1D VIEW IS EMPTY.\n");
-        }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("\nSTATE 2D VIEW IS EMPTY.\n");
-        }
-        if(mConstraint == nullptr)
-        {
-            THROWERR("\nCONSTRAINT PTR IS NULL.\n");
-        }
-
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(aGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->gradient_x(tState, aControl);
+        return mConstraint->gradient_x(aControl);
     }
 
 private:
@@ -743,20 +663,20 @@ private:
             mNumNewtonSteps = 2;
         }
 
-        Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tEllipticFunctionBaseFactory;
-        Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tParabolicFunctionBaseFactory;
         if(aInputParams.isType<std::string>("Constraint"))
         {
+            Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<mSpaceDim>> tFunctionBaseFactory;
             std::string tName = aInputParams.get<std::string>("Constraint");
-            mConstraint = tEllipticFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+            mConstraint = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
         }
 
         if(aInputParams.isType<std::string>("Objective"))
         {
+            Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
             std::string tName = aInputParams.get<std::string>("Objective");
-            mObjective = tParabolicFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+            mObjective = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
 
-            auto tLength = mEqualityConstraint.size();
+            auto tLength = mPDEConstraint.size();
             mLambda = Plato::ScalarMultiVector("Lambda", mNumSteps, tLength);
             tLength = mStateProjection.size();
             mEta = Plato::ScalarVector("Eta", tLength);
@@ -767,24 +687,16 @@ private:
 
 } // namespace Plato
 
-#include "Thermal.hpp"
-#include "Mechanics.hpp"
-#include "Electromechanics.hpp"
-#include "Thermomechanics.hpp"
-
 #ifdef PLATOANALYZE_1D
 extern template class Plato::EllipticVMSProblem<::Plato::StabilizedMechanics<1>>;
-//extern template class Plato::EllipticVMSProblem<::Plato::Electromechanics<1>>;
 extern template class Plato::EllipticVMSProblem<::Plato::StabilizedThermomechanics<1>>;
 #endif
 #ifdef PLATOANALYZE_2D
 extern template class Plato::EllipticVMSProblem<::Plato::StabilizedMechanics<2>>;
-//extern template class Plato::EllipticVMSProblem<::Plato::Electromechanics<2>>;
 extern template class Plato::EllipticVMSProblem<::Plato::StabilizedThermomechanics<2>>;
 #endif
 #ifdef PLATOANALYZE_3D
 extern template class Plato::EllipticVMSProblem<::Plato::StabilizedMechanics<3>>;
-//extern template class Plato::EllipticVMSProblem<::Plato::Electromechanics<3>>;
 extern template class Plato::EllipticVMSProblem<::Plato::StabilizedThermomechanics<3>>;
 #endif
 

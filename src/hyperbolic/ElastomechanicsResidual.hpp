@@ -43,16 +43,16 @@ class TransientMechanicsResidual :
     using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mDataMap;
     using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
-    using DisplacementScalarType = typename EvaluationType::DisplacementScalarType;
-    using VelocityScalarType     = typename EvaluationType::VelocityScalarType;
-    using AccelerationScalarType = typename EvaluationType::AccelerationScalarType;
-    using ControlScalarType      = typename EvaluationType::ControlScalarType;
-    using ConfigScalarType       = typename EvaluationType::ConfigScalarType;
-    using ResultScalarType       = typename EvaluationType::ResultScalarType;
+    using StateScalarType       = typename EvaluationType::StateScalarType;
+    using StateDotScalarType    = typename EvaluationType::StateDotScalarType;
+    using StateDotDotScalarType = typename EvaluationType::StateDotDotScalarType;
+    using ControlScalarType     = typename EvaluationType::ControlScalarType;
+    using ConfigScalarType      = typename EvaluationType::ConfigScalarType;
+    using ResultScalarType      = typename EvaluationType::ResultScalarType;
 
     IndicatorFunctionType mIndicatorFunction;
-    Plato::ApplyWeighting<SpaceDim, mNumVoigtTerms,  IndicatorFunctionType> mApplyStressWeighting;
-    Plato::ApplyWeighting<SpaceDim, SpaceDim,        IndicatorFunctionType> mApplyMassWeighting;
+    Plato::ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
+    Plato::ApplyWeighting<SpaceDim, SpaceDim,       IndicatorFunctionType> mApplyMassWeighting;
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
@@ -85,7 +85,7 @@ class TransientMechanicsResidual :
         Plato::ElasticModelFactory<SpaceDim> tMaterialModelFactory(aProblemParams);
         mMaterialModel = tMaterialModelFactory.create();
         // parse body loads
-        // 
+        //
         if(aProblemParams.isSublist("Body Loads"))
         {
             mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>
@@ -93,7 +93,7 @@ class TransientMechanicsResidual :
         }
 
         // parse boundary Conditions
-        // 
+        //
         if(aProblemParams.isSublist("Natural Boundary Conditions"))
         {
             mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>>
@@ -108,19 +108,19 @@ class TransientMechanicsResidual :
 
     /**************************************************************************/
     void
-    evaluate( const Plato::ScalarMultiVectorT< DisplacementScalarType > & aDisplacement,
-              const Plato::ScalarMultiVectorT< VelocityScalarType     > & aVelocity,
-              const Plato::ScalarMultiVectorT< AccelerationScalarType > & aAcceleration,
-              const Plato::ScalarMultiVectorT< ControlScalarType      > & aControl,
-              const Plato::ScalarArray3DT    < ConfigScalarType       > & aConfig,
-                    Plato::ScalarMultiVectorT< ResultScalarType       > & aResult,
+    evaluate( const Plato::ScalarMultiVectorT< StateScalarType       > & aState,
+              const Plato::ScalarMultiVectorT< StateDotScalarType    > & aStateDot,
+              const Plato::ScalarMultiVectorT< StateDotDotScalarType > & aStateDotDot,
+              const Plato::ScalarMultiVectorT< ControlScalarType     > & aControl,
+              const Plato::ScalarArray3DT    < ConfigScalarType      > & aConfig,
+                    Plato::ScalarMultiVectorT< ResultScalarType      > & aResult,
                     Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
       auto tNumCells = mMesh.nelems();
 
       using StrainScalarType =
-          typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>, DisplacementScalarType, ConfigScalarType>;
+          typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
 
       Plato::ComputeGradientWorkset<SpaceDim> tComputeGradient;
       Plato::Strain<SpaceDim>                 tComputeVoigtStrain;
@@ -146,7 +146,7 @@ class TransientMechanicsResidual :
       Plato::ScalarMultiVectorT<ResultScalarType>
         tStress("stress",tNumCells,mNumVoigtTerms);
 
-      Plato::ScalarMultiVectorT<AccelerationScalarType> 
+      Plato::ScalarMultiVectorT<StateDotDotScalarType>
         tAccelerationGP("acceleration at Gauss point", tNumCells, SpaceDim);
 
       Plato::ScalarMultiVectorT<ResultScalarType>
@@ -163,7 +163,7 @@ class TransientMechanicsResidual :
         tCellVolume(aCellOrdinal) *= tQuadratureWeight;
 
         // compute strain
-        tComputeVoigtStrain(aCellOrdinal, tStrain, aDisplacement, tGradient);
+        tComputeVoigtStrain(aCellOrdinal, tStrain, aState, tGradient);
 
         // compute stress
         tComputeVoigtStress(aCellOrdinal, tStress, tStrain);
@@ -175,7 +175,7 @@ class TransientMechanicsResidual :
         tComputeStressDivergence(aCellOrdinal, aResult, tStress, tGradient, tCellVolume);
 
         // compute accelerations at gausspoints
-        tInterpolateFromNodal(aCellOrdinal, tBasisFunctions, aAcceleration, tAccelerationGP);
+        tInterpolateFromNodal(aCellOrdinal, tBasisFunctions, aStateDotDot, tAccelerationGP);
 
         // compute inertia at gausspoints
         tInertialContent(aCellOrdinal, tInertialContentGP, tAccelerationGP);
@@ -193,12 +193,12 @@ class TransientMechanicsResidual :
 
       if( mBodyLoads != nullptr )
       {
-          mBodyLoads->get( mMesh, aDisplacement, aControl, aResult, -1.0 );
+          mBodyLoads->get( mMesh, aState, aControl, aResult, -1.0 );
       }
 
       if( mBoundaryLoads != nullptr )
       {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aDisplacement, aControl, aConfig, aResult, -1.0 );
+          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0 );
       }
     }
 };

@@ -259,22 +259,23 @@ public:
 
     /***************************************************************************//**
      * \brief Set global state variables
-     * \param [in] aGlobalState 2D view of global state variables - (NumTimeSteps, TotalDofs)
+     * \param [in] aSolution Plato::Solution composed of global state variables
     *******************************************************************************/
-    void setGlobalState(const Plato::ScalarMultiVector & aGlobalState) override
+    void setGlobalSolution(const Plato::Solution & aSolution) override
     {
-        assert(aGlobalState.extent(0) == mGlobalStates.extent(0));
-        assert(aGlobalState.extent(1) == mGlobalStates.extent(1));
-        Kokkos::deep_copy(mGlobalStates, aGlobalState);
+        auto tGlobalState = aSolution.State;
+        assert(tGlobalState.extent(0) == mGlobalStates.extent(0));
+        assert(tGlobalState.extent(1) == mGlobalStates.extent(1));
+        Kokkos::deep_copy(mGlobalStates, tGlobalState);
     }
 
     /***************************************************************************//**
      * \brief Return 2D view of global state variables - (NumTimeSteps, TotalDofs)
      * \return 2D view of global state variables
     *******************************************************************************/
-    Plato::ScalarMultiVector getGlobalState() override
+    Plato::Solution getGlobalSolution() override
     {
-        return mGlobalStates;
+        return Plato::Solution(mGlobalStates);
     }
 
     /***************************************************************************//**
@@ -301,7 +302,7 @@ public:
      * \brief Return 2D view of global adjoint variables - (2, TotalDofs)
      * \return 2D view of global adjoint variables
     *******************************************************************************/
-    Plato::ScalarMultiVector getAdjoint() override
+    Plato::Solution getAdjoint() override
     {
         THROWERR("PLASTICITY PROBLEM: ADJOINT MEMBER DATA IS NOT DEFINED");
     }
@@ -321,32 +322,33 @@ public:
     /***************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aControls 1D container of control variables
-     * \param [in] aGlobalState 2D container of global state variables
+     * \param [in] aSolution Plato::Solution composed of global state variables
     *******************************************************************************/
     void updateProblem(const Plato::ScalarVector & aControls,
-                       const Plato::ScalarMultiVector & aGlobalState) override
+                       const Plato::Solution     & aSolution) override
     {
-        mLocalEquation->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
-        mGlobalEquation->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
-        mProjectionEquation->updateProblem(aGlobalState, aControls, mCurrentPseudoTimeStep);
+        auto tGlobalState = aSolution.State;
+        mLocalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+        mGlobalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+        mProjectionEquation->updateProblem(tGlobalState, aControls, mCurrentPseudoTimeStep);
 
         if(mObjective != nullptr)
         {
-            mObjective->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+            mObjective->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
         }
 
         if(mConstraint != nullptr)
         {
-            mConstraint->updateProblem(aGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+            mConstraint->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
         }
     }
 
     /***************************************************************************//**
      * \brief Solve system of equations
      * \param [in] aControls 1D view of control variables
-     * \return 2D view of state variables
+     * \return Plato::Solution composed of state variables
     *******************************************************************************/
-    Plato::ScalarMultiVector solution(const Plato::ScalarVector &aControls) override
+    Plato::Solution solution(const Plato::ScalarVector &aControls) override
     {
         // TODO: NOTES
         // 1. WRITE LOCAL STATES, PRESSURE, AND GLOBAL STATES HISTORY TO FILE - MEMORY CONCERNS
@@ -392,25 +394,25 @@ public:
             }
         }
 
-        return mGlobalStates;
+        return Plato::Solution(mGlobalStates);
     }
 
     /***************************************************************************//**
      * \fn Plato::Scalar objectiveValue(const Plato::ScalarVector & aControls,
-     *                                  const Plato::ScalarMultiVector & aGlobalState)
+     *                                  const Plato::Solution     & aSolution)
      * \brief Evaluate objective function and return its value
      * \param [in] aControls 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
+     * \param [in] aSolution Plato::Solution composed of state variables
      * \return objective function value
     *******************************************************************************/
     Plato::Scalar objectiveValue(const Plato::ScalarVector & aControls,
-                                 const Plato::ScalarMultiVector & aGlobalState) override
+                                 const Plato::Solution     & aSolution) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
@@ -420,7 +422,7 @@ public:
         }
 
         this->shouldOptimizationProblemStop();
-        auto tOutput = this->evaluateCriterion(*mObjective, aGlobalState, mLocalStates, aControls);
+        auto tOutput = this->evaluateCriterion(*mObjective, aSolution.State, mLocalStates, aControls);
 
         return (tOutput);
     }
@@ -450,34 +452,6 @@ public:
     /***************************************************************************//**
      * \brief Evaluate constraint function and return its value
      * \param [in] aControls 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return constraint function value
-    *******************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControls,
-                                  const Plato::ScalarMultiVector & aGlobalState) override
-    {
-        if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
-        }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
-        }
-        if(mConstraint == nullptr)
-        {
-            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
-        }
-
-        this->shouldOptimizationProblemStop();
-        auto tOutput = this->evaluateCriterion(*mConstraint, mGlobalStates, mLocalStates, aControls);
-
-        return (tOutput);
-    }
-
-    /***************************************************************************//**
-     * \brief Evaluate constraint function and return its value
-     * \param [in] aControls 1D view of control variables
      * \return constraint function value
     *******************************************************************************/
     Plato::Scalar constraintValue(const Plato::ScalarVector & aControls) override
@@ -494,7 +468,7 @@ public:
         this->shouldOptimizationProblemStop();
         auto tOutput = this->evaluateCriterion(*mConstraint, mGlobalStates, mLocalStates, aControls);
 
-        return tOutput;
+        return (tOutput);
     }
 
     /***************************************************************************//**
@@ -514,7 +488,7 @@ public:
         }
 
         this->shouldOptimizationProblemStop();
-        auto tTotalDerivative = this->objectiveGradient(aControls, mGlobalStates);
+        auto tTotalDerivative = this->objectiveGradient(aControls, Plato::Solution(mGlobalStates));
 
         return tTotalDerivative;
     }
@@ -522,17 +496,17 @@ public:
     /***************************************************************************//**
      * \brief Evaluate objective gradient wrt control variables
      * \param [in] aControls 1D view of control variables
-     * \param [in] aGlobalState 2D view of global state variables
+     * \param [in] aSolution Plato::Solution composed of global state variables
      * \return 1D view of the objective gradient wrt control variables
     *******************************************************************************/
     Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControls,
-                                          const Plato::ScalarMultiVector & aGlobalState) override
+                                          const Plato::Solution     & aSolution) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
@@ -569,7 +543,7 @@ public:
         }
 
         this->shouldOptimizationProblemStop();
-        auto tTotalDerivative = this->objectiveGradientX(aControls, mGlobalStates);
+        auto tTotalDerivative = this->objectiveGradientX(aControls, Plato::Solution(mGlobalStates));
 
         return tTotalDerivative;
     }
@@ -577,17 +551,17 @@ public:
     /***************************************************************************//**
      * \brief Evaluate objective gradient wrt configuration variables
      * \param [in] aControls 1D view of control variables
-     * \param [in] aGlobalState 2D view of global state variables
+     * \param [in] aSolution Plato::Solution composed of global state variables
      * \return 1D view of the objective gradient wrt control variables
     *******************************************************************************/
     Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControls,
-                                           const Plato::ScalarMultiVector & aGlobalState) override
+                                           const Plato::Solution     & aSolution) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
+        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
@@ -608,6 +582,7 @@ public:
     /***************************************************************************//**
      * \brief Evaluate constraint partial derivative wrt control variables
      * \param [in] aControls 1D view of control variables
+     * \param [in] aGlobalState 2D view of state variables
      * \return 1D view - constraint partial derivative wrt control variables
     *******************************************************************************/
     Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControls) override
@@ -621,46 +596,15 @@ public:
             THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
         }
 
-        auto tTotalDerivative = this->constraintGradient(aControls, mGlobalStates);
+        auto tTotalDerivative = this->constraintGradient(aControls);
 
         return tTotalDerivative;
     }
 
     /***************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt control variables
-     * \param [in] aControls 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return 1D view - constraint partial derivative wrt control variables
-    *******************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControls,
-                                           const Plato::ScalarMultiVector & aGlobalState) override
-    {
-        if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
-        }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
-        }
-        if(mConstraint == nullptr)
-        {
-            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
-        }
-
-        this->shouldOptimizationProblemStop();
-        mAdjointSolver->appendScalarFunction(mConstraint);
-        auto tNumNodes = mGlobalEquation->numNodes();
-        Plato::ScalarVector tTotalDerivative("Total Derivative", tNumNodes);
-        this->backwardTimeIntegration(Plato::PartialDerivative::CONTROL, aControls, tTotalDerivative);
-        this->addCriterionPartialDerivativeZ(*mConstraint, aControls, tTotalDerivative);
-
-        return (tTotalDerivative);
-    }
-
-    /***************************************************************************//**
      * \brief Evaluate constraint partial derivative wrt configuration variables
      * \param [in] aControls 1D view of control variables
+     * \param [in] aGlobalState 2D view of state variables
      * \return 1D view - constraint partial derivative wrt configuration variables
     *******************************************************************************/
     Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControls) override
@@ -675,40 +619,9 @@ public:
         }
 
         this->shouldOptimizationProblemStop();
-        auto tTotalDerivative = this->constraintGradientX(aControls, mGlobalStates);
+        auto tTotalDerivative = this->constraintGradientX(aControls);
 
         return tTotalDerivative;
-    }
-
-    /***************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt configuration variables
-     * \param [in] aControls 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return 1D view - constraint partial derivative wrt configuration variables
-    *******************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControls,
-                                            const Plato::ScalarMultiVector & aGlobalState) override
-    {
-        if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
-        }
-        if(aGlobalState.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
-        }
-        if(mConstraint == nullptr)
-        {
-           THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
-        }
-
-        this->shouldOptimizationProblemStop();
-        mAdjointSolver->appendScalarFunction(mConstraint);
-        Plato::ScalarVector tTotalDerivative("Total Derivative", mNumConfigDofsPerCell);
-        this->backwardTimeIntegration(Plato::PartialDerivative::CONFIGURATION, aControls, tTotalDerivative);
-        this->addCriterionPartialDerivativeX(*mConstraint, aControls, tTotalDerivative);
-
-        return (tTotalDerivative);
     }
 
     /***************************************************************************//**

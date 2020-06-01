@@ -1,16 +1,6 @@
 #ifndef PLATO_HYPERBOLIC_PROBLEM_HPP
 #define PLATO_HYPERBOLIC_PROBLEM_HPP
 
-/**
-
-Notes:
-1.  The objectiveGradient(aConfig, aState) function doesn't use the second 
-argument because the state is composed of mDisplacement, mVelocity, and
-mAcceleration -- not just mDisplacement.  Perhaps change the function 
-signature?
-
-**/
-
 #include "BLAS1.hpp"
 #include "EssentialBCs.hpp"
 #include "AnalyzeMacros.hpp"
@@ -35,7 +25,7 @@ namespace Plato
         static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
 
 
-        Plato::Hyperbolic::VectorFunction<SimplexPhysics> mEqualityConstraint;
+        Plato::Hyperbolic::VectorFunction<SimplexPhysics> mPDEConstraint;
 
         Plato::NewmarkIntegrator<SimplexPhysics>     mNewmarkIntegrator;
 
@@ -74,17 +64,17 @@ namespace Plato
           Teuchos::ParameterList& aParamList,
           Comm::Machine aMachine
         ) :
-            mEqualityConstraint   (aMesh, aMeshSets, mDataMap, aParamList, 
+            mPDEConstraint   (aMesh, aMeshSets, mDataMap, aParamList,
                                    aParamList.get<std::string>("PDE Constraint")),
             mNewmarkIntegrator    (aParamList.sublist("Time Integration")),
             mNumSteps     (aParamList.sublist("Time Integration").get<int>("Number Time Steps")),
             mTimeStep     (aParamList.sublist("Time Integration").get<Plato::Scalar>("Time Step")),
             mSaveState    (aParamList.sublist("Hyperbolic").isType<Teuchos::Array<std::string>>("Plottable")),
             mObjective    (nullptr),
-            mResidual     ("MyResidual", mEqualityConstraint.size()),
-            mDisplacement ("Displacement", mNumSteps, mEqualityConstraint.size()),
-            mVelocity     ("Velocity",     mNumSteps, mEqualityConstraint.size()),
-            mAcceleration ("Acceleration", mNumSteps, mEqualityConstraint.size()),
+            mResidual     ("MyResidual", mPDEConstraint.size()),
+            mDisplacement ("Displacement", mNumSteps, mPDEConstraint.size()),
+            mVelocity     ("Velocity",     mNumSteps, mPDEConstraint.size()),
+            mAcceleration ("Acceleration", mNumSteps, mPDEConstraint.size()),
             mJacobianU(Teuchos::null),
             mJacobianV(Teuchos::null),
             mJacobianA(Teuchos::null)
@@ -104,7 +94,7 @@ namespace Plato
                 Plato::Hyperbolic::ScalarFunctionFactory<SimplexPhysics> tScalarFunctionFactory;
                 mObjective = tScalarFunctionFactory.create(aMesh, aMeshSets, mDataMap, aParamList, tName);
 
-                auto tLength = mEqualityConstraint.size();
+                auto tLength = mPDEConstraint.size();
                 mAdjoints_U = Plato::ScalarMultiVector("MyAdjoint U", mNumSteps, tLength);
                 mAdjoints_V = Plato::ScalarMultiVector("MyAdjoint V", mNumSteps, tLength);
                 mAdjoints_A = Plato::ScalarMultiVector("MyAdjoint A", mNumSteps, tLength);
@@ -123,30 +113,42 @@ namespace Plato
             return SimplexPhysics::mNumDofsPerNode;
         }
         /******************************************************************************/
-        Plato::ScalarMultiVector getGlobalState()
+        Plato::Solution getGlobalSolution()
         /******************************************************************************/
         {
-            return mDisplacement;
+            return Plato::Solution(mDisplacement, mVelocity, mAcceleration);
         }
 
         /******************************************************************************/
-        Plato::ScalarMultiVector getAdjoint()
+        Plato::Adjoint getAdjoint()
         /******************************************************************************/
         {
-            return mAdjoints_U;
+            return Plato::Adjoint(mAdjoints_U, mAdjoints_V, mAdjoints_A);
         }
         /******************************************************************************/
-        void setGlobalState(const Plato::ScalarMultiVector & aStates)
+        void setGlobalSolution(const Plato::Solution & aSolution)
         /******************************************************************************/
         {
-            assert(aStates.extent(0) == mDisplacement.extent(0));
-            assert(aStates.extent(1) == mDisplacement.extent(1));
-            Kokkos::deep_copy(mDisplacement, aStates);
+            auto tState = aSolution.State;
+            assert(tState.extent(0) == mDisplacement.extent(0));
+            assert(tState.extent(1) == mDisplacement.extent(1));
+            Kokkos::deep_copy(mDisplacement, tState);
+
+            auto tStateDot = aSolution.StateDot;
+            assert(tStateDot.extent(0) == mVelocity.extent(0));
+            assert(tStateDot.extent(1) == mVelocity.extent(1));
+            Kokkos::deep_copy(mVelocity, tStateDot);
+
+            auto tStateDotDot = aSolution.StateDotDot;
+            assert(tStateDotDot.extent(0) == mAcceleration.extent(0));
+            assert(tStateDotDot.extent(1) == mAcceleration.extent(1));
+            Kokkos::deep_copy(mAcceleration, tStateDotDot);
         }
+
         void applyConstraints(
           const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
           const Plato::ScalarVector & aVector){}
-  
+
         /******************************************************************************/
         void applyVelocityConstraints(
           const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
@@ -170,22 +172,20 @@ namespace Plato
          * @param [in] aState 2D container of state variables
          * @param [in] aControl 1D container of control variables
         **********************************************************************************/
-        void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aState)
+        void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
         { return; }
         /******************************************************************************/
-        Plato::ScalarMultiVector solution(
-          const Plato::ScalarVector & aControl
-        )
+        Plato::Solution
+        solution(const Plato::ScalarVector & aControl)
         /******************************************************************************/
         {
-
             mDataMap.clearStates();
             Plato::ScalarVector tDisplacementInit = Kokkos::subview(mDisplacement, /*StepIndex=*/0, Kokkos::ALL());
             Plato::ScalarVector tVelocityInit     = Kokkos::subview(mVelocity,     /*StepIndex=*/0, Kokkos::ALL());
             Plato::ScalarVector tAccelerationInit = Kokkos::subview(mAcceleration, /*StepIndex=*/0, Kokkos::ALL());
-            mResidual  = mEqualityConstraint.value(tDisplacementInit, tVelocityInit, tAccelerationInit, aControl, mTimeStep);
+            mResidual  = mPDEConstraint.value(tDisplacementInit, tVelocityInit, tAccelerationInit, aControl, mTimeStep);
             mDataMap.saveState();
-   
+
             for(Plato::OrdinalType tStepIndex = 1; tStepIndex < mNumSteps; tStepIndex++) {
               Plato::ScalarVector tDisplacementPrev = Kokkos::subview(mDisplacement, tStepIndex-1, Kokkos::ALL());
               Plato::ScalarVector tVelocityPrev     = Kokkos::subview(mVelocity,     tStepIndex-1, Kokkos::ALL());
@@ -197,7 +197,7 @@ namespace Plato
 
 
               // -R_{u}
-              mResidual  = mEqualityConstraint.value(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
+              mResidual  = mPDEConstraint.value(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
               Plato::blas1::scale(-1.0, mResidual);
 
               // R_{v}
@@ -206,7 +206,7 @@ namespace Plato
                                                       tAcceleration, tAccelerationPrev, mTimeStep);
 
               // R_{u,v^N}
-              mJacobianV = mEqualityConstraint.gradient_v(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
+              mJacobianV = mPDEConstraint.gradient_v(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
 
               // -R_{u} += R_{u,v^N} R_{v}
               Plato::MatrixTimesVectorPlusVector(mJacobianV, mResidualV, mResidual);
@@ -217,13 +217,13 @@ namespace Plato
                                                       tAcceleration, tAccelerationPrev, mTimeStep);
 
               // R_{u,a^N}
-              mJacobianA = mEqualityConstraint.gradient_a(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
+              mJacobianA = mPDEConstraint.gradient_a(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
 
               // -R_{u} += R_{u,a^N} R_{a}
               Plato::MatrixTimesVectorPlusVector(mJacobianA, mResidualA, mResidual);
 
               // R_{u,u^N}
-              mJacobianU = mEqualityConstraint.gradient_u(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
+              mJacobianU = mPDEConstraint.gradient_u(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
 
               // R_{v,u^N}
               auto tR_vu = mNewmarkIntegrator.v_grad_u(mTimeStep);
@@ -261,17 +261,17 @@ namespace Plato
               if ( mSaveState )
               {
                 // evaluate at new state
-                mResidual  = mEqualityConstraint.value(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
+                mResidual  = mPDEConstraint.value(tDisplacement, tVelocity, tAcceleration, aControl, mTimeStep);
                 mDataMap.saveState();
               }
             }
-            return mDisplacement;
+            return Plato::Solution(mDisplacement, mVelocity, mAcceleration);
         }
 
         /******************************************************************************/
         Plato::Scalar constraintValue(
           const Plato::ScalarVector & aControl,
-          const Plato::ScalarMultiVector & aStates
+          const Plato::Solution & aSolution
         )
         /******************************************************************************/
         {
@@ -296,7 +296,7 @@ namespace Plato
         /******************************************************************************/
         Plato::ScalarVector constraintGradient(
           const Plato::ScalarVector & aControl,
-          const Plato::ScalarMultiVector & aStates
+          const Plato::Solution & aSolution
         )
         /******************************************************************************/
         {
@@ -313,7 +313,7 @@ namespace Plato
         /******************************************************************************/
         Plato::ScalarVector constraintGradientX(
           const Plato::ScalarVector & aControl,
-          const Plato::ScalarMultiVector & aStates
+          const Plato::Solution & aSolution
         )
         /******************************************************************************/
         {
@@ -322,7 +322,7 @@ namespace Plato
         /******************************************************************************/
         Plato::Scalar objectiveValue(
           const Plato::ScalarVector & aControl,
-          const Plato::ScalarMultiVector & aStates
+          const Plato::Solution & aSolution
         )
         /******************************************************************************/
         {
@@ -330,8 +330,8 @@ namespace Plato
             {
                 THROWERR("No objective is defined in the input file.");
             }
-            solution(aControl);
-            return mObjective->value(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep);
+            auto tSolution = solution(aControl);
+            return mObjective->value(tSolution, aControl, mTimeStep);
         }
         /******************************************************************************/
         Plato::Scalar objectiveValue(
@@ -343,7 +343,8 @@ namespace Plato
             {
                 THROWERR("No objective is defined in the input file.");
             }
-            return mObjective->value(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep);
+            auto tSolution = Plato::Solution(mDisplacement, mVelocity, mAcceleration);
+            return mObjective->value(tSolution, aControl, mTimeStep);
         }
         /******************************************************************************/
         Plato::ScalarVector objectiveGradient(
@@ -355,27 +356,25 @@ namespace Plato
             {
                 THROWERR("No objective is defined in the input file.");
             }
-            solution(aControl);
-            return objectiveGradient(aControl, mDisplacement);
+            auto tSolution = solution(aControl);
+            return objectiveGradient(aControl, tSolution);
         }
         /******************************************************************************/
         Plato::ScalarVector objectiveGradient(
           const Plato::ScalarVector & aControl,
-          const Plato::ScalarMultiVector & aStates
+          const Plato::Solution     & aSolution
         )
         /******************************************************************************/
         {
-
-            assert(aStates.extent(0) == mDisplacement.extent(0));
-            assert(aStates.extent(1) == mDisplacement.extent(1));
-
             if(mObjective == nullptr)
             {
                 THROWERR("No objective is defined in the input file.");
             }
+
+            auto tSolution = Plato::Solution(mDisplacement, mVelocity, mAcceleration);
 
             // F_{,z}
-            auto t_dFdz = mObjective->gradient_z(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep);
+            auto t_dFdz = mObjective->gradient_z(tSolution, aControl, mTimeStep);
 
             auto tLastStepIndex = mNumSteps - 1;
             for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--) {
@@ -389,11 +388,11 @@ namespace Plato
                 Plato::ScalarVector tAdjoint_A = Kokkos::subview(mAdjoints_A, tStepIndex, Kokkos::ALL());
 
                 // F_{,u^k}
-                auto t_dFdu = mObjective->gradient_u(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep, tStepIndex);
+                auto t_dFdu = mObjective->gradient_u(tSolution, aControl, tStepIndex, mTimeStep);
                 // F_{,v^k}
-                auto t_dFdv = mObjective->gradient_v(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep, tStepIndex);
+                auto t_dFdv = mObjective->gradient_v(tSolution, aControl, tStepIndex, mTimeStep);
                 // F_{,a^k}
-                auto t_dFda = mObjective->gradient_a(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep, tStepIndex);
+                auto t_dFda = mObjective->gradient_a(tSolution, aControl, tStepIndex, mTimeStep);
 
                 if(tStepIndex != tLastStepIndex) { // the last step doesn't have a contribution from k+1
 
@@ -458,13 +457,13 @@ namespace Plato
                 Plato::blas1::axpy(tR_au, t_dFda, t_dFdu);
 
                 // R_{u,u^k}
-                mJacobianU = mEqualityConstraint.gradient_u(tU, tV, tA, aControl, mTimeStep);
+                mJacobianU = mPDEConstraint.gradient_u(tU, tV, tA, aControl, mTimeStep);
 
                 // R_{u,v^k}
-                mJacobianV = mEqualityConstraint.gradient_v(tU, tV, tA, aControl, mTimeStep);
+                mJacobianV = mPDEConstraint.gradient_v(tU, tV, tA, aControl, mTimeStep);
 
                 // R_{u,a^k}
-                mJacobianA = mEqualityConstraint.gradient_a(tU, tV, tA, aControl, mTimeStep);
+                mJacobianA = mPDEConstraint.gradient_a(tU, tV, tA, aControl, mTimeStep);
 
                 // R_{u,u^k} -= R_{v,u^k} R_{u,v^k}
                 Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
@@ -488,7 +487,7 @@ namespace Plato
                 Plato::blas1::axpy(-1.0, t_dFda, tAdjoint_A);
 
                 // R^k_{,z}
-                auto t_dRdz = mEqualityConstraint.gradient_z(tU, tV, tA, aControl, mTimeStep);
+                auto t_dRdz = mPDEConstraint.gradient_z(tU, tV, tA, aControl, mTimeStep);
 
                 // F_{,z} += L_u^k R^k_{,z}
                 Plato::MatrixTimesVectorPlusVector(t_dRdz, tAdjoint_U, t_dFdz);
@@ -506,27 +505,25 @@ namespace Plato
             {
                 THROWERR("No objective is defined in the input file.");
             }
-            solution(aControl);
-            return objectiveGradientX(aControl, mDisplacement);
+            auto tSolution = solution(aControl);
+            return objectiveGradientX(aControl, tSolution);
         }
         /******************************************************************************/
         Plato::ScalarVector objectiveGradientX(
           const Plato::ScalarVector & aControl,
-          const Plato::ScalarMultiVector & aStates
+          const Plato::Solution     & aSolution
         )
         /******************************************************************************/
         {
-
-            assert(aStates.extent(0) == mDisplacement.extent(0));
-            assert(aStates.extent(1) == mDisplacement.extent(1));
-
             if(mObjective == nullptr)
             {
                 THROWERR("No objective is defined in the input file.");
             }
 
+            auto tSolution = Plato::Solution(mDisplacement, mVelocity, mAcceleration);
+
             // F_{,x}
-            auto t_dFdx = mObjective->gradient_x(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep);
+            auto t_dFdx = mObjective->gradient_x(tSolution, aControl, mTimeStep);
 
             auto tLastStepIndex = mNumSteps - 1;
             for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--) {
@@ -540,11 +537,11 @@ namespace Plato
                 Plato::ScalarVector tAdjoint_A = Kokkos::subview(mAdjoints_A, tStepIndex, Kokkos::ALL());
 
                 // F_{,u^k}
-                auto t_dFdu = mObjective->gradient_u(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep, tStepIndex);
+                auto t_dFdu = mObjective->gradient_u(tSolution, aControl, tStepIndex, mTimeStep);
                 // F_{,v^k}
-                auto t_dFdv = mObjective->gradient_v(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep, tStepIndex);
+                auto t_dFdv = mObjective->gradient_v(tSolution, aControl, tStepIndex, mTimeStep);
                 // F_{,a^k}
-                auto t_dFda = mObjective->gradient_a(mDisplacement, mVelocity, mAcceleration, aControl, mTimeStep, tStepIndex);
+                auto t_dFda = mObjective->gradient_a(tSolution, aControl, tStepIndex, mTimeStep);
 
                 if(tStepIndex != tLastStepIndex) { // the last step doesn't have a contribution from k+1
 
@@ -609,13 +606,13 @@ namespace Plato
                 Plato::blas1::axpy(tR_au, t_dFda, t_dFdu);
 
                 // R_{u,u^k}
-                mJacobianU = mEqualityConstraint.gradient_u(tU, tV, tA, aControl, mTimeStep);
+                mJacobianU = mPDEConstraint.gradient_u(tU, tV, tA, aControl, mTimeStep);
 
                 // R_{u,v^k}
-                mJacobianV = mEqualityConstraint.gradient_v(tU, tV, tA, aControl, mTimeStep);
+                mJacobianV = mPDEConstraint.gradient_v(tU, tV, tA, aControl, mTimeStep);
 
                 // R_{u,a^k}
-                mJacobianA = mEqualityConstraint.gradient_a(tU, tV, tA, aControl, mTimeStep);
+                mJacobianA = mPDEConstraint.gradient_a(tU, tV, tA, aControl, mTimeStep);
 
                 // R_{u,u^k} -= R_{v,u^k} R_{u,v^k}
                 Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
@@ -639,7 +636,7 @@ namespace Plato
                 Plato::blas1::axpy(-1.0, t_dFda, tAdjoint_A);
 
                 // R^k_{,x}
-                auto t_dRdx = mEqualityConstraint.gradient_x(tU, tV, tA, aControl, mTimeStep);
+                auto t_dRdx = mPDEConstraint.gradient_x(tU, tV, tA, aControl, mTimeStep);
 
                 // F_{,x} += L_u^k R^k_{,x}
                 Plato::MatrixTimesVectorPlusVector(t_dRdx, tAdjoint_U, t_dFdx);

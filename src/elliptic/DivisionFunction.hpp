@@ -128,19 +128,21 @@ public:
         mScalarFunctionBaseDenominator->updateProblem(aState, aControl);
     }
 
+
     /******************************************************************************//**
      * @brief Evaluate division function
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return scalar function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aState,
-                        const Plato::ScalarVector & aControl,
-                        Plato::Scalar aTimeStep = 0.0) const
+    Plato::Scalar
+    value(const Plato::Solution     & aSolution,
+          const Plato::ScalarVector & aControl,
+                Plato::Scalar         aTimeStep = 0.0) const override
     {
-        Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aState, aControl, aTimeStep);
-        Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aState, aControl, aTimeStep);
+        Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aSolution, aControl, aTimeStep);
+        Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aSolution, aControl, aTimeStep);
         Plato::Scalar tResult = tNumeratorValue / tDenominatorValue;
         if (tDenominatorValue == 0.0)
         {
@@ -152,23 +154,24 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the division function with respect to (wrt) the configuration parameters
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aState,
-                                   const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
+    Plato::ScalarVector
+    gradient_x(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::Scalar         aTimeStep = 0.0) const override
     {
         const Plato::OrdinalType tNumDofs = mNumSpatialDims * mNumNodes;
         Plato::ScalarVector tGradientX ("gradient configuration", tNumDofs);
 
-        Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aState, aControl, aTimeStep);
-        Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aState, aControl, aTimeStep);
+        Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aSolution, aControl, aTimeStep);
+        Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aSolution, aControl, aTimeStep);
 
-        Plato::ScalarVector tNumeratorGradX = mScalarFunctionBaseNumerator->gradient_x(aState, aControl, aTimeStep);
-        Plato::ScalarVector tDenominatorGradX = mScalarFunctionBaseDenominator->gradient_x(aState, aControl, aTimeStep);
+        Plato::ScalarVector tNumeratorGradX = mScalarFunctionBaseNumerator->gradient_x(aSolution, aControl, aTimeStep);
+        Plato::ScalarVector tDenominatorGradX = mScalarFunctionBaseDenominator->gradient_x(aSolution, aControl, aTimeStep);
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & tDof)
         {
             tGradientX(tDof) = (tNumeratorGradX(tDof) * tDenominatorValue - 
@@ -180,23 +183,25 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the division function with respect to (wrt) the state variables
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the scalar function wrt the state variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_u(const Plato::ScalarVector & aState,
-                                   const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
+    Plato::ScalarVector
+    gradient_u(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::OrdinalType    aStepIndex,
+                     Plato::Scalar         aTimeStep = 0.0) const override
     {
         const Plato::OrdinalType tNumDofs = mNumDofsPerNode * mNumNodes;
         Plato::ScalarVector tGradientU ("gradient state", tNumDofs);
 
-        Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aState, aControl, aTimeStep);
-        Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aState, aControl, aTimeStep);
+        Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aSolution, aControl, aTimeStep);
+        Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aSolution, aControl, aTimeStep);
 
-        Plato::ScalarVector tNumeratorGradU = mScalarFunctionBaseNumerator->gradient_u(aState, aControl, aTimeStep);
-        Plato::ScalarVector tDenominatorGradU = mScalarFunctionBaseDenominator->gradient_u(aState, aControl, aTimeStep);
+        Plato::ScalarVector tNumeratorGradU = mScalarFunctionBaseNumerator->gradient_u(aSolution, aControl, aTimeStep);
+        Plato::ScalarVector tDenominatorGradU = mScalarFunctionBaseDenominator->gradient_u(aSolution, aControl, aTimeStep);
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & tDof)
         {
             tGradientU(tDof) = (tNumeratorGradU(tDof) * tDenominatorValue - 
@@ -208,23 +213,24 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the division function with respect to (wrt) the control variables
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aState,
-                                   const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
+    Plato::ScalarVector
+    gradient_z(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::Scalar aTimeStep = 0.0) const override
     {
         const Plato::OrdinalType tNumDofs = mNumNodes;
         Plato::ScalarVector tGradientZ ("gradient control", tNumDofs);
         
-        Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aState, aControl, aTimeStep);
-        Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aState, aControl, aTimeStep);
+        Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aSolution, aControl, aTimeStep);
+        Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aSolution, aControl, aTimeStep);
 
-        Plato::ScalarVector tNumeratorGradZ = mScalarFunctionBaseNumerator->gradient_z(aState, aControl, aTimeStep);
-        Plato::ScalarVector tDenominatorGradZ = mScalarFunctionBaseDenominator->gradient_z(aState, aControl, aTimeStep);
+        Plato::ScalarVector tNumeratorGradZ = mScalarFunctionBaseNumerator->gradient_z(aSolution, aControl, aTimeStep);
+        Plato::ScalarVector tDenominatorGradZ = mScalarFunctionBaseDenominator->gradient_z(aSolution, aControl, aTimeStep);
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumDofs), LAMBDA_EXPRESSION(const Plato::OrdinalType & tDof)
         {
             tGradientZ(tDof) = (tNumeratorGradZ(tDof) * tDenominatorValue - 

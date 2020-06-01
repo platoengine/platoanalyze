@@ -1,0 +1,66 @@
+#pragma once
+
+#include "geometric/ScalarFunctionBase.hpp"
+#include "geometric/WeightedSumFunction.hpp"
+#include "geometric/GeometryScalarFunction.hpp"
+#include "geometric/DivisionFunction.hpp"
+#include "geometric/LeastSquaresFunction.hpp"
+#include "geometric/MassPropertiesFunction.hpp"
+#include "AnalyzeMacros.hpp"
+
+namespace Plato
+{
+
+namespace Geometric
+{
+
+    /******************************************************************************//**
+     * \brief Create method
+     * \param [in] aMesh mesh database
+     * \param [in] aMeshSets side sets database
+     * \param [in] aDataMap PLATO Engine and Analyze data map
+     * \param [in] aInputParams parameter input
+     * \param [in] aFunctionName name of function in parameter list
+     **********************************************************************************/
+    template <typename PhysicsT>
+    std::shared_ptr<Plato::Geometric::ScalarFunctionBase> 
+    ScalarFunctionBaseFactory<PhysicsT>::create(Omega_h::Mesh& aMesh,
+           Omega_h::MeshSets& aMeshSets,
+           Plato::DataMap & aDataMap,
+           Teuchos::ParameterList& aInputParams,
+           std::string& aFunctionName)
+    {
+        auto tProblemFunction = aInputParams.sublist(aFunctionName);
+        auto tFunctionType = tProblemFunction.get<std::string>("Type", "Not Defined");
+
+        if(tFunctionType == "Weighted Sum")
+        {
+            return std::make_shared<WeightedSumFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+        }
+        else if(tFunctionType == "Division")
+        {
+            return std::make_shared<DivisionFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+        }
+        else if(tFunctionType == "Least Squares")
+        {
+            return std::make_shared<LeastSquaresFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+        }
+        else if(tFunctionType == "Scalar Function")
+        {
+            return std::make_shared<GeometryScalarFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+        }
+        else if(tFunctionType == "Mass Properties")
+        {
+            return std::make_shared<MassPropertiesFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+        }
+        else
+        {
+            const std::string tErrorString = std::string("Unknown function Type '") + tFunctionType +
+                            "' specified in function name " + aFunctionName + " ParameterList";
+            THROWERR(tErrorString);
+        }
+    }
+
+} // namespace Geometric
+
+} // namespace Plato

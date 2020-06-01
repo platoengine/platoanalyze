@@ -1,577 +1,562 @@
-#ifndef PLATO_HEAT_EQUATION_PROBLEM_HPP
-#define PLATO_HEAT_EQUATION_PROBLEM_HPP
-
-#include <memory>
-#include <sstream>
-
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
+#pragma once
 
 #include "BLAS1.hpp"
-#include "NaturalBCs.hpp"
 #include "EssentialBCs.hpp"
-#include "ImplicitFunctors.hpp"
+#include "AnalyzeMacros.hpp"
+#include "SimplexMechanics.hpp"
 #include "ApplyConstraints.hpp"
+#include "PlatoAbstractProblem.hpp"
+#include "alg/PlatoSolverFactory.hpp"
 
 #include "Thermal.hpp"
 #include "Mechanics.hpp"
-#include "parabolic/VectorFunction.hpp"
-#include "elliptic/ScalarFunctionBase.hpp"
-#include "parabolic/ScalarFunctionBase.hpp"
-#include "PlatoMathHelpers.hpp"
-#include "PlatoStaticsTypes.hpp"
-#include "PlatoAbstractProblem.hpp"
+#include "Geometrical.hpp"
 #include "ComputedField.hpp"
-
-#include "elliptic/ScalarFunctionBaseFactory.hpp"
+#include "parabolic/TrapezoidIntegrator.hpp"
+#include "parabolic/VectorFunction.hpp"
+#include "parabolic/ScalarFunctionBase.hpp"
 #include "parabolic/ScalarFunctionBaseFactory.hpp"
+#include "elliptic/ScalarFunctionBase.hpp"
+#include "elliptic/ScalarFunctionBaseFactory.hpp"
+#include "geometric/ScalarFunctionBase.hpp"
+#include "geometric/ScalarFunctionBaseFactory.hpp"
 
-#include "alg/ParallelComm.hpp"
-#include "alg/PlatoSolverFactory.hpp"
-
-namespace Plato {
-
-namespace Parabolic {
-
-/**********************************************************************************/
-template<typename SimplexPhysics>
-class Problem : public Plato::AbstractProblem
+namespace Plato
 {
-/**********************************************************************************/
-private:
 
-    static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims;
+namespace Parabolic
+{
 
-    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-
-    // required
-    Plato::Parabolic::VectorFunction<SimplexPhysics> mEqualityConstraint;
-
-    Plato::OrdinalType mNumSteps;
-    Plato::Scalar mTimeStep;
-
-    // optional
-    std::shared_ptr<const Plato::Parabolic::ScalarFunctionBase> mObjective;
-    std::shared_ptr<const Plato::Elliptic::ScalarFunctionBase>  mConstraint;
-
-    Plato::ScalarMultiVector mAdjoints;
-    Plato::ScalarVector mResidual;
-
-    Plato::ScalarMultiVector mGlobalState;
-
-    Teuchos::RCP<Plato::CrsMatrixType> mJacobian;
-    Teuchos::RCP<Plato::CrsMatrixType> mJacobianP;
-
-    Teuchos::RCP<Plato::ComputedFields<SpatialDim>> mComputedFields;
-
-    bool mIsSelfAdjoint;
-
-    Plato::LocalOrdinalVector mBcDofs;
-    Plato::ScalarVector mBcValues;
-
-    rcp<Plato::AbstractSolver> mSolver;
-public:
-    /******************************************************************************/
-    Problem(
-      Omega_h::Mesh& aMesh,
-      Omega_h::MeshSets& aMeshSets,
-      Teuchos::ParameterList& aParamList,
-      Plato::Comm::Machine aMachine
-    ) :
-      mEqualityConstraint(aMesh, aMeshSets, mDataMap, aParamList, aParamList.get < std::string > ("PDE Constraint")),
-      mNumSteps(aParamList.sublist("Time Integration").get<int>("Number Time Steps")),
-      mTimeStep(aParamList.sublist("Time Integration").get<Plato::Scalar>("Time Step")),
-      mConstraint(nullptr),
-      mObjective(nullptr),
-      mResidual("MyResidual", mEqualityConstraint.size()),
-      mGlobalState("States", mNumSteps, mEqualityConstraint.size()),
-      mJacobian(Teuchos::null),
-      mJacobianP(Teuchos::null),
-      mComputedFields(Teuchos::null),
-      mIsSelfAdjoint(aParamList.get<bool>("Self-Adjoint", false))
-    /******************************************************************************/
+    template<typename SimplexPhysics>
+    class Problem: public Plato::AbstractProblem
     {
-        this->initialize(aMesh, aMeshSets, aParamList);
+      private:
+        static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims;
+        static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
 
-        Plato::SolverFactory tSolverFactory(aParamList.sublist("Linear Solver"));
-        mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
-    }
+        Plato::Parabolic::VectorFunction<SimplexPhysics> mPDEConstraint;
 
-    /******************************************************************************//**
-     * @brief Return number of degrees of freedom in solution.
-     * @return Number of degrees of freedom
-    **********************************************************************************/
-    Plato::OrdinalType getNumSolutionDofs()
-    {
-        return SimplexPhysics::mNumDofsPerNode;
-    }
+        Plato::Parabolic::TrapezoidIntegrator<SimplexPhysics> mTrapezoidIntegrator;
 
-    /******************************************************************************/
-    void setGlobalState(const Plato::ScalarMultiVector & aStates)
-    /******************************************************************************/
-    {
-        assert(aStates.extent(0) == mGlobalState.extent(0));
-        assert(aStates.extent(1) == mGlobalState.extent(1));
-        Kokkos::deep_copy(mGlobalState, aStates);
-    }
+        Plato::OrdinalType mNumSteps;
+        Plato::Scalar      mTimeStep;
 
-    /******************************************************************************/
-    Plato::ScalarMultiVector getGlobalState()
-    /******************************************************************************/
-    {
-        return mGlobalState;
-    }
+        bool mSaveState;
 
-    /******************************************************************************/
-    Plato::ScalarMultiVector getAdjoint()
-    /******************************************************************************/
-    {
-        return mAdjoints;
-    }
+        std::shared_ptr<const Plato::Geometric::ScalarFunctionBase> mConstraint;
+        std::shared_ptr<const Plato::Parabolic::ScalarFunctionBase> mObjective;
 
-    /******************************************************************************/
-    void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
-    /******************************************************************************/
-    {
-        if(mJacobian->isBlockMatrix())
+        Plato::ScalarVector mResidual;
+        Plato::ScalarVector mResidualV;
+
+        Plato::ScalarMultiVector mAdjoints_U;
+        Plato::ScalarMultiVector mAdjoints_V;
+
+        Plato::ScalarMultiVector mState;
+        Plato::ScalarMultiVector mStateDot;
+
+        Teuchos::RCP<Plato::CrsMatrixType> mJacobianU;
+        Teuchos::RCP<Plato::CrsMatrixType> mJacobianV;
+
+        Teuchos::RCP<Plato::ComputedFields<SpatialDim>> mComputedFields;
+
+        Plato::LocalOrdinalVector mStateBcDofs;
+        Plato::ScalarVector mStateBcValues;
+
+        rcp<Plato::AbstractSolver> mSolver;
+      public:
+        /******************************************************************************/
+        Problem(
+          Omega_h::Mesh& aMesh,
+          Omega_h::MeshSets& aMeshSets,
+          Teuchos::ParameterList& aParamList,
+          Comm::Machine aMachine
+        ) :
+            mPDEConstraint   (aMesh, aMeshSets, mDataMap, aParamList, 
+                                   aParamList.get<std::string>("PDE Constraint")),
+            mTrapezoidIntegrator    (aParamList.sublist("Time Integration")),
+            mNumSteps     (aParamList.sublist("Time Integration").get<int>("Number Time Steps")),
+            mTimeStep     (aParamList.sublist("Time Integration").get<Plato::Scalar>("Time Step")),
+            mSaveState    (aParamList.sublist("Parabolic").isType<Teuchos::Array<std::string>>("Plottable")),
+            mObjective    (nullptr),
+            mConstraint   (nullptr),
+            mResidual     ("MyResidual", mPDEConstraint.size()),
+            mState        ("State",      mNumSteps, mPDEConstraint.size()),
+            mStateDot     ("StateDot",   mNumSteps, mPDEConstraint.size()),
+            mJacobianU(Teuchos::null),
+            mJacobianV(Teuchos::null)
+        /******************************************************************************/
         {
-            Plato::applyBlockConstraints<mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues);
-        }
-        else
-        {
-            Plato::applyConstraints<mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues);
-        }
-    }
+            // parse boundary constraints
+            //
+            Plato::EssentialBCs<SimplexPhysics>
+                tEssentialBoundaryConditions(aParamList.sublist("Essential Boundary Conditions",false));
+            tEssentialBoundaryConditions.get(aMeshSets, mStateBcDofs, mStateBcValues);
 
-    void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
-
-    /******************************************************************************//**
-     * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aGlobalState 2D container of state variables
-     * @param [in] aControl 1D container of control variables
-    **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aGlobalState)
-    { return; }
-
-    /******************************************************************************/
-    Plato::ScalarMultiVector solution(const Plato::ScalarVector & aControl)
-    /******************************************************************************/
-    {
-        for(Plato::OrdinalType tStepIndex = 1; tStepIndex < mNumSteps; tStepIndex++) {
-          Plato::ScalarVector tState = Kokkos::subview(mGlobalState, tStepIndex, Kokkos::ALL());
-          Plato::ScalarVector tPrevState = Kokkos::subview(mGlobalState, tStepIndex-1, Kokkos::ALL());
-          Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tState);
-
-          mResidual = mEqualityConstraint.value(tState, tPrevState, aControl, mTimeStep);
-
-          mJacobian = mEqualityConstraint.gradient_u(tState, tPrevState, aControl, mTimeStep);
-          this->applyConstraints(mJacobian, mResidual);
-
-          Plato::ScalarVector deltaT("increment", tState.extent(0));
-          Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), deltaT);
-
-          mSolver->solve(*mJacobian, deltaT, mResidual);
-
-          Plato::blas1::axpy(-1.0, deltaT, tState);
-
-        }
-        return mGlobalState;
-    }
-
-    /******************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
-    /******************************************************************************/
-    {
-        assert(aStates.extent(0) == mGlobalState.extent(0));
-        assert(aStates.extent(1) == mGlobalState.extent(1));
-
-        if(mObjective == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE VALUE REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-
-        return mObjective->value(aStates, aControl);
-    }
-
-    /******************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
-    /******************************************************************************/
-    {
-        assert(aStates.extent(0) == mGlobalState.extent(0));
-        assert(aStates.extent(1) == mGlobalState.extent(1));
-
-        if(mConstraint == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT VALUE REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->value(tState, aControl);
-    }
-
-    /******************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControl)
-    /******************************************************************************/
-    {
-        if(mObjective == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE VALUE REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-
-        Plato::ScalarMultiVector tStates = solution(aControl);
-        return mObjective->value(tStates, aControl);
-    }
-
-    /******************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControl)
-    /******************************************************************************/
-    {
-        if(mConstraint == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT VALUE REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->value(tState, aControl);
-    }
-
-    /******************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
-    /******************************************************************************/
-    {
-        assert(aStates.extent(0) == mGlobalState.extent(0));
-        assert(aStates.extent(1) == mGlobalState.extent(1));
-
-        if(mObjective == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE GRADIENT REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-
-        // compute dFd\phi: partial of objective wrt control
-        auto tTotalObjectiveWRT_Control = mObjective->gradient_z(aStates, aControl, mTimeStep);
-
-        // compute lagrange multiplier at the last time step, n
-        
-
-        auto tLastStepIndex = mNumSteps - 1;
-        for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--) {
-
-            auto tState     = Kokkos::subview(aStates,   tStepIndex,   Kokkos::ALL());
-            auto tPrevState = Kokkos::subview(aStates,   tStepIndex-1, Kokkos::ALL());
-            Plato::ScalarVector tAdjoint   = Kokkos::subview(mAdjoints, tStepIndex,   Kokkos::ALL());
-
-            // compute dFdT^k: partial of objective wrt T at step k = tStepIndex
-            auto tPartialObjectiveWRT_State = mObjective->gradient_u(aStates, aControl, mTimeStep, tStepIndex);
-
-            if(tStepIndex != tLastStepIndex) { // the last step doesn't have a contribution from k+1
-                Plato::ScalarVector tNextState   = Kokkos::subview(aStates,   tStepIndex+1, Kokkos::ALL());
-                Plato::ScalarVector tNextAdjoint = Kokkos::subview(mAdjoints, tStepIndex+1, Kokkos::ALL());
-                // compute dQ^{k+1}/dT^k: partial of PDE at k+1 wrt current state, k.
-                mJacobianP = mEqualityConstraint.gradient_p(tNextState, tState, aControl, mTimeStep);
-
-                // multiply dQ^{k+1}/dT^k by lagrange multiplier from k+1 and add to dFdT^k
-                Plato::MatrixTimesVectorPlusVector(mJacobianP, tNextAdjoint, tPartialObjectiveWRT_State);
+            // parse constraint
+            //
+            if(aParamList.isType<std::string>("Constraint"))
+            {
+                std::string tName = aParamList.get<std::string>("Constraint");
+                Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tScalarFunctionBaseFactory;
+                mConstraint = tScalarFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aParamList, tName);
             }
-            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
 
-            // compute dQ^k/dT^k: partial of PDE at k wrt state current state, k.
-            mJacobian = mEqualityConstraint.gradient_u(tState, tPrevState, aControl, mTimeStep);
+            // parse objective
+            //
+            if(aParamList.isType<std::string>("Objective"))
+            {
+                std::string tName = aParamList.get<std::string>("Objective");
+                Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tScalarFunctionBaseFactory;
+                mObjective = tScalarFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aParamList, tName);
 
-            this->applyConstraints(mJacobian, tPartialObjectiveWRT_State);
+                auto tLength = mPDEConstraint.size();
+                mAdjoints_U = Plato::ScalarMultiVector("MyAdjoint U", mNumSteps, tLength);
+                mAdjoints_V = Plato::ScalarMultiVector("MyAdjoint V", mNumSteps, tLength);
+            }
 
-            // adjoint problem uses transpose of global stiffness, but we're assuming the constrained
-            // system is symmetric.
+            // parse computed fields
+            //
+            if(aParamList.isSublist("Computed Fields"))
+            {
+              mComputedFields = Teuchos::rcp(new Plato::ComputedFields<SpatialDim>(aMesh, aParamList.sublist("Computed Fields")));
+            }
 
-            mSolver->solve(*mJacobian, tAdjoint, tPartialObjectiveWRT_State);
+            // parse initial state
+            //
+            if(aParamList.isSublist("Initial State"))
+            {
+                Plato::ScalarVector tInitialState = Kokkos::subview(mState, 0, Kokkos::ALL());
+                if(mComputedFields == Teuchos::null) {
+                  THROWERR("No 'Computed Fields' have been defined");
+                }
 
-            // compute dQ^k/d\phi: partial of PDE wrt control at step k.
-            // dQ^k/d\phi is returned transposed, nxm.  n=z.size() and m=u.size().
-            auto tPartialPDE_WRT_Control = mEqualityConstraint.gradient_z(tState, tPrevState, aControl, mTimeStep);
+                auto tDofNames = mPDEConstraint.getDofNames();
     
-            // compute dgdz . adjoint + dfdz
-            Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Control, tAdjoint, tTotalObjectiveWRT_Control);
+                auto tInitStateParams = aParamList.sublist("Initial State");
+                for (auto i = tInitStateParams.begin(); i != tInitStateParams.end(); ++i) {
+                    const auto &tEntry = tInitStateParams.entry(i);
+                    const auto &tName  = tInitStateParams.name(i);
 
-        }
-
-        return tTotalObjectiveWRT_Control;
-    }
-
-    /******************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
-    /******************************************************************************/
-    {
-        assert(aStates.extent(0) == mGlobalState.extent(0));
-        assert(aStates.extent(1) == mGlobalState.extent(1));
-
-        if(mObjective == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE CONFIGURATION GRADIENT REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-
-        // compute partial derivative wrt x
-        auto tPartialObjectiveWRT_Config  = mObjective->gradient_x(aStates, aControl, mTimeStep);
-
-        auto tLastStepIndex = mNumSteps - 1;
-        for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--) {
-
-            auto tState     = Kokkos::subview(aStates,   tStepIndex,   Kokkos::ALL());
-            auto tPrevState = Kokkos::subview(aStates,   tStepIndex-1, Kokkos::ALL());
-            Plato::ScalarVector tAdjoint   = Kokkos::subview(mAdjoints, tStepIndex,   Kokkos::ALL());
-
-            // compute dFdT^k: partial of objective wrt T at step k = tStepIndex
-            auto tPartialObjectiveWRT_State = mObjective->gradient_u(aStates, aControl, mTimeStep, tStepIndex);
-
-            if(tStepIndex != tLastStepIndex) { // the last step doesn't have a contribution from k+1
-                Plato::ScalarVector tNextState   = Kokkos::subview(aStates,   tStepIndex+1, Kokkos::ALL());
-                Plato::ScalarVector tNextAdjoint = Kokkos::subview(mAdjoints, tStepIndex+1, Kokkos::ALL());
-                // compute dQ^{k+1}/dT^k: partial of PDE at k+1 wrt current state, k.
-                mJacobianP = mEqualityConstraint.gradient_p(tNextState, tState, aControl, mTimeStep);
-
-                // multiply dQ^{k+1}/dT^k by lagrange multiplier from k+1 and add to dFdT^k
-                Plato::MatrixTimesVectorPlusVector(mJacobianP, tNextAdjoint, tPartialObjectiveWRT_State);
-            }
-            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialObjectiveWRT_State);
-
-            // compute dQ^k/dT^k: partial of PDE at k wrt state current state, k.
-            mJacobian = mEqualityConstraint.gradient_u(tState, tPrevState, aControl, mTimeStep);
-
-            this->applyConstraints(mJacobian, tPartialObjectiveWRT_State);
-
-            // adjoint problem uses transpose of global stiffness, but we're assuming the constrained
-            // system is symmetric.
-
-            mSolver->solve(*mJacobian, tAdjoint, tPartialObjectiveWRT_State);
-
-            // compute dQ^k/dx: partial of PDE wrt config.
-            // dQ^k/dx is returned transposed, nxm.  n=x.size() and m=u.size().
-            auto tPartialPDE_WRT_Config = mEqualityConstraint.gradient_x(tState, tPrevState, aControl, mTimeStep);
-
-            // compute dgdx . adjoint + dfdx
-            Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Config, tAdjoint, tPartialObjectiveWRT_Config);
-        }
-        return tPartialObjectiveWRT_Config;
-    }
-
-    /******************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl)
-    /******************************************************************************/
-    {
-        if(mConstraint == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT GRADIENT REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->gradient_z(tState, aControl);
-    }
-
-    /******************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
-    /******************************************************************************/
-    {
-        assert(aStates.extent(0) == mGlobalState.extent(0));
-        assert(aStates.extent(1) == mGlobalState.extent(1));
-
-        if(mConstraint == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT GRADIENT REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(aStates, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->gradient_z(tState, aControl);
-    }
-
-    /******************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControl)
-    /******************************************************************************/
-    {
-        if(mObjective == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE GRADIENT REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-        return mObjective->gradient_z(mGlobalState, aControl, mTimeStep);
-    }
-
-    /******************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControl)
-    /******************************************************************************/
-    {
-        if(mObjective == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: OBJECTIVE CONFIGURATION GRADIENT REQUESTED BUT OBJECTIVE PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT OBJECTIVE FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-        return mObjective->gradient_x(mGlobalState, aControl, mTimeStep);
-    }
-
-
-    /******************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl)
-    /******************************************************************************/
-    {
-        if(mConstraint == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT CONFIGURATION GRADIENT REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(mGlobalState, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->gradient_x(tState, aControl, mTimeStep);
-    }
-
-    /******************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControl, const Plato::ScalarMultiVector & aStates)
-    /******************************************************************************/
-    {
-        assert(aStates.extent(0) == mGlobalState.extent(0));
-        assert(aStates.extent(1) == mGlobalState.extent(1));
-
-        if(mConstraint == nullptr)
-        {
-            std::ostringstream tErrorMessage;
-            tErrorMessage << "\n\n************** ERROR IN FILE: " << __FILE__ << ", FUNCTION: " << __PRETTY_FUNCTION__
-                    << ", LINE: " << __LINE__
-                    << ", MESSAGE: CONSTRAINT CONFIGURATION GRADIENT REQUESTED BUT CONSTRAINT PTR WAS NOT DEFINED BY THE USER."
-                    << " USER SHOULD MAKE SURE THAT CONSTRAINT FUNCTION IS DEFINED IN INPUT FILE. **************\n\n";
-            throw std::runtime_error(tErrorMessage.str().c_str());
-        }
-        auto tLastStepIndex = mNumSteps - 1;
-        auto tState = Kokkos::subview(aStates, tLastStepIndex, Kokkos::ALL());
-        return mConstraint->gradient_x(tState, aControl, mTimeStep);
-    }
-
-private:
-    /******************************************************************************/
-    void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aParamList)
-    /******************************************************************************/
-    {
-        if(aParamList.isSublist("Computed Fields"))
-        {
-          mComputedFields = Teuchos::rcp(new Plato::ComputedFields<SpatialDim>(aMesh, aParamList.sublist("Computed Fields")));
-        }
-
-        if(aParamList.isSublist("Initial State"))
-        {
-            Plato::ScalarVector tInitialState = Kokkos::subview(mGlobalState, 0, Kokkos::ALL());
-            if(mComputedFields == Teuchos::null) {
-              throw std::runtime_error("No 'Computed Fields' have been defined");
-            }
-
-            auto tDofNames = mEqualityConstraint.getDofNames();
-
-            auto tInitStateParams = aParamList.sublist("Initial State");
-            for (auto i = tInitStateParams.begin(); i != tInitStateParams.end(); ++i) {
-                const auto &tEntry = tInitStateParams.entry(i);
-                const auto &tName  = tInitStateParams.name(i);
-
-                if (tEntry.isList()) 
-                {
-                    auto& tStateList = tInitStateParams.sublist(tName);
-                    auto tFieldName = tStateList.get<std::string>("Computed Field");
-                    int tDofIndex = -1;
-                    for (int j = 0; j < tDofNames.size(); ++j)
+                    if (tEntry.isList())
                     {
-                        if (tDofNames[j] == tName) {
-                           tDofIndex = j;
+                        auto& tStateList = tInitStateParams.sublist(tName);
+                        auto tFieldName = tStateList.get<std::string>("Computed Field");
+                        int tDofIndex = -1;
+                        for (int j = 0; j < tDofNames.size(); ++j)
+                        {
+                            if (tDofNames[j] == tName) {
+                               tDofIndex = j;
+                            }
                         }
+                        mComputedFields->get(tFieldName, tDofIndex, tDofNames.size(), tInitialState);
                     }
-                    mComputedFields->get(tFieldName, tDofIndex, tDofNames.size(), tInitialState);
                 }
             }
-        }
 
-        Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
-        Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tParabolicFunctionBaseFactory;
-        if(aParamList.isType<std::string>("Constraint"))
+            Plato::SolverFactory tSolverFactory(aParamList.sublist("Linear Solver"));
+            mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
+
+        }
+        /******************************************************************************//**
+         * @brief Return number of degrees of freedom in solution.
+         * @return Number of degrees of freedom
+        **********************************************************************************/
+        Plato::OrdinalType getNumSolutionDofs()
         {
-            std::string tName = aParamList.get<std::string>("Constraint");
-            mConstraint = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aParamList, tName);
+            return SimplexPhysics::mNumDofsPerNode;
         }
-
-        if(aParamList.isType<std::string>("Objective"))
+        /******************************************************************************/
+        Plato::Solution getGlobalSolution()
+        /******************************************************************************/
         {
-            std::string tName = aParamList.get<std::string>("Objective");
-            mObjective = tParabolicFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aParamList, tName);
-
-            auto tLength = mEqualityConstraint.size();
-            mAdjoints = Plato::ScalarMultiVector("MyAdjoint", mNumSteps, tLength);
+            return Plato::Solution(mState, mStateDot);
         }
 
-        // parse constraints
-        //
-        Plato::EssentialBCs<SimplexPhysics>
-            tEssentialBoundaryConditions(aParamList.sublist("Essential Boundary Conditions",false));
-        tEssentialBoundaryConditions.get(aMeshSets, mBcDofs, mBcValues);
-    }
-};
+        /******************************************************************************/
+        Plato::Adjoint getAdjoint()
+        /******************************************************************************/
+        {
+            return Plato::Adjoint(mAdjoints_U, mAdjoints_V);
+        }
+        /******************************************************************************/
+        void setGlobalSolution(const Plato::Solution & aSolution)
+        /******************************************************************************/
+        {
+            auto tStates = aSolution.State;
+            assert(tStates.extent(0) == mState.extent(0));
+            assert(tStates.extent(1) == mState.extent(1));
 
-} // end namespace Parabolic
+            Kokkos::deep_copy(mState, tStates);
 
-} // end namespace Plato
+            auto tStatesDot = aSolution.StateDot;
+            assert(tStatesDot.extent(0) == mStateDot.extent(0));
+            assert(tStatesDot.extent(1) == mStateDot.extent(1));
 
-#ifdef PLATOANALYZE_1D
-extern template class Plato::Parabolic::Problem<::Plato::Thermal<1>>;
-#endif
-#ifdef PLATOANALYZE_2D
-extern template class Plato::Parabolic::Problem<::Plato::Thermal<2>>;
-#endif
-#ifdef PLATOANALYZE_3D
-extern template class Plato::Parabolic::Problem<::Plato::Thermal<3>>;
-#endif
+            Kokkos::deep_copy(mStateDot, tStatesDot);
+        }
+        void applyConstraints(
+          const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
+          const Plato::ScalarVector & aVector){}
+  
+        /******************************************************************************/
+        void applyStateDotConstraints(
+          const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
+          const Plato::ScalarVector & aVector,
+          Plato::Scalar aScale
+        )
+        /******************************************************************************/
+        {
+            if(mJacobianU->isBlockMatrix())
+            {
+                Plato::applyBlockConstraints<mNumDofsPerNode>(aMatrix, aVector, mStateBcDofs, mStateBcValues, aScale);
+            }
+            else
+            {
+                Plato::applyConstraints<mNumDofsPerNode>(aMatrix, aVector, mStateBcDofs, mStateBcValues, aScale);
+            }
+        }
+        void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
+        /******************************************************************************//**
+         * @brief Update physics-based parameters within optimization iterations
+         * @param [in] aState 2D container of state variables
+         * @param [in] aControl 1D container of control variables
+        **********************************************************************************/
+        void updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)
+        { return; }
+        /******************************************************************************/
+        Plato::Solution
+        solution(
+          const Plato::ScalarVector & aControl
+        )
+        /******************************************************************************/
+        {
 
-#endif // PLATO_PROBLEM_HPP
+            mDataMap.clearStates();
+            Plato::ScalarVector tStateInit    = Kokkos::subview(mState,    /*StepIndex=*/0, Kokkos::ALL());
+            Plato::ScalarVector tStateDotInit = Kokkos::subview(mStateDot, /*StepIndex=*/0, Kokkos::ALL());
+            mResidual  = mPDEConstraint.value(tStateInit, tStateDotInit, aControl, mTimeStep);
+            mDataMap.saveState();
+   
+            for(Plato::OrdinalType tStepIndex = 1; tStepIndex < mNumSteps; tStepIndex++) {
+              Plato::ScalarVector tStatePrev    = Kokkos::subview(mState,    tStepIndex-1, Kokkos::ALL());
+              Plato::ScalarVector tStateDotPrev = Kokkos::subview(mStateDot, tStepIndex-1, Kokkos::ALL());
+              Plato::ScalarVector tState        = Kokkos::subview(mState,    tStepIndex,   Kokkos::ALL());
+              Plato::ScalarVector tStateDot     = Kokkos::subview(mStateDot, tStepIndex,   Kokkos::ALL());
+
+              // -R_{u}
+              mResidual  = mPDEConstraint.value(tState, tStateDot, aControl, mTimeStep);
+              Plato::blas1::scale(-1.0, mResidual);
+
+              // R_{v}
+              mResidualV = mTrapezoidIntegrator.v_value(tState,    tStatePrev,
+                                                        tStateDot, tStateDotPrev, mTimeStep);
+
+              // R_{u,v^N}
+              mJacobianV = mPDEConstraint.gradient_v(tState, tStateDot, aControl, mTimeStep);
+
+              // -R_{u} += R_{u,v^N} R_{v}
+              Plato::MatrixTimesVectorPlusVector(mJacobianV, mResidualV, mResidual);
+
+              // R_{u,u^N}
+              mJacobianU = mPDEConstraint.gradient_u(tState, tStateDot, aControl, mTimeStep);
+
+              // R_{v,u^N}
+              auto tR_vu = mTrapezoidIntegrator.v_grad_u(mTimeStep);
+
+              // R_{u,u^N} += R_{u,v^N} R_{v,u^N}
+              Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
+
+              this->applyStateDotConstraints(mJacobianU, mResidual, mTimeStep);
+
+              Plato::ScalarVector tDeltaD("increment", tState.extent(0));
+              Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
+
+              // compute displacement increment:
+              mSolver->solve(*mJacobianU, tDeltaD, mResidual);
+
+              // compute and add statedot increment: \Delta v = - ( R_{v} + R_{v,u} \Delta u )
+              Plato::blas1::axpy(tR_vu, tDeltaD, mResidualV);
+              // a_{k+1} = a_{k} + \Delta a
+              Plato::blas1::axpy(-1.0, mResidualV, tStateDot);
+
+              // add displacement increment
+              Plato::blas1::axpy(1.0, tDeltaD, tState);
+
+              if ( mSaveState )
+              {
+                // evaluate at new state
+                mResidual  = mPDEConstraint.value(tState, tStateDot, aControl, mTimeStep);
+                mDataMap.saveState();
+              }
+            }
+            return Plato::Solution(mState, mStateDot);
+        }
+
+        /******************************************************************************/
+        Plato::Scalar constraintValue(
+          const Plato::ScalarVector & aControl
+        )
+        /******************************************************************************/
+        {
+            if(mConstraint == nullptr)
+            {
+                THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
+            }
+            return mConstraint->value(aControl);
+        }
+        /******************************************************************************/
+        Plato::ScalarVector constraintGradient(
+          const Plato::ScalarVector & aControl
+        )
+        /******************************************************************************/
+        {
+            if(mConstraint == nullptr)
+            {
+                THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
+            }
+            return mConstraint->gradient_z(aControl);
+        }
+        /******************************************************************************/
+        Plato::ScalarVector constraintGradientX(
+          const Plato::ScalarVector & aControl
+        )
+        /******************************************************************************/
+        {
+            if(mConstraint == nullptr)
+            {
+                THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
+            }
+            return mConstraint->gradient_x(aControl);
+        }
+        /******************************************************************************/
+        Plato::Scalar objectiveValue(
+          const Plato::ScalarVector & aControl,
+          const Plato::Solution & aSolution
+        )
+        /******************************************************************************/
+        {
+            if(mObjective == nullptr)
+            {
+                THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
+            }
+            auto tSolution = solution(aControl);
+            return mObjective->value(tSolution, aControl, mTimeStep);
+        }
+        /******************************************************************************/
+        Plato::Scalar objectiveValue(
+          const Plato::ScalarVector & aControl
+        )
+        /******************************************************************************/
+        {
+            if(mObjective == nullptr)
+            {
+                THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
+            }
+            return mObjective->value(Plato::Solution(mState, mStateDot), aControl, mTimeStep);
+        }
+        /******************************************************************************/
+        Plato::ScalarVector objectiveGradient(
+          const Plato::ScalarVector & aControl
+        )
+        /******************************************************************************/
+        {
+            if(mObjective == nullptr)
+            {
+                THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
+            }
+            auto tSolution = solution(aControl);
+            return objectiveGradient(aControl, tSolution);
+        }
+        /******************************************************************************/
+        Plato::ScalarVector objectiveGradient(
+          const Plato::ScalarVector & aControl,
+          const Plato::Solution & aSolution
+        )
+        /******************************************************************************/
+        {
+            if(mObjective == nullptr)
+            {
+                THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
+            }
+
+            auto tSolution = Plato::Solution(mState, mStateDot);
+
+            // F_{,z}
+            auto t_dFdz = mObjective->gradient_z(tSolution, aControl, mTimeStep);
+
+            auto tLastStepIndex = mNumSteps - 1;
+            for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--) {
+
+                auto tU = Kokkos::subview(mState, tStepIndex, Kokkos::ALL());
+                auto tV = Kokkos::subview(mStateDot, tStepIndex, Kokkos::ALL());
+
+                Plato::ScalarVector tAdjoint_U = Kokkos::subview(mAdjoints_U, tStepIndex, Kokkos::ALL());
+                Plato::ScalarVector tAdjoint_V = Kokkos::subview(mAdjoints_V, tStepIndex, Kokkos::ALL());
+
+                // F_{,u^k}
+                auto t_dFdu = mObjective->gradient_u(tSolution, aControl, tStepIndex, mTimeStep);
+                // F_{,v^k}
+                auto t_dFdv = mObjective->gradient_v(tSolution, aControl, tStepIndex, mTimeStep);
+
+                if(tStepIndex != tLastStepIndex) { // the last step doesn't have a contribution from k+1
+
+                    // L_{v}^{k+1}
+                    Plato::ScalarVector tAdjoint_V_next = Kokkos::subview(mAdjoints_V, tStepIndex+1, Kokkos::ALL());
+
+                    // R_{v,u^k}^{k+1}
+                    auto tR_vu_prev = mTrapezoidIntegrator.v_grad_u_prev(mTimeStep);
+
+                    // F_{,u^k} += L_{v}^{k+1} R_{v,u^k}^{k+1}
+                    Plato::blas1::axpy(tR_vu_prev, tAdjoint_V_next, t_dFdu);
+
+
+                    // R_{v,v^k}^{k+1}
+                    auto tR_vv_prev = mTrapezoidIntegrator.v_grad_v_prev(mTimeStep);
+
+                    // F_{,v^k} += L_{v}^{k+1} R_{v,v^k}^{k+1}
+                    Plato::blas1::axpy(tR_vv_prev, tAdjoint_V_next, t_dFdv);
+
+                }
+                Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_dFdu);
+
+                // R_{v,u^k}
+                auto tR_vu = mTrapezoidIntegrator.v_grad_u(mTimeStep);
+
+                // -F_{,u^k} += R_{v,u^k}^k F_{,v^k}
+                Plato::blas1::axpy(tR_vu, t_dFdv, t_dFdu);
+
+                // R_{u,u^k}
+                mJacobianU = mPDEConstraint.gradient_u(tU, tV, aControl, mTimeStep);
+
+                // R_{u,v^k}
+                mJacobianV = mPDEConstraint.gradient_v(tU, tV, aControl, mTimeStep);
+
+                // R_{u,u^k} -= R_{v,u^k} R_{u,v^k}
+                Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
+
+                this->applyConstraints(mJacobianU, t_dFdu);
+
+                // L_u^k
+                mSolver->solve(*mJacobianU, tAdjoint_U, t_dFdu);
+
+                // L_v^k
+                Plato::MatrixTimesVectorPlusVector(mJacobianV, tAdjoint_U, t_dFdv);
+                Plato::blas1::fill(0.0, tAdjoint_V);
+                Plato::blas1::axpy(-1.0, t_dFdv, tAdjoint_V);
+
+                // R^k_{,z}
+                auto t_dRdz = mPDEConstraint.gradient_z(tU, tV, aControl, mTimeStep);
+
+                // F_{,z} += L_u^k R^k_{,z}
+                Plato::MatrixTimesVectorPlusVector(t_dRdz, tAdjoint_U, t_dFdz);
+            }
+
+            return t_dFdz;
+        }
+        /******************************************************************************/
+        Plato::ScalarVector objectiveGradientX(
+          const Plato::ScalarVector & aControl
+        )
+        /******************************************************************************/
+        {
+            if(mObjective == nullptr)
+            {
+                THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
+            }
+            auto tSolution = solution(aControl);
+            return objectiveGradientX(aControl, tSolution);
+        }
+        /******************************************************************************/
+        Plato::ScalarVector objectiveGradientX(
+          const Plato::ScalarVector & aControl,
+          const Plato::Solution & aSolution
+        )
+        /******************************************************************************/
+        {
+            if(mObjective == nullptr)
+            {
+                THROWERR("OBJECTIVE REQUESTED BUT NOT DEFINED BY USER.");
+            }
+
+            auto tSolution = Plato::Solution(mState, mStateDot);
+
+            // F_{,x}
+            auto t_dFdx = mObjective->gradient_x(tSolution, aControl, mTimeStep);
+
+            auto tLastStepIndex = mNumSteps - 1;
+            for(Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--) {
+
+                auto tU = Kokkos::subview(mState, tStepIndex, Kokkos::ALL());
+                auto tV = Kokkos::subview(mStateDot, tStepIndex, Kokkos::ALL());
+
+                Plato::ScalarVector tAdjoint_U = Kokkos::subview(mAdjoints_U, tStepIndex, Kokkos::ALL());
+                Plato::ScalarVector tAdjoint_V = Kokkos::subview(mAdjoints_V, tStepIndex, Kokkos::ALL());
+
+                // F_{,u^k}
+                auto t_dFdu = mObjective->gradient_u(tSolution, aControl, tStepIndex, mTimeStep);
+                // F_{,v^k}
+                auto t_dFdv = mObjective->gradient_v(tSolution, aControl, tStepIndex, mTimeStep);
+
+                if(tStepIndex != tLastStepIndex) { // the last step doesn't have a contribution from k+1
+
+                    // L_{v}^{k+1}
+                    Plato::ScalarVector tAdjoint_V_next = Kokkos::subview(mAdjoints_V, tStepIndex+1, Kokkos::ALL());
+
+
+                    // R_{v,u^k}^{k+1}
+                    auto tR_vu_prev = mTrapezoidIntegrator.v_grad_u_prev(mTimeStep);
+
+                    // F_{,u^k} += L_{v}^{k+1} R_{v,u^k}^{k+1}
+                    Plato::blas1::axpy(tR_vu_prev, tAdjoint_V_next, t_dFdu);
+
+
+                    // R_{v,v^k}^{k+1}
+                    auto tR_vv_prev = mTrapezoidIntegrator.v_grad_v_prev(mTimeStep);
+
+                    // F_{,v^k} += L_{v}^{k+1} R_{v,v^k}^{k+1}
+                    Plato::blas1::axpy(tR_vv_prev, tAdjoint_V_next, t_dFdv);
+
+                }
+                Plato::blas1::scale(static_cast<Plato::Scalar>(-1), t_dFdu);
+
+                // R_{v,u^k}
+                auto tR_vu = mTrapezoidIntegrator.v_grad_u(mTimeStep);
+
+                // -F_{,u^k} += R_{v,u^k}^k F_{,v^k}
+                Plato::blas1::axpy(tR_vu, t_dFdv, t_dFdu);
+
+
+                // R_{u,u^k}
+                mJacobianU = mPDEConstraint.gradient_u(tU, tV, aControl, mTimeStep);
+
+                // R_{u,v^k}
+                mJacobianV = mPDEConstraint.gradient_v(tU, tV, aControl, mTimeStep);
+
+                // R_{u,u^k} -= R_{v,u^k} R_{u,v^k}
+                Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
+
+                this->applyConstraints(mJacobianU, t_dFdu);
+
+                // L_u^k
+                mSolver->solve(*mJacobianU, tAdjoint_U, t_dFdu);
+
+                // L_v^k
+                Plato::MatrixTimesVectorPlusVector(mJacobianV, tAdjoint_U, t_dFdv);
+                Plato::blas1::fill(0.0, tAdjoint_V);
+                Plato::blas1::axpy(-1.0, t_dFdv, tAdjoint_V);
+
+                // R^k_{,x}
+                auto t_dRdx = mPDEConstraint.gradient_x(tU, tV, aControl, mTimeStep);
+
+                // F_{,x} += L_u^k R^k_{,x}
+                Plato::MatrixTimesVectorPlusVector(t_dRdx, tAdjoint_U, t_dFdx);
+            }
+
+            return t_dFdx;
+        }
+    };
+
+} // namespace Parabolic
+
+} // namespace Plato

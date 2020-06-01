@@ -191,27 +191,26 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate physics scalar function
-     * @param [in] aStates 2D view of state variables
-     * @param [in] aStatesDot 2D view of state first derivative variables
-     * @param [in] aStatesDotDot 2D view of state second derivative variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return scalar physics function evaluation
     **********************************************************************************/
     Plato::Scalar
-    value(
-        const Plato::ScalarMultiVector & aStates,
-        const Plato::ScalarMultiVector & aStatesDot,
-        const Plato::ScalarMultiVector & aStatesDotDot,
-        const Plato::ScalarVector      & aControl,
-        Plato::Scalar aTimeStep = 0.0) const
+    value(const Plato::Solution     & aSolution,
+          const Plato::ScalarVector & aControl,
+                Plato::Scalar         aTimeStep = 0.0) const override
     {
         using ConfigScalar      = typename Residual::ConfigScalarType;
-        using StateScalar       = typename Residual::DisplacementScalarType;
-        using StateDotScalar    = typename Residual::VelocityScalarType;
-        using StateDotDotScalar = typename Residual::AccelerationScalarType;
+        using StateScalar       = typename Residual::StateScalarType;
+        using StateDotScalar    = typename Residual::StateDotScalarType;
+        using StateDotDotScalar = typename Residual::StateDotDotScalarType;
         using ControlScalar     = typename Residual::ControlScalarType;
         using ResultScalar      = typename Residual::ResultScalarType;
+
+        auto tStates = aSolution.State;
+        auto tStatesDot = aSolution.StateDot;
+        auto tStatesDotDot = aSolution.StateDotDot;
 
         // workset control
         //
@@ -234,23 +233,23 @@ public:
 
         ResultScalar tReturnVal(0.0);
 
-        auto tNumSteps = aStates.extent(0);
+        auto tNumSteps = tStates.extent(0);
         auto tLastStepIndex = tNumSteps - 1;
         for( decltype(tNumSteps) tStepIndex = tLastStepIndex; tStepIndex > 0; --tStepIndex ){
 
           // workset state
           //
-          auto tState = Kokkos::subview(aStates, tStepIndex, Kokkos::ALL());
+          auto tState = Kokkos::subview(tStates, tStepIndex, Kokkos::ALL());
           Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
           // workset state dot
           //
-          auto tStateDot = Kokkos::subview(aStatesDot, tStepIndex, Kokkos::ALL());
+          auto tStateDot = Kokkos::subview(tStatesDot, tStepIndex, Kokkos::ALL());
           Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
           // workset state dot dot
           //
-          auto tStateDotDot = Kokkos::subview(aStatesDotDot, tStepIndex, Kokkos::ALL());
+          auto tStateDotDot = Kokkos::subview(tStatesDotDot, tStepIndex, Kokkos::ALL());
           Plato::WorksetBase<PhysicsT>::worksetState(tStateDotDot, tStateDotDotWS);
 
           // evaluate function
@@ -270,27 +269,26 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the configuration parameters
-     * @param [in] aStates 2D view of state variables
-     * @param [in] aStatesDot 2D view of state first derivative variables
-     * @param [in] aStatesDotDot 2D view of state first derivative variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the physics scalar function wrt the configuration parameters
     **********************************************************************************/
     Plato::ScalarVector
-    gradient_x(
-        const Plato::ScalarMultiVector & aStates,
-        const Plato::ScalarMultiVector & aStatesDot,
-        const Plato::ScalarMultiVector & aStatesDotDot,
-        const Plato::ScalarVector & aControl,
-        Plato::Scalar aTimeStep = 0.0) const
+    gradient_x(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::Scalar         aTimeStep = 0.0) const override
     {
         using ConfigScalar      = typename GradientX::ConfigScalarType;
-        using StateScalar       = typename GradientX::DisplacementScalarType;
-        using StateDotScalar    = typename GradientX::VelocityScalarType;
-        using StateDotDotScalar = typename GradientX::AccelerationScalarType;
+        using StateScalar       = typename GradientX::StateScalarType;
+        using StateDotScalar    = typename GradientX::StateDotScalarType;
+        using StateDotDotScalar = typename GradientX::StateDotDotScalarType;
         using ControlScalar     = typename GradientX::ControlScalarType;
         using ResultScalar      = typename GradientX::ResultScalarType;
+
+        auto tStates = aSolution.State;
+        auto tStatesDot = aSolution.StateDot;
+        auto tStatesDotDot = aSolution.StateDotDot;
 
         Plato::ScalarMultiVectorT<StateScalar>       tStateWS       ("state workset",         mNumCells, mNumDofsPerCell);
         Plato::ScalarMultiVectorT<StateDotScalar>    tStateDotWS    ("state dot workset",     mNumCells, mNumDofsPerCell);
@@ -316,23 +314,23 @@ public:
         Plato::ScalarVectorT<ResultScalar> tResult("result",mNumCells);
 
 
-        auto tNumSteps = aStates.extent(0);
+        auto tNumSteps = tStates.extent(0);
         auto tLastStepIndex = tNumSteps - 1;
         for( decltype(tNumSteps) tStepIndex = tLastStepIndex; tStepIndex > 0; --tStepIndex ){
 
             // workset state
             //
-            auto tState = Kokkos::subview(aStates, tStepIndex, Kokkos::ALL());
+            auto tState = Kokkos::subview(tStates, tStepIndex, Kokkos::ALL());
             Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
             // workset state dot
             //
-            auto tStateDot = Kokkos::subview(aStatesDot, tStepIndex, Kokkos::ALL());
+            auto tStateDot = Kokkos::subview(tStatesDot, tStepIndex, Kokkos::ALL());
             Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
             // workset state dot dot
             //
-            auto tStateDotDot = Kokkos::subview(aStatesDotDot, tStepIndex, Kokkos::ALL());
+            auto tStateDotDot = Kokkos::subview(tStatesDotDot, tStepIndex, Kokkos::ALL());
             Plato::WorksetBase<PhysicsT>::worksetState(tStateDotDot, tStateDotDotWS);
 
             // evaluate function
@@ -351,33 +349,32 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the state variables
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step
      * @param [in] aStepIndex step index
      * @return 1D view with the gradient of the physics scalar function wrt the state variables
     **********************************************************************************/
     Plato::ScalarVector
-    gradient_u(
-        const Plato::ScalarMultiVector & aStates,
-        const Plato::ScalarMultiVector & aStatesDot,
-        const Plato::ScalarMultiVector & aStatesDotDot,
-        const Plato::ScalarVector      & aControl,
-        Plato::Scalar aTimeStep,
-        Plato::OrdinalType aStepIndex) const
+    gradient_u(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::OrdinalType    aStepIndex,
+                     Plato::Scalar         aTimeStep) const override
     {
         using ConfigScalar      = typename GradientU::ConfigScalarType;
-        using StateScalar       = typename GradientU::DisplacementScalarType;
-        using StateDotScalar    = typename GradientU::VelocityScalarType;
-        using StateDotDotScalar = typename GradientU::AccelerationScalarType;
+        using StateScalar       = typename GradientU::StateScalarType;
+        using StateDotScalar    = typename GradientU::StateDotScalarType;
+        using StateDotDotScalar = typename GradientU::StateDotDotScalarType;
         using ControlScalar     = typename GradientU::ControlScalarType;
         using ResultScalar      = typename GradientU::ResultScalarType;
 
-        assert(aStepIndex < aStates.extent(0));
-        assert(aStates.extent(0) > 1);
-        assert(aStepIndex > 0);
+        auto tStates = aSolution.State;
+        auto tStatesDot = aSolution.StateDot;
+        auto tStatesDotDot = aSolution.StateDotDot;
 
-        auto tNumSteps = aStates.extent(0);
+        assert(aStepIndex < tStates.extent(0));
+        assert(tStates.extent(0) > 1);
+        assert(aStepIndex > 0);
 
         // workset control
         //
@@ -396,19 +393,19 @@ public:
         // workset state
         //
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset", mNumCells, mNumDofsPerCell);
-        auto tState = Kokkos::subview(aStates, aStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(tStates, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
         // workset state dot
         //
         Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset", mNumCells, mNumDofsPerCell);
-        auto tStateDot = Kokkos::subview(aStatesDot, aStepIndex, Kokkos::ALL());
+        auto tStateDot = Kokkos::subview(tStatesDot, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
         // workset state dot dot
         //
         Plato::ScalarMultiVectorT<StateDotDotScalar> tStateDotDotWS("state dot dot workset", mNumCells, mNumDofsPerCell);
-        auto tStateDotDot = Kokkos::subview(aStates, aStepIndex, Kokkos::ALL());
+        auto tStateDotDot = Kokkos::subview(tStatesDotDot, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tStateDotDot, tStateDotDotWS);
 
         // evaluate function
@@ -428,33 +425,32 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the state dot variables
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step
      * @param [in] aStepIndex step index
      * @return 1D view with the gradient of the physics scalar function wrt the state dot variables
     **********************************************************************************/
     Plato::ScalarVector
-    gradient_v(
-        const Plato::ScalarMultiVector & aStates,
-        const Plato::ScalarMultiVector & aStatesDot,
-        const Plato::ScalarMultiVector & aStatesDotDot,
-        const Plato::ScalarVector      & aControl,
-        Plato::Scalar aTimeStep,
-        Plato::OrdinalType aStepIndex) const
+    gradient_v(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::OrdinalType    aStepIndex,
+                     Plato::Scalar         aTimeStep) const override
     {
         using ConfigScalar      = typename GradientV::ConfigScalarType;
-        using StateScalar       = typename GradientV::DisplacementScalarType;
-        using StateDotScalar    = typename GradientV::VelocityScalarType;
-        using StateDotDotScalar = typename GradientV::AccelerationScalarType;
+        using StateScalar       = typename GradientV::StateScalarType;
+        using StateDotScalar    = typename GradientV::StateDotScalarType;
+        using StateDotDotScalar = typename GradientV::StateDotDotScalarType;
         using ControlScalar     = typename GradientV::ControlScalarType;
         using ResultScalar      = typename GradientV::ResultScalarType;
 
-        assert(aStepIndex < aStates.extent(0));
-        assert(aStates.extent(0) > 1);
-        assert(aStepIndex > 0);
+        auto tStates = aSolution.State;
+        auto tStatesDot = aSolution.StateDot;
+        auto tStatesDotDot = aSolution.StateDotDot;
 
-        auto tNumSteps = aStates.extent(0);
+        assert(aStepIndex < tStates.extent(0));
+        assert(tStates.extent(0) > 1);
+        assert(aStepIndex > 0);
 
         // workset control
         //
@@ -473,19 +469,19 @@ public:
         // workset state
         //
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset", mNumCells, mNumDofsPerCell);
-        auto tState = Kokkos::subview(aStates, aStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(tStates, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
         // workset state dot
         //
         Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset", mNumCells, mNumDofsPerCell);
-        auto tStateDot = Kokkos::subview(aStatesDot, aStepIndex, Kokkos::ALL());
+        auto tStateDot = Kokkos::subview(tStatesDot, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
         // workset state dot dot
         //
         Plato::ScalarMultiVectorT<StateDotDotScalar> tStateDotDotWS("state dot dot workset", mNumCells, mNumDofsPerCell);
-        auto tStateDotDot = Kokkos::subview(aStates, aStepIndex, Kokkos::ALL());
+        auto tStateDotDot = Kokkos::subview(tStatesDotDot, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tStateDotDot, tStateDotDotWS);
 
         // evaluate function
@@ -505,33 +501,32 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the state dot dot variables
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution 1D view of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step
      * @param [in] aStepIndex step index
      * @return 1D view with the gradient of the physics scalar function wrt the state dot dot variables
     **********************************************************************************/
     Plato::ScalarVector
-    gradient_a(
-        const Plato::ScalarMultiVector & aStates,
-        const Plato::ScalarMultiVector & aStatesDot,
-        const Plato::ScalarMultiVector & aStatesDotDot,
-        const Plato::ScalarVector      & aControl,
-        Plato::Scalar aTimeStep,
-        Plato::OrdinalType aStepIndex) const
+    gradient_a(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::OrdinalType    aStepIndex,
+                     Plato::Scalar         aTimeStep) const override
     {
         using ConfigScalar      = typename GradientA::ConfigScalarType;
-        using StateScalar       = typename GradientA::DisplacementScalarType;
-        using StateDotScalar    = typename GradientA::VelocityScalarType;
-        using StateDotDotScalar = typename GradientA::AccelerationScalarType;
+        using StateScalar       = typename GradientA::StateScalarType;
+        using StateDotScalar    = typename GradientA::StateDotScalarType;
+        using StateDotDotScalar = typename GradientA::StateDotDotScalarType;
         using ControlScalar     = typename GradientA::ControlScalarType;
         using ResultScalar      = typename GradientA::ResultScalarType;
 
-        assert(aStepIndex < aStates.extent(0));
-        assert(aStates.extent(0) > 1);
-        assert(aStepIndex > 0);
+        auto tStates = aSolution.State;
+        auto tStatesDot = aSolution.StateDot;
+        auto tStatesDotDot = aSolution.StateDotDot;
 
-        auto tNumSteps = aStates.extent(0);
+        assert(aStepIndex < tStates.extent(0));
+        assert(tStates.extent(0) > 1);
+        assert(aStepIndex > 0);
 
         // workset control
         //
@@ -550,19 +545,19 @@ public:
         // workset state
         //
         Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset", mNumCells, mNumDofsPerCell);
-        auto tState = Kokkos::subview(aStates, aStepIndex, Kokkos::ALL());
+        auto tState = Kokkos::subview(tStates, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
         // workset state dot
         //
         Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset", mNumCells, mNumDofsPerCell);
-        auto tStateDot = Kokkos::subview(aStatesDot, aStepIndex, Kokkos::ALL());
+        auto tStateDot = Kokkos::subview(tStatesDot, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
         // workset state dot dot
         //
         Plato::ScalarMultiVectorT<StateDotDotScalar> tStateDotDotWS("state dot dot workset", mNumCells, mNumDofsPerCell);
-        auto tStateDotDot = Kokkos::subview(aStates, aStepIndex, Kokkos::ALL());
+        auto tStateDotDot = Kokkos::subview(tStatesDotDot, aStepIndex, Kokkos::ALL());
         Plato::WorksetBase<PhysicsT>::worksetState(tStateDotDot, tStateDotDotWS);
 
         // evaluate function
@@ -583,25 +578,26 @@ public:
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the physics scalar function with respect to (wrt) the control variables
-     * @param [in] aState 1D view of state variables
+     * @param [in] aSolution Plato::Solution composed of state variables
      * @param [in] aControl 1D view of control variables
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the physics scalar function wrt the control variables
     **********************************************************************************/
     Plato::ScalarVector
-    gradient_z(
-        const Plato::ScalarMultiVector & aStates,
-        const Plato::ScalarMultiVector & aStatesDot,
-        const Plato::ScalarMultiVector & aStatesDotDot,
-        const Plato::ScalarVector & aControl,
-        Plato::Scalar aTimeStep = 0.0) const
+    gradient_z(const Plato::Solution     & aSolution,
+               const Plato::ScalarVector & aControl,
+                     Plato::Scalar         aTimeStep = 0.0) const override
     {
         using ConfigScalar      = typename GradientZ::ConfigScalarType;
-        using StateScalar       = typename GradientZ::DisplacementScalarType;
-        using StateDotScalar    = typename GradientZ::VelocityScalarType;
-        using StateDotDotScalar = typename GradientZ::AccelerationScalarType;
+        using StateScalar       = typename GradientZ::StateScalarType;
+        using StateDotScalar    = typename GradientZ::StateDotScalarType;
+        using StateDotDotScalar = typename GradientZ::StateDotDotScalarType;
         using ControlScalar     = typename GradientZ::ControlScalarType;
         using ResultScalar      = typename GradientZ::ResultScalarType;
+
+        auto tStates = aSolution.State;
+        auto tStatesDot = aSolution.StateDot;
+        auto tStatesDotDot = aSolution.StateDotDot;
 
         Plato::ScalarMultiVectorT<StateScalar>       tStateWS       ("state workset",         mNumCells, mNumDofsPerCell);
         Plato::ScalarMultiVectorT<StateDotScalar>    tStateDotWS    ("state dot workset",     mNumCells, mNumDofsPerCell);
@@ -629,23 +625,23 @@ public:
         //
         Plato::ScalarVector tObjGradientZ("objective gradient control",mNumNodes);
 
-        auto tNumSteps = aStates.extent(0);
+        auto tNumSteps = tStates.extent(0);
         auto tLastStepIndex = tNumSteps - 1;
         for( decltype(tNumSteps) tStepIndex = tLastStepIndex; tStepIndex > 0; --tStepIndex ){
 
             // workset state
             //
-            auto tState = Kokkos::subview(aStates, tStepIndex, Kokkos::ALL());
+            auto tState = Kokkos::subview(tStates, tStepIndex, Kokkos::ALL());
             Plato::WorksetBase<PhysicsT>::worksetState(tState, tStateWS);
 
             // workset state dot
             //
-            auto tStateDot = Kokkos::subview(aStatesDot, tStepIndex, Kokkos::ALL());
+            auto tStateDot = Kokkos::subview(tStatesDot, tStepIndex, Kokkos::ALL());
             Plato::WorksetBase<PhysicsT>::worksetState(tStateDot, tStateDotWS);
 
             // workset state dot dot
             //
-            auto tStateDotDot = Kokkos::subview(aStatesDotDot, tStepIndex, Kokkos::ALL());
+            auto tStateDotDot = Kokkos::subview(tStatesDotDot, tStepIndex, Kokkos::ALL());
             Plato::WorksetBase<PhysicsT>::worksetState(tStateDotDot, tStateDotDotWS);
 
             // evaluate function

@@ -1,5 +1,4 @@
-#ifndef ABSTRACT_SCALAR_FUNCTION
-#define ABSTRACT_SCALAR_FUNCTION
+#pragma once
 
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
@@ -104,5 +103,3 @@ public:
 } // namespace Elliptic
 
 } // namespace Plato
-
-#endif

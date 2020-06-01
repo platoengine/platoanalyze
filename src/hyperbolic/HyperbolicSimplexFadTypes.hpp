@@ -20,12 +20,12 @@ struct EvaluationTypes
 template <typename SimplexPhysicsT>
 struct ResidualTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = Plato::Scalar;
-  using ControlScalarType        = Plato::Scalar;
-  using ConfigScalarType         = Plato::Scalar;
-  using ResultScalarType         = Plato::Scalar;
+  using StateScalarType       = Plato::Scalar;
+  using StateDotScalarType    = Plato::Scalar;
+  using StateDotDotScalarType = Plato::Scalar;
+  using ControlScalarType     = Plato::Scalar;
+  using ConfigScalarType      = Plato::Scalar;
+  using ResultScalarType      = Plato::Scalar;
 };
 
 template <typename SimplexPhysicsT>
@@ -33,12 +33,12 @@ struct GradientUTypes : EvaluationTypes<SimplexPhysicsT>
 {
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
 
-  using DisplacementScalarType   = SFadType;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = Plato::Scalar;
-  using ControlScalarType        = Plato::Scalar;
-  using ConfigScalarType         = Plato::Scalar;
-  using ResultScalarType         = SFadType;
+  using StateScalarType       = SFadType;
+  using StateDotScalarType    = Plato::Scalar;
+  using StateDotDotScalarType = Plato::Scalar;
+  using ControlScalarType     = Plato::Scalar;
+  using ConfigScalarType      = Plato::Scalar;
+  using ResultScalarType      = SFadType;
 };
 
 template <typename SimplexPhysicsT>
@@ -46,12 +46,12 @@ struct GradientVTypes : EvaluationTypes<SimplexPhysicsT>
 {
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
 
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = SFadType;
-  using AccelerationScalarType   = Plato::Scalar;
-  using ControlScalarType        = Plato::Scalar;
-  using ConfigScalarType         = Plato::Scalar;
-  using ResultScalarType         = SFadType;
+  using StateScalarType       = Plato::Scalar;
+  using StateDotScalarType    = SFadType;
+  using StateDotDotScalarType = Plato::Scalar;
+  using ControlScalarType     = Plato::Scalar;
+  using ConfigScalarType      = Plato::Scalar;
+  using ResultScalarType      = SFadType;
 };
 
 template <typename SimplexPhysicsT>
@@ -59,12 +59,12 @@ struct GradientATypes : EvaluationTypes<SimplexPhysicsT>
 {
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
 
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = SFadType;
-  using ControlScalarType        = Plato::Scalar;
-  using ConfigScalarType         = Plato::Scalar;
-  using ResultScalarType         = SFadType;
+  using StateScalarType       = Plato::Scalar;
+  using StateDotScalarType    = Plato::Scalar;
+  using StateDotDotScalarType = SFadType;
+  using ControlScalarType     = Plato::Scalar;
+  using ConfigScalarType      = Plato::Scalar;
+  using ResultScalarType      = SFadType;
 };
 
 template <typename SimplexPhysicsT>
@@ -72,12 +72,12 @@ struct GradientXTypes : EvaluationTypes<SimplexPhysicsT>
 {
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::ConfigFad;
 
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = Plato::Scalar;
-  using ControlScalarType        = Plato::Scalar;
-  using ConfigScalarType         = SFadType;
-  using ResultScalarType         = SFadType;
+  using StateScalarType       = Plato::Scalar;
+  using StateDotScalarType    = Plato::Scalar;
+  using StateDotDotScalarType = Plato::Scalar;
+  using ControlScalarType     = Plato::Scalar;
+  using ConfigScalarType      = SFadType;
+  using ResultScalarType      = SFadType;
 };
 
 template <typename SimplexPhysicsT>
@@ -85,22 +85,22 @@ struct GradientZTypes : EvaluationTypes<SimplexPhysicsT>
 {
   using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::ControlFad;
 
-  using DisplacementScalarType   = Plato::Scalar;
-  using VelocityScalarType       = Plato::Scalar;
-  using AccelerationScalarType   = Plato::Scalar;
-  using ControlScalarType        = SFadType;
-  using ConfigScalarType         = Plato::Scalar;
-  using ResultScalarType         = SFadType;
+  using StateScalarType       = Plato::Scalar;
+  using StateDotScalarType    = Plato::Scalar;
+  using StateDotDotScalarType = Plato::Scalar;
+  using ControlScalarType     = SFadType;
+  using ConfigScalarType      = Plato::Scalar;
+  using ResultScalarType      = SFadType;
 };
 
 template <typename SimplexPhysicsT>
 struct Evaluation {
-   using Residual       = ResidualTypes<SimplexPhysicsT>;
-   using GradientU      = GradientUTypes<SimplexPhysicsT>;
-   using GradientV      = GradientVTypes<SimplexPhysicsT>;
-   using GradientA      = GradientATypes<SimplexPhysicsT>;
-   using GradientZ      = GradientZTypes<SimplexPhysicsT>;
-   using GradientX      = GradientXTypes<SimplexPhysicsT>;
+   using Residual  = ResidualTypes<SimplexPhysicsT>;
+   using GradientU = GradientUTypes<SimplexPhysicsT>;
+   using GradientV = GradientVTypes<SimplexPhysicsT>;
+   using GradientA = GradientATypes<SimplexPhysicsT>;
+   using GradientZ = GradientZTypes<SimplexPhysicsT>;
+   using GradientX = GradientXTypes<SimplexPhysicsT>;
 };
 
 }

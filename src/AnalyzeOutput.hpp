@@ -167,20 +167,23 @@ inline void mechanical_output(const std::string & aOutputFilePath,
     auto tNumSteps = aState.extent(0);
     for(decltype(tNumSteps) tStepIndex=0; tStepIndex<tNumSteps; tStepIndex++)
     {
-         auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
+        auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
 
-         auto tNumVertices = aMesh.nverts();
-         auto tNumDisp = tNumVertices * SpatialDim;
-         constexpr auto tNumDofsPerNode = SpatialDim;
-         constexpr auto tNumDispPerNode = SpatialDim;
-         Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
-         Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*stride=*/0, tNumVertices, tSubView, tDisp);
+        auto tNumVertices = aMesh.nverts();
+        auto tNumDisp = tNumVertices * SpatialDim;
+        constexpr auto tNumDofsPerNode = SpatialDim;
+        constexpr auto tNumDispPerNode = SpatialDim;
+        Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
+        Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*stride=*/0, tNumVertices, tSubView, tDisp);
 
-         aMesh.add_tag(Omega_h::VERT, "Displacements", tNumDispPerNode, Omega_h::Reals(tDisp));
+        aMesh.add_tag(Omega_h::VERT, "Displacements", tNumDispPerNode, Omega_h::Reals(tDisp));
 
-         Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
-         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
-         tWriter.write(/*time_index*/tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);
+        if (aStateDataMap.stateDataMaps.size() > tStepIndex)
+        {
+            Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+        }
+        Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
+        tWriter.write(/*time_index*/tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);
     }
 }
 // function mechanical_output
@@ -221,7 +224,10 @@ inline void stabilized_mechanical_output(const std::string & aOutputFilePath,
         aMesh.add_tag(Omega_h::VERT, "Displacements", tNumDispPerNode,  Omega_h::Reals(tDisp));
         aMesh.add_tag(Omega_h::VERT, "Pressure",      tNumPressPerNode, Omega_h::Reals(tPress));
 
-        Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+        if (aStateDataMap.stateDataMaps.size() > tStepIndex)
+        {
+            Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+        }
         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
         tWriter.write(/*time_index*/tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);
     }
@@ -260,7 +266,10 @@ inline void thermal_output(const std::string & aOutputFilePath,
 
         aMesh.add_tag(Omega_h::VERT, "Temperature", tNumTempPerNode, Omega_h::Reals(tTemp));
 
-        Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+        if (aStateDataMap.stateDataMaps.size() > tStepIndex)
+        {
+            Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+        }
         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
         tWriter.write(/*time_index*/tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);
     }

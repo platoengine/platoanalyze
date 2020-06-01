@@ -36,12 +36,15 @@
 #include <WorksetBase.hpp>
 #include <elliptic/VectorFunction.hpp>
 #include <elliptic/PhysicsScalarFunction.hpp>
+#include <geometric/GeometryScalarFunction.hpp>
 #include "ApplyConstraints.hpp"
 #include "elliptic/Problem.hpp"
 #include "Mechanics.hpp"
 #include "Thermal.hpp"
 
 #include <fenv.h>
+
+using ordType = typename Plato::ScalarMultiVector::size_type;
 
 
 TEUCHOS_UNIT_TEST( DerivativeTests, 3D )
@@ -480,12 +483,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // create mesh based displacement from host data
   //
-  std::vector<Plato::Scalar> u_host( spaceDim*mesh->nverts() );
+  ordType tNumDofs = spaceDim*mesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.0001;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
 
 
   // create material model
@@ -524,7 +531,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // compute and test objective value
   //
-  auto value = eeScalarFunction.value(u,z);
+  auto value = eeScalarFunction.value(Plato::Solution(U),z);
 
   Plato::Scalar value_gold = 46.125;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -532,7 +539,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(u,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -578,7 +585,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(u,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U),z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -601,7 +608,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(u,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U),z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -668,12 +675,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // create mesh based displacement from host data
   //
-  std::vector<Plato::Scalar> u_host( spaceDim*mesh->nverts() );
+  ordType tNumDofs = spaceDim*mesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.0001;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
 
 
   // create material model
@@ -713,7 +724,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // compute and test objective value
   //
-  auto value = eeScalarFunction.value(u,z);
+  auto value = eeScalarFunction.value(Plato::Solution(U), z);
 
   Plato::Scalar value_gold = 14525.25169157000;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -721,7 +732,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(u,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -749,7 +760,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(u,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U), z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -772,7 +783,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(u,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U), z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -850,7 +861,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
     "</ParameterList>                                                                             \n"
   );
 
-  Plato::ScalarVectorT<Plato::Scalar> solution("solution",spaceDim*numVerts);
+  Plato::ScalarMultiVector solution("solution", /*numSteps=*/1, spaceDim*numVerts);
 
   // create mesh based displacement
   //
@@ -887,10 +898,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
   // push gold data from host to device
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     tHostView(solution_gold.data(), solution_gold.size());
-  auto tDeviceView = Kokkos::create_mirror_view(solution);
-  Kokkos::deep_copy(tDeviceView, tHostView);
-  Kokkos::deep_copy(solution, tDeviceView);
-
+  auto step0 = Kokkos::subview(solution, 0, Kokkos::ALL());
+  Kokkos::deep_copy(step0, tHostView);
 
   // create objective
   //
@@ -902,7 +911,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 
   // compute and test objective value
   //
-  auto value = eeScalarFunction.value(solution,z);
+  auto value = eeScalarFunction.value(Plato::Solution(solution), z);
 
   Plato::Scalar value_gold = 1346153.84615384578;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -910,7 +919,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(solution,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(solution), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -956,7 +965,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(solution,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(solution),z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -978,7 +987,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(solution,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(solution),z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1078,7 +1087,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
     "</ParameterList>                                                                             \n"
   );
 
-  Plato::ScalarVectorT<Plato::Scalar> solution("solution",spaceDim*numVerts);
+  Plato::ScalarMultiVector solution("solution", /*numSteps=*/1, spaceDim*numVerts);
 
   // create mesh based displacement
   //
@@ -1096,10 +1105,8 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
   // push gold data from host to device
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     tHostView(solution_gold.data(), solution_gold.size());
-  auto tDeviceView = Kokkos::create_mirror_view(solution);
-  Kokkos::deep_copy(tDeviceView, tHostView);
-  Kokkos::deep_copy(solution, tDeviceView);
-
+  auto step0 = Kokkos::subview(solution, 0, Kokkos::ALL());
+  Kokkos::deep_copy(step0, tHostView);
 
   // create objective
   //
@@ -1111,7 +1118,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 
   // compute and test objective value
   //
-  auto value = eeScalarFunction.value(solution,z);
+  auto value = eeScalarFunction.value(Plato::Solution(solution), z);
 
   Plato::Scalar value_gold = 384615.384615384275;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -1119,7 +1126,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(solution,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(solution), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1152,7 +1159,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(solution,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(solution),z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1175,7 +1182,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(solution,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(solution),z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1255,10 +1262,10 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Thermostatics'/>      \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
     "  <Parameter name='Objective' type='string' value='My Internal Thermal Energy'/> \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
-    "  <ParameterList name='Thermostatics'>                                        \n"
+    "  <ParameterList name='Elliptic'>                                             \n"
     "    <ParameterList name='Penalty Function'>                                   \n"
     "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
     "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
@@ -1418,12 +1425,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // create mesh based temperature from host data
   //
-  std::vector<Plato::Scalar> u_host( mesh->nverts() );
+  ordType tNumDofs = mesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.1;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
 
 
   // create input
@@ -1431,7 +1442,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Thermostatics'/>      \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
     "  <Parameter name='Objective' type='string' value='My Internal Thermal Energy'/> \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
     "  <ParameterList name='My Internal Thermal Energy'>                              \n"
@@ -1461,7 +1472,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // compute and test objective value
   //
-  auto value = eeScalarFunction.value(u,z);
+  auto value = eeScalarFunction.value(Plato::Solution(U), z);
 
   Plato::Scalar value_gold = 611.666666666666;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -1469,7 +1480,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = eeScalarFunction.gradient_u(u,z);
+  auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1497,7 +1508,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = eeScalarFunction.gradient_z(u,z);
+  auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U), z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1520,7 +1531,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = eeScalarFunction.gradient_x(u,z);
+  auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U), z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1569,12 +1580,17 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // create mesh based temperature from host data
   //
-  std::vector<Plato::Scalar> u_host( mesh->nverts() );
+  ordType tNumDofs = mesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.1;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
+
 
 
   // create material model
@@ -1582,7 +1598,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Thermostatics'/>      \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
     "  <Parameter name='Objective' type='string' value='My Flux P-Norm'/>             \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
     "  <ParameterList name='My Flux P-Norm'>                                          \n"
@@ -1613,7 +1629,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // compute and test objective value
   //
-  auto value = scalarFunction.value(u,z);
+  auto value = scalarFunction.value(Plato::Solution(U), z);
 
   Plato::Scalar value_gold = 444.0866631427854;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
@@ -1621,7 +1637,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = scalarFunction.gradient_u(u,z);
+  auto grad_u = scalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -1649,7 +1665,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = scalarFunction.gradient_z(u,z);
+  auto grad_z = scalarFunction.gradient_z(Plato::Solution(U), z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1672,7 +1688,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = scalarFunction.gradient_x(u,z);
+  auto grad_x = scalarFunction.gradient_x(Plato::Solution(U), z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -1743,12 +1759,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
 
   // create mesh based displacement from host data
   //
-  std::vector<Plato::Scalar> u_host( spaceDim*mesh->nverts() );
+  ordType tNumDofs = spaceDim*mesh->nverts();
+  Plato::ScalarMultiVector U("states", /*numSteps=*/1, tNumDofs);
+  auto u = Kokkos::subview(U, 0, Kokkos::ALL());
+  auto u_host = Kokkos::create_mirror_view( u );
   Plato::Scalar disp = 0.0, dval = 0.0001;
-  for( auto& val : u_host ) val = (disp += dval);
-  Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
-    u_host_view(u_host.data(),u_host.size());
-  auto u = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), u_host_view);
+  for(ordType i=0; i<tNumDofs; i++)
+  {
+      u_host(i) = (disp += dval);
+  }
+  Kokkos::deep_copy(u, u_host);
 
 
   // create material model
@@ -1780,41 +1800,21 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
-  Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
+  Plato::Geometric::GeometryScalarFunction<::Plato::Geometrical<spaceDim>>
     volScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Linear Constraint"));
 
 
   // compute and test objective value
   //
-  auto value = volScalarFunction.value(u,z);
+  auto value = volScalarFunction.value(z);
 
   Plato::Scalar value_gold = 1.0;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
-  //
-  auto grad_u = volScalarFunction.gradient_u(u,z);
-
-  auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
-  Kokkos::deep_copy( grad_u_Host, grad_u );
-
-  // this ScalarFunction is the volume in the reference configation which is 
-  // independent of the solution, u, so gradient_u is zero.
-  std::vector<Plato::Scalar> grad_u_gold( grad_u.size(), 0.0);
-
-  for(int iNode=0; iNode<int(grad_u_gold.size()); iNode++){
-    if(grad_u_gold[iNode] == 0.0){
-      TEST_ASSERT(fabs(grad_u_Host[iNode]) < 1e-12);
-    } else {
-      TEST_FLOATING_EQUALITY(grad_u_Host[iNode], grad_u_gold[iNode], 1e-13);
-    }
-  }
-
-
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = volScalarFunction.gradient_z(u,z);
+  auto grad_z = volScalarFunction.gradient_z(z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -1837,7 +1837,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = volScalarFunction.gradient_x(u,z);
+  auto grad_x = volScalarFunction.gradient_x(z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);
@@ -2045,7 +2045,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual2D_InhomogeneousEssentia
 
     // TEST RESULTS    
     const Plato::OrdinalType tTimeStep = 0;
-    auto tSolution = Kokkos::subview(tElasticitySolution, tTimeStep, Kokkos::ALL());
+    auto tSolution = Kokkos::subview(tElasticitySolution.State, tTimeStep, Kokkos::ALL());
     auto tHostSolution = Kokkos::create_mirror_view(tSolution);
     Kokkos::deep_copy(tHostSolution, tSolution);
 

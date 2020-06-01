@@ -51,7 +51,7 @@ void run(Teuchos::ParameterList& aInputData,
     auto tStateDataMap = tPlatoProblem->getDataMap();
 
     auto tOutputViz = aInputData.get<std::string>("Output Viz");
-    Plato::output<SpatialDim>(aInputData, tOutputViz, tSolution, tStateDataMap, aMesh);
+    Plato::output<SpatialDim>(aInputData, tOutputViz, tSolution.State, tStateDataMap, aMesh);
 }
 // function run
 

@@ -61,7 +61,8 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
   int tNumDofsPerNode = (spaceDim+1);
   int tNumNodes = mesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
-  Plato::ScalarVector state("state", tNumDofs);
+  Plato::ScalarMultiVector states("states", /*numSteps=*/1, tNumDofs);
+  auto state = Kokkos::subview(states, 0, Kokkos::ALL());
   Plato::ScalarVector z("control", tNumDofs);
   Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumNodes), LAMBDA_EXPRESSION(const int & aNodeOrdinal)
   {
@@ -244,14 +245,14 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
 
   // compute and test objective value
   //
-  auto value = scalarFunction.value(state, z);
+  auto value = scalarFunction.value(Plato::Solution(states), z);
 
   Plato::Scalar value_gold = 3.99325969691123239;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
   // compute and test objective gradient wrt state, u
   //
-  auto grad_u = scalarFunction.gradient_u(state, z);
+  auto grad_u = scalarFunction.gradient_u(Plato::Solution(states), z, /*stepIndex=*/0);
 
   auto grad_u_Host = Kokkos::create_mirror_view( grad_u );
   Kokkos::deep_copy( grad_u_Host, grad_u );
@@ -281,7 +282,7 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
 
   // compute and test objective gradient wrt control, z
   //
-  auto grad_z = scalarFunction.gradient_z(state, z);
+  auto grad_z = scalarFunction.gradient_z(Plato::Solution(states), z);
 
   auto grad_z_Host = Kokkos::create_mirror_view( grad_z );
   Kokkos::deep_copy( grad_z_Host, grad_z );
@@ -304,7 +305,7 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
 
   // compute and test objective gradient wrt node position, x
   //
-  auto grad_x = scalarFunction.gradient_x(state, z);
+  auto grad_x = scalarFunction.gradient_x(Plato::Solution(states), z);
   
   auto grad_x_Host = Kokkos::create_mirror_view( grad_x );
   Kokkos::deep_copy(grad_x_Host, grad_x);

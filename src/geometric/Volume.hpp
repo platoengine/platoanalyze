@@ -1,11 +1,11 @@
-#ifndef VOLUME_HPP
-#define VOLUME_HPP
+#pragma once
 
 #include "Simplex.hpp"
 #include "ApplyWeighting.hpp"
 #include "PlatoStaticsTypes.hpp"
-#include "elliptic/EllipticSimplexFadTypes.hpp"
-#include "elliptic/AbstractScalarFunction.hpp"
+#include "ImplicitFunctors.hpp"
+#include "geometric/GeometricSimplexFadTypes.hpp"
+#include "geometric/AbstractScalarFunction.hpp"
 
 #include "Simp.hpp"
 #include "Ramp.hpp"
@@ -16,21 +16,20 @@
 namespace Plato
 {
 
-namespace Elliptic
+namespace Geometric
 {
 
 /******************************************************************************/
 template<typename EvaluationType, typename PenaltyFunctionType>
-class Volume : public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
+class Volume : public Plato::Geometric::AbstractScalarFunction<EvaluationType>
 /******************************************************************************/
 {
   private:
     static constexpr int SpaceDim = EvaluationType::SpatialDim;
     
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
+    using Plato::Geometric::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Geometric::AbstractScalarFunction<EvaluationType>::mDataMap;
 
-    using StateScalarType   = typename EvaluationType::StateScalarType;
     using ControlScalarType = typename EvaluationType::ControlScalarType;
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
     using ResultScalarType  = typename EvaluationType::ResultScalarType;
@@ -48,7 +47,7 @@ class Volume : public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
            Teuchos::ParameterList&, 
            Teuchos::ParameterList& aPenaltyParams,
            std::string& aFunctionName) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
+            Plato::Geometric::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
             mPenaltyFunction(aPenaltyParams),
             mApplyWeighting(mPenaltyFunction)
     /**************************************************************************/
@@ -62,11 +61,9 @@ class Volume : public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> &,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void evaluate(const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
+                  const Plato::ScalarArray3DT    <ConfigScalarType > & aConfig,
+                        Plato::ScalarVectorT     <ResultScalarType > & aResult) const override
     /**************************************************************************/
     {
       auto tNumCells = mMesh.nelems();
@@ -92,8 +89,6 @@ class Volume : public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
 };
 // class Volume
 
-} // namespace Elliptic
+} // namespace Geometric
 
 } // namespace Plato
-
-#endif

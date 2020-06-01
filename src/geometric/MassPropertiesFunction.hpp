@@ -10,14 +10,14 @@
 #include <Omega_h_eigen.hpp>
 
 #include "BLAS1.hpp"
-#include "WorksetBase.hpp"
+#include "geometric/WorksetBase.hpp"
 #include "PlatoStaticsTypes.hpp"
-#include "elliptic/ScalarFunctionBaseFactory.hpp"
-#include "elliptic/PhysicsScalarFunction.hpp"
-#include "elliptic/DivisionFunction.hpp"
-#include "elliptic/LeastSquaresFunction.hpp"
-#include "elliptic/WeightedSumFunction.hpp"
-#include "elliptic/MassMoment.hpp"
+#include "geometric/ScalarFunctionBaseFactory.hpp"
+#include "geometric/GeometryScalarFunction.hpp"
+#include "geometric/DivisionFunction.hpp"
+#include "geometric/LeastSquaresFunction.hpp"
+#include "geometric/WeightedSumFunction.hpp"
+#include "geometric/MassMoment.hpp"
 #include "AnalyzeMacros.hpp"
 
 #include <Teuchos_ParameterList.hpp>
@@ -25,22 +25,21 @@
 namespace Plato
 {
 
-namespace Elliptic
+namespace Geometric
 {
 
 /******************************************************************************//**
  * @brief Mass properties function class
  **********************************************************************************/
 template<typename PhysicsT>
-class MassPropertiesFunction : public Plato::Elliptic::ScalarFunctionBase, public Plato::WorksetBase<PhysicsT>
+class MassPropertiesFunction : public Plato::Geometric::ScalarFunctionBase, public Plato::Geometric::WorksetBase<PhysicsT>
 {
 private:
-    using Residual = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual; /*!< result variables automatic differentiation type */
-    using Jacobian = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Jacobian; /*!< state variables automatic differentiation type */
-    using GradientX = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientX; /*!< configuration variables automatic differentiation type */
-    using GradientZ = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientZ; /*!< control variables automatic differentiation type */
+    using Residual  = typename Plato::Geometric::Evaluation<typename PhysicsT::SimplexT>::Residual;
+    using GradientX = typename Plato::Geometric::Evaluation<typename PhysicsT::SimplexT>::GradientX;
+    using GradientZ = typename Plato::Geometric::Evaluation<typename PhysicsT::SimplexT>::GradientZ;
 
-    std::shared_ptr<Plato::Elliptic::LeastSquaresFunction<PhysicsT>> mLeastSquaresFunction; /*!< Least squares function object */
+    std::shared_ptr<Plato::Geometric::LeastSquaresFunction<PhysicsT>> mLeastSquaresFunction;
 
     Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
 
@@ -197,7 +196,7 @@ private:
                                                 const std::vector<Plato::Scalar>& aPropertyGoldValues)
     {
         printf("Creating all mass properties function.\n");
-        mLeastSquaresFunction = std::make_shared<Plato::Elliptic::LeastSquaresFunction<PhysicsT>>(aMesh, mDataMap);
+        mLeastSquaresFunction = std::make_shared<Plato::Geometric::LeastSquaresFunction<PhysicsT>>(aMesh, mDataMap);
         std::map<std::string, Plato::Scalar> tWeightMap;
         std::map<std::string, Plato::Scalar> tGoldValueMap;
         for (Plato::OrdinalType tPropertyIndex = 0; tPropertyIndex < aPropertyNames.size(); ++tPropertyIndex)
@@ -281,8 +280,6 @@ private:
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("Iyz")]);
         mLeastSquaresFunction->appendGoldFunctionValue(0.0, false);
         mLeastSquaresFunction->appendFunctionNormalization(tMinPrincipalMoment);
-
-        mLeastSquaresFunction->setGradientWRTStateIsZeroFlag(true);
     }
 
     /******************************************************************************//**
@@ -344,7 +341,7 @@ private:
                                        const std::vector<Plato::Scalar>& aPropertyGoldValues)
     {
         printf("Creating itemized mass properties function.\n");
-        mLeastSquaresFunction = std::make_shared<Plato::Elliptic::LeastSquaresFunction<PhysicsT>>(aMesh, mDataMap);
+        mLeastSquaresFunction = std::make_shared<Plato::Geometric::LeastSquaresFunction<PhysicsT>>(aMesh, mDataMap);
         for (Plato::OrdinalType tPropertyIndex = 0; tPropertyIndex < aPropertyNames.size(); ++tPropertyIndex)
         {
             const std::string   tPropertyName      = aPropertyNames[tPropertyIndex];
@@ -431,7 +428,6 @@ private:
                 THROWERR(tErrorString)
             }
         }
-        mLeastSquaresFunction->setGradientWRTStateIsZeroFlag(true);
     }
 
     /******************************************************************************//**
@@ -440,39 +436,33 @@ private:
      * @param [in] aMeshSets side sets database
      * @return physics scalar function
     **********************************************************************************/
-    std::shared_ptr<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>>
+    std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>>
     getMassFunction(Omega_h::Mesh& aMesh, 
                     Omega_h::MeshSets& aMeshSets)
     {
-        std::shared_ptr<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>> tMassFunction =
-             std::make_shared<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>>(aMesh, mDataMap);
+        std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>> tMassFunction =
+             std::make_shared<Plato::Geometric::GeometryScalarFunction<PhysicsT>>(aMesh, mDataMap);
         tMassFunction->setFunctionName("Mass Function");
 
         std::string tCalculationType = std::string("Mass");
 
-        std::shared_ptr<Plato::Elliptic::MassMoment<Residual>> tValue = 
-             std::make_shared<Plato::Elliptic::MassMoment<Residual>>(aMesh, aMeshSets, mDataMap);
+        std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tValue = 
+             std::make_shared<Plato::Geometric::MassMoment<Residual>>(aMesh, aMeshSets, mDataMap);
         tValue->setMaterialDensity(mMaterialDensity);
         tValue->setCalculationType(tCalculationType);
-        tMassFunction->allocateValue(tValue);
+        tMassFunction->setEvaluator(tValue);
 
-        std::shared_ptr<Plato::Elliptic::MassMoment<Jacobian>> tGradientU = 
-             std::make_shared<Plato::Elliptic::MassMoment<Jacobian>>(aMesh, aMeshSets, mDataMap);
-        tGradientU->setMaterialDensity(mMaterialDensity);
-        tGradientU->setCalculationType(tCalculationType);
-        tMassFunction->allocateGradientU(tGradientU);
-
-        std::shared_ptr<Plato::Elliptic::MassMoment<GradientZ>> tGradientZ = 
-             std::make_shared<Plato::Elliptic::MassMoment<GradientZ>>(aMesh, aMeshSets, mDataMap);
+        std::shared_ptr<Plato::Geometric::MassMoment<GradientZ>> tGradientZ = 
+             std::make_shared<Plato::Geometric::MassMoment<GradientZ>>(aMesh, aMeshSets, mDataMap);
         tGradientZ->setMaterialDensity(mMaterialDensity);
         tGradientZ->setCalculationType(tCalculationType);
-        tMassFunction->allocateGradientZ(tGradientZ);
+        tMassFunction->setEvaluator(tGradientZ);
 
-        std::shared_ptr<Plato::Elliptic::MassMoment<GradientX>> tGradientX = 
-             std::make_shared<Plato::Elliptic::MassMoment<GradientX>>(aMesh, aMeshSets, mDataMap);
+        std::shared_ptr<Plato::Geometric::MassMoment<GradientX>> tGradientX = 
+             std::make_shared<Plato::Geometric::MassMoment<GradientX>>(aMesh, aMeshSets, mDataMap);
         tGradientX->setMaterialDensity(mMaterialDensity);
         tGradientX->setCalculationType(tCalculationType);
-        tMassFunction->allocateGradientX(tGradientX);
+        tMassFunction->setEvaluator(tGradientX);
         return tMassFunction;
     }
 
@@ -483,49 +473,43 @@ private:
      * @param [in] aMomentType mass moment type (FirstX, FirstY, FirstZ)
      * @return scalar function base
     **********************************************************************************/
-    std::shared_ptr<Plato::Elliptic::ScalarFunctionBase>
+    std::shared_ptr<Plato::Geometric::ScalarFunctionBase>
     getFirstMomentOverMassRatio(Omega_h::Mesh& aMesh, 
                            Omega_h::MeshSets& aMeshSets, 
                            const std::string & aMomentType)
     {
         const std::string tNumeratorName = std::string("CG Numerator (Moment type = ")
                                          + aMomentType + ")";
-        std::shared_ptr<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>> tNumerator =
-             std::make_shared<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>>(aMesh, mDataMap);
+        std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>> tNumerator =
+             std::make_shared<Plato::Geometric::GeometryScalarFunction<PhysicsT>>(aMesh, mDataMap);
         tNumerator->setFunctionName(tNumeratorName);
 
-        std::shared_ptr<Plato::Elliptic::MassMoment<Residual>> tNumeratorValue = 
-             std::make_shared<Plato::Elliptic::MassMoment<Residual>>(aMesh, aMeshSets, mDataMap);
+        std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tNumeratorValue = 
+             std::make_shared<Plato::Geometric::MassMoment<Residual>>(aMesh, aMeshSets, mDataMap);
         tNumeratorValue->setMaterialDensity(mMaterialDensity);
         tNumeratorValue->setCalculationType(aMomentType);
-        tNumerator->allocateValue(tNumeratorValue);
+        tNumerator->setEvaluator(tNumeratorValue);
 
-        std::shared_ptr<Plato::Elliptic::MassMoment<Jacobian>> tNumeratorGradientU = 
-             std::make_shared<Plato::Elliptic::MassMoment<Jacobian>>(aMesh, aMeshSets, mDataMap);
-        tNumeratorGradientU->setMaterialDensity(mMaterialDensity);
-        tNumeratorGradientU->setCalculationType(aMomentType);
-        tNumerator->allocateGradientU(tNumeratorGradientU);
-
-        std::shared_ptr<Plato::Elliptic::MassMoment<GradientZ>> tNumeratorGradientZ = 
-             std::make_shared<Plato::Elliptic::MassMoment<GradientZ>>(aMesh, aMeshSets, mDataMap);
+        std::shared_ptr<Plato::Geometric::MassMoment<GradientZ>> tNumeratorGradientZ = 
+             std::make_shared<Plato::Geometric::MassMoment<GradientZ>>(aMesh, aMeshSets, mDataMap);
         tNumeratorGradientZ->setMaterialDensity(mMaterialDensity);
         tNumeratorGradientZ->setCalculationType(aMomentType);
-        tNumerator->allocateGradientZ(tNumeratorGradientZ);
+        tNumerator->setEvaluator(tNumeratorGradientZ);
 
-        std::shared_ptr<Plato::Elliptic::MassMoment<GradientX>> tNumeratorGradientX = 
-             std::make_shared<Plato::Elliptic::MassMoment<GradientX>>(aMesh, aMeshSets, mDataMap);
+        std::shared_ptr<Plato::Geometric::MassMoment<GradientX>> tNumeratorGradientX = 
+             std::make_shared<Plato::Geometric::MassMoment<GradientX>>(aMesh, aMeshSets, mDataMap);
         tNumeratorGradientX->setMaterialDensity(mMaterialDensity);
         tNumeratorGradientX->setCalculationType(aMomentType);
-        tNumerator->allocateGradientX(tNumeratorGradientX);
+        tNumerator->setEvaluator(tNumeratorGradientX);
 
         const std::string tDenominatorName = std::string("CG Mass Denominator (Moment type = ")
                                            + aMomentType + ")";
-        std::shared_ptr<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>> tDenominator = 
+        std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>> tDenominator = 
              getMassFunction(aMesh, aMeshSets);
         tDenominator->setFunctionName(tDenominatorName);
 
-        std::shared_ptr<Plato::Elliptic::DivisionFunction<PhysicsT>> tMomentOverMassRatioFunction =
-             std::make_shared<Plato::Elliptic::DivisionFunction<PhysicsT>>(aMesh, mDataMap);
+        std::shared_ptr<Plato::Geometric::DivisionFunction<PhysicsT>> tMomentOverMassRatioFunction =
+             std::make_shared<Plato::Geometric::DivisionFunction<PhysicsT>>(aMesh, mDataMap);
         tMomentOverMassRatioFunction->allocateNumeratorFunction(tNumerator);
         tMomentOverMassRatioFunction->allocateDenominatorFunction(tDenominator);
         tMomentOverMassRatioFunction->setFunctionName(std::string("CG ") + aMomentType);
@@ -539,40 +523,34 @@ private:
      * @param [in] aMomentType second mass moment type (XX, XY, YY, ...)
      * @return scalar function base
     **********************************************************************************/
-    std::shared_ptr<Plato::Elliptic::ScalarFunctionBase>
+    std::shared_ptr<Plato::Geometric::ScalarFunctionBase>
     getSecondMassMoment(Omega_h::Mesh& aMesh, 
                         Omega_h::MeshSets& aMeshSets, 
                         const std::string & aMomentType)
     {
         const std::string tInertiaName = std::string("Second Mass Moment (Moment type = ")
                                          + aMomentType + ")";
-        std::shared_ptr<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>> tSecondMomentFunction =
-             std::make_shared<Plato::Elliptic::PhysicsScalarFunction<PhysicsT>>(aMesh, mDataMap);
+        std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>> tSecondMomentFunction =
+             std::make_shared<Plato::Geometric::GeometryScalarFunction<PhysicsT>>(aMesh, mDataMap);
         tSecondMomentFunction->setFunctionName(tInertiaName);
 
-        std::shared_ptr<Plato::Elliptic::MassMoment<Residual>> tValue = 
-             std::make_shared<Plato::Elliptic::MassMoment<Residual>>(aMesh, aMeshSets, mDataMap);
+        std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tValue = 
+             std::make_shared<Plato::Geometric::MassMoment<Residual>>(aMesh, aMeshSets, mDataMap);
         tValue->setMaterialDensity(mMaterialDensity);
         tValue->setCalculationType(aMomentType);
-        tSecondMomentFunction->allocateValue(tValue);
+        tSecondMomentFunction->setEvaluator(tValue);
 
-        std::shared_ptr<Plato::Elliptic::MassMoment<Jacobian>> tGradientU = 
-             std::make_shared<Plato::Elliptic::MassMoment<Jacobian>>(aMesh, aMeshSets, mDataMap);
-        tGradientU->setMaterialDensity(mMaterialDensity);
-        tGradientU->setCalculationType(aMomentType);
-        tSecondMomentFunction->allocateGradientU(tGradientU);
-
-        std::shared_ptr<Plato::Elliptic::MassMoment<GradientZ>> tGradientZ = 
-             std::make_shared<Plato::Elliptic::MassMoment<GradientZ>>(aMesh, aMeshSets, mDataMap);
+        std::shared_ptr<Plato::Geometric::MassMoment<GradientZ>> tGradientZ = 
+             std::make_shared<Plato::Geometric::MassMoment<GradientZ>>(aMesh, aMeshSets, mDataMap);
         tGradientZ->setMaterialDensity(mMaterialDensity);
         tGradientZ->setCalculationType(aMomentType);
-        tSecondMomentFunction->allocateGradientZ(tGradientZ);
+        tSecondMomentFunction->setEvaluator(tGradientZ);
 
-        std::shared_ptr<Plato::Elliptic::MassMoment<GradientX>> tGradientX = 
-             std::make_shared<Plato::Elliptic::MassMoment<GradientX>>(aMesh, aMeshSets, mDataMap);
+        std::shared_ptr<Plato::Geometric::MassMoment<GradientX>> tGradientX = 
+             std::make_shared<Plato::Geometric::MassMoment<GradientX>>(aMesh, aMeshSets, mDataMap);
         tGradientX->setMaterialDensity(mMaterialDensity);
         tGradientX->setCalculationType(aMomentType);
-        tSecondMomentFunction->allocateGradientX(tGradientX);
+        tSecondMomentFunction->setEvaluator(tGradientX);
 
         return tSecondMomentFunction;
     }
@@ -585,13 +563,13 @@ private:
      * @param [in] aAxes axes about which to compute the moment of inertia (XX, YY, ..)
      * @return scalar function base
     **********************************************************************************/
-    std::shared_ptr<Plato::Elliptic::ScalarFunctionBase>
+    std::shared_ptr<Plato::Geometric::ScalarFunctionBase>
     getMomentOfInertia(Omega_h::Mesh& aMesh, 
                        Omega_h::MeshSets& aMeshSets, 
                        const std::string & aAxes)
     {
-        std::shared_ptr<Plato::Elliptic::WeightedSumFunction<PhysicsT>> tMomentOfInertiaFunction = 
-               std::make_shared<Plato::Elliptic::WeightedSumFunction<PhysicsT>>(aMesh, mDataMap);
+        std::shared_ptr<Plato::Geometric::WeightedSumFunction<PhysicsT>> tMomentOfInertiaFunction = 
+               std::make_shared<Plato::Geometric::WeightedSumFunction<PhysicsT>>(aMesh, mDataMap);
         tMomentOfInertiaFunction->setFunctionName(std::string("Inertia ") + aAxes);
 
         if (aAxes == "XX")
@@ -657,13 +635,13 @@ private:
      * @param [in] aAxes axes about which to compute the moment of inertia (XX, YY, ..)
      * @return scalar function base
     **********************************************************************************/
-    std::shared_ptr<Plato::Elliptic::ScalarFunctionBase>
+    std::shared_ptr<Plato::Geometric::ScalarFunctionBase>
     getMomentOfInertiaRotatedAboutCG(Omega_h::Mesh& aMesh, 
                                      Omega_h::MeshSets& aMeshSets, 
                                      const std::string & aAxes)
     {
-        std::shared_ptr<Plato::Elliptic::WeightedSumFunction<PhysicsT>> tMomentOfInertiaFunction = 
-               std::make_shared<Plato::Elliptic::WeightedSumFunction<PhysicsT>>(aMesh, mDataMap);
+        std::shared_ptr<Plato::Geometric::WeightedSumFunction<PhysicsT>> tMomentOfInertiaFunction = 
+               std::make_shared<Plato::Geometric::WeightedSumFunction<PhysicsT>>(aMesh, mDataMap);
         tMomentOfInertiaFunction->setFunctionName(std::string("InertiaRot ") + aAxes);
 
         std::vector<Plato::Scalar> tInertiaWeights(6);
@@ -798,7 +776,7 @@ public:
                            Plato::DataMap & aDataMap,
                            Teuchos::ParameterList& aInputParams,
                            std::string& aName) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
+            Plato::Geometric::WorksetBase<PhysicsT>(aMesh),
             mDataMap(aDataMap),
             mFunctionName(aName),
             mMaterialDensity(1.0)
@@ -856,71 +834,43 @@ public:
 
     /******************************************************************************//**
      * @brief Update physics-based parameters within optimization iterations
-     * @param [in] aState 1D view of state variables
      * @param [in] aControl 1D view of control variables
      **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aState, const Plato::ScalarVector & aControl) const
+    void updateProblem(const Plato::ScalarVector & aControl) const
     {
-        mLeastSquaresFunction->updateProblem(aState, aControl);
+        mLeastSquaresFunction->updateProblem(aControl);
     }
 
     /******************************************************************************//**
      * @brief Evaluate Mass Properties Function
-     * @param [in] aState 1D view of state variables
      * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
      * @return scalar function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aState,
-                        const Plato::ScalarVector & aControl,
-                        Plato::Scalar aTimeStep = 0.0) const
+    Plato::Scalar value(const Plato::ScalarVector & aControl) const
     {
-        Plato::Scalar tFunctionValue = mLeastSquaresFunction->value(aState, aControl, aTimeStep);
+        Plato::Scalar tFunctionValue = mLeastSquaresFunction->value(aControl);
         return tFunctionValue;
     }
 
     /******************************************************************************//**
      * @brief Evaluate gradient of the Mass Properties Function with respect to (wrt) the configuration parameters
-     * @param [in] aState 1D view of state variables
      * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aState,
-                                   const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
+    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl) const
     {
-        Plato::ScalarVector tGradientX = mLeastSquaresFunction->gradient_x(aState, aControl, aTimeStep);
+        Plato::ScalarVector tGradientX = mLeastSquaresFunction->gradient_x(aControl);
         return tGradientX;
     }
 
     /******************************************************************************//**
-     * @brief Evaluate gradient of the Mass Properties Function with respect to (wrt) the state variables
-     * @param [in] aState 1D view of state variables
-     * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
-     * @return 1D view with the gradient of the scalar function wrt the state variables
-    **********************************************************************************/
-    Plato::ScalarVector gradient_u(const Plato::ScalarVector & aState,
-                                   const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
-    {
-        Plato::ScalarVector tGradientU = mLeastSquaresFunction->gradient_u(aState, aControl, aTimeStep);
-        return tGradientU;
-    }
-
-    /******************************************************************************//**
      * @brief Evaluate gradient of the Mass Properties Function with respect to (wrt) the control variables
-     * @param [in] aState 1D view of state variables
      * @param [in] aControl 1D view of control variables
-     * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aState,
-                                   const Plato::ScalarVector & aControl,
-                                   Plato::Scalar aTimeStep = 0.0) const
+    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl) const
     {
-        Plato::ScalarVector tGradientZ = mLeastSquaresFunction->gradient_z(aState, aControl, aTimeStep);
+        Plato::ScalarVector tGradientZ = mLeastSquaresFunction->gradient_z(aControl);
         return tGradientZ;
     }
 
@@ -935,32 +885,20 @@ public:
 };
 // class MassPropertiesFunction
 
-} // namespace Elliptic
+} // namespace Geometric
 
 } // namespace Plato
 
-#include "Thermal.hpp"
-#include "Mechanics.hpp"
-#include "Electromechanics.hpp"
-#include "Thermomechanics.hpp"
+#include "Geometrical.hpp"
 
 #ifdef PLATOANALYZE_1D
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Thermal<1>>;
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Mechanics<1>>;
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Electromechanics<1>>;
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Thermomechanics<1>>;
+extern template class Plato::Geometric::MassPropertiesFunction<::Plato::Geometrical<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Thermal<2>>;
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Mechanics<2>>;
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Electromechanics<2>>;
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Thermomechanics<2>>;
+extern template class Plato::Geometric::MassPropertiesFunction<::Plato::Geometrical<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Thermal<3>>;
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Mechanics<3>>;
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Electromechanics<3>>;
-extern template class Plato::Elliptic::MassPropertiesFunction<::Plato::Thermomechanics<3>>;
+extern template class Plato::Geometric::MassPropertiesFunction<::Plato::Geometrical<3>>;
 #endif
