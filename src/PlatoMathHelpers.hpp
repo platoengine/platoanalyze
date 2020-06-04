@@ -436,13 +436,32 @@ MatrixMatrixMultiply( const Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
     // numCols(C)  === numCols(M2)
     if (tNumColsOut != tNumColsTwo) { THROWERR("output matrix has incorrect shape"); }
 
-    ScalarView tMatOneValues;
-    OrdinalView tMatOneRowMap, tMatOneColMap;
-    Plato::getDataAsNonBlock(aInMatrixOne, tMatOneRowMap, tMatOneColMap, tMatOneValues);
+    // Get matrix data in non-block form
+    if (tMatOne.isBlockMatrix())
+    {
+      ScalarView tMatOneValues;
+      OrdinalView tMatOneRowMap, tMatOneColMap;
+      Plato::getDataAsNonBlock(aInMatrixOne, tMatOneRowMap, tMatOneColMap, tMatOneValues);
+    }
+    else
+    {
+      ScalarView  tMatOneValues = tMatOne.entries();
+      OrdinalView tMatOneRowMap = tMatOne.rowMap();
+      OrdinalView tMatOneColMap = tMatOne.columnIndices();
+    }
 
-    ScalarView tMatTwoValues;
-    OrdinalView tMatTwoRowMap, tMatTwoColMap;
-    Plato::getDataAsNonBlock(aInMatrixTwo, tMatTwoRowMap, tMatTwoColMap, tMatTwoValues);
+    if (tMatTwo.isBlockMatrix())
+    {
+      ScalarView tMatTwoValues;
+      OrdinalView tMatTwoRowMap, tMatTwoColMap;
+      Plato::getDataAsNonBlock(aInMatrixTwo, tMatTwoRowMap, tMatTwoColMap, tMatTwoValues);
+    }
+    else
+    {
+      ScalarView  tMatTwoValues = tMatTwo.entries();
+      OrdinalView tMatTwoRowMap = tMatTwo.rowMap();
+      OrdinalView tMatTwoColMap = tMatTwo.columnIndices();
+    }
 
     OrdinalView tOutRowMap ("output row map", tNumRowsOne + 1);
     spgemm_symbolic ( &tKernel, tNumRowsOne, tNumRowsTwo, tNumColsTwo,
