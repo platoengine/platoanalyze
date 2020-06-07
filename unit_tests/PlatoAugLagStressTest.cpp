@@ -10,6 +10,7 @@
 
 #include "Plato_Diagnostics.hpp"
 #include "IsotropicLinearElasticMaterial.hpp"
+#include "ThermalMassMaterial.hpp"
 #include "Plato_AugLagStressCriterion.hpp"
 #include "Plato_AugLagStressCriterionGeneral.hpp"
 #include "Eigenvalues.hpp"
@@ -414,8 +415,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_CheckThermalVonMises3D)
     "</ParameterList>                                                                        \n"
   );
 
-    Plato::ThermoelasticModelFactory<tSpaceDim> tFactory(*tParamList);
-    auto tMaterialModel = tFactory.create();
+    Plato::LinearThermoelasticModelFactory<tSpaceDim> mmfactory(*tParamList);
+    auto tMaterialModel = mmfactory.create();
 
     const std::string tName = "ThermalVonMises";
     Plato::ThermalVonMisesLocalMeasure<Residual,Plato::SimplexThermomechanics<tSpaceDim>>

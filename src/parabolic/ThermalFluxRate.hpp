@@ -1,7 +1,7 @@
 #ifndef THERMAL_FLUX_RATE_HPP
 #define THERMAL_FLUX_RATE_HPP
 
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
 
 #include "ScalarGrad.hpp"
 #include "ThermalFlux.hpp"

@@ -14,7 +14,8 @@
 #include <Teuchos_XMLParameterListHelpers.hpp>
 
 #include "ImplicitFunctors.hpp"
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
+#include "ThermalMassMaterial.hpp"
 
 #ifdef HAVE_AMGX
 #include "alg/AmgXSparseLinearProblem.hpp"
@@ -109,13 +110,14 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
   );
 
 
-  Plato::ThermalModelFactory<spaceDim> mmfactory(*params);
-  auto materialModel = mmfactory.create();
-  auto cellConductivity = materialModel->getConductivityMatrix();
-  auto cellDensity      = materialModel->getMassDensity();
-  auto cellSpecificHeat = materialModel->getSpecificHeat();
 
-  Plato::ThermalFlux<spaceDim>      thermalFlux(cellConductivity);
+  Plato::ThermalMassModelFactory<spaceDim> mmmfactory(*params);
+  auto thermalMassMaterialModel = mmmfactory.create();
+
+  Plato::ThermalConductionModelFactory<spaceDim> mmfactory(*params);
+  auto tMaterialModel = mmfactory.create();
+
+  Plato::ThermalFlux<spaceDim>      thermalFlux(tMaterialModel);
   Plato::FluxDivergence<spaceDim>  fluxDivergence;
 
   Plato::LinearTetCubRuleDegreeOne<spaceDim> cubatureRule;
@@ -148,7 +150,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
   Plato::StateValues computeStateValues;
 
   Plato::InterpolateFromNodal<spaceDim, dofsPerNode> interpolateFromNodal;
-  Plato::ThermalContent     computeThermalContent(cellDensity, cellSpecificHeat);
+  Plato::ThermalContent<spaceDim> computeThermalContent(thermalMassMaterialModel);
   Plato::ProjectToNode<spaceDim, dofsPerNode> projectThermalContent;
 
   auto basisFunctions = cubatureRule.getBasisFunctions();

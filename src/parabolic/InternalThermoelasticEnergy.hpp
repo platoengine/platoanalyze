@@ -83,7 +83,7 @@ class InternalThermoelasticEnergy :
             mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     /**************************************************************************/
     {
-      Plato::ThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
+      Plato::LinearThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
       mMaterialModel = mmfactory.create();
 
       if( aProblemParams.isType<Teuchos::Array<std::string>>("Plottable") )

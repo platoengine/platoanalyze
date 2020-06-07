@@ -10,6 +10,7 @@
 
 #include "Thermal.hpp"
 #include "Mechanics.hpp"
+#include "ParseTools.hpp"
 #include "Geometrical.hpp"
 #include "ComputedField.hpp"
 #include "parabolic/TrapezoidIntegrator.hpp"
@@ -38,8 +39,8 @@ namespace Parabolic
 
         Plato::Parabolic::TrapezoidIntegrator<SimplexPhysics> mTrapezoidIntegrator;
 
-        Plato::OrdinalType mNumSteps;
-        Plato::Scalar      mTimeStep;
+        Plato::OrdinalType mNumSteps, mNumNewtonSteps;
+        Plato::Scalar      mTimeStep, mNewtonResTol, mNewtonIncTol;
 
         bool mSaveState;
 
@@ -72,11 +73,13 @@ namespace Parabolic
           Teuchos::ParameterList& aParamList,
           Comm::Machine aMachine
         ) :
-            mPDEConstraint   (aMesh, aMeshSets, mDataMap, aParamList, 
-                                   aParamList.get<std::string>("PDE Constraint")),
-            mTrapezoidIntegrator    (aParamList.sublist("Time Integration")),
-            mNumSteps     (aParamList.sublist("Time Integration").get<int>("Number Time Steps")),
-            mTimeStep     (aParamList.sublist("Time Integration").get<Plato::Scalar>("Time Step")),
+            mPDEConstraint (aMesh, aMeshSets, mDataMap, aParamList, aParamList.get<std::string>("PDE Constraint")),
+            mTrapezoidIntegrator (aParamList.sublist("Time Integration")),
+            mNumSteps      (Plato::ParseTools::getSubParam<int>   (aParamList, "Time Integration", "Number Time Steps",   1  )),
+            mTimeStep      (Plato::ParseTools::getSubParam<Plato::Scalar>(aParamList, "Time Integration", "Time Step" ,   1.0)),
+            mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aParamList, "Newton Iteration", "Maximum Iterations",  1  )),
+            mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aParamList, "Newton Iteration", "Increment Tolerance", 1.0)),
+            mNewtonResTol  (Plato::ParseTools::getSubParam<double>(aParamList, "Newton Iteration", "Residual Tolerance",  1.0)),
             mSaveState    (aParamList.sublist("Parabolic").isType<Teuchos::Array<std::string>>("Plottable")),
             mObjective    (nullptr),
             mConstraint   (nullptr),
@@ -195,12 +198,14 @@ namespace Parabolic
 
             Kokkos::deep_copy(mStateDot, tStatesDot);
         }
+
         void applyConstraints(
           const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
-          const Plato::ScalarVector & aVector){}
-  
+          const Plato::ScalarVector & aVector
+        ){}
+
         /******************************************************************************/
-        void applyStateDotConstraints(
+        void applyStateConstraints(
           const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
           const Plato::ScalarVector & aVector,
           Plato::Scalar aScale
@@ -244,44 +249,68 @@ namespace Parabolic
               Plato::ScalarVector tState        = Kokkos::subview(mState,    tStepIndex,   Kokkos::ALL());
               Plato::ScalarVector tStateDot     = Kokkos::subview(mStateDot, tStepIndex,   Kokkos::ALL());
 
-              // -R_{u}
-              mResidual  = mPDEConstraint.value(tState, tStateDot, aControl, mTimeStep);
-              Plato::blas1::scale(-1.0, mResidual);
+              // inner loop for non-linear models
+              for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
+              {
+                  // -R_{u}
+                  mResidual  = mPDEConstraint.value(tState, tStateDot, aControl, mTimeStep);
+                  Plato::blas1::scale(-1.0, mResidual);
 
-              // R_{v}
-              mResidualV = mTrapezoidIntegrator.v_value(tState,    tStatePrev,
-                                                        tStateDot, tStateDotPrev, mTimeStep);
+                  // R_{v}
+                  mResidualV = mTrapezoidIntegrator.v_value(tState,    tStatePrev,
+                                                            tStateDot, tStateDotPrev, mTimeStep);
 
-              // R_{u,v^N}
-              mJacobianV = mPDEConstraint.gradient_v(tState, tStateDot, aControl, mTimeStep);
+                  // R_{u,v^N}
+                  mJacobianV = mPDEConstraint.gradient_v(tState, tStateDot, aControl, mTimeStep);
 
-              // -R_{u} += R_{u,v^N} R_{v}
-              Plato::MatrixTimesVectorPlusVector(mJacobianV, mResidualV, mResidual);
+                  // -R_{u} += R_{u,v^N} R_{v}
+                  Plato::MatrixTimesVectorPlusVector(mJacobianV, mResidualV, mResidual);
 
-              // R_{u,u^N}
-              mJacobianU = mPDEConstraint.gradient_u(tState, tStateDot, aControl, mTimeStep);
+                  // R_{u,u^N}
+                  mJacobianU = mPDEConstraint.gradient_u(tState, tStateDot, aControl, mTimeStep);
 
-              // R_{v,u^N}
-              auto tR_vu = mTrapezoidIntegrator.v_grad_u(mTimeStep);
+                  // R_{v,u^N}
+                  auto tR_vu = mTrapezoidIntegrator.v_grad_u(mTimeStep);
 
-              // R_{u,u^N} += R_{u,v^N} R_{v,u^N}
-              Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
+                  // R_{u,u^N} += R_{u,v^N} R_{v,u^N}
+                  Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
 
-              this->applyStateDotConstraints(mJacobianU, mResidual, mTimeStep);
+                  if (mNumNewtonSteps > 1) {
+                      auto tResidualNorm = Plato::blas1::norm(mResidual);
+                      std::cout << " Residual norm: " << tResidualNorm << std::endl;
+                      if (tResidualNorm < mNewtonResTol) {
+                          std::cout << " Residual norm tolerance satisfied." << std::endl;
+                          break;
+                      }
+                  }
 
-              Plato::ScalarVector tDeltaD("increment", tState.extent(0));
-              Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
+                  Plato::OrdinalType tScale = (tNewtonIndex == 0) ? 1.0 : 0.0;
+                  this->applyStateConstraints(mJacobianU, mResidual, tScale);
 
-              // compute displacement increment:
-              mSolver->solve(*mJacobianU, tDeltaD, mResidual);
+                  Plato::ScalarVector tDeltaD("increment", tState.extent(0));
+                  Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
 
-              // compute and add statedot increment: \Delta v = - ( R_{v} + R_{v,u} \Delta u )
-              Plato::blas1::axpy(tR_vu, tDeltaD, mResidualV);
-              // a_{k+1} = a_{k} + \Delta a
-              Plato::blas1::axpy(-1.0, mResidualV, tStateDot);
+                  // compute displacement increment:
+                  mSolver->solve(*mJacobianU, tDeltaD, mResidual);
 
-              // add displacement increment
-              Plato::blas1::axpy(1.0, tDeltaD, tState);
+                  // compute and add statedot increment: \Delta v = - ( R_{v} + R_{v,u} \Delta u )
+                  Plato::blas1::axpy(tR_vu, tDeltaD, mResidualV);
+
+                  // a_{k+1} = a_{k} + \Delta a
+                  Plato::blas1::axpy(-1.0, mResidualV, tStateDot);
+
+                  // add displacement increment
+                  Plato::blas1::axpy(1.0, tDeltaD, tState);
+
+                  if (mNumNewtonSteps > 1) {
+                      auto tIncrementNorm = Plato::blas1::norm(tDeltaD);
+                      std::cout << " Delta norm: " << tIncrementNorm << std::endl;
+                      if (tIncrementNorm < mNewtonIncTol) {
+                          std::cout << " Solution increment norm tolerance satisfied." << std::endl;
+                          break;
+                      }
+                  }
+              }
 
               if ( mSaveState )
               {
@@ -435,7 +464,7 @@ namespace Parabolic
                 // R_{u,u^k} -= R_{v,u^k} R_{u,v^k}
                 Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
 
-                this->applyConstraints(mJacobianU, t_dFdu);
+                this->applyStateConstraints(mJacobianU, t_dFdu, 1.0);
 
                 // L_u^k
                 mSolver->solve(*mJacobianU, tAdjoint_U, t_dFdu);
@@ -536,7 +565,7 @@ namespace Parabolic
                 // R_{u,u^k} -= R_{v,u^k} R_{u,v^k}
                 Plato::blas1::axpy(-tR_vu, mJacobianV->entries(), mJacobianU->entries());
 
-                this->applyConstraints(mJacobianU, t_dFdu);
+                this->applyStateConstraints(mJacobianU, t_dFdu, 1.0);
 
                 // L_u^k
                 mSolver->solve(*mJacobianU, tAdjoint_U, t_dFdu);

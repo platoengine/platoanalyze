@@ -117,11 +117,11 @@ LinearThermoelasticMaterial(const Teuchos::ParameterList& paramList)
   \brief Factory for creating material models
 */
   template<int SpatialDim>
-  class ThermoelasticModelFactory
+  class LinearThermoelasticModelFactory
 /******************************************************************************/
 {
   public:
-    ThermoelasticModelFactory(const Teuchos::ParameterList& paramList) : mParamList(paramList) {}
+    LinearThermoelasticModelFactory(const Teuchos::ParameterList& paramList) : mParamList(paramList) {}
     Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpatialDim>> create();
   private:
     const Teuchos::ParameterList& mParamList;
@@ -130,7 +130,7 @@ LinearThermoelasticMaterial(const Teuchos::ParameterList& paramList)
 /******************************************************************************/
 template<int SpatialDim>
 Teuchos::RCP<LinearThermoelasticMaterial<SpatialDim>>
-ThermoelasticModelFactory<SpatialDim>::create()
+LinearThermoelasticModelFactory<SpatialDim>::create()
 /******************************************************************************/
 {
   auto modelParamList = mParamList.get<Teuchos::ParameterList>("Material Model");

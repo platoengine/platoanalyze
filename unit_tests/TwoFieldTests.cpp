@@ -142,10 +142,11 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, 3D )
     "</ParameterList>                                                                        \n"
   );
 
-  Plato::ThermoelasticModelFactory<spaceDim> mmfactory(*params);
-  auto materialModel    = mmfactory.create();
-  auto cellDensity      = materialModel->getMassDensity();
-  auto cellSpecificHeat = materialModel->getSpecificHeat();
+  Plato::ThermalMassModelFactory<spaceDim> mmmfactory(*params);
+  auto massMaterialModel = mmmfactory.create();
+
+  Plato::LinearThermoelasticModelFactory<spaceDim> mmfactory(*params);
+  auto materialModel = mmfactory.create();
 
   Plato::ComputeGradientWorkset<spaceDim>    computeGradient;
   Plato::StabilizedTMKinematics<spaceDim>      kinematics;
@@ -160,7 +161,7 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, 3D )
   Plato::StressDivergence   <spaceDim, dofsPerNode>             stressDivergence;
   Plato::PressureDivergence <spaceDim, dofsPerNode>             pressureDivergence;
 
-  Plato::ThermalContent computeThermalContent(cellDensity, cellSpecificHeat);
+  Plato::ThermalContent<spaceDim> computeThermalContent(massMaterialModel);
 
   Plato::ProjectToNode<spaceDim, dofsPerNode, PDofOffset> projectVolumeStrain;
   Plato::ProjectToNode<spaceDim, dofsPerNode, TDofOffset> projectThermalContent;

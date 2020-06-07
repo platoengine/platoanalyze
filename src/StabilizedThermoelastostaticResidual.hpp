@@ -93,7 +93,7 @@ public:
     {
         // create material model and get stiffness
         //
-        Plato::ThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
+        Plato::LinearThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
         mMaterialModel = mmfactory.create();
   
 

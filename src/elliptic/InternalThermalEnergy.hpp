@@ -10,7 +10,7 @@
 #include "SimplexThermal.hpp"
 #include "SimplexFadTypes.hpp"
 #include "ImplicitFunctors.hpp"
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
@@ -49,12 +49,12 @@ class InternalThermalEnergy :
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType; /*!< automatic differentiation type for configuration */
     using ResultScalarType  = typename EvaluationType::ResultScalarType; /*!< automatic differentiation type for results */
 
-    Omega_h::Matrix< mSpaceDim, mSpaceDim> mCellConductivity; /*!< conductivity coefficients */
+    Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> mThermalConductivityMaterialModel;
     
     Plato::Scalar mQuadratureWeight; /*!< integration rule weight */
 
     IndicatorFunctionType mIndicatorFunction; /*!< penalty function */
-    Plato::ApplyWeighting<mSpaceDim,mSpaceDim,IndicatorFunctionType> mApplyWeighting; /*!< applies penalty function */
+    Plato::ApplyWeighting<mSpaceDim, mSpaceDim, IndicatorFunctionType> mApplyWeighting; /*!< applies penalty function */
 
   public:
     /******************************************************************************//**
@@ -74,9 +74,8 @@ class InternalThermalEnergy :
             mIndicatorFunction(aPenaltyParams),
             mApplyWeighting(mIndicatorFunction)
     {
-      Plato::ThermalModelFactory<mSpaceDim> tMaterialModelFactory(aProblemParams);
-      auto tMaterialModel = tMaterialModelFactory.create();
-      mCellConductivity = tMaterialModel->getConductivityMatrix();
+      Plato::ThermalConductionModelFactory<mSpaceDim> tMaterialModelFactory(aProblemParams);
+      mThermalConductivityMaterialModel = tMaterialModelFactory.create();
 
       mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
       for (Plato::OrdinalType tDim=2; tDim<=mSpaceDim; tDim++)
@@ -105,7 +104,7 @@ class InternalThermalEnergy :
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::ScalarGrad<mSpaceDim>                    tComputeScalarGrad;
       Plato::ScalarProduct<mSpaceDim>                 tComputeScalarProduct;
-      Plato::ThermalFlux<mSpaceDim>                   tComputeThermalFlux(mCellConductivity);
+      Plato::ThermalFlux<mSpaceDim>                   tComputeThermalFlux(mThermalConductivityMaterialModel);
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermal<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;

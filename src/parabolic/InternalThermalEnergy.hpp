@@ -7,9 +7,10 @@
 #include "ApplyWeighting.hpp"
 #include "SimplexThermal.hpp"
 #include "ImplicitFunctors.hpp"
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
 #include "parabolic/ParabolicSimplexFadTypes.hpp"
 #include "parabolic/AbstractScalarFunction.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
@@ -50,36 +51,29 @@ class InternalThermalEnergy :
     using ConfigScalarType   = typename EvaluationType::ConfigScalarType;
     using ResultScalarType   = typename EvaluationType::ResultScalarType;
 
-    Omega_h::Matrix< mSpaceDim, mSpaceDim> mCellConductivity;
-    
-    Plato::Scalar mQuadratureWeight;
-
     IndicatorFunctionType mIndicatorFunction;
     ApplyWeighting<mSpaceDim,mSpaceDim,IndicatorFunctionType> mApplyWeighting;
 
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
+    Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> mThermalConductivityMaterialModel;
+
   public:
     /**************************************************************************/
-    InternalThermalEnergy(Omega_h::Mesh& aMesh,
-                          Omega_h::MeshSets& aMeshSets,
-                          Plato::DataMap& aDataMap,
-                          Teuchos::ParameterList& aProblemParams,
-                          Teuchos::ParameterList& aPenaltyParams,
-                          std::string& aFunctionName) :
-            Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyWeighting(mIndicatorFunction)
+    InternalThermalEnergy(
+      Omega_h::Mesh& aMesh,
+      Omega_h::MeshSets& aMeshSets,
+      Plato::DataMap& aDataMap,
+      Teuchos::ParameterList& aProblemParams,
+      Teuchos::ParameterList& aPenaltyParams,
+      std::string& aFunctionName
+    ) :
+      Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
+      mIndicatorFunction(aPenaltyParams),
+      mApplyWeighting(mIndicatorFunction)
     /**************************************************************************/
     {
-      Plato::ThermalModelFactory<mSpaceDim> mmfactory(aProblemParams);
-      auto materialModel = mmfactory.create();
-      mCellConductivity = materialModel->getConductivityMatrix();
-
-      mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
-      for (int d=2; d<=mSpaceDim; d++)
-      { 
-        mQuadratureWeight /= Plato::Scalar(d);
-      }
-    
+      Plato::ThermalConductionModelFactory<mSpaceDim> mmfactory(aProblemParams);
+      mThermalConductivityMaterialModel = mmfactory.create();
     }
 
     /**************************************************************************/
@@ -94,9 +88,9 @@ class InternalThermalEnergy :
       auto numCells = mMesh.nelems();
 
       Plato::ComputeGradientWorkset<mSpaceDim> computeGradient;
-      Plato::ScalarGrad<mSpaceDim>                    scalarGrad;
-      Plato::ThermalFlux<mSpaceDim>                   thermalFlux(mCellConductivity);
-      Plato::ScalarProduct<mSpaceDim>                 scalarProduct;
+      Plato::ScalarGrad<mSpaceDim>             scalarGrad;
+      Plato::ThermalFlux<mSpaceDim>            thermalFlux(mThermalConductivityMaterialModel);
+      Plato::ScalarProduct<mSpaceDim>          scalarProduct;
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermal<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
@@ -113,12 +107,12 @@ class InternalThermalEnergy :
       Kokkos::View<ResultScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
         tflux("thermal flux",numCells,mSpaceDim);
 
-      auto quadratureWeight = mQuadratureWeight;
+      auto tQuadratureWeight = mCubatureRule->getCubWeight();
       auto applyWeighting  = mApplyWeighting;
       Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
       {
         computeGradient(aCellOrdinal, gradient, aConfig, cellVolume);
-        cellVolume(aCellOrdinal) *= quadratureWeight;
+        cellVolume(aCellOrdinal) *= tQuadratureWeight;
 
         // compute temperature gradient
         //

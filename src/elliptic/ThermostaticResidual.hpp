@@ -13,7 +13,7 @@
 #include "Heaviside.hpp"
 #include "ToMap.hpp"
 
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
 #include "elliptic/AbstractVectorFunction.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ApplyWeighting.hpp"
@@ -51,14 +51,15 @@ class ThermostaticResidual :
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
     using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
-    Omega_h::Matrix< mSpaceDim, mSpaceDim> mCellConductivity;
-    
     Plato::Scalar mQuadratureWeight;
 
     IndicatorFunctionType mIndicatorFunction;
     ApplyWeighting<mSpaceDim,mSpaceDim,IndicatorFunctionType> mApplyWeighting;
 
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>> mBoundaryLoads;
+
+    Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> mThermalConductivityMaterialModel;
 
     std::vector<std::string> mPlottable;
 
@@ -72,18 +73,12 @@ class ThermostaticResidual :
             Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
             mIndicatorFunction(penaltyParams),
             mApplyWeighting(mIndicatorFunction),
+            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
             mBoundaryLoads(nullptr)
     /**************************************************************************/
     {
-      Plato::ThermalModelFactory<mSpaceDim> tMaterialFactory(aProblemParams);
-      auto tMaterialModel = tMaterialFactory.create();
-      mCellConductivity = tMaterialModel->getConductivityMatrix();
-
-      mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
-      for (Plato::OrdinalType tDim=2; tDim<=mSpaceDim; tDim++)
-      { 
-        mQuadratureWeight /= Plato::Scalar(tDim);
-      }
+      Plato::ThermalConductionModelFactory<mSpaceDim> tMaterialFactory(aProblemParams);
+      mThermalConductivityMaterialModel = tMaterialFactory.create();
 
       // parse boundary Conditions
       // 
@@ -131,11 +126,12 @@ class ThermostaticResidual :
       Plato::ComputeGradientWorkset<mSpaceDim>  tComputeGradient;
 
       Plato::ScalarGrad<mSpaceDim>            tScalarGrad;
-      Plato::ThermalFlux<mSpaceDim>           tThermalFlux(mCellConductivity);
+      Plato::ThermalFlux<mSpaceDim>           tThermalFlux(mThermalConductivityMaterialModel);
       Plato::FluxDivergence<mSpaceDim>        tFluxDivergence;
     
       auto& tApplyWeighting  = mApplyWeighting;
-      auto tQuadratureWeight = mQuadratureWeight;
+      auto tQuadratureWeight = mCubatureRule->getCubWeight();
+
       Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
       {
     

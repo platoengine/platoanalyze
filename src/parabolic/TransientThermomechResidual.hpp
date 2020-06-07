@@ -19,6 +19,7 @@
 #include "NoPenalty.hpp"
 
 #include "LinearThermoelasticMaterial.hpp"
+#include "ThermalMassMaterial.hpp"
 #include "parabolic/AbstractVectorFunction.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ProjectToNode.hpp"
@@ -64,9 +65,6 @@ class TransientThermomechResidual :
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
     using ResultScalarType    = typename EvaluationType::ResultScalarType;
 
-    Plato::Scalar mCellDensity;
-    Plato::Scalar mCellSpecificHeat;
-    
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
     Plato::ApplyWeighting<SpaceDim, SpaceDim,       IndicatorFunctionType> mApplyFluxWeighting;
@@ -77,6 +75,7 @@ class TransientThermomechResidual :
     std::shared_ptr<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>> mBoundaryFluxes;
 
     Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpaceDim>> mMaterialModel;
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mThermalMassMaterialModel;
 
   public:
     /**************************************************************************/
@@ -97,11 +96,15 @@ class TransientThermomechResidual :
      mBoundaryFluxes(nullptr)
     /**************************************************************************/
     {
-      Plato::ThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
-      mMaterialModel = mmfactory.create();
-      mCellDensity      = mMaterialModel->getMassDensity();
-      mCellSpecificHeat = mMaterialModel->getSpecificHeat();
+        {
+            Plato::LinearThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
+            mMaterialModel = mmfactory.create();
+        }
 
+        {
+            Plato::ThermalMassModelFactory<SpaceDim> mmfactory(aProblemParams);
+            mThermalMassMaterialModel = mmfactory.create();
+        }
 
       // parse boundary Conditions
       // 
@@ -157,7 +160,7 @@ class TransientThermomechResidual :
       Plato::FluxDivergence  <SpaceDim, mNumDofsPerNode, TDofOffset> tFluxDivergence;
       Plato::StressDivergence<SpaceDim, mNumDofsPerNode, MDofOffset> tStressDivergence;
 
-      Plato::ThermalContent tComputeHeatRate(mCellDensity, mCellSpecificHeat);
+      Plato::ThermalContent<SpaceDim> tComputeHeatRate(mThermalMassMaterialModel);
       Plato::ProjectToNode<SpaceDim, mNumDofsPerNode, TDofOffset> tProjectHeatRate;
       
       auto tBasisFunctions = mCubatureRule->getBasisFunctions();
@@ -202,7 +205,7 @@ class TransientThermomechResidual :
 
         // compute the time rate of internal thermal energy
         //
-        tComputeHeatRate(tCellOrdinal, tHeatRate, tTemperatureRate);
+        tComputeHeatRate(tCellOrdinal, tHeatRate, tTemperatureRate, tTemperature);
 
         // apply weighting
         //

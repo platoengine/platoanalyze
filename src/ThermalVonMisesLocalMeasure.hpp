@@ -52,7 +52,7 @@ public:
                          AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aInputParams, aName),
                          mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     {
-        Plato::ThermoelasticModelFactory<mSpaceDim> tFactory(aInputParams);
+        Plato::LinearThermoelasticModelFactory<mSpaceDim> tFactory(aInputParams);
         mMaterialModel = tFactory.create();
     }
 

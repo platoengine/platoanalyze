@@ -9,12 +9,13 @@
 #include "SimplexThermal.hpp"
 #include "ApplyWeighting.hpp"
 #include "SimplexFadTypes.hpp"
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
 #include "ImplicitFunctors.hpp"
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 
 #include "ExpInstMacros.hpp"
 
@@ -45,12 +46,11 @@ class FluxPNorm :
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
     using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
-    Omega_h::Matrix< SpaceDim, SpaceDim> mCellConductivity;
-    
-    Plato::Scalar mQuadratureWeight;
-
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<SpaceDim,SpaceDim,IndicatorFunctionType> mApplyWeighting;
+
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mThermalConductivityMaterialModel;
 
     Plato::OrdinalType mExponent;
 
@@ -67,15 +67,8 @@ class FluxPNorm :
             mApplyWeighting(mIndicatorFunction)
     /**************************************************************************/
     {
-      Plato::ThermalModelFactory<SpaceDim> mmfactory(aProblemParams);
-      auto materialModel = mmfactory.create();
-      mCellConductivity = materialModel->getConductivityMatrix();
-
-      mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
-      for (int d=2; d<=SpaceDim; d++)
-      { 
-        mQuadratureWeight /= Plato::Scalar(d);
-      }
+      Plato::ThermalConductionModelFactory<SpaceDim> mmfactory(aProblemParams);
+      mThermalConductivityMaterialModel = mmfactory.create();
 
       auto params = aProblemParams.get<Teuchos::ParameterList>(aFunctionName);
 
@@ -93,9 +86,9 @@ class FluxPNorm :
       auto numCells = mMesh.nelems();
 
       Plato::ComputeGradientWorkset<SpaceDim> computeGradient;
-      Plato::ScalarGrad<SpaceDim>                    scalarGrad;
-      Plato::ThermalFlux<SpaceDim>                   thermalFlux(mCellConductivity);
-      Plato::VectorPNorm<SpaceDim>                   vectorPNorm;
+      Plato::ScalarGrad<SpaceDim>             scalarGrad;
+      Plato::ThermalFlux<SpaceDim>            thermalFlux(mThermalConductivityMaterialModel);
+      Plato::VectorPNorm<SpaceDim>            vectorPNorm;
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermal<EvaluationType::SpatialDim>,StateScalarType, ConfigScalarType>;
@@ -112,13 +105,13 @@ class FluxPNorm :
       Kokkos::View<ResultScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
         tflux("thermal flux",numCells,SpaceDim);
 
-      auto quadratureWeight = mQuadratureWeight;
+      auto tQuadratureWeight = mCubatureRule->getCubWeight();
       auto& applyWeighting  = mApplyWeighting;
       auto exponent         = mExponent;
       Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
       {
         computeGradient(aCellOrdinal, gradient, aConfig, cellVolume);
-        cellVolume(aCellOrdinal) *= quadratureWeight;
+        cellVolume(aCellOrdinal) *= tQuadratureWeight;
 
         // compute temperature gradient
         //

@@ -89,7 +89,7 @@ class InternalThermoelasticEnergy :
          tProblemParams.sublist("Material Model").sublist("Cubic Linear Thermoelastic").set("a22",0.0);
          tProblemParams.sublist("Material Model").sublist("Cubic Linear Thermoelastic").set("a33",0.0);
       }
-      Plato::ThermoelasticModelFactory<mSpaceDim> mmfactory(tProblemParams);
+      Plato::LinearThermoelasticModelFactory<mSpaceDim> mmfactory(tProblemParams);
       mMaterialModel = mmfactory.create();
 
       if( tProblemParams.isType<Teuchos::Array<std::string>>("Plottable") )

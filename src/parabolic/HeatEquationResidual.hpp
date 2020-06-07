@@ -14,7 +14,8 @@
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
 
-#include "LinearThermalMaterial.hpp"
+#include "ThermalConductivityMaterial.hpp"
+#include "ThermalMassMaterial.hpp"
 #include "parabolic/AbstractVectorFunction.hpp"
 #include "ImplicitFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
@@ -55,18 +56,16 @@ class HeatEquationResidual :
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
     using ResultScalarType    = typename EvaluationType::ResultScalarType;
 
-
-
-    Omega_h::Matrix< SpaceDim, SpaceDim> mCellConductivity;
-    Plato::Scalar mCellDensity;
-    Plato::Scalar mCellSpecificHeat;
-    
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<SpaceDim,SpaceDim,IndicatorFunctionType> mApplyFluxWeighting;
     Plato::ApplyWeighting<SpaceDim,mNumDofsPerNode,IndicatorFunctionType> mApplyMassWeighting;
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>> mBoundaryLoads;
+
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mThermalMassMaterialModel;
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mThermalConductivityMaterialModel;
+
 
   public:
     /**************************************************************************/
@@ -84,12 +83,15 @@ class HeatEquationResidual :
      mBoundaryLoads(nullptr)
     /**************************************************************************/
     {
-      Plato::ThermalModelFactory<SpaceDim> mmfactory(problemParams);
-      auto materialModel = mmfactory.create();
-      mCellConductivity = materialModel->getConductivityMatrix();
-      mCellDensity      = materialModel->getMassDensity();
-      mCellSpecificHeat = materialModel->getSpecificHeat();
+        {
+            Plato::ThermalConductionModelFactory<SpaceDim> mmfactory(problemParams);
+            mThermalConductivityMaterialModel = mmfactory.create();
+        }
 
+        {
+            Plato::ThermalMassModelFactory<SpaceDim> mmfactory(problemParams);
+            mThermalMassMaterialModel = mmfactory.create();
+        }
 
       // parse boundary Conditions
       // 
@@ -130,13 +132,13 @@ class HeatEquationResidual :
       Plato::ComputeGradientWorkset<SpaceDim>  tComputeGradient;
 
       Plato::ScalarGrad<SpaceDim>            tScalarGrad;
-      Plato::ThermalFlux<SpaceDim>           tThermalFlux(mCellConductivity);
+      Plato::ThermalFlux<SpaceDim>           tThermalFlux(mThermalConductivityMaterialModel);
       Plato::FluxDivergence<SpaceDim>        tFluxDivergence;
 
       Plato::InterpolateFromNodal <SpaceDim, mNumDofsPerNode> tInterpolateFromNodal;
       Plato::ProjectToNode        <SpaceDim, mNumDofsPerNode> tProjectThermalEnergyRate;
 
-      Plato::ThermalContent tThermalContent(mCellDensity, mCellSpecificHeat);
+      Plato::ThermalContent<SpaceDim> tThermalContent(mThermalMassMaterialModel);
       
       auto tBasisFunctions = mCubatureRule->getBasisFunctions();
     
@@ -171,10 +173,11 @@ class HeatEquationResidual :
         // compute temperature at gausspoints
         //
         tInterpolateFromNodal(tCellOrdinal, tBasisFunctions, aStateDot, tTemperatureRate);
+        tInterpolateFromNodal(tCellOrdinal, tBasisFunctions, aState,    tTemperature    );
 
         // compute the time rate of internal thermal energy
         //
-        tThermalContent(tCellOrdinal, tThermalEnergyRate, tTemperatureRate);
+        tThermalContent(tCellOrdinal, tThermalEnergyRate, tTemperatureRate, tTemperature);
 
         // apply weighting
         //

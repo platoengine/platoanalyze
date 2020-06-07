@@ -116,10 +116,11 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, 3D )
     "</ParameterList>                                                                        \n"
   );
 
-  Plato::ThermoelasticModelFactory<spaceDim> mmfactory(*params);
+  Plato::ThermalMassModelFactory<spaceDim> mmmfactory(*params);
+  auto massMaterialModel = mmmfactory.create();
+
+  Plato::LinearThermoelasticModelFactory<spaceDim> mmfactory(*params);
   auto materialModel = mmfactory.create();
-  auto cellDensity      = materialModel->getMassDensity();
-  auto cellSpecificHeat = materialModel->getSpecificHeat();
 
   Plato::ComputeGradientWorkset<spaceDim>  computeGradient;
   Plato::TMKinematics<spaceDim>                   kinematics;
@@ -130,7 +131,7 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, 3D )
   Plato::FluxDivergence  <spaceDim, dofsPerNode, TDofOffset> fluxDivergence;
   Plato::StressDivergence<spaceDim, dofsPerNode> stressDivergence;
 
-  Plato::ThermalContent computeThermalContent(cellDensity, cellSpecificHeat);
+  Plato::ThermalContent<spaceDim> computeThermalContent(massMaterialModel);
   Plato::ProjectToNode<spaceDim, dofsPerNode, TDofOffset> projectThermalContent;
 
   Plato::LinearTetCubRuleDegreeOne<spaceDim> cubatureRule;

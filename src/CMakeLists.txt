@@ -17,6 +17,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     IsotropicLinearElasticMaterial.cpp 
     OrthotropicLinearElasticMaterial.cpp 
     LinearThermoelasticMaterial.cpp 
+    MaterialModel.cpp
     StabilizedElastostaticEnergy.cpp 
     EllipticVMSProblem.cpp 
     alg/ParseInput.cpp 
