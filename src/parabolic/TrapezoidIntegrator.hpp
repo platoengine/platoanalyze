@@ -19,7 +19,7 @@ public:
     /******************************************************************************/
     explicit 
     TrapezoidIntegrator(Teuchos::ParameterList& aParams) :
-      mAlpha( aParams.get<double>("Trapezoid Alpha") )
+      mAlpha( aParams.get<double>("Trapezoid Alpha", /*default=*/ 0.5) )
     /******************************************************************************/
     {
     }

@@ -4,10 +4,10 @@
 #include <fenv.h>
 #endif
 
-void safeExit(){
+void safeExit(int aExitCode=0){
   Kokkos::finalize_all();
   MPI_Finalize();
-  exit(0);
+  exit(aExitCode);
 }
 
 /******************************************************************************/
@@ -28,7 +28,8 @@ int main(int aArgc, char **aArgv)
     }
     catch(...)
     {
-      safeExit();
+      int tErrorCode = 1;
+      safeExit(tErrorCode);
     }
 
     MPI_Comm tLocalComm;
@@ -51,7 +52,8 @@ int main(int aArgc, char **aArgv)
     }
     catch(...)
     {
-      safeExit();
+      int tErrorCode = 1;
+      safeExit(tErrorCode);
     }
 
     tPlatoInterface->perform();
