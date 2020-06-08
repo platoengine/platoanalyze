@@ -30,8 +30,8 @@ class ThermalFlux
     template<typename TGradScalarType, typename TFluxScalarType>
     DEVICE_TYPE inline void
     operator()( Plato::OrdinalType cellOrdinal,
-                Kokkos::View<TFluxScalarType**, Kokkos::LayoutRight, Plato::MemSpace> tflux,
-                Kokkos::View<TGradScalarType**, Kokkos::LayoutRight, Plato::MemSpace> tgrad) const {
+                Kokkos::View<TFluxScalarType**, Plato::Layout, Plato::MemSpace> tflux,
+                Kokkos::View<TGradScalarType**, Plato::Layout, Plato::MemSpace> tgrad) const {
 
       // compute thermal flux
       //

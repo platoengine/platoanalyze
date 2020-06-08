@@ -57,8 +57,8 @@ public:
     **********************************************************************************/
     template<typename StressScalarType, typename StrainScalarType>
     DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
-                                       Kokkos::View<StressScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aCauchyStress,
-                                       Kokkos::View<StrainScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aCauchyStrain) const
+                                       Kokkos::View<StressScalarType**, Plato::Layout, Plato::MemSpace> const& aCauchyStress,
+                                       Kokkos::View<StrainScalarType**, Plato::Layout, Plato::MemSpace> const& aCauchyStrain) const
     {
 
         // compute stress

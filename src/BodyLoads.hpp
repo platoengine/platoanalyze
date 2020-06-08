@@ -19,7 +19,7 @@ namespace Plato
 
 /******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
-void getFunctionValues(Kokkos::View<Plato::Scalar***, Kokkos::LayoutRight, Plato::MemSpace> aQuadraturePoints,
+void getFunctionValues(Kokkos::View<Plato::Scalar***, Plato::Layout, Plato::MemSpace> aQuadraturePoints,
                        const std::string& aFuncString,
                        Omega_h::Reals& aFxnValues)
 /******************************************************************************/
@@ -59,8 +59,8 @@ void getFunctionValues(Kokkos::View<Plato::Scalar***, Kokkos::LayoutRight, Plato
 /******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 void mapPoints(Omega_h::Mesh& mesh,
-               Kokkos::View<Plato::Scalar**, Kokkos::LayoutRight, Plato::MemSpace> refPoints,
-               Kokkos::View<Plato::Scalar***, Kokkos::LayoutRight, Plato::MemSpace> mappedPoints)
+               Kokkos::View<Plato::Scalar**, Plato::Layout, Plato::MemSpace> refPoints,
+               Kokkos::View<Plato::Scalar***, Plato::Layout, Plato::MemSpace> mappedPoints)
 /******************************************************************************/
 {
     Plato::OrdinalType numCells = mesh.nelems();
@@ -142,9 +142,9 @@ public:
 
         Plato::OrdinalType tNumPoints = Plato::Cubature::getNumCubaturePoints(mSpaceDim, tQuadratureDegree);
 
-        Kokkos::View<Plato::Scalar**, Kokkos::LayoutRight, Plato::MemSpace>
+        Kokkos::View<Plato::Scalar**, Plato::Layout, Plato::MemSpace>
             tRefCellQuadraturePoints("ref quadrature points", tNumPoints, mSpaceDim);
-        Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace> tQuadratureWeights("quadrature weights", tNumPoints);
+        Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace> tQuadratureWeights("quadrature weights", tNumPoints);
 
         Plato::Cubature::getCubature(mSpaceDim, tQuadratureDegree, tRefCellQuadraturePoints, tQuadratureWeights);
 
@@ -152,14 +152,14 @@ public:
         //
         Plato::Basis tBasis(mSpaceDim);
         Plato::OrdinalType tNumFields = tBasis.basisCardinality();
-        Kokkos::View<Plato::Scalar**, Kokkos::LayoutRight, Plato::MemSpace>
+        Kokkos::View<Plato::Scalar**, Plato::Layout, Plato::MemSpace>
             tRefCellBasisValues("ref basis values", tNumFields, tNumPoints);
         tBasis.getValues(tRefCellQuadraturePoints, tRefCellBasisValues);
 
         // map points to physical space
         //
         Plato::OrdinalType tNumCells = aMesh.nelems();
-        Kokkos::View<Plato::Scalar***, Kokkos::LayoutRight, Plato::MemSpace>
+        Kokkos::View<Plato::Scalar***, Plato::Layout, Plato::MemSpace>
             tQuadraturePoints("quadrature points", tNumCells, tNumPoints, mSpaceDim);
 
         Plato::mapPoints<mSpaceDim>(aMesh, tRefCellQuadraturePoints, tQuadraturePoints);

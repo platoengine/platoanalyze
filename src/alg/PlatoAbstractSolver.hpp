@@ -20,7 +20,7 @@ class AbstractSolver
 {
   public:
     virtual void solve(
-        Plato::CrsMatrix<int> aA,
+        Plato::CrsMatrix<Plato::OrdinalType> aA,
         Plato::ScalarVector   aX,
         Plato::ScalarVector   aB
     ) = 0;

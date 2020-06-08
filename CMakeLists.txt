@@ -8,7 +8,6 @@ IF (DEFINED Trilinos_PREFIX)
 ENDIF()
 
 IF (DEFINED SuperLU_PREFIX)
-  message("superlu prefix defined\n")
   SET(CMAKE_PREFIX_PATH ${SuperLU_PREFIX} ${CMAKE_PREFIX_PATH})
 ENDIF()
 
@@ -142,6 +141,12 @@ else()
   message("-- Building without FPE checking.")
 endif()
 
+option(PLATOANALYZE_LONG_LONG_ORDINALTYPE "Flag to change Plato::OrdinalType to 'long long'" OFF)
+if(PLATOANALYZE_LONG_LONG_ORDINALTYPE)
+  add_definitions(-DPLATOANALYZE_LONG_LONG_ORDINALTYPE)
+  message("-- Building with 'long long' ordinal type.")
+endif()
+
 add_executable(
     analyze 
     src/alg/Run.cpp
@@ -177,6 +182,10 @@ IF (DEFINED AMGX_PREFIX)
   FIND_LIBRARY(AMGX_LIB NAMES amgxsh amgx PATHS ${AMGX_PREFIX}/lib)
   IF (NOT AMGX_LIB)
     MESSAGE(FATAL_ERROR "Couldn't find AMGX library!")
+  ENDIF()
+  IF(PLATOANALYZE_LONG_LONG_ORDINALTYPE)
+    message(FATAL_ERROR "Can't build with AMGX when building with 'long long' ordinal type. \n
+    Please set -DPLATOANALYZE_LONG_LONG_ORDINALTYPE=OFF or unset AMGX_PREFIX")
   ENDIF()
   SET(AMGX_INCLUDE_DIRS "${AMGX_INCLUDE_DIR}")
   SET(AMGX_LIBRARIES "${AMGX_LIB}")

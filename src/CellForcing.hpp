@@ -31,7 +31,7 @@ public:
     }
 
     template<typename TensorScalarType>
-    void add(Kokkos::View<TensorScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aTensor) const
+    void add(Kokkos::View<TensorScalarType**, Plato::Layout, Plato::MemSpace> const& aTensor) const
     {
         Plato::OrdinalType tNumCells = aTensor.extent(0);
         Plato::OrdinalType tNumTerms = aTensor.extent(1);

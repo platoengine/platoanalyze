@@ -1042,7 +1042,7 @@ public:
           Plato::Scalar aTimeStep = 0.0) const
     {
         const auto tTotalNumDofs = mNumGlobalDofsPerNode * mNumNodes;
-        Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace>
+        Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace>
             tAssembledResidual("Assembled Residual", tTotalNumDofs);
 
         auto tResidualWS = this->residualWorkset(aCurrentGlobalState, aPrevGlobalState,

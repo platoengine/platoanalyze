@@ -103,13 +103,13 @@ class FluxPNorm :
       Plato::ScalarVectorT<ConfigScalarType>
         cellVolume("cell weight",numCells);
 
-      Kokkos::View<GradScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<GradScalarType**, Plato::Layout, Plato::MemSpace>
         tgrad("temperature gradient",numCells,SpaceDim);
 
-      Kokkos::View<ConfigScalarType***, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ConfigScalarType***, Plato::Layout, Plato::MemSpace>
         gradient("gradient",numCells,mNumNodesPerCell,SpaceDim);
 
-      Kokkos::View<ResultScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
         tflux("thermal flux",numCells,SpaceDim);
 
       auto quadratureWeight = mQuadratureWeight;

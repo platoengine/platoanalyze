@@ -35,8 +35,8 @@ public:
     *******************************************************************************/
     template<typename ScalarType>
     DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
-                                       Kokkos::View<ScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aStrain,
-                                       Kokkos::View<ScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aState,
+                                       Kokkos::View<ScalarType**, Plato::Layout, Plato::MemSpace> const& aStrain,
+                                       Kokkos::View<ScalarType**, Plato::Layout, Plato::MemSpace> const& aState,
                                        Omega_h::Vector<mNumVoigtTerms> const* aGradientMatrix) const
     {
 

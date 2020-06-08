@@ -14,10 +14,11 @@
 
 namespace Plato {
 
-  using Tpetra_Map = Tpetra::Map<Plato::OrdinalType, Plato::OrdinalType>;
-  using Tpetra_MultiVector = Tpetra::MultiVector<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
-  using Tpetra_Matrix = Tpetra::CrsMatrix<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
-  using Tpetra_Operator = Tpetra::Operator<Plato::Scalar, Plato::OrdinalType, Plato::OrdinalType>;
+  using Tpetra_Map = Tpetra::Map<int, Plato::OrdinalType>;
+  using Tpetra_MultiVector = Tpetra::MultiVector<Plato::Scalar, int, Plato::OrdinalType>;
+  using Tpetra_Vector = Tpetra::Vector<Plato::Scalar, int, Plato::OrdinalType>;
+  using Tpetra_Matrix = Tpetra::CrsMatrix<Plato::Scalar, int, Plato::OrdinalType>;
+  using Tpetra_Operator = Tpetra::Operator<Plato::Scalar, int, Plato::OrdinalType>;
 
 /******************************************************************************//**
  * @brief Abstract system interface
@@ -38,27 +39,31 @@ class TpetraSystem
     );
 
     /******************************************************************************//**
-     * @brief Convert from Plato::CrsMatrix<int> to Epetra_VbrMatrix
+     * @brief Convert from Plato::CrsMatrix<int> to Tpetra_Matrix
     **********************************************************************************/
     Teuchos::RCP<Tpetra_Matrix>
-    fromMatrix(Plato::CrsMatrix<int> tInMatrix) const;
+    fromMatrix(const Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const;
 
     /******************************************************************************//**
      * @brief Convert from ScalarVector to Tpetra_MultiVector
     **********************************************************************************/
     Teuchos::RCP<Tpetra_MultiVector>
-    fromVector(Plato::ScalarVector tInVector) const;
+    fromVector(const Plato::ScalarVector tInVector) const;
 
     /******************************************************************************//**
      * @brief Convert from Tpetra_MultiVector to ScalarVector
     **********************************************************************************/
     void
-    toVector(Plato::ScalarVector tOutVector, Teuchos::RCP<Tpetra_MultiVector> tInVector) const;
+    toVector(Plato::ScalarVector& tOutVector, const Teuchos::RCP<Tpetra_MultiVector> tInVector) const;
 
     /******************************************************************************//**
      * @brief get TpetraSystem map 
     **********************************************************************************/
     Teuchos::RCP<Tpetra_Map> getMap() const {return mMap;}
+
+  private:
+      void checkInputMatrixSize(const Plato::CrsMatrix<Plato::OrdinalType> aInMatrix,
+               Kokkos::View<Plato::OrdinalType*, MemSpace>::HostMirror aRowMap) const;
 };
 
 /******************************************************************************//**
@@ -68,10 +73,13 @@ class TpetraLinearSolver : public AbstractSolver
 {
     Teuchos::RCP<TpetraSystem> mSystem;
 
-    Teuchos::ParameterList mSolverParams;
+    std::string mSolverPackage;
+    std::string mSolver;
+    std::string mPreconditionerPackage;
+    std::string mPreconditionerType;
 
-    int mIterations;
-    Plato::Scalar mTolerance;
+    Teuchos::ParameterList mSolverOptions;
+    Teuchos::ParameterList mPreconditionerOptions;
 
   public:
     /******************************************************************************//**
@@ -87,21 +95,22 @@ class TpetraLinearSolver : public AbstractSolver
     );
 
     /******************************************************************************//**
-     * @brief Solve the linear system
+     * @brief Interface function to solve the linear system
     **********************************************************************************/
     void
     solve(
-        Plato::CrsMatrix<int> aA,
+        Plato::CrsMatrix<Plato::OrdinalType> aA,
         Plato::ScalarVector   aX,
         Plato::ScalarVector   aB
     );
 
+  private:
     /******************************************************************************//**
-     * @brief Setup the Belos solver
+     * @brief Setup the Belos solver and solve
     **********************************************************************************/
     template<class MV, class OP>
     void
-    belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M);
+    belosSolve (Teuchos::RCP<const OP> A, Teuchos::RCP<MV> X, Teuchos::RCP<const MV> B, Teuchos::RCP<const OP> M);
 };
 
 } // end namespace Plato

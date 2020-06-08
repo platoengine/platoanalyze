@@ -21,10 +21,10 @@ EpetraSystem::EpetraSystem(
 }
 
 /******************************************************************************//**
- * @brief Convert from Plato::CrsMatrix<int> to Epetra_VbrMatrix
+ * @brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Epetra_VbrMatrix
 **********************************************************************************/
 rcp<Epetra_VbrMatrix>
-EpetraSystem::fromMatrix(Plato::CrsMatrix<int> tInMatrix) const
+EpetraSystem::fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const
 {
     auto tRowMap_host = Kokkos::create_mirror_view(tInMatrix.rowMap());
     auto tNumRowsPerBlock = tInMatrix.numRowsPerBlock();
@@ -111,6 +111,8 @@ EpetraSystem::toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVec
     auto tTemp = std::make_shared<Epetra_Vector>(*mBlockRowMap);
     if(tLength != tTemp->MyLength())
       throw std::domain_error("Epetra_Vector map does not match EpetraSystem map.");
+    if(tOutVector.extent(0) != tTemp->MyLength())
+      throw std::range_error("ScalarVector does not match EpetraSystem map.");
     Plato::Scalar* tInData;
     tInVector->ExtractView(&tInData);
     Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
@@ -156,7 +158,7 @@ EpetraLinearSolver::EpetraLinearSolver(
 **********************************************************************************/
 void
 EpetraLinearSolver::solve(
-    Plato::CrsMatrix<int> aA,
+    Plato::CrsMatrix<Plato::OrdinalType> aA,
     Plato::ScalarVector   aX,
     Plato::ScalarVector   aB
 ) {
