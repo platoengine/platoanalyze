@@ -18,7 +18,7 @@ class CrsLinearProblem
 {
  private:
   typedef Kokkos::View<Scalar *, MemSpace>          Vector;
-  typedef Kokkos::View<Scalar **, Kokkos::LayoutRight, MemSpace>         MultiVector;
+  typedef Kokkos::View<Scalar **, Plato::Layout, MemSpace>         MultiVector;
   typedef CrsMatrix<Ordinal> Matrix;
 
   Matrix _A;

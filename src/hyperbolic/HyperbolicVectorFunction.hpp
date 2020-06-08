@@ -217,7 +217,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // create and assemble to return view
       //
-      Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace>  tReturnValue("Assembled Residual",mNumDofsPerNode*mNumNodes);
+      Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace>  tReturnValue("Assembled Residual",mNumDofsPerNode*mNumNodes);
       Plato::WorksetBase<PhysicsT>::assembleResidual( tResidual, tReturnValue );
 
       return tReturnValue;

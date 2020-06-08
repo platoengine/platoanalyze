@@ -68,10 +68,10 @@ class EMKinetics : public Plato::SimplexElectromechanics<SpaceDim>
     template<typename KineticsScalarType, typename KinematicsScalarType>
     DEVICE_TYPE inline void
     operator()( int cellOrdinal,
-                Kokkos::View<KineticsScalarType**,   Kokkos::LayoutRight, Plato::MemSpace> const& stress,
-                Kokkos::View<KineticsScalarType**,   Kokkos::LayoutRight, Plato::MemSpace> const& edisp,
-                Kokkos::View<KinematicsScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& strain,
-                Kokkos::View<KinematicsScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& efield) const {
+                Kokkos::View<KineticsScalarType**,   Plato::Layout, Plato::MemSpace> const& stress,
+                Kokkos::View<KineticsScalarType**,   Plato::Layout, Plato::MemSpace> const& edisp,
+                Kokkos::View<KinematicsScalarType**, Plato::Layout, Plato::MemSpace> const& strain,
+                Kokkos::View<KinematicsScalarType**, Plato::Layout, Plato::MemSpace> const& efield) const {
 
       // compute stress
       //

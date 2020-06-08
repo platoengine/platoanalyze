@@ -113,13 +113,13 @@ class InternalThermalEnergy :
       Plato::ScalarVectorT<ConfigScalarType>
         tCellVolume("cell weight",tNumCells);
 
-      Kokkos::View<GradScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<GradScalarType**, Plato::Layout, Plato::MemSpace>
         tThermalGrad("temperature gradient",tNumCells,mSpaceDim);
 
-      Kokkos::View<ConfigScalarType***, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ConfigScalarType***, Plato::Layout, Plato::MemSpace>
         tGradient("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
 
-      Kokkos::View<ResultScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
         tThermalFlux("thermal flux",tNumCells,mSpaceDim);
 
       auto tQuadratureWeight = mQuadratureWeight;

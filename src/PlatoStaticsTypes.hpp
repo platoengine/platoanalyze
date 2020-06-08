@@ -29,7 +29,7 @@ using HostScalarVectorT = typename Kokkos::View<ScalarType*, Kokkos::HostSpace, 
 using HostScalarVector  = HostScalarVectorT<Plato::Scalar>;
 
 template <typename ScalarType>
-using ScalarMultiVectorT = typename Kokkos::View<ScalarType**, Kokkos::LayoutRight, Plato::MemSpace>;
+using ScalarMultiVectorT = typename Kokkos::View<ScalarType**, Plato::Layout, Plato::MemSpace>;
 using ScalarMultiVector  = ScalarMultiVectorT<Plato::Scalar>;
 
 template <typename ScalarType>
@@ -37,7 +37,7 @@ using HostMultiScalarVectorT = typename Kokkos::View<ScalarType**, Kokkos::HostS
 using HostMultiScalarVector  = HostMultiScalarVectorT<Plato::Scalar>;
 
 template <typename ScalarType>
-using ScalarArray3DT = typename Kokkos::View<ScalarType***, Kokkos::LayoutRight, Plato::MemSpace>;
+using ScalarArray3DT = typename Kokkos::View<ScalarType***, Plato::Layout, Plato::MemSpace>;
 using ScalarArray3D  = ScalarArray3DT<Plato::Scalar>;
 
 template <typename ScalarType>

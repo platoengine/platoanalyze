@@ -121,13 +121,13 @@ class InternalElasticEnergy :
       Plato::ScalarVectorT<ConfigScalarType>
         tCellVolume("cell weight",tNumCells);
 
-      Kokkos::View<StrainScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<StrainScalarType**, Plato::Layout, Plato::MemSpace>
         tStrain("strain",tNumCells,mNumVoigtTerms);
 
-      Kokkos::View<ConfigScalarType***, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ConfigScalarType***, Plato::Layout, Plato::MemSpace>
         tGradient("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
 
-      Kokkos::View<ResultScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
         tStress("stress",tNumCells,mNumVoigtTerms);
 
       auto tQuadratureWeight = mQuadratureWeight;

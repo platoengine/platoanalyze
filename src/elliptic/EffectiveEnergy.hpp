@@ -127,13 +127,13 @@ class EffectiveEnergy :
       Plato::ScalarVectorT<ConfigScalarType>
         cellVolume("cell weight",numCells);
 
-      Kokkos::View<StrainScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<StrainScalarType**, Plato::Layout, Plato::MemSpace>
         strain("strain",numCells,mNumVoigtTerms);
 
-      Kokkos::View<ConfigScalarType***, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ConfigScalarType***, Plato::Layout, Plato::MemSpace>
         gradient("gradient",numCells,mNumNodesPerCell,mSpaceDim);
 
-      Kokkos::View<ResultScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
         stress("stress",numCells,mNumVoigtTerms);
 
       auto quadratureWeight = mQuadratureWeight;

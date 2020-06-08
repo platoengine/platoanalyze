@@ -19,7 +19,7 @@
 namespace Plato {
 
 struct Cubature {
-  typedef Kokkos::View<Scalar**, Kokkos::LayoutRight, MemSpace> RefPointsView;  // (P,D)
+  typedef Kokkos::View<Scalar**, Plato::Layout, MemSpace> RefPointsView;  // (P,D)
   typedef Kokkos::View<Scalar*, MemSpace>  WeightsView;    // (P)
   static void getCubature(
       int                 spaceDim,
