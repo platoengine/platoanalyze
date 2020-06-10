@@ -594,6 +594,77 @@ inline void Condense(       Teuchos::RCP<Plato::CrsMatrixType> & aA,
   MatrixMinusMatrix        ( aA, tBD, aOffset );
 }
 
+/******************************************************************************//**
+ * \brief Compute matrix transpose
+ * \param [in] aMatrix
+ * \param [out] aMatrixTranspose
+ *
+**********************************************************************************/
+inline void
+MatrixTranspose( const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
+                       Teuchos::RCP<Plato::CrsMatrixType> & aMatrixTranspose)
+{
+    using Plato::OrdinalType;
+    using Plato::Scalar;
+
+    typedef Plato::ScalarVectorT<OrdinalType> OrdinalView;
+    typedef Plato::ScalarVectorT<Scalar>  ScalarView;
+
+    OrdinalView tRowMapT("row map", aMatrix->numCols());
+    OrdinalView tColMapT("col map", aMatrix->columnIndices().size());
+    ScalarView tEntriesT("entries", aMatrix->columnIndices().size());
+
+    auto tRowMap = aMatrix->rowMap();
+    auto tColMap = aMatrix->columnIndices();
+    auto tEntries = aMatrix->entries();
+
+    // determine rowmap
+    auto tNumRows = aMatrix->numRows();
+    Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalType>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalType iRowOrdinal)
+    {
+        auto tRowStart = tRowMap(iRowOrdinal);
+        auto tRowEnd = tRowMap(iRowOrdinal + 1);
+        for (auto tEntryIndex = tRowStart; tEntryIndex < tRowEnd; tEntryIndex++)
+        {
+            auto iColumnIndex = tColMap(tEntryIndex);
+            Kokkos::atomic_increment(&tRowMapT(iColumnIndex));
+        }
+    }, "nonzeros");
+
+    OrdinalType tNumEntries(0);
+    Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalType>(0,tNumRows+1),
+    KOKKOS_LAMBDA (const OrdinalType& iOrdinal, OrdinalType& aUpdate, const bool& tIsFinal)
+    {
+        const OrdinalType tVal = tRowMapT(iOrdinal);
+        if( tIsFinal )
+        {
+          tRowMapT(iOrdinal) = aUpdate;
+        }
+        aUpdate += tVal;
+    }, tNumEntries);
+
+    // determine column map and entries
+    OrdinalView tOffsetT("offsets", tNumRows);
+    Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalType>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalType iRowOrdinal)
+    {
+        auto tRowStart = tRowMap(iRowOrdinal);
+        auto tRowEnd = tRowMap(iRowOrdinal + 1);
+        for (auto iEntryIndex = tRowStart; iEntryIndex < tRowEnd; iEntryIndex++)
+        {
+            auto iRowIndexT = tColMap(iEntryIndex);
+            auto tMyOffset = Kokkos::atomic_fetch_add(&tOffsetT(iRowIndexT), 1);
+            auto iEntryIndexT = tRowMapT(iRowIndexT)+tMyOffset;
+            tColMapT(iEntryIndexT) = iRowOrdinal;
+            tEntriesT(iEntryIndexT) = tEntries(iEntryIndex);
+        }
+    }, "colmap and entries");
+
+    // update matrix transpose 
+    aMatrixTranspose->setRowMap(tRowMapT);
+    aMatrixTranspose->setColumnIndices(tColMapT);
+    aMatrixTranspose->setEntries(tEntriesT);
+}
+
 } // namespace Plato
 
 #endif /* PLATOMATHHELPERS_HPP_ */
