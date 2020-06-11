@@ -57,7 +57,7 @@ namespace Plato {
       return Teuchos::rcp(new Plato::ThermalMassMaterial<SpatialDim>(modelParamList.sublist("Thermal Mass")));
     }
     else
-    return Teuchos::RCP<Plato::MaterialModel<SpatialDim>>(nullptr);
+    THROWERR("Expected 'Thermal Mass' ParameterList");
   }
 
 } // namespace Plato

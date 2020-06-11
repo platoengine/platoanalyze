@@ -65,7 +65,7 @@ T getParam(
 
 template < typename T >
 T getParam(
-    Teuchos::ParameterList& aInputParams,
+    const Teuchos::ParameterList& aInputParams,
     const std::string aParamName )
 {
     if (aInputParams.isType<T>(aParamName))

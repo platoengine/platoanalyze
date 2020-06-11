@@ -15,7 +15,7 @@
 #include "CellForcing.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
-#include "LinearThermoelasticMaterial.hpp"
+#include "ThermoelasticMaterial.hpp"
 #include "NaturalBCs.hpp"
 #include "BodyLoads.hpp"
 
@@ -66,7 +66,7 @@ private:
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
 
-    Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpaceDim>> mMaterialModel;
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mMaterialModel;
 
     std::vector<std::string> mPlottable;
 
@@ -89,7 +89,7 @@ public:
     {
         // create material model and get stiffness
         //
-        Plato::LinearThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
+        Plato::ThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
         mMaterialModel = mmfactory.create();
   
 

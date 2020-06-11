@@ -3,13 +3,15 @@
 
 #include "SimplexThermomechanics.hpp"
 #include "LinearThermoelasticMaterial.hpp"
+#include "VoigtMap.hpp"
+#include "MaterialModel.hpp"
 
 namespace Plato
 {
 
 /******************************************************************************/
 /*! Thermoelastics functor.
-  
+
     given a strain, temperature gradient, and temperature, compute the stress and flux
 */
 /******************************************************************************/
@@ -17,30 +19,50 @@ template<int SpaceDim>
 class TMKinetics : public Plato::SimplexThermomechanics<SpaceDim>
 {
   private:
+    Plato::MaterialModelType mModelType;
 
     using Plato::SimplexThermomechanics<SpaceDim>::mNumVoigtTerms;
     using Plato::SimplexThermomechanics<SpaceDim>::mNumNodesPerCell;
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerNode;
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerCell;
 
-    const Omega_h::Matrix<mNumVoigtTerms,mNumVoigtTerms> mCellStiffness;
-    const Omega_h::Vector<SpaceDim> mCellThermalExpansionCoef;
-    const Omega_h::Matrix<SpaceDim, SpaceDim> mCellThermalConductivity;
-    const Plato::Scalar mCellReferenceTemperature;
+    Plato::Rank4VoigtConstant<SpaceDim> mElasticStiffnessConstant;
+    Plato::Rank4VoigtFunctor<SpaceDim>  mElasticStiffnessFunctor;
+
+    Plato::TensorConstant<SpaceDim> mThermalExpansivityConstant;
+    Plato::TensorFunctor<SpaceDim>  mThermalExpansivityFunctor;
+
+    Plato::TensorConstant<SpaceDim> mThermalConductivityConstant;
+    Plato::TensorFunctor<SpaceDim>  mThermalConductivityFunctor;
+
+    Plato::Scalar mRefTemperature;
 
     const Plato::Scalar mScaling;
     const Plato::Scalar mScaling2;
- 
+
+    Plato::VoigtMap<SpaceDim> cVoigtMap;
+
   public:
 
-    TMKinetics( const Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpaceDim>> materialModel ) :
-            mCellStiffness(materialModel->getStiffnessMatrix()),
-            mCellThermalExpansionCoef(materialModel->getThermalExpansion()),
-            mCellThermalConductivity(materialModel->getThermalConductivity()),
-            mCellReferenceTemperature(materialModel->getReferenceTemperature()),
-            mScaling(materialModel->getTemperatureScaling()),
-            mScaling2(mScaling*mScaling) {}
-
+    TMKinetics(const Teuchos::RCP<Plato::MaterialModel<SpaceDim>> aMaterialModel) :
+      mRefTemperature(aMaterialModel->getScalarConstant("Reference Temperature")),
+      mScaling(aMaterialModel->getScalarConstant("Temperature Scaling")),
+      mScaling2(mScaling*mScaling)
+    {
+        mModelType = aMaterialModel->type();
+        if (mModelType == Plato::MaterialModelType::Nonlinear)
+        {
+            mElasticStiffnessFunctor = aMaterialModel->getRank4VoigtFunctor("Elastic Stiffness");
+            mThermalExpansivityFunctor = aMaterialModel->getTensorFunctor("Thermal Expansivity");
+            mThermalConductivityFunctor = aMaterialModel->getTensorFunctor("Thermal Conductivity");
+        } else
+        if (mModelType == Plato::MaterialModelType::Linear)
+        {
+            mElasticStiffnessConstant = aMaterialModel->getRank4VoigtConstant("Elastic Stiffness");
+            mThermalExpansivityConstant = aMaterialModel->getTensorConstant("Thermal Expansivity");
+            mThermalConductivityConstant = aMaterialModel->getTensorConstant("Thermal Conductivity");
+        }
+    }
 
     /***********************************************************************************
      * @brief Compute stress and thermal flux from strain, temperature, and temperature gradient
@@ -57,34 +79,68 @@ class TMKinetics : public Plato::SimplexThermomechanics<SpaceDim>
                 Kokkos::View<KineticsScalarType**,   Kokkos::LayoutRight, Plato::MemSpace> const& aFlux,
                 Kokkos::View<KinematicsScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aStrain,
                 Kokkos::View<KinematicsScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aTGrad,
-                Kokkos::View<StateScalarType*,       Plato::MemSpace> const& aTemperature) const {
+                Kokkos::View<StateScalarType*,       Plato::MemSpace> const& aTemperature) const
+    {
+        StateScalarType tTemperature = aTemperature(cellOrdinal);
+        if (mModelType == Plato::MaterialModelType::Linear)
+        {
+            // compute thermal strain
+            //
+            StateScalarType tstrain[mNumVoigtTerms] = {0};
+            for( int iDim=0; iDim<SpaceDim; iDim++ ){
+                tstrain[iDim] = mScaling * mThermalExpansivityConstant(cVoigtMap.I[iDim], cVoigtMap.J[iDim])
+                              * (tTemperature - mRefTemperature);
+            }
 
-      // compute thermal strain
-      //
-      StateScalarType tstrain[mNumVoigtTerms] = {0};
-      for( int iDim=0; iDim<SpaceDim; iDim++ ){
-        tstrain[iDim] = mScaling * mCellThermalExpansionCoef(iDim) * (aTemperature(cellOrdinal) - mCellReferenceTemperature);
-      }
+            // compute stress
+            //
+            for( int iVoigt=0; iVoigt<mNumVoigtTerms; iVoigt++){
+                aStress(cellOrdinal,iVoigt) = 0.0;
+                for( int jVoigt=0; jVoigt<mNumVoigtTerms; jVoigt++){
+                    aStress(cellOrdinal,iVoigt) += (aStrain(cellOrdinal,jVoigt)-tstrain[jVoigt])*mElasticStiffnessConstant(iVoigt, jVoigt);
+                }
+            }
 
-      // compute stress
-      //
-      for( int iVoigt=0; iVoigt<mNumVoigtTerms; iVoigt++){
-        aStress(cellOrdinal,iVoigt) = 0.0;
-        for( int jVoigt=0; jVoigt<mNumVoigtTerms; jVoigt++){
-          aStress(cellOrdinal,iVoigt) += (aStrain(cellOrdinal,jVoigt)-tstrain[jVoigt])*mCellStiffness(iVoigt, jVoigt);
-
+            // compute flux
+            //
+            for( int iDim=0; iDim<SpaceDim; iDim++){
+                aFlux(cellOrdinal,iDim) = 0.0;
+                for( int jDim=0; jDim<SpaceDim; jDim++){
+                    aFlux(cellOrdinal,iDim) += mScaling2 * aTGrad(cellOrdinal,jDim)*mThermalConductivityConstant(iDim, jDim);
+                }
+            }
         }
-      }
+        else
+        {
+            // compute thermal strain
+            //
+            StateScalarType tstrain[mNumVoigtTerms] = {0};
+            for( int iDim=0; iDim<SpaceDim; iDim++ ){
+                tstrain[iDim] = mScaling * mThermalExpansivityFunctor(tTemperature, cVoigtMap.I[iDim], cVoigtMap.J[iDim])
+                              * (tTemperature - mRefTemperature);
+            }
 
-      // compute flux
-      //
-      for( int iDim=0; iDim<SpaceDim; iDim++){
-        aFlux(cellOrdinal,iDim) = 0.0;
-        for( int jDim=0; jDim<SpaceDim; jDim++){
-          aFlux(cellOrdinal,iDim) += mScaling2 * aTGrad(cellOrdinal,jDim)*mCellThermalConductivity(iDim, jDim);
+            // compute stress
+            //
+            for( int iVoigt=0; iVoigt<mNumVoigtTerms; iVoigt++){
+                aStress(cellOrdinal,iVoigt) = 0.0;
+                for( int jVoigt=0; jVoigt<mNumVoigtTerms; jVoigt++){
+                    aStress(cellOrdinal,iVoigt) += (aStrain(cellOrdinal,jVoigt)-tstrain[jVoigt])
+                                                  *mElasticStiffnessFunctor(tTemperature, iVoigt, jVoigt);
+                }
+            }
+
+            // compute flux
+            //
+            for( int iDim=0; iDim<SpaceDim; iDim++){
+                aFlux(cellOrdinal,iDim) = 0.0;
+                for( int jDim=0; jDim<SpaceDim; jDim++){
+                    aFlux(cellOrdinal,iDim) += mScaling2 * aTGrad(cellOrdinal,jDim)*mThermalConductivityFunctor(tTemperature, iDim, jDim);
+                }
+            }
         }
-      }
     }
+
 };
 // class TMKinetics
 

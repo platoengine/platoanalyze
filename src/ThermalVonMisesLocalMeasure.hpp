@@ -10,7 +10,7 @@
 #include "TMKinetics.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
-#include "LinearThermoelasticMaterial.hpp"
+#include "ThermoelasticMaterial.hpp"
 
 namespace Plato
 {
@@ -33,7 +33,7 @@ private:
     using ConfigT = typename EvaluationType::ConfigScalarType; /*!< configuration variables automatic differentiation type */
     using ResultT = typename EvaluationType::ResultScalarType; /*!< result variables automatic differentiation type */
 
-    Teuchos::RCP<Plato::LinearThermoelasticMaterial<mSpaceDim>> mMaterialModel;
+    Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> mMaterialModel;
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
 
@@ -52,7 +52,7 @@ public:
                          AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aInputParams, aName),
                          mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     {
-        Plato::LinearThermoelasticModelFactory<mSpaceDim> tFactory(aInputParams);
+        Plato::ThermoelasticModelFactory<mSpaceDim> tFactory(aInputParams);
         mMaterialModel = tFactory.create();
     }
 
@@ -61,7 +61,7 @@ public:
      * \param [in] aMaterialModel thermoelastic material model
      * \param [in] aName local measure name
      **********************************************************************************/
-    ThermalVonMisesLocalMeasure(Teuchos::RCP<Plato::LinearThermoelasticMaterial<mSpaceDim>> &aMaterialModel,
+    ThermalVonMisesLocalMeasure(Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> &aMaterialModel,
                          const std::string aName) :
                          AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aName),
                          mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())

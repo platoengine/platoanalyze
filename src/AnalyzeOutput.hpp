@@ -141,6 +141,11 @@ inline void thermomechanical_output(const std::string & aOutputFilePath,
         aMesh.add_tag(Omega_h::VERT, "Displacements", tNumDispPerNode, Omega_h::Reals(tDisp));
         aMesh.add_tag(Omega_h::VERT, "Temperature",   tNumTempPerNode, Omega_h::Reals(tTemp));
 
+        if (aStateDataMap.stateDataMaps.size() > tStepIndex)
+        {
+            Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+        }
+
         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
         tWriter.write(/*time_index*/tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);
     }

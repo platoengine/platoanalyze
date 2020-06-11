@@ -415,7 +415,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_CheckThermalVonMises3D)
     "</ParameterList>                                                                        \n"
   );
 
-    Plato::LinearThermoelasticModelFactory<tSpaceDim> mmfactory(*tParamList);
+    Plato::ThermoelasticModelFactory<tSpaceDim> mmfactory(*tParamList);
     auto tMaterialModel = mmfactory.create();
 
     const std::string tName = "ThermalVonMises";

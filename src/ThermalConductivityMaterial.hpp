@@ -59,7 +59,7 @@ Teuchos::RCP<MaterialModel<SpatialDim>> ThermalConductionModelFactory<SpatialDim
         return Teuchos::rcp(new ThermalConductionModel<SpatialDim>(tModelParamList.sublist("Thermal Conduction")));
     }
     else
-    return Teuchos::RCP<MaterialModel<SpatialDim>> (nullptr);
+    THROWERR("Expected 'Thermal Conduction' ParameterList");
 }
 
 }

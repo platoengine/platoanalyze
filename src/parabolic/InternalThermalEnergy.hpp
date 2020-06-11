@@ -69,7 +69,8 @@ class InternalThermalEnergy :
     ) :
       Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
       mIndicatorFunction(aPenaltyParams),
-      mApplyWeighting(mIndicatorFunction)
+      mApplyWeighting(mIndicatorFunction),
+      mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     /**************************************************************************/
     {
       Plato::ThermalConductionModelFactory<mSpaceDim> mmfactory(aProblemParams);

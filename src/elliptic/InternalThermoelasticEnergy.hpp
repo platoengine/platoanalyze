@@ -12,7 +12,7 @@
 #include "ImplicitFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
-#include "LinearThermoelasticMaterial.hpp"
+#include "ThermoelasticMaterial.hpp"
 #include "ToMap.hpp"
 #include "ExpInstMacros.hpp"
 #include "Simp.hpp"
@@ -55,7 +55,7 @@ class InternalThermoelasticEnergy :
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
     using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
-    Teuchos::RCP<Plato::LinearThermoelasticMaterial<mSpaceDim>> mMaterialModel;
+    Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> mMaterialModel;
     
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<mSpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
@@ -89,7 +89,7 @@ class InternalThermoelasticEnergy :
          tProblemParams.sublist("Material Model").sublist("Cubic Linear Thermoelastic").set("a22",0.0);
          tProblemParams.sublist("Material Model").sublist("Cubic Linear Thermoelastic").set("a33",0.0);
       }
-      Plato::LinearThermoelasticModelFactory<mSpaceDim> mmfactory(tProblemParams);
+      Plato::ThermoelasticModelFactory<mSpaceDim> mmfactory(tProblemParams);
       mMaterialModel = mmfactory.create();
 
       if( tProblemParams.isType<Teuchos::Array<std::string>>("Plottable") )

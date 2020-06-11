@@ -119,7 +119,7 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, 3D )
   Plato::ThermalMassModelFactory<spaceDim> mmmfactory(*params);
   auto massMaterialModel = mmmfactory.create();
 
-  Plato::LinearThermoelasticModelFactory<spaceDim> mmfactory(*params);
+  Plato::ThermoelasticModelFactory<spaceDim> mmfactory(*params);
   auto materialModel = mmfactory.create();
 
   Plato::ComputeGradientWorkset<spaceDim>  computeGradient;

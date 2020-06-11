@@ -17,8 +17,9 @@
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "NoPenalty.hpp"
+#include "ToMap.hpp"
 
-#include "LinearThermoelasticMaterial.hpp"
+#include "ThermoelasticMaterial.hpp"
 #include "ThermalMassMaterial.hpp"
 #include "parabolic/AbstractVectorFunction.hpp"
 #include "ImplicitFunctors.hpp"
@@ -74,8 +75,10 @@ class TransientThermomechResidual :
     std::shared_ptr<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>> mBoundaryLoads;
     std::shared_ptr<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>> mBoundaryFluxes;
 
-    Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpaceDim>> mMaterialModel;
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mMaterialModel;
     Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mThermalMassMaterialModel;
+
+    std::vector<std::string> mPlotTable;
 
   public:
     /**************************************************************************/
@@ -97,7 +100,7 @@ class TransientThermomechResidual :
     /**************************************************************************/
     {
         {
-            Plato::LinearThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
+            Plato::ThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
             mMaterialModel = mmfactory.create();
         }
 
@@ -119,6 +122,12 @@ class TransientThermomechResidual :
       {
           mBoundaryFluxes = std::make_shared<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>>
             (aProblemParams.sublist("Thermal Natural Boundary Conditions"));
+      }
+
+      auto tResidualParams = aProblemParams.sublist("Parabolic");
+      if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
+      {
+          mPlotTable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
       }
     }
 
@@ -225,6 +234,9 @@ class TransientThermomechResidual :
       {
           mBoundaryFluxes->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0);
       }
+
+      if(std::count(mPlotTable.begin(), mPlotTable.end(), "strain")) { Plato::toMap(mDataMap, tStrain, "strain"); }
+      if(std::count(mPlotTable.begin(), mPlotTable.end(), "stress")) { Plato::toMap(mDataMap, tStress, "stress"); }
     }
 };
 
