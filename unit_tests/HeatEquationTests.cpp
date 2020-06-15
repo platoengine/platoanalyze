@@ -401,9 +401,9 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, HeatEquationResidual3D )
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                           \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Heat Equation'/>       \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Parabolic'/>           \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                   \n"
-    "  <ParameterList name='Heat Equation'>                                         \n"
+    "  <ParameterList name='Parabolic'>                                             \n"
     "    <ParameterList name='Penalty Function'>                                    \n"
     "      <Parameter name='Exponent' type='double' value='1.0'/>                   \n"
     "      <Parameter name='Minimum Value' type='double' value='0.0'/>              \n"
