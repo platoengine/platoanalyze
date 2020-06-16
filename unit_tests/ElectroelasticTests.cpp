@@ -80,7 +80,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                                \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Electroelastostatics'/>     \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
     "  <Parameter name='Objective' type='string' value='My Internal Electroelastic Energy'/>\n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                         \n"
     "  <ParameterList name='My Internal Electroelastic Energy'>                             \n"
