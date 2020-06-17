@@ -143,7 +143,7 @@ else()
 endif()
 
 add_executable(
-    analyze 
+    analyze
     src/alg/Run.cpp
     src/alg/Analyze.cpp
   )
@@ -344,7 +344,7 @@ if (PLATOANALYZE_ENABLE_MPMD)
       ROCKET_MPMD
       src/PlatoRocketApp.cpp
       src/PlatoRocketAppMPMD.cpp
-    )  
+    )
     if( CMAKE_INSTALL_PREFIX )
       install( TARGETS ROCKET_MPMD DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
     endif()

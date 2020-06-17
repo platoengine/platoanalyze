@@ -7,8 +7,8 @@ namespace Plato {
       {
           typedef Plato::Scalar T;
           c0[0][0] = Plato::ParseTools::getParam<T>(aParams, "c011" /*throw if not found*/);
-          c1[0][0] = Plato::ParseTools::getParam<T>(aParams, "c111" /*throw if not found*/);
-          c2[0][0] = Plato::ParseTools::getParam<T>(aParams, "c211" /*throw if not found*/);
+          c1[0][0] = Plato::ParseTools::getParam<T>(aParams, "c111", /*default=*/ 0.0);
+          c2[0][0] = Plato::ParseTools::getParam<T>(aParams, "c211", /*default=*/ 0.0);
       }
 
   template<>
@@ -16,8 +16,8 @@ namespace Plato {
       {
           typedef Plato::Scalar T;
           c0[0][0] = Plato::ParseTools::getParam<T>(aParams, "c011" /*throw if not found*/);
-          c1[0][0] = Plato::ParseTools::getParam<T>(aParams, "c111" /*throw if not found*/);
-          c2[0][0] = Plato::ParseTools::getParam<T>(aParams, "c211" /*throw if not found*/);
+          c1[0][0] = Plato::ParseTools::getParam<T>(aParams, "c111", /*default=*/ 0.0);
+          c2[0][0] = Plato::ParseTools::getParam<T>(aParams, "c211", /*default=*/ 0.0);
 
           c0[1][1] = Plato::ParseTools::getParam<T>(aParams, "c022", /*default=*/ c0[0][0]);
           c1[1][1] = Plato::ParseTools::getParam<T>(aParams, "c122", /*default=*/ c1[0][0]);
@@ -32,8 +32,8 @@ namespace Plato {
       {
           typedef Plato::Scalar T;
           c0[0][0] = Plato::ParseTools::getParam<T>(aParams, "c011" /*throw if not found*/);
-          c1[0][0] = Plato::ParseTools::getParam<T>(aParams, "c111" /*throw if not found*/);
-          c2[0][0] = Plato::ParseTools::getParam<T>(aParams, "c211" /*throw if not found*/);
+          c1[0][0] = Plato::ParseTools::getParam<T>(aParams, "c111", /*default=*/ 0.0);
+          c2[0][0] = Plato::ParseTools::getParam<T>(aParams, "c211", /*default=*/ 0.0);
 
           c0[1][1] = Plato::ParseTools::getParam<T>(aParams, "c022", /*default=*/ c0[0][0]);
           c1[1][1] = Plato::ParseTools::getParam<T>(aParams, "c122", /*default=*/ c1[0][0]);

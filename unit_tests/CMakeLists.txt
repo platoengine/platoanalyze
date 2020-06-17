@@ -18,10 +18,10 @@ add_executable(StructuralDynamicsUnitTests
   ${StructuralDynamics_HEADERS}
 )
 
-target_link_libraries(StructuralDynamicsUnitTests 
+target_link_libraries(StructuralDynamicsUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(StructuralDynamicsUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -45,10 +45,10 @@ add_executable(HamiltonJacobiUnitTests
   ${HamiltonJacobi_HEADERS}
 )
 
-target_link_libraries(HamiltonJacobiUnitTests 
+target_link_libraries(HamiltonJacobiUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(HamiltonJacobiUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -72,10 +72,10 @@ add_executable(AlgebraicRocketUnitTests
   ${AlgebraicRocket_HEADERS}
 )
 
-target_link_libraries(AlgebraicRocketUnitTests 
+target_link_libraries(AlgebraicRocketUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(AlgebraicRocketUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -99,10 +99,10 @@ add_executable(AugLagStressUnitTests
   ${AugLagStressTest_HEADERS}
 )
 
-target_link_libraries(AugLagStressUnitTests 
+target_link_libraries(AugLagStressUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(AugLagStressUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -126,10 +126,10 @@ add_executable(StabilizedMechanicsUnitTests
   ${StabilizedMechanicsTests_HEADERS}
 )
 
-target_link_libraries(StabilizedMechanicsUnitTests 
+target_link_libraries(StabilizedMechanicsUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(StabilizedMechanicsUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -153,10 +153,10 @@ add_executable(MassPropertiesUnitTests
   ${MassPropertiesTest_HEADERS}
 )
 
-target_link_libraries(MassPropertiesUnitTests 
+target_link_libraries(MassPropertiesUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(MassPropertiesUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -180,10 +180,10 @@ add_executable(LinearMaterialModelUnitTests
   ${LinearMaterialModelTests_HEADERS}
 )
 
-target_link_libraries(LinearMaterialModelUnitTests 
+target_link_libraries(LinearMaterialModelUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(LinearMaterialModelUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -207,10 +207,10 @@ add_executable(PlasticityUnitTests
   ${PlasticityTest_HEADERS}
 )
 
-target_link_libraries(PlasticityUnitTests 
+target_link_libraries(PlasticityUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(PlasticityUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -234,10 +234,10 @@ add_test(NAME runPlasticityUnitTests COMMAND ${ES_MPI_TEST})
     ${ElastoPlasticityTest_HEADERS}
   )
 
-  target_link_libraries(ElastoPlasticityUnitTests 
+  target_link_libraries(ElastoPlasticityUnitTests
     analyzelib
-    ${Trilinos_LIBRARIES} 
-    ${Trilinos_TPL_LIBRARIES} 
+    ${Trilinos_LIBRARIES}
+    ${Trilinos_TPL_LIBRARIES}
     )
   target_include_directories(ElastoPlasticityUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -261,10 +261,10 @@ add_test(NAME runPlasticityUnitTests COMMAND ${ES_MPI_TEST})
     ${OmegaHUtilitiesTests_HEADERS}
   )
 
-  target_link_libraries(OmegaHUtilitiesTests 
+  target_link_libraries(OmegaHUtilitiesTests
     analyzelib
-    ${Trilinos_LIBRARIES} 
-    ${Trilinos_TPL_LIBRARIES} 
+    ${Trilinos_LIBRARIES}
+    ${Trilinos_TPL_LIBRARIES}
     )
   target_include_directories(OmegaHUtilitiesTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -288,9 +288,9 @@ add_executable(PlatoMathHelpersUnitTests
   ${PlatoMathHelpers_HEADERS}
 )
 
-target_link_libraries(PlatoMathHelpersUnitTests 
+target_link_libraries(PlatoMathHelpersUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
   ${Trilinos_TPL_LIBRARIES}
   kokkoskernels
   )
@@ -299,6 +299,34 @@ target_include_directories(PlatoMathHelpersUnitTests PRIVATE ${CMAKE_SOURCE_DIR}
 build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/PlatoMathHelpersUnitTests)
 add_test(NAME runPlatoMathHelpersUnitTests COMMAND ${ES_MPI_TEST})
 #end: PlatoMathHelpers unit test
+
+#begin: PlatoMaterialModel unit test
+set(PlatoMaterialModel_SOURCES
+  PlatoMaterialModelTest.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(PlatoMaterialModel_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(PlatoMaterialModelUnitTests
+  ${PlatoMaterialModel_SOURCES}
+  ${PlatoMaterialModel_HEADERS}
+)
+
+target_link_libraries(PlatoMaterialModelUnitTests
+  analyzelib
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+  kokkoskernels
+  )
+target_include_directories(PlatoMaterialModelUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/PlatoMaterialModelUnitTests)
+add_test(NAME runPlatoMaterialModelUnitTests COMMAND ${ES_MPI_TEST})
+#end: PlatoMaterialModel unit test
 
 set(PlatoFunctors_SOURCES
   PlatoFunctorsTest.cpp
@@ -317,8 +345,8 @@ add_executable(PlatoFunctorsUnitTests
 
 target_link_libraries(PlatoFunctorsUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(PlatoFunctorsUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -370,10 +398,10 @@ add_executable(ElectroelasticUnitTests
   ${ElectroelasticTests_HEADERS}
 )
 
-target_link_libraries(ElectroelasticUnitTests 
+target_link_libraries(ElectroelasticUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(ElectroelasticUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -395,10 +423,10 @@ add_executable(ThermoelasticUnitTests
   ${ThermoelasticTests_HEADERS}
 )
 
-target_link_libraries(ThermoelasticUnitTests 
+target_link_libraries(ThermoelasticUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(ThermoelasticUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -420,10 +448,10 @@ add_executable(TransientThermomechUnitTests
   ${TransientThermomechTests_HEADERS}
 )
 
-target_link_libraries(TransientThermomechUnitTests 
+target_link_libraries(TransientThermomechUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(TransientThermomechUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -480,20 +508,20 @@ target_include_directories(TwoFieldUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/TwoFieldUnitTests)
 add_test(NAME runTwoFieldUnitTests COMMAND ${ES_MPI_TEST})
 
-target_link_libraries(DerivativeUnitTests 
+target_link_libraries(DerivativeUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(DerivativeUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/DerivativeUnitTests)
 add_test(NAME runDerivativeUnitTests COMMAND ${ES_MPI_TEST})
 
-target_link_libraries(HeatEquationUnitTests 
+target_link_libraries(HeatEquationUnitTests
   analyzelib
-  ${Trilinos_LIBRARIES} 
-  ${Trilinos_TPL_LIBRARIES} 
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
   )
 target_include_directories(HeatEquationUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -553,12 +581,12 @@ if(PLATOANALYZE_ENABLE_MPMD)
     ${AnalyzeApp_SOURCES}
     ${AnalyzeApp_HEADERS}
   )
-  target_link_libraries(AnalyzeAppIntxTests 
+  target_link_libraries(AnalyzeAppIntxTests
     Analyze_App
     analyzelib
     ${PLATO_LIBS}
-    ${Trilinos_LIBRARIES} 
-    ${Trilinos_TPL_LIBRARIES} 
+    ${Trilinos_LIBRARIES}
+    ${Trilinos_TPL_LIBRARIES}
     )
 
   target_include_directories(AnalyzeAppIntxTests PRIVATE "${PLATOENGINE_PREFIX}/include")
