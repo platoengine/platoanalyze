@@ -64,7 +64,8 @@ class FluxPNorm :
               std::string aFunctionName) :
             Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
             mIndicatorFunction(aPenaltyParams),
-            mApplyWeighting(mIndicatorFunction)
+            mApplyWeighting(mIndicatorFunction),
+            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>())
     /**************************************************************************/
     {
       Plato::ThermalConductionModelFactory<SpaceDim> mmfactory(aProblemParams);
