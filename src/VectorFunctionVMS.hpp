@@ -531,7 +531,7 @@ public:
           Plato::Scalar aTimeStep = 0.0) const
     {
         auto tResidual = this->valueWorkset(aState, aNodeState, aControl, aTimeStep);
-        Kokkos::View<Plato::Scalar*, Kokkos::LayoutRight, Plato::MemSpace>
+        Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace>
             tAssembledResidual("Assembled Residual", mNumStateDofsPerNode * mNumNodes);
         mWorksetBase.assembleResidual(tResidual, tAssembledResidual);
 

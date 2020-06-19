@@ -113,13 +113,13 @@ class ThermostaticResidual :
       Plato::ScalarVectorT<ConfigScalarType>
         tCellVolume("cell weight",tNumCells);
 
-      Kokkos::View<GradScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<GradScalarType**, Plato::Layout, Plato::MemSpace>
         tGrad("temperature gradient",tNumCells,mSpaceDim);
 
       Plato::ScalarArray3DT<ConfigScalarType>
         tGradient("gradient",tNumCells,mNumNodesPerCell,mSpaceDim);
 
-      Kokkos::View<ResultScalarType**, Kokkos::LayoutRight, Plato::MemSpace>
+      Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
         tFlux("thermal flux",tNumCells,mSpaceDim);
 
       // create a bunch of functors:

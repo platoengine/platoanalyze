@@ -709,6 +709,17 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, StabilizedThermomechResidual3D )
   Teuchos::RCP<Teuchos::ParameterList> paramsProjector =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
+    "      <Parameter name='Mass Density' type='double' value='0.3'/>                        \n"
+    "      <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
+    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
+    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
     "</ParameterList>                                                                        \n"
   );
 
@@ -914,6 +925,17 @@ TEUCHOS_UNIT_TEST( PlatoMathFunctors, RowSumSolve )
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                                    \n"
+    "  <ParameterList name='Material Model'>                                                 \n"
+    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
+    "      <Parameter name='Mass Density' type='double' value='0.3'/>                        \n"
+    "      <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
+    "      <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
+    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
+    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
+    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
+    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
+    "    </ParameterList>                                                                    \n"
+    "  </ParameterList>                                                                      \n"
     "</ParameterList>                                                                        \n"
   );
 

@@ -47,7 +47,7 @@ namespace lgr {
     static constexpr const bool USE_RELATIVE_TOL = false;
   public:
     typedef Kokkos::View<Scalar*, MemSpace>                        Vector;
-    typedef Kokkos::View<Scalar**, Kokkos::LayoutRight, MemSpace>  MultiVector;
+    typedef Kokkos::View<Scalar**, Plato::Layout, MemSpace>  MultiVector;
   private:
     typedef int                                                    RowMapEntryType;
     typedef CrsMatrix<Ordinal, RowMapEntryType>  Matrix;

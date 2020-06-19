@@ -37,10 +37,10 @@ class EpetraSystem
     );
 
     /******************************************************************************//**
-     * @brief Convert from Plato::CrsMatrix<int> to Epetra_VbrMatrix
+     * @brief Convert from Plato::CrsMatrix<Plato::OrdinalType> to Epetra_VbrMatrix
     **********************************************************************************/
     rcp<Epetra_VbrMatrix>
-    fromMatrix(Plato::CrsMatrix<int> tInMatrix) const;
+    fromMatrix(Plato::CrsMatrix<Plato::OrdinalType> tInMatrix) const;
 
     /******************************************************************************//**
      * @brief Convert from ScalarVector to Epetra_Vector
@@ -90,7 +90,7 @@ class EpetraLinearSolver : public AbstractSolver
     **********************************************************************************/
     void
     solve(
-        Plato::CrsMatrix<int> aA,
+        Plato::CrsMatrix<Plato::OrdinalType> aA,
         Plato::ScalarVector   aX,
         Plato::ScalarVector   aB
     );

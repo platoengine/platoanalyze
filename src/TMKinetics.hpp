@@ -75,10 +75,10 @@ class TMKinetics : public Plato::SimplexThermomechanics<SpaceDim>
     template<typename KineticsScalarType, typename KinematicsScalarType, typename StateScalarType>
     DEVICE_TYPE inline void
     operator()( int cellOrdinal,
-                Kokkos::View<KineticsScalarType**,   Kokkos::LayoutRight, Plato::MemSpace> const& aStress,
-                Kokkos::View<KineticsScalarType**,   Kokkos::LayoutRight, Plato::MemSpace> const& aFlux,
-                Kokkos::View<KinematicsScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aStrain,
-                Kokkos::View<KinematicsScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& aTGrad,
+                Kokkos::View<KineticsScalarType**,   Plato::Layout, Plato::MemSpace> const& aStress,
+                Kokkos::View<KineticsScalarType**,   Plato::Layout, Plato::MemSpace> const& aFlux,
+                Kokkos::View<KinematicsScalarType**, Plato::Layout, Plato::MemSpace> const& aStrain,
+                Kokkos::View<KinematicsScalarType**, Plato::Layout, Plato::MemSpace> const& aTGrad,
                 Kokkos::View<StateScalarType*,       Plato::MemSpace> const& aTemperature) const
     {
         StateScalarType tTemperature = aTemperature(cellOrdinal);

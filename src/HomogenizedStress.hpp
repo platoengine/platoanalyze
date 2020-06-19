@@ -35,8 +35,8 @@ class HomogenizedStress : public Plato::SimplexMechanics<SpaceDim>
     template<typename StressScalarType, typename StrainScalarType>
     DEVICE_TYPE inline void
     operator()( int cellOrdinal,
-                Kokkos::View<StressScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& stress,
-                Kokkos::View<StrainScalarType**, Kokkos::LayoutRight, Plato::MemSpace> const& strain) const {
+                Kokkos::View<StressScalarType**, Plato::Layout, Plato::MemSpace> const& stress,
+                Kokkos::View<StrainScalarType**, Plato::Layout, Plato::MemSpace> const& strain) const {
 
       // compute stress
       //
