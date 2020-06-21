@@ -1,6 +1,6 @@
-[submodule "tests/plato"]
-	path = tests/plato
+[submodule "tests/regression"]
+	path = tests/regression
 	url = https://github.com/platoengine/tests.git
-[submodule "verification"]
-	path = verification
-	url = https://github.com/platoengine/verification
+[submodule "tests/verification"]
+	path = tests/verification
+	url = https://github.com/platoengine/verification.git
