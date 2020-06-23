@@ -1734,4 +1734,78 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
   }
 }
 
+/******************************************************************************/
+/*! 
+ \brief create block matrix A and block matrix B = Transpose(A) and check 
+ Transpose(A) = B as well as Transpose(Transpose(A)) = A.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_TransposeBlockMatrix)
+{
+  auto tMatrixA = Teuchos::rcp( new Plato::CrsMatrixType(12, 6, 4, 2) );
+  std::vector<Plato::OrdinalType> tRowMapA = { 0, 2, 3, 4 };
+  std::vector<Plato::OrdinalType> tColMapA = { 0, 2, 0, 2 };
+  std::vector<Plato::Scalar>      tValuesA = 
+    { 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8,
+      1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8 };
+  PlatoDevel::setMatrixData(tMatrixA, tRowMapA, tColMapA, tValuesA);
+
+  auto tMatrixB = Teuchos::rcp( new Plato::CrsMatrixType(6, 12, 2, 4) );
+  std::vector<Plato::OrdinalType> tRowMapB = { 0, 2, 2, 4 };
+  std::vector<Plato::OrdinalType> tColMapB = { 0, 1, 0, 2 };
+  std::vector<Plato::Scalar>      tValuesB = 
+    { 1, 3, 5, 7, 2, 4, 6, 8, 1, 3, 5, 7, 2, 4, 6, 8,
+      1, 3, 5, 7, 2, 4, 6, 8, 1, 3, 5, 7, 2, 4, 6, 8 };
+  PlatoDevel::setMatrixData(tMatrixB, tRowMapB, tColMapB, tValuesB);
+
+  auto tNumRows = tMatrixA->numRows();
+  auto tNumCols = tMatrixA->numCols();
+  auto tNumRowsPerBlock = tMatrixA->numRowsPerBlock();
+  auto tNumColsPerBlock = tMatrixA->numColsPerBlock();
+  auto tMatrixAT = Teuchos::rcp( new Plato::CrsMatrixType( tNumCols, tNumRows, tNumColsPerBlock, tNumRowsPerBlock) );
+  Plato::MatrixTranspose(tMatrixA, tMatrixAT);
+
+  auto tMatrixATT = Teuchos::rcp( new Plato::CrsMatrixType( tNumRows, tNumCols, tNumRowsPerBlock, tNumColsPerBlock) );
+  Plato::MatrixTranspose(tMatrixAT, tMatrixATT);
+
+  TEST_ASSERT(is_same(tMatrixAT, tMatrixB));
+
+  TEST_ASSERT(is_same(tMatrixA, tMatrixATT));
+}
+
+/******************************************************************************/
+/*! 
+ \brief create non block matrix A and block matrix B = Transpose(A) and check 
+ Transpose(A) = B as well as Transpose(Transpose(A)) = A.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_TransposeNonBlockMatrix)
+{
+  auto tMatrixA = Teuchos::rcp( new Plato::CrsMatrixType(4, 7, 1, 1) );
+  std::vector<Plato::OrdinalType> tRowMapA = { 0, 2, 3, 6, 8 };
+  std::vector<Plato::OrdinalType> tColMapA = { 0, 5, 2, 1, 4, 5, 3, 6 };
+  std::vector<Plato::Scalar>      tValuesA = { 1, 2, 3, 4, 5, 6, 7, 8 };
+  PlatoDevel::setMatrixData(tMatrixA, tRowMapA, tColMapA, tValuesA);
+
+  auto tMatrixB = Teuchos::rcp( new Plato::CrsMatrixType(7, 4, 1, 1) );
+  std::vector<Plato::OrdinalType> tRowMapB = { 0, 1, 2, 3, 4, 5, 7, 8 };
+  std::vector<Plato::OrdinalType> tColMapB = { 0, 2, 1, 3, 2, 0, 2, 3 };
+  std::vector<Plato::Scalar>      tValuesB = { 1, 4, 3, 7, 5, 2, 6, 8 };
+  PlatoDevel::setMatrixData(tMatrixB, tRowMapB, tColMapB, tValuesB);
+
+  auto tNumRows = tMatrixA->numRows();
+  auto tNumCols = tMatrixA->numCols();
+  auto tNumRowsPerBlock = tMatrixA->numRowsPerBlock();
+  auto tNumColsPerBlock = tMatrixA->numColsPerBlock();
+  auto tMatrixAT = Teuchos::rcp( new Plato::CrsMatrixType( tNumCols, tNumRows, tNumColsPerBlock, tNumRowsPerBlock) );
+  Plato::MatrixTranspose(tMatrixA, tMatrixAT);
+
+  auto tMatrixATT = Teuchos::rcp( new Plato::CrsMatrixType( tNumRows, tNumCols, tNumRowsPerBlock, tNumColsPerBlock) );
+  Plato::MatrixTranspose(tMatrixAT, tMatrixATT);
+
+  TEST_ASSERT(is_same(tMatrixAT, tMatrixB));
+
+  TEST_ASSERT(is_same(tMatrixA, tMatrixATT));
+}
+
 } // namespace PlatoUnitTests
