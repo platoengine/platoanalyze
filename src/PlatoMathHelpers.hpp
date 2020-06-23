@@ -437,30 +437,30 @@ MatrixMatrixMultiply( const Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
     if (tNumColsOut != tNumColsTwo) { THROWERR("output matrix has incorrect shape"); }
 
     // Get matrix data in non-block form
-    if (tMatOne.isBlockMatrix())
+    ScalarView tMatOneValues;
+    OrdinalView tMatOneRowMap, tMatOneColMap;
+    if (aInMatrixOne->isBlockMatrix())
     {
-      ScalarView tMatOneValues;
-      OrdinalView tMatOneRowMap, tMatOneColMap;
       Plato::getDataAsNonBlock(aInMatrixOne, tMatOneRowMap, tMatOneColMap, tMatOneValues);
     }
     else
     {
-      ScalarView  tMatOneValues = tMatOne.entries();
-      OrdinalView tMatOneRowMap = tMatOne.rowMap();
-      OrdinalView tMatOneColMap = tMatOne.columnIndices();
+      tMatOneValues = tMatOne.entries();
+      tMatOneRowMap = tMatOne.rowMap();
+      tMatOneColMap = tMatOne.columnIndices();
     }
 
-    if (tMatTwo.isBlockMatrix())
+    ScalarView tMatTwoValues;
+    OrdinalView tMatTwoRowMap, tMatTwoColMap;
+    if (aInMatrixTwo->isBlockMatrix())
     {
-      ScalarView tMatTwoValues;
-      OrdinalView tMatTwoRowMap, tMatTwoColMap;
       Plato::getDataAsNonBlock(aInMatrixTwo, tMatTwoRowMap, tMatTwoColMap, tMatTwoValues);
     }
     else
     {
-      ScalarView  tMatTwoValues = tMatTwo.entries();
-      OrdinalView tMatTwoRowMap = tMatTwo.rowMap();
-      OrdinalView tMatTwoColMap = tMatTwo.columnIndices();
+      tMatTwoValues = tMatTwo.entries();
+      tMatTwoRowMap = tMatTwo.rowMap();
+      tMatTwoColMap = tMatTwo.columnIndices();
     }
 
     OrdinalView tOutRowMap ("output row map", tNumRowsOne + 1);
@@ -610,16 +610,28 @@ MatrixTranspose( const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
     typedef Plato::ScalarVectorT<OrdinalType> OrdinalView;
     typedef Plato::ScalarVectorT<Scalar>  ScalarView;
 
-    OrdinalView tRowMapT("row map", aMatrix->numCols());
-    OrdinalView tColMapT("col map", aMatrix->columnIndices().size());
-    ScalarView tEntriesT("entries", aMatrix->columnIndices().size());
+    OrdinalType tNumRowsT;
+    ScalarView tEntries;
+    OrdinalView tRowMap, tColMap;
+    if (aMatrix->isBlockMatrix())
+    {
+      tNumRowsT = aMatrix->numCols()*aMatrix->numColsPerBlock();
+      Plato::getDataAsNonBlock(aMatrix, tRowMap, tColMap, tEntries);
+    }
+    else
+    {
+      tNumRowsT = aMatrix->numCols();
+      tEntries = aMatrix->entries();
+      tRowMap = aMatrix->rowMap();
+      tColMap = aMatrix->columnIndices();
+    }
 
-    auto tRowMap = aMatrix->rowMap();
-    auto tColMap = aMatrix->columnIndices();
-    auto tEntries = aMatrix->entries();
+    OrdinalView tRowMapT("row map", tNumRowsT+1);
+    OrdinalView tColMapT("col map", tEntries.size());
+    ScalarView tEntriesT("entries", tEntries.size());
 
     // determine rowmap
-    auto tNumRows = aMatrix->numRows();
+    OrdinalType tNumRows = tRowMap.size() - 1;
     Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalType>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalType iRowOrdinal)
     {
         auto tRowStart = tRowMap(iRowOrdinal);
@@ -632,7 +644,7 @@ MatrixTranspose( const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
     }, "nonzeros");
 
     OrdinalType tNumEntries(0);
-    Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalType>(0,tNumRows+1),
+    Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalType>(0,tNumRowsT+1),
     KOKKOS_LAMBDA (const OrdinalType& iOrdinal, OrdinalType& aUpdate, const bool& tIsFinal)
     {
         const OrdinalType tVal = tRowMapT(iOrdinal);
@@ -644,7 +656,7 @@ MatrixTranspose( const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
     }, tNumEntries);
 
     // determine column map and entries
-    OrdinalView tOffsetT("offsets", tNumRows);
+    OrdinalView tOffsetT("offsets", tNumRowsT);
     Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalType>(0, tNumRows), LAMBDA_EXPRESSION(OrdinalType iRowOrdinal)
     {
         auto tRowStart = tRowMap(iRowOrdinal);
@@ -660,9 +672,16 @@ MatrixTranspose( const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
     }, "colmap and entries");
 
     // update matrix transpose 
-    aMatrixTranspose->setRowMap(tRowMapT);
-    aMatrixTranspose->setColumnIndices(tColMapT);
-    aMatrixTranspose->setEntries(tEntriesT);
+    if (aMatrixTranspose->isBlockMatrix())
+    {
+      Plato::setDataFromNonBlock(aMatrixTranspose, tRowMapT, tColMapT, tEntriesT);
+    }
+    else
+    {
+      aMatrixTranspose->setRowMap(tRowMapT);
+      aMatrixTranspose->setColumnIndices(tColMapT);
+      aMatrixTranspose->setEntries(tEntriesT);
+    }
 }
 
 } // namespace Plato
