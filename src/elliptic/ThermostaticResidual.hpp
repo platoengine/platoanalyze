@@ -12,6 +12,7 @@
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
 #include "ToMap.hpp"
+#include "InterpolateFromNodal.hpp"
 
 #include "ThermalConductivityMaterial.hpp"
 #include "elliptic/AbstractVectorFunction.hpp"
@@ -122,15 +123,23 @@ class ThermostaticResidual :
       Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
         tFlux("thermal flux",tNumCells,mSpaceDim);
 
+      Plato::ScalarVectorT<StateScalarType> 
+        tTemperature("Gauss point temperature", tNumCells);
+
+
       // create a bunch of functors:
       Plato::ComputeGradientWorkset<mSpaceDim>  tComputeGradient;
 
       Plato::ScalarGrad<mSpaceDim>            tScalarGrad;
       Plato::ThermalFlux<mSpaceDim>           tThermalFlux(mThermalConductivityMaterialModel);
       Plato::FluxDivergence<mSpaceDim>        tFluxDivergence;
+
+      Plato::InterpolateFromNodal<mSpaceDim, mNumDofsPerNode> tInterpolateFromNodal;
+
     
       auto& tApplyWeighting  = mApplyWeighting;
       auto tQuadratureWeight = mCubatureRule->getCubWeight();
+      auto tBasisFunctions    = mCubatureRule->getBasisFunctions();
 
       Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
       {
@@ -144,7 +153,8 @@ class ThermostaticResidual :
     
         // compute flux
         //
-        tThermalFlux(aCellOrdinal, tFlux, tGrad);
+        tInterpolateFromNodal(aCellOrdinal, tBasisFunctions, aState, tTemperature);
+        tThermalFlux(aCellOrdinal, tFlux, tGrad, tTemperature);
     
         // apply weighting
         //

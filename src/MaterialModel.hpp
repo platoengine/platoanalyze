@@ -173,7 +173,7 @@ namespace Plato {
 
       /******************************************************************************//**
        * \brief Constructor for 2nd rank tensor constant
-       *   Functor returns \f$ y(i, j) = c0(i,j)
+       *   Functor returns \f$ y(i, j) = c0(i,j) \f$
        * \param [in] ParameterList with "c0ij" Parameters
        * unit test: PlatoMaterialModel_TensorConstant
       **********************************************************************************/
@@ -181,7 +181,7 @@ namespace Plato {
 
       /******************************************************************************//**
        * \brief Functor for 2nd rank tensor constant
-       * \return \f$ y(i, j) = c0(i,j)
+       * \return \f$ y(i, j) = c0(i,j) \f$
        * \param [in] i \f$ i \f$ value in expression.
        * \param [in] j \f$ j \f$ value in expression.
        * unit test: PlatoMaterialModel_TensorFunctor
@@ -271,7 +271,7 @@ namespace Plato {
 
       /******************************************************************************//**
        * \brief Constructor for 4th rank voigt tensor constant
-       *   Functor returns \f$ y(i, j) = c0(i,j)
+       *   Functor returns \f$ y(i, j) = c0(i,j) \f$
        * \param [in] ParameterList with "c0ij" Parameters
        * unit test: PlatoMaterialModel_Rank4VoigtConstant
       **********************************************************************************/
@@ -279,7 +279,7 @@ namespace Plato {
 
       /******************************************************************************//**
        * \brief Functor for 4th rank tensor constant
-       * \return \f$ y(i, j) = c0(i,j)
+       * \return \f$ y(i, j) = c0(i,j) \f$
        * \param [in] i \f$ i \f$ value in expression.
        * \param [in] j \f$ j \f$ value in expression.
        * unit test: PlatoMaterialModel_Rank4VoigtConstant
@@ -321,7 +321,7 @@ namespace Plato {
     public:
       /******************************************************************************//**
        * \brief Constructor for isotropic elastic 4th rank voigt tensor constant
-       *   Functor returns \f$ y(i, j) = c0(i,j)
+       *   Functor returns \f$ y(i, j) = c0(i,j) \f$
        * \param [in] ParameterList with "c0ij" Parameters
        * unit test: PlatoMaterialModel_IsotropicStiffnessConstant
       **********************************************************************************/

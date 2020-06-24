@@ -1,5 +1,5 @@
 if(    EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/regression/CMakeLists.txt
-   and EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/verification/CMakeLists.txt)
+   AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/verification/CMakeLists.txt)
   ADD_SUBDIRECTORY(regression)
   message("-- Added plato regression tests")
   ADD_SUBDIRECTORY(verification)

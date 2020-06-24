@@ -271,7 +271,7 @@ private:
     /***************************************************************************//**
      * \brief Assemble residual vector, i.e.
      *
-     * \f$ R - \left( \frac{\partial{R}}{\partial{c} * \frac{\partial{H}}{\partial{c}}^{-1} * H \right) \f$,
+     * \f$ R - \left( \frac{\partial{R}}{\partial{c}} * \frac{\partial{H}}{\partial{c}}^{-1} * H \right) \f$,
      *
      * where \f$ R \f$ is the global residual, \f$ H \f$ is the local residual, and
      * \f$ c \f$ are the local state variables.

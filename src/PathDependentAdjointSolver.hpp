@@ -237,13 +237,13 @@ private:
      *   right-hand-side vector as follows:
      * \f$
      *  t=k\ \mbox{time step k}
-     *   \bm{F}_k =
+     *   \mathbf{F}_k =
      *     -\left(
      *          \frac{f}{u}_k + \frac{P}{u}_k^T \gamma_k
      *        - \frac{H}{u}_k^T \left( \frac{H}{c}_k^{-T} \left[ \frac{F}{c}_k + \frac{H}{c}_{k+1}^T\mu_{k+1} \right] \right)
      *      \right)
      *  t=N\ \mbox{final time step}
-     *   \bm{F}_k =
+     *   \mathbf{F}_k =
      *     -\left(
      *          \frac{f}{u}_k - \frac{H}{u}_k^T \left( \frac{H}{c}_k^{-T} \frac{F}{c}_k \right)
      *      \right)
@@ -351,7 +351,7 @@ private:
     /***************************************************************************//**
      * \brief Assemble global adjoint right hand side vector, which is given by:
      *
-     * \f$ \bm{f} = \frac{\partial{f}}{\partial{u}}\right)_{t=n} - \left(
+     * \f$ \mathbf{f} = \left(\frac{\partial{f}}{\partial{u}}\right)_{t=n} - \left(
      * \frac{\partial{H}}{\partial{u}} \right)_{t=n}^{T} * \left[ \left( \left(
      * \frac{\partial{H}}{\partial{c}}\right)_{t=n}^{T} \right)^{-1} * \left(
      * \frac{\partial{f}}{\partial{c}} + \frac{\partial{H}}{\partial{v}}
@@ -755,7 +755,7 @@ public:
      *       \right)^{-1}
      *       \left[
      *           \left( \frac{\partial{R}}{\partial{c}} \right)_{t=k}^{T}\lambda_k +
-     *           \left( \frac{\partial{f}}{\partial{c}}_{k}
+     *           \left( \frac{\partial{f}}{\partial{c}}_{k} \right)
      *                + \left( \frac{\partial{H}}{\partial{c}} \right)_{t=k+1}^{T} \mu_{k+1}
      *       \right]
      *  \f$,
