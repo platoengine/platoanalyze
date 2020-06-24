@@ -1736,7 +1736,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
 
 /******************************************************************************/
 /*! 
- \brief create block matrix A and block matrix B = Transpose(A) and check 
+ \brief create rectangular block matrices A and B = Transpose(A) and check 
  Transpose(A) = B as well as Transpose(Transpose(A)) = A.
 */
 /******************************************************************************/
@@ -1775,7 +1775,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_TransposeBlockMatrix)
 
 /******************************************************************************/
 /*! 
- \brief create non block matrix A and block matrix B = Transpose(A) and check 
+ \brief create rectangular non block matrices A and B = Transpose(A) and check 
  Transpose(A) = B as well as Transpose(Transpose(A)) = A.
 */
 /******************************************************************************/
@@ -1806,6 +1806,38 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_TransposeNonBlockMatri
   TEST_ASSERT(is_same(tMatrixAT, tMatrixB));
 
   TEST_ASSERT(is_same(tMatrixA, tMatrixATT));
+}
+
+/******************************************************************************/
+/*! 
+ \brief create symmetric block matrix A and check Transpose(A) = A and
+ Transpose(Transpose(A)) = A.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_TransposeSymmetricMatrix)
+{
+  auto tMatrixA = createSquareMatrix();
+
+  auto tNumRows = tMatrixA->numRows();
+  auto tNumCols = tMatrixA->numCols();
+  auto tNumRowsPerBlock = tMatrixA->numRowsPerBlock();
+  auto tNumColsPerBlock = tMatrixA->numColsPerBlock();
+  auto tMatrixAT = Teuchos::rcp( new Plato::CrsMatrixType( tNumCols, tNumRows, tNumColsPerBlock, tNumRowsPerBlock) );
+  Plato::MatrixTranspose(tMatrixA, tMatrixAT);
+
+  auto tMatrixATT = Teuchos::rcp( new Plato::CrsMatrixType( tNumRows, tNumCols, tNumRowsPerBlock, tNumColsPerBlock) );
+  Plato::MatrixTranspose(tMatrixAT, tMatrixATT);
+
+
+  TEST_ASSERT(is_same(tMatrixA->rowMap(), tMatrixAT->rowMap()));
+  TEST_ASSERT(is_equivalent(tMatrixA->rowMap(),
+                            tMatrixA->columnIndices(), tMatrixA->entries(),
+                            tMatrixAT->columnIndices(), tMatrixAT->entries()));
+
+  TEST_ASSERT(is_same(tMatrixA->rowMap(), tMatrixATT->rowMap()));
+  TEST_ASSERT(is_equivalent(tMatrixA->rowMap(),
+                            tMatrixA->columnIndices(), tMatrixA->entries(),
+                            tMatrixATT->columnIndices(), tMatrixATT->entries()));
 }
 
 } // namespace PlatoUnitTests
