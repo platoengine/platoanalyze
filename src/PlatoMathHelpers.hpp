@@ -483,7 +483,18 @@ MatrixMatrixMultiply( const Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
         tOutRowMap, tOutColMap, tOutValues
     );
 
-    Plato::setDataFromNonBlock(aOutMatrix, tOutRowMap, tOutColMap, tOutValues);
+    // update out matrix
+    if (aOutMatrix->isBlockMatrix())
+    {
+      Plato::setDataFromNonBlock(aOutMatrix, tOutRowMap, tOutColMap, tOutValues);
+    }
+    else
+    {
+      aOutMatrix->setRowMap(tOutRowMap);
+      aOutMatrix->setColumnIndices(tOutColMap);
+      aOutMatrix->setEntries(tOutValues);
+    }
+
     tKernel.destroy_spgemm_handle();
 }
 
@@ -610,22 +621,20 @@ MatrixTranspose( const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
     typedef Plato::ScalarVectorT<OrdinalType> OrdinalView;
     typedef Plato::ScalarVectorT<Scalar>  ScalarView;
 
-    OrdinalType tNumRowsT;
     ScalarView tEntries;
     OrdinalView tRowMap, tColMap;
     if (aMatrix->isBlockMatrix())
     {
-      tNumRowsT = aMatrix->numCols()*aMatrix->numColsPerBlock();
       Plato::getDataAsNonBlock(aMatrix, tRowMap, tColMap, tEntries);
     }
     else
     {
-      tNumRowsT = aMatrix->numCols();
       tEntries = aMatrix->entries();
       tRowMap = aMatrix->rowMap();
       tColMap = aMatrix->columnIndices();
     }
 
+    OrdinalType tNumRowsT = aMatrix->numCols();
     OrdinalView tRowMapT("row map", tNumRowsT+1);
     OrdinalView tColMapT("col map", tEntries.size());
     ScalarView tEntriesT("entries", tEntries.size());
