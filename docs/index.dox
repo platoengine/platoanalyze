@@ -1,0 +1,25 @@
+/** 
+\mainpage %PlatoAnalyze
+
+\section PA_outline Outline
+
+<ul>
+<li> \ref PA_Introduction
+<li> \ref PA_Verification
+</ul>
+
+
+\section PA_Introduction Introduction
+
+%PlatoAnalyze provides blah, blah, blah ... 
+
+
+\section PA_Verification Verification Problems
+
+<ul>
+<li> \ref PA_Verification_LinearThermal </li>
+<li> \ref PA_Verification_02 </li>
+<li> \ref PA_Verification_03 </li>
+</ul>
+
+*/

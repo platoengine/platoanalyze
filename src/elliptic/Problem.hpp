@@ -58,6 +58,9 @@ private:
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> mObjective; /*!< objective constraint interface */
 
+    Plato::OrdinalType mNumNewtonSteps;
+    Plato::Scalar      mNewtonResTol, mNewtonIncTol;
+
     Plato::ScalarMultiVector mAdjoint;
     Plato::ScalarVector mResidual;
 
@@ -88,6 +91,9 @@ public:
       mPDE(std::make_shared<Plato::Elliptic::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint"))),
       mConstraint(nullptr),
       mObjective(nullptr),
+      mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Maximum Iterations",  1  )),
+      mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aInputParams, "Newton Iteration", "Increment Tolerance", 0.0)),
+      mNewtonResTol  (Plato::ParseTools::getSubParam<double>(aInputParams, "Newton Iteration", "Residual Tolerance",  0.0)),
       mResidual("MyResidual", mPDE->size()),
       mStates("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
       mJacobian(Teuchos::null),
@@ -191,20 +197,29 @@ public:
         return Plato::Adjoint(mAdjoint);
     }
 
+    void applyConstraints(
+      const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
+      const Plato::ScalarVector & aVector
+    ){}
     /******************************************************************************//**
      * \brief Apply Dirichlet constraints
      * \param [in] aMatrix Compressed Row Storage (CRS) matrix
      * \param [in] aVector 1D view of Right-Hand-Side forces
     **********************************************************************************/
-    void applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)
+    void applyStateConstraints(
+      const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
+      const Plato::ScalarVector & aVector,
+            Plato::Scalar aScale
+    )
+    //**********************************************************************************/
     {
         if(mJacobian->isBlockMatrix())
         {
-            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues);
+            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues, aScale);
         }
         else
         {
-            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues);
+            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues, aScale);
         }
     }
 
@@ -231,19 +246,44 @@ public:
     solution(const Plato::ScalarVector & aControl)
     {
         const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
+        Plato::ScalarVector tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tStatesSubView);
 
-        mResidual = mPDE->value(tStatesSubView, aControl);
-        Plato::blas1::scale(-1.0, mResidual);
+        // inner loop for non-linear models
+        for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
+        {
+            mResidual = mPDE->value(tStatesSubView, aControl);
+            Plato::blas1::scale(-1.0, mResidual);
 
-        mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
-        this->applyConstraints(mJacobian, mResidual);
+            if (mNumNewtonSteps > 1) {
+                auto tResidualNorm = Plato::blas1::norm(mResidual);
+                std::cout << " Residual norm: " << tResidualNorm << std::endl;
+                if (tResidualNorm < mNewtonResTol) {
+                    std::cout << " Residual norm tolerance satisfied." << std::endl;
+                    break;
+                }
+            }
 
-        mSolver->solve(*mJacobian, tStatesSubView, mResidual);
+            mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
 
-        mResidual = mPDE->value(tStatesSubView, aControl);
-        Plato::blas1::scale(-1.0, mResidual);
+            Plato::OrdinalType tScale = (tNewtonIndex == 0) ? 1.0 : 0.0;
+            this->applyStateConstraints(mJacobian, mResidual, tScale);
+
+            Plato::ScalarVector tDeltaD("increment", tStatesSubView.extent(0));
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
+
+            mSolver->solve(*mJacobian, tDeltaD, mResidual);
+            Plato::blas1::axpy(1.0, tDeltaD, tStatesSubView);
+
+            if (mNumNewtonSteps > 1) {
+                auto tIncrementNorm = Plato::blas1::norm(tDeltaD);
+                std::cout << " Delta norm: " << tIncrementNorm << std::endl;
+                if (tIncrementNorm < mNewtonIncTol) {
+                    std::cout << " Solution increment norm tolerance satisfied." << std::endl;
+                    break;
+                }
+            }
+        }
 
         return Plato::Solution(mStates);
     }
@@ -397,7 +437,7 @@ public:
 
             // compute dgdu: partial of PDE wrt state
             mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
-            this->applyConstraints(mJacobian, tPartialObjectiveWRT_State);
+            this->applyStateConstraints(mJacobian, tPartialObjectiveWRT_State, 1.0);
 
             // adjoint problem uses transpose of global stiffness, but we're assuming the constrained
             // system is symmetric.
