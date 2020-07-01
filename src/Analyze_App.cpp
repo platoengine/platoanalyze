@@ -952,10 +952,10 @@ void MPMD_App::ComputeConstraintP::operator()()
     }
 #ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
-    mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl, mMyApp->mGlobalSolution);
+    mMyApp->mConstraintValue = mMyApp->mProblem->constraintValue(mMyApp->mControl);
     mMyApp->mConstraintValue -= mTarget;
 
-    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalSolution);
+    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
@@ -1145,7 +1145,7 @@ void MPMD_App::ComputeConstraintGradientP::operator()()
     }
 #ifdef PLATO_ESP
     auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
-    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl, mMyApp->mGlobalSolution);
+    mMyApp->mConstraintGradientX = mMyApp->mProblem->constraintGradientX(mMyApp->mControl);
 
     if(mMyApp->mDebugAnalyzeApp == true)
     {
