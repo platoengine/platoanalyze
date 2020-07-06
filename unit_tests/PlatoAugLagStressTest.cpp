@@ -402,18 +402,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AugLagQuadratic_CheckThermalVonMises3D)
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.0'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='100.0'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-1'/>   \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='1.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    "<ParameterList name='Plato Problem'>                                        \n"
+    "  <ParameterList name='Material Model'>                                     \n"
+    "    <ParameterList name='Thermoelastic'>                                    \n"
+    "      <ParameterList name='Elastic Stiffness'>                              \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.0'/>       \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='100.0'/>     \n"
+    "      </ParameterList>                                                      \n"
+    "      <Parameter  name='Thermal Expansivity' type='double' value='1.0e-1'/> \n"
+    "      <Parameter  name='Thermal Conductivity' type='double' value='910.0'/> \n"
+    "      <Parameter  name='Reference Temperature' type='double' value='1.0'/>  \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "</ParameterList>                                                            \n"
+    );
 
     Plato::ThermoelasticModelFactory<tSpaceDim> mmfactory(*tParamList);
     auto tMaterialModel = mmfactory.create();

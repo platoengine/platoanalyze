@@ -50,8 +50,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
 
     // Set global, local state, and control worksets
     auto tNumNodes = tMesh->nverts();
+    decltype(tNumNodes) tNumState = 4;
     auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    Plato::ScalarVectorT<EvalType::StateScalarType> tGlobalState("state", tSpaceDim * tNumNodes);
+    Plato::ScalarVectorT<EvalType::StateScalarType> tGlobalState("state", tNumState * tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
         tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
@@ -105,8 +106,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
 
     // Set global, local state, and control worksets
     auto tNumNodes = tMesh->nverts();
+    decltype(tNumNodes) tNumState = 4;
     auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    Plato::ScalarVectorT<EvalType::StateScalarType> tGlobalState("state", tSpaceDim * tNumNodes);
+    Plato::ScalarVectorT<EvalType::StateScalarType> tGlobalState("state", tNumState * tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
         tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
@@ -1790,8 +1792,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeElasticStrain3D
 
     // Set state workset
     auto tNumNodes = tMesh->nverts();
+    decltype(tNumNodes) tNumState = 4;
     auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    Plato::ScalarVectorT<Plato::Scalar> tState("state", tSpaceDim * tNumNodes);
+    Plato::ScalarVectorT<Plato::Scalar> tState("state", tNumState * tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
         tState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
@@ -1992,7 +1995,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_Residual3D_Elastic)
 
     // 2.3 SET GLOBAL STATE
     auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    Plato::ScalarVector tGlobalState("global state", tSpaceDim * tNumNodes);
+    decltype(tNumDofsPerNode) tNumState = 4;
+    Plato::ScalarVector tGlobalState("global state", tNumState * tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
         tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
