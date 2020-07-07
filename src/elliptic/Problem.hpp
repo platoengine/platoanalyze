@@ -61,6 +61,8 @@ private:
     Plato::OrdinalType mNumNewtonSteps;
     Plato::Scalar      mNewtonResTol, mNewtonIncTol;
 
+    bool mSaveState;
+
     Plato::ScalarMultiVector mAdjoint;
     Plato::ScalarVector mResidual;
 
@@ -94,10 +96,11 @@ public:
       mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Maximum Iterations",  1  )),
       mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aInputParams, "Newton Iteration", "Increment Tolerance", 0.0)),
       mNewtonResTol  (Plato::ParseTools::getSubParam<double>(aInputParams, "Newton Iteration", "Residual Tolerance",  0.0)),
-      mResidual("MyResidual", mPDE->size()),
-      mStates("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
-      mJacobian(Teuchos::null),
-      mIsSelfAdjoint(aInputParams.get<bool>("Self-Adjoint", false))
+      mSaveState     (aInputParams.sublist("Elliptic").isType<Teuchos::Array<std::string>>("Plottable")),
+      mResidual      ("MyResidual", mPDE->size()),
+      mStates        ("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
+      mJacobian      (Teuchos::null),
+      mIsSelfAdjoint (aInputParams.get<bool>("Self-Adjoint", false))
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
 
@@ -249,6 +252,8 @@ public:
         Plato::ScalarVector tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tStatesSubView);
 
+        mDataMap.clearStates();
+
         // inner loop for non-linear models
         for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
         {
@@ -283,6 +288,13 @@ public:
                     break;
                 }
             }
+        }
+
+        if ( mSaveState )
+        {
+            // evaluate at new state
+            mResidual  = mPDE->value(tStatesSubView, aControl);
+            mDataMap.saveState();
         }
 
         return Plato::Solution(mStates);

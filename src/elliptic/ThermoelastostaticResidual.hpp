@@ -114,7 +114,7 @@ public:
             mBoundaryFluxes = std::make_shared<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>>(aProblemParams.sublist("Thermal Natural Boundary Conditions"));
         }
   
-        auto tResidualParams = aProblemParams.sublist("Thermoelastostatics");
+        auto tResidualParams = aProblemParams.sublist("Elliptic");
         if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
           mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
 

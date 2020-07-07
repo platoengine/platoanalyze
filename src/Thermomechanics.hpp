@@ -13,6 +13,7 @@
 #include "parabolic/TransientThermomechResidual.hpp"
 #include "parabolic/InternalThermoelasticEnergy.hpp"
 
+#include "elliptic/Volume.hpp"
 #include "elliptic/AbstractVectorFunction.hpp"
 #include "elliptic/ThermoelastostaticResidual.hpp"
 #include "elliptic/InternalThermoelasticEnergy.hpp"
@@ -218,6 +219,31 @@ struct FunctionFactory
             return (Plato::ThermomechanicsFactory::stress_constraint_quadratic<EvaluationType>
                    (aMesh, aMeshSets, aDataMap, aParamList, aStrScalarFunctionName));
         }
+        else if(aStrScalarFunctionType == "Volume" ){
+          auto penaltyParams = aParamList.sublist(aStrScalarFunctionName).sublist("Penalty Function");
+          std::string tPenaltyType = penaltyParams.get<std::string>("Type");
+          if(tPenaltyType == "SIMP" )
+          {
+              return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::MSIMP>>
+                       (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams,aStrScalarFunctionName);
+          }
+          else
+          if(tPenaltyType == "RAMP" )
+          {
+              return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::RAMP>>
+                       (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams,aStrScalarFunctionName);
+          }
+          else
+          if(tPenaltyType == "Heaviside" )
+          {
+              return std::make_shared<Plato::Elliptic::Volume<EvaluationType, Plato::Heaviside>>
+                       (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams,aStrScalarFunctionName);
+          }
+          else
+          {
+              throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
+          }
+        }
 #ifdef NOPE
         else 
         if(aStrScalarFunctionType == "Stress P-Norm")
@@ -261,12 +287,12 @@ struct FunctionFactory
         Omega_h::MeshSets& aMeshSets,
         Plato::DataMap& aDataMap,
         Teuchos::ParameterList& aParamList,
-        std::string strScalarFunctionType,
+        std::string aStrScalarFunctionType,
         std::string aStrScalarFunctionName
     )
     /******************************************************************************/
     {
-        if( strScalarFunctionType == "Internal Thermoelastic Energy" ){
+        if( aStrScalarFunctionType == "Internal Thermoelastic Energy" ){
             auto penaltyParams = aParamList.sublist(aStrScalarFunctionName).sublist("Penalty Function");
             std::string penaltyType = penaltyParams.get<std::string>("Type");
             if( penaltyType == "SIMP" ){
