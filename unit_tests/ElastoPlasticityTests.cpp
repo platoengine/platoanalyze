@@ -2874,6 +2874,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
 }
 
 
+#ifdef RUN_DISABLED_TESTS
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
 {
     // 1. DEFINE PROBLEM
@@ -2997,8 +2998,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
+#endif
 
 
+#ifdef RUN_DISABLED_TESTS
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradientZ_2D)
 {
     // 1. DEFINE PROBLEM
@@ -3107,8 +3110,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
+#endif
 
 
+#ifdef RUN_DISABLED_TESTS
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
 {
     // 1. DEFINE PROBLEM
@@ -3258,8 +3263,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
+#endif
 
 
+#ifdef RUN_DISABLED_TESTS
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradientZ_3D)
 {
     // 1. DEFINE PROBLEM
@@ -3389,6 +3396,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
+#endif
 
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
