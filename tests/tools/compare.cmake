@@ -7,7 +7,7 @@ endif()
 
 
 #  generate comparison
-set( TEST_COMMAND "vtkdiff -f ${VTKDIFF_CONF} ${OUTPUT_DIR} ${GOLD_DIR}" )
+set( TEST_COMMAND "${VTKDIFF} -f ${VTKDIFF_CONF} ${OUTPUT_DIR} ${GOLD_DIR}" )
 execute_process(COMMAND bash "-c" "${TEST_COMMAND}" RESULT_VARIABLE HAD_ERROR)
 if (HAD_ERROR)
   message(FATAL_ERROR "FAILED: ${TEST_COMMAND}")

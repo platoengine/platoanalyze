@@ -101,7 +101,6 @@ ENDIF()
 # old omega_h's vtkdiff only compared one timestep.
 # at the time of transition, we will keep comparing just one time step
 # this flag is needed to do that.
-SET(VTKDIFF "${VTKDIFF} -onestep")
 
 # We need to do this better, but for now lets see how well it works to find the right mpirun
 # This needs to be the one on the front end for Cuda and MIC machines - it runs the utilities.
