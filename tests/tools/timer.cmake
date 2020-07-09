@@ -1,6 +1,5 @@
 # find 'time' binary
 
-
 find_program( BINARY_SEARCH_RESULT time
               HINTS /usr/bin /bin
               NO_DEFAULT_PATH )
@@ -29,6 +28,14 @@ endforeach(timed_run)
 execute_process(COMMAND bash "-c" "awk '/cmake_test_user_time/{print (total_time+=$2)/${NUM_RUNS}}' cmake_timing_data | tail -1 > cmake_timing_result")
 
 file(READ cmake_timing_result TEST_RUN_TIME)
+
+if(DEFINED ENV{PA_TIMING_SCALE})
+  set(PA_TIMING_SCALE $ENV{PA_TIMING_SCALE})
+  message("PA_TIMING_SCALE environment variable is set to ${PA_TIMING_SCALE}")
+  message("Allowable run time will be scaled by ${PA_TIMING_SCALE}")
+  set(expr "${PA_TIMING_SCALE} * ${RUN_TIME}")
+  execute_process(COMMAND awk "BEGIN {print ${expr}}" OUTPUT_VARIABLE RUN_TIME)
+endif()
 
 message(STATUS "TARGET_RUN_TIME: ${RUN_TIME}")
 message(STATUS "CURRENT_RUN_TIME: ${TEST_RUN_TIME}")
