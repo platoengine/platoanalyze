@@ -481,6 +481,13 @@ private:
     // functions
     //
 
+    /******************************************************************************//**
+     * \fn resetProblemMetaData
+     * \brief Reset Analyze problem metadata. Metadata includes state, control, and \n
+     * respective gradients.  
+    **********************************************************************************/
+    void resetProblemMetaData();
+
     /******************************************************************************/
     template<typename VectorT, typename SharedDataT>
     void copyFieldIntoAnalyze(VectorT & aDeviceData, const SharedDataT& aSharedField)

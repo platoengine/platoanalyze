@@ -37,6 +37,7 @@ MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
   mDefaultProblem->params = tInputParams;
 
   this->createProblem(*mDefaultProblem);
+  this->resetProblemMetaData();
 
   // parse/create the MeshMap instance
   auto tMeshMapInputs = mInputData.getByName<Plato::InputData>("MeshMap");
@@ -179,6 +180,13 @@ createProblem(ProblemDefinition& aDefinition)
     #endif
   }
 
+  aDefinition.modified = false;
+}
+
+/******************************************************************************/
+void MPMD_App::resetProblemMetaData()
+/******************************************************************************/
+{
   mGlobalSolution  = mProblem->getGlobalSolution();
   mNumSolutionDofs = mProblem->getNumSolutionDofs();
 
@@ -191,9 +199,6 @@ createProblem(ProblemDefinition& aDefinition)
 
   Kokkos::resize(mObjectiveGradientZ, tNumLocalVals);
   Kokkos::resize(mObjectiveGradientX, mNumSpatialDims*tNumLocalVals);
-
-
-  aDefinition.modified = false;
 }
 
 /******************************************************************************/
@@ -427,7 +432,12 @@ MPMD_App::compute(const std::string & aOperationName)
     // if a different problem definition is needed, create it
     //
     auto tProblemDefinition = tOperation->getProblemDefinition();
-    if(tProblemDefinition->name != mCurrentProblemName || tProblemDefinition->modified)
+    if(tProblemDefinition->name != mCurrentProblemName)
+    {
+        this->createProblem(*tProblemDefinition);
+        this->resetProblemMetaData();
+    }
+    else if(tProblemDefinition->modified)
     {
         this->createProblem(*tProblemDefinition);
     }
@@ -1238,6 +1248,7 @@ void MPMD_App::Reinitialize::operator()()
 #endif
         auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
         mMyApp->createProblem(*def);
+        mMyApp->resetProblemMetaData();
     }
     else
     {
@@ -1274,6 +1285,7 @@ void MPMD_App::ReinitializeESP::operator()()
         auto tTessFileName  = tESP->getTessFileName();
         tESP.reset( new ESPType(tModelFileName, tTessFileName) );
         mMyApp->createProblem(*def);
+        mMyApp->resetProblemMetaData();
     }
     else
     {
@@ -1403,6 +1415,7 @@ void MPMD_App::ReloadMesh::operator()()
     mMyApp->mDefaultProblem->params = tInputParams;
 
     mMyApp->createProblem(*mMyApp->mDefaultProblem);
+    mMyApp->resetProblemMetaData();
 }
 
 /******************************************************************************/
