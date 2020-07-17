@@ -55,6 +55,8 @@ private:
     Plato::Scalar mAugLagPenalty; /*!< augmented Lagrangian penalty */
     Plato::Scalar mMinErsatzValue; /*!< minimum ersatz material value in SIMP model */
     Plato::Scalar mCellMaterialDensity; /*!< material density */
+    Plato::Scalar mMassCriterionWeight; /*!< weight for mass term, i.e. /f$ \alpha_{\mbox{mass}} * f_{\mbox{mass}} /f$ */
+    Plato::Scalar mStressCriterionWeight; /*!< weight for constraint term, i.e. /f$ \alpha_{\mbox{constraint}} * f_{\mbox{constraint}} /f$ */
     Plato::Scalar mAugLagPenaltyUpperBound; /*!< upper bound on augmented Lagrangian penalty */
     Plato::Scalar mMassNormalizationMultiplier; /*!< normalization multipliers for mass criterion */
     Plato::Scalar mInitialLagrangeMultipliersValue; /*!< initial value for Lagrange multipliers */
@@ -93,7 +95,9 @@ private:
         mStressLimit = tParams.get<Plato::Scalar>("Stress Limit", 1.0);
         mAugLagPenalty = tParams.get<Plato::Scalar>("Initial Penalty", 0.25);
         mMinErsatzValue = tParams.get<Plato::Scalar>("Min. Ersatz Material", 1e-9);
+        mMassCriterionWeight = tParams.get<Plato::Scalar>("Mass Criterion Weight", 1.0);
         mAugLagPenaltyUpperBound = tParams.get<Plato::Scalar>("Penalty Upper Bound", 500.0);
+        mStressCriterionWeight = tParams.get<Plato::Scalar>("Stress Criterion Weight", 1.0);
         mMassNormalizationMultiplier = tParams.get<Plato::Scalar>("Mass Normalization Multiplier", 1.0);
         mInitialLagrangeMultipliersValue = tParams.get<Plato::Scalar>("Initial Lagrange Multiplier", 0.01);
         mAugLagPenaltyExpansionMultiplier = tParams.get<Plato::Scalar>("Penalty Expansion Multiplier", 1.5);
@@ -127,6 +131,8 @@ public:
             mAugLagPenalty(0.1),
             mMinErsatzValue(0.0),
             mCellMaterialDensity(1.0),
+            mMassCriterionWeight(1.0),
+            mStressCriterionWeight(1.0),
             mAugLagPenaltyUpperBound(100),
             mMassNormalizationMultiplier(1.0),
             mInitialLagrangeMultipliersValue(0.01),
@@ -150,6 +156,8 @@ public:
             mAugLagPenalty(0.1),
             mMinErsatzValue(0.0),
             mCellMaterialDensity(1.0),
+            mMassCriterionWeight(1.0),
+            mStressCriterionWeight(1.0),
             mAugLagPenaltyUpperBound(100),
             mMassNormalizationMultiplier(1.0),
             mInitialLagrangeMultipliersValue(0.01),
@@ -298,6 +306,8 @@ public:
         auto tAugLagPenalty = mAugLagPenalty;
         auto tMaterialDensity = mCellMaterialDensity;
         auto tLagrangeMultipliers = mLagrangeMultipliers;
+        auto tMassCriterionWeight = mMassCriterionWeight;
+        auto tStressCriterionWeight = mStressCriterionWeight;
         auto tMassNormalizationMultiplier = mMassNormalizationMultiplier;
 
         // ****** COMPUTE AUGMENTED LAGRANGIAN FUNCTION ******
@@ -337,7 +347,8 @@ public:
                     tMaterialDensity * tVolume(aCellOrdinal) ) / tMassNormalizationMultiplier;
 
             // Compute augmented Lagrangian function
-            aResultWS(aCellOrdinal) = tObjective(aCellOrdinal) + tConstraint(aCellOrdinal);
+            aResultWS(aCellOrdinal) = (tMassCriterionWeight * tObjective(aCellOrdinal))
+                    + (tStressCriterionWeight * tConstraint(aCellOrdinal));
         },"Compute Augmented Lagrangian Function");
 
         Plato::toMap(mDataMap, tOutputVonMises, "Vonmises");
