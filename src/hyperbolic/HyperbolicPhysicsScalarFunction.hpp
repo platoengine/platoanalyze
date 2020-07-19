@@ -66,7 +66,7 @@ private:
     {
         typename PhysicsT::FunctionFactory tFactory;
 
-        auto tProblemDefault = aInputParams.sublist(mFunctionName);
+        auto tProblemDefault = aInputParams.sublist("Criteria").sublist(mFunctionName);
         auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
 
         mScalarFunctionValue =

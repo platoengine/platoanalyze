@@ -51,7 +51,6 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                      \n"
     "  <Parameter name='PDE Constraint' type='string' value='Hyperbolic'/>     \n"
-    "  <Parameter name='Objective' type='string' value='Internal Energy'/>     \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='false'/>              \n"
     "  <ParameterList name='Hyperbolic'>                                       \n"
     "    <ParameterList name='Penalty Function'>                               \n"
@@ -60,13 +59,15 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
     "      <Parameter name='Type' type='string' value='SIMP'/>                 \n"
     "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                        \n"
-    "  <ParameterList name='Internal Energy'>                                  \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>        \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/> \n"
-    "    <ParameterList name='Penalty Function'>                               \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                 \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>              \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>         \n"
+    "  <ParameterList name='Criteria'>                                         \n"
+    "    <ParameterList name='Internal Energy'>                                \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>      \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/> \n"
+    "      <ParameterList name='Penalty Function'>                             \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>               \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>            \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>       \n"
+    "      </ParameterList>                                                    \n"
     "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                        \n"
     "  <ParameterList name='Material Model'>                                   \n"
@@ -139,28 +140,28 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
 
 
   /*****************************************************
-   Test HyperbolicProblem::objectiveValue(aControl);
+   Test HyperbolicProblem::criterionValue(aControl);
    *****************************************************/
 
-  auto tObjectiveValue = tHyperbolicProblem->objectiveValue(tControl);
-  Plato::Scalar tObjectiveValue_gold = 5.43649521380863686677761e-9;
+  auto tCriterionValue = tHyperbolicProblem->criterionValue(tControl, "Internal Energy");
+  Plato::Scalar tCriterionValue_gold = 5.43649521380863686677761e-9;
 
-  TEST_FLOATING_EQUALITY( tObjectiveValue, tObjectiveValue_gold, 1e-13);
+  TEST_FLOATING_EQUALITY( tCriterionValue, tCriterionValue_gold, 1e-13);
 
 
   /*********************************************************
-   Test HyperbolicProblem::objectiveValue(aControl, aState);
+   Test HyperbolicProblem::criterionValue(aControl, aState);
    *********************************************************/
 
-  tObjectiveValue = tHyperbolicProblem->objectiveValue(tControl, tSolution);
-  TEST_FLOATING_EQUALITY( tObjectiveValue, tObjectiveValue_gold, 1e-13);
+  tCriterionValue = tHyperbolicProblem->criterionValue(tControl, tSolution, "Internal Energy");
+  TEST_FLOATING_EQUALITY( tCriterionValue, tCriterionValue_gold, 1e-13);
 
 
   /*****************************************************
-   Test HyperbolicProblem::objectiveGradient(aControl);
+   Test HyperbolicProblem::criterionGradient(aControl);
    *****************************************************/
 
-  auto tObjectiveGradient = tHyperbolicProblem->objectiveGradient(tControl);
+  auto tCriterionGradient = tHyperbolicProblem->criterionGradient(tControl, "Internal Energy");
 
 
   /**************************************************************
@@ -169,55 +170,55 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
    **************************************************************/
 
   /************************************************************
-   Call HyperbolicProblem::objectiveGradient(aControl, aState);
+   Call HyperbolicProblem::criterionGradient(aControl, aState);
    ************************************************************/
 
-  tObjectiveGradient = tHyperbolicProblem->objectiveGradient(tControl, tSolution);
+  tCriterionGradient = tHyperbolicProblem->criterionGradient(tControl, tSolution, "Internal Energy");
 
 
   /*****************************************************
-   Call HyperbolicProblem::objectiveGradientX(aControl);
+   Call HyperbolicProblem::criterionGradientX(aControl);
    *****************************************************/
 
-  auto tObjectiveGradientX = tHyperbolicProblem->objectiveGradientX(tControl);
+  auto tCriterionGradientX = tHyperbolicProblem->criterionGradientX(tControl, "Internal Energy");
 
 
   /************************************************************
-   Call HyperbolicProblem::objectiveGradientX(aControl, aState);
+   Call HyperbolicProblem::criterionGradientX(aControl, aState);
    ************************************************************/
 
-  tObjectiveGradientX = tHyperbolicProblem->objectiveGradientX(tControl, tSolution);
+  tCriterionGradientX = tHyperbolicProblem->criterionGradientX(tControl, tSolution, "Internal Energy");
 
 
 
-  // test constraintValue
+  // test criterionValue
   //
-  auto tConstraintValue = tHyperbolicProblem->constraintValue(tControl);
+  auto tConstraintValue = tHyperbolicProblem->criterionValue(tControl, "Internal Energy");
 
 
-  // test constraintValue
+  // test criterionValue
   //
-  tConstraintValue = tHyperbolicProblem->constraintValue(tControl, tSolution);
+  tConstraintValue = tHyperbolicProblem->criterionValue(tControl, tSolution, "Internal Energy");
 
 
-  // test constraintGradient
+  // test criterionGradient
   //
-  auto tConstraintGradient = tHyperbolicProblem->constraintGradient(tControl);
+  auto tConstraintGradient = tHyperbolicProblem->criterionGradient(tControl, "Internal Energy");
 
 
-  // test constraintGradient
+  // test criterionGradient
   //
-  tConstraintGradient = tHyperbolicProblem->constraintGradient(tControl, tSolution);
+  tConstraintGradient = tHyperbolicProblem->criterionGradient(tControl, tSolution, "Internal Energy");
 
 
-  // test constraintGradientX
+  // test criterionGradientX
   //
-  auto tConstraintGradientX = tHyperbolicProblem->constraintGradientX(tControl);
+  auto tConstraintGradientX = tHyperbolicProblem->criterionGradientX(tControl, "Internal Energy");
 
 
-  // test constraintGradientX
+  // test criterionGradientX
   //
-  tConstraintGradientX = tHyperbolicProblem->constraintGradientX(tControl, tSolution);
+  tConstraintGradientX = tHyperbolicProblem->criterionGradientX(tControl, tSolution, "Internal Energy");
 
 }
 
@@ -889,7 +890,6 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                   \n"
     "  <Parameter name='PDE Constraint' type='string' value='Hyperbolic'/>  \n"
-    "  <Parameter name='Objective' type='string' value='Internal Energy'/>  \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='false'/>           \n"
     "  <ParameterList name='Hyperbolic'>                                    \n"
     "    <ParameterList name='Penalty Function'>                            \n"
@@ -898,13 +898,15 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
     "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
     "    </ParameterList>                                                   \n"
     "  </ParameterList>                                                     \n"
-    "  <ParameterList name='Internal Energy'>                               \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>     \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/> \n"
-    "    <ParameterList name='Penalty Function'>                            \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>      \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>           \n"
+    "  <ParameterList name='Criteria'>                                      \n"
+    "    <ParameterList name='Internal Energy'>                             \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>   \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/> \n"
+    "      <ParameterList name='Penalty Function'>                          \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>            \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>    \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>         \n"
+    "      </ParameterList>                                                 \n"
     "    </ParameterList>                                                   \n"
     "  </ParameterList>                                                     \n"
     "  <ParameterList name='Material Model'>                                \n"
@@ -932,9 +934,9 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
 
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Internal Energy");
   Plato::Hyperbolic::PhysicsScalarFunction<::Plato::Hyperbolic::Mechanics<cSpaceDim>>
-    tScalarFunction(*tMesh, tMeshSets, tDataMap, *tInputParams,
-                   tInputParams->get<std::string>("Objective"));
+    tScalarFunction(*tMesh, tMeshSets, tDataMap, *tInputParams, tMyFunction);
 
   auto tTimeStep = tInputParams->sublist("Time Integration").get<Plato::Scalar>("Time Step");
   auto tNumSteps = tInputParams->sublist("Time Integration").get<int>("Number Time Steps");

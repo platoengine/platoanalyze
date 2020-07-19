@@ -289,7 +289,6 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Elastic Energy'/> \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
     "  <ParameterList name='Elliptic'>                                             \n"
     "    <ParameterList name='Penalty Function'>                                   \n"
@@ -304,9 +303,11 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
     "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
-    "  <ParameterList name='My Internal Elastic Energy'>                           \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Internal Elastic Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
     "</ParameterList>                                                              \n"
   );
@@ -401,7 +402,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test gradient wrt control, z
   //
   auto gradient_z = esVectorFunction.gradient_z(u,z);
   
@@ -426,7 +427,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ElastostaticResidual3D )
   }
 
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test gradient wrt node position, x
   //
   auto gradient_x = esVectorFunction.gradient_x(u,z);
   
@@ -501,7 +502,6 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Elastic Energy'/> \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
     "  <ParameterList name='Material Model'>                                       \n"
     "    <ParameterList name='Isotropic Linear Elastic'>                           \n"
@@ -509,27 +509,30 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
     "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
-    "  <ParameterList name='My Internal Elastic Energy'>                           \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Internal Elastic Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
     "</ParameterList>                                                              \n"
   );
 
-  // create objective
+  // create criterion
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Internal Elastic Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
   auto value = eeScalarFunction.value(Plato::Solution(U),z);
 
@@ -537,7 +540,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
   auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
@@ -583,7 +586,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
   auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U),z);
 
@@ -606,7 +609,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalElasticEnergy3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
   auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U),z);
   
@@ -693,16 +696,17 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Stress P-Norm'/>        \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
-    "  <ParameterList name='My Stress P-Norm'>                                     \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Stress P-Norm'/>  \n"
-    "    <Parameter name='Exponent' type='double' value='12.0'/>                   \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Globalized Stress'>                                  \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Stress P-Norm'/>  \n"
+    "      <Parameter name='Exponent' type='double' value='12.0'/>                 \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
     "  <ParameterList name='Material Model'>                                       \n"
@@ -714,15 +718,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
     "</ParameterList>                                                              \n"
   );
 
-  // create objective
+  // create criterion
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Globalized Stress");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
   auto value = eeScalarFunction.value(Plato::Solution(U), z);
 
@@ -730,7 +735,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
   auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
@@ -758,7 +763,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
   auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U), z);
 
@@ -781,7 +786,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, StressPNorm3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
   auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U), z);
   
@@ -836,29 +841,30 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
   //
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                         \n"
-    "  <Parameter name='Objective' type='string' value='My Effective Energy'/>                       \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                                 \n"
-    "  <ParameterList name='My Effective Energy'>                                                    \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Effective Energy'/>  \n"
-    "    <Parameter name='Assumed Strain' type='Array(double)' value='{1.0,0.0,0.0,0.0,0.0,0.0}'/>\n"
-    "    <ParameterList name='Penalty Function'>                                                  \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                                 \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                                    \n"
-    "    </ParameterList>                                                                         \n"
-    "  </ParameterList>                                                                           \n"
-    "  <ParameterList name='Cell Problem Forcing'>                                                \n"
-    "    <Parameter name='Column Index' type='int' value='0'/>                                    \n"
-    "  </ParameterList>                                                                           \n"
-    "  <ParameterList name='Material Model'>                                                      \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                                          \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>                           \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>                         \n"
-    "    </ParameterList>                                                                         \n"
-    "  </ParameterList>                                                                           \n"
-    "</ParameterList>                                                                             \n"
+    "<ParameterList name='Plato Problem'>                                                           \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                                   \n"
+    "  <ParameterList name='Criteria'>                                                              \n"
+    "    <ParameterList name='Effective Energy'>                                                    \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>                           \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Effective Energy'/>          \n"
+    "      <Parameter name='Assumed Strain' type='Array(double)' value='{1.0,0.0,0.0,0.0,0.0,0.0}'/>\n"
+    "      <ParameterList name='Penalty Function'>                                                  \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                                 \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>                            \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                                    \n"
+    "      </ParameterList>                                                                         \n"
+    "    </ParameterList>                                                                           \n"
+    "  </ParameterList>                                                                             \n"
+    "  <ParameterList name='Cell Problem Forcing'>                                                  \n"
+    "    <Parameter name='Column Index' type='int' value='0'/>                                      \n"
+    "  </ParameterList>                                                                             \n"
+    "  <ParameterList name='Material Model'>                                                        \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                            \n"
+    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>                             \n"
+    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>                           \n"
+    "    </ParameterList>                                                                           \n"
+    "  </ParameterList>                                                                             \n"
+    "</ParameterList>                                                                               \n"
   );
 
   Plato::ScalarMultiVector solution("solution", /*numSteps=*/1, spaceDim*numVerts);
@@ -901,15 +907,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
   auto step0 = Kokkos::subview(solution, 0, Kokkos::ALL());
   Kokkos::deep_copy(step0, tHostView);
 
-  // create objective
+  // create criterion
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Effective Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
   auto value = eeScalarFunction.value(Plato::Solution(solution), z);
 
@@ -917,7 +924,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
   auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(solution), z, /*stepIndex=*/0);
 
@@ -963,7 +970,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
   auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(solution),z);
 
@@ -985,7 +992,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_NormalCellProblem )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
   auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(solution),z);
   
@@ -1062,29 +1069,30 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
   //
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                         \n"
-    "  <Parameter name='Objective' type='string' value='My Effective Energy'/>                       \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                                 \n"
-    "  <ParameterList name='My Effective Energy'>                                                    \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Effective Energy'/>  \n"
-    "    <Parameter name='Assumed Strain' type='Array(double)' value='{0.0,0.0,0.0,1.0,0.0,0.0}'/>\n"
-    "    <ParameterList name='Penalty Function'>                                                  \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                                 \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                                    \n"
-    "    </ParameterList>                                                                         \n"
-    "  </ParameterList>                                                                           \n"
-    "  <ParameterList name='Cell Problem Forcing'>                                                \n"
-    "    <Parameter name='Column Index' type='int' value='3'/>                                    \n"
-    "  </ParameterList>                                                                           \n"
-    "  <ParameterList name='Material Model'>                                                      \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                                          \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>                           \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>                         \n"
-    "    </ParameterList>                                                                         \n"
-    "  </ParameterList>                                                                           \n"
-    "</ParameterList>                                                                             \n"
+    "<ParameterList name='Plato Problem'>                                                           \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                                   \n"
+    "  <ParameterList name='Criteria'>                                                              \n"
+    "    <ParameterList name='Effective Energy'>                                                    \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>                           \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Effective Energy'/>          \n"
+    "      <Parameter name='Assumed Strain' type='Array(double)' value='{0.0,0.0,0.0,1.0,0.0,0.0}'/>\n"
+    "      <ParameterList name='Penalty Function'>                                                  \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                                 \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>                            \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                                    \n"
+    "      </ParameterList>                                                                         \n"
+    "    </ParameterList>                                                                           \n"
+    "  </ParameterList>                                                                             \n"
+    "  <ParameterList name='Cell Problem Forcing'>                                                  \n"
+    "    <Parameter name='Column Index' type='int' value='3'/>                                      \n"
+    "  </ParameterList>                                                                             \n"
+    "  <ParameterList name='Material Model'>                                                        \n"
+    "    <ParameterList name='Isotropic Linear Elastic'>                                            \n"
+    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>                             \n"
+    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>                           \n"
+    "    </ParameterList>                                                                           \n"
+    "  </ParameterList>                                                                             \n"
+    "</ParameterList>                                                                               \n"
   );
 
   Plato::ScalarMultiVector solution("solution", /*numSteps=*/1, spaceDim*numVerts);
@@ -1108,15 +1116,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
   auto step0 = Kokkos::subview(solution, 0, Kokkos::ALL());
   Kokkos::deep_copy(step0, tHostView);
 
-  // create objective
+  // create criterion
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Effective Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
   auto value = eeScalarFunction.value(Plato::Solution(solution), z);
 
@@ -1124,7 +1133,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
   auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(solution), z, /*stepIndex=*/0);
 
@@ -1157,7 +1166,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
   auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(solution),z);
 
@@ -1180,7 +1189,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, EffectiveEnergy3D_ShearCellProblem )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
   auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(solution),z);
   
@@ -1263,7 +1272,6 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Thermal Energy'/> \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
     "  <ParameterList name='Elliptic'>                                             \n"
     "    <ParameterList name='Penalty Function'>                                   \n"
@@ -1277,9 +1285,11 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
     "      <Parameter name='Thermal Conductivity' type='double' value='100.0'/>    \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
-    "  <ParameterList name='My Internal Elastic Energy'>                           \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Internal Elastic Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
     "</ParameterList>                                                              \n"
   );
@@ -1348,7 +1358,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test gradient wrt control, z
   //
   auto gradient = tsVectorFunction.gradient_z(u,z);
   
@@ -1375,7 +1385,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, ThermostaticResidual3D )
     TEST_FLOATING_EQUALITY(grad_entriesHost(i), gold_grad_entries[i], 1.0e-14);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test gradient wrt node position, x
   //
   auto gradient_x = tsVectorFunction.gradient_x(u,z);
   
@@ -1443,15 +1453,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Thermal Energy'/> \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
-    "  <ParameterList name='My Internal Thermal Energy'>                              \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Thermal Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Internal Thermal Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Thermal Energy'/>  \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
     "  <ParameterList name='Material Model'>                                       \n"
@@ -1462,15 +1473,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
     "</ParameterList>                                                              \n"
   );
 
-  // create objective
+  // create criterion
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Internal Thermal Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    eeScalarFunction(*mesh, tMeshSets, dataMap, *params, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
   auto value = eeScalarFunction.value(Plato::Solution(U), z);
 
@@ -1478,7 +1490,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
   auto grad_u = eeScalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
@@ -1506,7 +1518,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
   auto grad_z = eeScalarFunction.gradient_z(Plato::Solution(U), z);
 
@@ -1529,7 +1541,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, InternalThermalEnergy3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
   auto grad_x = eeScalarFunction.gradient_x(Plato::Solution(U), z);
   
@@ -1599,16 +1611,17 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Flux P-Norm'/>             \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
-    "  <ParameterList name='My Flux P-Norm'>                                          \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Flux P-Norm'/>  \n"
-    "    <Parameter name='Exponent' type='double' value='12.0'/>                   \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Flux P-Norm'>                                        \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Flux P-Norm'/>  \n"
+    "      <Parameter name='Exponent' type='double' value='12.0'/>                 \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
     "  <ParameterList name='Material Model'>                                       \n"
@@ -1619,15 +1632,16 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
     "</ParameterList>                                                              \n"
   );
 
-  // create objective
+  // create criterion
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Flux P-Norm");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
-    scalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+    scalarFunction(*mesh, tMeshSets, dataMap, *params, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
   auto value = scalarFunction.value(Plato::Solution(U), z);
 
@@ -1635,7 +1649,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
   auto grad_u = scalarFunction.gradient_u(Plato::Solution(U), z, /*stepIndex=*/0);
 
@@ -1663,7 +1677,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
   }
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
   auto grad_z = scalarFunction.gradient_z(Plato::Solution(U), z);
 
@@ -1686,7 +1700,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, FluxPNorm3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
   auto grad_x = scalarFunction.gradient_x(Plato::Solution(U), z);
   
@@ -1777,34 +1791,35 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Elastic Energy'/> \n"
-    "  <Parameter name='Linear Constraint' type='string' value='My Volume'/>          \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
-    "  <ParameterList name='My Volume'>                                               \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Volume'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Volume'>                                             \n"
+    "      <Parameter name='Type' type='string' value='Linear Scalar Function'/>   \n"
+    "      <Parameter name='Linear Scalar Function Type' type='string' value='Volume'/> \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
     "    </ParameterList>                                                          \n"
-    "  </ParameterList>                                                            \n"
-    "  <ParameterList name='My Internal Elastic Energy'>                           \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "    <ParameterList name='Internal Elastic Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
     "</ParameterList>                                                              \n"
   );
 
-  // create objective
+  // create criterion
   //
   Plato::DataMap dataMap;
   Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Volume");
   Plato::Geometric::GeometryScalarFunction<::Plato::Geometrical<spaceDim>>
-    volScalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Linear Constraint"));
+    volScalarFunction(*mesh, tMeshSets, dataMap, *params, tMyFunction);
 
 
-  // compute and test objective value
+  // compute and test criterion value
   //
   auto value = volScalarFunction.value(z);
 
@@ -1812,7 +1827,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
   auto grad_z = volScalarFunction.gradient_z(z);
 
@@ -1835,7 +1850,7 @@ TEUCHOS_UNIT_TEST( DerivativeTests, Volume3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
   auto grad_x = volScalarFunction.gradient_x(z);
   

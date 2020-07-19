@@ -25,17 +25,9 @@ template<typename PhysicsT>
 class DivisionFunction : public Plato::Elliptic::ScalarFunctionBase, public Plato::WorksetBase<PhysicsT>
 {
 private:
-    using Plato::WorksetBase<PhysicsT>::mNumDofsPerCell; /*!< number of degree of freedom per cell/element */
-    using Plato::WorksetBase<PhysicsT>::mNumNodesPerCell; /*!< number of nodes per cell/element */
     using Plato::WorksetBase<PhysicsT>::mNumDofsPerNode; /*!< number of degree of freedom per node */
     using Plato::WorksetBase<PhysicsT>::mNumSpatialDims; /*!< number of spatial dimensions */
-    using Plato::WorksetBase<PhysicsT>::mNumControl; /*!< number of control variables */
-    using Plato::WorksetBase<PhysicsT>::mNumNodes; /*!< total number of nodes in the mesh */
-    using Plato::WorksetBase<PhysicsT>::mNumCells; /*!< total number of cells/elements in the mesh */
-
-    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
-    using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal; /*!< number of degree of freedom per cell/element */
-    using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal; /*!< number of degree of freedom per cell/element */
+    using Plato::WorksetBase<PhysicsT>::mNumNodes;       /*!< total number of nodes in the mesh */
 
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> mScalarFunctionBaseNumerator; /*!< numerator function */
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> mScalarFunctionBaseDenominator; /*!< denominator function */
@@ -46,24 +38,24 @@ private:
 
 	/******************************************************************************//**
      * @brief Initialization of Division Function
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
     void initialize (Omega_h::Mesh& aMesh, 
                      Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+                     Teuchos::ParameterList & aProblemParams)
     {
         Plato::Elliptic::ScalarFunctionBaseFactory<PhysicsT> tFactory;
 
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
-        auto tNumeratorFunctionName = tProblemFunctionName.get<std::string>("Numerator");
-        auto tDenominatorFunctionName = tProblemFunctionName.get<std::string>("Denominator");
+        auto tNumeratorFunctionName = tFunctionParams.get<std::string>("Numerator");
+        auto tDenominatorFunctionName = tFunctionParams.get<std::string>("Denominator");
 
         mScalarFunctionBaseNumerator = 
-             tFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tNumeratorFunctionName);
+             tFactory.create(aMesh, aMeshSets, mDataMap, aProblemParams, tNumeratorFunctionName);
 
         mScalarFunctionBaseDenominator = 
-             tFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tDenominatorFunctionName);
+             tFactory.create(aMesh, aMeshSets, mDataMap, aProblemParams, tDenominatorFunctionName);
     }
 
 public:
@@ -72,19 +64,19 @@ public:
      * @param [in] aMesh mesh database
      * @param [in] aMeshSets side sets database
      * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
     DivisionFunction(Omega_h::Mesh& aMesh,
                 Omega_h::MeshSets& aMeshSets,
                 Plato::DataMap & aDataMap,
-                Teuchos::ParameterList& aInputParams,
+                Teuchos::ParameterList& aProblemParams,
                 std::string& aName) :
             Plato::WorksetBase<PhysicsT>(aMesh),
             mDataMap(aDataMap),
             mFunctionName(aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aMesh, aMeshSets, aProblemParams);
     }
 
     /******************************************************************************//**

@@ -75,7 +75,7 @@ class StressPNorm :
         mQuadratureWeight /= Plato::Scalar(d);
       }
 
-      auto params = aProblemParams.get<Teuchos::ParameterList>(aFunctionName);
+      auto params = aProblemParams.sublist("Criteria").get<Teuchos::ParameterList>(aFunctionName);
 
       TensorNormFactory<mNumVoigtTerms, EvaluationType> normFactory;
       mNorm = normFactory.create(params);

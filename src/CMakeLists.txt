@@ -3,12 +3,9 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/AnalyzeConfig.hpp
   @ONLY)
 
-set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp 
+## material model sources
+set(ANALYZE_SOURCES
     CustomMaterial.cpp 
-    ExpressionEvaluator.cpp 
-    Plato_AugLagStressCriterionGeneral.cpp 
-    Plato_AugLagStressCriterion.cpp 
-    Plato_StructuralMass.cpp 
     ElasticModelFactory.cpp 
     LinearElasticMaterial.cpp 
     CubicLinearElasticMaterial.cpp 
@@ -20,8 +17,23 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     MaterialModel.cpp
     Rank4Voigt.cpp
     IsotropicStiffness.cpp
-    StabilizedElastostaticEnergy.cpp 
-    EllipticVMSProblem.cpp 
+)
+
+## Augmented Lagrangian sources
+set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    TensileEnergyDensityLocalMeasure.cpp 
+    TensileEnergyDensity.cpp 
+    Plato_AugLagStressCriterionQuadratic.cpp 
+    Plato_AugLagStressCriterionGeneral.cpp 
+    Plato_AugLagStressCriterion.cpp 
+    Plato_StructuralMass.cpp 
+    VonMisesLocalMeasure.cpp 
+    ThermalVonMisesLocalMeasure.cpp 
+)
+
+## core sources
+set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    ExpressionEvaluator.cpp 
     alg/ParseInput.cpp 
     alg/Basis.cpp 
     alg/Cubature.cpp 
@@ -30,13 +42,21 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     alg/EpetraLinearSolver.cpp
     alg/AmgXLinearSolver.cpp
     alg/PlatoSolverFactory.cpp
-    TensileEnergyDensity.cpp 
-    TensileEnergyDensityLocalMeasure.cpp 
-    VonMisesLocalMeasure.cpp 
-    ThermalVonMisesLocalMeasure.cpp 
-    IntermediateDensityPenalty.cpp 
-    J2PlasticityLocalResidual.cpp 
+)
+
+## Stabilized VMS sources
+if(STABILIZED)
+  set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    EllipticVMSProblem.cpp 
+    StabilizedElastostaticEnergy.cpp 
+  )
+endif()
+
+## plasticity sources
+if(PLASTICITY)
+  set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
     LocalVectorFunctionInc.cpp 
+    J2PlasticityLocalResidual.cpp 
     NewtonRaphsonSolver.cpp 
     PathDependentAdjointSolver.cpp 
     GlobalVectorFunctionInc.cpp 
@@ -48,6 +68,11 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     InfinitesimalStrainPlasticityResidual.cpp 
     ElasticWorkCriterion.cpp 
     PlasticWorkCriterion.cpp
+  )
+endif()
+
+## geometric sources
+set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
     geometric/DivisionFunction.cpp
     geometric/GeometryScalarFunction.cpp
     geometric/LeastSquaresFunction.cpp
@@ -55,6 +80,12 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     geometric/MassPropertiesFunction.cpp
     geometric/ScalarFunctionBaseFactory.cpp
     geometric/WeightedSumFunction.cpp
+)
+
+## elliptic sources
+if(ELLIPTIC)
+  set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    elliptic/Problem.cpp 
     elliptic/DivisionFunction.cpp 
     elliptic/LeastSquaresFunction.cpp 
     elliptic/WeightedSumFunction.cpp 
@@ -69,19 +100,33 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     elliptic/InternalThermoelasticEnergy.cpp 
     elliptic/InternalElectroelasticEnergy.cpp 
     elliptic/InternalElasticEnergy.cpp 
-    elliptic/Problem.cpp 
     elliptic/ElastostaticResidual.cpp 
     elliptic/ThermostaticResidual.cpp 
+    IntermediateDensityPenalty.cpp 
+  )
+endif()
+
+## parabolic sources
+if(PARABOLIC)
+  set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
+    parabolic/Problem.cpp 
     parabolic/InternalThermalEnergy.cpp 
     parabolic/InternalThermoelasticEnergy.cpp 
     parabolic/TemperatureAverage.cpp 
-    parabolic/Problem.cpp 
     parabolic/ScalarFunctionBaseFactory.cpp 
     parabolic/PhysicsScalarFunction.cpp 
     parabolic/HeatEquationResidual.cpp 
     parabolic/TransientThermomechResidual.cpp
+  )
+endif()
+
+## hyperbolic sources
+if(HYPERBOLIC)
+  set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
     hyperbolic/HyperbolicScalarFunctionFactory.cpp
-    hyperbolic/HyperbolicPhysicsScalarFunction.cpp)
+    hyperbolic/HyperbolicPhysicsScalarFunction.cpp
+  )
+endif()
 
 if (PLATOANALYZE_ENABLE_TPETRA)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES} alg/TpetraLinearSolver.cpp) 

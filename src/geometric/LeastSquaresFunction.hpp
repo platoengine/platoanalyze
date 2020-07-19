@@ -45,11 +45,11 @@ private:
 
 	/******************************************************************************//**
      * @brief Initialization of Least Squares Function
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
     void initialize (Omega_h::Mesh& aMesh, 
                      Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+                     Teuchos::ParameterList & aProblemParams)
     {
         Plato::Geometric::ScalarFunctionBaseFactory<PhysicsT> tFactory;
 
@@ -58,15 +58,15 @@ private:
         mFunctionGoldValues.clear();
         mFunctionNormalization.clear();
 
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
-        auto tFunctionNamesTeuchos = tProblemFunctionName.get<Teuchos::Array<std::string>>("Functions");
-        auto tFunctionWeightsTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
-        auto tFunctionGoldValuesTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
+        auto tFunctionNamesArray = tFunctionParams.get<Teuchos::Array<std::string>>("Functions");
+        auto tFunctionWeightsArray = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Weights");
+        auto tFunctionGoldValuesArray = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
 
-        auto tFunctionNames      = tFunctionNamesTeuchos.toVector();
-        auto tFunctionWeights    = tFunctionWeightsTeuchos.toVector();
-        auto tFunctionGoldValues = tFunctionGoldValuesTeuchos.toVector();
+        auto tFunctionNames      = tFunctionNamesArray.toVector();
+        auto tFunctionWeights    = tFunctionWeightsArray.toVector();
+        auto tFunctionGoldValues = tFunctionGoldValuesArray.toVector();
 
         if (tFunctionNames.size() != tFunctionWeights.size())
         {
@@ -86,7 +86,7 @@ private:
         {
             mScalarFunctionBaseContainer.push_back(
                 tFactory.create(
-                    aMesh, aMeshSets, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]));
+                    aMesh, aMeshSets, mDataMap, aProblemParams, tFunctionNames[tFunctionIndex]));
             mFunctionWeights.push_back(tFunctionWeights[tFunctionIndex]);
 
             appendGoldFunctionValue(tFunctionGoldValues[tFunctionIndex]);
@@ -100,19 +100,19 @@ public:
      * @param [in] aMesh mesh database
      * @param [in] aMeshSets side sets database
      * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
     LeastSquaresFunction(Omega_h::Mesh& aMesh,
                          Omega_h::MeshSets& aMeshSets,
                          Plato::DataMap & aDataMap,
-                         Teuchos::ParameterList& aInputParams,
+                         Teuchos::ParameterList& aProblemParams,
                          std::string& aName) :
             Plato::Geometric::WorksetBase<PhysicsT>(aMesh),
             mDataMap(aDataMap),
             mFunctionName(aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aMesh, aMeshSets, aProblemParams);
     }
 
     /******************************************************************************//**

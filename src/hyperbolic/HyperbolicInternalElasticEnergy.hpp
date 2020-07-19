@@ -66,19 +66,19 @@ class InternalElasticEnergy :
      * @param aMesh volume mesh database
      * @param aMeshSets surface mesh database
      * @param aProblemParams input database for overall problem
-     * @param aPenaltyParams input database for penalty function
+     * @param aFunctionParams input database for function
     **********************************************************************************/
     InternalElasticEnergy(
-        Omega_h::Mesh&          aMesh,
-        Omega_h::MeshSets&      aMeshSets,
-        Plato::DataMap&         aDataMap,
-        Teuchos::ParameterList& aProblemParams,
-        Teuchos::ParameterList& aPenaltyParams,
-        std::string&            aFunctionName
+        Omega_h::Mesh          & aMesh,
+        Omega_h::MeshSets      & aMeshSets,
+        Plato::DataMap         & aDataMap,
+        Teuchos::ParameterList & aProblemParams,
+        Teuchos::ParameterList & aFunctionParams,
+        std::string            & aFunctionName
     ) :
         Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
         mCubatureRule      (std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
-        mIndicatorFunction (aPenaltyParams),
+        mIndicatorFunction (aFunctionParams.sublist("Penalty Function")),
         mApplyWeighting    (mIndicatorFunction)
     {
         Plato::ElasticModelFactory<mSpaceDim> tMaterialModelFactory(aProblemParams);

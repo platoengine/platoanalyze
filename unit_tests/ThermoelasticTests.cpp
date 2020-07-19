@@ -82,7 +82,6 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                         \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>          \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Thermoelastic Energy'/>  \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                  \n"
     "  <ParameterList name='Elliptic'>                                            \n"
     "    <ParameterList name='Penalty Function'>                                  \n"
@@ -91,13 +90,15 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
     "      <Parameter name='Minimum Value' type='double' value='0.0'/>            \n"
     "    </ParameterList>                                                         \n"
     "  </ParameterList>                                                           \n"
-    "  <ParameterList name='My Internal Thermoelastic Energy'>                    \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>           \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Thermoelastic Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                  \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                 \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>            \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                    \n"
+    "  <ParameterList name='Criteria'>                                            \n"
+    "    <ParameterList name='Internal Thermoelastic Energy'>                     \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>         \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Thermoelastic Energy'/>  \n"
+    "      <ParameterList name='Penalty Function'>                                \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>               \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>          \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                  \n"
+    "      </ParameterList>                                                       \n"
     "    </ParameterList>                                                         \n"
     "  </ParameterList>                                                           \n"
     "  <ParameterList name='Material Model'>                                      \n"
@@ -242,8 +243,9 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
 
   // create objective
   //
+  std::string tMyFunction("Internal Thermoelastic Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<spaceDim>>
-    scalarFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("Objective"));
+    scalarFunction(*mesh, tMeshSets, tDataMap, *params, tMyFunction);
 
   // compute and test objective value
   //

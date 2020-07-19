@@ -60,37 +60,37 @@ private:
      * @brief Initialization of Mass Properties Function
      * @param [in] aMesh mesh database
      * @param [in] aMeshSets side sets database
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
     void initialize (Omega_h::Mesh& aMesh, 
                      Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+                     Teuchos::ParameterList & aProblemParams)
     {
-        auto tMaterialModelInputs = aInputParams.get<Teuchos::ParameterList>("Material Model");
+        auto tMaterialModelInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
         mMaterialDensity = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
 
-        createLeastSquaresFunction(aMesh, aMeshSets, aInputParams);
+        createLeastSquaresFunction(aMesh, aMeshSets, aProblemParams);
     }
 
     /******************************************************************************//**
      * @brief Create the least squares mass properties function
      * @param [in] aMesh mesh database
      * @param [in] aMeshSets side sets database
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
     void createLeastSquaresFunction(Omega_h::Mesh& aMesh, 
                                     Omega_h::MeshSets& aMeshSets,
-                                    Teuchos::ParameterList & aInputParams)
+                                    Teuchos::ParameterList & aProblemParams)
     {
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
-        auto tPropertyNamesTeuchos      = tProblemFunctionName.get<Teuchos::Array<std::string>>("Properties");
-        auto tPropertyWeightsTeuchos    = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
-        auto tPropertyGoldValuesTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
+        auto tPropertyNamesArray      = tFunctionParams.get<Teuchos::Array<std::string>>("Properties");
+        auto tPropertyWeightsArray    = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Weights");
+        auto tPropertyGoldValuesArray = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
 
-        auto tPropertyNames      = tPropertyNamesTeuchos.toVector();
-        auto tPropertyWeights    = tPropertyWeightsTeuchos.toVector();
-        auto tPropertyGoldValues = tPropertyGoldValuesTeuchos.toVector();
+        auto tPropertyNames      = tPropertyNamesArray.toVector();
+        auto tPropertyWeights    = tPropertyWeightsArray.toVector();
+        auto tPropertyGoldValues = tPropertyGoldValuesArray.toVector();
 
         if (tPropertyNames.size() != tPropertyWeights.size())
         {
@@ -768,20 +768,20 @@ public:
      * @param [in] aMesh mesh database
      * @param [in] aMeshSets side sets database
      * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
     MassPropertiesFunction(Omega_h::Mesh& aMesh,
                            Omega_h::MeshSets& aMeshSets,
                            Plato::DataMap & aDataMap,
-                           Teuchos::ParameterList& aInputParams,
+                           Teuchos::ParameterList& aProblemParams,
                            std::string& aName) :
             Plato::Geometric::WorksetBase<PhysicsT>(aMesh),
             mDataMap(aDataMap),
             mFunctionName(aName),
             mMaterialDensity(1.0)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aMesh, aMeshSets, aProblemParams);
     }
 
     /******************************************************************************//**

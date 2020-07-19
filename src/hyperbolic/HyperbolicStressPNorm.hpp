@@ -59,26 +59,24 @@ class StressPNorm :
   public:
     /**************************************************************************/
     StressPNorm(
-        Omega_h::Mesh&          aMesh,
-        Omega_h::MeshSets&      aMeshSets,
-        Plato::DataMap&         aDataMap, 
-        Teuchos::ParameterList& aProblemParams, 
-        Teuchos::ParameterList& aPenaltyParams,
-        std::string&            aFunctionName
+        Omega_h::Mesh          & aMesh,
+        Omega_h::MeshSets      & aMeshSets,
+        Plato::DataMap         & aDataMap, 
+        Teuchos::ParameterList & aProblemParams, 
+        Teuchos::ParameterList & aFunctionParams,
+        std::string            & aFunctionName
     ) :
         Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
         mCubatureRule      (std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
-        mIndicatorFunction (aPenaltyParams),
+        mIndicatorFunction (aFunctionParams.sublist("Penalty Function")),
         mApplyWeighting    (mIndicatorFunction)
     /**************************************************************************/
     {
       Plato::ElasticModelFactory<mSpaceDim> mmfactory(aProblemParams);
       mMaterialModel = mmfactory.create();
 
-      auto params = aProblemParams.get<Teuchos::ParameterList>(aFunctionName);
-
       TensorNormFactory<mNumVoigtTerms, EvaluationType> normFactory;
-      mNorm = normFactory.create(params);
+      mNorm = normFactory.create(aFunctionParams);
     }
 
     /**************************************************************************/

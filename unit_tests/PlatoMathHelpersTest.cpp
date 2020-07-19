@@ -547,7 +547,7 @@ Teuchos::RCP<Plato::CrsMatrixType> createSquareMatrix()
   Plato::Elliptic::VectorFunction<::Plato::Mechanics<spaceDim>>
     tVectorFunction(*mesh, tMeshSets, tDataMap, *gElastostaticsParams, gElastostaticsParams->get<std::string>("PDE Constraint"));
 
-  // compute and test objective value
+  // compute and test gradient_u
   //
   return tVectorFunction.gradient_u(u,z);
 }
@@ -1593,14 +1593,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Elastic Energy'/> \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
-    "  <ParameterList name='My Internal Elastic Energy'>                           \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>            \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                   \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+    "  <ParameterList name='Criteria'>                                             \n"
+    "    <ParameterList name='Internal Elastic Energy'>                            \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/>  \n"
+    "      <ParameterList name='Penalty Function'>                                 \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "      </ParameterList>                                                        \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
     "  <ParameterList name='Elliptic'>                                             \n"
@@ -1618,12 +1619,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
     "</ParameterList>                                                              \n"
   );
 
-  // create objective
+  // create criterion
   //
   Plato::DataMap tDataMap;
   Omega_h::MeshSets tMeshSets;
+  std::string tMyFunction("Internal Elastic Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, tDataMap, *tParams, tParams->get<std::string>("Objective"));
+    eeScalarFunction(*mesh, tMeshSets, tDataMap, *tParams, tMyFunction);
 
   auto dfdx = eeScalarFunction.gradient_x(Plato::Solution(U),z);
 

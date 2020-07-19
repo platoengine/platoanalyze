@@ -32,13 +32,12 @@ private:
     using Plato::WorksetBase<PhysicsT>::mNumNodesPerCell; /*!< number of nodes per cell/element */
     using Plato::WorksetBase<PhysicsT>::mNumDofsPerNode; /*!< number of degree of freedom per node */
     using Plato::WorksetBase<PhysicsT>::mNumSpatialDims; /*!< number of spatial dimensions */
-    using Plato::WorksetBase<PhysicsT>::mNumControl; /*!< number of control variables */
     using Plato::WorksetBase<PhysicsT>::mNumNodes; /*!< total number of nodes in the mesh */
     using Plato::WorksetBase<PhysicsT>::mNumCells; /*!< total number of cells/elements in the mesh */
 
-    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
-    using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal; /*!< number of degree of freedom per cell/element */
-    using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal; /*!< number of degree of freedom per cell/element */
+    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal;
+    using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
+    using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal;
 
     using Residual = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual; /*!< result variables automatic differentiation type */
     using Jacobian = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Jacobian; /*!< state variables automatic differentiation type */
@@ -57,30 +56,29 @@ private:
 private:
     /******************************************************************************//**
      * \brief Initialization of Physics Scalar Function
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
     **********************************************************************************/
     void initialize (Omega_h::Mesh& aMesh, 
                      Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+                     Teuchos::ParameterList & aProblemParams)
     {
         typename PhysicsT::FunctionFactory tFactory;
 
-        auto tProblemDefault = aInputParams.sublist(mFunctionName);
-        // tFunctionType must be the hard-coded type name (e.g. Volume)
+        auto tProblemDefault = aProblemParams.sublist("Criteria").sublist(mFunctionName);
         auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
 
         mScalarFunctionValue =
             tFactory.template createScalarFunction<Residual>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
+                aMesh, aMeshSets, mDataMap, aProblemParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientU =
             tFactory.template createScalarFunction<Jacobian>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
+                aMesh, aMeshSets, mDataMap, aProblemParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientX =
             tFactory.template createScalarFunction<GradientX>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
+                aMesh, aMeshSets, mDataMap, aProblemParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientZ =
             tFactory.template createScalarFunction<GradientZ>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
+                aMesh, aMeshSets, mDataMap, aProblemParams, tFunctionType, mFunctionName);
     }
 
 public:
@@ -89,19 +87,19 @@ public:
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aDataMap PLATO Engine and Analyze data map
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
      * \param [in] aName user defined function name
     **********************************************************************************/
     PhysicsScalarFunction(Omega_h::Mesh& aMesh,
             Omega_h::MeshSets& aMeshSets,
             Plato::DataMap & aDataMap,
-            Teuchos::ParameterList& aInputParams,
+            Teuchos::ParameterList& aProblemParams,
             std::string& aName) :
             Plato::WorksetBase<PhysicsT>(aMesh),
             mDataMap(aDataMap),
             mFunctionName(aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aMesh, aMeshSets, aProblemParams);
     }
 
     /******************************************************************************//**

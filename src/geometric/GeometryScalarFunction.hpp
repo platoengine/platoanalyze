@@ -54,27 +54,26 @@ private:
 private:
     /******************************************************************************//**
      * \brief Initialization of Geometry Scalar Function
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
     **********************************************************************************/
     void initialize (Omega_h::Mesh& aMesh, 
                      Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+                     Teuchos::ParameterList & aProblemParams)
     {
         typename GeometryT::FunctionFactory tFactory;
 
-        auto tProblemDefault = aInputParams.sublist(mFunctionName);
-        // tFunctionType must be the hard-coded type name (e.g. Volume)
-        auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
+        auto tFunctionType = tFunctionParams.get<std::string>("Linear Scalar Function Type", "");
 
         mScalarFunctionValue =
             tFactory.template createScalarFunction<Residual>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
+                aMesh, aMeshSets, mDataMap, aProblemParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientX =
             tFactory.template createScalarFunction<GradientX>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
+                aMesh, aMeshSets, mDataMap, aProblemParams, tFunctionType, mFunctionName);
         mScalarFunctionGradientZ =
             tFactory.template createScalarFunction<GradientZ>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
+                aMesh, aMeshSets, mDataMap, aProblemParams, tFunctionType, mFunctionName);
     }
 
 public:
@@ -83,19 +82,19 @@ public:
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aDataMap PLATO Engine and Analyze data map
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
      * \param [in] aName user defined function name
     **********************************************************************************/
     GeometryScalarFunction(Omega_h::Mesh& aMesh,
             Omega_h::MeshSets& aMeshSets,
             Plato::DataMap & aDataMap,
-            Teuchos::ParameterList& aInputParams,
+            Teuchos::ParameterList& aProblemParams,
             std::string& aName) :
             Plato::Geometric::WorksetBase<GeometryT>(aMesh),
             mDataMap(aDataMap),
             mFunctionName(aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aMesh, aMeshSets, aProblemParams);
     }
 
     /******************************************************************************//**

@@ -35,10 +35,10 @@ int main(int aArgc, char **aArgv)
     MPI_Comm tLocalComm;
     tPlatoInterface->getLocalComm(tLocalComm);
 
-    MPMD_App* tMyApp = nullptr;
+    Plato::MPMD_App* tMyApp = nullptr;
     try
     {
-      tMyApp = new MPMD_App(aArgc, aArgv, tLocalComm);
+      tMyApp = new Plato::MPMD_App(aArgc, aArgv, tLocalComm);
     }
     catch(...)
     {

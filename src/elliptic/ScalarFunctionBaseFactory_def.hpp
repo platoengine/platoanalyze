@@ -18,41 +18,40 @@ namespace Elliptic
      * \param [in] aMesh mesh database
      * \param [in] aMeshSets side sets database
      * \param [in] aDataMap PLATO Engine and Analyze data map
-     * \param [in] aInputParams parameter input
+     * \param [in] aProblemParams parameter input
      * \param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     template <typename PhysicsT>
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> 
-    ScalarFunctionBaseFactory<PhysicsT>::create(Omega_h::Mesh& aMesh,
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap & aDataMap,
-           Teuchos::ParameterList& aInputParams,
-           std::string& aFunctionName)
+    ScalarFunctionBaseFactory<PhysicsT>::create(
+        Omega_h::Mesh          & aMesh,
+        Omega_h::MeshSets      & aMeshSets,
+        Plato::DataMap         & aDataMap,
+        Teuchos::ParameterList & aProblemParams,
+        std::string            & aFunctionName)
     {
-        auto tProblemFunction = aInputParams.sublist(aFunctionName);
-        auto tFunctionType = tProblemFunction.get<std::string>("Type", "Not Defined");
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(aFunctionName);
+        auto tFunctionType = tFunctionParams.get<std::string>("Type", "Not Defined");
 
         if(tFunctionType == "Weighted Sum")
         {
-            return std::make_shared<WeightedSumFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<WeightedSumFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aProblemParams, aFunctionName);
         }
         else if(tFunctionType == "Division")
         {
-            return std::make_shared<DivisionFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<DivisionFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aProblemParams, aFunctionName);
         }
         else if(tFunctionType == "Least Squares")
         {
-            return std::make_shared<LeastSquaresFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<LeastSquaresFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aProblemParams, aFunctionName);
         }
         else if(tFunctionType == "Scalar Function")
         {
-            return std::make_shared<PhysicsScalarFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<PhysicsScalarFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aProblemParams, aFunctionName);
         }
         else
         {
-            const std::string tErrorString = std::string("Unknown function Type '") + tFunctionType +
-                            "' specified in function name " + aFunctionName + " ParameterList";
-            THROWERR(tErrorString);
+            return nullptr;
         }
     }
 

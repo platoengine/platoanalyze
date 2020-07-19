@@ -28,7 +28,7 @@ struct FunctionFactory{
     std::string strScalarFunctionName )
   {
     if( strScalarFunctionType == "Volume" ){
-      auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
+      auto penaltyParams = aParamList.sublist("Criteria").sublist(strScalarFunctionName).sublist("Penalty Function");
       std::string penaltyType = penaltyParams.get<std::string>("Type");
       if( penaltyType == "SIMP" ){
         return std::make_shared<Plato::Geometric::Volume<EvaluationType, Plato::MSIMP>>(aMesh,aMeshSets,aDataMap,aParamList,penaltyParams,strScalarFunctionName);
@@ -42,7 +42,7 @@ struct FunctionFactory{
         throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
       }
     } else {
-      throw std::runtime_error("Unknown 'Objective' specified in 'Plato Problem' ParameterList");
+      return nullptr;
     }
   }
 };
