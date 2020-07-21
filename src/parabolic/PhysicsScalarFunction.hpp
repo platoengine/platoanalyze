@@ -66,8 +66,8 @@ private:
     {
         typename PhysicsT::FunctionFactory tFactory;
 
-        auto tProblemDefault = aInputParams.sublist(mFunctionName);
-        auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", ""); // Must be a hardcoded type name (e.g. Volume)
+        auto tProblemDefault = aInputParams.sublist("Criteria").sublist(mFunctionName);
+        auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
 
         mScalarFunctionValue =
             tFactory.template createScalarFunctionParabolic<Residual>(

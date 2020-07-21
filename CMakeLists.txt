@@ -220,7 +220,7 @@ if (PLATOANALYZE_3D)
 endif()
 
 option(ELLIPTIC "Compile with Elliptic physics" ON)
-option(PARABOLIC "Compile with Parabolic physics" OFF)
+option(PARABOLIC "Compile with Parabolic physics" ON)
 option(HYPERBOLIC "Compile with Hyperbolic physics" ON)
 option(STABILIZED "Compile with Stabilized VMS physics" OFF)
 option(PLASTICITY "Compile with Plasticity physics" OFF)

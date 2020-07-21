@@ -27,24 +27,36 @@ namespace Plato
           std::string              strVectorFunctionType
       )
       {
+        if( !aProblemParams.isSublist(strVectorFunctionType) )
+        {
+            std::cout << " Warning: '" << strVectorFunctionType << "' ParameterList not found" << std::endl;
+            std::cout << " Warning: Using defaults. " << std::endl;
+        }
         auto tFunctionParams = aProblemParams.sublist(strVectorFunctionType);
         if( strVectorFunctionType == "Hyperbolic" )
         {
-            std::string tPenaltyType = tFunctionParams.sublist("Penalty Function").get<std::string>("Type");
+            if( !tFunctionParams.isSublist("Penalty Function") )
+            {
+                std::cout << " Warning: 'Penalty Function' ParameterList not found" << std::endl;
+                std::cout << " Warning: Using defaults. " << std::endl;
+            }
+            auto tPenaltyParams = tFunctionParams.sublist("Penalty Function");
+            std::string tPenaltyType = tPenaltyParams.get<std::string>("Type");
             if( tPenaltyType == "SIMP" )
             {
+                std::cout << tFunctionParams << std::endl;
                 return std::make_shared<TransientMechanicsResidual<EvaluationType, Plato::MSIMP>>
-                         (aMesh, aMeshSets, aDataMap, aProblemParams, tFunctionParams);
+                         (aMesh, aMeshSets, aDataMap, aProblemParams, tPenaltyParams);
             } else
             if( tPenaltyType == "RAMP" )
             {
                 return std::make_shared<TransientMechanicsResidual<EvaluationType, Plato::RAMP>>
-                         (aMesh, aMeshSets, aDataMap, aProblemParams, tFunctionParams);
+                         (aMesh, aMeshSets, aDataMap, aProblemParams, tPenaltyParams);
             } else
             if( tPenaltyType == "Heaviside" )
             {
                 return std::make_shared<TransientMechanicsResidual<EvaluationType, Plato::Heaviside>>
-                         (aMesh, aMeshSets, aDataMap, aProblemParams, tFunctionParams);
+                         (aMesh, aMeshSets, aDataMap, aProblemParams, tPenaltyParams);
             } else {
                 THROWERR("Unknown 'Type' specified in 'Penalty Function' ParameterList");
             }
