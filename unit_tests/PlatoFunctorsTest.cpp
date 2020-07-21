@@ -72,7 +72,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeStateWorkset)
     tResidual = std::make_shared<Plato::Elliptic::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
     tJacobianState = std::make_shared<Plato::Elliptic::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
-    tElastostatics.allocateResidual(tResidual, tJacobianState);
+    tElastostatics.setEvaluator(tResidual, tJacobianState);
 
     // SET PROBLEM-RELATED DIMENSIONS
     Plato::OrdinalType tNumCells = tMesh.get()->nelems();
@@ -114,7 +114,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ComputeStateWorkset)
     tResidualSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
     tJacobianStateSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    tElastodynamics.allocateResidual(tResidualSD, tJacobianStateSD);
+    tElastodynamics.setEvaluator(tResidualSD, tJacobianStateSD);
 
     tTotalNumDofs = static_cast<Plato::OrdinalType>(2) * tNumVertices * tSpaceDim;
     tNumDofsPerCell = static_cast<Plato::OrdinalType>(2) * tSpaceDim * tNumNodesPerCell;
@@ -187,7 +187,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStrainsToComplexStrains)
     tResidual = std::make_shared<Plato::Elliptic::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
     tJacobianState = std::make_shared<Plato::Elliptic::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
-    tElastostatics.allocateResidual(tResidual, tJacobianState);
+    tElastostatics.setEvaluator(tResidual, tJacobianState);
 
     // SET PROBLEM-RELATED DIMENSIONS
     Plato::OrdinalType tNumCells = tMesh.get()->nelems();
@@ -252,7 +252,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStrainsToComplexStrains)
     tResidualSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
     tJacobianStateSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    tElastodynamics.allocateResidual(tResidualSD, tJacobianStateSD);
+    tElastodynamics.setEvaluator(tResidualSD, tJacobianStateSD);
 
     // ALLOCATE STATE VECTOR FOR ELASTODYNAMICS EXAMPLE
     tTotalNumDofs = static_cast<Plato::OrdinalType>(2) * tNumVertices * tSpaceDim;
@@ -336,7 +336,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStressToComplexStress)
     tResidual = std::make_shared<Plato::Elliptic::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
     tJacobianState = std::make_shared<Plato::Elliptic::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
-    tElastostatics.allocateResidual(tResidual, tJacobianState);
+    tElastostatics.setEvaluator(tResidual, tJacobianState);
     
     // SET PROBLEM-RELATED DIMENSIONS
     Plato::OrdinalType tNumCells = tMesh.get()->nelems();
@@ -414,7 +414,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearStressToComplexStress)
     tResidualSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
     tJacobianStateSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    tElastodynamics.allocateResidual(tResidualSD, tJacobianStateSD);
+    tElastodynamics.setEvaluator(tResidualSD, tJacobianStateSD);
 
     // ALLOCATE STATE VECTOR FOR ELASTODYNAMICS EXAMPLE
     tTotalNumDofs = static_cast<Plato::OrdinalType>(2) * tNumVertices * tSpaceDim;
@@ -504,7 +504,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearElasticForcesToComplexElas
     tResidual = std::make_shared<Plato::Elliptic::ElastostaticResidual<ResidualT, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
     tJacobianState = std::make_shared<Plato::Elliptic::ElastostaticResidual<JacobianU, Plato::MSIMP>>(*tMesh, tMeshSets, tDataMap, *params, params->sublist("Elastostatics"));
-    tElastostatics.allocateResidual(tResidual, tJacobianState);
+    tElastostatics.setEvaluator(tResidual, tJacobianState);
 
     // SET PROBLEM-RELATED DIMENSIONS
     Plato::OrdinalType tNumCells = tMesh.get()->nelems();
@@ -591,7 +591,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CompareLinearElasticForcesToComplexElas
     tResidualSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<SD_JacobianU>> tJacobianStateSD;
     tJacobianStateSD = std::make_shared<Plato::StructuralDynamicsResidual<SD_JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    tElastodynamics.allocateResidual(tResidualSD, tJacobianStateSD);
+    tElastodynamics.setEvaluator(tResidualSD, tJacobianStateSD);
 
     // ALLOCATE STATE VECTOR FOR ELASTODYNAMICS EXAMPLE
     tTotalNumDofs = static_cast<Plato::OrdinalType>(2) * tNumVertices * tSpaceDim;

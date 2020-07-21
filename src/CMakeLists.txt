@@ -61,6 +61,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     elliptic/ScalarFunctionBaseFactory.cpp 
     elliptic/PhysicsScalarFunction.cpp 
     elliptic/MassMoment.cpp 
+    elliptic/MassPropertiesFunction.cpp
     elliptic/FluxPNorm.cpp 
     elliptic/StressPNorm.cpp 
     elliptic/EMStressPNorm.cpp 

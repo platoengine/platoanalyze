@@ -511,7 +511,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicCompliance)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateValue(tResidual);
+    tScalarFunction.setEvaluator(tResidual);
 
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
@@ -559,7 +559,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradZ)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateGradientZ(tJacobianControl);
+    tScalarFunction.setEvaluator(tJacobianControl);
 
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
@@ -619,7 +619,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradX)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateGradientX(tJacobianConfig);
+    tScalarFunction.setEvaluator(tJacobianConfig);
 
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
@@ -678,7 +678,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DynamicComplianceGradU)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateGradientU(tJacobianState);
+    tScalarFunction.setEvaluator(tJacobianState);
 
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
@@ -753,7 +753,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeValue)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateValue(tResidual);
+    tScalarFunction.setEvaluator(tResidual);
 
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
@@ -801,7 +801,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradZ)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateGradientZ(tJacobianControl);
+    tScalarFunction.setEvaluator(tJacobianControl);
 
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
@@ -858,7 +858,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradU)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateGradientU(tJacobianState);
+    tScalarFunction.setEvaluator(tJacobianState);
 
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
@@ -911,7 +911,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ExpVolumeGradX)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateGradientX(tJacobianConfig);
+    tScalarFunction.setEvaluator(tJacobianConfig);
 
     // ALLOCATE STATES
     const Plato::OrdinalType tNumDofsPerNode = 6;
@@ -1080,7 +1080,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StructuralDynamicsResidual)
     tResidual = std::make_shared<Plato::StructuralDynamicsResidual<ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
     tJacobianState = std::make_shared<Plato::StructuralDynamicsResidual<JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    tVectorFunction.allocateResidual(tResidual, tJacobianState);
+    tVectorFunction.setEvaluator(tResidual, tJacobianState);
 
     // TEST SIZE FUNCTION
     Plato::OrdinalType tSizeGold = 162;
@@ -1162,7 +1162,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointStructuralDynamicsResidual)
     tResidual = std::make_shared<Plato::AdjointStructuralDynamicsResidual<ResidualT, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<JacobianU>> tJacobianState;
     tJacobianState = std::make_shared<Plato::AdjointStructuralDynamicsResidual<JacobianU, Plato::MSIMP, Plato::HyperbolicTangentProjection>>(*tMesh, tMeshSets, tDataMap);
-    tVectorFunction.allocateResidual(tResidual, tJacobianState);
+    tVectorFunction.setEvaluator(tResidual, tJacobianState);
 
     // TEST SIZE FUNCTION
     Plato::OrdinalType tSizeGold = 162;
@@ -1320,7 +1320,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfitValue)
     
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateValue(tResidual);
+    tScalarFunction.setEvaluator(tResidual);
 
     // ALLOCATE CONTROLS FOR ELASTOSTATICS EXAMPLE
     const Plato::OrdinalType tNumControls = tMesh->nverts();
@@ -1377,7 +1377,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradZ)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateGradientZ(tGradControl);
+    tScalarFunction.setEvaluator(tGradControl);
 
     // ALLOCATE CONTROLS FOR ELASTOSTATICS EXAMPLE
     const Plato::OrdinalType tNumControls = tMesh->nverts();
@@ -1440,7 +1440,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradX)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateGradientX(tJacobianConfig);
+    tScalarFunction.setEvaluator(tJacobianConfig);
 
     // ALLOCATE CONTROLS FOR ELASTOSTATICS EXAMPLE
     const Plato::OrdinalType tNumControls = tMesh->nverts();
@@ -1503,7 +1503,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FrequencyResponseMisfit_GradU)
 
     // ALLOCATE SCALAR FUNCTION
     Plato::Elliptic::PhysicsScalarFunction<Plato::StructuralDynamics<tSpaceDim>> tScalarFunction(*tMesh, tDataMap);
-    tScalarFunction.allocateGradientU(tJacobianState);
+    tScalarFunction.setEvaluator(tJacobianState);
 
     // ALLOCATE CONTROLS FOR ELASTOSTATICS EXAMPLE
     const Plato::OrdinalType tNumControls = tMesh->nverts();
@@ -1565,7 +1565,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StructuralDynamicsSolve)
     // ALLOCATE VECTOR FUNCTION
     std::shared_ptr<Plato::Elliptic::VectorFunction<Plato::StructuralDynamics<tSpaceDim>>> tVectorFunction =
         std::make_shared<Plato::Elliptic::VectorFunction<Plato::StructuralDynamics<tSpaceDim>>>(*tMesh, tDataMap);
-    tVectorFunction->allocateResidual(tResidual, tJacobianState);
+    tVectorFunction->setEvaluator(tResidual, tJacobianState);
 
     // ALLOCATE STRUCTURAL DYNAMICS PROBLEM
     Plato::StructuralDynamicsProblem<Plato::StructuralDynamics<tSpaceDim>> tProblem(*tMesh, tVectorFunction);
@@ -1651,7 +1651,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AdjointStructuralDynamicsSolve)
     // ALLOCATE VECTOR FUNCTION
     std::shared_ptr<Plato::Elliptic::VectorFunction<Plato::StructuralDynamics<tSpaceDim>>> tVectorFunction =
         std::make_shared<Plato::Elliptic::VectorFunction<Plato::StructuralDynamics<tSpaceDim>>>(*tMesh, tDataMap);
-    tVectorFunction->allocateResidual(tResidual, tJacobianState);
+    tVectorFunction->setEvaluator(tResidual, tJacobianState);
 
     // ALLOCATE ADJOINT STRUCTURAL DYNAMICS PROBLEM
     Plato::StructuralDynamicsProblem<Plato::StructuralDynamics<tSpaceDim>> tProblem(*tMesh, tVectorFunction);

@@ -162,8 +162,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     * \param [in] aJacobian Jacobian evaluator
     *
     ******************************************************************************/
-    void allocateResidual(const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Residual>>& aResidual,
-                          const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Jacobian>>& aJacobian)
+    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Residual>>& aResidual,
+                      const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Jacobian>>& aJacobian)
     {
         mVectorFunctionResidual = aResidual;
         mVectorFunctionJacobianU = aJacobian;
@@ -175,7 +175,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     * \param [in] aGradientZ partial derivative with respect to control evaluator
     *
     ******************************************************************************/
-    void allocateJacobianZ(const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientZ>>& aGradientZ)
+    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientZ>>& aGradientZ)
     {
         mVectorFunctionJacobianZ = aGradientZ; 
     }
@@ -186,7 +186,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     * \param [in] GradientX partial derivative with respect to configuration evaluator
     *
     ******************************************************************************/
-    void allocateJacobianX(const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientX>>& aGradientX)
+    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientX>>& aGradientX)
     {
         mVectorFunctionJacobianX = aGradientX; 
     }

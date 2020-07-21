@@ -124,8 +124,9 @@ public:
      * \brief Allocate scalar function using the residual automatic differentiation type
      * \param [in] aInput scalar function
     **********************************************************************************/
-    void allocateValue(const std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<Residual>>& aInput)
+    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<Residual>>& aInput)
     {
+        mScalarFunctionValue = nullptr; // ensures shared_ptr is decremented
         mScalarFunctionValue = aInput;
     }
 
@@ -133,8 +134,9 @@ public:
      * \brief Allocate scalar function using the Jacobian automatic differentiation type
      * \param [in] aInput scalar function
     **********************************************************************************/
-    void allocateGradientU(const std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<Jacobian>>& aInput)
+    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<Jacobian>>& aInput)
     {
+        mScalarFunctionGradientU = nullptr; // ensures shared_ptr is decremented
         mScalarFunctionGradientU = aInput;
     }
 
@@ -142,8 +144,9 @@ public:
      * \brief Allocate scalar function using the GradientZ automatic differentiation type
      * \param [in] aInput scalar function
     **********************************************************************************/
-    void allocateGradientZ(const std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<GradientZ>>& aInput)
+    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<GradientZ>>& aInput)
     {
+        mScalarFunctionGradientZ = nullptr; // ensures shared_ptr is decremented
         mScalarFunctionGradientZ = aInput;
     }
 
@@ -151,8 +154,9 @@ public:
      * \brief Allocate scalar function using the GradientX automatic differentiation type
      * \param [in] aInput scalar function
     **********************************************************************************/
-    void allocateGradientX(const std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<GradientX>>& aInput)
+    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<GradientX>>& aInput)
     {
+        mScalarFunctionGradientX = nullptr; // ensures shared_ptr is decremented
         mScalarFunctionGradientX = aInput;
     }
 
