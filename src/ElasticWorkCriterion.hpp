@@ -225,9 +225,10 @@ private:
     void parsePenaltyModelParams(Teuchos::ParameterList &aInputParams)
     {
         auto tFunctionName = this->getName();
-        if(aInputParams.isSublist(tFunctionName) == true)
+        if(aInputParams.sublist("Criteria").isSublist(tFunctionName) == true)
         {
-            Teuchos::ParameterList tInputData = aInputParams.sublist(tFunctionName);
+            Teuchos::ParameterList tFunctionParams = aInputParams.sublist("Criteria").sublist(tFunctionName);
+            Teuchos::ParameterList tInputData = tFunctionParams.sublist("Penalty Function");
             mPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
             mMinErsatz = tInputData.get<Plato::Scalar>("Minimum Value", 1e-9);
             mAdditiveContinuationParam = tInputData.get<Plato::Scalar>("Additive Continuation", 1.1);
