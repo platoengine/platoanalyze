@@ -63,7 +63,7 @@ private:
         typename GeometryT::FunctionFactory tFactory;
 
         auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
-        auto tFunctionType = tFunctionParams.get<std::string>("Linear Scalar Function Type", "");
+        auto tFunctionType = tFunctionParams.get<std::string>("Scalar Function Type", "");
 
         mScalarFunctionValue =
             tFactory.template createScalarFunction<Residual>(

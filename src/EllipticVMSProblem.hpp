@@ -740,7 +740,7 @@ private:
                 TEUCHOS_TEST_FOR_EXCEPTION(!tEntry.isList(), std::logic_error,
                   " Parameter in Criteria block not valid.  Expect lists only.");
 
-                if( tCriteriaParams.sublist(tName).get<std::string>("Type") == "Linear Scalar Function" )
+                if( tCriteriaParams.sublist(tName).get<bool>("Linear", false) == true )
                 {
                     auto tCriterion = tLinearFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aProblemParams, tName);
                     if( tCriterion != nullptr )
@@ -748,8 +748,7 @@ private:
                         mLinearCriteria[tName] = tCriterion;
                     }
                 }
-
-                if( tCriteriaParams.sublist(tName).get<std::string>("Type") == "Scalar Function" )
+                else
                 {
                     auto tCriterion = tNonlinearFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aProblemParams, tName);
                     if( tCriterion != nullptr )

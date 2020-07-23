@@ -117,20 +117,20 @@ namespace Parabolic
                     TEUCHOS_TEST_FOR_EXCEPTION(!tEntry.isList(), std::logic_error,
                       " Parameter in Criteria block not valid.  Expect lists only.");
 
-                    if( tCriteriaParams.sublist(tName).get<std::string>("Type") == "Scalar Function" )
-                    {
-                        auto tCriterion = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aProblemParams, tName);
-                        if( tCriterion != nullptr )
-                        {
-                            mCriteria[tName] = tCriterion;
-                        }
-                    }
-                    if( tCriteriaParams.sublist(tName).get<std::string>("Type") == "Linear Scalar Function" )
+                    if( tCriteriaParams.sublist(tName).get<bool>("Linear", false) == true )
                     {
                         auto tCriterion = tLinearFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aProblemParams, tName);
                         if( tCriterion != nullptr )
                         {
                             mLinearCriteria[tName] = tCriterion;
+                        }
+                    }
+                    else
+                    {
+                        auto tCriterion = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aProblemParams, tName);
+                        if( tCriterion != nullptr )
+                        {
+                            mCriteria[tName] = tCriterion;
                         }
                     }
                 }

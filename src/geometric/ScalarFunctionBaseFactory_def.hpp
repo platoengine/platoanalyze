@@ -45,7 +45,7 @@ namespace Geometric
         {
             return std::make_shared<LeastSquaresFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aProblemParams, aFunctionName);
         }
-        else if(tFunctionType == "Linear Scalar Function")
+        else if(tFunctionType == "Scalar Function")
         {
             return std::make_shared<GeometryScalarFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aProblemParams, aFunctionName);
         }
