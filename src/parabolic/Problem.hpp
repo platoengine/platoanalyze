@@ -93,8 +93,8 @@ namespace Parabolic
             // parse boundary constraints
             //
             Plato::EssentialBCs<SimplexPhysics>
-                tEssentialBoundaryConditions(aParamList.sublist("Essential Boundary Conditions",false));
-            tEssentialBoundaryConditions.get(aMeshSets, mStateBcDofs, mStateBcValues);
+                tEssentialBoundaryConditions(aParamList.sublist("Essential Boundary Conditions",false), aMeshSets);
+            tEssentialBoundaryConditions.get(mStateBcDofs, mStateBcValues);
 
             // parse constraint
             //

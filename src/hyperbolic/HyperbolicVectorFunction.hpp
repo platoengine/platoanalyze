@@ -166,6 +166,16 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
       return mVectorFunctionResidual->getDofNames();
     }
 
+    /**************************************************************************//**
+    *
+    * @brief Return state dot names
+    *
+    ******************************************************************************/
+    std::vector<std::string> getDofDotNames() const
+    {
+      return mVectorFunctionResidual->getDofDotNames();
+    }
+
     /**************************************************************************/
     Plato::ScalarVector
     value(const Plato::ScalarVector & aState,

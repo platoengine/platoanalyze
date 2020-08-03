@@ -7,6 +7,7 @@
 #include "SimplexMechanics.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/PlatoSolverFactory.hpp"
+#include "ComputedField.hpp"
 
 #include "hyperbolic/Newmark.hpp"
 #include "hyperbolic/HyperbolicMechanics.hpp"
@@ -52,8 +53,12 @@ namespace Plato
         Teuchos::RCP<Plato::CrsMatrixType> mJacobianV;
         Teuchos::RCP<Plato::CrsMatrixType> mJacobianA;
 
-        Plato::LocalOrdinalVector mVelocityBcDofs;
-        Plato::ScalarVector mVelocityBcValues;
+        Teuchos::RCP<Plato::ComputedFields<SpatialDim>> mComputedFields;
+
+        Plato::EssentialBCs<SimplexPhysics> mStateBoundaryConditions;
+
+        Plato::LocalOrdinalVector mStateBcDofs;
+        Plato::ScalarVector mStateBcValues;
 
         rcp<Plato::AbstractSolver> mSolver;
       public:
@@ -77,14 +82,10 @@ namespace Plato
             mAcceleration ("Acceleration", mNumSteps, mPDEConstraint.size()),
             mJacobianU(Teuchos::null),
             mJacobianV(Teuchos::null),
-            mJacobianA(Teuchos::null)
+            mJacobianA(Teuchos::null),
+            mStateBoundaryConditions(aParamList.sublist("Displacement Boundary Conditions",false), aMeshSets)
         /******************************************************************************/
         {
-            // parse constraints
-            //
-            Plato::EssentialBCs<SimplexPhysics>
-                tVelocityBoundaryConditions(aParamList.sublist("Velocity Boundary Conditions",false));
-            tVelocityBoundaryConditions.get(aMeshSets, mVelocityBcDofs, mVelocityBcValues);
 
             // parse objective
             //
@@ -98,6 +99,70 @@ namespace Plato
                 mAdjoints_U = Plato::ScalarMultiVector("MyAdjoint U", mNumSteps, tLength);
                 mAdjoints_V = Plato::ScalarMultiVector("MyAdjoint V", mNumSteps, tLength);
                 mAdjoints_A = Plato::ScalarMultiVector("MyAdjoint A", mNumSteps, tLength);
+            }
+
+            // parse computed fields
+            //
+            if(aParamList.isSublist("Computed Fields"))
+            {
+              mComputedFields = Teuchos::rcp(new Plato::ComputedFields<SpatialDim>(aMesh, aParamList.sublist("Computed Fields")));
+            }
+
+            // parse initial state
+            //
+            if(aParamList.isSublist("Initial State"))
+            {
+                if(mComputedFields == Teuchos::null) {
+                  THROWERR("No 'Computed Fields' have been defined");
+                }
+
+                Plato::ScalarVector tInitialState = Kokkos::subview(mDisplacement, 0, Kokkos::ALL());
+                Plato::ScalarVector tInitialStateDot = Kokkos::subview(mVelocity, 0, Kokkos::ALL());
+
+                auto tDofNames = mPDEConstraint.getDofNames();
+                auto tDofDotNames = mPDEConstraint.getDofDotNames();
+
+                auto tInitStateParams = aParamList.sublist("Initial State");
+                for (auto i = tInitStateParams.begin(); i != tInitStateParams.end(); ++i) {
+                    const auto &tEntry = tInitStateParams.entry(i);
+                    const auto &tName  = tInitStateParams.name(i);
+
+                    if (tEntry.isList())
+                    {
+                        auto& tStateList = tInitStateParams.sublist(tName);
+                        auto tFieldName = tStateList.get<std::string>("Computed Field");
+                        int tDofIndex = -1;
+                        for (int j = 0; j < tDofNames.size(); ++j)
+                        {
+                            if (tDofNames[j] == tName) {
+                               tDofIndex = j;
+                               break;
+                            }
+                        }
+                        if (tDofIndex != -1)
+                        {
+                            mComputedFields->get(tFieldName, tDofIndex, tDofNames.size(), tInitialState);
+                        }
+                        else
+                        {
+                            for (int j = 0; j < tDofDotNames.size(); ++j)
+                            {
+                                if (tDofDotNames[j] == tName) {
+                                   tDofIndex = j;
+                                   break;
+                                }
+                            }
+                            if (tDofIndex != -1)
+                            {
+                                mComputedFields->get(tFieldName, tDofIndex, tDofDotNames.size(), tInitialStateDot);
+                            }
+                            else
+                            {
+                                THROWERR("Attempted to initialize state variable that doesn't exist.");
+                            }
+                        }
+                    }
+                }
             }
 
             Plato::SolverFactory tSolverFactory(aParamList.sublist("Linear Solver"));
@@ -145,25 +210,20 @@ namespace Plato
             Kokkos::deep_copy(mAcceleration, tStateDotDot);
         }
 
+        /******************************************************************************/
         void applyConstraints(
           const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
-          const Plato::ScalarVector & aVector){}
-
-        /******************************************************************************/
-        void applyVelocityConstraints(
-          const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
-          const Plato::ScalarVector & aVector,
-          Plato::Scalar aScale
+          const Plato::ScalarVector & aVector
         )
         /******************************************************************************/
         {
             if(mJacobianU->isBlockMatrix())
             {
-                Plato::applyBlockConstraints<mNumDofsPerNode>(aMatrix, aVector, mVelocityBcDofs, mVelocityBcValues, aScale);
+                Plato::applyBlockConstraints<mNumDofsPerNode>(aMatrix, aVector, mStateBcDofs, mStateBcValues);
             }
             else
             {
-                Plato::applyConstraints<mNumDofsPerNode>(aMatrix, aVector, mVelocityBcDofs, mVelocityBcValues, aScale);
+                Plato::applyConstraints<mNumDofsPerNode>(aMatrix, aVector, mStateBcDofs, mStateBcValues);
             }
         }
         void applyBoundaryLoads(const Plato::ScalarVector & aForce){}
@@ -186,7 +246,9 @@ namespace Plato
             mResidual  = mPDEConstraint.value(tDisplacementInit, tVelocityInit, tAccelerationInit, aControl, mTimeStep);
             mDataMap.saveState();
 
+            Plato::Scalar tCurrentTime(0.0);
             for(Plato::OrdinalType tStepIndex = 1; tStepIndex < mNumSteps; tStepIndex++) {
+              tCurrentTime += mTimeStep;
               Plato::ScalarVector tDisplacementPrev = Kokkos::subview(mDisplacement, tStepIndex-1, Kokkos::ALL());
               Plato::ScalarVector tVelocityPrev     = Kokkos::subview(mVelocity,     tStepIndex-1, Kokkos::ALL());
               Plato::ScalarVector tAccelerationPrev = Kokkos::subview(mAcceleration, tStepIndex-1, Kokkos::ALL());
@@ -237,7 +299,8 @@ namespace Plato
               // R_{u,u^N} += R_{u,a^N} R_{a,u^N}
               Plato::blas1::axpy(-tR_au, mJacobianA->entries(), mJacobianU->entries());
 
-              this->applyVelocityConstraints(mJacobianU, mResidual, mTimeStep);
+              mStateBoundaryConditions.get(mStateBcDofs, mStateBcValues, tCurrentTime);
+              this->applyConstraints(mJacobianU, mResidual);
 
               Plato::ScalarVector tDeltaD("increment", tDisplacement.extent(0));
               Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);

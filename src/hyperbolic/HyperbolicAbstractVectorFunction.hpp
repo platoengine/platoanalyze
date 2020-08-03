@@ -22,20 +22,24 @@ protected:
     Plato::DataMap& mDataMap;
     Omega_h::MeshSets& mMeshSets;
     std::vector<std::string> mDofNames;
+    std::vector<std::string> mDofDotNames;
 
 public:
     /******************************************************************************/
     explicit 
     AbstractVectorFunction(
-        Omega_h::Mesh& aMesh, 
-        Omega_h::MeshSets& aMeshSets,
-        Plato::DataMap& aDataMap,
-        std::vector<std::string> aStateNames) :
+        Omega_h::Mesh            & aMesh, 
+        Omega_h::MeshSets        & aMeshSets,
+        Plato::DataMap           & aDataMap,
+        std::vector<std::string>   aStateNames,
+        std::vector<std::string>   aStateDotNames
+    ) :
     /******************************************************************************/
             mMesh(aMesh),
             mDataMap(aDataMap),
             mMeshSets(aMeshSets),
-            mDofNames(aStateNames)
+            mDofNames(aStateNames),
+            mDofDotNames(aStateDotNames)
     {
     }
     /******************************************************************************/
@@ -66,6 +70,14 @@ public:
     decltype(mDofNames) getDofNames() const
     {
         return (mDofNames);
+    }
+
+    /****************************************************************************//**
+    * \brief Return reference to state dot index map
+    ********************************************************************************/
+    decltype(mDofDotNames) getDofDotNames() const
+    {
+        return (mDofDotNames);
     }
 
 

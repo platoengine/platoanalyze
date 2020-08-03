@@ -71,7 +71,8 @@ class TransientMechanicsResidual :
       Teuchos::ParameterList& aProblemParams,
       Teuchos::ParameterList& aPenaltyParams) :
      Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap,
-        {"Displacement X", "Displacement Y", "Displacement Z"}),
+        {"Displacement X", "Displacement Y", "Displacement Z"},
+        {"Velocity X",     "Velocity Y",     "Velocity Z"    }),
      mIndicatorFunction(aPenaltyParams),
      mApplyStressWeighting(mIndicatorFunction),
      mApplyMassWeighting(mIndicatorFunction),
