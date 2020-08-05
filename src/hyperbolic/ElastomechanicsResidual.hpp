@@ -115,8 +115,10 @@ class TransientMechanicsResidual :
               const Plato::ScalarMultiVectorT< ControlScalarType     > & aControl,
               const Plato::ScalarArray3DT    < ConfigScalarType      > & aConfig,
                     Plato::ScalarMultiVectorT< ResultScalarType      > & aResult,
-                    Plato::Scalar aTimeStep = 0.0) const
+                    Plato::Scalar aTimeStep = 0.0,
+                    Plato::Scalar aCurrentTime = 0.0
     /**************************************************************************/
+    ) const override
     {
       auto tNumCells = mMesh.nelems();
 
@@ -199,7 +201,7 @@ class TransientMechanicsResidual :
 
       if( mBoundaryLoads != nullptr )
       {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0 );
+          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0, aCurrentTime );
       }
     }
 };

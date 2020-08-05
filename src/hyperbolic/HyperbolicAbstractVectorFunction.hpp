@@ -89,7 +89,8 @@ public:
              const Plato::ScalarMultiVectorT< typename EvaluationType::ControlScalarType     > & aControl,
              const Plato::ScalarArray3DT    < typename EvaluationType::ConfigScalarType      > & aConfig,
                    Plato::ScalarMultiVectorT< typename EvaluationType::ResultScalarType      > & aResult,
-             Plato::Scalar aTimeStep = 0.0) const = 0;
+                   Plato::Scalar aTimeStep = 0.0,
+                   Plato::Scalar aCurrentTime = 0.0) const = 0;
     /******************************************************************************/
 };
 

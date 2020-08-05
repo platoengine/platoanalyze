@@ -178,12 +178,15 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Plato::ScalarVector
-    value(const Plato::ScalarVector & aState,
-          const Plato::ScalarVector & aStateDot,
-          const Plato::ScalarVector & aStateDotDot,
-          const Plato::ScalarVector & aControl,
-          Plato::Scalar aTimeStep = 0.0) const
+    value(
+      const Plato::ScalarVector & aState,
+      const Plato::ScalarVector & aStateDot,
+      const Plato::ScalarVector & aStateDotDot,
+      const Plato::ScalarVector & aControl,
+            Plato::Scalar         aTimeStep,
+            Plato::Scalar         aCurrentTime = 0.0
     /**************************************************************************/
+    ) const
     {
       using ConfigScalar      = typename Residual::ConfigScalarType;
       using StateScalar       = typename Residual::StateScalarType;
@@ -223,7 +226,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionResidual->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tResidual, aTimeStep );
+      mVectorFunctionResidual->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tResidual, aTimeStep, aCurrentTime );
 
       // create and assemble to return view
       //
@@ -235,12 +238,15 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_x(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aStateDot,
-               const Plato::ScalarVector & aStateDotDot,
-               const Plato::ScalarVector & aControl,
-               Plato::Scalar aTimeStep = 0.0) const
+    gradient_x(
+      const Plato::ScalarVector & aState,
+      const Plato::ScalarVector & aStateDot,
+      const Plato::ScalarVector & aStateDotDot,
+      const Plato::ScalarVector & aControl,
+            Plato::Scalar         aTimeStep,
+            Plato::Scalar         aCurrentTime = 0.0
     /**************************************************************************/
+    ) const
     {
         using ConfigScalar      = typename GradientX::ConfigScalarType;
         using StateScalar       = typename GradientX::StateScalarType;
@@ -281,7 +287,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
         // evaluate function
         //
-        mVectorFunctionGradientX->evaluate(tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep);
+        mVectorFunctionGradientX->evaluate(tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep, aCurrentTime);
 
         // create return matrix
         //
@@ -301,12 +307,15 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_u(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aStateDot,
-               const Plato::ScalarVector & aStateDotDot,
-               const Plato::ScalarVector & aControl,
-               Plato::Scalar aTimeStep = 0.0) const
+    gradient_u(
+      const Plato::ScalarVector & aState,
+      const Plato::ScalarVector & aStateDot,
+      const Plato::ScalarVector & aStateDotDot,
+      const Plato::ScalarVector & aControl,
+            Plato::Scalar         aTimeStep,
+            Plato::Scalar         aCurrentTime = 0.0
     /**************************************************************************/
+    ) const
     {
       using ConfigScalar      = typename GradientU::ConfigScalarType;
       using StateScalar       = typename GradientU::StateScalarType;
@@ -347,7 +356,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionGradientU->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientU->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep, aCurrentTime );
 
       // create return matrix
       //
@@ -367,12 +376,15 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_v(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aStateDot,
-               const Plato::ScalarVector & aStateDotDot,
-               const Plato::ScalarVector & aControl,
-               Plato::Scalar aTimeStep = 0.0) const
+    gradient_v(
+      const Plato::ScalarVector & aState,
+      const Plato::ScalarVector & aStateDot,
+      const Plato::ScalarVector & aStateDotDot,
+      const Plato::ScalarVector & aControl,
+            Plato::Scalar         aTimeStep,
+            Plato::Scalar         aCurrentTime = 0.0
     /**************************************************************************/
+    ) const
     {
       using ConfigScalar      = typename GradientV::ConfigScalarType;
       using StateScalar       = typename GradientV::StateScalarType;
@@ -413,7 +425,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionGradientV->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientV->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep, aCurrentTime );
 
       // create return matrix
       //
@@ -433,12 +445,15 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_a(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aStateDot,
-               const Plato::ScalarVector & aStateDotDot,
-               const Plato::ScalarVector & aControl,
-               Plato::Scalar aTimeStep = 0.0) const
+    gradient_a(
+      const Plato::ScalarVector & aState,
+      const Plato::ScalarVector & aStateDot,
+      const Plato::ScalarVector & aStateDotDot,
+      const Plato::ScalarVector & aControl,
+            Plato::Scalar         aTimeStep,
+            Plato::Scalar         aCurrentTime = 0.0
     /**************************************************************************/
+    ) const
     {
       using ConfigScalar      = typename GradientA::ConfigScalarType;
       using StateScalar       = typename GradientA::StateScalarType;
@@ -479,7 +494,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function
       //
-      mVectorFunctionGradientA->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientA->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep, aCurrentTime );
 
       // create return matrix
       //
@@ -499,12 +514,15 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_z(const Plato::ScalarVectorT<Plato::Scalar> & aState,
-               const Plato::ScalarVectorT<Plato::Scalar> & aStateDot,
-               const Plato::ScalarVectorT<Plato::Scalar> & aStateDotDot,
-               const Plato::ScalarVectorT<Plato::Scalar> & aControl,
-               Plato::Scalar aTimeStep = 0.0) const
+    gradient_z(
+      const Plato::ScalarVector & aState,
+      const Plato::ScalarVector & aStateDot,
+      const Plato::ScalarVector & aStateDotDot,
+      const Plato::ScalarVector & aControl,
+            Plato::Scalar       aTimeStep,
+            Plato::Scalar       aCurrentTime = 0.0
     /**************************************************************************/
+    ) const
     {
       using ConfigScalar      = typename GradientZ::ConfigScalarType;
       using StateScalar       = typename GradientZ::StateScalarType;
@@ -545,7 +563,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
       // evaluate function 
       //
-      mVectorFunctionGradientZ->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+      mVectorFunctionGradientZ->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tJacobian, aTimeStep, aCurrentTime );
 
       // create return matrix
       //

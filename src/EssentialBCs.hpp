@@ -5,8 +5,8 @@
 
 #include <Omega_h_assoc.hpp>
 #include <Teuchos_ParameterList.hpp>
-#include <Teuchos_MathExpr.hpp>
 
+#include "PlatoMathExpr.hpp"
 #include "AnalyzeMacros.hpp"
 #include "PlatoStaticsTypes.hpp"
 
@@ -29,7 +29,8 @@ public:
     ) :
         name(aName),
         ns_name(aParam.get < std::string > ("Sides")),
-        dof(aParam.get<Plato::OrdinalType>("Index", 0))
+        dof(aParam.get<Plato::OrdinalType>("Index", 0)),
+        mMathExpr(nullptr)
     {
         if (aParam.isType<Plato::Scalar>("Value") && aParam.isType<std::string>("Function") )
         {
@@ -45,7 +46,8 @@ public:
         } else
         if (aParam.isType<std::string>("Function"))
         {
-            valueExpr = aParam.get<std::string>("Function");
+            auto tValueExpr = aParam.get<std::string>("Function");
+            mMathExpr = std::make_shared<Plato::MathExpr>(tValueExpr);
         }
     }
 
@@ -86,19 +88,13 @@ public:
     // ! Get the value to which the dofs will be constrained.
     Scalar get_value(Scalar aTime) const
     {
-        if (valueExpr.empty())
+        if (mMathExpr == nullptr)
         {
             return value;
         }
         else
         {
-            Teuchos::RCP<Teuchos::Reader> reader(Teuchos::MathExpr::new_calc_reader());
-            Teuchos::any result_any;
-            std::stringstream ss;
-            ss << "t=" << std::fixed << std::setprecision(18) << aTime << "; " << valueExpr;
-            reader->read_string(result_any, ss.str(), "expression");
-            auto result = Teuchos::any_cast<Plato::Scalar>(result_any);
-            return result;
+            return mMathExpr->value(aTime);
         }
     }
 
@@ -107,7 +103,7 @@ protected:
     const std::string ns_name;
     const Plato::OrdinalType dof;
     Scalar value;
-    std::string valueExpr;
+    std::shared_ptr<Plato::MathExpr> mMathExpr;
 
 };
 
