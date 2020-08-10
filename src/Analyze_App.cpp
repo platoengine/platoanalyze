@@ -795,7 +795,7 @@ void MPMD_App::ComputeCriterionP::operator()()
         REPORT("Analyze Application - Compute Criterion P Operation - Print Global State.\n");
         Plato::print_array_2D(mMyApp->mGlobalSolution.State, "global state");
         REPORT("Analyze Application - Compute Criterion P Operation - Print Criterion GradientX.\n");
-        Plato::print(mMyApp->mCriterionGradientX, "criterion gradient X");
+        Plato::print(mMyApp->mCriterionGradientsX[mStrCriterion], "criterion gradient X");
         std::ostringstream tMsg;
         tMsg << "Analyze Application - Compute Criterion P Operation - Criterion Value = " << tValue << std::endl;
         REPORT(tMsg.str().c_str());
