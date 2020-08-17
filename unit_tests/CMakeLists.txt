@@ -540,6 +540,37 @@ build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/SolverInterfaceU
 add_test(NAME runSolverInterfaceUnitTests COMMAND ${ES_MPI_TEST})
 ################################################################################
 
+################################################################################
+#begin: State constraints unit test
+set(MultipointConstraintTests_SOURCES
+  PlatoMultipointConstraintTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(MultipointConstraintTests_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(MultipointConstraintUnitTests
+  ${MultipointConstraintTests_SOURCES}
+  ${MultipointConstraintTests_HEADERS}
+)
+
+target_link_libraries(MultipointConstraintUnitTests
+  analyzelib
+  ${PLATO_LIBS}
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+  )
+target_include_directories(MultipointConstraintUnitTests PRIVATE "${PLATOENGINE_PREFIX}/include")
+target_include_directories(MultipointConstraintUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/MultipointConstraintUnitTests)
+add_test(NAME runMultipointConstraintUnitTests COMMAND ${ES_MPI_TEST})
+#end: State constraints unit test
+################################################################################
+
 if(PLATOANALYZE_ENABLE_MPMD)
   set(AnalyzeApp_HEADERS
     ${CMAKE_SOURCE_DIR}/src/Analyze_App.hpp
