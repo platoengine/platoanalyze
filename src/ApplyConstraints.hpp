@@ -142,6 +142,94 @@ applyConstraints(
 
 }
 
+/******************************************************************************/
+template<int NumDofPerNode>
+ void setBlockConstrainedDiagonals(Teuchos::RCP<Plato::CrsMatrixType> aMatrix,
+                            Plato::ScalarVector aRhs,
+                            Plato::LocalOrdinalVector aConstrainedDofs)
+/******************************************************************************/
+{
+  
+  /*
+   Because both MAGMA and ViennaCL apparently assume symmetry even though it's technically
+   not required for CG (and they do so in a way that breaks the solve badly), we do make the
+   effort here to maintain symmetry while zeroing entries.
+   */
+    Plato::OrdinalType tNumConstraints = aConstrainedDofs.size();
+    auto tRowMap        = aMatrix->rowMap();
+    auto tColumnIndices = aMatrix->columnIndices();
+    ScalarVector tMatrixEntries = aMatrix->entries();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumConstraints), LAMBDA_EXPRESSION(const Plato::OrdinalType & aConstraintOrdinal)
+    {
+        OrdinalType tRowDofOrdinal = aConstrainedDofs[aConstraintOrdinal];
+        auto tRowNodeOrdinal = tRowDofOrdinal / NumDofPerNode;
+        auto tLocalRowDofOrdinal  = tRowDofOrdinal % NumDofPerNode;
+        OrdinalType tRowStart = tRowMap(tRowNodeOrdinal  );
+        OrdinalType tRowEnd   = tRowMap(tRowNodeOrdinal+1);
+        for (OrdinalType tColumnNodeOffset=tRowStart; tColumnNodeOffset<tRowEnd; tColumnNodeOffset++)
+        {
+            for (OrdinalType tLocalColumnDofOrdinal=0; tLocalColumnDofOrdinal<NumDofPerNode; tLocalColumnDofOrdinal++)
+            {
+                OrdinalType tColumnNodeOrdinal = tColumnIndices(tColumnNodeOffset);
+                auto tEntryOrdinal = NumDofPerNode*NumDofPerNode*tColumnNodeOffset
+                        + NumDofPerNode*tLocalRowDofOrdinal + tLocalColumnDofOrdinal;
+                auto tColumnDofOrdinal = NumDofPerNode*tColumnNodeOrdinal+tLocalColumnDofOrdinal;
+                if (tColumnDofOrdinal == tRowDofOrdinal) // diagonal
+                {
+                    tMatrixEntries(tEntryOrdinal) = 1.0;
+                }
+            }
+        }
+    },"Set constrained DOF diagonals to 1");
+  
+    Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumConstraints), LAMBDA_EXPRESSION(int constraintOrdinal){
+        OrdinalType tDofOrdinal = aConstrainedDofs[constraintOrdinal];
+        aRhs(tDofOrdinal) = 0.0;
+    },"Zero RHS values also");
+
+}
+
+/******************************************************************************/
+template<int NumDofPerNode> void
+setConstrainedDiagonals(
+    Teuchos::RCP<Plato::CrsMatrixType> matrix,
+    Plato::ScalarVector                rhs,
+    Plato::LocalOrdinalVector          constrainedDofs)
+/******************************************************************************/
+{
+  
+  /*
+   Because both MAGMA and ViennaCL apparently assume symmetry even though it's technically
+   not required for CG (and they do so in a way that breaks the solve badly), we do make the
+   effort here to maintain symmetry while imposing BCs.
+   */
+  int numBCs = constrainedDofs.size();
+  auto rowMap        = matrix->rowMap();
+  auto columnIndices = matrix->columnIndices();
+  ScalarVector matrixEntries = matrix->entries();
+  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numBCs), LAMBDA_EXPRESSION(int constraintOrdinal)
+  {
+    OrdinalType nodeNumber = constrainedDofs[constraintOrdinal];
+    OrdinalType rowStart = rowMap(nodeNumber  );
+    OrdinalType rowEnd   = rowMap(nodeNumber+1);
+    for (OrdinalType entryOrdinal=rowStart; entryOrdinal<rowEnd; entryOrdinal++)
+    {
+      OrdinalType column = columnIndices(entryOrdinal);
+      if (column == nodeNumber) // diagonal
+      {
+        matrixEntries(entryOrdinal) = 1.0;
+      }
+    }
+  },"Set constrained DOF diagonals to 1");
+  
+  Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numBCs), LAMBDA_EXPRESSION(int constraintOrdinal)
+  {
+    OrdinalType nodeNumber = constrainedDofs[constraintOrdinal];
+    rhs(nodeNumber) = 0.0;
+  },"Zero RHS values");
+
+}
+
 } // namespace Plato
 
 
