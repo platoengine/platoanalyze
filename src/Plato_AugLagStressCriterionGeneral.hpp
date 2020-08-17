@@ -120,24 +120,25 @@ public:
      * @param [in] aDataMap PLATO Engine and Analyze data map
      * @param [in] aInputParams input parameters database
      **********************************************************************************/
-    AugLagStressCriterionGeneral(Omega_h::Mesh & aMesh,
-                                 Omega_h::MeshSets & aMeshSets,
-                                 Plato::DataMap & aDataMap,
-                                 Teuchos::ParameterList & aInputParams,
-                                 const std::string & aFuncName) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFuncName),
-            mPenalty(3),
-            mStressLimit(1),
-            mAugLagPenalty(0.1),
-            mMinErsatzValue(0.0),
-            mCellMaterialDensity(1.0),
-            mMassCriterionWeight(1.0),
-            mStressCriterionWeight(1.0),
-            mAugLagPenaltyUpperBound(100),
-            mMassNormalizationMultiplier(1.0),
-            mInitialLagrangeMultipliersValue(0.01),
-            mAugLagPenaltyExpansionMultiplier(1.05),
-            mLagrangeMultipliers("Lagrange Multipliers", aMesh.nelems())
+    AugLagStressCriterionGeneral(
+              Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aFuncName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialModel, aDataMap, aFuncName),
+        mPenalty(3),
+        mStressLimit(1),
+        mAugLagPenalty(0.1),
+        mMinErsatzValue(0.0),
+        mCellMaterialDensity(1.0),
+        mMassCriterionWeight(1.0),
+        mStressCriterionWeight(1.0),
+        mAugLagPenaltyUpperBound(100),
+        mMassNormalizationMultiplier(1.0),
+        mInitialLagrangeMultipliersValue(0.01),
+        mAugLagPenaltyExpansionMultiplier(1.05),
+        mLagrangeMultipliers("Lagrange Multipliers", aMesh.nelems())
     {
         this->initialize(aInputParams);
         this->computeStructuralMass();
@@ -429,7 +430,7 @@ public:
     **********************************************************************************/
     void computeStructuralMass()
     {
-        auto tNumCells = mMesh.nelems();
+        auto tNumCells = mSpatialModel.Mesh.nelems();
         Plato::NodeCoordinate<mSpaceDim> tCoordinates(&mMesh);
         Plato::ScalarArray3D tConfig("configuration", tNumCells, mNumNodesPerCell, mSpaceDim);
         Plato::workset_config_scalar<mSpaceDim, mNumNodesPerCell>(tNumCells, tCoordinates, tConfig);

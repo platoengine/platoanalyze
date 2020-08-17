@@ -21,7 +21,6 @@
 #include "VonMisesYieldFunction.hpp"
 
 #include "ElasticModelFactory.hpp"
-#include "NaturalBCs.hpp"
 #include "BodyLoads.hpp"
 
 #include "ExpInstMacros.hpp"
@@ -51,20 +50,18 @@ private:
     using Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerNode;
     using Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerCell;
 
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mDataMap;
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
-    using StateScalarType = typename EvaluationType::StateScalarType;
+    using StateScalarType   = typename EvaluationType::StateScalarType;
     using ControlScalarType = typename EvaluationType::ControlScalarType;
-    using ConfigScalarType = typename EvaluationType::ConfigScalarType;
-    using ResultScalarType = typename EvaluationType::ResultScalarType;
+    using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
+    using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<mSpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyWeighting;
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>> mBoundaryLoads;
     std::shared_ptr<Plato::CellForcing<mNumVoigtTerms>> mCellForcing;
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
 
@@ -75,42 +72,34 @@ private:
 public:
     /******************************************************************************//**
      * \brief Constructor
-     * \param [in] aMesh volume mesh database
-     * \param [in] aMeshSets surface mesh database
-     * \param [in] aDataMap PLATO Analyze database
+     * \param [in] aDataMap Plato Analyze spatial model
+     * \param [in] aDataMap Plato Analyze database
      * \param [in] aProblemParams input parameters for overall problem
      * \param [in] aPenaltyParams input parameters for penalty function
     **********************************************************************************/
-    ElastostaticResidual(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap& aDataMap,
-                         Teuchos::ParameterList& aProblemParams,
-                         Teuchos::ParameterList& aPenaltyParams) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyWeighting(mIndicatorFunction),
-            mBodyLoads(nullptr),
-            mBoundaryLoads(nullptr),
-            mCellForcing(nullptr),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    ElastostaticResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+    ) :
+        Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap),
+        mIndicatorFunction(aPenaltyParams),
+        mApplyWeighting(mIndicatorFunction),
+        mBodyLoads(nullptr),
+        mCellForcing(nullptr),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     {
         // create material model and get stiffness
         //
         Plato::ElasticModelFactory<mSpaceDim> tMaterialModelFactory(aProblemParams);
-        mMaterialModel = tMaterialModelFactory.create();
+        mMaterialModel = tMaterialModelFactory.create(aSpatialDomain.getMaterialName());
 
         // parse body loads
         // 
         if(aProblemParams.isSublist("Body Loads"))
         {
             mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
-        }
-  
-        // parse boundary Conditions
-        // 
-        if(aProblemParams.isSublist("Natural Boundary Conditions"))
-        {
-            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
         }
   
         // parse cell problem forcing
@@ -141,13 +130,17 @@ public:
      * Nomenclature: C = number of cells, DOF = number of degrees of freedom per cell
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarMultiVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarMultiVectorT <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     {
-      auto tNumCells = mMesh.nelems();
+
+      auto tNumCells = mSpatialDomain.numCells();
 
       using StrainScalarType =
           typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
@@ -199,23 +192,21 @@ public:
 
       if( mBodyLoads != nullptr )
       {
-          mBodyLoads->get( mMesh, aState, aControl, aResult, -1.0 );
+          mBodyLoads->get( mSpatialDomain, aState, aControl, aResult, -1.0 );
       }
 
-      if( mBoundaryLoads != nullptr )
-      {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0 );
-      }
-
-      if(std::count(mPlotTable.begin(), mPlotTable.end(), "strain")) { Plato::toMap(mDataMap, tStrain, "strain"); }
-      if(std::count(mPlotTable.begin(), mPlotTable.end(), "stress")) { Plato::toMap(mDataMap, tStress, "stress"); }
-      if(std::count(mPlotTable.begin(), mPlotTable.end(), "Vonmises")) { this->outputVonMises(tStress); }
+/* TODO 
+      if(std::count(mPlotTable.begin(), mPlotTable.end(), "strain")) { Plato::toMap(mDataMap, tStrain, "strain", mSpatialDomain); }
+      if(std::count(mPlotTable.begin(), mPlotTable.end(), "stress")) { Plato::toMap(mDataMap, tStress, "stress", mSpatialDomain); }
+      if(std::count(mPlotTable.begin(), mPlotTable.end(), "Vonmises")) { this->outputVonMises(tStress, mSpatialDomain); }
+*/
     }
 
     /**********************************************************************//**
      * \brief Compute Von Mises stress field and copy data into output data map
      * \param [in] aCauchyStress Cauchy stress tensor
     **************************************************************************/
+/* TODO 
     void outputVonMises(const Plato::ScalarMultiVectorT<ResultScalarType> & aCauchyStress) const
     {
             auto tNumCells = mMesh.nelems();
@@ -228,6 +219,7 @@ public:
 
             Plato::toMap(mDataMap, tVonMises, "Vonmises");
     }
+*/
 };
 // class ElastostaticResidual
 

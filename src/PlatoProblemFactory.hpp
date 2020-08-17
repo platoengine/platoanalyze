@@ -16,17 +16,17 @@
 #include <Teuchos_ParameterList.hpp>
 
 #include "elliptic/Problem.hpp"
-#include "EllipticVMSProblem.hpp"
-#include "parabolic/Problem.hpp"
+//TODO #include "EllipticVMSProblem.hpp"
+//#include "parabolic/Problem.hpp"
 #include "AnalyzeMacros.hpp"
 
 #include "Mechanics.hpp"
-#include "PlasticityProblem.hpp"
-#include "StabilizedMechanics.hpp"
-#include "Electromechanics.hpp"
-#include "Thermomechanics.hpp"
-#include "StabilizedThermomechanics.hpp"
-#include "hyperbolic/HyperbolicProblem.hpp"
+//TODO #include "PlasticityProblem.hpp"
+//TODO #include "StabilizedMechanics.hpp"
+//TODO #include "Electromechanics.hpp"
+//TODO #include "Thermomechanics.hpp"
+//TODO #include "StabilizedThermomechanics.hpp"
+//TODO #include "hyperbolic/HyperbolicProblem.hpp"
 //#include "StructuralDynamicsProblem.hpp"
 
 namespace Plato
@@ -67,6 +67,7 @@ public:
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
+/* TODO
             else 
             if(tPDE == "Hyperbolic")
             {
@@ -79,6 +80,7 @@ public:
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
+*/
             else
             {
                 std::stringstream ss;
@@ -86,6 +88,7 @@ public:
                 THROWERR(ss.str());
             }
         }
+/* TODO
         else if(tPhysics == "Stabilized Mechanical")
         {
             if(tPDE == "Elliptic")
@@ -164,6 +167,7 @@ public:
                 THROWERR(ss.str());
             }
         }
+*/
         else
         {
             std::stringstream tStringStream;
@@ -171,7 +175,7 @@ public:
             THROWERR(tStringStream.str());
         }
 
-        return (nullptr);
+//TODO        return (nullptr);
     }
 };
 // class ProblemFactory

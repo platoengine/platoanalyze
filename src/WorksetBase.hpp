@@ -86,12 +86,50 @@ public:
      * \brief Get controls workset, e.g. design/optimization variables
      * \param [in] aControl controls (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadControlWS controls workset (scalar type), as a 2-D Kokkos::View
+     * \param [in] aDomain Domain containing elements to be added to workset
     **********************************************************************************/
-    void worksetControl( const Plato::ScalarVectorT<Plato::Scalar> & aControl,
-                         Plato::ScalarMultiVectorT<Plato::Scalar> & aControlWS ) const
+    void
+    worksetControl(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aControl,
+              Plato::ScalarMultiVectorT <Plato::Scalar> & aControlWS,
+        const Plato::SpatialDomain                      & aDomain
+    ) const
     {
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>(
-              mNumCells, mControlEntryOrdinal, aControl, aControlWS);
+            aDomain, mControlEntryOrdinal, aControl, aControlWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get controls workset, e.g. design/optimization variables
+     * \param [in] aControl controls (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aFadControlWS controls workset (scalar type), as a 2-D Kokkos::View
+     * \param [in] aDomain Domain containing elements to be added to workset
+    **********************************************************************************/
+    void
+    worksetControl(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aControl,
+              Plato::ScalarMultiVectorT <Plato::Scalar> & aControlWS
+    ) const
+    {
+        Plato::workset_control_scalar_scalar<mNumNodesPerCell>(
+            mNumCells, mControlEntryOrdinal, aControl, aControlWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get controls workset, e.g. design/optimization variables
+     * \param [in] aControl controls (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aFadControlWS controls workset (AD type), as a 2-D Kokkos::View
+     * \param [in] aDomain Domain containing elements to be added to workset
+    **********************************************************************************/
+    void
+    worksetControl(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aControl,
+              Plato::ScalarMultiVectorT <ControlFad>    & aFadControlWS,
+        const Plato::SpatialDomain                      & aDomain
+    ) const
+    {
+        Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlFad>(
+            aDomain, mControlEntryOrdinal, aControl, aFadControlWS);
     }
 
     /******************************************************************************//**
@@ -99,11 +137,31 @@ public:
      * \param [in] aControl controls (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadControlWS controls workset (AD type), as a 2-D Kokkos::View
     **********************************************************************************/
-    void worksetControl( const Plato::ScalarVectorT<Plato::Scalar> & aControl,
-                         Plato::ScalarMultiVectorT<ControlFad> & aFadControlWS ) const
+    void
+    worksetControl(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aControl,
+              Plato::ScalarMultiVectorT <ControlFad>    & aFadControlWS
+    ) const
     {
         Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlFad>(
-              mNumCells, mControlEntryOrdinal, aControl, aFadControlWS);
+            mNumCells, mControlEntryOrdinal, aControl, aFadControlWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get global state workset, e.g. displacements in mechanic problem
+     * \param [in] aState global state (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aFadStateWS global state workset (scalar type), as a 2-D Kokkos::View
+     * \param [in] aDomain Domain containing elements to be added to workset
+    **********************************************************************************/
+    void
+    worksetState(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aState,
+              Plato::ScalarMultiVectorT <Plato::Scalar> & aStateWS,
+        const Plato::SpatialDomain                      & aDomain
+    ) const
+    {
+        Plato::workset_state_scalar_scalar<mNumDofsPerNode, mNumNodesPerCell>(
+            aDomain, mGlobalStateEntryOrdinal, aState, aStateWS);
     }
 
     /******************************************************************************//**
@@ -111,11 +169,31 @@ public:
      * \param [in] aState global state (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadStateWS global state workset (scalar type), as a 2-D Kokkos::View
     **********************************************************************************/
-    void worksetState( const Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace> & aState,
-                       Kokkos::View<Plato::Scalar**, Plato::Layout, Plato::MemSpace> & aStateWS ) const
+    void
+    worksetState(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aState,
+              Plato::ScalarMultiVectorT <Plato::Scalar> & aStateWS
+    ) const
     {
         Plato::workset_state_scalar_scalar<mNumDofsPerNode, mNumNodesPerCell>(
-              mNumCells, mGlobalStateEntryOrdinal, aState, aStateWS);
+            mNumCells, mGlobalStateEntryOrdinal, aState, aStateWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get global state workset, e.g. displacements in mechanic problem
+     * \param [in] aState global state (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aFadStateWS global state workset (AD type), as a 2-D Kokkos::View
+     * \param [in] aDomain Domain containing elements to be added to workset
+    **********************************************************************************/
+    void
+    worksetState(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aState,
+              Plato::ScalarMultiVectorT <StateFad>      & aFadStateWS,
+        const Plato::SpatialDomain                      & aDomain
+    ) const
+    {
+        Plato::workset_state_scalar_fad<mNumDofsPerNode, mNumNodesPerCell, StateFad>(
+            aDomain, mGlobalStateEntryOrdinal, aState, aFadStateWS);
     }
 
     /******************************************************************************//**
@@ -123,11 +201,14 @@ public:
      * \param [in] aState global state (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadStateWS global state workset (AD type), as a 2-D Kokkos::View
     **********************************************************************************/
-    void worksetState( const Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace> & aState,
-                       Kokkos::View<StateFad**, Plato::Layout, Plato::MemSpace> & aFadStateWS ) const
+    void
+    worksetState(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aState,
+              Plato::ScalarMultiVectorT <StateFad>      & aFadStateWS
+    ) const
     {
         Plato::workset_state_scalar_fad<mNumDofsPerNode, mNumNodesPerCell, StateFad>(
-              mNumCells, mGlobalStateEntryOrdinal, aState, aFadStateWS);
+            mNumCells, mGlobalStateEntryOrdinal, aState, aFadStateWS);
     }
 
     /******************************************************************************//**
@@ -183,21 +264,77 @@ public:
     /******************************************************************************//**
      * \brief Get configuration workset, i.e. coordinates for each cell
      * \param [in/out] aConfigWS configuration workset (scalar type), as a 3-D Kokkos::View
+     * \param [in] aDomain Domain containing elements to be added to workset
     **********************************************************************************/
-    void worksetConfig(Plato::ScalarArray3DT<Plato::Scalar> & aConfigWS) const
+    void
+    worksetConfig(
+              Plato::ScalarArray3DT <Plato::Scalar> & aConfigWS,
+        const Plato::SpatialDomain                  & aDomain
+    ) const
     {
       Plato::workset_config_scalar<mSpaceDim, mNumNodesPerCell>(
-              mNumCells, mNodeCoordinate, aConfigWS);
+          aDomain, mNodeCoordinate, aConfigWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get configuration workset, i.e. coordinates for each cell
+     * \param [in/out] aConfigWS configuration workset (scalar type), as a 3-D Kokkos::View
+    **********************************************************************************/
+    void
+    worksetConfig(
+        Plato::ScalarArray3DT <Plato::Scalar> & aConfigWS
+    ) const
+    {
+      Plato::workset_config_scalar<mSpaceDim, mNumNodesPerCell>(
+          mNumCells, mNodeCoordinate, aConfigWS);
     }
 
     /******************************************************************************//**
      * \brief Get configuration workset, i.e. coordinates for each cell
      * \param [in/out] aReturnValue configuration workset (AD type), as a 3-D Kokkos::View
     **********************************************************************************/
-    void worksetConfig(Plato::ScalarArray3DT<ConfigFad> & aFadConfigWS) const
+    void
+    worksetConfig(
+              Plato::ScalarArray3DT <ConfigFad> & aFadConfigWS,
+        const Plato::SpatialDomain              & aDomain
+    ) const
     {
       Plato::workset_config_fad<mSpaceDim, mNumNodesPerCell, mNumConfigDofsPerCell, ConfigFad>(
-              mNumCells, mNodeCoordinate, aFadConfigWS);
+          aDomain, mNodeCoordinate, aFadConfigWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get configuration workset, i.e. coordinates for each cell
+     * \param [in/out] aReturnValue configuration workset (AD type), as a 3-D Kokkos::View
+    **********************************************************************************/
+    void
+    worksetConfig(
+        Plato::ScalarArray3DT <ConfigFad> & aFadConfigWS
+    ) const
+    {
+      Plato::workset_config_fad<mSpaceDim, mNumNodesPerCell, mNumConfigDofsPerCell, ConfigFad>(
+          mNumCells, mNodeCoordinate, aFadConfigWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Assemble residual vector
+     *
+     * \tparam ResidualWorksetType Input container, as a 2-D Kokkos::View
+     * \tparam AssembledResidualType Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aResidualWorkset residual cell workset
+     * \param [in/out] aReturnValue assembled residual
+     * \param [in] aDomain Domain containing elements to be added to workset
+    **********************************************************************************/
+    template<class ResidualWorksetType, class AssembledResidualType>
+    void assembleResidual(
+        const ResidualWorksetType   & aResidualWorkset,
+              AssembledResidualType & aReturnValue,
+        const Plato::SpatialDomain  & aDomain
+    ) const
+    {
+        Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
+            (aDomain, WorksetBase<SimplexPhysics>::mGlobalStateEntryOrdinal, aResidualWorkset, aReturnValue);
     }
 
     /******************************************************************************//**
@@ -210,10 +347,13 @@ public:
      * \param [in/out] aReturnValue assembled residual
     **********************************************************************************/
     template<class ResidualWorksetType, class AssembledResidualType>
-    void assembleResidual(const ResidualWorksetType & aResidualWorkset, AssembledResidualType & aReturnValue) const
+    void assembleResidual(
+        const ResidualWorksetType   & aResidualWorkset,
+              AssembledResidualType & aReturnValue
+    ) const
     {
-        Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>(
-                mNumCells, WorksetBase<SimplexPhysics>::mGlobalStateEntryOrdinal, aResidualWorkset, aReturnValue);
+        Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
+            (mNumCells, WorksetBase<SimplexPhysics>::mGlobalStateEntryOrdinal, aResidualWorkset, aReturnValue);
     }
 
     /******************************************************************************//**
@@ -342,13 +482,44 @@ public:
      * \param [in/out] aReturnValue assembled Jacobian
     **********************************************************************************/
     template<class MatrixEntriesOrdinalType, class JacobianWorksetType, class AssembledJacobianType>
-    void assembleJacobianFad(Plato::OrdinalType aNumRows,
-                             Plato::OrdinalType aNumColumns,
-                             const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
-                             const JacobianWorksetType & aJacobianWorkset,
-                             AssembledJacobianType & aReturnValue) const
+    void
+    assembleJacobianFad(
+              Plato::OrdinalType         aNumRows,
+              Plato::OrdinalType         aNumColumns,
+        const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
+        const JacobianWorksetType      & aJacobianWorkset,
+              AssembledJacobianType    & aReturnValue
+    ) const
     {
         Plato::assemble_jacobian_fad(mNumCells, aNumRows, aNumColumns, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
+    }
+
+    /******************************************************************************//**
+     * \brief Assemble Jacobian
+     *
+     * \tparam MatrixEntriesOrdinalType Input container of matrix ordinal
+     * \tparam JacobianWorksetType Input container, as a 2-D Kokkos::View
+     * \tparam AssembledJacobianType Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aNumRows number of rows
+     * \param [in] aNumColumns number of columns
+     * \param [in] aMatrixEntryOrdinal container of Jacobian entry ordinal (local-to-global ID map)
+     * \param [in] aJacobianWorkset Jacobian cell workset
+     * \param [in/out] aReturnValue assembled Jacobian
+     * \param [in] aDomain Domain containing elements to be added to workset
+    **********************************************************************************/
+    template<class MatrixEntriesOrdinalType, class JacobianWorksetType, class AssembledJacobianType>
+    void
+    assembleJacobianFad(
+              Plato::OrdinalType         aNumRows,
+              Plato::OrdinalType         aNumColumns,
+        const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
+        const JacobianWorksetType      & aJacobianWorkset,
+              AssembledJacobianType    & aReturnValue,
+        const Plato::SpatialDomain     & aDomain
+    ) const
+    {
+        Plato::assemble_jacobian_fad(aDomain, aNumRows, aNumColumns, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
     }
 
     /******************************************************************************//**
@@ -387,13 +558,45 @@ public:
      * \param [in/out] aReturnValue    assembled transposed Jacobian
     **********************************************************************************/
     template<class MatrixEntriesOrdinalType, class JacobianWorksetType, class AssembledJacobianType>
-    void assembleTransposeJacobian(Plato::OrdinalType aNumRowsPerCell,
-                                   Plato::OrdinalType aNumColumnsPerCell,
-                                   const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
-                                   const JacobianWorksetType & aJacobianWorkset,
-                                   AssembledJacobianType & aReturnValue) const
+    void
+    assembleTransposeJacobian(
+              Plato::OrdinalType         aNumRowsPerCell,
+              Plato::OrdinalType         aNumColumnsPerCell,
+        const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
+        const JacobianWorksetType      & aJacobianWorkset,
+              AssembledJacobianType    & aReturnValue,
+        const Plato::SpatialDomain     & aDomain
+    ) const
     {
-        Plato::assemble_transpose_jacobian(mNumCells, aNumRowsPerCell, aNumColumnsPerCell, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
+        Plato::assemble_transpose_jacobian
+            (aDomain, aNumRowsPerCell, aNumColumnsPerCell, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
+    }
+
+    /******************************************************************************//**
+     * \brief Assemble transpose Jacobian
+     *
+     * \tparam MatrixEntriesOrdinalType Input container of matrix ordinal
+     * \tparam JacobianWorksetType Input container, as a 2-D Kokkos::View
+     * \tparam AssembledJacobianType Output container, as a 1-D Kokkos::View
+     *
+     * \param [in] aNumRowsPerCell     number of rows per matrix - (use row count from untransposed matrix)
+     * \param [in] aNumColumnsPerCell  number of columns per matrix - (use column count from untransposed matrix)
+     * \param [in] aMatrixEntryOrdinal Jacobian entry ordinal (i.e. local-to-global ID map)
+     * \param [in] aJacobianWorkset    workset of cell Jacobians
+     * \param [in/out] aReturnValue    assembled transposed Jacobian
+    **********************************************************************************/
+    template<class MatrixEntriesOrdinalType, class JacobianWorksetType, class AssembledJacobianType>
+    void
+    assembleTransposeJacobian(
+              Plato::OrdinalType         aNumRowsPerCell,
+              Plato::OrdinalType         aNumColumnsPerCell,
+        const MatrixEntriesOrdinalType & aMatrixEntryOrdinal,
+        const JacobianWorksetType      & aJacobianWorkset,
+              AssembledJacobianType    & aReturnValue
+    ) const
+    {
+        Plato::assemble_transpose_jacobian
+            (mNumCells, aNumRowsPerCell, aNumColumnsPerCell, aMatrixEntryOrdinal, aJacobianWorkset, aReturnValue);
     }
 
 };

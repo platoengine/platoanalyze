@@ -15,9 +15,9 @@
 #include "elliptic/StressPNorm.hpp"
 #include "elliptic/SurfaceArea.hpp"
 
-#include "Plato_AugLagStressCriterionQuadratic.hpp"
-#include "Plato_AugLagStressCriterionGeneral.hpp"
-#include "Plato_AugLagStressCriterion.hpp"
+//TODO #include "Plato_AugLagStressCriterionQuadratic.hpp"
+//TODO #include "Plato_AugLagStressCriterionGeneral.hpp"
+//TODO #include "Plato_AugLagStressCriterion.hpp"
 #include "SimplexMechanics.hpp"
 #include "IntermediateDensityPenalty.hpp"
 #include "AnalyzeMacros.hpp"
@@ -73,11 +73,12 @@ namespace MechanicsFactory
 **********************************************************************************/
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<EvaluationType>>
-elastostatics_residual(Omega_h::Mesh& aMesh,
-                       Omega_h::MeshSets& aMeshSets,
-                       Plato::DataMap& aDataMap,
-                       Teuchos::ParameterList& aInputParams,
-                       std::string aFuncName)
+elastostatics_residual(
+    const Plato::SpatialDomain   & aSpatialDomain,
+          Plato::DataMap         & aDataMap,
+          Teuchos::ParameterList & aInputParams,
+          std::string              aFuncName
+)
 {
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<EvaluationType>> tOutput;
     auto tPenaltyParams = aInputParams.sublist(aFuncName).sublist("Penalty Function");
@@ -85,25 +86,25 @@ elastostatics_residual(Omega_h::Mesh& aMesh,
     if(tPenaltyType == "SIMP")
     {
         tOutput = std::make_shared<Plato::Elliptic::ElastostaticResidual<EvaluationType, Plato::MSIMP>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams);
+                    (aSpatialDomain, aDataMap, aInputParams, tPenaltyParams);
     }
     else
     if(tPenaltyType == "RAMP")
     {
         tOutput = std::make_shared<Plato::Elliptic::ElastostaticResidual<EvaluationType, Plato::RAMP>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams);
+                    (aSpatialDomain, aDataMap, aInputParams, tPenaltyParams);
     }
     else
     if(tPenaltyType == "Heaviside")
     {
         tOutput = std::make_shared<Plato::Elliptic::ElastostaticResidual<EvaluationType, Plato::Heaviside>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams);
+                    (aSpatialDomain, aDataMap, aInputParams, tPenaltyParams);
     }
     else
     if(tPenaltyType == "NoPenalty")
     {
         tOutput = std::make_shared<Plato::Elliptic::ElastostaticResidual<EvaluationType, Plato::NoPenalty>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, tPenaltyParams);
+                    (aSpatialDomain, aDataMap, aInputParams, tPenaltyParams);
     }
     return (tOutput);
 }
@@ -116,6 +117,7 @@ elastostatics_residual(Omega_h::Mesh& aMesh,
  * \param [in] aDataMap PLATO Analyze physics-based database
  * \param [in] aInputParams input parameters
 **********************************************************************************/
+/* TODO
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
 stress_constraint_linear(Omega_h::Mesh& aMesh,
@@ -129,6 +131,7 @@ stress_constraint_linear(Omega_h::Mesh& aMesh,
                 (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName);
     return (tOutput);
 }
+*/
 
 /******************************************************************************//**
  * \brief Create augmented Lagrangian stress constraint criterion tailored for general problems
@@ -137,6 +140,7 @@ stress_constraint_linear(Omega_h::Mesh& aMesh,
  * \param [in] aDataMap PLATO Analyze physics-based database
  * \param [in] aInputParams input parameters
 **********************************************************************************/
+/* TODO
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
 stress_constraint_general(Omega_h::Mesh& aMesh,
@@ -150,6 +154,7 @@ stress_constraint_general(Omega_h::Mesh& aMesh,
                 (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName);
     return (tOutput);
 }
+*/
 
 
 /******************************************************************************//**
@@ -159,6 +164,7 @@ stress_constraint_general(Omega_h::Mesh& aMesh,
  * \param [in] aDataMap PLATO Analyze physics-based database
  * \param [in] aInputParams input parameters
 **********************************************************************************/
+/* TODO
 template<typename EvaluationType>
 inline std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
 stress_constraint_quadratic(Omega_h::Mesh& aMesh,
@@ -179,6 +185,7 @@ stress_constraint_quadratic(Omega_h::Mesh& aMesh,
     tOutput->setLocalMeasure(EvalMeasure, PODMeasure);
     return (tOutput);
 }
+*/
 
 
 /******************************************************************************//**
@@ -355,16 +362,16 @@ struct FunctionFactory
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<EvaluationType>>
-    createVectorFunction(Omega_h::Mesh& aMesh, 
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap& aDataMap, 
-                         Teuchos::ParameterList& aInputParams,
-                         std::string aFuncName)
+    createVectorFunction(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aInputParams,
+              std::string              aFuncName)
     {
 
         if(aFuncName == "Elliptic")
         {
-            return (Plato::MechanicsFactory::elastostatics_residual<EvaluationType>(aMesh, aMeshSets, aDataMap, aInputParams, aFuncName));
+            return (Plato::MechanicsFactory::elastostatics_residual<EvaluationType>(aSpatialDomain, aDataMap, aInputParams, aFuncName));
         }
         else
         {
@@ -416,6 +423,7 @@ struct FunctionFactory
         {
             return (Plato::MechanicsFactory::effective_energy<EvaluationType>(aMesh, aMeshSets, aDataMap, aInputParams, aFuncName));
         }
+/* TODO
         else if(aFuncType == "Stress Constraint")
         {
             return (Plato::MechanicsFactory::stress_constraint_linear<EvaluationType>(aMesh, aMeshSets, aDataMap, aInputParams, aFuncName));
@@ -428,6 +436,7 @@ struct FunctionFactory
         {
             return (Plato::MechanicsFactory::stress_constraint_quadratic<EvaluationType>(aMesh, aMeshSets, aDataMap, aInputParams, aFuncName));
         }
+*/
         else if(aFuncType == "Density Penalty")
         {
             return std::make_shared<Plato::IntermediateDensityPenalty<EvaluationType>>(aMesh, aMeshSets, aDataMap, aInputParams, aFuncName);

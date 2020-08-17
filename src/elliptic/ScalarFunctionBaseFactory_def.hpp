@@ -1,11 +1,11 @@
 #pragma once
 
 #include "elliptic/ScalarFunctionBase.hpp"
-#include "elliptic/WeightedSumFunction.hpp"
-#include "elliptic/PhysicsScalarFunction.hpp"
-#include "elliptic/DivisionFunction.hpp"
-#include "elliptic/LeastSquaresFunction.hpp"
-#include "elliptic/MassPropertiesFunction.hpp"
+//#include "elliptic/WeightedSumFunction.hpp"
+//#include "elliptic/PhysicsScalarFunction.hpp"
+//#include "elliptic/DivisionFunction.hpp"
+//#include "elliptic/LeastSquaresFunction.hpp"
+//#include "elliptic/MassPropertiesFunction.hpp"
 #include "AnalyzeMacros.hpp"
 
 namespace Plato
@@ -33,6 +33,7 @@ namespace Elliptic
         auto tProblemFunction = aInputParams.sublist(aFunctionName);
         auto tFunctionType = tProblemFunction.get<std::string>("Type", "Not Defined");
 
+/* TODO
         if(tFunctionType == "Weighted Sum")
         {
             return std::make_shared<WeightedSumFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
@@ -45,7 +46,8 @@ namespace Elliptic
         {
             return std::make_shared<LeastSquaresFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
         }
-        else if(tFunctionType == "Scalar Function")
+        else
+        if(tFunctionType == "Scalar Function")
         {
             return std::make_shared<PhysicsScalarFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
         }
@@ -54,6 +56,7 @@ namespace Elliptic
             return std::make_shared<MassPropertiesFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
         }
         else
+*/
         {
             const std::string tErrorString = std::string("Unknown function Type '") + tFunctionType +
                             "' specified in function name " + aFunctionName + " ParameterList";

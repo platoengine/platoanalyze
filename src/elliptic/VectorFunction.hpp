@@ -7,6 +7,7 @@
 #include <Omega_h_assoc.hpp>
 
 #include "WorksetBase.hpp"
+#include "NaturalBCs.hpp"
 #include "elliptic/AbstractVectorFunction.hpp"
 #include "elliptic/EllipticSimplexFadTypes.hpp"
 
@@ -46,44 +47,63 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     using GradientX = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientX;
     using GradientZ = typename Plato::Evaluation<typename PhysicsT::SimplexT>::GradientZ;
 
+    using ResidualFunction  = std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Residual>>;
+    using JacobianFunction  = std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Jacobian>>;
+    using GradientXFunction = std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientX>>;
+    using GradientZFunction = std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientZ>>;
+
+    std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mBoundaryLoads;
+
     static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mNumSpatialDims*mNumNodesPerCell;
 
-    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Residual>>  mVectorFunctionResidual;
-    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Jacobian>>  mVectorFunctionJacobianU;
-    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientX>> mVectorFunctionJacobianX;
-    std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientZ>> mVectorFunctionJacobianZ;
+    std::map<std::string, ResidualFunction>  mResidualFunctions;
+    std::map<std::string, JacobianFunction>  mJacobianFunctions;
+    std::map<std::string, GradientXFunction> mGradientXFunctions;
+    std::map<std::string, GradientZFunction> mGradientZFunctions;
 
-    Plato::DataMap& mDataMap;
+    const Plato::SpatialModel & mSpatialModel;
+
+    Plato::DataMap      & mDataMap;
 
   public:
 
     /**************************************************************************//**
     *
     * \brief Constructor
-    * \param [in] aMesh mesh data base
-    * \param [in] aMeshSets mesh sets data base
+    * \param [in] aSpatialModel struct that contains the mesh, meshsets, domains, etc.
     * \param [in] aDataMap problem-specific data map
-    * \param [in] aParamList Teuchos parameter list with input data
+    * \param [in] aProblemParams Teuchos parameter list with input data
     * \param [in] aProblemType problem type
     *
     ******************************************************************************/
-    VectorFunction(Omega_h::Mesh& aMesh,
-                   Omega_h::MeshSets& aMeshSets,
-                   Plato::DataMap& aDataMap,
-                   Teuchos::ParameterList& aParamList,
-                   std::string& aProblemType) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap)
+    VectorFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              std::string            & aProblemType
+    ) :
+        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mBoundaryLoads (nullptr),
+        mSpatialModel  (aSpatialModel),
+        mDataMap       (aDataMap)
     {
-      typename PhysicsT::FunctionFactory tFunctionFactory;
+        typename PhysicsT::FunctionFactory tFunctionFactory;
 
-      mVectorFunctionResidual = tFunctionFactory.template createVectorFunction<Residual>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+          auto tName = tDomain.getDomainName();
+          mResidualFunctions [tName] = tFunctionFactory.template createVectorFunction<Residual> (tDomain, aDataMap, aProblemParams, aProblemType);
+          mJacobianFunctions [tName] = tFunctionFactory.template createVectorFunction<Jacobian> (tDomain, aDataMap, aProblemParams, aProblemType);
+          mGradientZFunctions[tName] = tFunctionFactory.template createVectorFunction<GradientZ>(tDomain, aDataMap, aProblemParams, aProblemType);
+          mGradientXFunctions[tName] = tFunctionFactory.template createVectorFunction<GradientX>(tDomain, aDataMap, aProblemParams, aProblemType);
+        }
 
-      mVectorFunctionJacobianU = tFunctionFactory.template createVectorFunction<Jacobian>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-
-      mVectorFunctionJacobianZ = tFunctionFactory.template createVectorFunction<GradientZ>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
-
-      mVectorFunctionJacobianX = tFunctionFactory.template createVectorFunction<GradientX>(aMesh, aMeshSets, aDataMap, aParamList, aProblemType);
+        // parse boundary Conditions
+        // 
+        if(aProblemParams.isSublist("Natural Boundary Conditions"))
+        {
+            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
+        }
     }
 
     /**************************************************************************//**
@@ -93,10 +113,6 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     ******************************************************************************/
     VectorFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
             Plato::WorksetBase<PhysicsT>(aMesh),
-            mVectorFunctionResidual(),
-            mVectorFunctionJacobianU(),
-            mVectorFunctionJacobianX(),
-            mVectorFunctionJacobianZ(),
             mDataMap(aDataMap)
     {
     }
@@ -160,35 +176,50 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     * \brief Allocate residual evaluator
     * \param [in] aResidual residual evaluator
     * \param [in] aJacobian Jacobian evaluator
+    * \param [in] aName Name of the mesh domain
     *
     ******************************************************************************/
-    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Residual>>& aResidual,
-                      const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<Jacobian>>& aJacobian)
+    void
+    setEvaluator(
+        const ResidualFunction & aResidual,
+        const JacobianFunction & aJacobian,
+              std::string        aName
+    )
     {
-        mVectorFunctionResidual = aResidual;
-        mVectorFunctionJacobianU = aJacobian;
+        mResidualFunctions[aName] = aResidual;
+        mJacobianFunctions[aName] = aJacobian;
     }
 
     /**************************************************************************//**
     *
     * \brief Allocate partial derivative with respect to control evaluator
     * \param [in] aGradientZ partial derivative with respect to control evaluator
+    * \param [in] aName Name of the mesh domain
     *
     ******************************************************************************/
-    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientZ>>& aGradientZ)
+    void
+    setEvaluator(
+        const GradientZFunction & aGradientZ,
+              std::string         aName
+    )
     {
-        mVectorFunctionJacobianZ = aGradientZ; 
+        mGradientZFunctions[aName] = aGradientZ; 
     }
 
     /**************************************************************************//**
     *
     * \brief Allocate partial derivative with respect to configuration evaluator
     * \param [in] GradientX partial derivative with respect to configuration evaluator
+    * \param [in] aName Name of the mesh domain
     *
     ******************************************************************************/
-    void setEvaluator(const std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientX>>& aGradientX)
+    void
+    setEvaluator(
+        const GradientXFunction & aGradientX,
+              std::string         aName
+    )
     {
-        mVectorFunctionJacobianX = aGradientX; 
+        mGradientXFunctions[aName] = aGradientX; 
     }
 
     /**************************************************************************//**
@@ -203,252 +234,465 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************/
     Plato::ScalarVector
-    value(const Plato::ScalarVector & aState,
-          const Plato::ScalarVector & aControl,
-          Plato::Scalar aTimeStep = 0.0) const
+    value(
+        const Plato::ScalarVector & aState,
+        const Plato::ScalarVector & aControl,
+              Plato::Scalar         aTimeStep = 0.0
     /**************************************************************************/
+    )
     {
-      using ConfigScalar  = typename Residual::ConfigScalarType;
-      using StateScalar   = typename Residual::StateScalarType;
-      using ControlScalar = typename Residual::ControlScalarType;
-      using ResultScalar  = typename Residual::ResultScalarType;
+        using ConfigScalar  = typename Residual::ConfigScalarType;
+        using StateScalar   = typename Residual::StateScalarType;
+        using ControlScalar = typename Residual::ControlScalarType;
+        using ResultScalar  = typename Residual::ResultScalarType;
 
-      // Workset state
-      //
-      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
-      // Workset control
-      //
-      Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+        Plato::ScalarVector  tReturnValue("Assembled Residual",mNumDofsPerNode*mNumNodes);
 
-      // Workset config
-      //
-      Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-      Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-      // create result
-      //
-      Plato::ScalarMultiVectorT<ResultScalar> tResidual("Cells Residual",mNumCells, mNumDofsPerCell);
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", tNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS, tDomain);
 
-      // evaluate function
-      //
-      mVectorFunctionResidual->evaluate( tStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS, tDomain);
 
-      // create and assemble to return view
-      //
-      Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace>  tReturnValue("Assembled Residual",mNumDofsPerNode*mNumNodes);
-      Plato::WorksetBase<PhysicsT>::assembleResidual( tResidual, tReturnValue );
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS, tDomain);
 
-      return tReturnValue;
+            // create result
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tResidual("Cells Residual", tNumCells, mNumDofsPerCell);
+
+            // evaluate function
+            //
+            mResidualFunctions[tName]->evaluate( tStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
+
+            // create and assemble to return view
+            //
+            Plato::WorksetBase<PhysicsT>::assembleResidual( tResidual, tReturnValue, tDomain );
+
+        }
+
+        if( mBoundaryLoads != nullptr )
+        {
+            auto tNumCells = mSpatialModel.Mesh.nelems();
+
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", tNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+            // create result
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tResidual("Cells Residual", tNumCells, mNumDofsPerCell);
+
+            // evaluate function
+            //
+            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tResidual, /*Scale=*/1.0 );
+
+            // create and assemble to return view
+            //
+            Plato::WorksetBase<PhysicsT>::assembleResidual( tResidual, tReturnValue);
+
+        }
+
+        return tReturnValue;
     }
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_x(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aControl,
-               Plato::Scalar aTimeStep = 0.0) const
+    gradient_x(
+        const Plato::ScalarVector & aState,
+        const Plato::ScalarVector & aControl,
+              Plato::Scalar         aTimeStep = 0.0
     /**************************************************************************/
+    )
     {
-        using ConfigScalar = typename GradientX::ConfigScalarType;
-        using StateScalar = typename GradientX::StateScalarType;
+        using ConfigScalar  = typename GradientX::ConfigScalarType;
+        using StateScalar   = typename GradientX::StateScalarType;
         using ControlScalar = typename GradientX::ControlScalarType;
-        using ResultScalar = typename GradientX::ResultScalarType;
-
-        // Workset config
-        //
-        Plato::ScalarArray3DT<ConfigScalar>
-            tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
-
-        // Workset state
-        //
-        Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
-
-        // Workset control
-        //
-        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
-        Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
-
-        // create return view
-        //
-        Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianConfiguration", mNumCells, mNumDofsPerCell);
-
-        // evaluate function
-        //
-        mVectorFunctionJacobianX->evaluate(tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep);
+        using ResultScalar  = typename GradientX::ResultScalarType;
 
         // create return matrix
         //
-        auto tMesh = mVectorFunctionJacobianX->getMesh();
+        auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
                 Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumDofsPerNode>(&tMesh);
 
-        // assembly to return matrix
-        Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode>
-            tJacobianMatEntryOrdinal(tJacobianMat, &tMesh);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-        auto tJacobianMatEntries = tJacobianMat->entries();
-        Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(mNumDofsPerCell, mNumConfigDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS, tDomain);
+
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", tNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS, tDomain);
+
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS, tDomain);
+
+            // create return view
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianConfiguration", tNumCells, mNumDofsPerCell);
+
+            // evaluate function
+            //
+            mGradientXFunctions[tName]->evaluate(tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep);
+
+            // assembly to return matrix
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode>
+                tJacobianMatEntryOrdinal(tJacobianMat, &tMesh);
+
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian
+                (mNumDofsPerCell, mNumConfigDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries, tDomain);
+
+        }
+
+        if( mBoundaryLoads != nullptr )
+        {
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+
+            // create return view
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianConfiguration", mNumCells, mNumDofsPerCell);
+
+            // evaluate function
+            //
+            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, /*Scale=*/1.0 );
+
+            // assembly to return matrix
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode>
+                tJacobianMatEntryOrdinal(tJacobianMat, &tMesh);
+
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian
+                (mNumDofsPerCell, mNumConfigDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+        }
 
         return tJacobianMat;
     }
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_u_T(const Plato::ScalarVector & aState,
-                 const Plato::ScalarVector & aControl,
-                 Plato::Scalar aTimeStep = 0.0) const
+    gradient_u_T(
+        const Plato::ScalarVector & aState,
+        const Plato::ScalarVector & aControl,
+              Plato::Scalar         aTimeStep = 0.0
     /**************************************************************************/
+    )
     {
-      using ConfigScalar  = typename Jacobian::ConfigScalarType;
-      using StateScalar   = typename Jacobian::StateScalarType;
-      using ControlScalar = typename Jacobian::ControlScalarType;
-      using ResultScalar  = typename Jacobian::ResultScalarType;
+        using ConfigScalar  = typename Jacobian::ConfigScalarType;
+        using StateScalar   = typename Jacobian::StateScalarType;
+        using ControlScalar = typename Jacobian::ControlScalarType;
+        using ResultScalar  = typename Jacobian::ResultScalarType;
 
-      // Workset config
-      //
-      Plato::ScalarArray3DT<ConfigScalar>
-          tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-      Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        // create return matrix
+        //
+        auto tMesh = mSpatialModel.Mesh;
+        Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
 
-      // Workset state
-      //
-      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-      // Workset control
-      //
-      Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS, tDomain);
 
-      // create return view
-      //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState",mNumCells,mNumDofsPerCell);
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", tNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS, tDomain);
 
-      // evaluate function
-      //
-      mVectorFunctionJacobianU->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS, tDomain);
 
-      // create return matrix
-      //
-      auto tMesh = mVectorFunctionJacobianU->getMesh();
-      Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
+            // create return view
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState", tNumCells, mNumDofsPerCell);
 
-      // assembly to return matrix
-      Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode>
-          tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+            // evaluate function
+            //
+            mJacobianFunctions[tName]->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
-      auto tJacobianMatEntries = tJacobianMat->entries();
-      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+            // assembly to return matrix
+            Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode>
+                tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
-      return tJacobianMat;
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleJacobianFad
+                (mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries, tDomain);
+        }
+
+        if( mBoundaryLoads != nullptr )
+        {
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+
+            // create return view
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState", mNumCells, mNumDofsPerCell);
+
+            // evaluate function
+            //
+            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, /*Scale=*/1.0 );
+
+            // assembly to return matrix
+            Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode>
+                tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleJacobianFad
+                (mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+        }
+
+        return tJacobianMat;
     }
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_u(const Plato::ScalarVector & aState,
-               const Plato::ScalarVector & aControl,
-               Plato::Scalar aTimeStep = 0.0) const
+    gradient_u(
+        const Plato::ScalarVector & aState,
+        const Plato::ScalarVector & aControl,
+              Plato::Scalar         aTimeStep = 0.0
+    )
     /**************************************************************************/
     {
-      using ConfigScalar  = typename Jacobian::ConfigScalarType;
-      using StateScalar   = typename Jacobian::StateScalarType;
-      using ControlScalar = typename Jacobian::ControlScalarType;
-      using ResultScalar  = typename Jacobian::ResultScalarType;
+        using ConfigScalar  = typename Jacobian::ConfigScalarType;
+        using StateScalar   = typename Jacobian::StateScalarType;
+        using ControlScalar = typename Jacobian::ControlScalarType;
+        using ResultScalar  = typename Jacobian::ResultScalarType;
 
-      // Workset config
-      //
-      Plato::ScalarArray3DT<ConfigScalar>
-          tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-      Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        // create return matrix
+        //
+        auto tMesh = mSpatialModel.Mesh;
+        Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
 
-      // Workset state
-      //
-      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-      // Workset control
-      //
-      Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS, tDomain);
 
-      // create return view
-      //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState",mNumCells,mNumDofsPerCell);
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", tNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS, tDomain);
 
-      // evaluate function
-      //
-      mVectorFunctionJacobianU->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS, tDomain);
 
-      // create return matrix
-      //
-      auto tMesh = mVectorFunctionJacobianU->getMesh();
-      Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumDofsPerNode, mNumDofsPerNode>( &tMesh );
+            // create return view
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState", tNumCells, mNumDofsPerCell);
 
-      // assembly to return matrix
-      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode, mNumDofsPerNode>
-          tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+            // evaluate function
+            //
+            mJacobianFunctions[tName]->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
-      auto tJacobianMatEntries = tJacobianMat->entries();
-      Plato::WorksetBase<PhysicsT>::assembleJacobianFad(mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+            // assembly to return matrix
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode, mNumDofsPerNode>
+                tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
-      return tJacobianMat;
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleJacobianFad
+                (mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries, tDomain);
+        }
+
+        if( mBoundaryLoads != nullptr )
+        {
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+
+            // create return view
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianState", mNumCells, mNumDofsPerCell);
+
+            // evaluate function
+            //
+            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, /*Scale=*/1.0 );
+
+            // assembly to return matrix
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode, mNumDofsPerNode>
+                tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleJacobianFad
+                (mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+        }
+        return tJacobianMat;
     }
 
     /**************************************************************************/
     Teuchos::RCP<Plato::CrsMatrixType>
-    gradient_z(const Plato::ScalarVectorT<Plato::Scalar> & aState,
-               const Plato::ScalarVectorT<Plato::Scalar> & aControl,
-               Plato::Scalar aTimeStep = 0.0) const
+    gradient_z(
+        const Plato::ScalarVector & aState,
+        const Plato::ScalarVector & aControl,
+              Plato::Scalar         aTimeStep = 0.0
     /**************************************************************************/
+    )
     {
-      using ConfigScalar  = typename GradientZ::ConfigScalarType;
-      using StateScalar   = typename GradientZ::StateScalarType;
-      using ControlScalar = typename GradientZ::ControlScalarType;
-      using ResultScalar  = typename GradientZ::ResultScalarType;
+        using ConfigScalar  = typename GradientZ::ConfigScalarType;
+        using StateScalar   = typename GradientZ::StateScalarType;
+        using ControlScalar = typename GradientZ::ControlScalarType;
+        using ResultScalar  = typename GradientZ::ResultScalarType;
 
-      // Workset config
-      //
-      Plato::ScalarArray3DT<ConfigScalar>
-          tConfigWS("Config Workset",mNumCells, mNumNodesPerCell, mNumSpatialDims);
-      Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+        // create return matrix
+        //
+        auto tMesh = mSpatialModel.Mesh;
+        Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+                Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumControl, mNumDofsPerNode>( &tMesh );
 
-      // Workset control
-      //
-      Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset",mNumCells,mNumNodesPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
+
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar>
+                tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS, tDomain);
  
-      // Workset state
-      //
-      Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset",mNumCells,mNumDofsPerCell);
-      Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", tNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS, tDomain);
 
-      // create result 
-      //
-      Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianControl",mNumCells,mNumDofsPerCell);
+            // create result 
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianControl", tNumCells, mNumDofsPerCell);
 
-      // evaluate function 
-      //
-      mVectorFunctionJacobianZ->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            // evaluate function 
+            //
+            mGradientZFunctions[tName]->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
-      // create return matrix
-      //
-      auto tMesh = mVectorFunctionJacobianZ->getMesh();
-      Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
-              Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumControl, mNumDofsPerNode>( &tMesh );
+            // assembly to return matrix
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode>
+              tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
 
-      // assembly to return matrix
-      Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode>
-        tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian
+                (mNumDofsPerCell, mNumNodesPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries, tDomain);
+        }
 
-      auto tJacobianMatEntries = tJacobianMat->entries();
-      Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian(mNumDofsPerCell, mNumNodesPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+        if( mBoundaryLoads != nullptr )
+        {
+            // Workset config
+            //
+            Plato::ScalarArray3DT<ConfigScalar>
+                tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
-      return tJacobianMat;
+            // Workset control
+            //
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+ 
+            // Workset state
+            //
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
+            Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
+
+            // create result 
+            //
+            Plato::ScalarMultiVectorT<ResultScalar> tJacobian("JacobianControl", mNumCells, mNumDofsPerCell);
+
+            // evaluate function 
+            //
+            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, /*Scale=*/1.0 );
+
+            // assembly to return matrix
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode>
+              tJacobianMatEntryOrdinal( tJacobianMat, &tMesh );
+
+            auto tJacobianMatEntries = tJacobianMat->entries();
+            Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian
+                (mNumDofsPerCell, mNumNodesPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries);
+        }
+        return tJacobianMat;
     }
 };
 // class VectorFunction

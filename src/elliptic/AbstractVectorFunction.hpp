@@ -5,6 +5,7 @@
 #include <Omega_h_assoc.hpp>
 
 #include "PlatoStaticsTypes.hpp"
+#include "SpatialModel.hpp"
 
 namespace Plato
 {
@@ -21,21 +22,22 @@ template<typename EvaluationType>
 class AbstractVectorFunction
 {
 protected:
-    Omega_h::Mesh& mMesh; /*!< volume mesh database */
-    Plato::DataMap& mDataMap; /*!< PLATO Analyze database */
-    Omega_h::MeshSets& mMeshSets;  /*!< surface mesh database */
+    const Plato::SpatialDomain & mSpatialDomain;  /*!< Plato spatial model containing mesh, meshsets, etc */
+          Plato::DataMap       & mDataMap;        /*!< Plato Analyze database */
 
 public:
     /******************************************************************************//**
      * @brief Constructor
-     * @param [in] aMesh volume mesh database
-     * @param [in] aMeshSets surface mesh database
-     * @param [in] aDataMap PLATO Analyze database
+     * @param [in] aSpatialDomain Plato spatial model
+     * @param [in] aDataMap Plato Analyze database
     **********************************************************************************/
-    explicit AbstractVectorFunction(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap) :
-            mMesh(aMesh),
-            mDataMap(aDataMap),
-            mMeshSets(aMeshSets)
+    explicit
+    AbstractVectorFunction(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap
+    ) :
+        mSpatialDomain (aSpatialDomain),
+        mDataMap      (aDataMap)
     {
     }
 
@@ -50,18 +52,18 @@ public:
     * @brief Return reference to Omega_h mesh database
     * @return volume mesh database
     ********************************************************************************/
-    decltype(mMesh) getMesh() const
+    decltype(mSpatialDomain.Mesh) getMesh() const
     {
-        return (mMesh);
+        return (mSpatialDomain.Mesh);
     }
 
     /****************************************************************************//**
     * @brief Return reference to Omega_h mesh sets
     * @return surface mesh database
     ********************************************************************************/
-    decltype(mMeshSets) getMeshSets() const
+    decltype(mSpatialDomain.MeshSets) getMeshSets() const
     {
-        return (mMeshSets);
+        return (mSpatialDomain.MeshSets);
     }
 
     /******************************************************************************//**

@@ -167,6 +167,7 @@ public:
      **********************************************************************************/
     void updateProblem(const Plato::ScalarVector & aState, const Plato::ScalarVector & aControl) const override
     {
+/* TODO
         Plato::ScalarMultiVector tStateWS("state workset", mNumCells, mNumDofsPerCell);
         Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
@@ -180,6 +181,7 @@ public:
         mScalarFunctionGradientU->updateProblem(tStateWS, tControlWS, tConfigWS);
         mScalarFunctionGradientZ->updateProblem(tStateWS, tControlWS, tConfigWS);
         mScalarFunctionGradientX->updateProblem(tStateWS, tControlWS, tConfigWS);
+*/
     }
 
     /******************************************************************************//**
@@ -444,28 +446,28 @@ public:
 
 } // namespace Plato
 
-#include "Thermal.hpp"
+//#include "Thermal.hpp"
 #include "Mechanics.hpp"
-#include "Electromechanics.hpp"
-#include "Thermomechanics.hpp"
+//#include "Electromechanics.hpp"
+//#include "Thermomechanics.hpp"
 
 #ifdef PLATOANALYZE_1D
-extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<1>>;
+//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<1>>;
 extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<1>>;
-extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<1>>;
-extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<1>>;
+//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<1>>;
+//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<2>>;
+//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<2>>;
 extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<2>>;
-extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<2>>;
-extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<2>>;
+//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<2>>;
+//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<3>>;
+//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<3>>;
 extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<3>>;
-extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<3>>;
-extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<3>>;
+//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<3>>;
+//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<3>>;
 #endif

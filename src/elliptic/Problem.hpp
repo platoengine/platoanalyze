@@ -14,7 +14,9 @@
 #include "EssentialBCs.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
+#include "SpatialModel.hpp"
 
+#include "ParseTools.hpp"
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
@@ -51,11 +53,15 @@ private:
 
     static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims; /*!< spatial dimensions */
 
+    using VectorFunctionType = Plato::Elliptic::VectorFunction<SimplexPhysics>;
+
+    Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
+
     // required
-    std::shared_ptr<Plato::Elliptic::VectorFunction<SimplexPhysics>> mPDE; /*!< equality constraint interface */
+    std::shared_ptr<VectorFunctionType> mPDE; /*!< equality constraint interface */
 
     // optional
-    std::shared_ptr<Plato::Geometric::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
+//TODO    std::shared_ptr<Plato::Geometric::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> mObjective; /*!< objective constraint interface */
 
     Plato::OrdinalType mNumNewtonSteps;
@@ -90,9 +96,10 @@ public:
       Teuchos::ParameterList& aInputParams,
       Comm::Machine aMachine
     ) :
-      mPDE(std::make_shared<Plato::Elliptic::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint"))),
-      mConstraint(nullptr),
-      mObjective(nullptr),
+      mSpatialModel  (aMesh, aMeshSets, aInputParams),
+      mPDE(std::make_shared<VectorFunctionType>(mSpatialModel, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint"))),
+//TODO      mConstraint    (nullptr),
+      mObjective     (nullptr),
       mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Maximum Iterations",  1  )),
       mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aInputParams, "Newton Iteration", "Increment Tolerance", 0.0)),
       mNewtonResTol  (Plato::ParseTools::getSubParam<double>(aInputParams, "Newton Iteration", "Residual Tolerance",  0.0)),
@@ -146,7 +153,7 @@ public:
         return (tNumControlsPerNode);
     }
 
-    void appendResidual(const std::shared_ptr<Plato::Elliptic::VectorFunction<SimplexPhysics>>& aPDE)
+    void appendResidual(const std::shared_ptr<VectorFunctionType>& aPDE)
     {
         mPDE = aPDE;
     }
@@ -158,7 +165,7 @@ public:
 
     void appendConstraint(const std::shared_ptr<Plato::Geometric::ScalarFunctionBase>& aConstraint)
     {
-        mConstraint = aConstraint;
+//TODO        mConstraint = aConstraint;
     }
 
     /******************************************************************************//**
@@ -346,11 +353,11 @@ public:
     Plato::Scalar
     constraintValue(const Plato::ScalarVector & aControl)
     {
-        if(mConstraint == nullptr)
-        {
-            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
-        }
-        return mConstraint->value(aControl);
+//TODO        if(mConstraint == nullptr)
+//TODO        {
+//TODO            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
+//TODO        }
+//TODO        return mConstraint->value(aControl);
     }
 
     /******************************************************************************//**
@@ -477,11 +484,11 @@ public:
     Plato::ScalarVector
     constraintGradient(const Plato::ScalarVector & aControl)
     {
-        if(mConstraint == nullptr)
-        {
-            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
-        }
-        return mConstraint->gradient_z(aControl);
+//TODO        if(mConstraint == nullptr)
+//TODO        {
+//TODO            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
+//TODO        }
+//TODO        return mConstraint->gradient_z(aControl);
     }
 
     /******************************************************************************//**
@@ -524,11 +531,11 @@ public:
     Plato::ScalarVector
     constraintGradientX(const Plato::ScalarVector & aControl)
     {
-        if(mConstraint == nullptr)
-        {
-            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
-        }
-        return mConstraint->gradient_x(aControl);
+//TODO        if(mConstraint == nullptr)
+//TODO        {
+//TODO            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
+//TODO        }
+//TODO        return mConstraint->gradient_x(aControl);
     }
 
     /***************************************************************************//**
@@ -574,14 +581,14 @@ private:
     **********************************************************************************/
     void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
     {
-        auto tName = aInputParams.get<std::string>("PDE Constraint");
-        mPDE = std::make_shared<Plato::Elliptic::VectorFunction<SimplexPhysics>>(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+//        auto tName = aInputParams.get<std::string>("PDE Constraint");
+//        mPDE = std::make_shared<VectorFunctionType>(aMesh, aMeshSets, mDataMap, aInputParams, tName);
 
         if(aInputParams.isType<std::string>("Constraint"))
         {
-            Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tFunctionBaseFactory;
-            std::string tName = aInputParams.get<std::string>("Constraint");
-            mConstraint = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+//TODO            Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tFunctionBaseFactory;
+//TODO            std::string tName = aInputParams.get<std::string>("Constraint");
+//TODO            mConstraint = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
         }
 
         if(aInputParams.isType<std::string>("Objective"))
@@ -616,28 +623,28 @@ private:
 
 } // namespace Plato
 
-#include "Thermal.hpp"
+//#include "Thermal.hpp"
 #include "Mechanics.hpp"
-#include "Electromechanics.hpp"
-#include "Thermomechanics.hpp"
+//#include "Electromechanics.hpp"
+//#include "Thermomechanics.hpp"
 
 #ifdef PLATOANALYZE_1D
-extern template class Plato::Elliptic::Problem<::Plato::Thermal<1>>;
+//extern template class Plato::Elliptic::Problem<::Plato::Thermal<1>>;
 extern template class Plato::Elliptic::Problem<::Plato::Mechanics<1>>;
-extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<1>>;
-extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<1>>;
+//extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<1>>;
+//extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<1>>;
 #endif
 #ifdef PLATOANALYZE_2D
-extern template class Plato::Elliptic::Problem<::Plato::Thermal<2>>;
+//extern template class Plato::Elliptic::Problem<::Plato::Thermal<2>>;
 extern template class Plato::Elliptic::Problem<::Plato::Mechanics<2>>;
-extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<2>>;
-extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<2>>;
+//extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<2>>;
+//extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<2>>;
 #endif
 #ifdef PLATOANALYZE_3D
-extern template class Plato::Elliptic::Problem<::Plato::Thermal<3>>;
+//extern template class Plato::Elliptic::Problem<::Plato::Thermal<3>>;
 extern template class Plato::Elliptic::Problem<::Plato::Mechanics<3>>;
-extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<3>>;
-extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<3>>;
+//extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<3>>;
+//extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<3>>;
 #endif
 
 #endif // PLATO_PROBLEM_HPP
