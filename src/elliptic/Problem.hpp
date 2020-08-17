@@ -14,6 +14,7 @@
 #include "EssentialBCs.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
+#include "MultipointConstraints.hpp"
 
 #include "PlatoMathHelpers.hpp"
 #include "PlatoStaticsTypes.hpp"
@@ -61,6 +62,8 @@ private:
     Plato::LocalOrdinalVector mBcDofs; /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
     Plato::ScalarVector mBcValues; /*!< values associated with the Dirichlet boundary conditions */
 
+    std::shared_ptr<Plato::MultipointConstraints<SimplexPhysics>> mMPCs; /*!< multipoint constraint interface */
+
     rcp<Plato::AbstractSolver> mSolver;
 
 public:
@@ -82,7 +85,8 @@ public:
       mResidual("MyResidual", mPDE->size()),
       mStates("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
       mJacobian(Teuchos::null),
-      mIsSelfAdjoint(aInputParams.get<bool>("Self-Adjoint", false))
+      mIsSelfAdjoint(aInputParams.get<bool>("Self-Adjoint", false)),
+      mMPCs(nullptr)
     {
         this->initialize(aMesh, aMeshSets, aInputParams);
 
@@ -229,7 +233,57 @@ public:
         mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
         this->applyConstraints(mJacobian, mResidual);
 
-        mSolver->solve(*mJacobian, tStatesSubView, mResidual);
+        if(mMPCs)
+        {
+            Teuchos::RCP<Plato::CrsMatrixType> tTransformMatrix = mMPCs->getTransformMatrix();
+            Teuchos::RCP<Plato::CrsMatrixType> tTransformMatrixTranspose = mMPCs->getTransformMatrixTranspose();
+            Plato::ScalarVector tMpcRhs = mMPCs->getRhsVector();
+
+            auto tNumNodes       = mPDE->numNodes();
+            auto tNumDofsPerNode = mPDE->numDofsPerNode();
+            auto tNumTotalDofs   = tNumNodes*tNumDofsPerNode;
+
+            auto tCondensedJacobianLeft = Teuchos::rcp( new Plato::CrsMatrixType(tNumTotalDofs, tNumTotalDofs, tNumDofsPerNode, tNumDofsPerNode) );
+            auto tCondensedJacobian     = Teuchos::rcp( new Plato::CrsMatrixType(tNumTotalDofs, tNumTotalDofs, tNumDofsPerNode, tNumDofsPerNode) );
+
+            Plato::MatrixMatrixMultiply(mJacobian, tTransformMatrix, tCondensedJacobianLeft);
+            Plato::MatrixMatrixMultiply(tTransformMatrixTranspose, tCondensedJacobianLeft, tCondensedJacobian);
+
+            Plato::ScalarVector tInnerResidual = mResidual;
+            Plato::blas1::scale(-1.0, tMpcRhs);
+            Plato::MatrixTimesVectorPlusVector(mJacobian, tMpcRhs, tInnerResidual);
+
+            Plato::ScalarVector tCondensedResidual("Condensed Residual", tNumTotalDofs);
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedResidual);
+
+            Plato::MatrixTimesVectorPlusVector(tTransformMatrixTranspose, tInnerResidual, tCondensedResidual);
+
+            auto tMpcChildDofs = mMPCs->getChildDofs();
+            if(tCondensedJacobian->isBlockMatrix())
+            {
+                Plato::setBlockConstrainedDiagonals<SimplexPhysics::mNumDofsPerNode>(tCondensedJacobian, tCondensedResidual, tMpcChildDofs);
+            }
+            else
+            {
+                Plato::setConstrainedDiagonals<SimplexPhysics::mNumDofsPerNode>(tCondensedJacobian, tCondensedResidual, tMpcChildDofs);
+            }
+
+            Plato::ScalarVector tCondensedState("Condensed State Solution", tStatesSubView.extent(0));
+            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedState);
+            mSolver->solve(*tCondensedJacobian, tCondensedState, tCondensedResidual);
+
+            Plato::ScalarVector tFullState("Full State Solution", tStatesSubView.extent(0));
+            Plato::blas1::copy(tMpcRhs, tFullState);
+            Plato::blas1::scale(-1.0, tFullState); // since tMpcRhs was scaled by -1 above, set back to original values
+
+            Plato::MatrixTimesVectorPlusVector(tTransformMatrix, tCondensedState, tFullState);
+            Plato::blas1::axpy<Plato::ScalarVector>(1.0, tFullState, tStatesSubView);
+
+        }
+        else
+        {
+            mSolver->solve(*mJacobian, tStatesSubView, mResidual);
+        }
 
         mResidual = mPDE->value(tStatesSubView, aControl);
         Plato::blas1::scale(-1.0, mResidual);
@@ -608,6 +662,14 @@ private:
 
             auto tLength = mPDE->size();
             mAdjoint = Plato::ScalarMultiVector("Adjoint Variables", 1, tLength);
+        }
+
+        if(aInputParams.isType<std::string>("Multipoint Constraints"))
+        {
+            Plato::OrdinalType tNumNodes = mPDE->numNodes();
+            auto & tMyParams = aInputParams.sublist("Multipoint Constraints", false);
+            mMPCs = std::make_shared<Plato::MultipointConstraints<SimplexPhysics>>(tNumNodes, tMyParams);
+            mMPCs->setupTransform(aMeshSets);
         }
     }
 
