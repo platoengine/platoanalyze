@@ -41,7 +41,7 @@ class InternalElasticEnergy :
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
     using Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerCell; /*!< number of degree of freedom per cell */
 
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh; /*!< mesh database */
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain; /*!< Plato Analyze spatial domain */
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap; /*!< Plato Analyze database */
 
     using StateScalarType   = typename EvaluationType::StateScalarType; /*!< automatic differentiation type for states */
@@ -64,24 +64,25 @@ class InternalElasticEnergy :
   public:
     /******************************************************************************//**
      * @brief Constructor
-     * @param aMesh volume mesh database
-     * @param aMeshSets surface mesh database
+     * @param aSpatialDomain Plato Analyze spatial domain
      * @param aProblemParams input database for overall problem
      * @param aPenaltyParams input database for penalty function
     **********************************************************************************/
-    InternalElasticEnergy(Omega_h::Mesh& aMesh,
-                          Omega_h::MeshSets& aMeshSets,
-                          Plato::DataMap& aDataMap,
-                          Teuchos::ParameterList& aProblemParams,
-                          Teuchos::ParameterList& aPenaltyParams,
-                          std::string& aFunctionName) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyWeighting(mIndicatorFunction)
+    InternalElasticEnergy(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams,
+              std::string            & aFunctionName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFunctionName),
+        mIndicatorFunction (aPenaltyParams),
+        mApplyWeighting    (mIndicatorFunction)
     {
         Plato::ElasticModelFactory<mSpaceDim> tMaterialModelFactory(aProblemParams);
-        mMaterialModel = tMaterialModelFactory.create();
+        mMaterialModel = tMaterialModelFactory.create(aSpatialDomain.getMaterialName());
 
+//TODO quadrature
         mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
         for(Plato::OrdinalType tDim = 2; tDim <= mSpaceDim; tDim++)
         {
@@ -102,13 +103,15 @@ class InternalElasticEnergy :
      * @param [out] aResult 1D container of cell criterion values
      * @param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0) const
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
         Plato::Strain<mSpaceDim> tComputeVoigtStrain;
         Plato::ScalarProduct<mNumVoigtTerms> tComputeScalarProduct;
@@ -155,8 +158,8 @@ class InternalElasticEnergy :
 
       },"energy gradient");
 
-      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, tStrain, "strain");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, tStress, "stress");
+//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, tStrain, "strain");
+//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, tStress, "stress");
 
     }
 };

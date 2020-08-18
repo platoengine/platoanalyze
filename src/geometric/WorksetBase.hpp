@@ -79,11 +79,15 @@ public:
      * \param [in] aControl controls (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadControlWS controls workset (scalar type), as a 2-D Kokkos::View
     **********************************************************************************/
-    void worksetControl( const Plato::ScalarVectorT<Plato::Scalar> & aControl,
-                         Plato::ScalarMultiVectorT<Plato::Scalar> & aControlWS ) const
+    void
+    worksetControl(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aControl,
+              Plato::ScalarMultiVectorT <Plato::Scalar> & aControlWS,
+        const Plato::SpatialDomain                      & aDomain
+    ) const
     {
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>(
-              mNumCells, mControlEntryOrdinal, aControl, aControlWS);
+              aDomain, mControlEntryOrdinal, aControl, aControlWS);
     }
 
     /******************************************************************************//**
@@ -91,31 +95,43 @@ public:
      * \param [in] aControl controls (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadControlWS controls workset (AD type), as a 2-D Kokkos::View
     **********************************************************************************/
-    void worksetControl( const Plato::ScalarVectorT<Plato::Scalar> & aControl,
-                         Plato::ScalarMultiVectorT<ControlFad> & aFadControlWS ) const
+    void
+    worksetControl(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aControl,
+              Plato::ScalarMultiVectorT <ControlFad>    & aFadControlWS,
+        const Plato::SpatialDomain                      & aDomain
+    ) const
     {
         Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlFad>(
-              mNumCells, mControlEntryOrdinal, aControl, aFadControlWS);
+              aDomain, mControlEntryOrdinal, aControl, aFadControlWS);
     }
 
     /******************************************************************************//**
      * \brief Get configuration workset, i.e. coordinates for each cell
      * \param [in/out] aConfigWS configuration workset (scalar type), as a 3-D Kokkos::View
     **********************************************************************************/
-    void worksetConfig(Plato::ScalarArray3DT<Plato::Scalar> & aConfigWS) const
+    void
+    worksetConfig(
+              Plato::ScalarArray3DT <Plato::Scalar> & aConfigWS,
+        const Plato::SpatialDomain                  & aDomain
+    ) const
     {
       Plato::workset_config_scalar<mSpaceDim, mNumNodesPerCell>(
-              mNumCells, mNodeCoordinate, aConfigWS);
+              aDomain, mNodeCoordinate, aConfigWS);
     }
 
     /******************************************************************************//**
      * \brief Get configuration workset, i.e. coordinates for each cell
      * \param [in/out] aReturnValue configuration workset (AD type), as a 3-D Kokkos::View
     **********************************************************************************/
-    void worksetConfig(Plato::ScalarArray3DT<ConfigFad> & aFadConfigWS) const
+    void
+    worksetConfig(
+              Plato::ScalarArray3DT <ConfigFad> & aFadConfigWS,
+        const Plato::SpatialDomain              & aDomain
+    ) const
     {
       Plato::workset_config_fad<mSpaceDim, mNumNodesPerCell, mNumConfigDofsPerCell, ConfigFad>(
-              mNumCells, mNodeCoordinate, aFadConfigWS);
+              aDomain, mNodeCoordinate, aFadConfigWS);
     }
 
 #ifdef NOPE

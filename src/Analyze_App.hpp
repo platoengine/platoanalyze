@@ -19,7 +19,7 @@
 #include <Plato_SharedField.hpp>
 
 #include "Mechanics.hpp"
-#include "Thermal.hpp"
+//TODO #include "Thermal.hpp"
 #include "PlatoUtilities.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/ParseInput.hpp"

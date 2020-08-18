@@ -61,7 +61,7 @@ private:
     std::shared_ptr<VectorFunctionType> mPDE; /*!< equality constraint interface */
 
     // optional
-//TODO    std::shared_ptr<Plato::Geometric::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
+    std::shared_ptr<Plato::Geometric::ScalarFunctionBase> mConstraint; /*!< constraint constraint interface */
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> mObjective; /*!< objective constraint interface */
 
     Plato::OrdinalType mNumNewtonSteps;
@@ -98,7 +98,7 @@ public:
     ) :
       mSpatialModel  (aMesh, aMeshSets, aInputParams),
       mPDE(std::make_shared<VectorFunctionType>(mSpatialModel, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint"))),
-//TODO      mConstraint    (nullptr),
+      mConstraint    (nullptr),
       mObjective     (nullptr),
       mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Maximum Iterations",  1  )),
       mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aInputParams, "Newton Iteration", "Increment Tolerance", 0.0)),
@@ -109,7 +109,7 @@ public:
       mJacobian      (Teuchos::null),
       mIsSelfAdjoint (aInputParams.get<bool>("Self-Adjoint", false))
     {
-        this->initialize(aMesh, aMeshSets, aInputParams);
+        this->initialize(aInputParams);
 
         Plato::SolverFactory tSolverFactory(aInputParams.sublist("Linear Solver"));
         mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
@@ -165,7 +165,7 @@ public:
 
     void appendConstraint(const std::shared_ptr<Plato::Geometric::ScalarFunctionBase>& aConstraint)
     {
-//TODO        mConstraint = aConstraint;
+        mConstraint = aConstraint;
     }
 
     /******************************************************************************//**
@@ -353,11 +353,11 @@ public:
     Plato::Scalar
     constraintValue(const Plato::ScalarVector & aControl)
     {
-//TODO        if(mConstraint == nullptr)
-//TODO        {
-//TODO            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
-//TODO        }
-//TODO        return mConstraint->value(aControl);
+        if(mConstraint == nullptr)
+        {
+            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
+        }
+        return mConstraint->value(aControl);
     }
 
     /******************************************************************************//**
@@ -484,11 +484,11 @@ public:
     Plato::ScalarVector
     constraintGradient(const Plato::ScalarVector & aControl)
     {
-//TODO        if(mConstraint == nullptr)
-//TODO        {
-//TODO            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
-//TODO        }
-//TODO        return mConstraint->gradient_z(aControl);
+        if(mConstraint == nullptr)
+        {
+            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
+        }
+        return mConstraint->gradient_z(aControl);
     }
 
     /******************************************************************************//**
@@ -531,11 +531,11 @@ public:
     Plato::ScalarVector
     constraintGradientX(const Plato::ScalarVector & aControl)
     {
-//TODO        if(mConstraint == nullptr)
-//TODO        {
-//TODO            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
-//TODO        }
-//TODO        return mConstraint->gradient_x(aControl);
+        if(mConstraint == nullptr)
+        {
+            THROWERR("CONSTRAINT REQUESTED BUT NOT DEFINED BY USER.");
+        }
+        return mConstraint->gradient_x(aControl);
     }
 
     /***************************************************************************//**
@@ -575,27 +575,22 @@ public:
 private:
     /******************************************************************************//**
      * \brief Initialize member data
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
     **********************************************************************************/
-    void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    void initialize(Teuchos::ParameterList& aInputParams)
     {
-//        auto tName = aInputParams.get<std::string>("PDE Constraint");
-//        mPDE = std::make_shared<VectorFunctionType>(aMesh, aMeshSets, mDataMap, aInputParams, tName);
-
         if(aInputParams.isType<std::string>("Constraint"))
         {
-//TODO            Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tFunctionBaseFactory;
-//TODO            std::string tName = aInputParams.get<std::string>("Constraint");
-//TODO            mConstraint = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+            Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tFunctionBaseFactory;
+            std::string tName = aInputParams.get<std::string>("Constraint");
+            mConstraint = tFunctionBaseFactory.create(mSpatialModel, mDataMap, aInputParams, tName);
         }
 
         if(aInputParams.isType<std::string>("Objective"))
         {
             Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
             std::string tName = aInputParams.get<std::string>("Objective");
-            mObjective = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+            mObjective = tFunctionBaseFactory.create(mSpatialModel, mDataMap, aInputParams, tName);
 
             auto tLength = mPDE->size();
             mAdjoint = Plato::ScalarMultiVector("Adjoint Variables", 1, tLength);

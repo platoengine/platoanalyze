@@ -28,7 +28,7 @@ public:
      * @return function value
      **********************************************************************************/
     virtual Plato::Scalar
-    value(const Plato::ScalarVector & aControl) const = 0;
+    value(const Plato::ScalarVector & aControl) = 0;
 
     /******************************************************************************//**
      * @brief Return function gradient wrt design variables
@@ -36,7 +36,7 @@ public:
      * @return function gradient wrt design variables
      **********************************************************************************/
     virtual Plato::ScalarVector
-    gradient_z(const Plato::ScalarVector & aControl) const = 0;
+    gradient_z(const Plato::ScalarVector & aControl) = 0;
 
     /******************************************************************************//**
      * @brief Return function gradient wrt configurtion variables
@@ -44,13 +44,13 @@ public:
      * @return function gradient wrt configurtion variables
      **********************************************************************************/
     virtual Plato::ScalarVector
-    gradient_x(const Plato::ScalarVector & aControl) const = 0;
+    gradient_x(const Plato::ScalarVector & aControl) = 0;
 
     /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aControl 1D view of control variables
      **********************************************************************************/
-    virtual void updateProblem(const Plato::ScalarVector & aControl) const = 0;
+    virtual void updateProblem(const Plato::ScalarVector & aControl) = 0;
 
 
 }; // class ScalarFunctionBase

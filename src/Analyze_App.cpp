@@ -141,6 +141,7 @@ createProblem(ProblemDefinition& aDefinition)
     Omega_h::update_assoc(&tAssoc, tAssocParamList);
   }
   else {
+    tAssoc[Omega_h::ELEM_SET] = mMesh.class_sets;
     tAssoc[Omega_h::NODE_SET] = mMesh.class_sets;
     tAssoc[Omega_h::SIDE_SET] = mMesh.class_sets;
   }

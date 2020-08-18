@@ -1,9 +1,8 @@
 #ifndef ABSTRACT_SCALAR_FUNCTION
 #define ABSTRACT_SCALAR_FUNCTION
 
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
 
+#include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato
@@ -21,12 +20,9 @@ template<typename EvaluationType>
 class AbstractScalarFunction
 {
 protected:
-    Omega_h::Mesh& mMesh; /*!< mesh database */
-    Plato::DataMap& mDataMap; /*!< PLATO Engine and PLATO Analyze data map - enables inputs from PLATO Engine */
-    Omega_h::MeshSets& mMeshSets; /*!< mesh side sets database */
-
-    const std::string mFunctionName; /*!< my abstract scalar function name */
-
+    const Plato::SpatialDomain & mSpatialDomain; /*!< Plato spatial model */
+          Plato::DataMap       & mDataMap;       /*!< Plato Analyze data map */
+    const std::string            mFunctionName;  /*!< my abstract scalar function name */
  
 public:
     /******************************************************************************//**
@@ -36,14 +32,14 @@ public:
      * \param [in] aDataMap PLATO Engine and PLATO Analyze data map
      * \param [in] aName my abstract scalar function name
     **********************************************************************************/
-    AbstractScalarFunction(Omega_h::Mesh     & aMesh,
-                           Omega_h::MeshSets & aMeshSets,
-                           Plato::DataMap    & aDataMap,
-                           const std::string & aName) :
-            mMesh(aMesh),
-            mDataMap(aDataMap),
-            mMeshSets(aMeshSets),
-            mFunctionName(aName)
+    AbstractScalarFunction(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap,
+        const std::string          & aName
+    ) :
+        mSpatialDomain (aSpatialDomain),
+        mDataMap       (aDataMap),
+        mFunctionName  (aName)
     {
     }
 

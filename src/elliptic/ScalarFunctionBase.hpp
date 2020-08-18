@@ -32,7 +32,7 @@ public:
     virtual Plato::Scalar
     value(const Plato::Solution     & aSolution,
           const Plato::ScalarVector & aControl,
-                Plato::Scalar         aTimeStep = 0.0) const = 0;
+                Plato::Scalar         aTimeStep = 0.0) = 0;
 
     /******************************************************************************//**
      * @brief Return function gradient wrt design variables
@@ -44,7 +44,7 @@ public:
     virtual Plato::ScalarVector
     gradient_z(const Plato::Solution     & aSolution,
                const Plato::ScalarVector & aControl,
-                     Plato::Scalar         aTimeStep = 0.0) const = 0;
+                     Plato::Scalar         aTimeStep = 0.0) = 0;
 
     /******************************************************************************//**
      * @brief Return function gradient wrt state variables
@@ -58,7 +58,7 @@ public:
     gradient_u(const Plato::Solution     & aSolution,
                const Plato::ScalarVector & aControl,
                      Plato::OrdinalType    aStepIndex,
-                     Plato::Scalar         aTimeStep = 0.0) const = 0;
+                     Plato::Scalar         aTimeStep = 0.0) = 0;
 
     /******************************************************************************//**
      * @brief Return function gradient wrt configurtion variables
@@ -70,7 +70,7 @@ public:
     virtual Plato::ScalarVector
     gradient_x(const Plato::Solution     & aSolution,
                const Plato::ScalarVector & aControl,
-                     Plato::Scalar         aTimeStep = 0.0) const = 0;
+                     Plato::Scalar         aTimeStep = 0.0) = 0;
 
     /******************************************************************************//**
      * \fn virtual void updateProblem(const Plato::ScalarVector & aState,
@@ -80,7 +80,7 @@ public:
      * \param [in] aControl 1D view of control variables
      **********************************************************************************/
     virtual void updateProblem(const Plato::ScalarVector & aState,
-                               const Plato::ScalarVector & aControl) const = 0;
+                               const Plato::ScalarVector & aControl) = 0;
 
 
 

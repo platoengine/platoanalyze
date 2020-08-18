@@ -35,7 +35,7 @@ set(ANALYZE_SOURCES
 #    TensileEnergyDensityLocalMeasure.cpp 
 #    VonMisesLocalMeasure.cpp 
 #    ThermalVonMisesLocalMeasure.cpp 
-#    IntermediateDensityPenalty.cpp 
+    IntermediateDensityPenalty.cpp 
 #    J2PlasticityLocalResidual.cpp 
 #    LocalVectorFunctionInc.cpp 
 #    NewtonRaphsonSolver.cpp 
@@ -50,27 +50,27 @@ set(ANALYZE_SOURCES
 #    ElasticWorkCriterion.cpp 
 #    PlasticWorkCriterion.cpp
 #    geometric/DivisionFunction.cpp
-#    geometric/GeometryScalarFunction.cpp
+    geometric/GeometryScalarFunction.cpp
 #    geometric/LeastSquaresFunction.cpp
 #    geometric/MassMoment.cpp
 #    geometric/MassPropertiesFunction.cpp
-#    geometric/ScalarFunctionBaseFactory.cpp
+    geometric/ScalarFunctionBaseFactory.cpp
 #    geometric/WeightedSumFunction.cpp
 #    elliptic/DivisionFunction.cpp 
 #    elliptic/LeastSquaresFunction.cpp 
 #    elliptic/WeightedSumFunction.cpp 
     elliptic/ScalarFunctionBaseFactory.cpp 
-#    elliptic/PhysicsScalarFunction.cpp 
+    elliptic/PhysicsScalarFunction.cpp 
 #    elliptic/MassMoment.cpp 
 #    elliptic/MassPropertiesFunction.cpp
 #    elliptic/FluxPNorm.cpp 
-#    elliptic/StressPNorm.cpp 
+    elliptic/StressPNorm.cpp 
 #    elliptic/EMStressPNorm.cpp 
-#    elliptic/EffectiveEnergy.cpp 
+    elliptic/EffectiveEnergy.cpp 
 #    elliptic/InternalThermalEnergy.cpp 
 #    elliptic/InternalThermoelasticEnergy.cpp 
 #    elliptic/InternalElectroelasticEnergy.cpp 
-#    elliptic/InternalElasticEnergy.cpp 
+    elliptic/InternalElasticEnergy.cpp 
     elliptic/Problem.cpp 
     elliptic/ElastostaticResidual.cpp 
 #    elliptic/ThermostaticResidual.cpp 

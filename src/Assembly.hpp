@@ -224,25 +224,31 @@ inline void assemble_vector_gradient(const Plato::OrdinalType& aNumCells,
 * \tparam Gradient gradient workset view type
 * \tparam ReturnVal output (i.e. assembled gradient) view type
 *
-* \param [in]     aNumCells      number of cells
+* \param [in]     aDomain        Plato Analyze spatial domain
 * \param [in]     aEntryOrdinal  global indices to output vector
 * \param [in]     aGradien       gradient workset - gradient values for each cell
 * \param [in\out] aOutput        assembled global gradient
 *
 * *****************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell, Plato::OrdinalType NumDofsPerNode, class EntryOrdinal, class Gradient, class ReturnVal>
-inline void assemble_vector_gradient_fad(const Plato::OrdinalType& aNumCells,
-                                         const EntryOrdinal& aEntryOrdinal,
-                                         const Gradient& aGradient,
-                                         ReturnVal& aOutput)
+inline void
+assemble_vector_gradient_fad(
+    const Plato::SpatialDomain & aDomain,
+    const EntryOrdinal         & aEntryOrdinal,
+    const Gradient             & aGradient,
+          ReturnVal            & aOutput
+)
 {
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    auto tNumCells = aDomain.numCells();
+    auto tCellOrdinals = aDomain.cellOrdinals();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
         for(Plato::OrdinalType tNodeIndex=0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
         {
             for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerNode; tDimIndex++)
             {
-                Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(aCellOrdinal, tNodeIndex, tDimIndex);
+                Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(tCellOrdinal, tNodeIndex, tDimIndex);
                 Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal).dx(tNodeIndex * NumDofsPerNode + tDimIndex));
             }
         }
@@ -291,25 +297,31 @@ inline void assemble_scalar_gradient(const Plato::OrdinalType& aNumCells,
 * \tparam Gradient gradient workset view type
 * \tparam ReturnVal output (i.e. assembled gradient) view type
 *
-* \param [in]     aNumCells      number of cells (i.e. elements)
-* \param [in]     aEntryOrdinal  global indices to output vector
-* \param [in]     aGradien       gradient workset (automatic differentiation type) - gradient values for each cell
-* \param [in\out] aOutput        assembled global gradient
+* \param [in]     aDomain       Plato Analyze spatial domain (block)
+* \param [in]     aEntryOrdinal global indices to output vector
+* \param [in]     aGradien      gradient workset (automatic differentiation type) - gradient values for each cell
+* \param [in\out] aOutput       assembled global gradient
 *
 *****************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell, class EntryOrdinal, class Gradient, class ReturnVal>
-inline void assemble_scalar_gradient_fad(const Plato::OrdinalType& aNumCells,
-                                         const EntryOrdinal& aEntryOrdinal,
-                                         const Gradient& aGradient,
-                                         ReturnVal& aOutput)
+inline void
+assemble_scalar_gradient_fad(
+    const Plato::SpatialDomain & aDomain,
+    const EntryOrdinal         & aEntryOrdinal,
+    const Gradient             & aGradient,
+          ReturnVal            & aOutput
+)
 {
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    auto tNumCells = aDomain.numCells();
+    auto tCellOrdinals = aDomain.cellOrdinals();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-      for(Plato::OrdinalType tNodeIndex=0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
-      {
-          Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(aCellOrdinal, tNodeIndex);
-          Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal).dx(tNodeIndex));
-      }
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+        for(Plato::OrdinalType tNodeIndex=0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
+        {
+            Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(tCellOrdinal, tNodeIndex);
+            Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal).dx(tNodeIndex));
+        }
     }, "Assemble - Scalar Gradient Calculation");
 }
 // function assemble_scalar_gradient_fad
@@ -323,7 +335,7 @@ inline void assemble_scalar_gradient_fad(const Plato::OrdinalType& aNumCells,
 * \tparam Control             control variables class  
 * \tparam ControlWS           control workset class
 *
-* \param [in]     aSpatialDomain        Plato Analyze spatial domain (block)
+* \param [in]     aDomain               Plato Analyze spatial domain (block)
 * \param [in]     aControlEntryOrdinal  global-to-local index map
 * \param [in]     aControl              1-D view of control variables
 * \param [in\out] aControlWS            control variables workset
