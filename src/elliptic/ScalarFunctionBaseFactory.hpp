@@ -51,7 +51,7 @@ public:
 
 } // namespace Plato
 
-//#include "Thermal.hpp"
+#include "Thermal.hpp"
 #include "Mechanics.hpp"
 //#include "StabilizedMechanics.hpp"
 //#include "Electromechanics.hpp"
@@ -59,7 +59,7 @@ public:
 //#include "StabilizedThermomechanics.hpp"
 
 #ifdef PLATOANALYZE_1D
-//extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Thermal<1>>;
+extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Thermal<1>>;
 extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Mechanics<1>>;
 //extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::StabilizedMechanics<1>>;
 //extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Electromechanics<1>>;
@@ -68,7 +68,7 @@ extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Mechan
 #endif
 
 #ifdef PLATOANALYZE_2D
-//extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Thermal<2>>;
+extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Thermal<2>>;
 extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Mechanics<2>>;
 //extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::StabilizedMechanics<2>>;
 //extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Electromechanics<2>>;
@@ -77,7 +77,7 @@ extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Mechan
 #endif
 
 #ifdef PLATOANALYZE_3D
-//extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Thermal<3>>;
+extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Thermal<3>>;
 extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Mechanics<3>>;
 //extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::StabilizedMechanics<3>>;
 //extern template class Plato::Elliptic::ScalarFunctionBaseFactory<::Plato::Electromechanics<3>>;

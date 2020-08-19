@@ -38,7 +38,7 @@ class FluxPNorm :
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerCell;
 
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType   = typename EvaluationType::StateScalarType;
@@ -50,26 +50,27 @@ class FluxPNorm :
     Plato::ApplyWeighting<SpaceDim,SpaceDim,IndicatorFunctionType> mApplyWeighting;
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
-    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mThermalConductivityMaterialModel;
+    Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mMaterialModel;
 
     Plato::OrdinalType mExponent;
 
   public:
     /**************************************************************************/
-    FluxPNorm(Omega_h::Mesh& aMesh, 
-              Omega_h::MeshSets& aMeshSets,
-              Plato::DataMap& aDataMap, 
-              Teuchos::ParameterList& aProblemParams, 
-              Teuchos::ParameterList& aPenaltyParams,
-              std::string aFunctionName) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyWeighting(mIndicatorFunction),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>())
+    FluxPNorm(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aProblemParams, 
+              Teuchos::ParameterList & aPenaltyParams,
+              std::string              aFunctionName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFunctionName),
+        mIndicatorFunction(aPenaltyParams),
+        mApplyWeighting(mIndicatorFunction),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>())
     /**************************************************************************/
     {
       Plato::ThermalConductionModelFactory<SpaceDim> mmfactory(aProblemParams);
-      mThermalConductivityMaterialModel = mmfactory.create();
+      mMaterialModel = mmfactory.create(mSpatialDomain.getMaterialName());
 
       auto params = aProblemParams.get<Teuchos::ParameterList>(aFunctionName);
 
@@ -77,18 +78,20 @@ class FluxPNorm :
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto numCells = mMesh.nelems();
+      auto numCells = mSpatialDomain.numCells();
 
       Plato::ComputeGradientWorkset<SpaceDim> computeGradient;
       Plato::ScalarGrad<SpaceDim>             scalarGrad;
-      Plato::ThermalFlux<SpaceDim>            thermalFlux(mThermalConductivityMaterialModel);
+      Plato::ThermalFlux<SpaceDim>            thermalFlux(mMaterialModel);
       Plato::VectorPNorm<SpaceDim>            vectorPNorm;
 
       using GradScalarType =

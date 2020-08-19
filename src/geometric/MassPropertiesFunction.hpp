@@ -41,11 +41,13 @@ private:
 
     std::shared_ptr<Plato::Geometric::LeastSquaresFunction<PhysicsT>> mLeastSquaresFunction;
 
+    const Plato::SpatialModel & mSpatialModel;
+
     Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
 
     std::string mFunctionName; /*!< User defined function name */
 
-    Plato::Scalar mMaterialDensity; /*!< material density */
+    std::map<std::string, Plato::Scalar> mMaterialDensities; /*!< material density */
 
     Omega_h::Tensor<3> mInertiaRotationMatrix;
     Omega_h::Vector<3> mInertiaPrincipalValues;
@@ -62,25 +64,36 @@ private:
      * @param [in] aMeshSets side sets database
      * @param [in] aInputParams input parameters database
     **********************************************************************************/
-    void initialize (Omega_h::Mesh& aMesh, 
-                     Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+    void
+    initialize(
+        Teuchos::ParameterList & aInputParams
+    )
     {
-        auto tMaterialModelInputs = aInputParams.get<Teuchos::ParameterList>("Material Model");
-        mMaterialDensity = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tName = tDomain.getDomainName();
 
-        createLeastSquaresFunction(aMesh, aMeshSets, aInputParams);
+            auto tMaterialModelsInputs = aInputParams.get<Teuchos::ParameterList>("Material Models");
+            if( tMaterialModelsInputs.isSublist(tDomain.getMaterialName()) )
+            {
+                auto tMaterialModelInputs = aInputParams.sublist(tDomain.getMaterialName());
+                mMaterialDensities[tName] = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
+            }
+
+        }
+        createLeastSquaresFunction(mSpatialModel, aInputParams);
     }
 
     /******************************************************************************//**
      * @brief Create the least squares mass properties function
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aInputParams input parameters database
     **********************************************************************************/
-    void createLeastSquaresFunction(Omega_h::Mesh& aMesh, 
-                                    Omega_h::MeshSets& aMeshSets,
-                                    Teuchos::ParameterList & aInputParams)
+    void
+    createLeastSquaresFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Teuchos::ParameterList & aInputParams
+    )
     {
         auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
 
@@ -108,14 +121,14 @@ private:
 
         const bool tAllPropertiesSpecifiedByUser = allPropertiesSpecified(tPropertyNames);
 
-        computeMeshExtent(aMesh);
+        computeMeshExtent(aSpatialModel.Mesh);
 
         if (tAllPropertiesSpecifiedByUser)
             createAllMassPropertiesLeastSquaresFunction(
-                aMesh, aMeshSets, tPropertyNames, tPropertyWeights, tPropertyGoldValues);
+                aSpatialModel, tPropertyNames, tPropertyWeights, tPropertyGoldValues);
         else
             createItemizedLeastSquaresFunction(
-                aMesh, aMeshSets, tPropertyNames, tPropertyWeights, tPropertyGoldValues);
+                aSpatialModel, tPropertyNames, tPropertyWeights, tPropertyGoldValues);
     }
 
     /******************************************************************************//**
@@ -182,21 +195,21 @@ private:
 
     /******************************************************************************//**
      * @brief Create a least squares function for all mass properties (inertia about gold CG)
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aPropertyNames names of properties specified by user 
      * @param [in] aPropertyWeights weights of properties specified by user 
      * @param [in] aPropertyGoldValues gold values of properties specified by user 
     **********************************************************************************/
     void
-    createAllMassPropertiesLeastSquaresFunction(Omega_h::Mesh& aMesh, 
-                                                Omega_h::MeshSets& aMeshSets,
-                                                const std::vector<std::string>& aPropertyNames,
-                                                const std::vector<Plato::Scalar>& aPropertyWeights,
-                                                const std::vector<Plato::Scalar>& aPropertyGoldValues)
+    createAllMassPropertiesLeastSquaresFunction(
+        const Plato::SpatialModel        & aSpatialModel,
+        const std::vector<std::string>   & aPropertyNames,
+        const std::vector<Plato::Scalar> & aPropertyWeights,
+        const std::vector<Plato::Scalar> & aPropertyGoldValues
+    )
     {
         printf("Creating all mass properties function.\n");
-        mLeastSquaresFunction = std::make_shared<Plato::Geometric::LeastSquaresFunction<PhysicsT>>(aMesh, mDataMap);
+        mLeastSquaresFunction = std::make_shared<Plato::Geometric::LeastSquaresFunction<PhysicsT>>(aSpatialModel, mDataMap);
         std::map<std::string, Plato::Scalar> tWeightMap;
         std::map<std::string, Plato::Scalar> tGoldValueMap;
         for (Plato::OrdinalType tPropertyIndex = 0; tPropertyIndex < aPropertyNames.size(); ++tPropertyIndex)
@@ -212,46 +225,40 @@ private:
         computeRotationAndParallelAxisTheoremMatrices(tGoldValueMap);
 
         // Mass
-        mLeastSquaresFunction->allocateScalarFunctionBase(getMassFunction(aMesh, aMeshSets));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getMassFunction(aSpatialModel));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("Mass")]);
         mLeastSquaresFunction->appendGoldFunctionValue(tGoldValueMap[std::string("Mass")]);
 
         // CGx
-        mLeastSquaresFunction->allocateScalarFunctionBase(
-              getFirstMomentOverMassRatio(aMesh, aMeshSets, "FirstX"));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getFirstMomentOverMassRatio(aSpatialModel, "FirstX"));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("CGx")]);
         mLeastSquaresFunction->appendGoldFunctionValue(tGoldValueMap[std::string("CGx")], false);
         mLeastSquaresFunction->appendFunctionNormalization(mMeshExtentX);
 
         // CGy
-        mLeastSquaresFunction->allocateScalarFunctionBase(
-              getFirstMomentOverMassRatio(aMesh, aMeshSets, "FirstY"));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getFirstMomentOverMassRatio(aSpatialModel, "FirstY"));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("CGy")]);
         mLeastSquaresFunction->appendGoldFunctionValue(tGoldValueMap[std::string("CGy")], false);
         mLeastSquaresFunction->appendFunctionNormalization(mMeshExtentY);
 
         // CGz
-        mLeastSquaresFunction->allocateScalarFunctionBase(
-              getFirstMomentOverMassRatio(aMesh, aMeshSets, "FirstZ"));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getFirstMomentOverMassRatio(aSpatialModel, "FirstZ"));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("CGz")]);
         mLeastSquaresFunction->appendGoldFunctionValue(tGoldValueMap[std::string("CGz")], false);
         mLeastSquaresFunction->appendFunctionNormalization(mMeshExtentZ);
 
         // Ixx
-        mLeastSquaresFunction->allocateScalarFunctionBase(
-              getMomentOfInertiaRotatedAboutCG(aMesh, aMeshSets, "XX"));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertiaRotatedAboutCG(aSpatialModel, "XX"));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("Ixx")]);
         mLeastSquaresFunction->appendGoldFunctionValue(mInertiaPrincipalValues(0));
 
         // Iyy
-        mLeastSquaresFunction->allocateScalarFunctionBase(
-              getMomentOfInertiaRotatedAboutCG(aMesh, aMeshSets, "YY"));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertiaRotatedAboutCG(aSpatialModel, "YY"));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("Iyy")]);
         mLeastSquaresFunction->appendGoldFunctionValue(mInertiaPrincipalValues(1));
 
         // Izz
-        mLeastSquaresFunction->allocateScalarFunctionBase(
-              getMomentOfInertiaRotatedAboutCG(aMesh, aMeshSets, "ZZ"));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertiaRotatedAboutCG(aSpatialModel, "ZZ"));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("Izz")]);
         mLeastSquaresFunction->appendGoldFunctionValue(mInertiaPrincipalValues(2));
 
@@ -261,22 +268,19 @@ private:
                                             std::min(mInertiaPrincipalValues(1), mInertiaPrincipalValues(2)));
 
         // Ixy
-        mLeastSquaresFunction->allocateScalarFunctionBase(
-              getMomentOfInertiaRotatedAboutCG(aMesh, aMeshSets, "XY"));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertiaRotatedAboutCG(aSpatialModel, "XY"));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("Ixy")]);
         mLeastSquaresFunction->appendGoldFunctionValue(0.0, false);
         mLeastSquaresFunction->appendFunctionNormalization(tMinPrincipalMoment);
 
         // Ixz
-        mLeastSquaresFunction->allocateScalarFunctionBase(
-              getMomentOfInertiaRotatedAboutCG(aMesh, aMeshSets, "XZ"));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertiaRotatedAboutCG(aSpatialModel, "XZ"));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("Ixz")]);
         mLeastSquaresFunction->appendGoldFunctionValue(0.0, false);
         mLeastSquaresFunction->appendFunctionNormalization(tMinPrincipalMoment);
 
         // Iyz
-        mLeastSquaresFunction->allocateScalarFunctionBase(
-              getMomentOfInertiaRotatedAboutCG(aMesh, aMeshSets, "YZ"));
+        mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertiaRotatedAboutCG(aSpatialModel, "YZ"));
         mLeastSquaresFunction->appendFunctionWeight(tWeightMap[std::string("Iyz")]);
         mLeastSquaresFunction->appendGoldFunctionValue(0.0, false);
         mLeastSquaresFunction->appendFunctionNormalization(tMinPrincipalMoment);
@@ -334,14 +338,15 @@ private:
      * @param [in] aPropertyGoldValues gold values of properties specified by user 
     **********************************************************************************/
     void
-    createItemizedLeastSquaresFunction(Omega_h::Mesh& aMesh, 
-                                       Omega_h::MeshSets& aMeshSets,
-                                       const std::vector<std::string>& aPropertyNames,
-                                       const std::vector<Plato::Scalar>& aPropertyWeights,
-                                       const std::vector<Plato::Scalar>& aPropertyGoldValues)
+    createItemizedLeastSquaresFunction(
+        const Plato::SpatialModel        & aSpatialModel,
+        const std::vector<std::string>   & aPropertyNames,
+        const std::vector<Plato::Scalar> & aPropertyWeights,
+        const std::vector<Plato::Scalar> & aPropertyGoldValues
+    )
     {
         printf("Creating itemized mass properties function.\n");
-        mLeastSquaresFunction = std::make_shared<Plato::Geometric::LeastSquaresFunction<PhysicsT>>(aMesh, mDataMap);
+        mLeastSquaresFunction = std::make_shared<Plato::Geometric::LeastSquaresFunction<PhysicsT>>(aSpatialModel, mDataMap);
         for (Plato::OrdinalType tPropertyIndex = 0; tPropertyIndex < aPropertyNames.size(); ++tPropertyIndex)
         {
             const std::string   tPropertyName      = aPropertyNames[tPropertyIndex];
@@ -350,73 +355,64 @@ private:
 
             if (tPropertyName == "Mass")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(getMassFunction(aMesh, aMeshSets));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getMassFunction(aSpatialModel));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue);
             }
             else if (tPropertyName == "CGx")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(
-                      getFirstMomentOverMassRatio(aMesh, aMeshSets, "FirstX"));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getFirstMomentOverMassRatio(aSpatialModel, "FirstX"));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue, false);
                 mLeastSquaresFunction->appendFunctionNormalization(mMeshExtentX);
             }
             else if (tPropertyName == "CGy")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(
-                      getFirstMomentOverMassRatio(aMesh, aMeshSets, "FirstY"));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getFirstMomentOverMassRatio(aSpatialModel, "FirstY"));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue, false);
                 mLeastSquaresFunction->appendFunctionNormalization(mMeshExtentY);
             }
             else if (tPropertyName == "CGz")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(
-                      getFirstMomentOverMassRatio(aMesh, aMeshSets, "FirstZ"));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getFirstMomentOverMassRatio(aSpatialModel, "FirstZ"));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue, false);
                 mLeastSquaresFunction->appendFunctionNormalization(mMeshExtentZ);
             }
             else if (tPropertyName == "Ixx")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(
-                      getMomentOfInertia(aMesh, aMeshSets, "XX"));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "XX"));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue);
             }
             else if (tPropertyName == "Iyy")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(
-                      getMomentOfInertia(aMesh, aMeshSets, "YY"));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "YY"));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue);
             }
             else if (tPropertyName == "Izz")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(
-                      getMomentOfInertia(aMesh, aMeshSets, "ZZ"));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "ZZ"));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue);
             }
             else if (tPropertyName == "Ixy")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(
-                      getMomentOfInertia(aMesh, aMeshSets, "XY"));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "XY"));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue);
             }
             else if (tPropertyName == "Ixz")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(
-                      getMomentOfInertia(aMesh, aMeshSets, "XZ"));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "XZ"));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue);
             }
             else if (tPropertyName == "Iyz")
             {
-                mLeastSquaresFunction->allocateScalarFunctionBase(
-                      getMomentOfInertia(aMesh, aMeshSets, "YZ"));
+                mLeastSquaresFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "YZ"));
                 mLeastSquaresFunction->appendFunctionWeight(tPropertyWeight);
                 mLeastSquaresFunction->appendGoldFunctionValue(tPropertyGoldValue);
             }
@@ -432,84 +428,92 @@ private:
 
     /******************************************************************************//**
      * @brief Create the mass function only
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialModel Plato Analyze spatial model
      * @return physics scalar function
     **********************************************************************************/
     std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>>
-    getMassFunction(Omega_h::Mesh& aMesh, 
-                    Omega_h::MeshSets& aMeshSets)
+    getMassFunction(const Plato::SpatialModel & aSpatialModel)
     {
         std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>> tMassFunction =
-             std::make_shared<Plato::Geometric::GeometryScalarFunction<PhysicsT>>(aMesh, mDataMap);
+             std::make_shared<Plato::Geometric::GeometryScalarFunction<PhysicsT>>(aSpatialModel, mDataMap);
         tMassFunction->setFunctionName("Mass Function");
 
         std::string tCalculationType = std::string("Mass");
 
-        std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tValue = 
-             std::make_shared<Plato::Geometric::MassMoment<Residual>>(aMesh, aMeshSets, mDataMap);
-        tValue->setMaterialDensity(mMaterialDensity);
-        tValue->setCalculationType(tCalculationType);
-        tMassFunction->setEvaluator(tValue);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tName = tDomain.getDomainName();
 
-        std::shared_ptr<Plato::Geometric::MassMoment<GradientZ>> tGradientZ = 
-             std::make_shared<Plato::Geometric::MassMoment<GradientZ>>(aMesh, aMeshSets, mDataMap);
-        tGradientZ->setMaterialDensity(mMaterialDensity);
-        tGradientZ->setCalculationType(tCalculationType);
-        tMassFunction->setEvaluator(tGradientZ);
+            std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tValue = 
+                 std::make_shared<Plato::Geometric::MassMoment<Residual>>(tDomain, mDataMap);
+            tValue->setMaterialDensity(mMaterialDensities[tName]);
+            tValue->setCalculationType(tCalculationType);
+            tMassFunction->setEvaluator(tValue, tName);
 
-        std::shared_ptr<Plato::Geometric::MassMoment<GradientX>> tGradientX = 
-             std::make_shared<Plato::Geometric::MassMoment<GradientX>>(aMesh, aMeshSets, mDataMap);
-        tGradientX->setMaterialDensity(mMaterialDensity);
-        tGradientX->setCalculationType(tCalculationType);
-        tMassFunction->setEvaluator(tGradientX);
+            std::shared_ptr<Plato::Geometric::MassMoment<GradientZ>> tGradientZ = 
+                 std::make_shared<Plato::Geometric::MassMoment<GradientZ>>(tDomain, mDataMap);
+            tGradientZ->setMaterialDensity(mMaterialDensities[tName]);
+            tGradientZ->setCalculationType(tCalculationType);
+            tMassFunction->setEvaluator(tGradientZ, tName);
+
+            std::shared_ptr<Plato::Geometric::MassMoment<GradientX>> tGradientX = 
+                 std::make_shared<Plato::Geometric::MassMoment<GradientX>>(tDomain, mDataMap);
+            tGradientX->setMaterialDensity(mMaterialDensities[tName]);
+            tGradientX->setCalculationType(tCalculationType);
+            tMassFunction->setEvaluator(tGradientX, tName);
+        }
         return tMassFunction;
     }
 
     /******************************************************************************//**
      * @brief Create the 'first mass moment divided by the mass' function (CG)
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aMomentType mass moment type (FirstX, FirstY, FirstZ)
      * @return scalar function base
     **********************************************************************************/
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase>
-    getFirstMomentOverMassRatio(Omega_h::Mesh& aMesh, 
-                           Omega_h::MeshSets& aMeshSets, 
-                           const std::string & aMomentType)
+    getFirstMomentOverMassRatio(
+        const Plato::SpatialModel & aSpatialModel,
+        const std::string         & aMomentType
+    )
     {
         const std::string tNumeratorName = std::string("CG Numerator (Moment type = ")
                                          + aMomentType + ")";
         std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>> tNumerator =
-             std::make_shared<Plato::Geometric::GeometryScalarFunction<PhysicsT>>(aMesh, mDataMap);
+             std::make_shared<Plato::Geometric::GeometryScalarFunction<PhysicsT>>(aSpatialModel, mDataMap);
         tNumerator->setFunctionName(tNumeratorName);
 
-        std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tNumeratorValue = 
-             std::make_shared<Plato::Geometric::MassMoment<Residual>>(aMesh, aMeshSets, mDataMap);
-        tNumeratorValue->setMaterialDensity(mMaterialDensity);
-        tNumeratorValue->setCalculationType(aMomentType);
-        tNumerator->setEvaluator(tNumeratorValue);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tName = tDomain.getDomainName();
 
-        std::shared_ptr<Plato::Geometric::MassMoment<GradientZ>> tNumeratorGradientZ = 
-             std::make_shared<Plato::Geometric::MassMoment<GradientZ>>(aMesh, aMeshSets, mDataMap);
-        tNumeratorGradientZ->setMaterialDensity(mMaterialDensity);
-        tNumeratorGradientZ->setCalculationType(aMomentType);
-        tNumerator->setEvaluator(tNumeratorGradientZ);
+            std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tNumeratorValue = 
+                 std::make_shared<Plato::Geometric::MassMoment<Residual>>(tDomain, mDataMap);
+            tNumeratorValue->setMaterialDensity(mMaterialDensities[tName]);
+            tNumeratorValue->setCalculationType(aMomentType);
+            tNumerator->setEvaluator(tNumeratorValue, tName);
 
-        std::shared_ptr<Plato::Geometric::MassMoment<GradientX>> tNumeratorGradientX = 
-             std::make_shared<Plato::Geometric::MassMoment<GradientX>>(aMesh, aMeshSets, mDataMap);
-        tNumeratorGradientX->setMaterialDensity(mMaterialDensity);
-        tNumeratorGradientX->setCalculationType(aMomentType);
-        tNumerator->setEvaluator(tNumeratorGradientX);
+            std::shared_ptr<Plato::Geometric::MassMoment<GradientZ>> tNumeratorGradientZ = 
+                 std::make_shared<Plato::Geometric::MassMoment<GradientZ>>(tDomain, mDataMap);
+            tNumeratorGradientZ->setMaterialDensity(mMaterialDensities[tName]);
+            tNumeratorGradientZ->setCalculationType(aMomentType);
+            tNumerator->setEvaluator(tNumeratorGradientZ, tName);
+
+            std::shared_ptr<Plato::Geometric::MassMoment<GradientX>> tNumeratorGradientX = 
+                 std::make_shared<Plato::Geometric::MassMoment<GradientX>>(tDomain, mDataMap);
+            tNumeratorGradientX->setMaterialDensity(mMaterialDensities[tName]);
+            tNumeratorGradientX->setCalculationType(aMomentType);
+            tNumerator->setEvaluator(tNumeratorGradientX, tName);
+        }
 
         const std::string tDenominatorName = std::string("CG Mass Denominator (Moment type = ")
                                            + aMomentType + ")";
         std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>> tDenominator = 
-             getMassFunction(aMesh, aMeshSets);
+             getMassFunction(aSpatialModel);
         tDenominator->setFunctionName(tDenominatorName);
 
         std::shared_ptr<Plato::Geometric::DivisionFunction<PhysicsT>> tMomentOverMassRatioFunction =
-             std::make_shared<Plato::Geometric::DivisionFunction<PhysicsT>>(aMesh, mDataMap);
+             std::make_shared<Plato::Geometric::DivisionFunction<PhysicsT>>(aSpatialModel, mDataMap);
         tMomentOverMassRatioFunction->allocateNumeratorFunction(tNumerator);
         tMomentOverMassRatioFunction->allocateDenominatorFunction(tDenominator);
         tMomentOverMassRatioFunction->setFunctionName(std::string("CG ") + aMomentType);
@@ -518,39 +522,45 @@ private:
 
     /******************************************************************************//**
      * @brief Create the second mass moment function
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aMomentType second mass moment type (XX, XY, YY, ...)
      * @return scalar function base
     **********************************************************************************/
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase>
-    getSecondMassMoment(Omega_h::Mesh& aMesh, 
-                        Omega_h::MeshSets& aMeshSets, 
-                        const std::string & aMomentType)
+    getSecondMassMoment(
+        const Plato::SpatialModel & aSpatialModel,
+        const std::string         & aMomentType
+    )
     {
         const std::string tInertiaName = std::string("Second Mass Moment (Moment type = ")
                                          + aMomentType + ")";
         std::shared_ptr<Plato::Geometric::GeometryScalarFunction<PhysicsT>> tSecondMomentFunction =
-             std::make_shared<Plato::Geometric::GeometryScalarFunction<PhysicsT>>(aMesh, mDataMap);
+             std::make_shared<Plato::Geometric::GeometryScalarFunction<PhysicsT>>(aSpatialModel, mDataMap);
         tSecondMomentFunction->setFunctionName(tInertiaName);
 
-        std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tValue = 
-             std::make_shared<Plato::Geometric::MassMoment<Residual>>(aMesh, aMeshSets, mDataMap);
-        tValue->setMaterialDensity(mMaterialDensity);
-        tValue->setCalculationType(aMomentType);
-        tSecondMomentFunction->setEvaluator(tValue);
 
-        std::shared_ptr<Plato::Geometric::MassMoment<GradientZ>> tGradientZ = 
-             std::make_shared<Plato::Geometric::MassMoment<GradientZ>>(aMesh, aMeshSets, mDataMap);
-        tGradientZ->setMaterialDensity(mMaterialDensity);
-        tGradientZ->setCalculationType(aMomentType);
-        tSecondMomentFunction->setEvaluator(tGradientZ);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tName = tDomain.getDomainName();
 
-        std::shared_ptr<Plato::Geometric::MassMoment<GradientX>> tGradientX = 
-             std::make_shared<Plato::Geometric::MassMoment<GradientX>>(aMesh, aMeshSets, mDataMap);
-        tGradientX->setMaterialDensity(mMaterialDensity);
-        tGradientX->setCalculationType(aMomentType);
-        tSecondMomentFunction->setEvaluator(tGradientX);
+            std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tValue = 
+                 std::make_shared<Plato::Geometric::MassMoment<Residual>>(tDomain, mDataMap);
+            tValue->setMaterialDensity(mMaterialDensities[tName]);
+            tValue->setCalculationType(aMomentType);
+            tSecondMomentFunction->setEvaluator(tValue, tName);
+
+            std::shared_ptr<Plato::Geometric::MassMoment<GradientZ>> tGradientZ = 
+                 std::make_shared<Plato::Geometric::MassMoment<GradientZ>>(tDomain, mDataMap);
+            tGradientZ->setMaterialDensity(mMaterialDensities[tName]);
+            tGradientZ->setCalculationType(aMomentType);
+            tSecondMomentFunction->setEvaluator(tGradientZ, tName);
+
+            std::shared_ptr<Plato::Geometric::MassMoment<GradientX>> tGradientX = 
+                 std::make_shared<Plato::Geometric::MassMoment<GradientX>>(tDomain, mDataMap);
+            tGradientX->setMaterialDensity(mMaterialDensities[tName]);
+            tGradientX->setCalculationType(aMomentType);
+            tSecondMomentFunction->setEvaluator(tGradientX, tName);
+        }
 
         return tSecondMomentFunction;
     }
@@ -558,63 +568,63 @@ private:
 
     /******************************************************************************//**
      * @brief Create the moment of inertia function
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aAxes axes about which to compute the moment of inertia (XX, YY, ..)
      * @return scalar function base
     **********************************************************************************/
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase>
-    getMomentOfInertia(Omega_h::Mesh& aMesh, 
-                       Omega_h::MeshSets& aMeshSets, 
-                       const std::string & aAxes)
+    getMomentOfInertia(
+        const Plato::SpatialModel & aSpatialModel,
+        const std::string         & aAxes
+    )
     {
         std::shared_ptr<Plato::Geometric::WeightedSumFunction<PhysicsT>> tMomentOfInertiaFunction = 
-               std::make_shared<Plato::Geometric::WeightedSumFunction<PhysicsT>>(aMesh, mDataMap);
+               std::make_shared<Plato::Geometric::WeightedSumFunction<PhysicsT>>(aSpatialModel, mDataMap);
         tMomentOfInertiaFunction->setFunctionName(std::string("Inertia ") + aAxes);
 
         if (aAxes == "XX")
         {
             tMomentOfInertiaFunction->allocateScalarFunctionBase(
-                getSecondMassMoment(aMesh, aMeshSets, "SecondYY"));
+                getSecondMassMoment(aSpatialModel, "SecondYY"));
             tMomentOfInertiaFunction->allocateScalarFunctionBase(
-                getSecondMassMoment(aMesh, aMeshSets, "SecondZZ"));
+                getSecondMassMoment(aSpatialModel, "SecondZZ"));
             tMomentOfInertiaFunction->appendFunctionWeight(1.0);
             tMomentOfInertiaFunction->appendFunctionWeight(1.0);
         }
         else if (aAxes == "YY")
         {
             tMomentOfInertiaFunction->allocateScalarFunctionBase(
-                getSecondMassMoment(aMesh, aMeshSets, "SecondXX"));
+                getSecondMassMoment(aSpatialModel, "SecondXX"));
             tMomentOfInertiaFunction->allocateScalarFunctionBase(
-                getSecondMassMoment(aMesh, aMeshSets, "SecondZZ"));
+                getSecondMassMoment(aSpatialModel, "SecondZZ"));
             tMomentOfInertiaFunction->appendFunctionWeight(1.0);
             tMomentOfInertiaFunction->appendFunctionWeight(1.0);
         }
         else if (aAxes == "ZZ")
         {
             tMomentOfInertiaFunction->allocateScalarFunctionBase(
-                getSecondMassMoment(aMesh, aMeshSets, "SecondXX"));
+                getSecondMassMoment(aSpatialModel, "SecondXX"));
             tMomentOfInertiaFunction->allocateScalarFunctionBase(
-                getSecondMassMoment(aMesh, aMeshSets, "SecondYY"));
+                getSecondMassMoment(aSpatialModel, "SecondYY"));
             tMomentOfInertiaFunction->appendFunctionWeight(1.0);
             tMomentOfInertiaFunction->appendFunctionWeight(1.0);
         }
         else if (aAxes == "XY")
         {
             tMomentOfInertiaFunction->allocateScalarFunctionBase(
-                getSecondMassMoment(aMesh, aMeshSets, "SecondXY"));
+                getSecondMassMoment(aSpatialModel, "SecondXY"));
             tMomentOfInertiaFunction->appendFunctionWeight(-1.0);
         }
         else if (aAxes == "XZ")
         {
             tMomentOfInertiaFunction->allocateScalarFunctionBase(
-                getSecondMassMoment(aMesh, aMeshSets, "SecondXZ"));
+                getSecondMassMoment(aSpatialModel, "SecondXZ"));
             tMomentOfInertiaFunction->appendFunctionWeight(-1.0);
         }
         else if (aAxes == "YZ")
         {
             tMomentOfInertiaFunction->allocateScalarFunctionBase(
-                getSecondMassMoment(aMesh, aMeshSets, "SecondYZ"));
+                getSecondMassMoment(aSpatialModel, "SecondYZ"));
             tMomentOfInertiaFunction->appendFunctionWeight(-1.0);
         }
         else
@@ -630,18 +640,17 @@ private:
 
     /******************************************************************************//**
      * @brief Create the moment of inertia function about the CG in the principal coordinate frame
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
      * @param [in] aAxes axes about which to compute the moment of inertia (XX, YY, ..)
      * @return scalar function base
     **********************************************************************************/
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase>
-    getMomentOfInertiaRotatedAboutCG(Omega_h::Mesh& aMesh, 
-                                     Omega_h::MeshSets& aMeshSets, 
-                                     const std::string & aAxes)
+    getMomentOfInertiaRotatedAboutCG(
+        const Plato::SpatialModel & aSpatialModel,
+        const std::string         & aAxes
+    )
     {
         std::shared_ptr<Plato::Geometric::WeightedSumFunction<PhysicsT>> tMomentOfInertiaFunction = 
-               std::make_shared<Plato::Geometric::WeightedSumFunction<PhysicsT>>(aMesh, mDataMap);
+               std::make_shared<Plato::Geometric::WeightedSumFunction<PhysicsT>>(aSpatialModel, mDataMap);
         tMomentOfInertiaFunction->setFunctionName(std::string("InertiaRot ") + aAxes);
 
         std::vector<Plato::Scalar> tInertiaWeights(6);
@@ -651,14 +660,14 @@ private:
         for (unsigned int tIndex = 0; tIndex < 6; ++tIndex)
             tMomentOfInertiaFunction->appendFunctionWeight(tInertiaWeights[tIndex]);
 
-        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aMesh, aMeshSets, "XX"));
-        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aMesh, aMeshSets, "YY"));
-        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aMesh, aMeshSets, "ZZ"));
-        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aMesh, aMeshSets, "XY"));
-        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aMesh, aMeshSets, "XZ"));
-        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aMesh, aMeshSets, "YZ"));
+        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "XX"));
+        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "YY"));
+        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "ZZ"));
+        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "XY"));
+        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "XZ"));
+        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMomentOfInertia(aSpatialModel, "YZ"));
 
-        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMassFunction(aMesh, aMeshSets));
+        tMomentOfInertiaFunction->allocateScalarFunctionBase(getMassFunction(aSpatialModel));
         tMomentOfInertiaFunction->appendFunctionWeight(tMassWeight);
 
         return tMomentOfInertiaFunction;
@@ -765,23 +774,23 @@ private:
 public:
     /******************************************************************************//**
      * @brief Primary Mass Properties Function constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
+     * @param [in] aSpatialModel Plato Analyze spatial model
+     * @param [in] aDataMap Plato Analyze data map
      * @param [in] aInputParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
-    MassPropertiesFunction(Omega_h::Mesh& aMesh,
-                           Omega_h::MeshSets& aMeshSets,
-                           Plato::DataMap & aDataMap,
-                           Teuchos::ParameterList& aInputParams,
-                           std::string& aName) :
-            Plato::Geometric::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName(aName),
-            mMaterialDensity(1.0)
+    MassPropertiesFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+              std::string            & aName
+    ) :
+        Plato::Geometric::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel    (aSpatialModel),
+        mDataMap         (aDataMap),
+        mFunctionName    (aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aInputParams);
     }
 
     /******************************************************************************//**
@@ -836,7 +845,7 @@ public:
      * @brief Update physics-based parameters within optimization iterations
      * @param [in] aControl 1D view of control variables
      **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl) const
+    void updateProblem(const Plato::ScalarVector & aControl)
     {
         mLeastSquaresFunction->updateProblem(aControl);
     }
@@ -846,7 +855,7 @@ public:
      * @param [in] aControl 1D view of control variables
      * @return scalar function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aControl) const
+    Plato::Scalar value(const Plato::ScalarVector & aControl)
     {
         Plato::Scalar tFunctionValue = mLeastSquaresFunction->value(aControl);
         return tFunctionValue;
@@ -857,7 +866,7 @@ public:
      * @param [in] aControl 1D view of control variables
      * @return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl) const
+    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl)
     {
         Plato::ScalarVector tGradientX = mLeastSquaresFunction->gradient_x(aControl);
         return tGradientX;
@@ -868,7 +877,7 @@ public:
      * @param [in] aControl 1D view of control variables
      * @return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl) const
+    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl)
     {
         Plato::ScalarVector tGradientZ = mLeastSquaresFunction->gradient_z(aControl);
         return tGradientZ;

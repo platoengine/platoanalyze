@@ -39,10 +39,10 @@ public:
      **********************************************************************************/
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase> 
     create(
-        Plato::SpatialModel    & aSpatialModel,
-        Plato::DataMap         & aDataMap,
-        Teuchos::ParameterList & aInputParams,
-        std::string            & aFunctionName);
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+              std::string            & aFunctionName);
 };
 // class ScalarFunctionBaseFactory
 

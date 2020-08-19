@@ -308,7 +308,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tResidual, /*Scale=*/1.0 );
+            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tResidual, /*Scale=*/-1.0 );
 
             // create and assemble to return view
             //

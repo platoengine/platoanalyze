@@ -43,9 +43,8 @@ class ThermostaticResidual :
     using Plato::SimplexThermal<mSpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermal<mSpaceDim>::mNumDofsPerNode;
 
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mDataMap;
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType   = typename EvaluationType::StateScalarType;
     using ControlScalarType = typename EvaluationType::ControlScalarType;
@@ -60,53 +59,47 @@ class ThermostaticResidual :
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>> mBoundaryLoads;
 
-    Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> mThermalConductivityMaterialModel;
+    Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> mMaterialModel;
 
     std::vector<std::string> mPlottable;
 
   public:
     /**************************************************************************/
-    ThermostaticResidual(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap& aDataMap,
-                         Teuchos::ParameterList& aProblemParams,
-                         Teuchos::ParameterList& penaltyParams) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mIndicatorFunction(penaltyParams),
-            mApplyWeighting(mIndicatorFunction),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
-            mBoundaryLoads(nullptr)
+    ThermostaticResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & penaltyParams
+    ) :
+        Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap),
+        mIndicatorFunction(penaltyParams),
+        mApplyWeighting(mIndicatorFunction),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
+        mBoundaryLoads(nullptr)
     /**************************************************************************/
     {
-      Plato::ThermalConductionModelFactory<mSpaceDim> tMaterialFactory(aProblemParams);
-      mThermalConductivityMaterialModel = tMaterialFactory.create();
+        Plato::ThermalConductionModelFactory<mSpaceDim> tMaterialFactory(aProblemParams);
+        mMaterialModel = tMaterialFactory.create(aSpatialDomain.getMaterialName());
 
-      // parse boundary Conditions
-      // 
-      if(aProblemParams.isSublist("Natural Boundary Conditions"))
-      {
-          mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
-      }
-
-      auto tResidualParams = aProblemParams.sublist("Thermostatics");
-      if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
-        mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
-    
+        auto tResidualParams = aProblemParams.sublist("Elliptic");
+        if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
+        {
+            mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        }
     }
-
 
     /**************************************************************************/
     void
-    evaluate( const Plato::ScalarMultiVectorT<StateScalarType  > & aState,
-              const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-              const Plato::ScalarArray3DT<ConfigScalarType > & aConfig,
-              Plato::ScalarMultiVectorT<ResultScalarType > & aResult,
-              Plato::Scalar aTimeStep = 0.0) const
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType  > & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType > & aConfig,
+              Plato::ScalarMultiVectorT <ResultScalarType > & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      Kokkos::deep_copy(aResult, 0.0);
-
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermal<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
@@ -131,7 +124,7 @@ class ThermostaticResidual :
       Plato::ComputeGradientWorkset<mSpaceDim>  tComputeGradient;
 
       Plato::ScalarGrad<mSpaceDim>            tScalarGrad;
-      Plato::ThermalFlux<mSpaceDim>           tThermalFlux(mThermalConductivityMaterialModel);
+      Plato::ThermalFlux<mSpaceDim>           tThermalFlux(mMaterialModel);
       Plato::FluxDivergence<mSpaceDim>        tFluxDivergence;
 
       Plato::InterpolateFromNodal<mSpaceDim, mNumDofsPerNode> tInterpolateFromNodal;
@@ -166,13 +159,8 @@ class ThermostaticResidual :
         
       },"flux divergence");
 
-      if( mBoundaryLoads != nullptr )
-      {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0 );
-      }
-
-      if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" );
+//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad");
+//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" );
     }
 };
 // class ThermostaticResidual

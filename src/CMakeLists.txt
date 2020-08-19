@@ -49,13 +49,13 @@ set(ANALYZE_SOURCES
 #    InfinitesimalStrainPlasticityResidual.cpp 
 #    ElasticWorkCriterion.cpp 
 #    PlasticWorkCriterion.cpp
-#    geometric/DivisionFunction.cpp
+    geometric/DivisionFunction.cpp
     geometric/GeometryScalarFunction.cpp
-#    geometric/LeastSquaresFunction.cpp
-#    geometric/MassMoment.cpp
-#    geometric/MassPropertiesFunction.cpp
+    geometric/LeastSquaresFunction.cpp
+    geometric/MassMoment.cpp
+    geometric/MassPropertiesFunction.cpp
     geometric/ScalarFunctionBaseFactory.cpp
-#    geometric/WeightedSumFunction.cpp
+    geometric/WeightedSumFunction.cpp
 #    elliptic/DivisionFunction.cpp 
 #    elliptic/LeastSquaresFunction.cpp 
 #    elliptic/WeightedSumFunction.cpp 
@@ -63,17 +63,17 @@ set(ANALYZE_SOURCES
     elliptic/PhysicsScalarFunction.cpp 
 #    elliptic/MassMoment.cpp 
 #    elliptic/MassPropertiesFunction.cpp
-#    elliptic/FluxPNorm.cpp 
+    elliptic/FluxPNorm.cpp 
     elliptic/StressPNorm.cpp 
 #    elliptic/EMStressPNorm.cpp 
     elliptic/EffectiveEnergy.cpp 
-#    elliptic/InternalThermalEnergy.cpp 
+    elliptic/InternalThermalEnergy.cpp 
 #    elliptic/InternalThermoelasticEnergy.cpp 
 #    elliptic/InternalElectroelasticEnergy.cpp 
     elliptic/InternalElasticEnergy.cpp 
     elliptic/Problem.cpp 
     elliptic/ElastostaticResidual.cpp 
-#    elliptic/ThermostaticResidual.cpp 
+    elliptic/ThermostaticResidual.cpp 
 #    parabolic/InternalThermalEnergy.cpp 
 #    parabolic/InternalThermoelasticEnergy.cpp 
 #    parabolic/TemperatureAverage.cpp 

@@ -2,10 +2,10 @@
 
 #include "geometric/ScalarFunctionBase.hpp"
 #include "geometric/GeometryScalarFunction.hpp"
-//TODO #include "geometric/WeightedSumFunction.hpp"
-//TODO #include "geometric/DivisionFunction.hpp"
-//TODO #include "geometric/LeastSquaresFunction.hpp"
-//TODO #include "geometric/MassPropertiesFunction.hpp"
+#include "geometric/WeightedSumFunction.hpp"
+#include "geometric/DivisionFunction.hpp"
+#include "geometric/LeastSquaresFunction.hpp"
+#include "geometric/MassPropertiesFunction.hpp"
 #include "AnalyzeMacros.hpp"
 
 namespace Plato
@@ -24,34 +24,35 @@ namespace Geometric
     template <typename PhysicsT>
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase> 
     ScalarFunctionBaseFactory<PhysicsT>::create(
-        Plato::SpatialModel    & aSpatialModel,
-        Plato::DataMap         & aDataMap,
-        Teuchos::ParameterList & aInputParams,
-        std::string            & aFunctionName
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+              std::string            & aFunctionName
     )
     {
         auto tProblemFunction = aInputParams.sublist(aFunctionName);
         auto tFunctionType = tProblemFunction.get<std::string>("Type", "Not Defined");
 
-/* TODO
         if(tFunctionType == "Weighted Sum")
         {
-            return std::make_shared<WeightedSumFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
-        }
-        else if(tFunctionType == "Division")
-        {
-            return std::make_shared<DivisionFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
-        }
-        else if(tFunctionType == "Least Squares")
-        {
-            return std::make_shared<LeastSquaresFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
-        }
-        else if(tFunctionType == "Mass Properties")
-        {
-            return std::make_shared<MassPropertiesFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<WeightedSumFunction<PhysicsT>>(aSpatialModel, aDataMap, aInputParams, aFunctionName);
         }
         else
-TODO */
+        if(tFunctionType == "Division")
+        {
+            return std::make_shared<DivisionFunction<PhysicsT>>(aSpatialModel, aDataMap, aInputParams, aFunctionName);
+        }
+        else
+        if(tFunctionType == "Least Squares")
+        {
+            return std::make_shared<LeastSquaresFunction<PhysicsT>>(aSpatialModel, aDataMap, aInputParams, aFunctionName);
+        }
+        else
+        if(tFunctionType == "Mass Properties")
+        {
+            return std::make_shared<MassPropertiesFunction<PhysicsT>>(aSpatialModel, aDataMap, aInputParams, aFunctionName);
+        }
+        else
         if(tFunctionType == "Scalar Function")
         {
             return std::make_shared<GeometryScalarFunction<PhysicsT>>(aSpatialModel, aDataMap, aInputParams, aFunctionName);

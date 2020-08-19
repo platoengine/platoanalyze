@@ -18,8 +18,10 @@
 #include <Plato_SharedData.hpp>
 #include <Plato_SharedField.hpp>
 
-#include "Mechanics.hpp"
-//TODO #include "Thermal.hpp"
+// JR are these needed?
+//#include "Mechanics.hpp"
+//#include "Thermal.hpp"
+
 #include "PlatoUtilities.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/ParseInput.hpp"

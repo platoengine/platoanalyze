@@ -104,13 +104,17 @@ public:
                 THROWERR(tStringStream.str());
             }
         }
+*/
         else if(tPhysics == "Thermal")
         {
+/* TODO
             if(tPDE == "Parabolic")
             {
                 return std::make_shared < Plato::Parabolic::Problem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
-            else if(tPDE == "Elliptic")
+            else
+*/
+            if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
@@ -123,7 +127,9 @@ public:
                 THROWERR(tStringStream.str());
             }
         }
-        else if(tPhysics == "StructuralDynamics")
+        else
+/* TODO
+        if(tPhysics == "StructuralDynamics")
         {
 //            return std::make_shared<Plato::StructuralDynamicsProblem<Plato::StructuralDynamics<SpatialDim>>>(aMesh, aMeshSets, tInputData);
         }
@@ -167,8 +173,8 @@ public:
                 THROWERR(ss.str());
             }
         }
-*/
         else
+*/
         {
             std::stringstream tStringStream;
             tStringStream << "Unknown Physics type (" << tPhysics << ") requested.";
