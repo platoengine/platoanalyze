@@ -39,7 +39,7 @@ class EMStressPNorm :
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell;
     using Plato::SimplexElectromechanics<SpaceDim>::mNumDofsPerCell;
 
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType   = typename EvaluationType::StateScalarType;
@@ -57,20 +57,21 @@ class EMStressPNorm :
 
   public:
     /**************************************************************************/
-    EMStressPNorm(Omega_h::Mesh& aMesh,
-                  Omega_h::MeshSets& aMeshSets,
-                  Plato::DataMap& aDataMap, 
-                  Teuchos::ParameterList& aProblemParams, 
-                  Teuchos::ParameterList& aPenaltyParams,
-                  std::string& aFunctionName) :
-              Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-              mIndicatorFunction(aPenaltyParams),
-              mApplyWeighting(mIndicatorFunction),
-              mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    EMStressPNorm(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aProblemParams, 
+              Teuchos::ParameterList & aPenaltyParams,
+              std::string            & aFunctionName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFunctionName),
+        mIndicatorFunction (aPenaltyParams),
+        mApplyWeighting    (mIndicatorFunction),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     /**************************************************************************/
     {
       Plato::ElectroelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
-      mMaterialModel = mmfactory.create();
+      mMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
 
       auto params = aProblemParams.get<Teuchos::ParameterList>(aFunctionName);
 
@@ -79,23 +80,26 @@ class EMStressPNorm :
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto numCells = mMesh.nelems();
+      auto numCells = mSpatialDomain.numCells();
 
       using GradScalarType = 
         typename Plato::fad_type_t<Plato::SimplexElectromechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
 
       Plato::ComputeGradientWorkset<SpaceDim> computeGradient;
-      Plato::EMKinematics<SpaceDim>                  kinematics;
-      Plato::EMKinetics<SpaceDim>                    kinetics(mMaterialModel);
+      Plato::EMKinematics<SpaceDim>           kinematics;
+      Plato::EMKinetics<SpaceDim>             kinetics(mMaterialModel);
 
-      Plato::ScalarVectorT<ConfigScalarType> cellVolume("cell weight", numCells);
+      Plato::ScalarVectorT<ConfigScalarType>  cellVolume("cell weight", numCells);
 
       Plato::ScalarArray3DT<ConfigScalarType> gradient("gradient", numCells, mNumNodesPerCell, SpaceDim);
 

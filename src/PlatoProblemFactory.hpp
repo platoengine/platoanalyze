@@ -20,11 +20,11 @@
 //#include "parabolic/Problem.hpp"
 #include "AnalyzeMacros.hpp"
 
-#include "Mechanics.hpp"
+//TODO? #include "Mechanics.hpp"
 //TODO #include "PlasticityProblem.hpp"
 //TODO #include "StabilizedMechanics.hpp"
 //TODO #include "Electromechanics.hpp"
-//TODO #include "Thermomechanics.hpp"
+//TODO? #include "Thermomechanics.hpp"
 //TODO #include "StabilizedThermomechanics.hpp"
 //TODO #include "hyperbolic/HyperbolicProblem.hpp"
 //#include "StructuralDynamicsProblem.hpp"
@@ -67,8 +67,8 @@ public:
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
-/* TODO
             else 
+/* TODO
             if(tPDE == "Hyperbolic")
             {
                 return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
@@ -80,8 +80,8 @@ public:
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
                 return tOutput;
             }
-*/
             else
+*/
             {
                 std::stringstream ss;
                 ss << "Unknown PDE type (" << tPDE << ") requested.";
@@ -133,13 +133,17 @@ public:
         {
 //            return std::make_shared<Plato::StructuralDynamicsProblem<Plato::StructuralDynamics<SpatialDim>>>(aMesh, aMeshSets, tInputData);
         }
-        else if(tPhysics == "Electromechanical")
+        else
+*/
+        if(tPhysics == "Electromechanical")
         {
             auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
             return tOutput;
         }
-        else if(tPhysics == "Stabilized Thermomechanical")
+        else
+/* TODO
+        if(tPhysics == "Stabilized Thermomechanical")
         {
             if(tPDE == "Elliptic")
             {
@@ -154,13 +158,18 @@ public:
                 THROWERR(ss.str());
             }
         }
-        else if(tPhysics == "Thermomechanical")
+        else
+*/
+        if(tPhysics == "Thermomechanical")
         {
+/* TODO
             if(tPDE == "Parabolic")
             {
                 return std::make_shared < Plato::Parabolic::Problem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
-            else if(tPDE == "Elliptic")
+            else
+*/
+            if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
@@ -174,7 +183,6 @@ public:
             }
         }
         else
-*/
         {
             std::stringstream tStringStream;
             tStringStream << "Unknown Physics type (" << tPhysics << ") requested.";

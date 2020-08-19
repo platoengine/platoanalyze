@@ -122,7 +122,7 @@ LinearThermoelasticMaterial(const Teuchos::ParameterList& paramList)
 {
   public:
     LinearThermoelasticModelFactory(const Teuchos::ParameterList& paramList) : mParamList(paramList) {}
-    Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpatialDim>> create();
+    Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpatialDim>> create(std::string aModelName);
   private:
     const Teuchos::ParameterList& mParamList;
 };
@@ -130,21 +130,37 @@ LinearThermoelasticMaterial(const Teuchos::ParameterList& paramList)
 /******************************************************************************/
 template<int SpatialDim>
 Teuchos::RCP<LinearThermoelasticMaterial<SpatialDim>>
-LinearThermoelasticModelFactory<SpatialDim>::create()
+LinearThermoelasticModelFactory<SpatialDim>::create(std::string aModelName)
 /******************************************************************************/
 {
-  auto modelParamList = mParamList.get<Teuchos::ParameterList>("Material Model");
+    if (!mParamList.isSublist("Material Models"))
+    {
+        REPORT("'Material Models' list not found! Returning 'nullptr'");
+        return Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpatialDim>>(nullptr);
+    }
+    else
+    {
+        auto tModelsParamList = mParamList.get<Teuchos::ParameterList>("Material Models");
 
-  if( modelParamList.isSublist("Isotropic Linear Thermoelastic") )
-  {
-    return Teuchos::rcp(new Plato::IsotropicLinearThermoelasticMaterial<SpatialDim>(modelParamList.sublist("Isotropic Linear Thermoelastic")));
-  }
-  else
-  if( modelParamList.isSublist("Cubic Linear Thermoelastic") )
-  {
-    return Teuchos::rcp(new Plato::CubicLinearThermoelasticMaterial<SpatialDim>(modelParamList.sublist("Cubic Linear Thermoelastic")));
-  }
-  return Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpatialDim>>(nullptr);
+        if (!tModelsParamList.isSublist(aModelName))
+        {
+            std::stringstream ss;
+            ss << "Requested a material model ('" << aModelName << "') that isn't defined";
+            THROWERR(ss.str());
+        }
+
+        auto tModelParamList = tModelsParamList.sublist(aModelName);
+        if( tModelParamList.isSublist("Isotropic Linear Thermoelastic") )
+        {
+            return Teuchos::rcp(new Plato::IsotropicLinearThermoelasticMaterial<SpatialDim>(tModelParamList.sublist("Isotropic Linear Thermoelastic")));
+        }
+        else
+        if( tModelParamList.isSublist("Cubic Linear Thermoelastic") )
+        {
+            return Teuchos::rcp(new Plato::CubicLinearThermoelasticMaterial<SpatialDim>(tModelParamList.sublist("Cubic Linear Thermoelastic")));
+        }
+        return Teuchos::RCP<Plato::LinearThermoelasticMaterial<SpatialDim>>(nullptr);
+    }
 }
 
 } // namespace Plato

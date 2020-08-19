@@ -22,6 +22,7 @@
 
 #include "ElasticModelFactory.hpp"
 #include "BodyLoads.hpp"
+#include "NaturalBCs.hpp"
 
 #include "ExpInstMacros.hpp"
 
@@ -62,6 +63,7 @@ private:
     Plato::ApplyWeighting<mSpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyWeighting;
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>> mBoundaryLoads;
     std::shared_ptr<Plato::CellForcing<mNumVoigtTerms>> mCellForcing;
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
 
@@ -87,6 +89,7 @@ public:
         mIndicatorFunction(aPenaltyParams),
         mApplyWeighting(mIndicatorFunction),
         mBodyLoads(nullptr),
+        mBoundaryLoads(nullptr),
         mCellForcing(nullptr),
         mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     {
@@ -102,6 +105,12 @@ public:
             mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
         }
   
+        // parse boundary Conditions
+        // 
+        if(aProblemParams.isSublist("Natural Boundary Conditions"))
+        {
+            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
+        }
         // parse cell problem forcing
         //
         if(aProblemParams.isSublist("Cell Problem Forcing"))
@@ -201,6 +210,35 @@ public:
       if(std::count(mPlotTable.begin(), mPlotTable.end(), "Vonmises")) { this->outputVonMises(tStress, mSpatialDomain); }
 */
     }
+    /******************************************************************************//**
+     * \brief Evaluate vector function
+     *
+     * \param [in] aSpatialModel Plato Analyze spatial model
+     * \param [in] aState 2D array with state variables (C,DOF)
+     * \param [in] aControl 2D array with control variables (C,N)
+     * \param [in] aConfig 3D array with control variables (C,N,D)
+     * \param [in] aResult 1D array with control variables (C,DOF)
+     * \param [in] aTimeStep current time step
+     *
+     * Nomenclature: C = number of cells, DOF = number of degrees of freedom per cell
+     * N = number of nodes per cell, D = spatial dimensions
+    **********************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                           & aSpatialModel,
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarMultiVectorT <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
+    {
+        if( mBoundaryLoads != nullptr )
+        {
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0 );
+        }
+    }
+
 
     /**********************************************************************//**
      * \brief Compute Von Mises stress field and copy data into output data map

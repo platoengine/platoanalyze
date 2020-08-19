@@ -77,11 +77,31 @@ public:
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType> & aState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType> & aControl,
-             const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType> & aConfig,
-             Plato::ScalarMultiVectorT<typename EvaluationType::ResultScalarType> & aResult,
-             Plato::Scalar aTimeStep = 0.0) const = 0;
+    evaluate(
+        const Plato::ScalarMultiVectorT <typename EvaluationType::StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>  & aConfig,
+              Plato::ScalarMultiVectorT <typename EvaluationType::ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0) const = 0;
+
+    /******************************************************************************//**
+     * @brief Evaluate vector function
+     * @param [in] aState 2D array with state variables (C,DOF)
+     * @param [in] aControl 2D array with control variables (C,N)
+     * @param [in] aConfig 3D array with control variables (C,N,D)
+     * @param [in] aResult 1D array with control variables (C,DOF)
+     * @param [in] aTimeStep current time step
+     * Nomenclature: C = number of cells, DOF = number of degrees of freedom per cell
+     * N = number of nodes per cell, D = spatial dimensions
+    **********************************************************************************/
+    virtual void
+    evaluate_boundary(
+        const Plato::SpatialModel                                                    & aModel,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>  & aConfig,
+              Plato::ScalarMultiVectorT <typename EvaluationType::ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0) const = 0;
 };
 // class AbstractVectorFunction
 

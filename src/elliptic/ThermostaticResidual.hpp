@@ -81,6 +81,13 @@ class ThermostaticResidual :
         Plato::ThermalConductionModelFactory<mSpaceDim> tMaterialFactory(aProblemParams);
         mMaterialModel = tMaterialFactory.create(aSpatialDomain.getMaterialName());
 
+      // parse boundary Conditions
+      // 
+      if(aProblemParams.isSublist("Natural Boundary Conditions"))
+      {
+          mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
+      }
+
         auto tResidualParams = aProblemParams.sublist("Elliptic");
         if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
         {
@@ -161,6 +168,25 @@ class ThermostaticResidual :
 
 //TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad");
 //TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" );
+    }
+
+    /**************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                           & aSpatialModel,
+        const Plato::ScalarMultiVectorT <StateScalarType  > & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType > & aConfig,
+              Plato::ScalarMultiVectorT <ResultScalarType > & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
+    /**************************************************************************/
+    {
+
+        if( mBoundaryLoads != nullptr )
+        {
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0 );
+        }
     }
 };
 // class ThermostaticResidual

@@ -47,17 +47,16 @@ private:
     using Plato::SimplexElectromechanics<SpaceDim>::mNumDofsPerNode;
     using Plato::SimplexElectromechanics<SpaceDim>::mNumDofsPerCell;
 
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mDataMap;
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
-    using StateScalarType = typename EvaluationType::StateScalarType;
+    using StateScalarType   = typename EvaluationType::StateScalarType;
     using ControlScalarType = typename EvaluationType::ControlScalarType;
-    using ConfigScalarType = typename EvaluationType::ConfigScalarType;
-    using ResultScalarType = typename EvaluationType::ResultScalarType;
+    using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
+    using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
     IndicatorFunctionType mIndicatorFunction;
-    ApplyWeighting<SpaceDim, SpaceDim,        IndicatorFunctionType> mApplyEDispWeighting;
+    ApplyWeighting<SpaceDim, SpaceDim,       IndicatorFunctionType> mApplyEDispWeighting;
     ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
@@ -73,26 +72,26 @@ private:
 
 public:
     /**************************************************************************/
-    ElectroelastostaticResidual(Omega_h::Mesh& aMesh,
-                               Omega_h::MeshSets& aMeshSets,
-                               Plato::DataMap& aDataMap,
-                               Teuchos::ParameterList& aProblemParams,
-                               Teuchos::ParameterList& aPenaltyParams) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyStressWeighting(mIndicatorFunction),
-            mApplyEDispWeighting(mIndicatorFunction),
-            mBodyLoads(nullptr),
-            mBoundaryLoads(nullptr),
-            mBoundaryCharges(nullptr),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    ElectroelastostaticResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+    ) :
+        Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap),
+        mIndicatorFunction    (aPenaltyParams),
+        mApplyStressWeighting (mIndicatorFunction),
+        mApplyEDispWeighting  (mIndicatorFunction),
+        mBodyLoads            (nullptr),
+        mBoundaryLoads        (nullptr),
+        mBoundaryCharges      (nullptr),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     /**************************************************************************/
     {
         // create material model and get stiffness
         //
         Plato::ElectroelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
-        mMaterialModel = mmfactory.create();
-  
+        mMaterialModel = mmfactory.create(mSpatialDomain.getMaterialName());
 
         // parse body loads
         // 
@@ -105,31 +104,36 @@ public:
         // 
         if(aProblemParams.isSublist("Mechanical Natural Boundary Conditions"))
         {
-            mBoundaryLoads =   std::make_shared<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>>(aProblemParams.sublist("Mechanical Natural Boundary Conditions"));
+            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>>
+                (aProblemParams.sublist("Mechanical Natural Boundary Conditions"));
         }
   
         // parse electrical boundary Conditions
         // 
         if(aProblemParams.isSublist("Electrical Natural Boundary Conditions"))
         {
-            mBoundaryCharges = std::make_shared<Plato::NaturalBCs<SpaceDim, NElecDims, mNumDofsPerNode, EDofOffset>>(aProblemParams.sublist("Electrical Natural Boundary Conditions"));
+            mBoundaryCharges = std::make_shared<Plato::NaturalBCs<SpaceDim, NElecDims, mNumDofsPerNode, EDofOffset>>
+                (aProblemParams.sublist("Electrical Natural Boundary Conditions"));
         }
   
         auto tResidualParams = aProblemParams.sublist("Electroelastostatics");
         if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
-          mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
-
+        {
+            mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        }
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & state,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & control,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & config,
-                  Plato::ScalarMultiVectorT<ResultScalarType> & result,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & state,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & control,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & config,
+              Plato::ScalarMultiVectorT <ResultScalarType>  & result,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
       typename Plato::fad_type_t<Plato::SimplexElectromechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
@@ -184,24 +188,36 @@ public:
 
       if( mBodyLoads != nullptr )
       {
-          mBodyLoads->get( mMesh, state, control, result, -1.0 );
+          mBodyLoads->get( mSpatialDomain, state, control, result, -1.0 );
       }
 
-      if( mBoundaryLoads != nullptr )
-      {
-          mBoundaryLoads->get( &mMesh, mMeshSets, state, control, config, result, -1.0 );
-      }
+//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, strain, "strain");
+//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"efield") ) toMap(mDataMap, strain, "efield");
+//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, stress, "stress");
+//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"edisp" ) ) toMap(mDataMap, stress, "edisp" );
 
-      if( mBoundaryCharges != nullptr )
-      {
-          mBoundaryCharges->get( &mMesh, mMeshSets, state, control, config, result, -1.0 );
-      }
+    }
+    /**************************************************************************/
+    void evaluate_boundary(
+        const Plato::SpatialModel                           & aSpatialModel,
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarMultiVectorT <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
+    /**************************************************************************/
+    {
 
-      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, strain, "strain");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"efield") ) toMap(mDataMap, strain, "efield");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, stress, "stress");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"edisp" ) ) toMap(mDataMap, stress, "edisp" );
+        if( mBoundaryLoads != nullptr )
+        {
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0 );
+        }
 
+        if( mBoundaryCharges != nullptr )
+        {
+            mBoundaryCharges->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0 );
+        }
     }
 };
 // class ElectroelastostaticResidual

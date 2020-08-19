@@ -31,11 +31,12 @@ struct FunctionFactory
     /******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<EvaluationType>>
-    createVectorFunction(Omega_h::Mesh& aMesh, 
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap& aDataMap, 
-                         Teuchos::ParameterList& aParamList, 
-                         std::string aStrVectorFunctionType)
+    createVectorFunction(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aParamList, 
+              std::string              aStrVectorFunctionType
+    )
     /******************************************************************************/
     {
 
@@ -45,21 +46,25 @@ struct FunctionFactory
             std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "SIMP");
             if(tPenaltyType == "SIMP")
             {
-                return std::make_shared<Plato::Elliptic::ElectroelastostaticResidual<EvaluationType, Plato::MSIMP>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                return std::make_shared<Plato::Elliptic::ElectroelastostaticResidual<EvaluationType, Plato::MSIMP>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else 
             if(tPenaltyType == "RAMP")
             {
-                return std::make_shared<Plato::Elliptic::ElectroelastostaticResidual<EvaluationType, Plato::RAMP>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                return std::make_shared<Plato::Elliptic::ElectroelastostaticResidual<EvaluationType, Plato::RAMP>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else 
             if(tPenaltyType == "Heaviside")
             {
-                return std::make_shared<Plato::Elliptic::ElectroelastostaticResidual<EvaluationType, Plato::Heaviside>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                return std::make_shared<Plato::Elliptic::ElectroelastostaticResidual<EvaluationType, Plato::Heaviside>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             if(tPenaltyType == "NoPenalty")
             {
-                return std::make_shared<Plato::Elliptic::ElectroelastostaticResidual<EvaluationType, Plato::NoPenalty>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                return std::make_shared<Plato::Elliptic::ElectroelastostaticResidual<EvaluationType, Plato::NoPenalty>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
             {
@@ -74,12 +79,13 @@ struct FunctionFactory
     /******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::Elliptic::AbstractScalarFunction<EvaluationType>>
-    createScalarFunction(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap& aDataMap, 
-                         Teuchos::ParameterList & aParamList, 
-                         std::string aStrScalarFunctionType,
-                         std::string aStrScalarFunctionName)
+    createScalarFunction(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aParamList, 
+              std::string              aStrScalarFunctionType,
+              std::string              aStrScalarFunctionName
+    )
     /******************************************************************************/
     {
 
@@ -89,21 +95,25 @@ struct FunctionFactory
             std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "SIMP");
             if(tPenaltyType == "SIMP")
             {
-                return std::make_shared<Plato::Elliptic::InternalElectroelasticEnergy<EvaluationType, Plato::MSIMP>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+                return std::make_shared<Plato::Elliptic::InternalElectroelasticEnergy<EvaluationType, Plato::MSIMP>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else 
             if(tPenaltyType == "RAMP")
             {
-                return std::make_shared<Plato::Elliptic::InternalElectroelasticEnergy<EvaluationType, Plato::RAMP>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+                return std::make_shared<Plato::Elliptic::InternalElectroelasticEnergy<EvaluationType, Plato::RAMP>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else 
             if(tPenaltyType == "Heaviside")
             {
-                return std::make_shared<Plato::Elliptic::InternalElectroelasticEnergy<EvaluationType, Plato::Heaviside>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+                return std::make_shared<Plato::Elliptic::InternalElectroelasticEnergy<EvaluationType, Plato::Heaviside>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             if(tPenaltyType == "NoPenalty")
             {
-                return std::make_shared<Plato::Elliptic::InternalElectroelasticEnergy<EvaluationType, Plato::NoPenalty>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+                return std::make_shared<Plato::Elliptic::InternalElectroelasticEnergy<EvaluationType, Plato::NoPenalty>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else
             {
@@ -116,22 +126,26 @@ struct FunctionFactory
             std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "SIMP");
             if(tPenaltyType == "SIMP")
             {
-                return std::make_shared<Plato::Elliptic::EMStressPNorm<EvaluationType, Plato::MSIMP>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+                return std::make_shared<Plato::Elliptic::EMStressPNorm<EvaluationType, Plato::MSIMP>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else 
             if(tPenaltyType == "RAMP")
             {
-                return std::make_shared<Plato::Elliptic::EMStressPNorm<EvaluationType, Plato::RAMP>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+                return std::make_shared<Plato::Elliptic::EMStressPNorm<EvaluationType, Plato::RAMP>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else 
             if(tPenaltyType == "Heaviside")
             {
-                return std::make_shared<Plato::Elliptic::EMStressPNorm<EvaluationType, Plato::Heaviside>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+                return std::make_shared<Plato::Elliptic::EMStressPNorm<EvaluationType, Plato::Heaviside>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else
             if(tPenaltyType == "NoPenalty")
             {
-                return std::make_shared<Plato::Elliptic::EMStressPNorm<EvaluationType, Plato::NoPenalty>>(aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
+                return std::make_shared<Plato::Elliptic::EMStressPNorm<EvaluationType, Plato::NoPenalty>>
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else
             {

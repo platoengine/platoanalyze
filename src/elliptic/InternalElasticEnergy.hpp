@@ -9,6 +9,7 @@
 #include "LinearStress.hpp"
 #include "ElasticModelFactory.hpp"
 #include "elliptic/AbstractScalarFunction.hpp"
+#include "LinearTetCubRuleDegreeOne.hpp"
 #include "ImplicitFunctors.hpp"
 #include "ExpInstMacros.hpp"
 #include "ToMap.hpp"
@@ -49,12 +50,10 @@ class InternalElasticEnergy :
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType; /*!< automatic differentiation type for configuration */
     using ResultScalarType  = typename EvaluationType::ResultScalarType; /*!< automatic differentiation type for results */
 
-    Omega_h::Matrix< mNumVoigtTerms, mNumVoigtTerms> mCellStiffness; /*!< matrix with Lame constants for a cell/element */
-    
-    Plato::Scalar mQuadratureWeight; /*!< quadrature weight for simplex element */
-
     IndicatorFunctionType mIndicatorFunction; /*!< penalty function */
     Plato::ApplyWeighting<mSpaceDim,mNumVoigtTerms,IndicatorFunctionType> mApplyWeighting; /*!< apply penalty function */
+
+    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
 
     std::vector<std::string> mPlottable; /*!< database of output field names */
 
@@ -77,17 +76,11 @@ class InternalElasticEnergy :
     ) :
         Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFunctionName),
         mIndicatorFunction (aPenaltyParams),
-        mApplyWeighting    (mIndicatorFunction)
+        mApplyWeighting    (mIndicatorFunction),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     {
         Plato::ElasticModelFactory<mSpaceDim> tMaterialModelFactory(aProblemParams);
         mMaterialModel = tMaterialModelFactory.create(aSpatialDomain.getMaterialName());
-
-//TODO quadrature
-        mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
-        for(Plato::OrdinalType tDim = 2; tDim <= mSpaceDim; tDim++)
-        {
-            mQuadratureWeight /= Plato::Scalar(tDim);
-        }
 
         if(aProblemParams.isType < Teuchos::Array < std::string >> ("Plottable"))
         {
@@ -133,7 +126,8 @@ class InternalElasticEnergy :
       Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
         tStress("stress",tNumCells,mNumVoigtTerms);
 
-      auto tQuadratureWeight = mQuadratureWeight;
+      auto tQuadratureWeight = mCubatureRule->getCubWeight();
+
       auto tApplyWeighting  = mApplyWeighting;
       Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
       {

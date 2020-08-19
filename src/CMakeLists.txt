@@ -65,11 +65,11 @@ set(ANALYZE_SOURCES
 #    elliptic/MassPropertiesFunction.cpp
     elliptic/FluxPNorm.cpp 
     elliptic/StressPNorm.cpp 
-#    elliptic/EMStressPNorm.cpp 
+    elliptic/EMStressPNorm.cpp 
     elliptic/EffectiveEnergy.cpp 
     elliptic/InternalThermalEnergy.cpp 
-#    elliptic/InternalThermoelasticEnergy.cpp 
-#    elliptic/InternalElectroelasticEnergy.cpp 
+    elliptic/InternalThermoelasticEnergy.cpp 
+    elliptic/InternalElectroelasticEnergy.cpp 
     elliptic/InternalElasticEnergy.cpp 
     elliptic/Problem.cpp 
     elliptic/ElastostaticResidual.cpp 

@@ -52,14 +52,17 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     using GradientXFunction = std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientX>>;
     using GradientZFunction = std::shared_ptr<Plato::Elliptic::AbstractVectorFunction<GradientZ>>;
 
-    std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mBoundaryLoads;
-
     static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mNumSpatialDims*mNumNodesPerCell;
 
     std::map<std::string, ResidualFunction>  mResidualFunctions;
     std::map<std::string, JacobianFunction>  mJacobianFunctions;
     std::map<std::string, GradientXFunction> mGradientXFunctions;
     std::map<std::string, GradientZFunction> mGradientZFunctions;
+
+    ResidualFunction  mBoundaryLoadsResidualFunction;
+    JacobianFunction  mBoundaryLoadsJacobianFunction;
+    GradientXFunction mBoundaryLoadsGradientXFunction;
+    GradientZFunction mBoundaryLoadsGradientZFunction;
 
     const Plato::SpatialModel & mSpatialModel;
 
@@ -83,7 +86,6 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
               std::string            & aProblemType
     ) :
         Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
-        mBoundaryLoads (nullptr),
         mSpatialModel  (aSpatialModel),
         mDataMap       (aDataMap)
     {
@@ -98,12 +100,14 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
           mGradientXFunctions[tName] = tFunctionFactory.template createVectorFunction<GradientX>(tDomain, aDataMap, aProblemParams, aProblemType);
         }
 
-        // parse boundary Conditions
-        // 
-        if(aProblemParams.isSublist("Natural Boundary Conditions"))
-        {
-            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
-        }
+
+        // any block can compute the boundary terms for the entire mesh.  We'll use the first block.
+        auto tFirstBlockName = aSpatialModel.Domains[0].getDomainName();
+
+        mBoundaryLoadsResidualFunction  = mResidualFunctions[tFirstBlockName];
+        mBoundaryLoadsJacobianFunction  = mJacobianFunctions[tFirstBlockName];
+        mBoundaryLoadsGradientZFunction = mGradientZFunctions[tFirstBlockName];
+        mBoundaryLoadsGradientXFunction = mGradientXFunctions[tFirstBlockName];
     }
 
     /**************************************************************************//**
@@ -283,7 +287,6 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
         }
 
-        if( mBoundaryLoads != nullptr )
         {
             auto tNumCells = mSpatialModel.Mesh.nelems();
 
@@ -308,12 +311,11 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tResidual, /*Scale=*/-1.0 );
+            mBoundaryLoadsResidualFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
 
             // create and assemble to return view
             //
             Plato::WorksetBase<PhysicsT>::assembleResidual( tResidual, tReturnValue);
-
         }
 
         return tReturnValue;
@@ -377,7 +379,6 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
         }
 
-        if( mBoundaryLoads != nullptr )
         {
             // Workset config
             //
@@ -400,7 +401,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, /*Scale=*/1.0 );
+            mBoundaryLoadsGradientXFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode>
@@ -471,7 +472,6 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
                 (mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries, tDomain);
         }
 
-        if( mBoundaryLoads != nullptr )
         {
             // Workset config
             //
@@ -494,7 +494,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, /*Scale=*/1.0 );
+            mBoundaryLoadsJacobianFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode>
@@ -564,7 +564,6 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
                 (mNumDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries, tDomain);
         }
 
-        if( mBoundaryLoads != nullptr )
         {
             // Workset config
             //
@@ -587,7 +586,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, /*Scale=*/1.0 );
+            mBoundaryLoadsJacobianFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode, mNumDofsPerNode>
@@ -658,7 +657,6 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
                 (mNumDofsPerCell, mNumNodesPerCell, tJacobianMatEntryOrdinal, tJacobian, tJacobianMatEntries, tDomain);
         }
 
-        if( mBoundaryLoads != nullptr )
         {
             // Workset config
             //
@@ -682,7 +680,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function 
             //
-            mBoundaryLoads->get(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, /*Scale=*/1.0 );
+            mBoundaryLoadsGradientZFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode>
