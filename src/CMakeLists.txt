@@ -74,14 +74,14 @@ set(ANALYZE_SOURCES
     elliptic/Problem.cpp 
     elliptic/ElastostaticResidual.cpp 
     elliptic/ThermostaticResidual.cpp 
-#    parabolic/InternalThermalEnergy.cpp 
-#    parabolic/InternalThermoelasticEnergy.cpp 
-#    parabolic/TemperatureAverage.cpp 
-#    parabolic/Problem.cpp 
-#    parabolic/ScalarFunctionBaseFactory.cpp 
-#    parabolic/PhysicsScalarFunction.cpp 
-#    parabolic/HeatEquationResidual.cpp 
-#    parabolic/TransientThermomechResidual.cpp
+    parabolic/InternalThermalEnergy.cpp 
+    parabolic/InternalThermoelasticEnergy.cpp 
+    parabolic/TemperatureAverage.cpp 
+    parabolic/Problem.cpp 
+    parabolic/ScalarFunctionBaseFactory.cpp 
+    parabolic/PhysicsScalarFunction.cpp 
+    parabolic/HeatEquationResidual.cpp 
+    parabolic/TransientThermomechResidual.cpp
 #    hyperbolic/HyperbolicScalarFunctionFactory.cpp
 #    hyperbolic/HyperbolicPhysicsScalarFunction.cpp
 )

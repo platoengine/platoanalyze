@@ -104,7 +104,7 @@ class InternalElasticEnergy :
               Plato::ScalarVectorT      <ResultScalarType>  & aResult,
               Plato::Scalar aTimeStep = 0.0) const
     {
-      auto tNumCells = mSpatialDomain.numCells();
+        auto tNumCells = mSpatialDomain.numCells();
 
         Plato::Strain<mSpaceDim> tComputeVoigtStrain;
         Plato::ScalarProduct<mNumVoigtTerms> tComputeScalarProduct;

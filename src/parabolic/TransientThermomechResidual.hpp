@@ -56,22 +56,24 @@ class TransientThermomechResidual :
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mDataMap;
-    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
-    using StateScalarType     = typename EvaluationType::StateScalarType;
+    using StateScalarType    = typename EvaluationType::StateScalarType;
     using StateDotScalarType = typename EvaluationType::StateDotScalarType;
-    using ControlScalarType   = typename EvaluationType::ControlScalarType;
-    using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
-    using ResultScalarType    = typename EvaluationType::ResultScalarType;
+    using ControlScalarType  = typename EvaluationType::ControlScalarType;
+    using ConfigScalarType   = typename EvaluationType::ConfigScalarType;
+    using ResultScalarType   = typename EvaluationType::ResultScalarType;
+
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<SpaceDim>;
 
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
     Plato::ApplyWeighting<SpaceDim, SpaceDim,       IndicatorFunctionType> mApplyFluxWeighting;
     Plato::ApplyWeighting<SpaceDim, NThrmDims,      IndicatorFunctionType> mApplyMassWeighting;
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
+    std::shared_ptr<CubatureType> mCubatureRule;
+
     std::shared_ptr<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>> mBoundaryLoads;
     std::shared_ptr<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>> mBoundaryFluxes;
 
@@ -83,30 +85,30 @@ class TransientThermomechResidual :
   public:
     /**************************************************************************/
     TransientThermomechResidual(
-      Omega_h::Mesh& aMesh,
-      Omega_h::MeshSets& aMeshSets,
-      Plato::DataMap& aDataMap,
-      Teuchos::ParameterList& aProblemParams,
-      Teuchos::ParameterList& aPenaltyParams) :
-     Plato::Parabolic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap,
-        {"Displacement X", "Displacement Y", "Displacement Z", "Temperature"}),
-     mIndicatorFunction(aPenaltyParams),
-     mApplyStressWeighting(mIndicatorFunction),
-     mApplyFluxWeighting(mIndicatorFunction),
-     mApplyMassWeighting(mIndicatorFunction),
-     mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>()),
-     mBoundaryLoads(nullptr),
-     mBoundaryFluxes(nullptr)
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+     ) :
+         Plato::Parabolic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap,
+             {"Displacement X", "Displacement Y", "Displacement Z", "Temperature"}),
+         mIndicatorFunction    (aPenaltyParams),
+         mApplyStressWeighting (mIndicatorFunction),
+         mApplyFluxWeighting   (mIndicatorFunction),
+         mApplyMassWeighting   (mIndicatorFunction),
+         mCubatureRule         (std::make_shared<CubatureType>()),
+         mBoundaryLoads        (nullptr),
+         mBoundaryFluxes       (nullptr)
     /**************************************************************************/
     {
         {
             Plato::ThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
-            mMaterialModel = mmfactory.create();
+            mMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
         }
 
         {
             Plato::ThermalMassModelFactory<SpaceDim> mmfactory(aProblemParams);
-            mThermalMassMaterialModel = mmfactory.create();
+            mThermalMassMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
         }
 
       // parse boundary Conditions
@@ -134,15 +136,16 @@ class TransientThermomechResidual :
 
     /**************************************************************************/
     void
-    evaluate( const Plato::ScalarMultiVectorT< StateScalarType    > & aState,
-              const Plato::ScalarMultiVectorT< StateDotScalarType > & aStateDot,
-              const Plato::ScalarMultiVectorT< ControlScalarType  > & aControl,
-              const Plato::ScalarArray3DT    < ConfigScalarType   > & aConfig,
-                    Plato::ScalarMultiVectorT< ResultScalarType   > & aResult,
-                    Plato::Scalar aTimeStep = 0.0) const
+    evaluate(
+        const Plato::ScalarMultiVectorT< StateScalarType    > & aState,
+        const Plato::ScalarMultiVectorT< StateDotScalarType > & aStateDot,
+        const Plato::ScalarMultiVectorT< ControlScalarType  > & aControl,
+        const Plato::ScalarArray3DT    < ConfigScalarType   > & aConfig,
+              Plato::ScalarMultiVectorT< ResultScalarType   > & aResult,
+              Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermomechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
@@ -226,17 +229,30 @@ class TransientThermomechResidual :
 
       },"stress and flux divergence");
 
-      if( mBoundaryLoads != nullptr )
-      {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0);
-      }
-      if( mBoundaryFluxes != nullptr )
-      {
-          mBoundaryFluxes->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0);
-      }
-
       if(std::count(mPlotTable.begin(), mPlotTable.end(), "strain")) { Plato::toMap(mDataMap, tStrain, "strain"); }
       if(std::count(mPlotTable.begin(), mPlotTable.end(), "stress")) { Plato::toMap(mDataMap, tStress, "stress"); }
+    }
+
+    /**************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                             & aSpatialModel,
+        const Plato::ScalarMultiVectorT< StateScalarType    > & aState,
+        const Plato::ScalarMultiVectorT< StateDotScalarType > & aStateDot,
+        const Plato::ScalarMultiVectorT< ControlScalarType  > & aControl,
+        const Plato::ScalarArray3DT    < ConfigScalarType   > & aConfig,
+              Plato::ScalarMultiVectorT< ResultScalarType   > & aResult,
+              Plato::Scalar aTimeStep = 0.0) const
+    /**************************************************************************/
+    {
+        if( mBoundaryLoads != nullptr )
+        {
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0);
+        }
+        if( mBoundaryFluxes != nullptr )
+        {
+            mBoundaryFluxes->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0);
+        }
     }
 };
 

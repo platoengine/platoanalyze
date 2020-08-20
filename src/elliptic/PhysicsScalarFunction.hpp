@@ -89,9 +89,8 @@ private:
 public:
     /******************************************************************************//**
      * \brief Primary physics scalar function constructor
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
-     * \param [in] aDataMap PLATO Engine and Analyze data map
+     * \param [in] aSpatialModel Plato Analyze spatial model
+     * \param [in] aDataMap Plato Analyze data map
      * \param [in] aInputParams input parameters database
      * \param [in] aName user defined function name
     **********************************************************************************/
@@ -111,8 +110,8 @@ public:
 
     /******************************************************************************//**
      * \brief Secondary physics scalar function constructor, used for unit testing
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
+     * \param [in] aSpatialModel Plato Analyze spatial model
+     * \param [in] aDataMap Plato Analyze data map
     **********************************************************************************/
     PhysicsScalarFunction(
         const Plato::SpatialModel & aSpatialModel,

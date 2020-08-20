@@ -243,7 +243,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     /**************************************************************************/
-    )
+    ) const
     {
         using ConfigScalar  = typename Residual::ConfigScalarType;
         using StateScalar   = typename Residual::StateScalarType;
@@ -279,7 +279,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mResidualFunctions[tName]->evaluate( tStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
+            mResidualFunctions.at(tName)->evaluate( tStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
 
             // create and assemble to return view
             //
@@ -328,7 +328,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     /**************************************************************************/
-    )
+    ) const
     {
         using ConfigScalar  = typename GradientX::ConfigScalarType;
         using StateScalar   = typename GradientX::StateScalarType;
@@ -367,7 +367,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mGradientXFunctions[tName]->evaluate(tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep);
+            mGradientXFunctions.at(tName)->evaluate(tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep);
 
             // assembly to return matrix
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode>
@@ -422,7 +422,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     /**************************************************************************/
-    )
+    ) const
     {
         using ConfigScalar  = typename Jacobian::ConfigScalarType;
         using StateScalar   = typename Jacobian::StateScalarType;
@@ -461,7 +461,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mJacobianFunctions[tName]->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            mJacobianFunctions.at(tName)->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode>
@@ -513,7 +513,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
         const Plato::ScalarVector & aState,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
-    )
+    ) const
     /**************************************************************************/
     {
         using ConfigScalar  = typename Jacobian::ConfigScalarType;
@@ -553,7 +553,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mJacobianFunctions[tName]->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            mJacobianFunctions.at(tName)->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode, mNumDofsPerNode>
@@ -606,7 +606,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
     /**************************************************************************/
-    )
+    ) const
     {
         using ConfigScalar  = typename GradientZ::ConfigScalarType;
         using StateScalar   = typename GradientZ::StateScalarType;
@@ -646,7 +646,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function 
             //
-            mGradientZFunctions[tName]->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            mGradientZFunctions.at(tName)->evaluate( tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode>

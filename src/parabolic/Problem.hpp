@@ -13,6 +13,7 @@
 #include "ParseTools.hpp"
 #include "Geometrical.hpp"
 #include "ComputedField.hpp"
+#include "SpatialModel.hpp"
 #include "parabolic/TrapezoidIntegrator.hpp"
 #include "parabolic/VectorFunction.hpp"
 #include "parabolic/ScalarFunctionBase.hpp"
@@ -35,7 +36,11 @@ namespace Parabolic
         static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims;
         static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
 
-        Plato::Parabolic::VectorFunction<SimplexPhysics> mPDEConstraint;
+        Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
+
+        using VectorFunctionType = Plato::Parabolic::VectorFunction<SimplexPhysics>;
+
+        VectorFunctionType mPDEConstraint;
 
         Plato::Parabolic::TrapezoidIntegrator<SimplexPhysics> mTrapezoidIntegrator;
 
@@ -44,8 +49,8 @@ namespace Parabolic
 
         bool mSaveState;
 
-        std::shared_ptr<const Plato::Geometric::ScalarFunctionBase> mConstraint;
-        std::shared_ptr<const Plato::Parabolic::ScalarFunctionBase> mObjective;
+        std::shared_ptr<Plato::Geometric::ScalarFunctionBase> mConstraint;
+        std::shared_ptr<Plato::Parabolic::ScalarFunctionBase> mObjective;
 
         Plato::ScalarVector mResidual;
         Plato::ScalarVector mResidualV;
@@ -73,7 +78,8 @@ namespace Parabolic
           Teuchos::ParameterList& aParamList,
           Comm::Machine aMachine
         ) :
-            mPDEConstraint (aMesh, aMeshSets, mDataMap, aParamList, aParamList.get<std::string>("PDE Constraint")),
+            mSpatialModel  (aMesh, aMeshSets, aParamList),
+            mPDEConstraint (mSpatialModel, mDataMap, aParamList, aParamList.get<std::string>("PDE Constraint")),
             mTrapezoidIntegrator (aParamList.sublist("Time Integration")),
             mNumSteps      (Plato::ParseTools::getSubParam<int>   (aParamList, "Time Integration", "Number Time Steps",   1  )),
             mTimeStep      (Plato::ParseTools::getSubParam<Plato::Scalar>(aParamList, "Time Integration", "Time Step" ,   1.0)),
@@ -102,7 +108,7 @@ namespace Parabolic
             {
                 std::string tName = aParamList.get<std::string>("Constraint");
                 Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tScalarFunctionBaseFactory;
-                mConstraint = tScalarFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aParamList, tName);
+                mConstraint = tScalarFunctionBaseFactory.create(mSpatialModel, mDataMap, aParamList, tName);
             }
 
             // parse objective
@@ -111,7 +117,7 @@ namespace Parabolic
             {
                 std::string tName = aParamList.get<std::string>("Objective");
                 Plato::Parabolic::ScalarFunctionBaseFactory<SimplexPhysics> tScalarFunctionBaseFactory;
-                mObjective = tScalarFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aParamList, tName);
+                mObjective = tScalarFunctionBaseFactory.create(mSpatialModel, mDataMap, aParamList, tName);
 
                 auto tLength = mPDEConstraint.size();
                 mAdjoints_U = Plato::ScalarMultiVector("MyAdjoint U", mNumSteps, tLength);

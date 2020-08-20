@@ -16,15 +16,13 @@
 #include <Teuchos_ParameterList.hpp>
 
 #include "elliptic/Problem.hpp"
+#include "parabolic/Problem.hpp"
+
 //TODO #include "EllipticVMSProblem.hpp"
-//#include "parabolic/Problem.hpp"
 #include "AnalyzeMacros.hpp"
 
-//TODO? #include "Mechanics.hpp"
 //TODO #include "PlasticityProblem.hpp"
 //TODO #include "StabilizedMechanics.hpp"
-//TODO #include "Electromechanics.hpp"
-//TODO? #include "Thermomechanics.hpp"
 //TODO #include "StabilizedThermomechanics.hpp"
 //TODO #include "hyperbolic/HyperbolicProblem.hpp"
 //#include "StructuralDynamicsProblem.hpp"
@@ -107,13 +105,11 @@ public:
 */
         else if(tPhysics == "Thermal")
         {
-/* TODO
             if(tPDE == "Parabolic")
             {
                 return std::make_shared < Plato::Parabolic::Problem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
             else
-*/
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
@@ -162,13 +158,11 @@ public:
 */
         if(tPhysics == "Thermomechanical")
         {
-/* TODO
             if(tPDE == "Parabolic")
             {
                 return std::make_shared < Plato::Parabolic::Problem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
             else
-*/
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);

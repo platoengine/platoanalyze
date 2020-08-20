@@ -49,14 +49,17 @@ class InternalThermoelasticEnergy :
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
-    using StateScalarType     = typename EvaluationType::StateScalarType;
+    using StateScalarType    = typename EvaluationType::StateScalarType;
     using StateDotScalarType = typename EvaluationType::StateDotScalarType;
-    using ControlScalarType   = typename EvaluationType::ControlScalarType;
-    using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
-    using ResultScalarType    = typename EvaluationType::ResultScalarType;
+    using ControlScalarType  = typename EvaluationType::ControlScalarType;
+    using ConfigScalarType   = typename EvaluationType::ConfigScalarType;
+    using ResultScalarType   = typename EvaluationType::ResultScalarType;
+
+    using FunctionBaseType = Plato::Parabolic::AbstractScalarFunction<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>;
 
     Teuchos::RCP<Plato::MaterialModel<SpaceDim>> mMaterialModel;
 
@@ -64,30 +67,33 @@ class InternalThermoelasticEnergy :
     ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
     ApplyWeighting<SpaceDim, SpaceDim,       IndicatorFunctionType> mApplyFluxWeighting;
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
+    std::shared_ptr<CubatureType> mCubatureRule;
 
     std::vector<std::string> mPlottable;
 
   public:
     /**************************************************************************/
-    InternalThermoelasticEnergy(Omega_h::Mesh& aMesh,
-                          Omega_h::MeshSets& aMeshSets,
-                          Plato::DataMap& aDataMap,
-                          Teuchos::ParameterList& aProblemParams,
-                          Teuchos::ParameterList& aPenaltyParams,
-                          std::string& aFunctionName ) :
-            Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyStressWeighting(mIndicatorFunction),
-            mApplyFluxWeighting(mIndicatorFunction),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    InternalThermoelasticEnergy(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams,
+              std::string            & aFunctionName
+    ) :
+        FunctionBaseType      (aSpatialDomain, aDataMap, aFunctionName),
+        mIndicatorFunction    (aPenaltyParams),
+        mApplyStressWeighting (mIndicatorFunction),
+        mApplyFluxWeighting   (mIndicatorFunction),
+        mCubatureRule         (std::make_shared<CubatureType>())
     /**************************************************************************/
     {
-      Plato::ThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
-      mMaterialModel = mmfactory.create();
+        Plato::ThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
+        mMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
 
-      if( aProblemParams.isType<Teuchos::Array<std::string>>("Plottable") )
-        mPlottable = aProblemParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        if( aProblemParams.isType<Teuchos::Array<std::string>>("Plottable") )
+        {
+            mPlottable = aProblemParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        }
     }
 
     /**************************************************************************/
@@ -99,7 +105,7 @@ class InternalThermoelasticEnergy :
                   Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
-      auto numCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermomechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
@@ -113,24 +119,24 @@ class InternalThermoelasticEnergy :
 
       Plato::InterpolateFromNodal<SpaceDim, mNumDofsPerNode, TDofOffset> interpolateFromNodal;
 
-      Plato::ScalarVectorT<ConfigScalarType> cellVolume("cell weight",numCells);
+      Plato::ScalarVectorT<ConfigScalarType> cellVolume("cell weight", tNumCells);
 
-      Plato::ScalarMultiVectorT<GradScalarType>   strain("strain", numCells, mNumVoigtTerms);
-      Plato::ScalarMultiVectorT<GradScalarType>   tgrad ("tgrad",  numCells, SpaceDim);
+      Plato::ScalarMultiVectorT<GradScalarType>   strain("strain", tNumCells, mNumVoigtTerms);
+      Plato::ScalarMultiVectorT<GradScalarType>   tgrad ("tgrad",  tNumCells, SpaceDim);
 
-      Plato::ScalarMultiVectorT<ResultScalarType> stress("stress", numCells, mNumVoigtTerms);
-      Plato::ScalarMultiVectorT<ResultScalarType> flux  ("flux",   numCells, SpaceDim);
+      Plato::ScalarMultiVectorT<ResultScalarType> stress("stress", tNumCells, mNumVoigtTerms);
+      Plato::ScalarMultiVectorT<ResultScalarType> flux  ("flux",   tNumCells, SpaceDim);
 
-      Plato::ScalarArray3DT<ConfigScalarType>   gradient("gradient",numCells,mNumNodesPerCell,SpaceDim);
+      Plato::ScalarArray3DT<ConfigScalarType>   gradient("gradient", tNumCells, mNumNodesPerCell, SpaceDim);
 
-      Plato::ScalarVectorT<StateScalarType> temperature("Gauss point temperature", numCells);
+      Plato::ScalarVectorT<StateScalarType> temperature("Gauss point temperature", tNumCells);
 
       auto quadratureWeight = mCubatureRule->getCubWeight();
       auto basisFunctions   = mCubatureRule->getBasisFunctions();
 
       auto& applyStressWeighting = mApplyStressWeighting;
       auto& applyFluxWeighting   = mApplyFluxWeighting;
-      Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,numCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
+      Kokkos::parallel_for(Kokkos::RangePolicy<int>(0, tNumCells), LAMBDA_EXPRESSION(const int & aCellOrdinal)
       {
         computeGradient(aCellOrdinal, gradient, aConfig, cellVolume);
         cellVolume(aCellOrdinal) *= quadratureWeight;
