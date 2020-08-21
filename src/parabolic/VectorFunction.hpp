@@ -3,9 +3,7 @@
 
 #include <memory>
 
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
-
+#include "SpatialModel.hpp"
 #include "../WorksetBase.hpp"
 #include "parabolic/ParabolicSimplexFadTypes.hpp"
 #include "parabolic/AbstractVectorFunction.hpp"
@@ -192,7 +190,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     ******************************************************************************/
     std::vector<std::string> getDofNames() const
     {
-        auto tFirstBlockName = mSpatialModel.Domains[0].getDomainName();
+        auto tFirstBlockName = mSpatialModel.Domains.front().getDomainName();
         return mResidualFunctions.at(tFirstBlockName)->getDofNames();
     }
 
@@ -212,7 +210,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
         using ControlScalar  = typename Residual::ControlScalarType;
         using ResultScalar   = typename Residual::ResultScalarType;
 
-        Plato::ScalarVector tReturnValue("Assembled Residual", mNumDofsPerNode*mNumNodes);
+        Plato::ScalarVector tReturnValue("Assembled Residual", mNumDofsPerNode * mNumNodes);
 
         for(const auto& tDomain : mSpatialModel.Domains)
         {
@@ -249,35 +247,33 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // create and assemble to return view
             //
-            Plato::WorksetBase<PhysicsT>::assembleResidual( tResidual, tReturnValue );
+            Plato::WorksetBase<PhysicsT>::assembleResidual( tResidual, tReturnValue, tDomain );
         }
 
         {
-            auto tNumCells = mSpatialModel.Mesh.nelems();
-
             // Workset state
             //
-            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", tNumCells, mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<StateScalar> tStateWS("State Workset", mNumCells, mNumDofsPerCell);
             Plato::WorksetBase<PhysicsT>::worksetState(aState, tStateWS);
 
             // Workset state dot
             //
-            Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset", tNumCells, mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("StateDot Workset", mNumCells, mNumDofsPerCell);
             Plato::WorksetBase<PhysicsT>::worksetState(aStateDot, tStateDotWS);
 
             // Workset control
             //
-            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("Control Workset", mNumCells, mNumNodesPerCell);
             Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
 
             // Workset config
             //
-            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", mNumCells, mNumNodesPerCell, mNumSpatialDims);
             Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
 
             // create result
             //
-            Plato::ScalarMultiVectorT<ResultScalar> tResidual("Cells Residual", tNumCells, mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalar> tResidual("Cells Residual", mNumCells, mNumDofsPerCell);
 
             // evaluate function
             //

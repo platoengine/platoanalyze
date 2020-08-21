@@ -82,8 +82,8 @@ set(ANALYZE_SOURCES
     parabolic/PhysicsScalarFunction.cpp 
     parabolic/HeatEquationResidual.cpp 
     parabolic/TransientThermomechResidual.cpp
-#    hyperbolic/HyperbolicScalarFunctionFactory.cpp
-#    hyperbolic/HyperbolicPhysicsScalarFunction.cpp
+    hyperbolic/HyperbolicScalarFunctionFactory.cpp
+    hyperbolic/HyperbolicPhysicsScalarFunction.cpp
 )
 
 if (PLATOANALYZE_ENABLE_TPETRA)

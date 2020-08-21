@@ -78,7 +78,7 @@ class InternalThermoelasticEnergy :
               Plato::DataMap         & aDataMap,
               Teuchos::ParameterList & aProblemParams,
               Teuchos::ParameterList & aPenaltyParams,
-              std::string            & aFunctionName
+        const std::string            & aFunctionName
     ) :
         FunctionBaseType      (aSpatialDomain, aDataMap, aFunctionName),
         mIndicatorFunction    (aPenaltyParams),
@@ -97,12 +97,15 @@ class InternalThermoelasticEnergy :
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<StateDotScalarType> & aStateDot,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>    & aState,
+        const Plato::ScalarMultiVectorT <StateDotScalarType> & aStateDot,
+        const Plato::ScalarMultiVectorT <ControlScalarType>  & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>   & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>   & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
       auto tNumCells = mSpatialDomain.numCells();

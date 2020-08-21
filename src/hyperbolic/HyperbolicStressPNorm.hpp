@@ -36,7 +36,7 @@ class StressPNorm :
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell;
     using Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerCell;
 
-    using Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType       = typename EvaluationType::StateScalarType;
@@ -46,7 +46,10 @@ class StressPNorm :
     using ConfigScalarType      = typename EvaluationType::ConfigScalarType;
     using ResultScalarType      = typename EvaluationType::ResultScalarType;
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
+    using FunctionBaseType = Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<mSpaceDim>;
+
+    std::shared_ptr<CubatureType> mCubatureRule;
 
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<mSpaceDim,mNumVoigtTerms,IndicatorFunctionType> mApplyWeighting;
@@ -59,21 +62,20 @@ class StressPNorm :
   public:
     /**************************************************************************/
     StressPNorm(
-        Omega_h::Mesh&          aMesh,
-        Omega_h::MeshSets&      aMeshSets,
-        Plato::DataMap&         aDataMap, 
-        Teuchos::ParameterList& aProblemParams, 
-        Teuchos::ParameterList& aPenaltyParams,
-        std::string&            aFunctionName
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aProblemParams, 
+              Teuchos::ParameterList & aPenaltyParams,
+        const std::string            & aFunctionName
     ) :
-        Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-        mCubatureRule      (std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
+        FunctionBaseType   (aSpatialDomain, aDataMap, aFunctionName),
+        mCubatureRule      (std::make_shared<CubatureType>()),
         mIndicatorFunction (aPenaltyParams),
         mApplyWeighting    (mIndicatorFunction)
     /**************************************************************************/
     {
       Plato::ElasticModelFactory<mSpaceDim> mmfactory(aProblemParams);
-      mMaterialModel = mmfactory.create();
+      mMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
 
       auto params = aProblemParams.get<Teuchos::ParameterList>(aFunctionName);
 
@@ -84,17 +86,17 @@ class StressPNorm :
     /**************************************************************************/
     void
     evaluate(
-        const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType>       & aState,
-        const Plato::ScalarMultiVectorT<typename EvaluationType::StateDotScalarType>    & aStateDot,
-        const Plato::ScalarMultiVectorT<typename EvaluationType::StateDotDotScalarType> & aStateDotDot,
-        const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType>     & aControl,
-        const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType>          & aConfig,
-        Plato::ScalarVectorT<typename EvaluationType::ResultScalarType>                 & aResult,
-        Plato::Scalar aTimeStep = 0.0
+        const Plato::ScalarMultiVectorT <StateScalarType>       & aState,
+        const Plato::ScalarMultiVectorT <StateDotScalarType>    & aStateDot,
+        const Plato::ScalarMultiVectorT <StateDotDotScalarType> & aStateDotDot,
+        const Plato::ScalarMultiVectorT <ControlScalarType>     & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>      & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>      & aResult,
+              Plato::Scalar aTimeStep = 0.0
     ) const
     /**************************************************************************/
     {
-      auto numCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim>                 tVoigtStrain;
@@ -104,14 +106,14 @@ class StressPNorm :
         typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>,
                             StateScalarType, ConfigScalarType>;
 
-      Plato::ScalarVectorT      <ConfigScalarType> tCellVolume ("cell weight",numCells);
-      Plato::ScalarArray3DT     <ConfigScalarType> tGradient   ("gradient",numCells,mNumNodesPerCell,mSpaceDim);
-      Plato::ScalarMultiVectorT <StrainScalarType> tStrain     ("strain",numCells,mNumVoigtTerms);
-      Plato::ScalarMultiVectorT <ResultScalarType> tStress     ("stress",numCells,mNumVoigtTerms);
+      Plato::ScalarVectorT      <ConfigScalarType> tCellVolume ("cell weight", tNumCells);
+      Plato::ScalarArray3DT     <ConfigScalarType> tGradient   ("gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
+      Plato::ScalarMultiVectorT <StrainScalarType> tStrain     ("strain", tNumCells, mNumVoigtTerms);
+      Plato::ScalarMultiVectorT <ResultScalarType> tStress     ("stress", tNumCells, mNumVoigtTerms);
 
       auto tQuadratureWeight = mCubatureRule->getCubWeight();
       auto tApplyWeighting  = mApplyWeighting;
-      Kokkos::parallel_for(Kokkos::RangePolicy<>(0,numCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
+      Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
       {
         tComputeGradient(aCellOrdinal, tGradient, aConfig, tCellVolume);
         tCellVolume(aCellOrdinal) *= tQuadratureWeight;

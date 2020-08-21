@@ -11,6 +11,9 @@
 
 #include "Assembly.hpp"
 
+
+// TODO:  are assembleJacobian and assembleJacobianFad redundant?
+
 namespace Plato
 {
 

@@ -19,18 +19,19 @@ namespace Hyperbolic
      **********************************************************************************/
     template <typename PhysicsT>
     std::shared_ptr<Plato::Hyperbolic::ScalarFunctionBase>
-    ScalarFunctionFactory<PhysicsT>::create(Omega_h::Mesh& aMesh,
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap & aDataMap,
-           Teuchos::ParameterList& aInputParams,
-           std::string& aFunctionName)
+    ScalarFunctionFactory<PhysicsT>::create(
+        Plato::SpatialModel    & aSpatialModel,
+        Plato::DataMap         & aDataMap,
+        Teuchos::ParameterList & aInputParams,
+        std::string            & aFunctionName
+    )
     {
         auto tProblemFunction = aInputParams.sublist(aFunctionName);
         auto tFunctionType = tProblemFunction.get<std::string>("Type", "Not Defined");
 
         if(tFunctionType == "Scalar Function")
         {
-            return std::make_shared<Hyperbolic::PhysicsScalarFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<Hyperbolic::PhysicsScalarFunction<PhysicsT>>(aSpatialModel, aDataMap, aInputParams, aFunctionName);
         }
         else
         {

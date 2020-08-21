@@ -65,6 +65,7 @@ class TransientThermomechResidual :
     using ConfigScalarType   = typename EvaluationType::ConfigScalarType;
     using ResultScalarType   = typename EvaluationType::ResultScalarType;
 
+    using FunctionBaseType = Plato::Parabolic::AbstractVectorFunction<EvaluationType>;
     using CubatureType = Plato::LinearTetCubRuleDegreeOne<SpaceDim>;
 
     IndicatorFunctionType mIndicatorFunction;
@@ -90,8 +91,7 @@ class TransientThermomechResidual :
               Teuchos::ParameterList & aProblemParams,
               Teuchos::ParameterList & aPenaltyParams
      ) :
-         Plato::Parabolic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap,
-             {"Displacement X", "Displacement Y", "Displacement Z", "Temperature"}),
+         FunctionBaseType      (aSpatialDomain, aDataMap, {"Displacement X", "Displacement Y", "Displacement Z", "Temperature"}),
          mIndicatorFunction    (aPenaltyParams),
          mApplyStressWeighting (mIndicatorFunction),
          mApplyFluxWeighting   (mIndicatorFunction),
@@ -111,26 +111,26 @@ class TransientThermomechResidual :
             mThermalMassMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
         }
 
-      // parse boundary Conditions
-      // 
-      if(aProblemParams.isSublist("Mechanical Natural Boundary Conditions"))
-      {
-          mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>>
-            (aProblemParams.sublist("Mechanical Natural Boundary Conditions"));
-      }
-      // parse thermal boundary Conditions
-      // 
-      if(aProblemParams.isSublist("Thermal Natural Boundary Conditions"))
-      {
-          mBoundaryFluxes = std::make_shared<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>>
-            (aProblemParams.sublist("Thermal Natural Boundary Conditions"));
-      }
+        // parse boundary Conditions
+        // 
+        if(aProblemParams.isSublist("Mechanical Natural Boundary Conditions"))
+        {
+            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>>
+                (aProblemParams.sublist("Mechanical Natural Boundary Conditions"));
+        }
+        // parse thermal boundary Conditions
+        // 
+        if(aProblemParams.isSublist("Thermal Natural Boundary Conditions"))
+        {
+            mBoundaryFluxes = std::make_shared<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>>
+                (aProblemParams.sublist("Thermal Natural Boundary Conditions"));
+        }
 
-      auto tResidualParams = aProblemParams.sublist("Parabolic");
-      if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
-      {
-          mPlotTable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
-      }
+        auto tResidualParams = aProblemParams.sublist("Parabolic");
+        if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
+        {
+            mPlotTable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        }
     }
 
 

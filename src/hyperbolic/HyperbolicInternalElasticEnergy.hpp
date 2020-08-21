@@ -2,6 +2,7 @@
 #define HYPERBOLIC_INTERNAL_ELASTIC_ENERGY_HPP
 
 //#include "SimplexFadTypes.hpp"
+#include "SpatialModel.hpp"
 #include "SimplexMechanics.hpp"
 #include "ScalarProduct.hpp"
 #include "ApplyWeighting.hpp"
@@ -40,7 +41,7 @@ class InternalElasticEnergy :
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
     using Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerCell; /*!< number of degree of freedom per cell */
 
-    using Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>::mMesh; /*!< mesh database */
+    using Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>::mSpatialDomain; /*!< mesh database */
     using Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>::mDataMap; /*!< Plato Analyze database */
 
     using StateScalarType       = typename EvaluationType::StateScalarType;
@@ -50,10 +51,13 @@ class InternalElasticEnergy :
     using ConfigScalarType      = typename EvaluationType::ConfigScalarType;
     using ResultScalarType      = typename EvaluationType::ResultScalarType;
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;
+    using FunctionBaseType = Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<mSpaceDim>;
+
+    std::shared_ptr<CubatureType> mCubatureRule;
 
     IndicatorFunctionType mIndicatorFunction; /*!< penalty function */
-    Plato::ApplyWeighting<mSpaceDim,mNumVoigtTerms,IndicatorFunctionType> mApplyWeighting; /*!< apply penalty function */
+    Plato::ApplyWeighting<mSpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyWeighting; /*!< apply penalty function */
 
     std::vector<std::string> mPlottable; /*!< database of output field names */
 
@@ -63,26 +67,25 @@ class InternalElasticEnergy :
   public:
     /******************************************************************************//**
      * @brief Constructor
-     * @param aMesh volume mesh database
-     * @param aMeshSets surface mesh database
+     * @param aSpatialDomain Plato Analyze spatial domain
+     * @param aDataMap Plato Analyze data map
      * @param aProblemParams input database for overall problem
      * @param aPenaltyParams input database for penalty function
     **********************************************************************************/
     InternalElasticEnergy(
-        Omega_h::Mesh&          aMesh,
-        Omega_h::MeshSets&      aMeshSets,
-        Plato::DataMap&         aDataMap,
-        Teuchos::ParameterList& aProblemParams,
-        Teuchos::ParameterList& aPenaltyParams,
-        std::string&            aFunctionName
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams,
+        const std::string            & aFunctionName
     ) :
-        Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-        mCubatureRule      (std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
+        FunctionBaseType   (aSpatialDomain, aDataMap, aFunctionName),
+        mCubatureRule      (std::make_shared<CubatureType>()),
         mIndicatorFunction (aPenaltyParams),
         mApplyWeighting    (mIndicatorFunction)
     {
         Plato::ElasticModelFactory<mSpaceDim> tMaterialModelFactory(aProblemParams);
-        mMaterialModel = tMaterialModelFactory.create();
+        mMaterialModel = tMaterialModelFactory.create(aSpatialDomain.getMaterialName());
 
         if(aProblemParams.isType < Teuchos::Array < std::string >> ("Plottable"))
         {
@@ -100,15 +103,16 @@ class InternalElasticEnergy :
     **********************************************************************************/
     void
     evaluate(
-        const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType>       & aState,
-        const Plato::ScalarMultiVectorT<typename EvaluationType::StateDotScalarType>    & aStateDot,
-        const Plato::ScalarMultiVectorT<typename EvaluationType::StateDotDotScalarType> & aStateDotDot,
-        const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType>     & aControl,
-        const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType>          & aConfig,
-        Plato::ScalarVectorT<typename EvaluationType::ResultScalarType>                 & aResult,
-        Plato::Scalar aTimeStep = 0.0
-    ) const {
-      auto tNumCells = mMesh.nelems();
+        const Plato::ScalarMultiVectorT <StateScalarType>       & aState,
+        const Plato::ScalarMultiVectorT <StateDotScalarType>    & aStateDot,
+        const Plato::ScalarMultiVectorT <StateDotDotScalarType> & aStateDotDot,
+        const Plato::ScalarMultiVectorT <ControlScalarType>     & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>      & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>      & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
+    {
+        auto tNumCells = mSpatialDomain.numCells();
 
         Plato::Strain<mSpaceDim> tComputeVoigtStrain;
         Plato::ScalarProduct<mNumVoigtTerms> tComputeScalarProduct;
@@ -148,8 +152,8 @@ class InternalElasticEnergy :
 
       },"energy gradient");
 
-      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, tStrain, "strain");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, tStress, "stress");
+// TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, tStrain, "strain");
+// TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, tStress, "stress");
 
     }
 }; // class InternalElasticEnergy

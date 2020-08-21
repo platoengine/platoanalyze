@@ -17,6 +17,7 @@
 
 #include "elliptic/Problem.hpp"
 #include "parabolic/Problem.hpp"
+#include "hyperbolic/HyperbolicProblem.hpp"
 
 //TODO #include "EllipticVMSProblem.hpp"
 #include "AnalyzeMacros.hpp"
@@ -24,7 +25,6 @@
 //TODO #include "PlasticityProblem.hpp"
 //TODO #include "StabilizedMechanics.hpp"
 //TODO #include "StabilizedThermomechanics.hpp"
-//TODO #include "hyperbolic/HyperbolicProblem.hpp"
 //#include "StructuralDynamicsProblem.hpp"
 
 namespace Plato
@@ -66,12 +66,12 @@ public:
                 return tOutput;
             }
             else 
-/* TODO
             if(tPDE == "Hyperbolic")
             {
                 return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
             else
+/* TODO
             if(tPDE == "Infinite Strain Plasticity")
             {
                 auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainPlasticity<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);

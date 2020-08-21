@@ -146,7 +146,7 @@ public:
         const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
               Plato::ScalarMultiVectorT <ResultScalarType>  & aResult,
               Plato::Scalar aTimeStep = 0.0
-    ) const
+    ) const override
     {
 
       auto tNumCells = mSpatialDomain.numCells();
@@ -231,7 +231,7 @@ public:
         const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
               Plato::ScalarMultiVectorT <ResultScalarType>  & aResult,
               Plato::Scalar aTimeStep = 0.0
-    ) const
+    ) const override
     {
         if( mBoundaryLoads != nullptr )
         {

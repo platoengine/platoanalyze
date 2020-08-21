@@ -231,6 +231,9 @@ public:
         using ControlScalar  = typename Residual::ControlScalarType;
         using ResultScalar   = typename Residual::ResultScalarType;
 
+        auto tStates = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
+
         ResultScalar tReturnVal(0.0);
         for(const auto& tDomain : mSpatialModel.Domains)
         {
@@ -240,7 +243,7 @@ public:
             // workset control
             //
             Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS);
+            Plato::WorksetBase<PhysicsT>::worksetControl(aControl, tControlWS, tDomain);
 
             // workset config
             //
@@ -254,9 +257,6 @@ public:
 
             Plato::ScalarMultiVectorT<StateScalar>    tStateWS("state workset", tNumCells, mNumDofsPerCell);
             Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset", tNumCells, mNumDofsPerCell);
-
-            auto tStates = aSolution.State;
-            auto tStateDots = aSolution.StateDot;
 
             auto tNumSteps = tStates.extent(0);
             auto tLastStepIndex = tNumSteps - 1;
@@ -308,6 +308,9 @@ public:
         using ControlScalar  = typename GradientX::ControlScalarType;
         using ResultScalar   = typename GradientX::ResultScalarType;
 
+        auto tStates = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
+
         // create return view
         //
         Plato::ScalarVector tObjGradientX("objective gradient configuration", mNumSpatialDims*mNumNodes);
@@ -318,8 +321,8 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset", tNumCells, mNumDofsPerCell);
-            Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset", tNumCells, mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<StateScalar>    tStateWS    ("state workset",     tNumCells, mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS ("state dot workset", tNumCells, mNumDofsPerCell);
 
             // workset control
             //
@@ -332,9 +335,6 @@ public:
             Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS, tDomain);
 
             Plato::ScalarVectorT<ResultScalar> tResult("result", tNumCells);
-
-            auto tStates = aSolution.State;
-            auto tStateDots = aSolution.StateDot;
 
             auto tNumSteps = tStates.extent(0);
             auto tLastStepIndex = tNumSteps - 1;
@@ -389,6 +389,9 @@ public:
         using ControlScalar  = typename GradientU::ControlScalarType;
         using ResultScalar   = typename GradientU::ResultScalarType;
 
+        auto tStates    = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
+
         // create and assemble to return view
         //
         Plato::ScalarVector tObjGradientU("objective gradient state", mNumDofsPerNode * mNumNodes);
@@ -398,9 +401,6 @@ public:
         {
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
-
-            auto tStates    = aSolution.State;
-            auto tStateDots = aSolution.StateDot;
 
             assert(aStepIndex < tStates.extent(0));
             assert(tStates.extent(0) > 0);
@@ -468,6 +468,9 @@ public:
         using ControlScalar  = typename GradientV::ControlScalarType;
         using ResultScalar   = typename GradientV::ResultScalarType;
 
+        auto tStates    = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
+
         // create and assemble to return view
         //
         Plato::ScalarVector tObjGradientV("objective gradient state", mNumDofsPerNode * mNumNodes);
@@ -477,12 +480,6 @@ public:
         {
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
-
-            auto tStates    = aSolution.State;
-            auto tStateDots = aSolution.StateDot;
-
-            assert(aStepIndex < tStates.extent(0));
-            assert(tStates.extent(0) > 0);
 
             // workset control
             //
@@ -545,6 +542,9 @@ public:
         using ControlScalar  = typename GradientZ::ControlScalarType;
         using ResultScalar   = typename GradientZ::ResultScalarType;
 
+        auto tStates    = aSolution.State;
+        auto tStateDots = aSolution.StateDot;
+
         // create return vector
         //
         Plato::ScalarVector tObjGradientZ("objective gradient control", mNumNodes);
@@ -555,8 +555,8 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset", tNumCells, mNumDofsPerCell);
-            Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS("state dot workset", tNumCells, mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<StateScalar>    tStateWS    ("state workset",     tNumCells, mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<StateDotScalar> tStateDotWS ("state dot workset", tNumCells, mNumDofsPerCell);
 
             // workset control
             //
@@ -571,9 +571,6 @@ public:
             // create result view
             //
             Plato::ScalarVectorT<ResultScalar> tResult("result", tNumCells);
-
-            auto tStates    = aSolution.State;
-            auto tStateDots = aSolution.StateDot;
 
             auto tNumSteps = tStates.extent(0);
             auto tLastStepIndex = tNumSteps - 1;
