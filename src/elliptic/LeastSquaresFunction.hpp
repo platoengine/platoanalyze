@@ -45,6 +45,8 @@ private:
     std::vector<Plato::Scalar> mFunctionNormalization; /*!< Vector of function normalization values */
     std::vector<std::shared_ptr<Plato::Elliptic::ScalarFunctionBase>> mScalarFunctionBaseContainer; /*!< Vector of ScalarFunctionBase objects */
 
+    const Plato::SpatialModel & mSpatialModel;
+
     Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
 
     std::string mFunctionName; /*!< User defined function name */
@@ -57,9 +59,9 @@ private:
      * @brief Initialization of Least Squares Function
      * @param [in] aInputParams input parameters database
     **********************************************************************************/
-    void initialize (Omega_h::Mesh& aMesh, 
-                     Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+    void initialize (
+        Teuchos::ParameterList & aInputParams
+    )
     {
         Plato::Elliptic::ScalarFunctionBaseFactory<PhysicsT> tFactory;
 
@@ -96,7 +98,7 @@ private:
         {
             mScalarFunctionBaseContainer.push_back(
                 tFactory.create(
-                    aMesh, aMeshSets, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]));
+                    mSpatialModel, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]));
             mFunctionWeights.push_back(tFunctionWeights[tFunctionIndex]);
 
             appendGoldFunctionValue(tFunctionGoldValues[tFunctionIndex]);
@@ -107,33 +109,38 @@ private:
 public:
     /******************************************************************************//**
      * @brief Primary least squares function constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
+     * @param [in] aSpatialModel Plato Analyze spatial model
+     * @param [in] aDataMap Plato Analyze data map
      * @param [in] aInputParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
-    LeastSquaresFunction(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap & aDataMap,
-                         Teuchos::ParameterList& aInputParams,
-                         std::string& aName) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName(aName)
+    LeastSquaresFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+              std::string            & aName
+    ) :
+        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName (aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aInputParams);
     }
 
     /******************************************************************************//**
      * @brief Secondary least squares function constructor, used for unit testing / mass properties
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialModel Plato Analyze spatial model
+     * @param [in] aDataMap Plato Analyze data map
     **********************************************************************************/
-    LeastSquaresFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName("Least Squares")
+    LeastSquaresFunction(
+        const Plato::SpatialModel & aSpatialModel,
+              Plato::DataMap      & aDataMap
+    ) :
+        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName ("Least Squares")
     {
     }
 

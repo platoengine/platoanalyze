@@ -2,10 +2,10 @@
 
 #include "elliptic/ScalarFunctionBase.hpp"
 #include "elliptic/PhysicsScalarFunction.hpp"
-//#include "elliptic/WeightedSumFunction.hpp"
-//#include "elliptic/DivisionFunction.hpp"
-//#include "elliptic/LeastSquaresFunction.hpp"
-//#include "elliptic/MassPropertiesFunction.hpp"
+//TODO#include "elliptic/WeightedSumFunction.hpp"
+#include "elliptic/DivisionFunction.hpp"
+//TODO#include "elliptic/LeastSquaresFunction.hpp"
+//TODO#include "elliptic/MassPropertiesFunction.hpp"
 #include "AnalyzeMacros.hpp"
 
 namespace Plato
@@ -24,11 +24,11 @@ namespace Elliptic
     template <typename PhysicsT>
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> 
     ScalarFunctionBaseFactory<PhysicsT>::create(
-        Plato::SpatialModel    & aSpatialModel,
-        Plato::DataMap         & aDataMap,
-        Teuchos::ParameterList & aInputParams,
-        std::string            & aFunctionName
-    )
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+              std::string            & aFunctionName
+    ) 
     {
         auto tProblemFunction = aInputParams.sublist(aFunctionName);
         auto tFunctionType = tProblemFunction.get<std::string>("Type", "Not Defined");
@@ -39,11 +39,13 @@ namespace Elliptic
             return std::make_shared<WeightedSumFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
         }
         else
+*/
         if(tFunctionType == "Division")
         {
-            return std::make_shared<DivisionFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<DivisionFunction<PhysicsT>>(aSpatialModel, aDataMap, aInputParams, aFunctionName);
         }
         else
+/* TODO
         if(tFunctionType == "Least Squares")
         {
             return std::make_shared<LeastSquaresFunction<PhysicsT>>(aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName);

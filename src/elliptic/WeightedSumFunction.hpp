@@ -42,19 +42,21 @@ private:
     std::vector<Plato::Scalar> mFunctionWeights; /*!< Vector of function weights */
     std::vector<std::shared_ptr<Plato::Elliptic::ScalarFunctionBase>> mScalarFunctionBaseContainer; /*!< Vector of ScalarFunctionBase objects */
 
+    const Plato::SpatialModel & mSpatialModel;
+
     Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
 
     std::string mFunctionName; /*!< User defined function name */
 
 	/******************************************************************************//**
      * \brief Initialization of Weighted Sum Function
-     * \param [in] aMesh        mesh database
-     * \param [in] aMeshSets    side sets database
+     * \param [in] aSpatialModel Plato Analyze spatial model
      * \param [in] aInputParams input parameters database
     **********************************************************************************/
-    void initialize (Omega_h::Mesh& aMesh, 
-                     Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+    void
+    initialize(
+        Teuchos::ParameterList & aInputParams
+    )
     {
         Plato::Elliptic::ScalarFunctionBaseFactory<PhysicsT> tFactory;
 
@@ -80,7 +82,7 @@ private:
         {
             mScalarFunctionBaseContainer.push_back(
                 tFactory.create(
-                    aMesh, aMeshSets, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]));
+                    mSpatialModel, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]));
             mFunctionWeights.push_back(tFunctionWeights[tFunctionIndex]);
         }
 
@@ -89,33 +91,37 @@ private:
 public:
     /******************************************************************************//**
      * \brief Primary weight sum function constructor
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
+     * \param [in] aSpatialModel Plato Analyze spatial model
      * \param [in] aDataMap PLATO Engine and Analyze data map
      * \param [in] aInputParams input parameters database
      * \param [in] aName user defined function name
     **********************************************************************************/
-    WeightedSumFunction(Omega_h::Mesh& aMesh,
-                Omega_h::MeshSets& aMeshSets,
-                Plato::DataMap & aDataMap,
-                Teuchos::ParameterList& aInputParams,
-                std::string& aName) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName(aName)
+    WeightedSumFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+              std::string            & aName
+    ) :
+        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName (aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aInputParams);
     }
 
     /******************************************************************************//**
      * \brief Secondary weight sum function constructor, used for unit testing
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
+     * \param [in] aSpatialModel Plato Analyze spatial model
     **********************************************************************************/
-    WeightedSumFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName("Weighted Sum")
+    WeightedSumFunction(
+        const Plato::SpatialModel & aSpatialModel,
+              Plato::DataMap      & aDataMap
+    ) :
+        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName ("Weighted Sum")
     {
     }
 
@@ -137,10 +143,6 @@ public:
         mScalarFunctionBaseContainer.push_back(aInput);
     }
 
-    /******************************************************************************//**
-     * \brief Update physics-based parameters within optimization iterations
-     * \param [in] aSolution Plato::Solution composed of state variables
-     * \param [in] aControl 1D view of control variables
     /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
      * \param [in] aState 1D view of state variables

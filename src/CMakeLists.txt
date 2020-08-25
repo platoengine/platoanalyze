@@ -56,13 +56,13 @@ set(ANALYZE_SOURCES
     geometric/MassPropertiesFunction.cpp
     geometric/ScalarFunctionBaseFactory.cpp
     geometric/WeightedSumFunction.cpp
-#    elliptic/DivisionFunction.cpp 
-#    elliptic/LeastSquaresFunction.cpp 
-#    elliptic/WeightedSumFunction.cpp 
+    elliptic/DivisionFunction.cpp 
+    elliptic/LeastSquaresFunction.cpp 
+    elliptic/WeightedSumFunction.cpp 
     elliptic/ScalarFunctionBaseFactory.cpp 
     elliptic/PhysicsScalarFunction.cpp 
-#    elliptic/MassMoment.cpp 
-#    elliptic/MassPropertiesFunction.cpp
+    elliptic/MassMoment.cpp 
+    elliptic/MassPropertiesFunction.cpp
     elliptic/FluxPNorm.cpp 
     elliptic/StressPNorm.cpp 
     elliptic/EMStressPNorm.cpp 

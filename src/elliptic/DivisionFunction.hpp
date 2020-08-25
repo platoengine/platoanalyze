@@ -40,6 +40,8 @@ private:
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> mScalarFunctionBaseNumerator; /*!< numerator function */
     std::shared_ptr<Plato::Elliptic::ScalarFunctionBase> mScalarFunctionBaseDenominator; /*!< denominator function */
 
+    const Plato::SpatialModel & mSpatialModel;
+
     Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
 
     std::string mFunctionName; /*!< User defined function name */
@@ -48,9 +50,9 @@ private:
      * @brief Initialization of Division Function
      * @param [in] aInputParams input parameters database
     **********************************************************************************/
-    void initialize (Omega_h::Mesh& aMesh, 
-                     Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+    void initialize(
+        Teuchos::ParameterList & aInputParams
+    )
     {
         Plato::Elliptic::ScalarFunctionBaseFactory<PhysicsT> tFactory;
 
@@ -60,31 +62,32 @@ private:
         auto tDenominatorFunctionName = tProblemFunctionName.get<std::string>("Denominator");
 
         mScalarFunctionBaseNumerator = 
-             tFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tNumeratorFunctionName);
+             tFactory.create(mSpatialModel, mDataMap, aInputParams, tNumeratorFunctionName);
 
         mScalarFunctionBaseDenominator = 
-             tFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tDenominatorFunctionName);
+             tFactory.create(mSpatialModel, mDataMap, aInputParams, tDenominatorFunctionName);
     }
 
 public:
     /******************************************************************************//**
      * @brief Primary division function constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
+     * @param [in] aSpatialModel Plato Analyze spatial model
+     * @param [in] aDataMap Plato Analyze data map
      * @param [in] aInputParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
-    DivisionFunction(Omega_h::Mesh& aMesh,
-                Omega_h::MeshSets& aMeshSets,
-                Plato::DataMap & aDataMap,
-                Teuchos::ParameterList& aInputParams,
-                std::string& aName) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName(aName)
+    DivisionFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aName
+    ) :
+        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName (aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aInputParams);
     }
 
     /******************************************************************************//**
@@ -92,10 +95,14 @@ public:
      * @param [in] aMesh mesh database
      * @param [in] aMeshSets side sets database
     **********************************************************************************/
-    DivisionFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName("Division Function")
+    DivisionFunction(
+        const Plato::SpatialModel & aSpatialModel,
+              Plato::DataMap      & aDataMap
+    ) :
+        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName ("Division Function")
     {
     }
 

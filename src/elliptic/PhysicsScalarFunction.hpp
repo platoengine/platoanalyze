@@ -189,7 +189,7 @@ public:
     updateProblem(
         const Plato::ScalarVector & aState,
         const Plato::ScalarVector & aControl
-    ) override
+    ) const override
     {
         for(const auto& tDomain : mSpatialModel.Domains)
         {
@@ -205,10 +205,10 @@ public:
             Plato::ScalarArray3D tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
             Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS, tDomain);
 
-            mValueFunctions[tName]->updateProblem(tStateWS, tControlWS, tConfigWS);
-            mGradientUFunctions[tName]->updateProblem(tStateWS, tControlWS, tConfigWS);
-            mGradientZFunctions[tName]->updateProblem(tStateWS, tControlWS, tConfigWS);
-            mGradientXFunctions[tName]->updateProblem(tStateWS, tControlWS, tConfigWS);
+            mValueFunctions.at(tName)->updateProblem(tStateWS, tControlWS, tConfigWS);
+            mGradientUFunctions.at(tName)->updateProblem(tStateWS, tControlWS, tConfigWS);
+            mGradientZFunctions.at(tName)->updateProblem(tStateWS, tControlWS, tConfigWS);
+            mGradientXFunctions.at(tName)->updateProblem(tStateWS, tControlWS, tConfigWS);
         }
     }
 
@@ -224,7 +224,7 @@ public:
         const Plato::Solution     & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
-    ) override
+    ) const override
     {
         using ConfigScalar  = typename Residual::ConfigScalarType;
         using StateScalar   = typename Residual::StateScalarType;
@@ -250,7 +250,7 @@ public:
             // create result view
             //
             Plato::ScalarVectorT<ResultScalar> tResult("result workset", tNumCells);
-            mDataMap.scalarVectors[mValueFunctions[tName]->getName()] = tResult;
+            mDataMap.scalarVectors[mValueFunctions.at(tName)->getName()] = tResult;
 
             Plato::ScalarMultiVectorT<StateScalar> tStateWS("state workset", tNumCells, mNumDofsPerCell);
 
@@ -267,7 +267,7 @@ public:
                 // evaluate function
                 //
                 Kokkos::deep_copy(tResult, 0.0);
-                mValueFunctions[tName]->evaluate(tStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
+                mValueFunctions.at(tName)->evaluate(tStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
 
                 // sum across elements
                 //
@@ -275,7 +275,7 @@ public:
             }
         }
         auto tName = mSpatialModel.Domains[0].getDomainName();
-        mValueFunctions[tName]->postEvaluate(tReturnVal);
+        mValueFunctions.at(tName)->postEvaluate(tReturnVal);
 
         return tReturnVal;
     }
@@ -292,7 +292,7 @@ public:
         const Plato::Solution     & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
-    ) override
+    ) const override
     {
         using ConfigScalar  = typename GradientX::ConfigScalarType;
         using StateScalar   = typename GradientX::StateScalarType;
@@ -336,7 +336,7 @@ public:
                 // evaluate function
                 //
                 Kokkos::deep_copy(tResult, 0.0);
-                mGradientXFunctions[tName]->evaluate(tStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
+                mGradientXFunctions.at(tName)->evaluate(tStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
 
                 // create and assemble to return view
                 //
@@ -347,7 +347,7 @@ public:
             }
         }
         auto tName = mSpatialModel.Domains[0].getDomainName();
-        mGradientXFunctions[tName]->postEvaluate(tObjGradientX, tValue);
+        mGradientXFunctions.at(tName)->postEvaluate(tObjGradientX, tValue);
 
         return tObjGradientX;
     }
@@ -365,7 +365,7 @@ public:
         const Plato::ScalarVector & aControl,
               Plato::OrdinalType    aStepIndex,
               Plato::Scalar         aTimeStep = 0.0
-    ) override
+    ) const override
     {
         using ConfigScalar  = typename Jacobian::ConfigScalarType;
         using StateScalar   = typename Jacobian::StateScalarType;
@@ -406,7 +406,7 @@ public:
 
             // evaluate function
             //
-            mGradientUFunctions[tName]->evaluate(tStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
+            mGradientUFunctions.at(tName)->evaluate(tStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumDofsPerNode>
                 (tDomain, mGlobalStateEntryOrdinal, tResult, tObjGradientU);
@@ -414,7 +414,7 @@ public:
             tValue += Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResult);
         }
         auto tName = mSpatialModel.Domains[0].getDomainName();
-        mGradientUFunctions[tName]->postEvaluate(tObjGradientU, tValue);
+        mGradientUFunctions.at(tName)->postEvaluate(tObjGradientU, tValue);
 
         return tObjGradientU;
     }
@@ -431,7 +431,7 @@ public:
         const Plato::Solution     & aSolution,
         const Plato::ScalarVector & aControl,
               Plato::Scalar         aTimeStep = 0.0
-    ) override
+    ) const override
     {        
         using ConfigScalar  = typename GradientZ::ConfigScalarType;
         using StateScalar   = typename GradientZ::StateScalarType;
@@ -478,7 +478,7 @@ public:
                 // evaluate function
                 //
                 Kokkos::deep_copy(tResult, 0.0);
-                mGradientZFunctions[tName]->evaluate(tStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
+                mGradientZFunctions.at(tName)->evaluate(tStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
 
                 Plato::assemble_scalar_gradient_fad<mNumNodesPerCell>
                     (tDomain, mControlEntryOrdinal, tResult, tObjGradientZ);
@@ -487,7 +487,7 @@ public:
             }
         }
         auto tName = mSpatialModel.Domains[0].getDomainName();
-        mGradientZFunctions[tName]->postEvaluate(tObjGradientZ, tValue);
+        mGradientZFunctions.at(tName)->postEvaluate(tObjGradientZ, tValue);
 
         return tObjGradientZ;
     }
@@ -516,28 +516,28 @@ public:
 
 } // namespace Plato
 
-//#include "Thermal.hpp"
+//TODO #include "Thermal.hpp"
 #include "Mechanics.hpp"
-//#include "Electromechanics.hpp"
-//#include "Thermomechanics.hpp"
+//TODO #include "Electromechanics.hpp"
+//TODO #include "Thermomechanics.hpp"
 
 #ifdef PLATOANALYZE_1D
-//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<1>>;
+//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<1>>;
 extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<1>>;
-//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<1>>;
-//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<1>>;
+//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<1>>;
+//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
-//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<2>>;
+//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<2>>;
 extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<2>>;
-//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<2>>;
-//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<2>>;
+//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<2>>;
+//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<3>>;
+//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<3>>;
 extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<3>>;
-//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<3>>;
-//extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<3>>;
+//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<3>>;
+//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<3>>;
 #endif
