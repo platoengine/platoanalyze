@@ -4,11 +4,11 @@ configure_file(
   @ONLY)
 
 set(ANALYZE_SOURCES 
-##    Plato_AugLagStressCriterionQuadratic.cpp 
+    Plato_AugLagStressCriterionQuadratic.cpp 
     CustomMaterial.cpp 
     ExpressionEvaluator.cpp 
-##    Plato_AugLagStressCriterionGeneral.cpp 
-##    Plato_AugLagStressCriterion.cpp 
+    Plato_AugLagStressCriterionGeneral.cpp 
+    Plato_AugLagStressCriterion.cpp 
     Plato_StructuralMass.cpp 
 ##    ElasticModelFactory.cpp  template specialization not necessary?
     LinearElasticMaterial.cpp 

@@ -32,15 +32,17 @@ private:
     static constexpr Plato::OrdinalType mNumVoigtTerms = SimplexPhysicsT::mNumVoigtTerms; /*!< number of Voigt terms */
     static constexpr Plato::OrdinalType mNumNodesPerCell = SimplexPhysicsT::mNumNodesPerCell; /*!< number of nodes per cell/element */
 
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh; /*!< mesh database */
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain; /*!< mesh database */
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap; /*!< PLATO Engine output database */
 
-    using StateT = typename EvaluationType::StateScalarType; /*!< state variables automatic differentiation type */
-    using ConfigT = typename EvaluationType::ConfigScalarType; /*!< configuration variables automatic differentiation type */
-    using ResultT = typename EvaluationType::ResultScalarType; /*!< result variables automatic differentiation type */
+    using StateT   = typename EvaluationType::StateScalarType;   /*!< state variables automatic differentiation type */
+    using ConfigT  = typename EvaluationType::ConfigScalarType;  /*!< configuration variables automatic differentiation type */
+    using ResultT  = typename EvaluationType::ResultScalarType;  /*!< result variables automatic differentiation type */
     using ControlT = typename EvaluationType::ControlScalarType; /*!< control variables automatic differentiation type */
 
     using Residual = typename Plato::ResidualTypes<SimplexPhysicsT>;
+
+    using FunctionBaseType = Plato::Elliptic::AbstractScalarFunction<EvaluationType>;
 
     Plato::Scalar mPenalty; /*!< penalty parameter in SIMP model */
     Plato::Scalar mLocalMeasureLimit; /*!< local measure limit/upper bound */
@@ -95,48 +97,50 @@ private:
 public:
     /******************************************************************************//**
      * \brief Primary constructor
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
+     * \param [in] aPlatoDomain Plato Analyze spatial domain
      * \param [in] aDataMap PLATO Engine and Analyze data map
      * \param [in] aInputParams input parameters database
      * \param [in] aFuncName user defined function name
      **********************************************************************************/
-    AugLagStressCriterionQuadratic(Omega_h::Mesh & aMesh,
-                                   Omega_h::MeshSets & aMeshSets,
-                                   Plato::DataMap & aDataMap,
-                                   Teuchos::ParameterList & aInputParams,
-                                   const std::string & aFuncName) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFuncName),
-            mPenalty(3),
-            mLocalMeasureLimit(1),
-            mAugLagPenalty(0.1),
-            mMinErsatzValue(0.0),
-            mAugLagPenaltyUpperBound(100),
-            mInitialLagrangeMultipliersValue(0.01),
-            mAugLagPenaltyExpansionMultiplier(1.05),
-            mLagrangeMultipliers("Lagrange Multipliers", aMesh.nelems())
+    AugLagStressCriterionQuadratic(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aFuncName
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap, aFuncName),
+        mPenalty(3),
+        mLocalMeasureLimit(1),
+        mAugLagPenalty(0.1),
+        mMinErsatzValue(0.0),
+        mAugLagPenaltyUpperBound(100),
+        mInitialLagrangeMultipliersValue(0.01),
+        mAugLagPenaltyExpansionMultiplier(1.05),
+        mLagrangeMultipliers("Lagrange Multipliers", aSpatialDomain.Mesh.nelems())
     {
         this->initialize(aInputParams);
     }
 
     /******************************************************************************//**
      * \brief Constructor tailored for unit testing
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
      * \param [in] aDataMap PLATO Engine and Analyze data map
      **********************************************************************************/
-    AugLagStressCriterionQuadratic(Omega_h::Mesh & aMesh, Omega_h::MeshSets & aMeshSets, Plato::DataMap & aDataMap) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Local Constraint Quadratic"),
-            mPenalty(3),
-            mLocalMeasureLimit(1),
-            mAugLagPenalty(0.1),
-            mMinErsatzValue(0.0),
-            mAugLagPenaltyUpperBound(100),
-            mInitialLagrangeMultipliersValue(0.01),
-            mAugLagPenaltyExpansionMultiplier(1.05),
-            mLagrangeMultipliers("Lagrange Multipliers", aMesh.nelems()),
-            mLocalMeasureEvaluationType(nullptr),
-            mLocalMeasurePODType(nullptr)
+    AugLagStressCriterionQuadratic(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap, "Local Constraint Quadratic"),
+        mPenalty(3),
+        mLocalMeasureLimit(1),
+        mAugLagPenalty(0.1),
+        mMinErsatzValue(0.0),
+        mAugLagPenaltyUpperBound(100),
+        mInitialLagrangeMultipliersValue(0.01),
+        mAugLagPenaltyExpansionMultiplier(1.05),
+        mLagrangeMultipliers("Lagrange Multipliers", aSpatialDomain.Mesh.nelems()),
+        mLocalMeasureEvaluationType(nullptr),
+        mLocalMeasurePODType(nullptr)
     {
         Plato::blas1::fill(mInitialLagrangeMultipliersValue, mLagrangeMultipliers);
     }
@@ -212,9 +216,12 @@ public:
      * \param [in] aControl 2D container of control variables
      * \param [in] aConfig 3D container of configuration/coordinates
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarMultiVector & aStateWS,
-                       const Plato::ScalarMultiVector & aControlWS,
-                       const Plato::ScalarArray3D & aConfigWS) override
+    void
+    updateProblem(
+        const Plato::ScalarMultiVector & aStateWS,
+        const Plato::ScalarMultiVector & aControlWS,
+        const Plato::ScalarArray3D     & aConfigWS
+    ) override
     {
         this->updateLagrangeMultipliers(aStateWS, aControlWS, aConfigWS);
         this->updateAugLagPenaltyMultipliers();
@@ -228,18 +235,21 @@ public:
      * \param [out] aResult 1D container of cell criterion values
      * \param [in] aTimeStep time step (default = 0)
     **********************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateT> & aStateWS,
-                  const Plato::ScalarMultiVectorT<ControlT> & aControlWS,
-                  const Plato::ScalarArray3DT<ConfigT> & aConfigWS,
-                  Plato::ScalarVectorT<ResultT> & aResultWS,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void evaluate(
+        const Plato::ScalarMultiVectorT <StateT>   & aStateWS,
+        const Plato::ScalarMultiVectorT <ControlT> & aControlWS,
+        const Plato::ScalarArray3DT     <ConfigT>  & aConfigWS,
+              Plato::ScalarVectorT      <ResultT>  & aResultWS,
+              Plato::Scalar aTimeStep = 0.0
+    ) const override
     {
+        const Plato::OrdinalType tNumCells = mSpatialDomain.numCells();
+
         using StrainT = typename Plato::fad_type_t<SimplexPhysicsT, StateT, ConfigT>;
 
         Plato::MSIMP tSIMP(mPenalty, mMinErsatzValue);
 
         // ****** COMPUTE LOCAL MEASURE VALUES AND STORE ON DEVICE ******
-        const Plato::OrdinalType tNumCells = mMesh.nelems();
         Plato::ScalarVectorT<ResultT> tLocalMeasureValue("local measure value", tNumCells);
         (*mLocalMeasureEvaluationType)(aStateWS, aConfigWS, tLocalMeasureValue);
         
@@ -281,7 +291,7 @@ public:
                     tTrueConstraintValue(aCellOrdinal) * tTrueConstraintValue(aCellOrdinal) ) );
         },"Compute Quadratic Augmented Lagrangian Function Without Objective");
 
-        Plato::toMap(mDataMap, tOutputPenalizedLocalMeasure, mLocalMeasureEvaluationType->getName());
+// TODO         Plato::toMap(mDataMap, tOutputPenalizedLocalMeasure, mLocalMeasureEvaluationType->getName());
     }
 
     /******************************************************************************//**
@@ -290,14 +300,18 @@ public:
      * \param [in] aControl 2D container of control variables
      * \param [in] aConfig 3D container of configuration/coordinates
     **********************************************************************************/
-    void updateLagrangeMultipliers(const Plato::ScalarMultiVector & aStateWS,
-                                   const Plato::ScalarMultiVector & aControlWS,
-                                   const Plato::ScalarArray3D & aConfigWS)
+    void
+    updateLagrangeMultipliers(
+        const Plato::ScalarMultiVector & aStateWS,
+        const Plato::ScalarMultiVector & aControlWS,
+        const Plato::ScalarArray3D     & aConfigWS
+    )
     {
+        const Plato::OrdinalType tNumCells = mSpatialDomain.numCells();
+
         Plato::MSIMP tSIMP(mPenalty, mMinErsatzValue);
 
         // ****** COMPUTE LOCAL MEASURE VALUES AND STORE ON DEVICE ******
-        const Plato::OrdinalType tNumCells = mMesh.nelems();
         Plato::ScalarVector tLocalMeasureValue("local measure value", tNumCells);
         (*mLocalMeasurePODType)(aStateWS, aConfigWS, tLocalMeasureValue);
         
