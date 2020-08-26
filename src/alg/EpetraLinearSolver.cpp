@@ -9,14 +9,12 @@ namespace Plato {
    of this information between solutions.
 **********************************************************************************/
 EpetraSystem::EpetraSystem(
-    Omega_h::Mesh& aMesh,
+    int            aNumNodes,
     Comm::Machine  aMachine,
     int            aDofsPerNode
 ) {
     mComm = aMachine.epetraComm;
-
-    int tNumNodes = aMesh.nverts();
-    mBlockRowMap = std::make_shared<Epetra_BlockMap>(tNumNodes, aDofsPerNode, 0, *mComm);
+    mBlockRowMap = std::make_shared<Epetra_BlockMap>(aNumNodes, aDofsPerNode, 0, *mComm);
 
 }
 
@@ -125,12 +123,12 @@ EpetraSystem::toVector(Plato::ScalarVector tOutVector, rcp<Epetra_Vector> tInVec
 **********************************************************************************/
 EpetraLinearSolver::EpetraLinearSolver(
     const Teuchos::ParameterList& aSolverParams,
-    Omega_h::Mesh&          aMesh,
+    int                     aNumNodes,
     Comm::Machine           aMachine,
     int                     aDofsPerNode
 ) :
     mSolverParams(aSolverParams),
-    mSystem(std::make_shared<EpetraSystem>(aMesh, aMachine, aDofsPerNode))
+    mSystem(std::make_shared<EpetraSystem>(aNumNodes, aMachine, aDofsPerNode))
 {
     if(mSolverParams.isType<int>("Iterations"))
     {

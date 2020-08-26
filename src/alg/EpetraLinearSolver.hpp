@@ -31,7 +31,7 @@ class EpetraSystem
 
   public:
     EpetraSystem(
-        Omega_h::Mesh& aMesh,
+        int            aNumNodes,
         Comm::Machine  aMachine,
         int            aDofsPerNode
     );
@@ -80,7 +80,7 @@ class EpetraLinearSolver : public AbstractSolver
     **********************************************************************************/
     EpetraLinearSolver(
         const Teuchos::ParameterList& aSolverParams,
-        Omega_h::Mesh&          aMesh,
+        int                     aNumNodes,
         Comm::Machine           aMachine,
         int                     aDofsPerNode
     );
