@@ -27,14 +27,13 @@ get(ViewType aView)
    of this information between solutions.
 **********************************************************************************/
 TpetraSystem::TpetraSystem(
-    Omega_h::Mesh& aMesh,
+    int            aNumNodes,
     Comm::Machine  aMachine,
     int            aDofsPerNode
 ) {
     mComm = aMachine.teuchosComm;
 
-    int tNumNodes = aMesh.nverts();
-    int tNumDofs = tNumNodes*aDofsPerNode;
+    int tNumDofs = aNumNodes*aDofsPerNode;
 
     mMap = Teuchos::rcp( new Tpetra_Map(tNumDofs, 0, mComm));
 
@@ -139,12 +138,12 @@ TpetraSystem::toVector(Plato::ScalarVector tOutVector, Teuchos::RCP<Tpetra_Multi
 **********************************************************************************/
 TpetraLinearSolver::TpetraLinearSolver(
     const Teuchos::ParameterList& aSolverParams,
-    Omega_h::Mesh&          aMesh,
+    int                     aNumNodes,
     Comm::Machine           aMachine,
     int                     aDofsPerNode
 ) :
     mSolverParams(aSolverParams),
-    mSystem(Teuchos::rcp( new TpetraSystem(aMesh, aMachine, aDofsPerNode)))
+    mSystem(Teuchos::rcp( new TpetraSystem(aNumNodes, aMachine, aDofsPerNode)))
 {
     if(mSolverParams.isType<int>("Iterations"))
     {

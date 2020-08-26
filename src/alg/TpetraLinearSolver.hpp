@@ -32,7 +32,7 @@ class TpetraSystem
 
   public:
     TpetraSystem(
-        Omega_h::Mesh& aMesh,
+        int            aNumNodes,
         Comm::Machine  aMachine,
         int            aDofsPerNode
     );
@@ -81,7 +81,7 @@ class TpetraLinearSolver : public AbstractSolver
     **********************************************************************************/
     TpetraLinearSolver(
         const Teuchos::ParameterList& aSolverParams,
-        Omega_h::Mesh&          aMesh,
+        int                     aNumNodes,
         Comm::Machine           aMachine,
         int                     aDofsPerNode
     );

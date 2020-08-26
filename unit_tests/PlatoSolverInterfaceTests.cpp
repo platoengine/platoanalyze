@@ -948,7 +948,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
     Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+    auto tSolver = tSolverFactory.create(mesh->nverts(), tMachine, tNumDofsPerNode);
 
     tSolver->solve(*jacobian, state, residual);
   }

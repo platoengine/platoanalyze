@@ -23,7 +23,7 @@ class SolverFactory
 
     rcp<AbstractSolver>
     create(
-        Omega_h::Mesh&          aMesh,
+        int                     aNumNodes,
         Comm::Machine           aMachine,
         int                     aDofsPerNode
     );

@@ -7,7 +7,7 @@ namespace Plato {
 **********************************************************************************/
 rcp<AbstractSolver>
 SolverFactory::create(
-    Omega_h::Mesh&          aMesh,
+    int                     aNumNodes,
     Comm::Machine           aMachine,
     int                     aDofsPerNode
 )
@@ -28,12 +28,12 @@ SolverFactory::create(
 
     if(tSolverType == "AztecOO")
     {
-        return std::make_shared<Plato::EpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
+        return std::make_shared<Plato::EpetraLinearSolver>(mSolverParams, aNumNodes, aMachine, aDofsPerNode);
     }
 #ifdef PLATO_TPETRA
     if(tSolverType == "Belos")
     {
-        return std::make_shared<Plato::TpetraLinearSolver>(mSolverParams, aMesh, aMachine, aDofsPerNode);
+        return std::make_shared<Plato::TpetraLinearSolver>(mSolverParams, aNumNodes, aMachine, aDofsPerNode);
     }
 #endif
     else if(tSolverType == "AmgX")
