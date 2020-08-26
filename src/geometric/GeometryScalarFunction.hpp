@@ -169,7 +169,7 @@ public:
     void
     updateProblem(
         const Plato::ScalarVector & aControl
-    ) override
+    ) const override
     {
         for(const auto& tDomain : mSpatialModel.Domains)
         {
@@ -182,9 +182,9 @@ public:
             Plato::ScalarArray3D tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
             Plato::Geometric::WorksetBase<GeometryT>::worksetConfig(tConfigWS, tDomain);
 
-            mValueFunctions[tName]->updateProblem(tControlWS, tConfigWS);
-            mGradientZFunctions[tName]->updateProblem(tControlWS, tConfigWS);
-            mGradientXFunctions[tName]->updateProblem(tControlWS, tConfigWS);
+            mValueFunctions.at(tName)->updateProblem(tControlWS, tConfigWS);
+            mGradientZFunctions.at(tName)->updateProblem(tControlWS, tConfigWS);
+            mGradientXFunctions.at(tName)->updateProblem(tControlWS, tConfigWS);
         }
     }
 
@@ -196,7 +196,7 @@ public:
     Plato::Scalar
     value(
         const Plato::ScalarVector & aControl
-    ) override
+    ) const override
     {
         using ConfigScalar  = typename Residual::ConfigScalarType;
         using ControlScalar = typename Residual::ControlScalarType;
@@ -221,18 +221,18 @@ public:
             // create result view
             //
             Plato::ScalarVectorT<ResultScalar> tResult("result workset", tNumCells);
-            mDataMap.scalarVectors[mValueFunctions[tName]->getName()] = tResult;
+            mDataMap.scalarVectors[mValueFunctions.at(tName)->getName()] = tResult;
 
             // evaluate function
             //
-            mValueFunctions[tName]->evaluate(tControlWS, tConfigWS, tResult);
+            mValueFunctions.at(tName)->evaluate(tControlWS, tConfigWS, tResult);
 
             // sum across elements
             //
             tReturnVal += Plato::local_result_sum<Plato::Scalar>(tNumCells, tResult);
         }
         auto tName = mSpatialModel.Domains[0].getDomainName();
-        mValueFunctions[tName]->postEvaluate(tReturnVal);
+        mValueFunctions.at(tName)->postEvaluate(tReturnVal);
 
         return tReturnVal;
     }
@@ -245,7 +245,7 @@ public:
     Plato::ScalarVector
     gradient_x(
         const Plato::ScalarVector & aControl
-    ) override
+    ) const override
     {
         using ConfigScalar  = typename GradientX::ConfigScalarType;
         using ControlScalar = typename GradientX::ControlScalarType;
@@ -276,7 +276,7 @@ public:
 
             // evaluate function
             //
-            mGradientXFunctions[tName]->evaluate(tControlWS, tConfigWS, tResult);
+            mGradientXFunctions.at(tName)->evaluate(tControlWS, tConfigWS, tResult);
 
             // create and assemble to return view
             //
@@ -287,7 +287,7 @@ public:
         }
         // Note: below uses the 'postEvaluate()' function of the first block.
         auto tName = mSpatialModel.Domains[0].getDomainName();
-        mGradientXFunctions[tName]->postEvaluate(tObjGradientX, tValue);
+        mGradientXFunctions.at(tName)->postEvaluate(tObjGradientX, tValue);
 
         return tObjGradientX;
     }
@@ -301,7 +301,7 @@ public:
     Plato::ScalarVector
     gradient_z(
         const Plato::ScalarVector & aControl
-    ) override
+    ) const override
     {        
         using ConfigScalar  = typename GradientZ::ConfigScalarType;
         using ControlScalar = typename GradientZ::ControlScalarType;
@@ -331,7 +331,7 @@ public:
 
             // evaluate function
             //
-            mGradientZFunctions[tName]->evaluate(tControlWS, tConfigWS, tResult);
+            mGradientZFunctions.at(tName)->evaluate(tControlWS, tConfigWS, tResult);
 
             // create and assemble to return view
             //
@@ -341,7 +341,7 @@ public:
             tValue += Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResult);
         }
         auto tName = mSpatialModel.Domains[0].getDomainName();
-        mGradientZFunctions[tName]->postEvaluate(tObjGradientZ, tValue);
+        mGradientZFunctions.at(tName)->postEvaluate(tObjGradientZ, tValue);
 
         return tObjGradientZ;
     }

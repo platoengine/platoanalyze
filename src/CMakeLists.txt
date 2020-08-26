@@ -21,8 +21,8 @@ set(ANALYZE_SOURCES
     MaterialModel.cpp
     Rank4Voigt.cpp
     IsotropicStiffness.cpp
-#    StabilizedElastostaticEnergy.cpp 
-#    EllipticVMSProblem.cpp 
+    StabilizedElastostaticEnergy.cpp 
+    EllipticVMSProblem.cpp 
     alg/ParseInput.cpp 
     alg/Basis.cpp 
     alg/Cubature.cpp 

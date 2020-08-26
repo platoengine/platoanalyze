@@ -19,7 +19,7 @@
 #include "parabolic/Problem.hpp"
 #include "hyperbolic/HyperbolicProblem.hpp"
 
-//TODO #include "EllipticVMSProblem.hpp"
+#include "EllipticVMSProblem.hpp"
 #include "AnalyzeMacros.hpp"
 
 //TODO #include "PlasticityProblem.hpp"
@@ -86,7 +86,6 @@ public:
                 THROWERR(ss.str());
             }
         }
-/* TODO
         else if(tPhysics == "Stabilized Mechanical")
         {
             if(tPDE == "Elliptic")
@@ -102,7 +101,6 @@ public:
                 THROWERR(tStringStream.str());
             }
         }
-*/
         else if(tPhysics == "Thermal")
         {
             if(tPDE == "Parabolic")

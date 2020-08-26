@@ -3,8 +3,8 @@
 
 #include <memory>
 
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
+// TODO neeeded? #include <Omega_h_mesh.hpp>
+// TODO neeeded? #include <Omega_h_assoc.hpp>
 
 #include "SimplexProjection.hpp"
 #include "PressureGradientProjectionResidual.hpp"
@@ -25,14 +25,14 @@ struct FunctionFactory
     /******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractVectorFunctionVMS<EvaluationType>>
-    createVectorFunctionVMS(Omega_h::Mesh& aMesh, 
-                            Omega_h::MeshSets& aMeshSets,
-                            Plato::DataMap& aDataMap, 
-                            Teuchos::ParameterList& aParamList, 
-                            std::string aStrVectorFunctionType)
+    createVectorFunction(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aParamList, 
+        const std::string            & aStrVectorFunctionType
+    )
     /******************************************************************************/
     {
-
         if(aStrVectorFunctionType == "State Gradient Projection")
         {
             auto tPenaltyParams = aParamList.sublist(aStrVectorFunctionType).sublist("Penalty Function");
@@ -40,25 +40,25 @@ struct FunctionFactory
             if(tPenaltyType == "SIMP")
             {
                 return std::make_shared<Plato::PressureGradientProjectionResidual<EvaluationType, Plato::MSIMP>>
-                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                         (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else 
             if(tPenaltyType == "RAMP")
             {
                 return std::make_shared<Plato::PressureGradientProjectionResidual<EvaluationType, Plato::RAMP>>
-                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                         (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else 
             if(tPenaltyType == "Heaviside")
             {
                 return std::make_shared<Plato::PressureGradientProjectionResidual<EvaluationType, Plato::Heaviside>>
-                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                         (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
             if(tPenaltyType == "NoPenalty")
             {
                 return std::make_shared<Plato::PressureGradientProjectionResidual<EvaluationType, Plato::NoPenalty>>
-                         (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams);
+                         (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
             {

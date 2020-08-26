@@ -120,6 +120,55 @@ inline void transform_ad_type_to_pod_2Dview(const Plato::ScalarVectorT<ADType>& 
  *
 ********************************************************************************/
 template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColsPerCell, typename ADType>
+inline void
+transform_ad_type_to_pod_3Dview(
+    const Plato::SpatialDomain              & aDomain,
+    const Plato::ScalarMultiVectorT<ADType> & aInput,
+          Plato::ScalarArray3D              & aOutput
+)
+{
+    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nInput 2D array size is zero.\n");
+    }
+    if(aDomain.numCells() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nNumber of input cells, i.e. elements, is zero.\n");
+    }
+    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nOutput 3D array size is zero.\n");
+    }
+
+    auto tNumCells = aDomain.numCells();
+    auto tCellOrdinals = aDomain.cellOrdinals();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+        for(Plato::OrdinalType tRowIndex = 0; tRowIndex < NumRowsPerCell; tRowIndex++)
+        {
+            for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColsPerCell; tColumnIndex++)
+            {
+                aOutput(tCellOrdinal, tRowIndex, tColumnIndex) = aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
+            }
+        }
+    }, "convert AD type to Scalar type");
+}
+// function transform_ad_type_to_pod_3Dview
+/************************************************************************//**
+ *
+ * \brief (3D-View) Transform automatic differentiation (AD) type to POD.
+ *
+ * \tparam NumRowsPerCell number of rows per cell
+ * \tparam NumColsPerCell number of columns per cell
+ * \tparam ADType         AD scalar type
+ *
+ * \param [in]     aNumCells  number of cells
+ * \param [in]     aInput     AD Jacobian
+ * \param [in/out] aOutput    Scalar Jacobian
+ *
+********************************************************************************/
+template<Plato::OrdinalType NumRowsPerCell, Plato::OrdinalType NumColsPerCell, typename ADType>
 inline void transform_ad_type_to_pod_3Dview(const Plato::OrdinalType& aNumCells,
                                             const Plato::ScalarMultiVectorT<ADType>& aInput,
                                             Plato::ScalarArray3D& aOutput)

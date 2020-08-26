@@ -845,7 +845,7 @@ public:
      * @brief Update physics-based parameters within optimization iterations
      * @param [in] aControl 1D view of control variables
      **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl)
+    void updateProblem(const Plato::ScalarVector & aControl) const override
     {
         mLeastSquaresFunction->updateProblem(aControl);
     }
@@ -855,7 +855,7 @@ public:
      * @param [in] aControl 1D view of control variables
      * @return scalar function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aControl)
+    Plato::Scalar value(const Plato::ScalarVector & aControl) const override
     {
         Plato::Scalar tFunctionValue = mLeastSquaresFunction->value(aControl);
         return tFunctionValue;
@@ -866,7 +866,7 @@ public:
      * @param [in] aControl 1D view of control variables
      * @return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl)
+    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl) const override
     {
         Plato::ScalarVector tGradientX = mLeastSquaresFunction->gradient_x(aControl);
         return tGradientX;
@@ -877,7 +877,7 @@ public:
      * @param [in] aControl 1D view of control variables
      * @return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl)
+    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl) const override
     {
         Plato::ScalarVector tGradientZ = mLeastSquaresFunction->gradient_z(aControl);
         return tGradientZ;

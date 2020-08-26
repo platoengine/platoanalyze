@@ -120,7 +120,7 @@ public:
      * @brief Update physics-based parameters within optimization iterations
      * @param [in] aControl 1D view of control variables
      **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl)
+    void updateProblem(const Plato::ScalarVector & aControl) const override
     {
         mScalarFunctionBaseNumerator->updateProblem(aControl);
         mScalarFunctionBaseDenominator->updateProblem(aControl);
@@ -132,7 +132,7 @@ public:
      * @param [in] aTimeStep time step (default = 0.0)
      * @return scalar function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aControl)
+    Plato::Scalar value(const Plato::ScalarVector & aControl) const override
     {
         Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aControl);
         Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aControl);
@@ -151,7 +151,7 @@ public:
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl)
+    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl) const override
     {
         const Plato::OrdinalType tNumDofs = mNumSpatialDims * mNumNodes;
         Plato::ScalarVector tGradientX ("gradient configuration", tNumDofs);
@@ -176,7 +176,7 @@ public:
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl)
+    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl) const override
     {
         const Plato::OrdinalType tNumDofs = mNumNodes;
         Plato::ScalarVector tGradientZ ("gradient control", tNumDofs);

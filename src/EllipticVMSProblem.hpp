@@ -44,6 +44,8 @@ private:
     static constexpr auto mPressureDofOffset = SimplexPhysics::mPressureDofOffset;          /*!< number of pressure dofs offset*/
     static constexpr auto mNumGlobalDofsPerNode = SimplexPhysics::mNumDofsPerNode;          /*!< number of global degrees of freedom per node*/
 
+    Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
+
     // required
     Plato::VectorFunctionVMS<SimplexPhysics> mPDEConstraint; /*!< equality constraint interface */
     Plato::VectorFunctionVMS<typename SimplexPhysics::ProjectorT> mStateProjection; /*!< projection interface */
@@ -84,22 +86,23 @@ public:
       Teuchos::ParameterList& aInputParams,
       Comm::Machine aMachine
     ) :
-      mPDEConstraint(aMesh, aMeshSets, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
-      mStateProjection(aMesh, aMeshSets, mDataMap, aInputParams, std::string("State Gradient Projection")),
-      mNumSteps      (Plato::ParseTools::getSubParam<int>   (aInputParams, "Time Stepping", "Number Time Steps",    1  )),
-      mTimeStep      (Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Time Step",     1.0)),
-      mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Number Iterations", 2  )),
-      mConstraint(nullptr),
-      mObjective(nullptr),
-      mResidual("MyResidual", mPDEConstraint.size()),
-      mGlobalState("States", mNumSteps, mPDEConstraint.size()),
-      mJacobian(Teuchos::null),
-      mProjResidual("MyProjResidual", mStateProjection.size()),
-      mProjPGrad("Projected PGrad", mStateProjection.size()),
-      mProjectState("Project State", aMesh.nverts()),
-      mProjJacobian(Teuchos::null)
+      mSpatialModel    (aMesh, aMeshSets, aInputParams),
+      mPDEConstraint   (mSpatialModel, mDataMap, aInputParams, aInputParams.get<std::string>("PDE Constraint")),
+      mStateProjection (mSpatialModel, mDataMap, aInputParams, std::string("State Gradient Projection")),
+      mNumSteps        (Plato::ParseTools::getSubParam<int>   (aInputParams, "Time Stepping", "Number Time Steps",    1  )),
+      mTimeStep        (Plato::ParseTools::getSubParam<Plato::Scalar>(aInputParams, "Time Stepping", "Time Step",     1.0)),
+      mNumNewtonSteps  (Plato::ParseTools::getSubParam<int>   (aInputParams, "Newton Iteration", "Number Iterations", 2  )),
+      mConstraint      (nullptr),
+      mObjective       (nullptr),
+      mResidual        ("MyResidual", mPDEConstraint.size()),
+      mGlobalState     ("States", mNumSteps, mPDEConstraint.size()),
+      mJacobian        (Teuchos::null),
+      mProjResidual    ("MyProjResidual", mStateProjection.size()),
+      mProjPGrad       ("Projected PGrad", mStateProjection.size()),
+      mProjectState    ("Project State", aMesh.nverts()),
+      mProjJacobian    (Teuchos::null)
     {
-        this->initialize(aMesh, aMeshSets, aInputParams);
+        this->initialize(aInputParams);
 
         Plato::SolverFactory tSolverFactory(aInputParams.sublist("Linear Solver"));
         mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
@@ -641,7 +644,10 @@ private:
      * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
     **********************************************************************************/
-    void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    void
+    initialize(
+        Teuchos::ParameterList& aInputParams
+    )
     {
         if(aInputParams.isSublist("Time Stepping") == true)
         {
@@ -667,14 +673,14 @@ private:
         {
             Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<mSpaceDim>> tFunctionBaseFactory;
             std::string tName = aInputParams.get<std::string>("Constraint");
-            mConstraint = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+            mConstraint = tFunctionBaseFactory.create(mSpatialModel, mDataMap, aInputParams, tName);
         }
 
         if(aInputParams.isType<std::string>("Objective"))
         {
             Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tFunctionBaseFactory;
             std::string tName = aInputParams.get<std::string>("Objective");
-            mObjective = tFunctionBaseFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tName);
+            mObjective = tFunctionBaseFactory.create(mSpatialModel, mDataMap, aInputParams, tName);
 
             auto tLength = mPDEConstraint.size();
             mLambda = Plato::ScalarMultiVector("Lambda", mNumSteps, tLength);
@@ -686,6 +692,9 @@ private:
 // class EllipticVMSProblem
 
 } // namespace Plato
+
+#include "StabilizedMechanics.hpp"
+#include "StabilizedThermomechanics.hpp"
 
 #ifdef PLATOANALYZE_1D
 extern template class Plato::EllipticVMSProblem<::Plato::StabilizedMechanics<1>>;

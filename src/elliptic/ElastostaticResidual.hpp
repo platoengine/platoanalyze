@@ -59,13 +59,15 @@ private:
     using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
     using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
+    using FunctionBaseType = Plato::Elliptic::AbstractVectorFunction<EvaluationType>;
+    using CubatureType  = Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>;
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<mSpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyWeighting;
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>> mBoundaryLoads;
     std::shared_ptr<Plato::CellForcing<mNumVoigtTerms>> mCellForcing;
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
+    std::shared_ptr<CubatureType> mCubatureRule;
 
     Teuchos::RCP<Plato::LinearElasticMaterial<mSpaceDim>> mMaterialModel;
 
@@ -85,13 +87,13 @@ public:
               Teuchos::ParameterList & aProblemParams,
               Teuchos::ParameterList & aPenaltyParams
     ) :
-        Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap),
-        mIndicatorFunction(aPenaltyParams),
-        mApplyWeighting(mIndicatorFunction),
-        mBodyLoads(nullptr),
-        mBoundaryLoads(nullptr),
-        mCellForcing(nullptr),
-        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+        FunctionBaseType   (aSpatialDomain, aDataMap),
+        mIndicatorFunction (aPenaltyParams),
+        mApplyWeighting    (mIndicatorFunction),
+        mBodyLoads         (nullptr),
+        mBoundaryLoads     (nullptr),
+        mCellForcing       (nullptr),
+        mCubatureRule      (std::make_shared<CubatureType>())
     {
         // create material model and get stiffness
         //

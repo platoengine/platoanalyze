@@ -255,6 +255,23 @@ public:
      * \brief Get node state workset, e.g. projected pressure gradient in stabilized
      *        mechanics problem for each cell
      * \param [in] aState node state (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aNodeStateWS node state workset (scalar type), as a 2-D Kokkos::View
+    **********************************************************************************/
+    void
+    worksetNodeState(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aState,
+              Plato::ScalarMultiVectorT <Plato::Scalar> & aNodeStateWS,
+        const Plato::SpatialDomain                      & aDomain
+    ) const
+    {
+      Plato::workset_state_scalar_scalar<mNumNodeStatePerNode, mNumNodesPerCell>(
+              aDomain, mNodeStateEntryOrdinal, aState, aNodeStateWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get node state workset, e.g. projected pressure gradient in stabilized
+     *        mechanics problem for each cell
+     * \param [in] aState node state (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadStateWS node state workset (AD type), as a 2-D Kokkos::View
     **********************************************************************************/
     void worksetNodeState( const Kokkos::View<Plato::Scalar*, Plato::Layout, Plato::MemSpace> & aState,
@@ -262,6 +279,23 @@ public:
     {
       Plato::workset_state_scalar_fad<mNumNodeStatePerNode, mNumNodesPerCell, NodeStateFad>(
               mNumCells, mNodeStateEntryOrdinal, aState, aFadStateWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get node state workset, e.g. projected pressure gradient in stabilized
+     *        mechanics problem for each cell
+     * \param [in] aState node state (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aFadStateWS node state workset (AD type), as a 2-D Kokkos::View
+    **********************************************************************************/
+    void
+    worksetNodeState(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aState,
+              Plato::ScalarMultiVectorT <NodeStateFad>  & aFadStateWS,
+        const Plato::SpatialDomain                      & aDomain
+    ) const
+    {
+      Plato::workset_state_scalar_fad<mNumNodeStatePerNode, mNumNodesPerCell, NodeStateFad>(
+              aDomain, mNodeStateEntryOrdinal, aState, aFadStateWS);
     }
 
     /******************************************************************************//**

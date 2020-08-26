@@ -281,7 +281,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
             //
             mResidualFunctions.at(tName)->evaluate( tStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
 
-            // create and assemble to return view
+            // assemble to return view
             //
             Plato::WorksetBase<PhysicsT>::assembleResidual( tResidual, tReturnValue, tDomain );
 
