@@ -130,7 +130,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionEpetra )
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::EpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   auto tEpetra_VbrMatrix = tSystem.fromMatrix(*jacobian);
 
@@ -174,7 +174,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToEpetraVector )
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::EpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   Plato::ScalarVector tTestVector("test vector", tNumDofs);
 
@@ -222,7 +222,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToEpetraVector_invalidI
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::EpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   Plato::ScalarVector tTestVector("test vector", tNumDofs+1);
 
@@ -262,7 +262,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromEpetraVector )
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::EpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
   
   auto tTestVector = std::make_shared<Epetra_Vector>(*(tSystem.getMap()));
 
@@ -309,7 +309,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromEpetraVector_invali
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::EpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   auto tBogusMap = std::make_shared<Epetra_BlockMap>(tNumNodes+1, tNumDofsPerNode, 0, *(tMachine.epetraComm));
   auto tTestVector = std::make_shared<Epetra_Vector>(*tBogusMap);
@@ -346,7 +346,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromEpetraVector_invali
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::EpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   auto tTestVector = std::make_shared<Epetra_Vector>(*(tSystem.getMap()));
 
@@ -429,7 +429,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra )
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   auto tTpetra_Matrix = tSystem.fromMatrix(*jacobian);
 
@@ -564,7 +564,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToTpetraVector )
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   Plato::ScalarVector tTestVector("test vector", tNumDofs);
 
@@ -614,7 +614,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToTpetraVector_invalidI
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   Plato::ScalarVector tTestVector("test vector", tNumDofs+1);
 
@@ -654,7 +654,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector )
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tSystem.getMap(),1));
 
@@ -703,7 +703,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector_invali
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   auto tBogusMap = Teuchos::rcp(new Plato::Tpetra_Map(tNumDofs+1, 0, tMachine.teuchosComm));
 
@@ -743,7 +743,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector_invali
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(mesh->nverts(), tMachine, tNumDofsPerNode);
 
   auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tSystem.getMap(),1));
 
@@ -896,7 +896,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
    Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-   auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+   auto tSolver = tSolverFactory.create(mesh->nverts(), tMachine, tNumDofsPerNode);
 
    tSolver->solve(*jacobian, state, residual);
   }

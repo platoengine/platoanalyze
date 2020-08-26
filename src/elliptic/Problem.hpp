@@ -91,7 +91,7 @@ public:
         this->initialize(aMesh, aMeshSets, aInputParams);
 
         Plato::SolverFactory tSolverFactory(aInputParams.sublist("Linear Solver"));
-        mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
+        mSolver = tSolverFactory.create(aMesh.nverts(), aMachine, SimplexPhysics::mNumDofsPerNode);
     }
 
     virtual ~Problem(){}
@@ -235,16 +235,19 @@ public:
 
         if(mMPCs)
         {
+            const Plato::OrdinalType tNumChildNodes = mMPCs->getNumChildNodes();
+
             Teuchos::RCP<Plato::CrsMatrixType> tTransformMatrix = mMPCs->getTransformMatrix();
             Teuchos::RCP<Plato::CrsMatrixType> tTransformMatrixTranspose = mMPCs->getTransformMatrixTranspose();
             Plato::ScalarVector tMpcRhs = mMPCs->getRhsVector();
 
-            auto tNumNodes       = mPDE->numNodes();
-            auto tNumDofsPerNode = mPDE->numDofsPerNode();
-            auto tNumTotalDofs   = tNumNodes*tNumDofsPerNode;
+            auto tNumNodes           = mPDE->numNodes();
+            auto tNumDofsPerNode     = mPDE->numDofsPerNode();
+            auto tNumTotalDofs       = tNumNodes*tNumDofsPerNode;
+            auto tNumCondensedDofs   = (tNumNodes - tNumChildNodes)*tNumDofsPerNode;
 
-            auto tCondensedJacobianLeft = Teuchos::rcp( new Plato::CrsMatrixType(tNumTotalDofs, tNumTotalDofs, tNumDofsPerNode, tNumDofsPerNode) );
-            auto tCondensedJacobian     = Teuchos::rcp( new Plato::CrsMatrixType(tNumTotalDofs, tNumTotalDofs, tNumDofsPerNode, tNumDofsPerNode) );
+            auto tCondensedJacobianLeft = Teuchos::rcp( new Plato::CrsMatrixType(tNumTotalDofs, tNumCondensedDofs, tNumDofsPerNode, tNumDofsPerNode) );
+            auto tCondensedJacobian     = Teuchos::rcp( new Plato::CrsMatrixType(tNumCondensedDofs, tNumCondensedDofs, tNumDofsPerNode, tNumDofsPerNode) );
 
             Plato::MatrixMatrixMultiply(mJacobian, tTransformMatrix, tCondensedJacobianLeft);
             Plato::MatrixMatrixMultiply(tTransformMatrixTranspose, tCondensedJacobianLeft, tCondensedJacobian);
@@ -253,22 +256,21 @@ public:
             Plato::blas1::scale(-1.0, tMpcRhs);
             Plato::MatrixTimesVectorPlusVector(mJacobian, tMpcRhs, tInnerResidual);
 
-            Plato::ScalarVector tCondensedResidual("Condensed Residual", tNumTotalDofs);
+            Plato::ScalarVector tCondensedResidual("Condensed Residual", tNumCondensedDofs);
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedResidual);
 
             Plato::MatrixTimesVectorPlusVector(tTransformMatrixTranspose, tInnerResidual, tCondensedResidual);
 
-            auto tMpcChildDofs = mMPCs->getChildDofs();
-            if(tCondensedJacobian->isBlockMatrix())
-            {
-                Plato::setBlockConstrainedDiagonals<SimplexPhysics::mNumDofsPerNode>(tCondensedJacobian, tCondensedResidual, tMpcChildDofs);
-            }
-            else
-            {
-                Plato::setConstrainedDiagonals<SimplexPhysics::mNumDofsPerNode>(tCondensedJacobian, tCondensedResidual, tMpcChildDofs);
-            }
+            /* if(tCondensedJacobian->isBlockMatrix()) */
+            /* { */
+            /*     Plato::setBlockConstrainedDiagonals<SimplexPhysics::mNumDofsPerNode>(tCondensedJacobian, tCondensedResidual, tMpcChildDofs); */
+            /* } */
+            /* else */
+            /* { */
+            /*     Plato::setConstrainedDiagonals<SimplexPhysics::mNumDofsPerNode>(tCondensedJacobian, tCondensedResidual, tMpcChildDofs); */
+            /* } */
 
-            Plato::ScalarVector tCondensedState("Condensed State Solution", tStatesSubView.extent(0));
+            Plato::ScalarVector tCondensedState("Condensed State Solution", tNumCondensedDofs);
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedState);
             mSolver->solve(*tCondensedJacobian, tCondensedState, tCondensedResidual);
 

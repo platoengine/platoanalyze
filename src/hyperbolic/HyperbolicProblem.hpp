@@ -111,7 +111,7 @@ namespace Plato
             }
 
             Plato::SolverFactory tSolverFactory(aParamList.sublist("Linear Solver"));
-            mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
+            mSolver = tSolverFactory.create(aMesh.nverts(), aMachine, SimplexPhysics::mNumDofsPerNode);
 
         }
         /******************************************************************************//**
