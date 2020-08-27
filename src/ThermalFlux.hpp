@@ -53,7 +53,7 @@ class ThermalFlux
         for( Plato::OrdinalType iDim=0; iDim<SpaceDim; iDim++){
           tflux(cellOrdinal,iDim) = 0.0;
           for( Plato::OrdinalType jDim=0; jDim<SpaceDim; jDim++){
-            tflux(cellOrdinal,iDim) += tgrad(cellOrdinal,jDim)*mConductivityConstant(iDim, jDim);
+            tflux(cellOrdinal,iDim) -= tgrad(cellOrdinal,jDim)*mConductivityConstant(iDim, jDim);
           }
         }
       } else
@@ -63,7 +63,7 @@ class ThermalFlux
         for( Plato::OrdinalType iDim=0; iDim<SpaceDim; iDim++){
           tflux(cellOrdinal,iDim) = 0.0;
           for( Plato::OrdinalType jDim=0; jDim<SpaceDim; jDim++){
-            tflux(cellOrdinal,iDim) += tgrad(cellOrdinal,jDim)*mConductivityFunctor(cellT, iDim, jDim);
+            tflux(cellOrdinal,iDim) -= tgrad(cellOrdinal,jDim)*mConductivityFunctor(cellT, iDim, jDim);
           }
         }
       }
@@ -80,7 +80,7 @@ class ThermalFlux
       for( Plato::OrdinalType iDim=0; iDim<SpaceDim; iDim++){
         tflux(cellOrdinal,iDim) = 0.0;
         for( Plato::OrdinalType jDim=0; jDim<SpaceDim; jDim++){
-          tflux(cellOrdinal,iDim) += tgrad(cellOrdinal,jDim)*mConductivityConstant(iDim, jDim);
+          tflux(cellOrdinal,iDim) -= tgrad(cellOrdinal,jDim)*mConductivityConstant(iDim, jDim);
         }
       }
     }

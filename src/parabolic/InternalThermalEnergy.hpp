@@ -129,7 +129,7 @@ class InternalThermalEnergy :
     
         // compute element internal energy (inner product of tgrad and weighted tflux)
         //
-        scalarProduct(aCellOrdinal, aResult, tflux, tgrad, cellVolume);
+        scalarProduct(aCellOrdinal, aResult, tflux, tgrad, cellVolume, -1.0);
 
       },"energy gradient");
     }

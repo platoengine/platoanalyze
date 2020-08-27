@@ -162,13 +162,13 @@ class ThermostaticResidual :
     
         // compute stress divergence
         //
-        tFluxDivergence(aCellOrdinal, aResult, tFlux, tGradient, tCellVolume);
+        tFluxDivergence(aCellOrdinal, aResult, tFlux, tGradient, tCellVolume, -1.0);
         
       },"flux divergence");
 
       if( mBoundaryLoads != nullptr )
       {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0 );
+          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, 1.0 );
       }
 
       if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad");
