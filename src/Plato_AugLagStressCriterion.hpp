@@ -140,7 +140,7 @@ public:
         const Plato::SpatialDomain & aSpatialDomain,
               Plato::DataMap & aDataMap,
               Teuchos::ParameterList & aInputParams,
-              std::string& aFunctionName
+        const std::string& aFunctionName
     ) :
         FunctionBaseType(aSpatialDomain, aDataMap, aFunctionName),
         mPenalty(3),

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "SimplexMechanics.hpp"
 #include <Teuchos_ParameterList.hpp>
@@ -24,6 +25,8 @@ protected:
     using ConfigT = typename EvaluationType::ConfigScalarType; /*!< configuration variables automatic differentiation type */
     using ResultT = typename EvaluationType::ResultScalarType; /*!< result variables automatic differentiation type */
 
+    const Plato::SpatialDomain & mSpatialDomain;
+
     const std::string mName; /*!< Local measure name */
 
 public:
@@ -32,8 +35,13 @@ public:
      * \param [in] aInputParams input parameters database
      * \param [in] aName local measure name
      **********************************************************************************/
-    AbstractLocalMeasure(Teuchos::ParameterList & aInputParams,
-                         const std::string & aName) : mName(aName)
+    AbstractLocalMeasure(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aName
+    ) :
+        mSpatialDomain (aSpatialDomain),
+        mName          (aName)
     {
     }
 
@@ -41,9 +49,13 @@ public:
      * \brief Constructor tailored for unit testing
      * \param [in] aName local measure name
      **********************************************************************************/
+// TODO this constructor prohibits mSpatialDomain from being a const reference member
+// since const references must be set with initializer list
+/*
     AbstractLocalMeasure(const std::string & aName) : mName(aName)
     {
     }
+*/
 
     /******************************************************************************//**
      * \brief Destructor
@@ -58,9 +70,11 @@ public:
      * \param [in] aConfig 3D container of configuration/coordinates
      * \param [out] aResult 1D container of cell criterion values
     **********************************************************************************/
-    virtual void operator()(const Plato::ScalarMultiVectorT<StateT> & aStateWS,
-                            const Plato::ScalarArray3DT<ConfigT> & aConfigWS,
-                            Plato::ScalarVectorT<ResultT> & aResultWS) = 0;
+    virtual void
+    operator()(
+        const Plato::ScalarMultiVectorT <StateT>  & aStateWS,
+        const Plato::ScalarArray3DT     <ConfigT> & aConfigWS,
+              Plato::ScalarVectorT      <ResultT> & aResultWS ) = 0;
 
     /******************************************************************************//**
      * \brief Get local measure name

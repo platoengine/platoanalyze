@@ -28,6 +28,7 @@ private:
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mSpaceDim; /*!< space dimension */
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mNumVoigtTerms; /*!< number of voigt tensor terms */
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mNumNodesPerCell; /*!< number of nodes per cell */
+    using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mSpatialDomain; 
 
     using StateT = typename EvaluationType::StateScalarType; /*!< state variables automatic differentiation type */
     using ConfigT = typename EvaluationType::ConfigScalarType; /*!< configuration variables automatic differentiation type */
@@ -47,13 +48,16 @@ public:
      * \param [in] aInputParams input parameters database
      * \param [in] aName local measure name
      **********************************************************************************/
-    ThermalVonMisesLocalMeasure(Teuchos::ParameterList & aInputParams,
-                         const std::string & aName) : 
-                         AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aInputParams, aName),
-                         mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    ThermalVonMisesLocalMeasure(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aName
+    ) : 
+        AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aSpatialDomain, aInputParams, aName),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     {
         Plato::ThermoelasticModelFactory<mSpaceDim> tFactory(aInputParams);
-        mMaterialModel = tFactory.create();
+        mMaterialModel = tFactory.create(mSpatialDomain.getMaterialName());
     }
 
     /******************************************************************************//**
@@ -61,6 +65,8 @@ public:
      * \param [in] aMaterialModel thermoelastic material model
      * \param [in] aName local measure name
      **********************************************************************************/
+// TODO this constructor causes problems
+/*
     ThermalVonMisesLocalMeasure(Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> &aMaterialModel,
                          const std::string aName) :
                          AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aName),
@@ -68,6 +74,7 @@ public:
     {
         mMaterialModel = aMaterialModel;
     }
+*/
 
     /******************************************************************************//**
      * \brief Destructor
@@ -83,9 +90,12 @@ public:
      * \param [in] aDataMap map to stored data
      * \param [out] aResult 1D container of cell local measure values
     **********************************************************************************/
-    virtual void operator()(const Plato::ScalarMultiVectorT<StateT> & aStateWS,
-                            const Plato::ScalarArray3DT<ConfigT> & aConfigWS,
-                            Plato::ScalarVectorT<ResultT> & aResultWS)
+    virtual void
+    operator()(
+        const Plato::ScalarMultiVectorT <StateT>  & aStateWS,
+        const Plato::ScalarArray3DT     <ConfigT> & aConfigWS,
+              Plato::ScalarVectorT      <ResultT> & aResultWS
+    )
     {
         const Plato::OrdinalType tNumCells = aResultWS.size();
         using StrainT = typename Plato::fad_type_t<SimplexPhysics, StateT, ConfigT>;

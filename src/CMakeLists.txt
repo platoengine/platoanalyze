@@ -31,10 +31,10 @@ set(ANALYZE_SOURCES
     alg/EpetraLinearSolver.cpp
     alg/AmgXLinearSolver.cpp
     alg/PlatoSolverFactory.cpp
-#    TensileEnergyDensity.cpp 
-#    TensileEnergyDensityLocalMeasure.cpp 
-#    VonMisesLocalMeasure.cpp 
-#    ThermalVonMisesLocalMeasure.cpp 
+    TensileEnergyDensity.cpp 
+    TensileEnergyDensityLocalMeasure.cpp 
+    VonMisesLocalMeasure.cpp 
+    ThermalVonMisesLocalMeasure.cpp 
     IntermediateDensityPenalty.cpp 
 #    J2PlasticityLocalResidual.cpp 
 #    LocalVectorFunctionInc.cpp 

@@ -27,9 +27,11 @@ private:
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mSpaceDim; /*!< space dimension */
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mNumVoigtTerms; /*!< number of voigt tensor terms */
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mNumNodesPerCell; /*!< number of nodes per cell */
+    using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mSpatialDomain; 
+
     Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffMatrix; /*!< cell/element Lame constants matrix */
 
-    using StateT = typename EvaluationType::StateScalarType; /*!< state variables automatic differentiation type */
+    using StateT  = typename EvaluationType::StateScalarType;  /*!< state variables automatic differentiation type */
     using ConfigT = typename EvaluationType::ConfigScalarType; /*!< configuration variables automatic differentiation type */
     using ResultT = typename EvaluationType::ResultScalarType; /*!< result variables automatic differentiation type */
 
@@ -39,12 +41,16 @@ public:
      * \param [in] aInputParams input parameters database
      * \param [in] aName local measure name
      **********************************************************************************/
-    VonMisesLocalMeasure(Teuchos::ParameterList & aInputParams,
-                         const std::string & aName) : 
-                         AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aInputParams, aName)
+    VonMisesLocalMeasure(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aName
+    ) : 
+        AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aSpatialDomain, aInputParams, aName)
     {
+        auto tMaterialName = mSpatialDomain.getMaterialName();
         Plato::ElasticModelFactory<mSpaceDim> tMaterialModelFactory(aInputParams);
-        auto tMaterialModel = tMaterialModelFactory.create();
+        auto tMaterialModel = tMaterialModelFactory.create(tMaterialName);
         mCellStiffMatrix = tMaterialModel->getStiffnessMatrix();
     }
 
@@ -53,12 +59,17 @@ public:
      * \param [in] aCellStiffMatrix stiffness matrix
      * \param [in] aName local measure name
      **********************************************************************************/
-    VonMisesLocalMeasure(const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> & aCellStiffMatrix,
-                         const std::string aName) :
-                         AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aName)
+// TODO this constructor jacks things up 
+/*
+    VonMisesLocalMeasure(
+        const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> & aCellStiffMatrix,
+        const std::string aName
+    ) :
+        AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aName)
     {
         mCellStiffMatrix = aCellStiffMatrix;
     }
+*/
 
     /******************************************************************************//**
      * \brief Evaluate vonmises local measure
