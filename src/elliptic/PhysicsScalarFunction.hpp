@@ -231,7 +231,7 @@ public:
         using ControlScalar = typename Residual::ControlScalarType;
         using ResultScalar  = typename Residual::ResultScalarType;
 
-        ResultScalar tReturnVal(0.0);
+        Plato::Scalar tReturnVal(0.0);
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();

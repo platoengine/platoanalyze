@@ -50,6 +50,10 @@ private:
     using Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>::mNumDofsPerCell;
     using Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>::mNumDofsPerNode;
 
+    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
+    using FunctionBaseType = Plato::Elliptic::AbstractVectorFunction<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>;
+
     using StateScalarType = typename EvaluationType::StateScalarType;
     using ControlScalarType = typename EvaluationType::ControlScalarType;
     using ConfigScalarType = typename EvaluationType::ConfigScalarType;
@@ -75,19 +79,19 @@ public:
     /******************************************************************************//**
      *
      * @brief Constructor
-     * @param [in] aMesh mesh data base
-     * @param [in] aMeshSets mesh sets data base
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
      * @param [in] aDataMap problem-specific data storage
      * @param [in] aProblemParams parameter list with input data
      * @param [in] aPenaltyParams parameter list with penalty model input data
      *
     **********************************************************************************/
-    explicit StructuralDynamicsResidual(Omega_h::Mesh& aMesh,
-                                        Omega_h::MeshSets& aMeshSets,
-                                        Plato::DataMap& aDataMap,
-                                        Teuchos::ParameterList & aProblemParams,
-                                        Teuchos::ParameterList & aPenaltyParams) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
+    explicit StructuralDynamicsResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+    ) :
+            FunctionBaseType(aSpatialDomain, aDataMap),
             mDensity(1.0),
             mMassPropDamp(0.0),
             mStiffPropDamp(0.0),
@@ -97,7 +101,7 @@ public:
             mApplyProjection(mProjectionFunction),
             mCellStiffness(),
             mBodyLoads(nullptr),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>>()),
+            mCubatureRule(std::make_shared<CubatureType>()),
             mBoundaryLoads(nullptr)
     {
         this->initialize(aProblemParams);
@@ -106,17 +110,17 @@ public:
     /******************************************************************************//**
      *
      * @brief Constructor
-     * @param [in] aMesh mesh data base
-     * @param [in] aMeshSets mesh sets data base
+     * @param [in] aSpatialDomain Plato Analyze spatial domain
      * @param [in] aDataMap problem-specific data storage
      * @param [in] aProblemParams parameter list with input data
      *
     **********************************************************************************/
-    explicit StructuralDynamicsResidual(Omega_h::Mesh& aMesh,
-                                        Omega_h::MeshSets& aMeshSets,
-                                        Plato::DataMap& aDataMap,
-                                        Teuchos::ParameterList & aProblemParams) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
+    explicit StructuralDynamicsResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams
+    ) :
+            FunctionBaseType(aSpatialDomain, aDataMap),
             mDensity(1.0),
             mMassPropDamp(0.0),
             mStiffPropDamp(0.0),
@@ -126,7 +130,7 @@ public:
             mApplyProjection(mProjectionFunction),
             mCellStiffness(),
             mBodyLoads(nullptr),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>>()),
+            mCubatureRule(std::make_shared<CubatureType>()),
             mBoundaryLoads(nullptr)
     {
         this->initialize(aProblemParams);
@@ -135,15 +139,15 @@ public:
     /******************************************************************************//**
      *
      * @brief Constructor
-     * @param [in] aMesh mesh data base
-     * @param [in] aMeshSets mesh sets data base
+     * @param [in] aSpatialDomain Plato Analyze spatial domain
      * @param [in] aDataMap problem-specific data storage
      *
     **********************************************************************************/
-    explicit StructuralDynamicsResidual(Omega_h::Mesh& aMesh,
-                                        Omega_h::MeshSets& aMeshSets,
-                                        Plato::DataMap& aDataMap) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
+    explicit StructuralDynamicsResidual(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap
+    ) :
+            FunctionBaseType(aSpatialDomain, aDataMap),
             mDensity(1.0),
             mMassPropDamp(0.0),
             mStiffPropDamp(0.0),
@@ -153,7 +157,7 @@ public:
             mApplyProjection(mProjectionFunction),
             mCellStiffness(),
             mBodyLoads(nullptr),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>>()),
+            mCubatureRule(std::make_shared<CubatureType>()),
             mBoundaryLoads(nullptr)
     {
         this->initialize();
@@ -313,15 +317,35 @@ public:
         if(mBodyLoads != nullptr)
         {
             auto tMesh = Plato::Elliptic::AbstractVectorFunction<EvaluationType>::getMesh();
-            mBodyLoads->get(tMesh, aState, aControl, aResidual);
+            mBodyLoads->get(mSpatialDomain, aState, aControl, aResidual);
         }
 
+    }
+
+    /******************************************************************************//**
+     *
+     * @brief Evaluate structural dynamics boundary residual
+     *
+     * @param [in] aState states per cells
+     * @param [in] aControl controls per cells
+     * @param [in] aConfiguration coordinates per cells
+     * @param [in,out] aResidual residual per cells
+     * @param [in] aAngularFrequency angular frequency
+     *
+    **********************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                           & aSpatialModel,
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfiguration,
+              Plato::ScalarMultiVectorT <ResultScalarType>  & aResidual,
+              Plato::Scalar aAngularFrequency = 0.0) const
+    {
         // add neumann loads contribution
         if( mBoundaryLoads != nullptr )
         {
-            auto tMesh = Plato::Elliptic::AbstractVectorFunction<EvaluationType>::getMesh();
-            auto tMeshSets = Plato::Elliptic::AbstractVectorFunction<EvaluationType>::getMeshSets();
-            mBoundaryLoads->get(&tMesh, tMeshSets, aState, aControl, aConfiguration, aResidual);
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfiguration, aResidual);
         }
     }
 

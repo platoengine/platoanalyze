@@ -36,7 +36,7 @@ private:
     static constexpr auto mNumStressTerms      = SimplexPhysicsType::mNumStressTerms;       /*!< number of stress/strain terms */
     static constexpr auto mNumLocalDofsPerCell = SimplexPhysicsType::mNumLocalDofsPerCell;  /*!< number of local degrees of freedom */
 
-    using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mMesh;    /*!< mesh database */
+    using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mSpatialDomain;    /*!< Plato Analyze spatial domain */
     using Plato::AbstractLocalVectorFunctionInc<EvaluationType>::mDataMap; /*!< PLATO Engine output database */
 
     using GlobalStateT     = typename EvaluationType::StateScalarType;           /*!< global state variables automatic differentiation type */
@@ -46,6 +46,8 @@ private:
     using ControlT         = typename EvaluationType::ControlScalarType;         /*!< control variables automatic differentiation type */
     using ConfigT          = typename EvaluationType::ConfigScalarType;          /*!< config variables automatic differentiation type */
     using ResultT          = typename EvaluationType::ResultScalarType;          /*!< result variables automatic differentiation type */
+
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<mSpaceDim>;
 
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
 
@@ -66,7 +68,7 @@ private:
     Plato::Scalar mAdditiveContinuationPlasticProperties;    /*!< continuation parameter: multiplier on SIMP penalty for plastic properties */
     Plato::Scalar mUpperBoundOnPlasticPropertiesPenaltySIMP; /*!< continuation parameter: upper bound on SIMP penalty for plastic properties */
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule; /*!< linear tet cubature rule */
+    std::shared_ptr<CubatureType> mCubatureRule; /*!< linear tet cubature rule */
 
     const Plato::Scalar mSqrt3Over2 = std::sqrt(3.0/2.0);
 
@@ -122,20 +124,23 @@ private:
     ******************************************************************************/
     void initialize(Teuchos::ParameterList& aInputParams)
     {
-      this->initializeIsotropicElasticMaterial(aInputParams);
-      this->initializeJ2Plasticity(aInputParams);
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        Teuchos::ParameterList tMaterialParamLists = aInputParams.sublist("Material Models");
+        Teuchos::ParameterList tMaterialParamList  = tMaterialParamLists.sublist(tMaterialName);
+        this->initializeIsotropicElasticMaterial(tMaterialParamList);
+        this->initializeJ2Plasticity(tMaterialParamList);
     }
 
     /**************************************************************************//**
     * \brief Initialize isotropic material parameters
     * \param [in] aInputParams Teuchos parameter list
     ******************************************************************************/
-    void initializeIsotropicElasticMaterial(Teuchos::ParameterList& aInputParams)
+    void initializeIsotropicElasticMaterial(Teuchos::ParameterList& aMaterialParams)
     {
-        auto tMaterialParamList = aInputParams.get<Teuchos::ParameterList>("Material Model");
-        if( tMaterialParamList.isSublist("Isotropic Linear Elastic") )
+
+        if( aMaterialParams.isSublist("Isotropic Linear Elastic") )
         {
-          auto tElasticSubList = tMaterialParamList.sublist("Isotropic Linear Elastic");
+          auto tElasticSubList = aMaterialParams.sublist("Isotropic Linear Elastic");
           mThermalExpansionCoefficient = 0.0;
           mReferenceTemperature        = 0.0;
 
@@ -144,9 +149,9 @@ private:
           mElasticShearModulus = tElasticModulus /
                   (static_cast<Plato::Scalar>(2.0) * (static_cast<Plato::Scalar>(1.0) + tPoissonsRatio));
         }
-        else if( tMaterialParamList.isSublist("Isotropic Linear Thermoelastic") )
+        else if( aMaterialParams.isSublist("Isotropic Linear Thermoelastic") )
         {
-          auto tThermoelasticSubList = tMaterialParamList.sublist("Isotropic Linear Thermoelastic");
+          auto tThermoelasticSubList = aMaterialParams.sublist("Isotropic Linear Thermoelastic");
 
           mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
           mReferenceTemperature        = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
@@ -158,7 +163,10 @@ private:
         }
         else
         {
-          THROWERR("'Isotropic Linear Elastic' or 'Isotropic Linear Thermoelastic' sublist of 'Material Model' does not exist.")
+          auto tMaterialName = mSpatialDomain.getMaterialName();
+          std::stringstream ss;
+          ss << "'Isotropic Linear Elastic' or 'Isotropic Linear Thermoelastic' sublist of '" << tMaterialName << "' does not exist.";
+          THROWERR(ss.str());
         }
     }
 
@@ -247,17 +255,17 @@ private:
 public:
     /**************************************************************************//**
     * \brief Constructor
-    * \param [in] aMesh mesh data base
-    * \param [in] aMeshSets mesh sets data base
+    * \param [in] aSpatialDomain Plato Analyze spatial domain
     * \param [in] aDataMap problem-specific data map
     * \param [in] aProblemParams Teuchos parameter list
     ******************************************************************************/
-    J2PlasticityLocalResidual(Omega_h::Mesh& aMesh,
-                              Omega_h::MeshSets& aMeshSets,
-                              Plato::DataMap& aDataMap,
-                              Teuchos::ParameterList& aProblemParams) :
-            AbstractLocalVectorFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, getLocalStateDofNames() ),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    J2PlasticityLocalResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams
+    ) :
+        AbstractLocalVectorFunctionInc<EvaluationType>(aSpatialDomain, aDataMap, getLocalStateDofNames() ),
+        mCubatureRule(std::make_shared<CubatureType>())
     {
         this->initialize(aProblemParams);
     }
@@ -278,16 +286,18 @@ public:
     * \param [out] aResult evaluated local residuals
     ******************************************************************************/
     virtual void
-    evaluate( const Plato::ScalarMultiVectorT< GlobalStateT >     & aGlobalState,
-              const Plato::ScalarMultiVectorT< PrevGlobalStateT > & aPrevGlobalState,
-              const Plato::ScalarMultiVectorT< LocalStateT >      & aLocalState,
-              const Plato::ScalarMultiVectorT< PrevLocalStateT >  & aPrevLocalState,
-              const Plato::ScalarMultiVectorT< ControlT >         & aControl,
-              const Plato::ScalarArray3DT    < ConfigT >          & aConfig,
-              const Plato::ScalarMultiVectorT< ResultT >          & aResult,
-                    Plato::Scalar aTimeStep = 0.0) const
+    evaluate(
+        const Plato::ScalarMultiVectorT< GlobalStateT >     & aGlobalState,
+        const Plato::ScalarMultiVectorT< PrevGlobalStateT > & aPrevGlobalState,
+        const Plato::ScalarMultiVectorT< LocalStateT >      & aLocalState,
+        const Plato::ScalarMultiVectorT< PrevLocalStateT >  & aPrevLocalState,
+        const Plato::ScalarMultiVectorT< ControlT >         & aControl,
+        const Plato::ScalarArray3DT    < ConfigT >          & aConfig,
+        const Plato::ScalarMultiVectorT< ResultT >          & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using TotalStrainT   = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
       using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
@@ -406,15 +416,17 @@ public:
     * \param [in]  aConfig configuration parameters
     ******************************************************************************/
     virtual void
-    updateLocalState( const Plato::ScalarMultiVector & aGlobalState,
-                      const Plato::ScalarMultiVector & aPrevGlobalState,
-                      const Plato::ScalarMultiVector & aLocalState,
-                      const Plato::ScalarMultiVector & aPrevLocalState,
-                      const Plato::ScalarMultiVector & aControl,
-                      const Plato::ScalarArray3D     & aConfig,
-                            Plato::Scalar              aTimeStep = 0.0) const
+    updateLocalState(
+        const Plato::ScalarMultiVector & aGlobalState,
+        const Plato::ScalarMultiVector & aPrevGlobalState,
+        const Plato::ScalarMultiVector & aLocalState,
+        const Plato::ScalarMultiVector & aPrevLocalState,
+        const Plato::ScalarMultiVector & aControl,
+        const Plato::ScalarArray3D     & aConfig,
+              Plato::Scalar              aTimeStep = 0.0
+    ) const
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       // Functors
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;

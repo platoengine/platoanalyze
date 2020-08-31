@@ -29,6 +29,7 @@ private:
 
     std::string mWeigthedSumFunctionName;        /*!< User defined function name */
 
+    const Plato::SpatialModel & mSpatialModel;
     Plato::DataMap& mDataMap;                    /*!< output database */
     Plato::WorksetBase<PhysicsT> mWorksetBase;   /*!< Assembly routine interface */
 
@@ -43,9 +44,9 @@ private:
      * @brief Initialization of Weighted Sum of Local Scalar Functions
      * @param [in] aInputParams input parameters database
     **********************************************************************************/
-    void initialize (Omega_h::Mesh& aMesh,
-                     Omega_h::MeshSets& aMeshSets,
-                     Teuchos::ParameterList & aInputParams)
+    void
+    initialize (
+        Teuchos::ParameterList & aInputParams)
     {
         if(aInputParams.isSublist(mWeigthedSumFunctionName) == false)
         {
@@ -92,7 +93,7 @@ private:
         {
             mFunctionNames.push_back(tFunctionNames[tFunctionIndex]);
             mFunctionWeights.push_back(tFunctionWeights[tFunctionIndex]);
-            auto tScalarFunction = tFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]);
+            auto tScalarFunction = tFactory.create(mSpatialModel, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]);
             mLocalScalarFunctionContainer.push_back(tScalarFunction);
         }
     }
@@ -100,36 +101,40 @@ private:
 public:
     /******************************************************************************//**
      * \brief Primary constructor for weighted sum of local scalar functions.
-     * \param [in] aMesh        mesh database
-     * \param [in] aMeshSets    side sets database
-     * \param [in] aDataMap     output database
-     * \param [in] aInputParams input parameters database
-     * \param [in] aName        user-defined function name
+     * \param [in] aSpatialModel Plato Analyze spatial model
+     * \param [in] aDataMap      output database
+     * \param [in] aInputParams  input parameters database
+     * \param [in] aName         user-defined function name
     **********************************************************************************/
-    WeightedLocalScalarFunction(Omega_h::Mesh &aMesh,
-                                Omega_h::MeshSets &aMeshSets,
-                                Plato::DataMap &aDataMap,
-                                Teuchos::ParameterList &aInputParams,
-                                std::string &aName) :
+    WeightedLocalScalarFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aName
+    ) :
         mWeigthedSumFunctionName(aName),
         mWriteDiagnostics(false),
+        mSpatialModel(aSpatialModel),
         mDataMap(aDataMap),
-        mWorksetBase(aMesh)
+        mWorksetBase(aSpatialModel.Mesh)
     {
-        this->initialize(aMesh, aMeshSets, aInputParams);
+        this->initialize(aInputParams);
     }
 
     /******************************************************************************//**
      * \brief Secondary weight sum function constructor, used for unit testing
-     * \param [in] aMesh     mesh database
+     * \param [in] aSpatialModel Plato Analyze spatial model
      * \param [in] aDataMap  output database
     **********************************************************************************/
-    WeightedLocalScalarFunction(Omega_h::Mesh &aMesh,
-                                Plato::DataMap &aDataMap) :
+    WeightedLocalScalarFunction(
+        const Plato::SpatialModel & aSpatialModel,
+              Plato::DataMap      & aDataMap
+    ) :
         mWeigthedSumFunctionName("Weighted Sum"),
         mWriteDiagnostics(false),
+        mSpatialModel(aSpatialModel),
         mDataMap(aDataMap),
-        mWorksetBase(aMesh)
+        mWorksetBase(aSpatialModel.Mesh)
     {
     }
 
@@ -189,10 +194,13 @@ public:
      * \param [in] aControl     control variables, e.g. design variables
      * \param [in] aTimeStep    current time step
     **********************************************************************************/
-    void updateProblem(const Plato::ScalarMultiVector & aGlobalStates,
-                       const Plato::ScalarMultiVector & aLocalStates,
-                       const Plato::ScalarVector & aControls,
-                       Plato::Scalar aTimeStep = 0.0) const override
+    void
+    updateProblem(
+        const Plato::ScalarMultiVector & aGlobalStates,
+        const Plato::ScalarMultiVector & aLocalStates,
+        const Plato::ScalarVector      & aControls,
+              Plato::Scalar              aTimeStep = 0.0
+    ) const override
     {
         if(mLocalScalarFunctionContainer.empty())
         {
@@ -217,12 +225,15 @@ public:
      *
      * \return weighted sum
     *******************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aCurrentGlobalState,
-                        const Plato::ScalarVector & aPreviousGlobalState,
-                        const Plato::ScalarVector & aCurrentLocalState,
-                        const Plato::ScalarVector & aPreviousLocalState,
-                        const Plato::ScalarVector & aControls,
-                        Plato::Scalar aTimeStep = 0.0) const override
+    Plato::Scalar
+    value(
+        const Plato::ScalarVector & aCurrentGlobalState,
+        const Plato::ScalarVector & aPreviousGlobalState,
+        const Plato::ScalarVector & aCurrentLocalState,
+        const Plato::ScalarVector & aPreviousLocalState,
+        const Plato::ScalarVector & aControls,
+              Plato::Scalar         aTimeStep = 0.0
+    ) const override
     {
         if(mLocalScalarFunctionContainer.empty())
         {

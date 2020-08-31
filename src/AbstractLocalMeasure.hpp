@@ -49,13 +49,14 @@ public:
      * \brief Constructor tailored for unit testing
      * \param [in] aName local measure name
      **********************************************************************************/
-// TODO this constructor prohibits mSpatialDomain from being a const reference member
-// since const references must be set with initializer list
-/*
-    AbstractLocalMeasure(const std::string & aName) : mName(aName)
+    AbstractLocalMeasure(
+        const Plato::SpatialDomain & aSpatialDomain,
+        const std::string          & aName
+    ) : 
+        mSpatialDomain (aSpatialDomain),
+        mName          (aName)
     {
     }
-*/
 
     /******************************************************************************//**
      * \brief Destructor

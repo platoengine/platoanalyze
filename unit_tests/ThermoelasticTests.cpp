@@ -53,13 +53,13 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
   // create mesh based solution from host data
   //
   int tNumDofsPerNode = (spaceDim+1);
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
   Plato::ScalarMultiVector states("states", /*numSteps=*/1, tNumDofs);
   auto state = Kokkos::subview(states, 0, Kokkos::ALL());
@@ -100,24 +100,36 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
     "      <Parameter name='Type' type='string' value='SIMP'/>                    \n"
     "    </ParameterList>                                                         \n"
     "  </ParameterList>                                                           \n"
-    "  <ParameterList name='Material Model'>                                      \n"
-    "    <ParameterList name='Thermoelastic'>                                     \n"
-    "      <ParameterList name='Elastic Stiffness'>                               \n"
-    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>        \n"
-    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>     \n"
-    "      </ParameterList>                                                       \n"
-    "      <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>  \n"
-    "      <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>  \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>   \n"
-    "    </ParameterList>                                                         \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Beef Jerky'/>   \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Beef Jerky'>                                          \n"
+    "      <ParameterList name='Thermoelastic'>                                     \n"
+    "        <ParameterList name='Elastic Stiffness'>                               \n"
+    "          <Parameter  name='Poissons Ratio' type='double' value='0.3'/>        \n"
+    "          <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>     \n"
+    "        </ParameterList>                                                       \n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>  \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>  \n"
+    "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>   \n"
+    "      </ParameterList>                                                         \n"
+    "    </ParameterList>                                                           \n"
     "  </ParameterList>                                                           \n"
     "</ParameterList>                                                             \n"
   );
 
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
   Plato::Elliptic::VectorFunction<::Plato::Thermomechanics<spaceDim>>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
 
   // compute and test constraint value
@@ -243,7 +255,7 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
   // create objective
   //
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<spaceDim>>
-    scalarFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("Objective"));
+    scalarFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("Objective"));
 
   // compute and test objective value
   //

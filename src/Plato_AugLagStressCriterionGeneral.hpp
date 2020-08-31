@@ -153,7 +153,7 @@ public:
         const Plato::SpatialDomain & aSpatialDomain,
               Plato::DataMap       & aDataMap
     ) :
-        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(mSpatialDomain, aDataMap, "Stress Constraint"),
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, "Stress Constraint"),
         mPenalty(3),
         mStressLimit(1),
         mAugLagPenalty(0.1),

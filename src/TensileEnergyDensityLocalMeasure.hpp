@@ -93,18 +93,18 @@ public:
      * \param [in] aPoissonsRatio Poisson's ratio
      * \param [in] aName local measure name
      **********************************************************************************/
-// TODO this constructor jacks things up
-/*
-    TensileEnergyDensityLocalMeasure(const Plato::Scalar & aYoungsModulus,
-                                     const Plato::Scalar & aPoissonsRatio,
-                                     const std::string & aName) :
-                                     AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aName),
-                                     mYoungsModulus(aYoungsModulus),
-                                     mPoissonsRatio(aPoissonsRatio)
+    TensileEnergyDensityLocalMeasure(
+        const Plato::SpatialDomain & aSpatialModel,
+        const Plato::Scalar        & aYoungsModulus,
+        const Plato::Scalar        & aPoissonsRatio,
+        const std::string          & aName
+    ) :
+        AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aSpatialModel, aName),
+        mYoungsModulus(aYoungsModulus),
+        mPoissonsRatio(aPoissonsRatio)
     {
         computeLameConstants();
     }
-*/
 
     /******************************************************************************//**
      * \brief Destructor

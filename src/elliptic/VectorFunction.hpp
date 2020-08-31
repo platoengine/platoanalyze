@@ -59,11 +59,6 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     std::map<std::string, GradientXFunction> mGradientXFunctions;
     std::map<std::string, GradientZFunction> mGradientZFunctions;
 
-    ResidualFunction  mBoundaryLoadsResidualFunction;
-    JacobianFunction  mBoundaryLoadsJacobianFunction;
-    GradientXFunction mBoundaryLoadsGradientXFunction;
-    GradientZFunction mBoundaryLoadsGradientZFunction;
-
     const Plato::SpatialModel & mSpatialModel;
 
     Plato::DataMap      & mDataMap;
@@ -99,25 +94,20 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
           mGradientZFunctions[tName] = tFunctionFactory.template createVectorFunction<GradientZ>(tDomain, aDataMap, aProblemParams, aProblemType);
           mGradientXFunctions[tName] = tFunctionFactory.template createVectorFunction<GradientX>(tDomain, aDataMap, aProblemParams, aProblemType);
         }
-
-
-        // any block can compute the boundary terms for the entire mesh.  We'll use the first block.
-        auto tFirstBlockName = aSpatialModel.Domains[0].getDomainName();
-
-        mBoundaryLoadsResidualFunction  = mResidualFunctions[tFirstBlockName];
-        mBoundaryLoadsJacobianFunction  = mJacobianFunctions[tFirstBlockName];
-        mBoundaryLoadsGradientZFunction = mGradientZFunctions[tFirstBlockName];
-        mBoundaryLoadsGradientXFunction = mGradientXFunctions[tFirstBlockName];
     }
 
     /**************************************************************************//**
     * \brief Constructor
-    * \param [in] aMesh mesh data base
+    * \param [in] aSpatialModel struct that contains the mesh, meshsets, domains, etc.
     * \param [in] aDataMap problem-specific data map
     ******************************************************************************/
-    VectorFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
-            Plato::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap)
+    VectorFunction(
+        const Plato::SpatialModel & aSpatialModel,
+              Plato::DataMap      & aDataMap
+    ) :
+        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel  (aSpatialModel),
+        mDataMap       (aDataMap)
     {
     }
 
@@ -311,7 +301,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mBoundaryLoadsResidualFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
+            auto tFirstBlockName = mSpatialModel.Domains.front().getDomainName();
+            mResidualFunctions.at(tFirstBlockName)->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tResidual, aTimeStep );
 
             // create and assemble to return view
             //
@@ -401,7 +392,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mBoundaryLoadsGradientXFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            auto tFirstBlockName = mSpatialModel.Domains.front().getDomainName();
+            mGradientXFunctions.at(tFirstBlockName)->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumDofsPerNode>
@@ -494,7 +486,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mBoundaryLoadsJacobianFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            auto tFirstBlockName = mSpatialModel.Domains.front().getDomainName();
+            mJacobianFunctions.at(tFirstBlockName)->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixTransposeEntryOrdinal<mNumSpatialDims, mNumDofsPerNode>
@@ -586,7 +579,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function
             //
-            mBoundaryLoadsJacobianFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            auto tFirstBlockName = mSpatialModel.Domains.front().getDomainName();
+            mJacobianFunctions.at(tFirstBlockName)->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumDofsPerNode, mNumDofsPerNode>
@@ -680,7 +674,8 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
             // evaluate function 
             //
-            mBoundaryLoadsGradientZFunction->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
+            auto tFirstBlockName = mSpatialModel.Domains.front().getDomainName();
+            mGradientZFunctions.at(tFirstBlockName)->evaluate_boundary(mSpatialModel, tStateWS, tControlWS, tConfigWS, tJacobian, aTimeStep );
 
             // assembly to return matrix
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControl, mNumDofsPerNode>

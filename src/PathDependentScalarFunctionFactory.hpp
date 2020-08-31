@@ -48,11 +48,11 @@ public:
      * \return shared pointer to the interface of path-dependent scalar functions
      **********************************************************************************/
     std::shared_ptr<Plato::LocalScalarFunctionInc>
-    create(Omega_h::Mesh& aMesh,
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap & aDataMap,
-           Teuchos::ParameterList& aInputParams,
-           std::string& aFunctionName);
+    create(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aFunctionName);
 };
 // class PathDependentScalarFunctionFactory
 

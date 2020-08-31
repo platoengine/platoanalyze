@@ -10,6 +10,7 @@
 
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
+#include "SpatialModel.hpp"
 #include "EssentialBCs.hpp"
 #include "OmegaHUtilities.hpp"
 #include "NewtonRaphsonSolver.hpp"
@@ -30,6 +31,7 @@ namespace Plato
 template<typename PhysicsT>
 class PlasticityProblem : public Plato::AbstractProblem
 {
+
 // private member data
 private:
     static constexpr auto mSpaceDim = PhysicsT::mSpaceDim;                           /*!< spatial dimensions*/
@@ -41,6 +43,8 @@ private:
     static constexpr auto mNumPressGradDofsPerCell = PhysicsT::mNumNodeStatePerCell;  /*!< number of projected pressure gradient degrees of freedom per cell (i.e. element)*/
     static constexpr auto mNumPressGradDofsPerNode = PhysicsT::mNumNodeStatePerNode;  /*!< number of projected pressure gradient degrees of freedom per node*/
     static constexpr auto mNumConfigDofsPerCell = mSpaceDim * mNumNodesPerCell; /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
+
+    Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
     // Required
     using PlasticityT = typename Plato::Plasticity<mSpaceDim>;
@@ -95,9 +99,10 @@ public:
       Teuchos::ParameterList& aInputs,
       Comm::Machine& aMachine
     ) :
-      mLocalEquation(std::make_shared<Plato::LocalVectorFunctionInc<PlasticityT>>(aMesh, aMeshSets, mDataMap, aInputs)),
-      mGlobalEquation(std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(aMesh, aMeshSets, mDataMap, aInputs, aInputs.get<std::string>("PDE Constraint"))),
-      mProjectionEquation(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(aMesh, aMeshSets, mDataMap, aInputs, std::string("State Gradient Projection"))),
+      mSpatialModel(aMesh, aMeshSets, aInputs),
+      mLocalEquation(std::make_shared<Plato::LocalVectorFunctionInc<PlasticityT>>(mSpatialModel, mDataMap, aInputs)),
+      mGlobalEquation(std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(mSpatialModel, mDataMap, aInputs, aInputs.get<std::string>("PDE Constraint"))),
+      mProjectionEquation(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(mSpatialModel, mDataMap, aInputs, std::string("State Gradient Projection"))),
       mObjective(nullptr),
       mConstraint(nullptr),
       mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
@@ -119,13 +124,14 @@ public:
       mStopOptimization(false),
       mMaxNumPseudoTimeStepsReached(false)
     {
-        this->initialize(aMesh, aMeshSets, aInputs);
+        this->initialize(aInputs);
     }
 
     /***************************************************************************//**
      * \brief Plasticity problem constructor
      * \param [in] aMesh mesh database
     *******************************************************************************/
+/* TODO this constructor hoses const references
     explicit PlasticityProblem(Omega_h::Mesh& aMesh) :
             mLocalEquation(nullptr),
             mGlobalEquation(nullptr),
@@ -152,6 +158,7 @@ public:
             mMaxNumPseudoTimeStepsReached(false)
     {
     }
+*/
 
     /***************************************************************************//**
      * \brief PLATO Plasticity Problem destructor
@@ -189,18 +196,17 @@ public:
 
     /***************************************************************************//**
      * \brief Read essential (Dirichlet) boundary conditions from the Exodus file.
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
+     * \param [in] aSpatialModel Plato Analyze spatial model
      * \param [in] aInputs input parameters database
     *******************************************************************************/
-    void readEssentialBoundaryConditions(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputs)
+    void readEssentialBoundaryConditions(Teuchos::ParameterList& aInputs)
     {
         if(aInputs.isSublist("Essential Boundary Conditions") == false)
         {
             THROWERR("Plasticity Problem: Essential Boundary Conditions are not defined for this problem.")
         }
         Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputs.sublist("Essential Boundary Conditions", false));
-        tDirichletBCs.get(aMeshSets, mDirichletDofs, mDirichletValues);
+        tDirichletBCs.get(mSpatialModel.MeshSets, mDirichletDofs, mDirichletValues);
     }
 
     /***************************************************************************//**
@@ -224,10 +230,11 @@ public:
     /***************************************************************************//**
      * \brief Save states to visualization file
      * \param [in] aFilepath output/viz directory path
-     * \param [in] aMesh     Omega_h mesh database
     *******************************************************************************/
-    void saveStates(const std::string& aFilepath, Omega_h::Mesh& aMesh)
+    void saveStates(const std::string& aFilepath)
     {
+        auto tMesh = mSpatialModel.Mesh;
+
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
         Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
@@ -235,20 +242,20 @@ public:
         Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
         Plato::blas2::scale(mPressureScaling, tPressure);
 
-        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &aMesh, mSpaceDim);
+        Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
         for(Plato::OrdinalType tSnapshot = 0; tSnapshot < tDisplacements.extent(0); tSnapshot++)
         {
             auto tPressSubView = Kokkos::subview(tPressure, tSnapshot, Kokkos::ALL());
             auto tPressSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tPressSubView);
-            aMesh.add_tag(Omega_h::VERT, "Pressure", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tPressSubViewDefaultMirror)));
+            tMesh.add_tag(Omega_h::VERT, "Pressure", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tPressSubViewDefaultMirror)));
             auto tForceSubView = Kokkos::subview(mReactionForce, tSnapshot, Kokkos::ALL());
             auto tForceSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tForceSubView);
-            aMesh.add_tag(Omega_h::VERT, "Reaction Force", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tForceSubViewDefaultMirror)));
+            tMesh.add_tag(Omega_h::VERT, "Reaction Force", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tForceSubViewDefaultMirror)));
             auto tDispSubView = Kokkos::subview(tDisplacements, tSnapshot, Kokkos::ALL());
             auto tDispSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tDispSubView);
-            aMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
-            Plato::add_element_state_tags(aMesh, mDataMap, tSnapshot);
-            auto tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, mSpaceDim);
+            tMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
+            Plato::add_element_state_tags(tMesh, mDataMap, tSnapshot);
+            auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mSpaceDim);
             auto tTime = mPseudoTimeStep * static_cast<Plato::Scalar>(tSnapshot + 1);
             tWriter.write(tSnapshot, tTime, tTags);
         }
@@ -657,26 +664,28 @@ public:
 private:
     /***************************************************************************//**
      * \brief Initialize member data
-     * \param [in] aMesh         mesh database
-     * \param [in] aMeshSets     side/node sets database
      * \param [in] aInputParams  input parameter list
     *******************************************************************************/
-    void initialize(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    void initialize(Teuchos::ParameterList& aInputParams)
     {
-        this->allocateObjectiveFunction(aMesh, aMeshSets, aInputParams);
-        this->allocateConstraintFunction(aMesh, aMeshSets, aInputParams);
+        auto tMesh     = mSpatialModel.Mesh;
+        auto tMeshSets = mSpatialModel.MeshSets;
+
+        this->allocateObjectiveFunction(aInputParams);
+        this->allocateConstraintFunction(aInputParams);
         if(mNumPseudoTimeSteps >= mMaxNumPseudoTimeSteps)
         {
             mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
             mMaxNumPseudoTimeStepsReached = true;
         }
 
-        if(aInputParams.isSublist("Material Model") == false)
+        if(aInputParams.isSublist("Material Models") == false)
         {
-            THROWERR("Plasticity Problem: 'Material Model' Parameter Sublist is not defined.")
+            THROWERR("Plasticity Problem: 'Material Models' Parameter Sublist is not defined.")
         }
-        auto tMaterialInputs = aInputParams.get<Teuchos::ParameterList>("Material Model");
-        mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        Teuchos::ParameterList tMaterialsInputs = aInputParams.get<Teuchos::ParameterList>("Material Models");
+
+        mPressureScaling = tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
     }
 
     /***************************************************************************//**
@@ -1021,7 +1030,7 @@ private:
         aStateData.mProjectedPressGrad = Kokkos::subview(mProjectedPressGrad, aStateData.mCurrentStepIndex, Kokkos::ALL());
         if(aStateData.mPressure.size() <= static_cast<Plato::OrdinalType>(0))
         {
-            auto tNumVerts = mGlobalEquation->getMesh().nverts();
+            auto tNumVerts = mSpatialModel.Mesh.nverts();
             aStateData.mPressure = Plato::ScalarVector("Current Pressure Field", tNumVerts);
         }
         Plato::blas1::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aStateData.mCurrentGlobalState, aStateData.mPressure);
@@ -1046,17 +1055,17 @@ private:
 
     /***************************************************************************//**
      * \brief Allocate objective function interface and adjoint containers
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
     *******************************************************************************/
-    void allocateObjectiveFunction(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    void allocateObjectiveFunction(Teuchos::ParameterList& aInputParams)
     {
         if(aInputParams.isType<std::string>("Objective"))
         {
+            auto tMesh     = mSpatialModel.Mesh;
+            auto tMeshSets = mSpatialModel.MeshSets;
             auto tUserDefinedName = aInputParams.get<std::string>("Objective");
             Plato::PathDependentScalarFunctionFactory<PhysicsT> tObjectiveFunctionFactory;
-            mObjective = tObjectiveFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tUserDefinedName);
+            mObjective = tObjectiveFunctionFactory.create(mSpatialModel, mDataMap, aInputParams, tUserDefinedName);
         }
         else
         {
@@ -1066,17 +1075,17 @@ private:
 
     /***************************************************************************//**
      * \brief Allocate constraint function interface and adjoint containers
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
     *******************************************************************************/
-    void allocateConstraintFunction(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    void allocateConstraintFunction(Teuchos::ParameterList& aInputParams)
     {
         if(aInputParams.isType<std::string>("Constraint"))
         {
+            auto tMesh     = mSpatialModel.Mesh;
+            auto tMeshSets = mSpatialModel.MeshSets;
             Plato::PathDependentScalarFunctionFactory<PhysicsT> tContraintFunctionFactory;
             auto tUserDefinedName = aInputParams.get<std::string>("Constraint");
-            mConstraint = tContraintFunctionFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tUserDefinedName);
+            mConstraint = tContraintFunctionFactory.create(mSpatialModel, mDataMap, aInputParams, tUserDefinedName);
         }
         else
         {

@@ -364,22 +364,32 @@ void SlowDumbMatrixMatrixMultiply(
 
 Teuchos::RCP<Teuchos::ParameterList> gElastostaticsParams =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/> \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>        \n"
-    "  <ParameterList name='Material Model'>                             \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                 \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>  \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>\n"
-    "    </ParameterList>                                                \n"
-    "  </ParameterList>                                                  \n"
-    "  <ParameterList name='Elliptic'>                                   \n"
-    "    <ParameterList name='Penalty Function'>                         \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>        \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>           \n"
-    "    </ParameterList>                                                \n"
-    "  </ParameterList>                                                  \n"
-    "</ParameterList>                                                    \n"
+    "<ParameterList name='Plato Problem'>                                        \n"
+    "  <ParameterList name='Spatial Model'>                                      \n"
+    "    <ParameterList name='Domains'>                                          \n"
+    "      <ParameterList name='Design Volume'>                                  \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>        \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>\n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>         \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                \n"
+    "  <ParameterList name='Material Models'>                                    \n"
+    "    <ParameterList name='Unobtainium'>                                      \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                       \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>        \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>      \n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <ParameterList name='Elliptic'>                                           \n"
+    "    <ParameterList name='Penalty Function'>                                 \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "</ParameterList>                                                            \n"
   );
 
 
@@ -531,8 +541,8 @@ Teuchos::RCP<Plato::CrsMatrixType> createSquareMatrix()
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
-  auto nverts = mesh->nverts();
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto nverts = tMesh->nverts();
 
   // create vector data
   //
@@ -543,9 +553,13 @@ Teuchos::RCP<Plato::CrsMatrixType> createSquareMatrix()
   // create residual function
   //
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *gElastostaticsParams);
+
   Plato::Elliptic::VectorFunction<::Plato::Mechanics<spaceDim>>
-    tVectorFunction(*mesh, tMeshSets, tDataMap, *gElastostaticsParams, gElastostaticsParams->get<std::string>("PDE Constraint"));
+    tVectorFunction(tSpatialModel, tDataMap, *gElastostaticsParams, gElastostaticsParams->get<std::string>("PDE Constraint"));
 
   // compute and test objective value
   //
@@ -554,23 +568,20 @@ Teuchos::RCP<Plato::CrsMatrixType> createSquareMatrix()
 
 template <typename PhysicsT>
 Teuchos::RCP<Plato::VectorFunctionVMS<PhysicsT>>
-createStabilizedResidual(Teuchos::RCP<Omega_h::Mesh> aMesh)
+createStabilizedResidual(const Plato::SpatialModel & aSpatialModel)
 {
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
-
   return Teuchos::rcp( new Plato::VectorFunctionVMS<PhysicsT>
-         (*aMesh, tMeshSets, tDataMap, *gElastostaticsParams, gElastostaticsParams->get<std::string>("PDE Constraint")));
+         (aSpatialModel, tDataMap, *gElastostaticsParams, gElastostaticsParams->get<std::string>("PDE Constraint")));
 }
 
 template <typename PhysicsT>
 Teuchos::RCP<Plato::VectorFunctionVMS<typename PhysicsT::ProjectorT>>
-createStabilizedProjector(Teuchos::RCP<Omega_h::Mesh> aMesh)
+createStabilizedProjector(const Plato::SpatialModel & aSpatialModel)
 {
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
   return Teuchos::rcp( new Plato::VectorFunctionVMS<typename PhysicsT::ProjectorT>
-         (*aMesh, tMeshSets, tDataMap, *gElastostaticsParams, std::string("State Gradient Projection")));
+         (aSpatialModel, tDataMap, *gElastostaticsParams, std::string("State Gradient Projection")));
 }
 
 /******************************************************************************/
@@ -1169,9 +1180,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_CondenseMatrix_2)
   constexpr int cSpaceDim  = 3;
   constexpr int cMeshWidth = 2;
   auto tMesh = PlatoUtestHelpers::getBoxMesh(cSpaceDim, cMeshWidth);
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(cSpaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *gElastostaticsParams);
+
   using PhysicsT = Plato::StabilizedMechanics<cSpaceDim>;
-  auto tResidual = createStabilizedResidual<PhysicsT>(tMesh);
-  auto tProjector = createStabilizedProjector<PhysicsT>(tMesh);
+  auto tResidual = createStabilizedResidual<PhysicsT>(tSpatialModel);
+  auto tProjector = createStabilizedProjector<PhysicsT>(tSpatialModel);
 
   auto tNverts = tMesh->nverts();
   Plato::ScalarVector U("state",          tResidual->size());
@@ -1569,17 +1585,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   // create mesh based density from host data
   //
-  std::vector<Plato::Scalar> z_host( mesh->nverts(), 1.0 );
+  std::vector<Plato::Scalar> z_host( tMesh->nverts(), 1.0 );
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged> z_host_view(z_host.data(),z_host.size());
   auto z = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), z_host_view);
 
   // create mesh based displacement from host data
   //
-  auto stateSize = spaceDim*mesh->nverts();
+  auto stateSize = spaceDim*tMesh->nverts();
   Plato::ScalarMultiVector U("states", /*numSteps=*/1, stateSize);
   auto u = Kokkos::subview(U, 0, Kokkos::ALL());
   auto u_host = Kokkos::create_mirror_view(u);
@@ -1592,6 +1608,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
   Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                          \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>           \n"
     "  <Parameter name='Objective' type='string' value='My Internal Elastic Energy'/> \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                   \n"
@@ -1609,10 +1633,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
     "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
-    "  <ParameterList name='Material Model'>                                       \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                           \n"
-    "      <Parameter name='Poissons Ratio' type='double' value='0.3'/>            \n"
-    "      <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>          \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Unobtainium'>                                        \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                         \n"
+    "        <Parameter name='Poissons Ratio' type='double' value='0.3'/>          \n"
+    "        <Parameter name='Youngs Modulus' type='double' value='1.0e6'/>        \n"
+    "      </ParameterList>                                                        \n"
     "    </ParameterList>                                                          \n"
     "  </ParameterList>                                                            \n"
     "</ParameterList>                                                              \n"
@@ -1621,16 +1647,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixTimesVectorPlusV
   // create objective
   //
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParams);
+
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<spaceDim>>
-    eeScalarFunction(*mesh, tMeshSets, tDataMap, *tParams, tParams->get<std::string>("Objective"));
+    eeScalarFunction(tSpatialModel, tDataMap, *tParams, tParams->get<std::string>("Objective"));
 
   auto dfdx = eeScalarFunction.gradient_x(Plato::Solution(U),z);
 
   // create PDE constraint
   //
   Plato::Elliptic::VectorFunction<::Plato::Mechanics<spaceDim>>
-    esVectorFunction(*mesh, tMeshSets, tDataMap, *tParams, tParams->get<std::string>("PDE Constraint"));
+    esVectorFunction(tSpatialModel, tDataMap, *tParams, tParams->get<std::string>("PDE Constraint"));
 
   auto dgdx = esVectorFunction.gradient_x(u,z);
 

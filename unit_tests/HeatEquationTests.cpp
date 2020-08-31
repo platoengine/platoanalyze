@@ -46,21 +46,48 @@
 
 TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
 { 
+  // create input
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                        \n"
+    "  <ParameterList name='Spatial Model'>                                      \n"
+    "    <ParameterList name='Domains'>                                          \n"
+    "      <ParameterList name='Design Volume'>                                  \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>        \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>\n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <ParameterList name='Material Models'>                                    \n"
+    "    <ParameterList name='Unobtainium'>                                      \n"
+    "      <ParameterList name='Thermal Mass'>                                   \n"
+    "        <Parameter name='Mass Density' type='double' value='0.3'/>          \n"
+    "        <Parameter name='Specific Heat' type='double' value='1.0e6'/>       \n"
+    "      </ParameterList>                                                      \n"
+    "      <ParameterList name='Thermal Conduction'>                             \n"
+    "        <Parameter name='Thermal Conductivity' type='double' value='1.0e6'/>\n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "</ParameterList>                                                            \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
-  int numCells = mesh->nelems();
+  int numCells = tMesh->nelems();
   constexpr int nodesPerCell  = Plato::SimplexThermal<spaceDim>::mNumNodesPerCell;
   constexpr int dofsPerCell   = Plato::SimplexThermal<spaceDim>::mNumDofsPerCell;
   constexpr int dofsPerNode   = Plato::SimplexThermal<spaceDim>::mNumDofsPerNode;
 
   // create mesh based temperature from host data
   //
-  std::vector<Plato::Scalar> T_host( mesh->nverts() );
+  std::vector<Plato::Scalar> T_host( tMesh->nverts() );
   Plato::Scalar Tval = 0.0, dval = 1.0;
   for( auto& val : T_host ) val = (Tval += dval);
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
@@ -68,7 +95,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
   auto T = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), T_host_view);
 
 
-  Plato::WorksetBase<Plato::SimplexThermal<spaceDim>> worksetBase(*mesh);
+  Plato::WorksetBase<Plato::SimplexThermal<spaceDim>> worksetBase(*tMesh);
 
   Plato::ScalarArray3DT<Plato::Scalar>
     gradient("gradient",numCells,nodesPerCell,spaceDim);
@@ -94,30 +121,13 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
 
   Plato::ScalarGrad<spaceDim> scalarGrad;
 
-  // create input
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                       \n"
-    "  <ParameterList name='Material Model'>                                    \n"
-    "    <ParameterList name='Thermal Mass'>                                    \n"
-    "      <Parameter name='Mass Density' type='double' value='0.3'/>           \n"
-    "      <Parameter name='Specific Heat' type='double' value='1.0e6'/>        \n"
-    "    </ParameterList>                                                       \n"
-    "    <ParameterList name='Thermal Conduction'>                              \n"
-    "      <Parameter name='Thermal Conductivity' type='double' value='1.0e6'/> \n"
-    "    </ParameterList>                                                       \n"
-    "  </ParameterList>                                                         \n"
-    "</ParameterList>                                                           \n"
-  );
 
 
+  Plato::ThermalMassModelFactory<spaceDim> mmmfactory(*tParamList);
+  auto thermalMassMaterialModel = mmmfactory.create("Unobtainium");
 
-  Plato::ThermalMassModelFactory<spaceDim> mmmfactory(*params);
-  auto thermalMassMaterialModel = mmmfactory.create();
-
-  Plato::ThermalConductionModelFactory<spaceDim> mmfactory(*params);
-  auto tMaterialModel = mmfactory.create();
+  Plato::ThermalConductionModelFactory<spaceDim> mmfactory(*tParamList);
+  auto tMaterialModel = mmfactory.create("Unobtainium");
 
   Plato::ThermalFlux<spaceDim>      thermalFlux(tMaterialModel);
   Plato::FluxDivergence<spaceDim>  fluxDivergence;
@@ -366,6 +376,46 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, 3D )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( HeatEquationTests, HeatEquationResidual3D )
 {
+  // create input
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                        \n"
+    "  <ParameterList name='Spatial Model'>                                      \n"
+    "    <ParameterList name='Domains'>                                          \n"
+    "      <ParameterList name='Design Volume'>                                  \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>        \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>\n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Parabolic'/>        \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                \n"
+    "  <ParameterList name='Parabolic'>                                          \n"
+    "    <ParameterList name='Penalty Function'>                                 \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "      <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <ParameterList name='Material Models'>                                    \n"
+    "    <ParameterList name='Unobtainium'>                                      \n"
+    "      <ParameterList name='Thermal Mass'>                                   \n"
+    "        <Parameter name='Mass Density' type='double' value='0.3'/>          \n"
+    "        <Parameter name='Specific Heat' type='double' value='1.0e3'/>       \n"
+    "      </ParameterList>                                                      \n"
+    "      <ParameterList name='Thermal Conduction'>                             \n"
+    "        <Parameter name='Thermal Conductivity' type='double' value='1.0e6'/>\n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <ParameterList name='Time Integration'>                                   \n"
+    "    <Parameter name='Number Time Steps' type='int' value='3'/>              \n"
+    "    <Parameter name='Time Step' type='double' value='0.5'/>                 \n"
+    "  </ParameterList>                                                          \n"
+    "</ParameterList>                                                            \n"
+  );
+
   feclearexcept(FE_ALL_EXCEPT);
   feenableexcept(FE_INVALID | FE_OVERFLOW);
 
@@ -373,11 +423,11 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, HeatEquationResidual3D )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   // create mesh based density from host data
   //
-  std::vector<Plato::Scalar> z_host( mesh->nverts(), 1.0 );
+  std::vector<Plato::Scalar> z_host( tMesh->nverts(), 1.0 );
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     z_host_view(z_host.data(),z_host.size());
   auto z = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), z_host_view);
@@ -385,14 +435,14 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, HeatEquationResidual3D )
 
   // create mesh based temperature from host data
   //
-  std::vector<Plato::Scalar> T_host( mesh->nverts() );
+  std::vector<Plato::Scalar> T_host( tMesh->nverts() );
   Plato::Scalar Tval = 0.0, dval = 1.0000;
   for( auto& val : T_host ) val = (Tval += dval);
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
     T_host_view(T_host.data(),T_host.size());
   auto T = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), T_host_view);
 
-  std::vector<Plato::Scalar> Tdot_host( mesh->nverts() );
+  std::vector<Plato::Scalar> Tdot_host( tMesh->nverts() );
   Tval = 0.0; dval = 0.5000;
   for( auto& val : Tdot_host ) val = (Tval += dval);
   Kokkos::View<Plato::Scalar*, Kokkos::HostSpace, Kokkos::MemoryUnmanaged>
@@ -400,47 +450,21 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, HeatEquationResidual3D )
   auto Tdot = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace(), Tdot_host_view);
 
 
-  // create input
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                       \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Parabolic'/>       \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>               \n"
-    "  <ParameterList name='Parabolic'>                                         \n"
-    "    <ParameterList name='Penalty Function'>                                \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>               \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>          \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                  \n"
-    "    </ParameterList>                                                       \n"
-    "  </ParameterList>                                                         \n"
-    "  <ParameterList name='Material Model'>                                    \n"
-    "    <ParameterList name='Thermal Mass'>                                    \n"
-    "      <Parameter name='Mass Density' type='double' value='0.3'/>           \n"
-    "      <Parameter name='Specific Heat' type='double' value='1.0e3'/>        \n"
-    "    </ParameterList>                                                       \n"
-    "    <ParameterList name='Thermal Conduction'>                              \n"
-    "      <Parameter name='Thermal Conductivity' type='double' value='1.0e6'/> \n"
-    "    </ParameterList>                                                       \n"
-    "  </ParameterList>                                                         \n"
-    "  <ParameterList name='Time Integration'>                                  \n"
-    "    <Parameter name='Number Time Steps' type='int' value='3'/>             \n"
-    "    <Parameter name='Time Step' type='double' value='0.5'/>                \n"
-    "  </ParameterList>                                                         \n"
-    "</ParameterList>                                                           \n"
-  );
-
   // create constraint evaluator
   //
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
   Plato::Parabolic::VectorFunction<::Plato::Thermal<spaceDim>>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *tParamList, tParamList->get<std::string>("PDE Constraint"));
 
 
   // compute and test value
   //
-  auto timeStep = params->sublist("Time Integration").get<Plato::Scalar>("Time Step");
+  auto timeStep = tParamList->sublist("Time Integration").get<Plato::Scalar>("Time Step");
   auto residual = vectorFunction.value(T, Tdot, z, timeStep);
 
   auto residual_Host = Kokkos::create_mirror_view( residual );
@@ -588,17 +612,60 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, HeatEquationResidual3D )
 /******************************************************************************/
 TEUCHOS_UNIT_TEST( HeatEquationTests, InternalThermalEnergy3D )
 { 
+  // create material model
+  //
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                        \n"
+    "  <ParameterList name='Spatial Model'>                                      \n"
+    "    <ParameterList name='Domains'>                                          \n"
+    "      <ParameterList name='Design Volume'>                                  \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>        \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>\n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Parabolic'/>        \n"
+    "  <Parameter name='Objective' type='string' value='My Internal Thermal Energy'/> \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                 \n"
+    "  <ParameterList name='My Internal Thermal Energy'>                         \n"
+    "    <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
+    "    <Parameter name='Scalar Function Type' type='string' value='Internal Thermal Energy'/>  \n"
+    "    <ParameterList name='Penalty Function'>                                 \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>                \n"
+    "      <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                   \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <ParameterList name='Material Models'>                                    \n"
+    "    <ParameterList name='Unobtainium'>                                      \n"
+    "      <ParameterList name='Thermal Mass'>                                   \n"
+    "        <Parameter name='Mass Density' type='double' value='0.3'/>          \n"
+    "        <Parameter name='Specific Heat' type='double' value='1.0e3'/>       \n"
+    "      </ParameterList>                                                      \n"
+    "      <ParameterList name='Thermal Conduction'>                             \n"
+    "        <Parameter name='Thermal Conductivity' type='double' value='1.0e6'/>\n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
+    "  </ParameterList>                                                          \n"
+    "  <ParameterList name='Time Integration'>                                   \n"
+    "    <Parameter name='Number Time Steps' type='int' value='3'/>              \n"
+    "    <Parameter name='Time Step' type='double' value='0.5'/>                 \n"
+    "  </ParameterList>                                                          \n"
+    "</ParameterList>                                                            \n"
+  );
+
   // create test mesh
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
   // create mesh based temperature from host data
   //
   int tNumSteps = 3;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   Plato::ScalarMultiVector T("temperature history", tNumSteps, tNumNodes);
   Plato::ScalarMultiVector Tdot("temperature rate history", tNumSteps, tNumNodes);
   Plato::ScalarVector z("density", tNumNodes);
@@ -613,47 +680,18 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, InternalThermalEnergy3D )
   }, "temperature history");
 
 
-  // create material model
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                       \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Parabolic'/>       \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Thermal Energy'/> \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                \n"
-    "  <ParameterList name='My Internal Thermal Energy'>                        \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>         \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Thermal Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>               \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>          \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                  \n"
-    "    </ParameterList>                                                       \n"
-    "  </ParameterList>                                                         \n"
-    "  <ParameterList name='Material Model'>                                    \n"
-    "    <ParameterList name='Thermal Mass'>                                    \n"
-    "      <Parameter name='Mass Density' type='double' value='0.3'/>           \n"
-    "      <Parameter name='Specific Heat' type='double' value='1.0e3'/>        \n"
-    "    </ParameterList>                                                       \n"
-    "    <ParameterList name='Thermal Conduction'>                              \n"
-    "      <Parameter name='Thermal Conductivity' type='double' value='1.0e6'/> \n"
-    "    </ParameterList>                                                       \n"
-    "  </ParameterList>                                                         \n"
-    "  <ParameterList name='Time Integration'>                                  \n"
-    "    <Parameter name='Number Time Steps' type='int' value='3'/>             \n"
-    "    <Parameter name='Time Step' type='double' value='0.5'/>                \n"
-    "  </ParameterList>                                                         \n"
-    "</ParameterList>                                                           \n"
-  );
-
   // create objective
   //
-  Plato::DataMap dataMap;
-  Omega_h::MeshSets tMeshSets;
-  Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
-    scalarFunction(*mesh, tMeshSets, dataMap, *params, params->get<std::string>("Objective"));
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
-  auto timeStep = params->sublist("Time Integration").get<Plato::Scalar>("Time Step");
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
+
+  Plato::DataMap dataMap;
+  Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
+    scalarFunction(tSpatialModel, dataMap, *tParamList, tParamList->get<std::string>("Objective"));
+
+  auto timeStep = tParamList->sublist("Time Integration").get<Plato::Scalar>("Time Step");
   int timeIncIndex = 1;
 
   // compute and test objective value
@@ -756,6 +794,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, InternalThermalEnergy3D )
   }
 }
 
+
 /******************************************************************************/
 /*! 
   \brief Create a 'ComputedField' object for a uniform scalar field
@@ -767,11 +806,11 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, ComputedField_UniformScalar )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   // compute fields
   //
-  Teuchos::RCP<Teuchos::ParameterList> params =
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                \n"
     "  <ParameterList name='Computed Fields'>                            \n"
@@ -794,9 +833,9 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, ComputedField_UniformScalar )
     "</ParameterList>                                                    \n"
   );
 
-  auto tComputedFields = Plato::ComputedFields<spaceDim>(*mesh, params->sublist("Computed Fields"));
+  auto tComputedFields = Plato::ComputedFields<spaceDim>(*tMesh, tParamList->sublist("Computed Fields"));
 
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   Plato::ScalarVector T("temperature", tNumNodes);
 
   tComputedFields.get("Uniform Initial Temperature", T);
@@ -814,7 +853,7 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, ComputedField_UniformScalar )
   Plato::ScalarVector xcoords("x", tNumNodes);
   Plato::ScalarVector ycoords("y", tNumNodes);
   Plato::ScalarVector zcoords("z", tNumNodes);
-  auto coords = mesh->coords();
+  auto coords = tMesh->coords();
   Kokkos::parallel_for(Kokkos::RangePolicy<int>(0,tNumNodes), LAMBDA_EXPRESSION(int nodeOrdinal)
   {
     xcoords(nodeOrdinal) = coords[nodeOrdinal*spaceDim+0];

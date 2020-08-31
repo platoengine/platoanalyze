@@ -76,7 +76,7 @@ private:
 public:
     /******************************************************************************//**
      * \brief Constructor
-     * \param [in] aDataMap Plato Analyze spatial model
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
      * \param [in] aDataMap Plato Analyze database
      * \param [in] aProblemParams input parameters for overall problem
      * \param [in] aPenaltyParams input parameters for penalty function

@@ -22,9 +22,9 @@
 #include "EllipticVMSProblem.hpp"
 #include "AnalyzeMacros.hpp"
 
-//TODO #include "PlasticityProblem.hpp"
-//TODO #include "StabilizedMechanics.hpp"
-//TODO #include "StabilizedThermomechanics.hpp"
+#include "PlasticityProblem.hpp"
+#include "StabilizedMechanics.hpp"
+#include "StabilizedThermomechanics.hpp"
 //#include "StructuralDynamicsProblem.hpp"
 
 namespace Plato
@@ -62,7 +62,7 @@ public:
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else 
@@ -71,15 +71,13 @@ public:
                 return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
             else
-/* TODO
-            if(tPDE == "Infinite Strain Plasticity")
+            if(tPDE == "Infinitesimal Strain Plasticity")
             {
                 auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainPlasticity<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
-*/
             {
                 std::stringstream ss;
                 ss << "Unknown PDE type (" << tPDE << ") requested.";
@@ -91,7 +89,7 @@ public:
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
@@ -111,7 +109,7 @@ public:
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
@@ -132,17 +130,16 @@ public:
         if(tPhysics == "Electromechanical")
         {
             auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-            tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+            tOutput->readEssentialBoundaryConditions(tInputData);
             return tOutput;
         }
         else
-/* TODO
         if(tPhysics == "Stabilized Thermomechanical")
         {
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
@@ -153,7 +150,6 @@ public:
             }
         }
         else
-*/
         if(tPhysics == "Thermomechanical")
         {
             if(tPDE == "Parabolic")
@@ -164,7 +160,7 @@ public:
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
@@ -180,8 +176,6 @@ public:
             tStringStream << "Unknown Physics type (" << tPhysics << ") requested.";
             THROWERR(tStringStream.str());
         }
-
-//TODO        return (nullptr);
     }
 };
 // class ProblemFactory

@@ -29,7 +29,8 @@ private:
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mNumNodesPerCell; /*!< number of nodes per cell */
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mSpatialDomain; 
 
-    Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffMatrix; /*!< cell/element Lame constants matrix */
+    using MatrixType = Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms>;
+    MatrixType mCellStiffMatrix; /*!< cell/element Lame constants matrix */
 
     using StateT  = typename EvaluationType::StateScalarType;  /*!< state variables automatic differentiation type */
     using ConfigT = typename EvaluationType::ConfigScalarType; /*!< configuration variables automatic differentiation type */
@@ -59,17 +60,15 @@ public:
      * \param [in] aCellStiffMatrix stiffness matrix
      * \param [in] aName local measure name
      **********************************************************************************/
-// TODO this constructor jacks things up 
-/*
     VonMisesLocalMeasure(
-        const Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> & aCellStiffMatrix,
-        const std::string aName
+        const Plato::SpatialDomain & aSpatialDomain,
+        const MatrixType           & aCellStiffMatrix,
+        const std::string            aName
     ) :
-        AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aName)
+        AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aSpatialDomain, aName)
     {
         mCellStiffMatrix = aCellStiffMatrix;
     }
-*/
 
     /******************************************************************************//**
      * \brief Evaluate vonmises local measure

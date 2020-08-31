@@ -40,9 +40,7 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
 
   // create mesh sets
   //
-  Omega_h::Assoc tAssoc;
-  tAssoc[Omega_h::NODE_SET] = tMesh->class_sets;
-  tAssoc[Omega_h::SIDE_SET] = tMesh->class_sets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(cSpaceDim);
   Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
   // create input for transient mechanics problem
@@ -60,6 +58,14 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
     "      <Parameter name='Type' type='string' value='SIMP'/>                 \n"
     "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                        \n"
+    "  <ParameterList name='Spatial Model'>                                     \n"
+    "    <ParameterList name='Domains'>                                         \n"
+    "      <ParameterList name='Design Volume'>                                 \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>       \n"
+    "        <Parameter name='Material Model' type='string' value='Alyoominium'/>\n"
+    "      </ParameterList>                                                     \n"
+    "    </ParameterList>                                                       \n"
+    "  </ParameterList>                                                         \n"
     "  <ParameterList name='Internal Energy'>                                  \n"
     "    <Parameter name='Type' type='string' value='Scalar Function'/>        \n"
     "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/> \n"
@@ -69,12 +75,14 @@ TEUCHOS_UNIT_TEST( TransientDynamicsProblemTests, 3D )
     "      <Parameter name='Minimum Value' type='double' value='0.0'/>         \n"
     "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                        \n"
-    "  <ParameterList name='Material Model'>                                   \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                       \n"
-    "      <Parameter name='Mass Density' type='double' value='2.7'/>          \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.36'/>      \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='68.0e10'/>   \n"
-    "    </ParameterList>                                                      \n"
+    "  <ParameterList name='Material Models'>                                  \n"
+    "    <ParameterList name='Alyoominium'>                                    \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                       \n"
+    "        <Parameter name='Mass Density' type='double' value='2.7'/>          \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.36'/>      \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='68.0e10'/>   \n"
+    "      </ParameterList>                                                      \n"
+    "    </ParameterList>                                                        \n"
     "  </ParameterList>                                                        \n"
     "  <ParameterList name='Time Integration'>                                 \n"
     "    <Parameter name='Newmark Gamma' type='double' value='0.5'/>           \n"
@@ -240,12 +248,22 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_NoMass )
     "      <Parameter name='Type' type='string' value='SIMP'/>                \n"
     "    </ParameterList>                                                     \n"
     "  </ParameterList>                                                       \n"
-    "  <ParameterList name='Material Model'>                                  \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                      \n"
-    "      <Parameter name='Mass Density' type='double' value='0.0'/>         \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.36'/>     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='68.0e10'/>  \n"
-    "    </ParameterList>                                                     \n"
+    "  <ParameterList name='Spatial Model'>                                     \n"
+    "    <ParameterList name='Domains'>                                         \n"
+    "      <ParameterList name='Design Volume'>                                 \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>       \n"
+    "        <Parameter name='Material Model' type='string' value='Soylent Green'/>\n"
+    "      </ParameterList>                                                     \n"
+    "    </ParameterList>                                                       \n"
+    "  </ParameterList>                                                         \n"
+    "  <ParameterList name='Material Models'>                                   \n"
+    "    <ParameterList name='Soylent Green'>                                   \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                      \n"
+    "        <Parameter name='Mass Density' type='double' value='0.0'/>         \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.36'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='68.0e10'/>  \n"
+    "      </ParameterList>                                                     \n"
+    "    </ParameterList>                                                       \n"
     "  </ParameterList>                                                       \n"
     "  <ParameterList name='Time Integration'>                                \n"
     "    <Parameter name='Number Time Steps' type='int' value='2'/>           \n"
@@ -269,15 +287,13 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_NoMass )
 
   // create mesh sets
   //
-  Omega_h::Assoc tAssoc;
-  tAssoc[Omega_h::NODE_SET] = tMesh->class_sets;
-  tAssoc[Omega_h::SIDE_SET] = tMesh->class_sets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(cSpaceDim);
   Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tInputParams);
 
   Plato::DataMap tDataMap;
   Plato::Hyperbolic::VectorFunction<::Plato::Hyperbolic::Mechanics<cSpaceDim>>
-    tVectorFunction(*tMesh, tMeshSets, tDataMap, *tInputParams,
-                   tInputParams->get<std::string>("PDE Constraint"));
+    tVectorFunction(tSpatialModel, tDataMap, *tInputParams, tInputParams->get<std::string>("PDE Constraint"));
 
   int tNumDofs = cSpaceDim*tMesh->nverts();
   Plato::ScalarVector tControl("control", tNumDofs);
@@ -480,30 +496,40 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_WithMass )
   //
   Teuchos::RCP<Teuchos::ParameterList> tInputParams =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                   \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Hyperbolic'/>  \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>           \n"
-    "  <ParameterList name='Hyperbolic'>                                    \n"
-    "    <ParameterList name='Penalty Function'>                            \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>           \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>      \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
-    "    </ParameterList>                                                   \n"
-    "  </ParameterList>                                                     \n"
-    "  <ParameterList name='Material Model'>                                \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                    \n"
-    "      <Parameter name='Mass Density' type='double' value='2.7'/>       \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.36'/>   \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='68.0e10'/>\n"
-    "    </ParameterList>                                                   \n"
-    "  </ParameterList>                                                     \n"
-    "  <ParameterList name='Time Integration'>                              \n"
-    "    <Parameter name='Newmark Gamma' type='double' value='0.5'/>        \n"
-    "    <Parameter name='Newmark Beta' type='double' value='0.25'/>        \n"
-    "    <Parameter name='Number Time Steps' type='int' value='2'/>         \n"
-    "    <Parameter name='Time Step' type='double' value='1.0e-7'/>         \n"
-    "  </ParameterList>                                                     \n"
-    "</ParameterList>                                                       \n"
+    "<ParameterList name='Plato Problem'>                                       \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Hyperbolic'/>      \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>               \n"
+    "  <ParameterList name='Hyperbolic'>                                        \n"
+    "    <ParameterList name='Penalty Function'>                                \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>               \n"
+    "      <Parameter name='Minimum Value' type='double' value='0.0'/>          \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                  \n"
+    "    </ParameterList>                                                       \n"
+    "  </ParameterList>                                                         \n"
+    "  <ParameterList name='Spatial Model'>                                     \n"
+    "    <ParameterList name='Domains'>                                         \n"
+    "      <ParameterList name='Design Volume'>                                 \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>       \n"
+    "        <Parameter name='Material Model' type='string' value='6061-T6 Aluminum'/>\n"
+    "      </ParameterList>                                                     \n"
+    "    </ParameterList>                                                       \n"
+    "  </ParameterList>                                                         \n"
+    "  <ParameterList name='Material Models'>                                   \n"
+    "    <ParameterList name='6061-T6 Aluminum'>                                \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                      \n"
+    "        <Parameter name='Mass Density' type='double' value='2.7'/>         \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.36'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='68.0e10'/>  \n"
+    "      </ParameterList>                                                     \n"
+    "    </ParameterList>                                                       \n"
+    "  </ParameterList>                                                         \n"
+    "  <ParameterList name='Time Integration'>                                  \n"
+    "    <Parameter name='Newmark Gamma' type='double' value='0.5'/>            \n"
+    "    <Parameter name='Newmark Beta' type='double' value='0.25'/>            \n"
+    "    <Parameter name='Number Time Steps' type='int' value='2'/>             \n"
+    "    <Parameter name='Time Step' type='double' value='1.0e-7'/>             \n"
+    "  </ParameterList>                                                         \n"
+    "</ParameterList>                                                           \n"
   );
 
   // create test mesh
@@ -513,10 +539,11 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_WithMass )
   auto tMesh = PlatoUtestHelpers::getBoxMesh(cSpaceDim, cMeshWidth);
 
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(cSpaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tInputParams);
   Plato::Hyperbolic::VectorFunction<::Plato::Hyperbolic::Mechanics<cSpaceDim>>
-    tVectorFunction(*tMesh, tMeshSets, tDataMap, *tInputParams,
-                   tInputParams->get<std::string>("PDE Constraint"));
+    tVectorFunction(tSpatialModel, tDataMap, *tInputParams, tInputParams->get<std::string>("PDE Constraint"));
 
   int tNumDofs = cSpaceDim*tMesh->nverts();
   Plato::ScalarVector tControl("control", tNumDofs);
@@ -706,7 +733,7 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, NewmarkIntegrator )
     "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
     "    </ParameterList>                                                   \n"
     "  </ParameterList>                                                     \n"
-    "  <ParameterList name='Material Model'>                                \n"
+    "  <ParameterList name='Material Models'>                               \n"
     "    <ParameterList name='Isotropic Linear Elastic'>                    \n"
     "      <Parameter name='Mass Density' type='double' value='2.7'/>       \n"
     "      <Parameter  name='Poissons Ratio' type='double' value='0.36'/>   \n"
@@ -898,6 +925,14 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
     "      <Parameter name='Type' type='string' value='SIMP'/>              \n"
     "    </ParameterList>                                                   \n"
     "  </ParameterList>                                                     \n"
+    "  <ParameterList name='Spatial Model'>                                     \n"
+    "    <ParameterList name='Domains'>                                         \n"
+    "      <ParameterList name='Design Volume'>                                 \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>       \n"
+    "        <Parameter name='Material Model' type='string' value='6061-T6 Aluminum'/>\n"
+    "      </ParameterList>                                                     \n"
+    "    </ParameterList>                                                       \n"
+    "  </ParameterList>                                                         \n"
     "  <ParameterList name='Internal Energy'>                               \n"
     "    <Parameter name='Type' type='string' value='Scalar Function'/>     \n"
     "    <Parameter name='Scalar Function Type' type='string' value='Internal Elastic Energy'/> \n"
@@ -907,12 +942,14 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
     "      <Parameter name='Exponent' type='double' value='1.0'/>           \n"
     "    </ParameterList>                                                   \n"
     "  </ParameterList>                                                     \n"
-    "  <ParameterList name='Material Model'>                                \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                    \n"
-    "      <Parameter name='Mass Density' type='double' value='2.7'/>       \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.36'/>   \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='68.0e10'/>\n"
-    "    </ParameterList>                                                   \n"
+    "  <ParameterList name='Material Models'>                                \n"
+    "    <ParameterList name='6061-T6 Aluminum'>                              \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                    \n"
+    "        <Parameter name='Mass Density' type='double' value='2.7'/>       \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.36'/>   \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='68.0e10'/>\n"
+    "      </ParameterList>                                                   \n"
+    "    </ParameterList>                                                     \n"
     "  </ParameterList>                                                     \n"
     "  <ParameterList name='Time Integration'>                              \n"
     "    <Parameter name='Newmark Gamma' type='double' value='0.5'/>        \n"
@@ -931,10 +968,11 @@ TEUCHOS_UNIT_TEST( TransientMechanicsResidualTests, 3D_ScalarFunction )
   int tNumDofs = cSpaceDim*tMesh->nverts();
 
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(cSpaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tInputParams);
   Plato::Hyperbolic::PhysicsScalarFunction<::Plato::Hyperbolic::Mechanics<cSpaceDim>>
-    tScalarFunction(*tMesh, tMeshSets, tDataMap, *tInputParams,
-                   tInputParams->get<std::string>("Objective"));
+    tScalarFunction(tSpatialModel, tDataMap, *tInputParams, tInputParams->get<std::string>("Objective"));
 
   auto tTimeStep = tInputParams->sublist("Time Integration").get<Plato::Scalar>("Time Step");
   auto tNumSteps = tInputParams->sublist("Time Integration").get<int>("Number Time Steps");

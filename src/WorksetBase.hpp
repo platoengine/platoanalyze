@@ -229,6 +229,22 @@ public:
     /******************************************************************************//**
      * \brief Get local state workset, e.g. history variables in plasticity problems
      * \param [in] aLocalState local state (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aLocalStateWS local state workset (scalar type), as a 2-D Kokkos::View
+    **********************************************************************************/
+    void
+    worksetLocalState(
+        const Plato::ScalarVectorT<Plato::Scalar>      & aLocalState,
+              Plato::ScalarMultiVectorT<Plato::Scalar> & aLocalStateWS,
+        const Plato::SpatialDomain                     & aDomain
+    ) const
+    {
+      Plato::workset_local_state_scalar_scalar<mNumLocalDofsPerCell>(
+              aDomain, aLocalState, aLocalStateWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get local state workset, e.g. history variables in plasticity problems
+     * \param [in] aLocalState local state (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadLocalStateWS local state workset (AD type), as a 2-D Kokkos::View
     **********************************************************************************/
     void worksetLocalState( const Plato::ScalarVectorT<Plato::Scalar> & aLocalState,
@@ -236,6 +252,22 @@ public:
     {
       Plato::workset_local_state_scalar_fad<mNumLocalDofsPerCell, LocalStateFad>(
               mNumCells, aLocalState, aFadLocalStateWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get local state workset, e.g. history variables in plasticity problems
+     * \param [in] aLocalState local state (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aFadLocalStateWS local state workset (AD type), as a 2-D Kokkos::View
+    **********************************************************************************/
+    void
+    worksetLocalState(
+        const Plato::ScalarVectorT<Plato::Scalar>      & aLocalState,
+              Plato::ScalarMultiVectorT<LocalStateFad> & aFadLocalStateWS,
+        const Plato::SpatialDomain                     & aDomain
+    ) const
+    {
+      Plato::workset_local_state_scalar_fad<mNumLocalDofsPerCell, LocalStateFad>(
+              aDomain, aLocalState, aFadLocalStateWS);
     }
 
     /******************************************************************************//**

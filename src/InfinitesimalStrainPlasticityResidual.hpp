@@ -68,9 +68,8 @@ private:
     static constexpr auto mNumMechDims = mSpaceDim;         /*!< number of mechanical degrees of freedom */
     static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
 
-    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mMesh;     /*!< mesh database */
-    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mDataMap;  /*!< PLATO Engine output database */
-    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mMeshSets; /*!< side-sets metadata */
+    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mSpatialDomain; /*!< mesh database */
+    using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mDataMap;       /*!< PLATO Engine output database */
 
     using GlobalStateT = typename EvaluationType::StateScalarType;             /*!< global state variables automatic differentiation type */
     using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
@@ -80,6 +79,9 @@ private:
     using ControlT = typename EvaluationType::ControlScalarType;               /*!< control variables automatic differentiation type */
     using ConfigT = typename EvaluationType::ConfigScalarType;                 /*!< config variables automatic differentiation type */
     using ResultT = typename EvaluationType::ResultScalarType;                 /*!< result variables automatic differentiation type */
+
+    using FunctionBaseType = Plato::AbstractGlobalVectorFunctionInc<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<mSpaceDim>;
 
     Plato::Scalar mPoissonsRatio;                  /*!< Poisson's ratio */
     Plato::Scalar mElasticModulus;                 /*!< elastic modulus */
@@ -94,9 +96,9 @@ private:
 
     std::vector<std::string> mPlotTable;           /*!< array of output element data identifiers*/
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                        /*!< body loads interface */
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>> mCubatureRule;          /*!< linear cubature rule */
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> mNeumannLoads;  /*!< Neumann loads interface */
+    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                       /*!< body loads interface */
+    std::shared_ptr<CubatureType> mCubatureRule;                                        /*!< linear cubature rule */
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> mNeumannLoads; /*!< Neumann loads interface */
 
 // Private access functions
 private:
@@ -118,9 +120,9 @@ private:
     *******************************************************************************/
     void parseOutputDataNames(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Infinite Strain Plasticity"))
+        if(aProblemParams.isSublist("Infinitesimal Strain Plasticity"))
         {
-            auto tResidualParams = aProblemParams.sublist("Infinite Strain Plasticity");
+            auto tResidualParams = aProblemParams.sublist("Infinitesimal Strain Plasticity");
             if (tResidualParams.isType < Teuchos::Array < std::string >> ("Plottable"))
             {
                 mPlotTable = tResidualParams.get < Teuchos::Array < std::string >> ("Plottable").toVector();
@@ -128,7 +130,7 @@ private:
         }
         else
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Infinite Strain Plasticity' sublist is not defined in XML input file.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Infinitesimal Strain Plasticity' sublist is not defined in XML input file.")
         }
     }
 
@@ -138,9 +140,9 @@ private:
     *******************************************************************************/
     void parseMaterialPenaltyInputs(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Infinite Strain Plasticity"))
+        if(aProblemParams.isSublist("Infinitesimal Strain Plasticity"))
         {
-            auto tResidualParams = aProblemParams.sublist("Infinite Strain Plasticity");
+            auto tResidualParams = aProblemParams.sublist("Infinitesimal Strain Plasticity");
             if(tResidualParams.isSublist("Penalty Function"))
             {
                 auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
@@ -152,7 +154,7 @@ private:
         }
         else
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Infinite Strain Plasticity' sublist is not defined in XML input file.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Infinitesimal Strain Plasticity' sublist is not defined in XML input file.")
         }
     }
 
@@ -184,13 +186,13 @@ private:
     **************************************************************************/
     void parseMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Material Model"))
+        if(aProblemParams.isSublist("Material Models"))
         {
             this->parseIsotropicMaterialProperties(aProblemParams);
         }
         else
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Material Model' sublist is not defined.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Material Models' sublist is not defined.")
         }
     }
 
@@ -200,7 +202,11 @@ private:
     **************************************************************************/
     void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
-        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
+        Teuchos::ParameterList tMaterialsInputs = aProblemParams.sublist("Material Models");
+
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        Teuchos::ParameterList tMaterialInputs = tMaterialsInputs.sublist(tMaterialName);
+
         mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
         if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
         {
@@ -212,7 +218,9 @@ private:
         }
         else
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
+            std::stringstream ss;
+            ss << "Infinitesimal Strain Plasticity Residual: 'Isotropic Linear Elastic' sublist of '" << tMaterialName << "' is not defined.";
+            THROWERR(ss.str());
         }
     }
 
@@ -227,7 +235,7 @@ private:
     {
         if(std::count(mPlotTable.begin(), mPlotTable.end(), aName))
         {
-            Plato::toMap(mDataMap, aData, aName);
+// TODO             Plato::toMap(mDataMap, aData, aName);
         }
     }
 
@@ -238,10 +246,39 @@ private:
      * \param [in]     aConfig      configuration variables
      * \param [in/out] aResult      residual evaluation
     ****************************************************************************/
-    void addExternalForces(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
-                           const Plato::ScalarMultiVectorT<ControlT> &aControl,
-                           const Plato::ScalarArray3DT<ConfigT> &aConfig,
-                           const Plato::ScalarMultiVectorT<ResultT> &aResult)
+    void addExternalForces(
+        const Plato::SpatialModel                      & aSpatialModel,
+        const Plato::ScalarMultiVectorT <GlobalStateT> & aGlobalState,
+        const Plato::ScalarMultiVectorT <ControlT>     & aControl,
+        const Plato::ScalarArray3DT     <ConfigT>      & aConfig,
+        const Plato::ScalarMultiVectorT <ResultT>      & aResult)
+    {
+        auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
+        if(tSearch == mDataMap.mScalarValues.end())
+        {
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Load Control Constant' is NOT defined in data map.")
+        }
+
+        auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tSearch->second;
+        if( mNeumannLoads != nullptr )
+        {
+            mNeumannLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
+        }
+    }
+
+    /************************************************************************//**
+     * \brief Add external forces to residual
+     * \param [in]     aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aControls    design variables
+     * \param [in]     aConfig      configuration variables
+     * \param [in/out] aResult      residual evaluation
+    ****************************************************************************/
+    void
+    addBodyForces(
+        const Plato::ScalarMultiVectorT <GlobalStateT> & aGlobalState,
+        const Plato::ScalarMultiVectorT <ControlT>     & aControl,
+        const Plato::ScalarArray3DT     <ConfigT>      & aConfig,
+        const Plato::ScalarMultiVectorT <ResultT>      & aResult)
     {
         auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
         if(tSearch == mDataMap.mScalarValues.end())
@@ -252,12 +289,7 @@ private:
         auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tSearch->second;
         if (mBodyLoads != nullptr)
         {
-            mBodyLoads->get( mMesh, aGlobalState, aControl, aResult, tMultiplier );
-        }
-
-        if( mNeumannLoads != nullptr )
-        {
-            mNeumannLoads->get( &mMesh, mMeshSets, aGlobalState, aControl, aConfig, aResult, tMultiplier );
+            mBodyLoads->get( mSpatialDomain, aGlobalState, aControl, aResult, tMultiplier );
         }
     }
 
@@ -268,10 +300,13 @@ private:
      * \param [in]     aConfig      configuration variables
      * \param [in/out] aResult      residual evaluation
     ****************************************************************************/
-    void computePrincipalStresses(const Plato::ScalarMultiVectorT<GlobalStateT> &aGlobalState,
-                                  const Plato::ScalarMultiVectorT<LocalStateT> &aLocalState,
-                                  const Plato::ScalarMultiVectorT<ControlT> &aControl,
-                                  const Plato::ScalarArray3DT<ConfigT> &aConfig)
+    void
+    computePrincipalStresses(
+        const Plato::ScalarMultiVectorT <GlobalStateT> & aGlobalState,
+        const Plato::ScalarMultiVectorT <LocalStateT>  & aLocalState,
+        const Plato::ScalarMultiVectorT <ControlT>     & aControl,
+        const Plato::ScalarArray3DT     <ConfigT>      & aConfig
+    )
     {
         if(std::count(mPlotTable.begin(), mPlotTable.end(), "principal stresses"))
         {
@@ -281,7 +316,7 @@ private:
             tComputePrincipalStresses.setPenaltySIMP(mPenaltySIMP);
             tComputePrincipalStresses.setMinErsatzSIMP(mMinErsatzSIMP);
 
-            const auto tNumCells = mMesh.nelems();
+            const auto tNumCells = aGlobalState.extent(0);
             Plato::ScalarMultiVectorT<ResultT> tPrincipalStresses("principal stresses", tNumCells, mSpaceDim);
             tComputePrincipalStresses(aGlobalState, aLocalState, aControl, aConfig, tPrincipalStresses);
             this->outputData(tPrincipalStresses, "principal stresses");
@@ -298,11 +333,12 @@ public:
      * \param [in] aProblemParams input XML data
      * \param [in] aPenaltyParams penalty function input XML data
     *******************************************************************************/
-    InfinitesimalStrainPlasticityResidual(Omega_h::Mesh &aMesh,
-                                   Omega_h::MeshSets &aMeshSets,
-                                   Plato::DataMap &aDataMap,
-                                   Teuchos::ParameterList &aProblemParams) :
-        Plato::AbstractGlobalVectorFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap),
+    InfinitesimalStrainPlasticityResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap),
         mPoissonsRatio(-1.0),
         mElasticModulus(-1.0),
         mPressureScaling(1.0),
@@ -313,7 +349,7 @@ public:
         mUpperBoundOnPenaltySIMP(4),
         mAdditiveContinuationParam(0.1),
         mBodyLoads(nullptr),
-        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<mSpaceDim>>()),
+        mCubatureRule(std::make_shared<CubatureType>()),
         mNeumannLoads(nullptr)
     {
         this->initialize(aProblemParams);
@@ -349,17 +385,21 @@ public:
      * \param [in]     aTimeStep              current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
      *
     ****************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<GlobalStateT> &aCurrentGlobalState,
-                  const Plato::ScalarMultiVectorT<PrevGlobalStateT> &aPrevGlobalState,
-                  const Plato::ScalarMultiVectorT<LocalStateT> &aCurrentLocalState,
-                  const Plato::ScalarMultiVectorT<PrevLocalStateT> &aPrevLocalState,
-                  const Plato::ScalarMultiVectorT<NodeStateT> &aProjectedPressureGrad,
-                  const Plato::ScalarMultiVectorT<ControlT> &aControls,
-                  const Plato::ScalarArray3DT<ConfigT> &aConfig,
-                  const Plato::ScalarMultiVectorT<ResultT> &aResult,
-                  Plato::Scalar aTimeStep = 0.0) override
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <GlobalStateT>     & aCurrentGlobalState,
+        const Plato::ScalarMultiVectorT <PrevGlobalStateT> & aPrevGlobalState,
+        const Plato::ScalarMultiVectorT <LocalStateT>      & aCurrentLocalState,
+        const Plato::ScalarMultiVectorT <PrevLocalStateT>  & aPrevLocalState,
+        const Plato::ScalarMultiVectorT <NodeStateT>       & aProjectedPressureGrad,
+        const Plato::ScalarMultiVectorT <ControlT>         & aControls,
+        const Plato::ScalarArray3DT     <ConfigT>          & aConfig,
+        const Plato::ScalarMultiVectorT <ResultT>          & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) override
     {
-        auto tNumCells = mMesh.nelems();
+        auto tNumCells = mSpatialDomain.numCells();
+
         using GradScalarT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
         using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
 
@@ -463,7 +503,7 @@ public:
             tJ2PlasticityUtils.getBackstressTensor(aCellOrdinal, aCurrentLocalState, tBackStress);
         }, "stabilized infinitesimal strain plasticity residual");
 
-        this->addExternalForces(aCurrentGlobalState, aControls, aConfig, aResult);
+        this->addBodyForces(aCurrentGlobalState, aControls, aConfig, aResult);
 
         // set current output data
         this->computePrincipalStresses(aCurrentGlobalState, aCurrentLocalState, aControls, aConfig);
@@ -495,6 +535,36 @@ public:
         tMsg << "Infinitesimal Strain Plasticity Residual: New penalty parameter is set to '" << mPenaltySIMP
                 << "'. Previous penalty parameter was '" << tPreviousPenaltySIMP << "'.\n";
         REPORT(tMsg.str().c_str())
+    }
+    /************************************************************************//**
+     * \brief Evaluate the stabilized residual equation
+     *
+     * \param [in]     aCurrentGlobalState    current global state workset ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aPrevGlobalState       previous global state workset ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
+     * \param [in]     aCurrentLocalState     current local state workset ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aPrevLocalState        previous local state workset ( i.e. state at the n-th minus one time interval (\f$ t^{n-1} \f$) )
+     * \param [in]     aProjectedPressureGrad current pressure gradient workset ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
+     * \param [in]     aControls               design variables workset
+     * \param [in]     aConfig                configuration workset
+     * \param [in/out] aResult                residual workset
+     * \param [in]     aTimeStep              current time step (i.e. \f$ \Delta{t}^{n} \f$), default = 0.0
+     *
+    ****************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                          & aSpatialModel,
+        const Plato::ScalarMultiVectorT <GlobalStateT>     & aCurrentGlobalState,
+        const Plato::ScalarMultiVectorT <PrevGlobalStateT> & aPrevGlobalState,
+        const Plato::ScalarMultiVectorT <LocalStateT>      & aCurrentLocalState,
+        const Plato::ScalarMultiVectorT <PrevLocalStateT>  & aPrevLocalState,
+        const Plato::ScalarMultiVectorT <NodeStateT>       & aProjectedPressureGrad,
+        const Plato::ScalarMultiVectorT <ControlT>         & aControls,
+        const Plato::ScalarArray3DT     <ConfigT>          & aConfig,
+        const Plato::ScalarMultiVectorT <ResultT>          & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) override
+    {
+        this->addExternalForces(aSpatialModel, aCurrentGlobalState, aControls, aConfig, aResult);
     }
 };
 // class InfinitesimalStrainPlasticityResidual

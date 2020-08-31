@@ -50,40 +50,51 @@ private:
     static constexpr auto mNumNodeStatePerCell = PhysicsT::SimplexT::mNumNodeStatePerCell; /*!< number of pressure gradient degrees of freedom per cell (i.e. element) */
     static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;      /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
 
+    const Plato::SpatialModel & mSpatialModel;
+
     Plato::DataMap& mDataMap;                   /*!< output data map */
     Plato::Scalar mMultiplier;                  /*!< scalar function multipliers */
     std::string mFunctionName;                  /*!< user defined function name */
     Plato::WorksetBase<PhysicsT> mWorksetBase;  /*!< assembly routine interface */
 
-    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<Residual>>        mScalarFuncValue;            /*!< value function */
-    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GradientZ>>       mPartialControls;            /*!< partial derivative wrt controls */
-    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GradientX>>       mPartialConfiguration;       /*!< partial derivative wrt configuration */
-    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<LocalJacobianP>>  mPartialPrevLocalStates;     /*!< partial derivative wrt previous local states */
-    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GlobalJacobianP>> mPartialPrevGlobalStates;    /*!< partial derivative wrt previous global states */
-    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<LocalJacobian>>   mPartialCurrentLocalStates;  /*!< partial derivative wrt current local states */
-    std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GlobalJacobian>>  mPartialCurrentGlobalStates; /*!< partial derivative wrt current global states */
+    using ValueFunction           = std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<Residual>>;
+    using GradientZFunction       = std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GradientZ>>;
+    using GradientXFunction       = std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GradientX>>;
+    using LocalJacobianPFunction  = std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<LocalJacobianP>>;
+    using GlobalJacobianPFunction = std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GlobalJacobianP>>;
+    using LocalJacobianFunction   = std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<LocalJacobian>>;
+    using GlobalJacobianFunction  = std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<GlobalJacobian>>;
+
+    std::map<std::string, ValueFunction>           mValueFunctions;
+    std::map<std::string, GradientZFunction>       mGradientZFunctions;
+    std::map<std::string, GradientXFunction>       mGradientXFunctions;
+    std::map<std::string, LocalJacobianPFunction>  mLocalJacobianPFunctions;
+    std::map<std::string, GlobalJacobianPFunction> mGlobalJacobianPFunctions;
+    std::map<std::string, LocalJacobianFunction>   mLocalJacobianFunctions;
+    std::map<std::string, GlobalJacobianFunction>  mGlobalJacobianFunctions;
 
 // public access functions
 public:
     /******************************************************************************//**
      * /brief Path-dependent physics-based scalar function constructor
-     * /param [in] aMesh mesh database
-     * /param [in] aMeshSets side sets database
-     * /param [in] aDataMap PLATO Analyze output data map
+     * /param [in] aSpatialDomain Plato Analyze spatial domain
+     * /param [in] aDataMap Plato Analyze output data map
      * /param [in] aInputParams input parameters database
      * /param [in] aName user defined function name
     **********************************************************************************/
-    BasicLocalScalarFunction(Omega_h::Mesh& aMesh,
-                                Omega_h::MeshSets& aMeshSets,
-                                Plato::DataMap & aDataMap,
-                                Teuchos::ParameterList& aInputParams,
-                                std::string& aName) :
-            mDataMap(aDataMap),
-            mMultiplier(1.0),
-            mFunctionName(aName),
-            mWorksetBase(aMesh)
+    BasicLocalScalarFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aName
+    ) :
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mMultiplier   (1.0),
+        mFunctionName (aName),
+        mWorksetBase  (aSpatialModel.Mesh)
     {
-        this->initialize(aMesh, aMeshSets, aInputParams);
+        this->initialize(aInputParams);
     }
 
     /******************************************************************************//**
@@ -92,11 +103,16 @@ public:
      * /param [in] aDataMap PLATO Analyze output data map
      * /param [in] aName user defined function name
     **********************************************************************************/
-    BasicLocalScalarFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap, std::string aName = "") :
-            mDataMap(aDataMap),
-            mMultiplier(1.0),
-            mFunctionName(aName),
-            mWorksetBase(aMesh)
+    BasicLocalScalarFunction(
+        const Plato::SpatialModel  & aSpatialModel,
+              Plato::DataMap       & aDataMap,
+              std::string            aName = ""
+    ) :
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mMultiplier   (1.0),
+        mFunctionName (aName),
+        mWorksetBase  (aSpatialModel.Mesh)
     {
     }
 
@@ -123,6 +139,8 @@ public:
         return (mFunctionName);
     }
 
+//TODO what are these for?
+#ifdef COMPILE_DEAD_CODE
     /******************************************************************************//**
      * \brief Append path-dependent scalar function interface for value function
      * \param [in] path-dependent scalar function interface
@@ -191,6 +209,7 @@ public:
     {
         mPartialConfiguration = aInput;
     }
+#endif
 
     /***************************************************************************//**
      * \brief Return function value
@@ -202,58 +221,68 @@ public:
      * \param [in] aTimeStep             current time step increment
      * \return function value
     *******************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aCurrentGlobalState,
-                        const Plato::ScalarVector & aPreviousGlobalState,
-                        const Plato::ScalarVector & aCurrentLocalState,
-                        const Plato::ScalarVector & aPreviousLocalState,
-                        const Plato::ScalarVector & aControls,
-                        Plato::Scalar aTimeStep = 0.0) const override
+    Plato::Scalar
+    value(
+        const Plato::ScalarVector & aCurrentGlobalState,
+        const Plato::ScalarVector & aPreviousGlobalState,
+        const Plato::ScalarVector & aCurrentLocalState,
+        const Plato::ScalarVector & aPreviousLocalState,
+        const Plato::ScalarVector & aControls,
+              Plato::Scalar         aTimeStep = 0.0
+    ) const override
     {
-        auto tNumCells = mScalarFuncValue->getMesh().nelems();
+        Plato::Scalar tCriterionValue(0.0);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-        // set workset of current global states
-        using CurrentGlobalStateScalar = typename Residual::StateScalarType;
-        Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS);
+            // set workset of current global states
+            using CurrentGlobalStateScalar = typename Residual::StateScalarType;
+            Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS, tDomain);
 
-        // set workset of previous global states
-        using PreviousGlobalStateScalar = typename Residual::PrevStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS);
+            // set workset of previous global states
+            using PreviousGlobalStateScalar = typename Residual::PrevStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS, tDomain);
 
-        // set workset of current local states
-        using CurrentLocalStateScalar = typename Residual::LocalStateScalarType;
-        Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
+            // set workset of current local states
+            using CurrentLocalStateScalar = typename Residual::LocalStateScalarType;
+            Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS, tDomain);
 
-        // set workset of previous local states
-        using PreviousLocalStateScalar = typename Residual::PrevLocalStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
+            // set workset of previous local states
+            using PreviousLocalStateScalar = typename Residual::PrevLocalStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS, tDomain);
 
-        // workset control
-        using ControlScalar = typename Residual::ControlScalarType;
-        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-        mWorksetBase.worksetControl(aControls, tControlWS);
+            // workset control
+            using ControlScalar = typename Residual::ControlScalarType;
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            mWorksetBase.worksetControl(aControls, tControlWS, tDomain);
 
-        // workset config
-        using ConfigScalar = typename Residual::ConfigScalarType;
-        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        mWorksetBase.worksetConfig(tConfigWS);
+            // workset config
+            using ConfigScalar = typename Residual::ConfigScalarType;
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            mWorksetBase.worksetConfig(tConfigWS, tDomain);
 
-        // create result view
-        using ResultScalar = typename Residual::ResultScalarType;
-        Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
+            // create result view
+            using ResultScalar = typename Residual::ResultScalarType;
+            Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
 
-        // evaluate function
-        mScalarFuncValue->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                   tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                   tControlWS, tConfigWS, tResultWS, aTimeStep);
+            // evaluate function
+            mValueFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
+                                                tCurrentLocalStateWS, tPreviousLocalStateWS,
+                                                tControlWS, tConfigWS, tResultWS, aTimeStep);
 
-        // sum across elements
-        auto tCriterionValue = Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
+            // sum across elements
+            tCriterionValue += Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
+        }
         tCriterionValue = mMultiplier * tCriterionValue;
-        mDataMap.mScalarValues[mScalarFuncValue->getName()] = tCriterionValue;
+
+        auto tName = mSpatialModel.Domains.front().getDomainName();
+        mDataMap.mScalarValues[mValueFunctions.at(tName)->getName()] = tCriterionValue;
 
         return (tCriterionValue);
     }
@@ -268,57 +297,66 @@ public:
      * \param [in] aTimeStep             current time step increment
      * \return workset with partial workset derivative wrt design variables
     *******************************************************************************/
-    Plato::ScalarMultiVector gradient_z(const Plato::ScalarVector & aCurrentGlobalState,
-                                        const Plato::ScalarVector & aPreviousGlobalState,
-                                        const Plato::ScalarVector & aCurrentLocalState,
-                                        const Plato::ScalarVector & aPreviousLocalState,
-                                        const Plato::ScalarVector & aControls,
-                                        Plato::Scalar aTimeStep = 0.0) const override
+    Plato::ScalarMultiVector
+    gradient_z(
+        const Plato::ScalarVector & aCurrentGlobalState,
+        const Plato::ScalarVector & aPreviousGlobalState,
+        const Plato::ScalarVector & aCurrentLocalState,
+        const Plato::ScalarVector & aPreviousLocalState,
+        const Plato::ScalarVector & aControls,
+              Plato::Scalar         aTimeStep = 0.0
+    ) const override
     {
-        auto tNumCells = mScalarFuncValue->getMesh().nelems();
+        auto tTotalNumCells = mWorksetBase.numCells();
+        Plato::ScalarMultiVector tCriterionPartialWrtControl("criterion partial wrt control", tTotalNumCells, mNumNodesPerCell);
 
-        // set workset of current global states
-        using CurrentGlobalStateScalar = typename GradientZ::StateScalarType;
-        Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-        // set workset of previous global states
-        using PreviousGlobalStateScalar = typename GradientZ::PrevStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS);
+            // set workset of current global states
+            using CurrentGlobalStateScalar = typename GradientZ::StateScalarType;
+            Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS, tDomain);
 
-        // set workset of current local states
-        using CurrentLocalStateScalar = typename GradientZ::LocalStateScalarType;
-        Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
+            // set workset of previous global states
+            using PreviousGlobalStateScalar = typename GradientZ::PrevStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS, tDomain);
 
-        // set workset of previous local states
-        using PreviousLocalStateScalar = typename GradientZ::PrevLocalStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
+            // set workset of current local states
+            using CurrentLocalStateScalar = typename GradientZ::LocalStateScalarType;
+            Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS, tDomain);
 
-        // workset control
-        using ControlScalar = typename GradientZ::ControlScalarType;
-        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-        mWorksetBase.worksetControl(aControls, tControlWS);
+            // set workset of previous local states
+            using PreviousLocalStateScalar = typename GradientZ::PrevLocalStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS, tDomain);
 
-        // workset config
-        using ConfigScalar = typename GradientZ::ConfigScalarType;
-        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        mWorksetBase.worksetConfig(tConfigWS);
+            // workset control
+            using ControlScalar = typename GradientZ::ControlScalarType;
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            mWorksetBase.worksetControl(aControls, tControlWS, tDomain);
 
-        // create result view
-        using ResultScalar = typename GradientZ::ResultScalarType;
-        Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
+            // workset config
+            using ConfigScalar = typename GradientZ::ConfigScalarType;
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            mWorksetBase.worksetConfig(tConfigWS, tDomain);
 
-        // evaluate function
-        mPartialControls->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                   tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                   tControlWS, tConfigWS, tResultWS, aTimeStep);
+            // create result view
+            using ResultScalar = typename GradientZ::ResultScalarType;
+            Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
 
-        // convert AD types to POD types
-        Plato::ScalarMultiVector tCriterionPartialWrtControl("criterion partial wrt control", tNumCells, mNumNodesPerCell);
-        Plato::transform_ad_type_to_pod_2Dview<mNumNodesPerCell>(tResultWS, tCriterionPartialWrtControl);
+            // evaluate function
+            mGradientZFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
+                                                    tCurrentLocalStateWS, tPreviousLocalStateWS,
+                                                    tControlWS, tConfigWS, tResultWS, aTimeStep);
+
+            // convert AD types to POD types
+            Plato::transform_ad_type_to_pod_2Dview<mNumNodesPerCell>(tDomain, tResultWS, tCriterionPartialWrtControl);
+        }
         Plato::blas2::scale(mMultiplier, tCriterionPartialWrtControl);
 
         return tCriterionPartialWrtControl;
@@ -334,57 +372,65 @@ public:
      * \param [in] aTimeStep             current time step increment
      * \return workset with partial derivative wrt current global states
     *******************************************************************************/
-    Plato::ScalarMultiVector gradient_u(const Plato::ScalarVector & aCurrentGlobalState,
-                                        const Plato::ScalarVector & aPreviousGlobalState,
-                                        const Plato::ScalarVector & aCurrentLocalState,
-                                        const Plato::ScalarVector & aPreviousLocalState,
-                                        const Plato::ScalarVector & aControls,
-                                        Plato::Scalar aTimeStep = 0.0) const override
+    Plato::ScalarMultiVector gradient_u(
+        const Plato::ScalarVector & aCurrentGlobalState,
+        const Plato::ScalarVector & aPreviousGlobalState,
+        const Plato::ScalarVector & aCurrentLocalState,
+        const Plato::ScalarVector & aPreviousLocalState,
+        const Plato::ScalarVector & aControls,
+              Plato::Scalar         aTimeStep = 0.0
+    ) const override
     {
-        auto tNumCells = mScalarFuncValue->getMesh().nelems();
+        auto tTotalNumCells = mWorksetBase.numCells();
+        Plato::ScalarMultiVector tCriterionPartialWrtGlobalStates("criterion partial wrt global states", tTotalNumCells, mNumGlobalDofsPerCell);
 
-        // set workset of current global states
-        using CurrentGlobalStateScalar = typename GlobalJacobian::StateScalarType;
-        Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-        // set workset of previous global states
-        using PreviousGlobalStateScalar = typename GlobalJacobian::PrevStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS);
+            // set workset of current global states
+            using CurrentGlobalStateScalar = typename GlobalJacobian::StateScalarType;
+            Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS, tDomain);
 
-        // set workset of current local states
-        using CurrentLocalStateScalar = typename GlobalJacobian::LocalStateScalarType;
-        Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
+            // set workset of previous global states
+            using PreviousGlobalStateScalar = typename GlobalJacobian::PrevStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS, tDomain);
 
-        // set workset of previous local states
-        using PreviousLocalStateScalar = typename GlobalJacobian::PrevLocalStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
+            // set workset of current local states
+            using CurrentLocalStateScalar = typename GlobalJacobian::LocalStateScalarType;
+            Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS, tDomain);
 
-        // workset control
-        using ControlScalar = typename GlobalJacobian::ControlScalarType;
-        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-        mWorksetBase.worksetControl(aControls, tControlWS);
+            // set workset of previous local states
+            using PreviousLocalStateScalar = typename GlobalJacobian::PrevLocalStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS, tDomain);
 
-        // workset config
-        using ConfigScalar = typename GlobalJacobian::ConfigScalarType;
-        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        mWorksetBase.worksetConfig(tConfigWS);
+            // workset control
+            using ControlScalar = typename GlobalJacobian::ControlScalarType;
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            mWorksetBase.worksetControl(aControls, tControlWS, tDomain);
 
-        // create result view
-        using ResultScalar = typename GlobalJacobian::ResultScalarType;
-        Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
+            // workset config
+            using ConfigScalar = typename GlobalJacobian::ConfigScalarType;
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            mWorksetBase.worksetConfig(tConfigWS, tDomain);
 
-        // evaluate function
-        mPartialCurrentGlobalStates->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                              tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                              tControlWS, tConfigWS, tResultWS, aTimeStep);
+            // create result view
+            using ResultScalar = typename GlobalJacobian::ResultScalarType;
+            Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
 
-        // convert AD types to POD types
-        Plato::ScalarMultiVector tCriterionPartialWrtGlobalStates("criterion partial wrt global states", tNumCells, mNumGlobalDofsPerCell);
-        Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tResultWS, tCriterionPartialWrtGlobalStates);
+            // evaluate function
+            mGlobalJacobianFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
+                                                         tCurrentLocalStateWS, tPreviousLocalStateWS,
+                                                         tControlWS, tConfigWS, tResultWS, aTimeStep);
+
+            // convert AD types to POD types
+            Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tDomain, tResultWS, tCriterionPartialWrtGlobalStates);
+        }
         Plato::blas2::scale(mMultiplier, tCriterionPartialWrtGlobalStates);
 
         return (tCriterionPartialWrtGlobalStates);
@@ -400,57 +446,66 @@ public:
      * \param [in] aTimeStep             current time step increment
      * \return workset with partial derivative wrt previous global states
     *******************************************************************************/
-    Plato::ScalarMultiVector gradient_up(const Plato::ScalarVector & aCurrentGlobalState,
-                                         const Plato::ScalarVector & aPreviousGlobalState,
-                                         const Plato::ScalarVector & aCurrentLocalState,
-                                         const Plato::ScalarVector & aPreviousLocalState,
-                                         const Plato::ScalarVector & aControls,
-                                         Plato::Scalar aTimeStep = 0.0) const override
+    Plato::ScalarMultiVector
+    gradient_up(
+        const Plato::ScalarVector & aCurrentGlobalState,
+        const Plato::ScalarVector & aPreviousGlobalState,
+        const Plato::ScalarVector & aCurrentLocalState,
+        const Plato::ScalarVector & aPreviousLocalState,
+        const Plato::ScalarVector & aControls,
+              Plato::Scalar         aTimeStep = 0.0
+    ) const override
     {
-        auto tNumCells = mScalarFuncValue->getMesh().nelems();
+        auto tTotalNumCells = mWorksetBase.numCells();
+        Plato::ScalarMultiVector tCriterionPartialWrtPrevGlobalState("partial wrt previous global states", tTotalNumCells, mNumGlobalDofsPerCell);
 
-        // set workset of current global states
-        using CurrentGlobalStateScalar = typename GlobalJacobianP::StateScalarType;
-        Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-        // set workset of previous global states
-        using PreviousGlobalStateScalar = typename GlobalJacobianP::PrevStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS);
+            // set workset of current global states
+            using CurrentGlobalStateScalar = typename GlobalJacobianP::StateScalarType;
+            Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS, tDomain);
 
-        // set workset of current local states
-        using CurrentLocalStateScalar = typename GlobalJacobianP::LocalStateScalarType;
-        Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
+            // set workset of previous global states
+            using PreviousGlobalStateScalar = typename GlobalJacobianP::PrevStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS, tDomain);
 
-        // set workset of previous local states
-        using PreviousLocalStateScalar = typename GlobalJacobianP::PrevLocalStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
+            // set workset of current local states
+            using CurrentLocalStateScalar = typename GlobalJacobianP::LocalStateScalarType;
+            Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS, tDomain);
 
-        // workset control
-        using ControlScalar = typename GlobalJacobianP::ControlScalarType;
-        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-        mWorksetBase.worksetControl(aControls, tControlWS);
+            // set workset of previous local states
+            using PreviousLocalStateScalar = typename GlobalJacobianP::PrevLocalStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS, tDomain);
 
-        // workset config
-        using ConfigScalar = typename GlobalJacobianP::ConfigScalarType;
-        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        mWorksetBase.worksetConfig(tConfigWS);
+            // workset control
+            using ControlScalar = typename GlobalJacobianP::ControlScalarType;
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            mWorksetBase.worksetControl(aControls, tControlWS, tDomain);
 
-        // create result view
-        using ResultScalar = typename GlobalJacobianP::ResultScalarType;
-        Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
+            // workset config
+            using ConfigScalar = typename GlobalJacobianP::ConfigScalarType;
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            mWorksetBase.worksetConfig(tConfigWS, tDomain);
 
-        // evaluate function
-        mPartialPrevGlobalStates->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                           tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                           tControlWS, tConfigWS, tResultWS, aTimeStep);
+            // create result view
+            using ResultScalar = typename GlobalJacobianP::ResultScalarType;
+            Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
 
-        // convert AD types to POD types
-        Plato::ScalarMultiVector tCriterionPartialWrtPrevGlobalState("partial wrt previous global states", tNumCells, mNumGlobalDofsPerCell);
-        Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tResultWS, tCriterionPartialWrtPrevGlobalState);
+            // evaluate function
+            mGlobalJacobianPFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
+                                                          tCurrentLocalStateWS, tPreviousLocalStateWS,
+                                                          tControlWS, tConfigWS, tResultWS, aTimeStep);
+
+            // convert AD types to POD types
+            Plato::transform_ad_type_to_pod_2Dview<mNumGlobalDofsPerCell>(tDomain, tResultWS, tCriterionPartialWrtPrevGlobalState);
+        }
         Plato::blas2::scale(mMultiplier, tCriterionPartialWrtPrevGlobalState);
 
         return (tCriterionPartialWrtPrevGlobalState);
@@ -466,57 +521,66 @@ public:
      * \param [in] aTimeStep             current time step increment
      * \return workset with partial derivative wrt current local states
     *******************************************************************************/
-    Plato::ScalarMultiVector gradient_c(const Plato::ScalarVector & aCurrentGlobalState,
-                                        const Plato::ScalarVector & aPreviousGlobalState,
-                                        const Plato::ScalarVector & aCurrentLocalState,
-                                        const Plato::ScalarVector & aPreviousLocalState,
-                                        const Plato::ScalarVector & aControls,
-                                        Plato::Scalar aTimeStep = 0.0) const override
+    Plato::ScalarMultiVector
+    gradient_c(
+        const Plato::ScalarVector & aCurrentGlobalState,
+        const Plato::ScalarVector & aPreviousGlobalState,
+        const Plato::ScalarVector & aCurrentLocalState,
+        const Plato::ScalarVector & aPreviousLocalState,
+        const Plato::ScalarVector & aControls,
+              Plato::Scalar         aTimeStep = 0.0
+    ) const override
     {
-        auto tNumCells = mScalarFuncValue->getMesh().nelems();
+        auto tTotalNumCells = mWorksetBase.numCells();
+        Plato::ScalarMultiVector tCriterionPartialWrtLocalStates("criterion partial wrt local states", tTotalNumCells, mNumLocalDofsPerCell);
 
-        // set workset of current global states
-        using CurrentGlobalStateScalar = typename LocalJacobian::StateScalarType;
-        Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-        // set workset of previous global states
-        using PreviousGlobalStateScalar = typename LocalJacobian::PrevStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS);
+            // set workset of current global states
+            using CurrentGlobalStateScalar = typename LocalJacobian::StateScalarType;
+            Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS, tDomain);
 
-        // set workset of current local states
-        using CurrentLocalStateScalar = typename LocalJacobian::LocalStateScalarType;
-        Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
+            // set workset of previous global states
+            using PreviousGlobalStateScalar = typename LocalJacobian::PrevStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS, tDomain);
 
-        // set workset of previous local states
-        using PreviousLocalStateScalar = typename LocalJacobian::PrevLocalStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
+            // set workset of current local states
+            using CurrentLocalStateScalar = typename LocalJacobian::LocalStateScalarType;
+            Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS, tDomain);
 
-        // workset control
-        using ControlScalar = typename LocalJacobian::ControlScalarType;
-        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-        mWorksetBase.worksetControl(aControls, tControlWS);
+            // set workset of previous local states
+            using PreviousLocalStateScalar = typename LocalJacobian::PrevLocalStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS, tDomain);
 
-        // workset config
-        using ConfigScalar = typename LocalJacobian::ConfigScalarType;
-        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        mWorksetBase.worksetConfig(tConfigWS);
+            // workset control
+            using ControlScalar = typename LocalJacobian::ControlScalarType;
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            mWorksetBase.worksetControl(aControls, tControlWS, tDomain);
 
-        // create result view
-        using ResultScalar = typename LocalJacobian::ResultScalarType;
-        Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
+            // workset config
+            using ConfigScalar = typename LocalJacobian::ConfigScalarType;
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            mWorksetBase.worksetConfig(tConfigWS, tDomain);
 
-        // evaluate function
-        mPartialCurrentLocalStates->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                             tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                             tControlWS, tConfigWS, tResultWS, aTimeStep);
+            // create result view
+            using ResultScalar = typename LocalJacobian::ResultScalarType;
+            Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
 
-        // convert AD types to POD types
-        Plato::ScalarMultiVector tCriterionPartialWrtLocalStates("criterion partial wrt local states", tNumCells, mNumLocalDofsPerCell);
-        Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tResultWS, tCriterionPartialWrtLocalStates);
+            // evaluate function
+            mLocalJacobianFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
+                                                        tCurrentLocalStateWS, tPreviousLocalStateWS,
+                                                        tControlWS, tConfigWS, tResultWS, aTimeStep);
+
+            // convert AD types to POD types
+            Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tDomain, tResultWS, tCriterionPartialWrtLocalStates);
+        }
         Plato::blas2::scale(mMultiplier, tCriterionPartialWrtLocalStates);
 
         return tCriterionPartialWrtLocalStates;
@@ -532,57 +596,66 @@ public:
      * \param [in] aTimeStep             current time step increment
      * \return workset with partial derivative wrt previous local states
     *******************************************************************************/
-    Plato::ScalarMultiVector gradient_cp(const Plato::ScalarVector & aCurrentGlobalState,
-                                         const Plato::ScalarVector & aPreviousGlobalState,
-                                         const Plato::ScalarVector & aCurrentLocalState,
-                                         const Plato::ScalarVector & aPreviousLocalState,
-                                         const Plato::ScalarVector & aControls,
-                                         Plato::Scalar aTimeStep = 0.0) const override
+    Plato::ScalarMultiVector
+    gradient_cp(
+        const Plato::ScalarVector & aCurrentGlobalState,
+        const Plato::ScalarVector & aPreviousGlobalState,
+        const Plato::ScalarVector & aCurrentLocalState,
+        const Plato::ScalarVector & aPreviousLocalState,
+        const Plato::ScalarVector & aControls,
+              Plato::Scalar         aTimeStep = 0.0
+    ) const override
     {
-        auto tNumCells = mScalarFuncValue->getMesh().nelems();
+        auto tTotalNumCells = mWorksetBase.numCells();
+        Plato::ScalarMultiVector tCriterionPartialWrtPrevLocalStates("partial wrt previous local states", tTotalNumCells, mNumLocalDofsPerCell);
 
-        // set workset of current global states
-        using CurrentGlobalStateScalar = typename LocalJacobianP::StateScalarType;
-        Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-        // set workset of previous global states
-        using PreviousGlobalStateScalar = typename LocalJacobianP::PrevStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS);
+            // set workset of current global states
+            using CurrentGlobalStateScalar = typename LocalJacobianP::StateScalarType;
+            Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS, tDomain);
 
-        // set workset of current local states
-        using CurrentLocalStateScalar = typename LocalJacobianP::LocalStateScalarType;
-        Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
+            // set workset of previous global states
+            using PreviousGlobalStateScalar = typename LocalJacobianP::PrevStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS, tDomain);
 
-        // set workset of previous local states
-        using PreviousLocalStateScalar = typename LocalJacobianP::PrevLocalStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
+            // set workset of current local states
+            using CurrentLocalStateScalar = typename LocalJacobianP::LocalStateScalarType;
+            Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS, tDomain);
 
-        // workset control
-        using ControlScalar = typename LocalJacobianP::ControlScalarType;
-        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-        mWorksetBase.worksetControl(aControls, tControlWS);
+            // set workset of previous local states
+            using PreviousLocalStateScalar = typename LocalJacobianP::PrevLocalStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS, tDomain);
 
-        // workset config
-        using ConfigScalar = typename LocalJacobianP::ConfigScalarType;
-        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        mWorksetBase.worksetConfig(tConfigWS);
+            // workset control
+            using ControlScalar = typename LocalJacobianP::ControlScalarType;
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            mWorksetBase.worksetControl(aControls, tControlWS, tDomain);
 
-        // create result view
-        using ResultScalar = typename LocalJacobianP::ResultScalarType;
-        Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
+            // workset config
+            using ConfigScalar = typename LocalJacobianP::ConfigScalarType;
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            mWorksetBase.worksetConfig(tConfigWS, tDomain);
 
-        // evaluate function
-        mPartialPrevLocalStates->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                          tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                          tControlWS, tConfigWS, tResultWS, aTimeStep);
+            // create result view
+            using ResultScalar = typename LocalJacobianP::ResultScalarType;
+            Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
 
-        // convert AD types to POD types
-        Plato::ScalarMultiVector tCriterionPartialWrtPrevLocalStates("partial wrt previous local states", tNumCells, mNumLocalDofsPerCell);
-        Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tResultWS, tCriterionPartialWrtPrevLocalStates);
+            // evaluate function
+            mLocalJacobianPFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
+                                                         tCurrentLocalStateWS, tPreviousLocalStateWS,
+                                                         tControlWS, tConfigWS, tResultWS, aTimeStep);
+
+            // convert AD types to POD types
+            Plato::transform_ad_type_to_pod_2Dview<mNumLocalDofsPerCell>(tDomain, tResultWS, tCriterionPartialWrtPrevLocalStates);
+        }
         Plato::blas2::scale(mMultiplier, tCriterionPartialWrtPrevLocalStates);
 
         return tCriterionPartialWrtPrevLocalStates;
@@ -598,57 +671,66 @@ public:
      * \param [in] aTimeStep             current time step increment
      * \return workset with partial derivative wrt configuration variables
      *******************************************************************************/
-    Plato::ScalarMultiVector gradient_x(const Plato::ScalarVector & aCurrentGlobalState,
-                                        const Plato::ScalarVector & aPreviousGlobalState,
-                                        const Plato::ScalarVector & aCurrentLocalState,
-                                        const Plato::ScalarVector & aPreviousLocalState,
-                                        const Plato::ScalarVector & aControls,
-                                        Plato::Scalar aTimeStep = 0.0) const override
+    Plato::ScalarMultiVector
+    gradient_x(
+        const Plato::ScalarVector & aCurrentGlobalState,
+        const Plato::ScalarVector & aPreviousGlobalState,
+        const Plato::ScalarVector & aCurrentLocalState,
+        const Plato::ScalarVector & aPreviousLocalState,
+        const Plato::ScalarVector & aControls,
+              Plato::Scalar         aTimeStep = 0.0
+    ) const override
     {
-        auto tNumCells = mScalarFuncValue->getMesh().nelems();
+        auto tTotalNumCells = mWorksetBase.numCells();
+        Plato::ScalarMultiVector tCriterionPartialWrtConfiguration("criterion partial wrt configuration", tTotalNumCells, mNumConfigDofsPerCell);
 
-        // set workset of current global states
-        using CurrentGlobalStateScalar = typename GradientX::StateScalarType;
-        Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
 
-        // set workset of previous global states
-        using PreviousGlobalStateScalar = typename GradientX::PrevStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS);
+            // set workset of current global states
+            using CurrentGlobalStateScalar = typename GradientX::StateScalarType;
+            Plato::ScalarMultiVectorT<CurrentGlobalStateScalar> tCurrentGlobalStateWS("current global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS, tDomain);
 
-        // set workset of current local states
-        using CurrentLocalStateScalar = typename GradientX::LocalStateScalarType;
-        Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS);
+            // set workset of previous global states
+            using PreviousGlobalStateScalar = typename GradientX::PrevStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousGlobalStateScalar> tPreviousGlobalStateWS("previous global state workset", tNumCells, mNumGlobalDofsPerCell);
+            mWorksetBase.worksetState(aPreviousGlobalState, tPreviousGlobalStateWS, tDomain);
 
-        // set workset of previous local states
-        using PreviousLocalStateScalar = typename GradientX::PrevLocalStateScalarType;
-        Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
-        mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS);
+            // set workset of current local states
+            using CurrentLocalStateScalar = typename GradientX::LocalStateScalarType;
+            Plato::ScalarMultiVectorT<CurrentLocalStateScalar> tCurrentLocalStateWS("current local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aCurrentLocalState, tCurrentLocalStateWS, tDomain);
 
-        // workset control
-        using ControlScalar = typename GradientX::ControlScalarType;
-        Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-        mWorksetBase.worksetControl(aControls, tControlWS);
+            // set workset of previous local states
+            using PreviousLocalStateScalar = typename GradientX::PrevLocalStateScalarType;
+            Plato::ScalarMultiVectorT<PreviousLocalStateScalar> tPreviousLocalStateWS("previous local state workset", tNumCells, mNumLocalDofsPerCell);
+            mWorksetBase.worksetLocalState(aPreviousLocalState, tPreviousLocalStateWS, tDomain);
 
-        // workset config
-        using ConfigScalar = typename GradientX::ConfigScalarType;
-        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        mWorksetBase.worksetConfig(tConfigWS);
+            // workset control
+            using ControlScalar = typename GradientX::ControlScalarType;
+            Plato::ScalarMultiVectorT<ControlScalar> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+            mWorksetBase.worksetControl(aControls, tControlWS, tDomain);
 
-        // create result view
-        using ResultScalar = typename GradientX::ResultScalarType;
-        Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
+            // workset config
+            using ConfigScalar = typename GradientX::ConfigScalarType;
+            Plato::ScalarArray3DT<ConfigScalar> tConfigWS("config workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            mWorksetBase.worksetConfig(tConfigWS, tDomain);
 
-        // evaluate function
-        mPartialConfiguration->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
-                                        tCurrentLocalStateWS, tPreviousLocalStateWS,
-                                        tControlWS, tConfigWS, tResultWS, aTimeStep);
+            // create result view
+            using ResultScalar = typename GradientX::ResultScalarType;
+            Plato::ScalarVectorT<ResultScalar> tResultWS("result workset", tNumCells);
 
-        // convert AD types to POD types
-        Plato::ScalarMultiVector tCriterionPartialWrtConfiguration("criterion partial wrt configuration", tNumCells, mNumConfigDofsPerCell);
-        Plato::transform_ad_type_to_pod_2Dview<mNumSpatialDims>(tResultWS, tCriterionPartialWrtConfiguration);
+            // evaluate function
+            mGradientXFunctions.at(tName)->evaluate(tCurrentGlobalStateWS, tPreviousGlobalStateWS,
+                                                    tCurrentLocalStateWS, tPreviousLocalStateWS,
+                                                    tControlWS, tConfigWS, tResultWS, aTimeStep);
+
+            // convert AD types to POD types
+            Plato::transform_ad_type_to_pod_2Dview<mNumSpatialDims>(tDomain, tResultWS, tCriterionPartialWrtConfiguration);
+        }
         Plato::blas2::scale(mMultiplier, tCriterionPartialWrtConfiguration);
 
         return tCriterionPartialWrtConfiguration;
@@ -666,13 +748,17 @@ public:
                        const Plato::ScalarVector & aControls,
                        Plato::Scalar aTimeStep = 0.0) const override
     {
-        mScalarFuncValue->updateProblem(aGlobalStates, aLocalStates, aControls);
-        mPartialControls->updateProblem(aGlobalStates, aLocalStates, aControls);
-        mPartialConfiguration->updateProblem(aGlobalStates, aLocalStates, aControls);
-        mPartialPrevLocalStates->updateProblem(aGlobalStates, aLocalStates, aControls);
-        mPartialPrevGlobalStates->updateProblem(aGlobalStates, aLocalStates, aControls);
-        mPartialCurrentLocalStates->updateProblem(aGlobalStates, aLocalStates, aControls);
-        mPartialCurrentGlobalStates->updateProblem(aGlobalStates, aLocalStates, aControls);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tName = tDomain.getDomainName();
+            mValueFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
+            mGradientZFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
+            mGradientXFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
+            mLocalJacobianPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
+            mGlobalJacobianPFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
+            mLocalJacobianFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
+            mGlobalJacobianFunctions.at(tName)->updateProblem(aGlobalStates, aLocalStates, aControls);
+        }
     }
 
 private:
@@ -680,9 +766,10 @@ private:
      * \brief Initialization of Physics Scalar Function
      * \param [in] aInputParams input parameters database
     **********************************************************************************/
-    void initialize(Omega_h::Mesh& aMesh,
-                    Omega_h::MeshSets& aMeshSets,
-                    Teuchos::ParameterList & aInputParams)
+    void
+    initialize(
+        Teuchos::ParameterList & aInputParams
+    )
     {
         if(aInputParams.isSublist(mFunctionName) == false)
         {
@@ -693,38 +780,25 @@ private:
         }
 
         auto tInputData = aInputParams.sublist(mFunctionName);
-        // FunctionType must be a hard-coded function type in Plato Analyze (e.g. Volume)
+
         auto tFunctionType = tInputData.get<std::string>("Scalar Function Type", "UNDEFINED");
+
         mMultiplier = tInputData.get<Plato::Scalar>("Multiplier", 1.0);
 
         typename PhysicsT::FunctionFactory tFactory;
-        mScalarFuncValue =
-            tFactory.template createLocalScalarFunctionInc<Residual>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
 
-        mPartialConfiguration =
-            tFactory.template createLocalScalarFunctionInc<GradientX>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tName = tDomain.getDomainName();
 
-        mPartialControls =
-            tFactory.template createLocalScalarFunctionInc<GradientZ>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
-
-        mPartialCurrentLocalStates =
-            tFactory.template createLocalScalarFunctionInc<LocalJacobian>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
-
-        mPartialPrevLocalStates =
-            tFactory.template createLocalScalarFunctionInc<LocalJacobianP>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
-
-        mPartialCurrentGlobalStates =
-            tFactory.template createLocalScalarFunctionInc<GlobalJacobian>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
-
-        mPartialPrevGlobalStates =
-            tFactory.template createLocalScalarFunctionInc<GlobalJacobianP>(
-                aMesh, aMeshSets, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mValueFunctions[tName]           = tFactory.template createLocalScalarFunctionInc<Residual>       (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mGradientXFunctions[tName]       = tFactory.template createLocalScalarFunctionInc<GradientX>      (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mGradientZFunctions[tName]       = tFactory.template createLocalScalarFunctionInc<GradientZ>      (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mLocalJacobianFunctions[tName]   = tFactory.template createLocalScalarFunctionInc<LocalJacobian>  (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mLocalJacobianPFunctions[tName]  = tFactory.template createLocalScalarFunctionInc<LocalJacobianP> (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mGlobalJacobianFunctions[tName]  = tFactory.template createLocalScalarFunctionInc<GlobalJacobian> (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mGlobalJacobianPFunctions[tName] = tFactory.template createLocalScalarFunctionInc<GlobalJacobianP>(tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+        }
     }
 };
 // class BasicLocalScalarFunction

@@ -25,6 +25,33 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassInsteadOfVolume2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
+    Teuchos::RCP<Teuchos::ParameterList> params =
+      Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                           \n"
+      "  <ParameterList name='Spatial Model'>                                         \n"
+      "    <ParameterList name='Domains'>                                             \n"
+      "      <ParameterList name='Design Volume'>                                     \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>           \n"
+      "        <Parameter name='Material Model' type='string' value='Beef Jerky'/>    \n"
+      "      </ParameterList>                                                         \n"
+      "    </ParameterList>                                                           \n"
+      "  </ParameterList>                                                             \n"
+      "  <ParameterList name='Material Models'>                                       \n"
+      "    <ParameterList name='Beef Jerky'>                                          \n"
+      "      <ParameterList name='Thermoelastic'>                                     \n"
+      "        <ParameterList name='Elastic Stiffness'>                               \n"
+      "          <Parameter  name='Poissons Ratio' type='double' value='0.3'/>        \n"
+      "          <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>     \n"
+      "        </ParameterList>                                                       \n"
+      "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>  \n"
+      "        <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>  \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>   \n"
+      "      </ParameterList>                                                         \n"
+      "    </ParameterList>                                                           \n"
+      "  </ParameterList>                                                             \n"
+      "</ParameterList>                                                               \n"
+    );
+
     using Residual = typename Plato::Geometric::Evaluation<Plato::Simplex<tSpaceDim>>::Residual;
     using ConfigT  = typename Residual::ConfigScalarType;
     using ResultT  = typename Residual::ResultScalarType;
@@ -40,19 +67,23 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassInsteadOfVolume2D)
 
     // ALLOCATE PLATO CRITERION
     Plato::DataMap tDataMap;
-    Omega_h::MeshSets tMeshSets;
-    Plato::Geometric::WeightedSumFunction<Plato::Geometrical<tSpaceDim>> tWeightedSum(*tMesh, tDataMap);
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
+    Plato::Geometric::WeightedSumFunction<Plato::Geometrical<tSpaceDim>> tWeightedSum(tSpatialModel, tDataMap);
+
+    auto tOnlyDomain = tSpatialModel.Domains.front();
 
     const Plato::Scalar tMaterialDensity = 0.5;
     const std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tCriterion =
-          std::make_shared<Plato::Geometric::MassMoment<Residual>>(*tMesh, tMeshSets, tDataMap);
+          std::make_shared<Plato::Geometric::MassMoment<Residual>>(tOnlyDomain, tDataMap);
     tCriterion->setMaterialDensity(tMaterialDensity);
     tCriterion->setCalculationType("Mass");
 
     const std::shared_ptr<Plato::Geometric::GeometryScalarFunction<Plato::Geometrical<tSpaceDim>>> tGeometryScalarFunc =
-          std::make_shared<Plato::Geometric::GeometryScalarFunction<Plato::Geometrical<tSpaceDim>>>(*tMesh, tDataMap);
+          std::make_shared<Plato::Geometric::GeometryScalarFunction<Plato::Geometrical<tSpaceDim>>>(tSpatialModel, tDataMap);
 
-    tGeometryScalarFunc->setEvaluator(tCriterion);
+    tGeometryScalarFunc->setEvaluator(tCriterion, tOnlyDomain.getDomainName());
 
     const Plato::Scalar tFunctionWeight = 0.75;
     tWeightedSum.allocateScalarFunctionBase(tGeometryScalarFunc);
@@ -74,6 +105,33 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassInsteadOfVolume3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
+    Teuchos::RCP<Teuchos::ParameterList> params =
+      Teuchos::getParametersFromXmlString(
+      "<ParameterList name='Plato Problem'>                                           \n"
+      "  <ParameterList name='Spatial Model'>                                         \n"
+      "    <ParameterList name='Domains'>                                             \n"
+      "      <ParameterList name='Design Volume'>                                     \n"
+      "        <Parameter name='Element Block' type='string' value='body'/>           \n"
+      "        <Parameter name='Material Model' type='string' value='Snapple'/>       \n"
+      "      </ParameterList>                                                         \n"
+      "    </ParameterList>                                                           \n"
+      "  </ParameterList>                                                             \n"
+      "  <ParameterList name='Material Models'>                                       \n"
+      "    <ParameterList name='Snapple'>                                             \n"
+      "      <ParameterList name='Thermoelastic'>                                     \n"
+      "        <ParameterList name='Elastic Stiffness'>                               \n"
+      "          <Parameter  name='Poissons Ratio' type='double' value='0.3'/>        \n"
+      "          <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>     \n"
+      "        </ParameterList>                                                       \n"
+      "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>  \n"
+      "        <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>  \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>   \n"
+      "      </ParameterList>                                                         \n"
+      "    </ParameterList>                                                           \n"
+      "  </ParameterList>                                                             \n"
+      "</ParameterList>                                                               \n"
+    );
+
     using Residual = typename Plato::Geometric::Evaluation<Plato::Simplex<tSpaceDim>>::Residual;
     using ConfigT  = typename Residual::ConfigScalarType;
     using ResultT  = typename Residual::ResultScalarType;
@@ -89,19 +147,24 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassInsteadOfVolume3D)
 
     // ALLOCATE PLATO CRITERION
     Plato::DataMap tDataMap;
-    Omega_h::MeshSets tMeshSets;
-    Plato::Geometric::WeightedSumFunction<Plato::Geometrical<tSpaceDim>> tWeightedSum(*tMesh, tDataMap);
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
+    Plato::Geometric::WeightedSumFunction<Plato::Geometrical<tSpaceDim>> tWeightedSum(tSpatialModel, tDataMap);
+
+    auto tOnlyDomain = tSpatialModel.Domains.front();
 
     const Plato::Scalar tMaterialDensity = 0.5;
     const std::shared_ptr<Plato::Geometric::MassMoment<Residual>> tCriterion =
-          std::make_shared<Plato::Geometric::MassMoment<Residual>>(*tMesh, tMeshSets, tDataMap);
+          std::make_shared<Plato::Geometric::MassMoment<Residual>>(tOnlyDomain, tDataMap);
     tCriterion->setMaterialDensity(tMaterialDensity);
     tCriterion->setCalculationType("Mass");
 
-    const std::shared_ptr<Plato::Geometric::GeometryScalarFunction<Plato::Geometrical<tSpaceDim>>> tGeometryScalarFunc =
-          std::make_shared<Plato::Geometric::GeometryScalarFunction<Plato::Geometrical<tSpaceDim>>>(*tMesh, tDataMap);
+//    const std::shared_ptr<Plato::Geometric::GeometryScalarFunction<Plato::Geometrical<tSpaceDim>>> tGeometryScalarFunc =
+    const auto tGeometryScalarFunc =
+          std::make_shared<Plato::Geometric::GeometryScalarFunction<Plato::Geometrical<tSpaceDim>>>(tSpatialModel, tDataMap);
 
-    tGeometryScalarFunc->setEvaluator(tCriterion);
+    tGeometryScalarFunc->setEvaluator(tCriterion, tOnlyDomain.getDomainName());
 
     const Plato::Scalar tFunctionWeight = 0.75;
     tWeightedSum.allocateScalarFunctionBase(tGeometryScalarFunc);
@@ -133,26 +196,38 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3D)
 
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                     \n"
-    "  <Parameter name='Objective' type='string' value='My Mass Properties'/>                 \n"
-    "  <ParameterList name='My Mass Properties'>                                              \n"
-    "      <Parameter name='Type' type='string' value='Mass Properties'/>                     \n"
+    "<ParameterList name='Plato Problem'>                                           \n"
+    "  <Parameter name='Objective' type='string' value='My Mass Properties'/>       \n"
+    "  <ParameterList name='My Mass Properties'>                                    \n"
+    "      <Parameter name='Type' type='string' value='Mass Properties'/>           \n"
     "      <Parameter name='Properties' type='Array(string)' value='{Mass,CGx,CGy,CGz,Ixx,Iyy,Izz,Ixy,Iyz}'/>     \n"
     "      <Parameter name='Weights' type='Array(double)' value='{2.0,0.1,2.0,3.0,4.0,5.0,6.0,7.0,8.0}'/>         \n"
     "      <Parameter name='Gold Values' type='Array(double)' value='{0.2,0.05,0.55,0.75,0.5,0.5,0.5,0.3,0.3}'/>  \n"
-    "  </ParameterList>                                                                       \n"
-    "  <ParameterList name='Material Model'>                                                  \n"
-    "      <Parameter  name='Density' type='double' value='0.5'/>                             \n"
-    "  </ParameterList>                                                                       \n"
-    "</ParameterList>                                                                         \n"
-  );
+    "  </ParameterList>                                                             \n"
+    "  <ParameterList name='Material Models'>                                       \n"
+    "    <ParameterList name='Goop'>                                                \n"
+    "      <Parameter  name='Density' type='double' value='0.5'/>                   \n"
+    "    </ParameterList>                                                           \n"
+    "  </ParameterList>                                                             \n"
+    "  <ParameterList name='Spatial Model'>                                         \n"
+    "    <ParameterList name='Domains'>                                             \n"
+    "      <ParameterList name='Design Volume'>                                     \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>           \n"
+    "        <Parameter name='Material Model' type='string' value='Goop'/>          \n"
+    "      </ParameterList>                                                         \n"
+    "    </ParameterList>                                                           \n"
+    "  </ParameterList>                                                             \n"
+    "</ParameterList>                                                               \n"
+    );
 
     // ALLOCATE PLATO CRITERION
     Plato::DataMap tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParams);
     std::string tFuncName = "My Mass Properties";
     Plato::Geometric::MassPropertiesFunction<Plato::Geometrical<tSpaceDim>>
-          tMassProperties(*tMesh, tMeshSets, tDataMap, *tParams, tFuncName);
+          tMassProperties(tSpatialModel, tDataMap, *tParams, tFuncName);
 
     auto tObjFuncVal = tMassProperties.value(tControl);
 
@@ -186,26 +261,38 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3DNormalized)
 
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                     \n"
-    "  <Parameter name='Objective' type='string' value='My Mass Properties'/>                 \n"
-    "  <ParameterList name='My Mass Properties'>                                              \n"
-    "      <Parameter name='Type' type='string' value='Mass Properties'/>                     \n"
+    "<ParameterList name='Plato Problem'>                                           \n"
+    "  <Parameter name='Objective' type='string' value='My Mass Properties'/>       \n"
+    "  <ParameterList name='My Mass Properties'>                                    \n"
+    "      <Parameter name='Type' type='string' value='Mass Properties'/>           \n"
     "      <Parameter name='Properties' type='Array(string)' value='{Mass,CGx,CGy,CGz,Ixx,Iyy,Izz,Ixy,Ixz,Iyz}'/>     \n"
     "      <Parameter name='Weights' type='Array(double)' value='{2.0,0.1,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0}'/>         \n"
     "      <Parameter name='Gold Values' type='Array(double)' value='{0.2,0.05,0.55,0.75,5.4,5.5,5.4,-0.1,-0.1,-0.15}'/>  \n"
-    "  </ParameterList>                                                                       \n"
-    "  <ParameterList name='Material Model'>                                                  \n"
-    "      <Parameter  name='Density' type='double' value='0.5'/>                             \n"
-    "  </ParameterList>                                                                       \n"
-    "</ParameterList>                                                                         \n"
+    "  </ParameterList>                                                             \n"
+    "  <ParameterList name='Material Models'>                                       \n"
+    "    <ParameterList name='Goop'>                                                \n"
+    "      <Parameter  name='Density' type='double' value='0.5'/>                   \n"
+    "    </ParameterList>                                                           \n"
+    "  </ParameterList>                                                             \n"
+    "  <ParameterList name='Spatial Model'>                                         \n"
+    "    <ParameterList name='Domains'>                                             \n"
+    "      <ParameterList name='Design Volume'>                                     \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>           \n"
+    "        <Parameter name='Material Model' type='string' value='Goop'/>          \n"
+    "      </ParameterList>                                                         \n"
+    "    </ParameterList>                                                           \n"
+    "  </ParameterList>                                                             \n"
+    "</ParameterList>                                                               \n"
   );
 
     // ALLOCATE PLATO CRITERION
     Plato::DataMap tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParams);
     std::string tFuncName = "My Mass Properties";
     Plato::Geometric::MassPropertiesFunction<Plato::Geometrical<tSpaceDim>>
-          tMassProperties(*tMesh, tMeshSets, tDataMap, *tParams, tFuncName);
+          tMassProperties(tSpatialModel, tDataMap, *tParams, tFuncName);
 
     auto tObjFuncVal = tMassProperties.value(tControl);
 
@@ -244,18 +331,30 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesGradZ_3D)
     "      <Parameter name='Weights' type='Array(double)' value='{2.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0}'/>      \n"
     "      <Parameter name='Gold Values' type='Array(double)' value='{0.2,0.45,0.55,0.75,0.5,0.5,0.5,0.3,0.3}'/>  \n"
     "  </ParameterList>                                                        \n"
-    "  <ParameterList name='Material Model'>                                   \n"
+    "  <ParameterList name='Material Models'>                                  \n"
+    "    <ParameterList name='Goop'>                                           \n"
     "      <Parameter  name='Density' type='double' value='0.5'/>              \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <ParameterList name='Spatial Model'>                                    \n"
+    "    <ParameterList name='Domains'>                                        \n"
+    "      <ParameterList name='Design Volume'>                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>      \n"
+    "        <Parameter name='Material Model' type='string' value='Goop'/>     \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                        \n"
     "</ParameterList>                                                          \n"
   );
 
     // ALLOCATE PLATO CRITERION
     Plato::DataMap tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParams);
     std::string tFuncName = "My Mass Properties";
     Plato::Geometric::MassPropertiesFunction<Plato::Geometrical<tSpaceDim>>
-          tMassProperties(*tMesh, tMeshSets, tDataMap, *tParams, tFuncName);
+          tMassProperties(tSpatialModel, tDataMap, *tParams, tFuncName);
 
     Plato::test_partial_control<GradientZ, Plato::Geometrical<tSpaceDim>>(*tMesh, tMassProperties);
 }

@@ -70,6 +70,99 @@ inline void flatten_vector_workset(const Plato::OrdinalType& aNumCells,
 }
 // function flatten_vector_workset
 
+/******************************************************************************//**
+ * \brief Flatten vector workset. Takes 2D view and converts it into a 1D view.
+ *
+ * \tparam NumDofsPerCell   number of degrees of freedom per cell
+ * \tparam AViewType Input  workset, as a 2-D Kokkos::View
+ * \tparam BViewType Output workset, as a 1-D Kokkos::View
+ *
+ * \param [in]     aNumCells number of cells, i.e. elements
+ * \param [in]     aInput    input workset (NumCells, LocalNumCellDofs)
+ * \param [in/out] aOutput   output vector (NumCells * LocalNumCellDofs)
+**********************************************************************************/
+template<Plato::OrdinalType NumDofsPerCell, class AViewType, class BViewType>
+inline void
+flatten_vector_workset(
+    const Plato::SpatialDomain & aDomain,
+          AViewType            & aInput,
+          BViewType            & aOutput
+)
+{
+    auto tNumCells = aDomain.numCells();
+    auto tCellOrdinals = aDomain.cellOrdinals();
+
+    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nInput Kokkos::View is empty, i.e. size <= 0.\n")
+    }
+    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nOutput Kokkos::View is empty, i.e. size <= 0.\n")
+    }
+    if(tNumCells <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nNumber of cells, i.e. elements, argument is <= zero.\n");
+    }
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+        const auto tDofOffset = tCellOrdinal * NumDofsPerCell;
+        for (Plato::OrdinalType tDofIndex = 0; tDofIndex < NumDofsPerCell; tDofIndex++)
+        {
+          aOutput(tDofOffset + tDofIndex) = aInput(aCellOrdinal, tDofIndex);
+        }
+    }, "flatten residual vector");
+}
+// function flatten_vector_workset
+
+/******************************************************************************//**
+ * \brief Flatten vector workset. Takes 2D view and converts it into a 1D view.
+ *
+ * \tparam NumDofsPerCell   number of degrees of freedom per cell
+ * \tparam AViewType Input  workset, as a 2-D Kokkos::View
+ * \tparam BViewType Output workset, as a 1-D Kokkos::View
+ *
+ * \param [in]     aNumCells number of cells, i.e. elements
+ * \param [in]     aInput    input workset (NumCells, LocalNumCellDofs)
+ * \param [in/out] aOutput   output vector (NumCells * LocalNumCellDofs)
+**********************************************************************************/
+template<Plato::OrdinalType NumDofsPerCell, class ViewType>
+inline void
+assemble_vector_workset(
+    const Plato::SpatialDomain & aDomain,
+          ViewType             & aInput,
+          ViewType             & aOutput
+)
+{
+    auto tNumCells = aDomain.numCells();
+    auto tCellOrdinals = aDomain.cellOrdinals();
+
+    if(aInput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nInput Kokkos::View is empty, i.e. size <= 0.\n")
+    }
+    if(aOutput.size() <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nOutput Kokkos::View is empty, i.e. size <= 0.\n")
+    }
+    if(tNumCells <= static_cast<Plato::OrdinalType>(0))
+    {
+        THROWERR("\nNumber of cells, i.e. elements, argument is <= zero.\n");
+    }
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells),LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+        for (Plato::OrdinalType tDofIndex = 0; tDofIndex < NumDofsPerCell; tDofIndex++)
+        {
+            aOutput(tCellOrdinal, tDofIndex) = aInput(aCellOrdinal, tDofIndex);
+        }
+    }, "combine residual vector");
+}
+// function assemble_vector_workset
+
 /************************************************************************//**
  *
  * \brief (2D-View) Transform automatic differentiation (AD) type to POD.
@@ -101,6 +194,47 @@ inline void transform_ad_type_to_pod_2Dview(const Plato::ScalarVectorT<ADType>& 
         for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerCell; tDimIndex++)
         {
             aOutput(aCellOrdinal, tDimIndex) = aInput(aCellOrdinal).dx(tDimIndex);
+        }
+    }, "Convert AD Partial to POD type");
+}
+// function transform_ad_type_to_pod_2Dview
+
+/************************************************************************//**
+ *
+ * \brief (2D-View) Transform automatic differentiation (AD) type to POD.
+ *
+ * \tparam NumNodesPerCell number of nodes per cell
+ * \tparam ADType          AD scalar type
+ *
+ * \param [in]     aNumCells  number of cells
+ * \param [in]     aInput     AD partial derivative
+ * \param [in\out] aOutput    Scalar partial derivative
+ *
+ ********************************************************************************/
+template<Plato::OrdinalType NumDofsPerCell, typename ADType>
+inline void
+transform_ad_type_to_pod_2Dview(
+    const Plato::SpatialDomain         & aDomain,
+    const Plato::ScalarVectorT<ADType> & aInput,
+          Plato::ScalarMultiVector     & aOutput)
+{
+    if(aInput.extent(0) != aDomain.numCells())
+    {
+        THROWERR("Dimension mismatch, input container and domain have different number of rows.")
+    }
+    if(NumDofsPerCell != aOutput.extent(1))
+    {
+        THROWERR("Input number of degrees of freedom does not match the number of columns in output container.")
+    }
+
+    auto tNumCells = aDomain.numCells();
+    auto tCellOrdinals = aDomain.cellOrdinals();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+        for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerCell; tDimIndex++)
+        {
+            aOutput(tCellOrdinal, tDimIndex) = aInput(aCellOrdinal).dx(tDimIndex);
         }
     }, "Convert AD Partial to POD type");
 }
@@ -261,7 +395,43 @@ inline void assemble_vector_gradient(const Plato::OrdinalType& aNumCells,
         }
     }, "Assemble - Vector Gradient Calculation");
 }
+
 // function assemble_vector_gradient
+/*************************************************************************//**
+*
+* \brief Assemble vector gradient of a scalar function
+*
+* \tparam NumNodesPerCell number of nodes per cells (i.e. elements)
+* \tparam NumDofsPerNode number of degrees of freedom per node
+* \tparam EntryOrdinal entry ordinal view type
+* \tparam Gradient gradient workset view type
+* \tparam ReturnVal output (i.e. assembled gradient) view type
+*
+* \param [in]     aNumCells      number of cells
+* \param [in]     aEntryOrdinal  global indices to output vector
+* \param [in]     aGradien       gradient workset - gradient values for each cell
+* \param [in\out] aOutput        assembled global gradient
+*
+* *****************************************************************************/
+template<Plato::OrdinalType NumNodesPerCell, Plato::OrdinalType NumDofsPerNode, class EntryOrdinal, class Gradient, class ReturnVal>
+inline void assemble_vector_gradient_fad(const Plato::OrdinalType& aNumCells,
+                                         const EntryOrdinal& aEntryOrdinal,
+                                         const Gradient& aGradient,
+                                         ReturnVal& aOutput)
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tNodeIndex=0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
+        {
+            for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerNode; tDimIndex++)
+            {
+                Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(aCellOrdinal, tNodeIndex, tDimIndex);
+                Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal).dx(tNodeIndex * NumDofsPerNode + tDimIndex));
+            }
+        }
+    }, "Assemble - Vector Gradient Calculation");
+}
+// function assemble_vector_gradient_fad
 
 /*************************************************************************//**
 *
@@ -337,6 +507,38 @@ inline void assemble_scalar_gradient(const Plato::OrdinalType& aNumCells,
 }
 // function assemble_scalar_gradient
 
+/*************************************************************************//**
+*
+* \brief Assemble scalar gradient of a scalar function
+*
+* \tparam NumNodesPerCell number of nodes per cell
+* \tparam EntryOrdinal entry ordinal view type
+* \tparam Gradient gradient workset view type
+* \tparam ReturnVal output (i.e. assembled gradient) view type
+*
+* \param [in]     aNumCells      number of cells (i.e. elements)
+* \param [in]     aEntryOrdinal  global indices to output vector
+* \param [in]     aGradien       gradient workset (automatic differentiation type) - gradient values for each cell
+* \param [in\out] aOutput        assembled global gradient
+*
+*****************************************************************************/
+template<Plato::OrdinalType NumNodesPerCell, class EntryOrdinal, class Gradient, class ReturnVal>
+inline void assemble_scalar_gradient_fad(const Plato::OrdinalType& aNumCells,
+                                         const EntryOrdinal& aEntryOrdinal,
+                                         const Gradient& aGradient,
+                                         ReturnVal& aOutput)
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+      for(Plato::OrdinalType tNodeIndex=0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
+      {
+          Plato::OrdinalType tEntryOrdinal = aEntryOrdinal(aCellOrdinal, tNodeIndex);
+          Kokkos::atomic_add(&aOutput(tEntryOrdinal), aGradient(aCellOrdinal).dx(tNodeIndex));
+      }
+    }, "Assemble - Scalar Gradient Calculation");
+}
+
+// function assemble_scalar_gradient_fad
 /*************************************************************************//**
 *
 * \brief Assemble scalar gradient of a scalar function
@@ -694,6 +896,40 @@ workset_state_scalar_fad(
 * \tparam State               local state variables class  
 * \tparam StateWS             local state workset class
 *
+* \param [in]     aDomain    Plato Analyze spatial domain
+* \param [in]     aState     1-D view of state variables
+* \param [in/out] aStateWS   state variables workset
+*
+*******************************************************************************/
+template<Plato::OrdinalType NumLocalDofsPerCell, class State, class StateWS>
+inline void
+workset_local_state_scalar_scalar(
+    const Plato::SpatialDomain & aDomain, 
+    const State                & aState, 
+          StateWS              & aStateWS
+)
+{
+    auto tNumCells = aDomain.numCells();
+    auto tCellOrdinals = aDomain.cellOrdinals();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < NumLocalDofsPerCell; tDofIndex++)
+        {
+          Plato::OrdinalType tGlobalDof = (tCellOrdinal * NumLocalDofsPerCell) + tDofIndex;
+          aStateWS(aCellOrdinal, tDofIndex) = aState(tGlobalDof);
+        }
+    }, "workset_local_state_scalar_scalar");
+}
+// function workset_local_state_scalar_scalar
+
+/***************************************************************************//**
+* \brief Create local state workset, i.e. set local state variables for each element/cell
+*
+* \tparam NumLocalDofsPerCell number of local degrees of freedom per cell
+* \tparam State               local state variables class  
+* \tparam StateWS             local state workset class
+*
 * \param [in]     aNumCells  number of cells (i.e. elements)
 * \param [in]     aState     1-D view of state variables
 * \param [in/out] aStateWS   state variables workset
@@ -739,6 +975,41 @@ inline void workset_local_state_scalar_fad(const Plato::OrdinalType& aNumCells,
         for(Plato::OrdinalType tDofIndex = 0; tDofIndex < NumLocalDofsPerCell; tDofIndex++)
         {
           Plato::OrdinalType tGlobalDof = (aCellOrdinal * NumLocalDofsPerCell) + tDofIndex;
+          aFadStateWS(aCellOrdinal,tDofIndex) = StateFad(NumLocalDofsPerCell, tDofIndex, aState(tGlobalDof));
+        }
+    }, "workset_local_state_scalar_fad");
+}
+// function workset_local_state_scalar_fad
+
+/***************************************************************************//**
+* \brief Create local state workset, i.e. set local state variables for each element/cell
+*
+* \tparam NumLocalDofsPerCell number of local degrees of freedom per cell
+* \tparam StateFad            output local state variables forward automatic differentiation (FAD) class  
+* \tparam State               local state variables class  
+* \tparam FadStateWS          local state workset FAD class
+*
+* \param [in]     aDomain      Plato Analyze spatial domain
+* \param [in]     aState       1-D view of local state variables
+* \param [in/out] aFadStateWS  local state variables workset
+*
+*******************************************************************************/
+template<Plato::OrdinalType NumLocalDofsPerCell, class StateFad, class State, class FadStateWS>
+inline void
+workset_local_state_scalar_fad(
+    const Plato::SpatialDomain & aDomain, 
+    const State                & aState,
+          FadStateWS           & aFadStateWS
+)
+{
+    auto tNumCells = aDomain.numCells();
+    auto tCellOrdinals = aDomain.cellOrdinals();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+        for(Plato::OrdinalType tDofIndex = 0; tDofIndex < NumLocalDofsPerCell; tDofIndex++)
+        {
+          Plato::OrdinalType tGlobalDof = (tCellOrdinal * NumLocalDofsPerCell) + tDofIndex;
           aFadStateWS(aCellOrdinal,tDofIndex) = StateFad(NumLocalDofsPerCell, tDofIndex, aState(tGlobalDof));
         }
     }, "workset_local_state_scalar_fad");

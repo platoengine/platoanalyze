@@ -24,23 +24,23 @@ namespace Plato
  **********************************************************************************/
 template <typename PhysicsT>
 std::shared_ptr<Plato::LocalScalarFunctionInc>
-PathDependentScalarFunctionFactory<PhysicsT>::create(Omega_h::Mesh& aMesh,
-       Omega_h::MeshSets& aMeshSets,
-       Plato::DataMap & aDataMap,
-       Teuchos::ParameterList& aInputParams,
-       std::string& aFunctionName)
+PathDependentScalarFunctionFactory<PhysicsT>::create(
+    const Plato::SpatialModel    & aSpatialModel,
+          Plato::DataMap         & aDataMap,
+          Teuchos::ParameterList & aInputParams,
+    const std::string            & aFunctionName)
 {
     auto tProblemFunction = aInputParams.sublist(aFunctionName);
     auto tFunctionType = tProblemFunction.get < std::string > ("Type", "UNDEFINED");
     if(tFunctionType == "Scalar Function")
     {
         return ( std::make_shared <Plato::BasicLocalScalarFunction<PhysicsT>>
-                (aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName) );
+                (aSpatialModel, aDataMap, aInputParams, aFunctionName) );
     } else
     if(tFunctionType == "Weighted Sum")
     {
         return ( std::make_shared <Plato::WeightedLocalScalarFunction<PhysicsT>>
-                (aMesh, aMeshSets, aDataMap, aInputParams, aFunctionName) );
+                (aSpatialModel, aDataMap, aInputParams, aFunctionName) );
     }
     else
     {

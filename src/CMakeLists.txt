@@ -36,19 +36,19 @@ set(ANALYZE_SOURCES
     VonMisesLocalMeasure.cpp 
     ThermalVonMisesLocalMeasure.cpp 
     IntermediateDensityPenalty.cpp 
-#    J2PlasticityLocalResidual.cpp 
-#    LocalVectorFunctionInc.cpp 
-#    NewtonRaphsonSolver.cpp 
-#    PathDependentAdjointSolver.cpp 
-#    GlobalVectorFunctionInc.cpp 
-#    PathDependentScalarFunctionFactory.cpp 
-#    BasicLocalScalarFunction.cpp 
-#    PlasticityProblem.cpp 
-#    ComputePrincipalStresses.cpp 
-#    WeightedLocalScalarFunction.cpp 
-#    InfinitesimalStrainPlasticityResidual.cpp 
-#    ElasticWorkCriterion.cpp 
-#    PlasticWorkCriterion.cpp
+    J2PlasticityLocalResidual.cpp 
+## this create the default constructor which is never used    LocalVectorFunctionInc.cpp 
+    NewtonRaphsonSolver.cpp 
+    PathDependentAdjointSolver.cpp 
+    GlobalVectorFunctionInc.cpp 
+    PathDependentScalarFunctionFactory.cpp 
+    BasicLocalScalarFunction.cpp 
+    PlasticityProblem.cpp 
+    ComputePrincipalStresses.cpp 
+    WeightedLocalScalarFunction.cpp 
+    InfinitesimalStrainPlasticityResidual.cpp 
+    ElasticWorkCriterion.cpp 
+    PlasticWorkCriterion.cpp
     geometric/DivisionFunction.cpp
     geometric/GeometryScalarFunction.cpp
     geometric/LeastSquaresFunction.cpp

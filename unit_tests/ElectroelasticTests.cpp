@@ -53,13 +53,13 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
   // create mesh based solution from host data
   //
   int tNumDofsPerNode = (spaceDim+1);
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
   Plato::ScalarMultiVector states("states", /*numSteps=*/1, tNumDofs);
   auto state = Kokkos::subview(states, 0, Kokkos::ALL());
@@ -100,16 +100,26 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
     "      <Parameter name='Minimum Value' type='double' value='0.0'/>                   \n"
     "    </ParameterList>                                                                \n"
     "  </ParameterList>                                                                  \n"
-    "  <ParameterList name='Material Model'>                                             \n"
-    "    <ParameterList name='Isotropic Linear Electroelastic'>                          \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                 \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>              \n"
-    "      <Parameter  name='p11' type='double' value='1.0e-10'/>                        \n"
-    "      <Parameter  name='p33' type='double' value='1.4e-10'/>                        \n"
-    "      <Parameter  name='e33' type='double' value='15.8'/>                           \n"
-    "      <Parameter  name='e31' type='double' value='-5.4'/>                           \n"
-    "      <Parameter  name='e15' type='double' value='12.3'/>                           \n"
-    "      <Parameter  name='Alpha' type='double' value='1e10'/>                         \n"
+    "  <ParameterList name='Spatial Model'>                                              \n"
+    "    <ParameterList name='Domains'>                                                  \n"
+    "      <ParameterList name='Design Volume'>                                          \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>                \n"
+    "        <Parameter name='Material Model' type='string' value='CheezWhiz'/>          \n"
+    "      </ParameterList>                                                              \n"
+    "    </ParameterList>                                                                \n"
+    "  </ParameterList>                                                                  \n"
+    "  <ParameterList name='Material Models'>                                            \n"
+    "    <ParameterList name='CheezWhiz'>                                                \n"
+    "      <ParameterList name='Isotropic Linear Electroelastic'>                        \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>               \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>            \n"
+    "        <Parameter  name='p11' type='double' value='1.0e-10'/>                      \n"
+    "        <Parameter  name='p33' type='double' value='1.4e-10'/>                      \n"
+    "        <Parameter  name='e33' type='double' value='15.8'/>                         \n"
+    "        <Parameter  name='e31' type='double' value='-5.4'/>                         \n"
+    "        <Parameter  name='e15' type='double' value='12.3'/>                         \n"
+    "        <Parameter  name='Alpha' type='double' value='1e10'/>                       \n"
+    "      </ParameterList>                                                              \n"
     "    </ParameterList>                                                                \n"
     "  </ParameterList>                                                                  \n"
     "</ParameterList>                                                                    \n"
@@ -118,9 +128,12 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
   // create constraint
   //
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
+
   Plato::Elliptic::VectorFunction<::Plato::Electromechanics<spaceDim>>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("PDE Constraint"));
   // compute and test constraint value
   //
 
@@ -246,7 +259,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
   // create objective
   //
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<spaceDim>>
-    scalarFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("Objective"));
+    scalarFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("Objective"));
 
   // compute and test objective value
   //

@@ -384,8 +384,7 @@ endfunction(build_mpi_test_string)
 
 ADD_SUBDIRECTORY(src)
 
-### TODO 
-option(PLATOANALYZE_UNIT_TEST "Flag to enable unit tests" OFF)
+option(PLATOANALYZE_UNIT_TEST "Flag to enable unit tests" ON)
 if( PLATOANALYZE_UNIT_TEST)
   ADD_SUBDIRECTORY(unit_tests)
 endif()

@@ -773,7 +773,7 @@ test_partial_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<S
     Plato::blas1::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
     Plato::ScalarVector tGradientDotStep =
-            Plato::global_workset_matrix_vector_multiply(tPartialU, tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumDofs);
+            Plato::global_workset_matrix_vector_multiply(tPartialU, tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumLocalDofs);
 
     std::cout << std::right << std::setw(14) << "\nStep Size" 
               << std::setw(20) << "abs(Error)" << std::endl;
@@ -905,7 +905,7 @@ test_partial_prev_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunction
     Plato::blas1::random(0.5, 1.0, tHostStep);
     Kokkos::deep_copy(tStep, tHostStep);
     Plato::ScalarVector tGradientDotStep =
-            Plato::global_workset_matrix_vector_multiply(tPartialUP, tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumDofs);
+            Plato::global_workset_matrix_vector_multiply(tPartialUP, tStep, tEntryOrdinal, tNumNodesPerCell, tTotalNumLocalDofs);
 
     std::cout << std::right << std::setw(14) << "\nStep Size" 
               << std::setw(20) << "abs(Error)" << std::endl;

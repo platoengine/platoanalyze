@@ -540,18 +540,16 @@ public:
 
     /***************************************************************************//**
      * \brief Read essential (Dirichlet) boundary conditions from the Exodus file.
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
      * \param [in] aInputParams input parameters database
     *******************************************************************************/
-    void readEssentialBoundaryConditions(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Teuchos::ParameterList& aInputParams)
+    void readEssentialBoundaryConditions(Teuchos::ParameterList& aInputParams)
     {
         if(aInputParams.isSublist("Essential Boundary Conditions") == false)
         {
             THROWERR("ESSENTIAL BOUNDARY CONDITIONS SUBLIST IS NOT DEFINED IN THE INPUT FILE.")
         }
         Plato::EssentialBCs<SimplexPhysics> tEssentialBoundaryConditions(aInputParams.sublist("Essential Boundary Conditions", false));
-        tEssentialBoundaryConditions.get(aMeshSets, mBcDofs, mBcValues);
+        tEssentialBoundaryConditions.get(mSpatialModel.MeshSets, mBcDofs, mBcValues);
     }
 
     /***************************************************************************//**
