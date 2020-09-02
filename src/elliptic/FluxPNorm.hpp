@@ -72,7 +72,7 @@ class FluxPNorm :
       Plato::ThermalConductionModelFactory<SpaceDim> mmfactory(aProblemParams);
       mMaterialModel = mmfactory.create(mSpatialDomain.getMaterialName());
 
-      auto params = aProblemParams.get<Teuchos::ParameterList>(aFunctionName);
+      auto params = aProblemParams.sublist("Criteria").get<Teuchos::ParameterList>(aFunctionName);
 
       mExponent = params.get<Plato::Scalar>("Exponent");
     }

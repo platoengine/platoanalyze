@@ -242,48 +242,6 @@ public:
         return mNumConfigDofsPerCell;
     }
 
-    /**************************************************************************//**
-    *
-    * \brief Allocate residual evaluator
-    * \param [in] aResidual residual evaluator
-    * \param [in] aJacobian Jacobian evaluator
-    *
-    ******************************************************************************/
-/* TODO needed?
-    void allocateResidual(const std::shared_ptr<Plato::AbstractVectorFunctionVMS<Residual>>& aResidual,
-                          const std::shared_ptr<Plato::AbstractVectorFunctionVMS<Jacobian>>& aJacobian)
-    {
-        mVectorFunctionVMSResidual = aResidual;
-        mVectorFunctionVMSJacobianU = aJacobian;
-    }
-*/
-
-    /**************************************************************************//**
-    *
-    * \brief Allocate partial derivative with respect to control evaluator
-    * \param [in] aGradientZ partial derivative with respect to control evaluator
-    *
-    ******************************************************************************/
-/* TODO needed?
-    void allocateJacobianZ(const std::shared_ptr<Plato::AbstractVectorFunctionVMS<GradientZ>>& aGradientZ)
-    {
-        mVectorFunctionVMSJacobianZ = aGradientZ; 
-    }
-*/
-
-    /**************************************************************************//**
-    *
-    * \brief Allocate partial derivative with respect to configuration evaluator
-    * \param [in] GradientX partial derivative with respect to configuration evaluator
-    *
-    ******************************************************************************/
-/* TODO needed?
-    void allocateJacobianX(const std::shared_ptr<Plato::AbstractVectorFunctionVMS<GradientX>>& aGradientX)
-    {
-        mVectorFunctionVMSJacobianX = aGradientX; 
-    }
-*/
-
     /***************************************************************************//**
      * \brief Evaluate and assemble residual
      * \param [in] aState     projected pressure gradient

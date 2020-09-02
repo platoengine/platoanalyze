@@ -41,24 +41,25 @@ struct FunctionFactory{
 
         if( strVectorFunctionType == "Elliptic" )
         {
-            auto penaltyParams = aParamList.sublist(strVectorFunctionType).sublist("Penalty Function");
-            std::string penaltyType = penaltyParams.get<std::string>("Type");
-            if( penaltyType == "SIMP" )
+            auto tPenaltyParams = aParamList.sublist(strVectorFunctionType).sublist("Penalty Function");
+            std::string tPenaltyType = tPenaltyParams.get<std::string>("Type");
+
+            if( tPenaltyType == "SIMP" )
             {
                 return std::make_shared<Plato::Elliptic::ThermostaticResidual<EvaluationType, Plato::MSIMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
-            if( penaltyType == "RAMP" )
+            if( tPenaltyType == "RAMP" )
             {
                 return std::make_shared<Plato::Elliptic::ThermostaticResidual<EvaluationType, Plato::RAMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
-            if( penaltyType == "Heaviside" )
+            if( tPenaltyType == "Heaviside" )
             {
                 return std::make_shared<Plato::Elliptic::ThermostaticResidual<EvaluationType, Plato::Heaviside>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
             {
@@ -82,24 +83,25 @@ struct FunctionFactory{
     {
         if( strVectorFunctionType == "Parabolic" )
         {
-            auto penaltyParams = aParamList.sublist(strVectorFunctionType).sublist("Penalty Function");
-            std::string penaltyType = penaltyParams.get<std::string>("Type");
-            if( penaltyType == "SIMP" )
+            auto tPenaltyParams = aParamList.sublist(strVectorFunctionType).sublist("Penalty Function");
+            std::string tPenaltyType = tPenaltyParams.get<std::string>("Type");
+
+            if( tPenaltyType == "SIMP" )
             {
                 return std::make_shared<Plato::Parabolic::HeatEquationResidual<EvaluationType, Plato::MSIMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
-            if( penaltyType == "RAMP" )
+            if( tPenaltyType == "RAMP" )
             {
                 return std::make_shared<Plato::Parabolic::HeatEquationResidual<EvaluationType, Plato::RAMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
-            if( penaltyType == "Heaviside" )
+            if( tPenaltyType == "Heaviside" )
             {
                 return std::make_shared<Plato::Parabolic::HeatEquationResidual<EvaluationType, Plato::Heaviside>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams);
             }
             else
             {
@@ -121,28 +123,27 @@ struct FunctionFactory{
               std::string strScalarFunctionType,
               std::string strScalarFunctionName )
     {
+        auto tPenaltyParams = aParamList.sublist("Criteria").sublist(strScalarFunctionName).sublist("Penalty Function");
+        std::string tPenaltyType = tPenaltyParams.get<std::string>("Type");
 
         if( strScalarFunctionType == "Internal Thermal Energy" )
         {
-            auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
-
-            std::string penaltyType = penaltyParams.get<std::string>("Type");
-            if( penaltyType == "SIMP" )
+            if( tPenaltyType == "SIMP" )
             {
                 return std::make_shared<Plato::Elliptic::InternalThermalEnergy<EvaluationType, Plato::MSIMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             }
             else
-            if( penaltyType == "RAMP" )
+            if( tPenaltyType == "RAMP" )
             {
                 return std::make_shared<Plato::Elliptic::InternalThermalEnergy<EvaluationType, Plato::RAMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             }
             else
-            if( penaltyType == "Heaviside" )
+            if( tPenaltyType == "Heaviside" )
             {
                 return std::make_shared<Plato::Elliptic::InternalThermalEnergy<EvaluationType, Plato::Heaviside>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             }
             else
             {
@@ -151,24 +152,21 @@ struct FunctionFactory{
         } else
         if( strScalarFunctionType == "Flux P-Norm" )
         {
-            auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
-
-            std::string penaltyType = penaltyParams.get<std::string>("Type");
-            if( penaltyType == "SIMP" )
+            if( tPenaltyType == "SIMP" )
             {
                 return std::make_shared<Plato::Elliptic::FluxPNorm<EvaluationType, Plato::MSIMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             }
             else
-            if( penaltyType == "RAMP" )
+            if( tPenaltyType == "RAMP" )
             {
                 return std::make_shared<Plato::Elliptic::FluxPNorm<EvaluationType, Plato::RAMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             } else
-            if( penaltyType == "Heaviside" )
+            if( tPenaltyType == "Heaviside" )
             {
                 return std::make_shared<Plato::Elliptic::FluxPNorm<EvaluationType, Plato::Heaviside>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             } else {
                 throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
             }
@@ -189,34 +187,27 @@ struct FunctionFactory{
               std::string              strScalarFunctionName
     )
     {
-/*
-        if( strScalarFunctionType == "Thermal Flux Rate" )
-        {
-            return std::make_shared<Plato::Parabolic::ThermalFluxRate<EvaluationType>>
-                (aSpatialDomain, aDataMap,aParamList);
-        }
-        else
-*/
+        auto tPenaltyParams = aParamList.sublist("Criteria").sublist(strScalarFunctionName).sublist("Penalty Function");
+        std::string tPenaltyType = tPenaltyParams.get<std::string>("Type");
+
         if( strScalarFunctionType == "Internal Thermal Energy" )
         {
-            auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
-            std::string penaltyType = penaltyParams.get<std::string>("Type");
-            if( penaltyType == "SIMP" )
+            if( tPenaltyType == "SIMP" )
             {
                 return std::make_shared<Plato::Parabolic::InternalThermalEnergy<EvaluationType, Plato::MSIMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             }
             else
-            if( penaltyType == "RAMP" )
+            if( tPenaltyType == "RAMP" )
             {
                 return std::make_shared<Plato::Parabolic::InternalThermalEnergy<EvaluationType, Plato::RAMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             }
             else
-            if( penaltyType == "Heaviside" )
+            if( tPenaltyType == "Heaviside" )
             {
                 return std::make_shared<Plato::Parabolic::InternalThermalEnergy<EvaluationType, Plato::Heaviside>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             } else {
                 throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
             }
@@ -224,24 +215,22 @@ struct FunctionFactory{
         else
         if( strScalarFunctionType == "Temperature Average" )
         {
-            auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
-            std::string penaltyType = penaltyParams.get<std::string>("Type");
-            if( penaltyType == "SIMP" )
+            if( tPenaltyType == "SIMP" )
             {
                 return std::make_shared<Plato::Parabolic::TemperatureAverage<EvaluationType, Plato::MSIMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             }
             else
-            if( penaltyType == "RAMP" )
+            if( tPenaltyType == "RAMP" )
             {
                 return std::make_shared<Plato::Parabolic::TemperatureAverage<EvaluationType, Plato::RAMP>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             }
             else
-            if( penaltyType == "Heaviside" )
+            if( tPenaltyType == "Heaviside" )
             {
                 return std::make_shared<Plato::Parabolic::TemperatureAverage<EvaluationType, Plato::Heaviside>>
-                    (aSpatialDomain, aDataMap, aParamList, penaltyParams, strScalarFunctionName);
+                    (aSpatialDomain, aDataMap, aParamList, tPenaltyParams, strScalarFunctionName);
             }
             else
             {

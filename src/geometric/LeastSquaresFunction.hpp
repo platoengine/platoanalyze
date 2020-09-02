@@ -47,11 +47,11 @@ private:
 
     /******************************************************************************//**
      * @brief Initialization of Least Squares Function
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
     void
     initialize(
-        Teuchos::ParameterList & aInputParams
+        Teuchos::ParameterList & aProblemParams
     )
     {
         Plato::Geometric::ScalarFunctionBaseFactory<PhysicsT> tFactory;
@@ -61,15 +61,15 @@ private:
         mFunctionGoldValues.clear();
         mFunctionNormalization.clear();
 
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
-        auto tFunctionNamesTeuchos = tProblemFunctionName.get<Teuchos::Array<std::string>>("Functions");
-        auto tFunctionWeightsTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
-        auto tFunctionGoldValuesTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
+        auto tFunctionNamesArray = tFunctionParams.get<Teuchos::Array<std::string>>("Functions");
+        auto tFunctionWeightsArray = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Weights");
+        auto tFunctionGoldValuesArray = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
 
-        auto tFunctionNames      = tFunctionNamesTeuchos.toVector();
-        auto tFunctionWeights    = tFunctionWeightsTeuchos.toVector();
-        auto tFunctionGoldValues = tFunctionGoldValuesTeuchos.toVector();
+        auto tFunctionNames      = tFunctionNamesArray.toVector();
+        auto tFunctionWeights    = tFunctionWeightsArray.toVector();
+        auto tFunctionGoldValues = tFunctionGoldValuesArray.toVector();
 
         if (tFunctionNames.size() != tFunctionWeights.size())
         {
@@ -89,7 +89,7 @@ private:
         {
             mScalarFunctionBaseContainer.push_back(
                 tFactory.create(
-                    mSpatialModel, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]));
+                    mSpatialModel, mDataMap, aProblemParams, tFunctionNames[tFunctionIndex]));
             mFunctionWeights.push_back(tFunctionWeights[tFunctionIndex]);
 
             appendGoldFunctionValue(tFunctionGoldValues[tFunctionIndex]);
@@ -102,13 +102,13 @@ public:
      * @brief Primary least squares function constructor
      * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aDataMap Plato Analyze data map
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
     LeastSquaresFunction(
         const Plato::SpatialModel    & aSpatialModel,
               Plato::DataMap         & aDataMap,
-              Teuchos::ParameterList & aInputParams,
+              Teuchos::ParameterList & aProblemParams,
         const std::string            & aName
     ) :
         Plato::Geometric::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
@@ -116,7 +116,7 @@ public:
         mDataMap      (aDataMap),
         mFunctionName (aName)
     {
-        initialize(aInputParams);
+        initialize(aProblemParams);
     }
 
     /******************************************************************************//**

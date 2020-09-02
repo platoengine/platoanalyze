@@ -48,7 +48,7 @@ private:
     initialize (
         Teuchos::ParameterList & aInputParams)
     {
-        if(aInputParams.isSublist(mWeigthedSumFunctionName) == false)
+        if(aInputParams.sublist("Criteria").isSublist(mWeigthedSumFunctionName) == false)
         {
             const auto tError = std::string("UNKNOWN USER DEFINED SCALAR FUNCTION SUBLIST '")
                     + mWeigthedSumFunctionName + "'. USER DEFINED SCALAR FUNCTION SUBLIST '" + mWeigthedSumFunctionName
@@ -60,25 +60,25 @@ private:
         mFunctionWeights.clear();
         mLocalScalarFunctionContainer.clear();
 
-        auto tProblemFunctionName = aInputParams.sublist(mWeigthedSumFunctionName);
-        mWriteDiagnostics = tProblemFunctionName.get<bool>("Write Diagnostics", false);
+        auto tProblemFunctionParams = aInputParams.sublist("Criteria").sublist(mWeigthedSumFunctionName);
+        mWriteDiagnostics = tProblemFunctionParams.get<bool>("Write Diagnostics", false);
 
-        if(tProblemFunctionName.isParameter("Functions") == false)
+        if(tProblemFunctionParams.isParameter("Functions") == false)
         {
             const auto tErrorString = std::string("WeightedLocalScalarFunction: 'Functions' Keyword is not defined. ") +
                 + "Used the 'Functions' keyword to define each weighted function.";
             THROWERR(tErrorString)
         }
-        auto tFunctionNamesTeuchos = tProblemFunctionName.get<Teuchos::Array<std::string>>("Functions");
+        auto tFunctionNamesTeuchos = tProblemFunctionParams.get<Teuchos::Array<std::string>>("Functions");
         auto tFunctionNames = tFunctionNamesTeuchos.toVector();
 
-        if(tProblemFunctionName.isParameter("Weights") == false)
+        if(tProblemFunctionParams.isParameter("Weights") == false)
         {
             const auto tErrorString = std::string("WeightedLocalScalarFunction: 'Weights' Keyword is not defined. ") +
                 + "Used the 'Weights' keyword to define the weight of each weighted function.";
             THROWERR(tErrorString)
         }
-        auto tFunctionWeightsTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
+        auto tFunctionWeightsTeuchos = tProblemFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Weights");
         auto tFunctionWeights = tFunctionWeightsTeuchos.toVector();
 
         if (tFunctionNames.size() != tFunctionWeights.size())

@@ -2304,12 +2304,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamTra
       "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='1'/>              \n"
@@ -2486,12 +2488,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='1'/>              \n"
@@ -2673,12 +2677,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
@@ -2832,7 +2838,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Constraint'       type='string'  value='My Plastic Work'/>            \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -2859,12 +2864,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
       "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -2951,8 +2958,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
 }
 
 
-#ifdef RUN_DISABLED_TESTS
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -2966,7 +2972,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Constraint'       type='string'  value='My Plastic Work'/>            \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -2992,12 +2997,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -3054,20 +3061,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
     }, "set dirichlet values and indices");
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
-    // 4. Evaluate Objective Function
+    // 4. Evaluate criterion
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
-    auto tConstraintValue = tPlasticityProblem.constraintValue(tControls);
-    TEST_FLOATING_EQUALITY(tConstraintValue, -0.539482, tTolerance);
+    std::string tCriterionName("Plastic Work");
+    auto tCriterionValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
+    TEST_FLOATING_EQUALITY(tCriterionValue, -0.539482, tTolerance);
 
-    auto tConstraintGrad = tPlasticityProblem.constraintGradient(tControls);
+    auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
     std::vector<Plato::Scalar> tGold = {-0.927379, -0.46369, -0.927379, -0.46369};
-    auto tHostGrad = Kokkos::create_mirror(tConstraintGrad);
-    Kokkos::deep_copy(tHostGrad, tConstraintGrad);
+    auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
+    Kokkos::deep_copy(tHostGrad, tCriterionGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
     for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
     {
@@ -3075,11 +3083,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_2D)
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
-#endif
 
 
-#ifdef RUN_DISABLED_TESTS
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradientZ_2D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ_2D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
@@ -3093,7 +3099,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Constraint'       type='string'  value='My Plastic Work'/>            \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -3119,12 +3124,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -3182,16 +3189,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_constraint_grad_wrt_control(tPlasticityProblem, *tMesh);
+    std::string tCriterionName("Plastic Work");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
-#endif
 
 
-#ifdef RUN_DISABLED_TESTS
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_3D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -3205,7 +3211,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Constraint'       type='string'  value='My Plastic Work'/>            \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -3231,12 +3236,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='My Plastic Work'>                                               \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -3314,17 +3321,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
     }, "set dirichlet values and indices");
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
-    // 4. Evaluate Objective Function
+    // 4. Evaluate criterion
+    std::string tCriterionName("My Plastic Work");
+
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
-    auto tObjValue = tPlasticityProblem.constraintValue(tControls);
+    auto tObjValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
     TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
 
-    auto tObjGrad = tPlasticityProblem.constraintGradient(tControls);
+    auto tObjGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
     std::vector<Plato::Scalar> tGold = 
         {
          -0.0869418, -0.115922, -0.0289806, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.0289806, -0.115922,
@@ -3340,11 +3349,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ConstraintTest_3D)
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
-#endif
 
 
-#ifdef RUN_DISABLED_TESTS
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradientZ_3D)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ_3D)
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -3358,7 +3365,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Constraint'       type='string'  value='My Plastic Work'/>            \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -3384,12 +3390,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -3468,12 +3476,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestConstraintGradient
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_constraint_grad_wrt_control(tPlasticityProblem, *tMesh);
+    std::string tCriterionName("Plastic Work");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
-#endif
 
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
@@ -3490,7 +3498,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'         type='string'  value='My Plastic Work'/>           \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -3516,12 +3523,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -3578,17 +3587,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
     }, "set dirichlet values and indices");
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
-    // 4. Evaluate Objective Function
+    // 4. Evaluate criterion
+    std::string tCriterionName("Plastic Work");
+
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
-    auto tObjValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
+    auto tObjValue = tPlasticityProblem.criterionValue(tControls, tSolution, tCriterionName);
     TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
 
-    auto tObjGrad = tPlasticityProblem.objectiveGradient(tControls, tSolution);
+    auto tObjGrad = tPlasticityProblem.criterionGradient(tControls, tSolution, tCriterionName);
     std::vector<Plato::Scalar> tGold = {-0.927379, -0.46369, -0.927379, -0.46369};
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
@@ -3615,7 +3626,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'         type='string'  value='My Plastic Work'/>           \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -3641,12 +3651,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='My Plastic Work'>                                               \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -3704,7 +3716,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    std::string tCriterionName("My Plastic Work");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -3725,7 +3738,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'         type='string'  value='My Plastic Work'/>           \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -3751,12 +3763,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -3834,17 +3848,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
     }, "set dirichlet values and indices");
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
-    // 4. Evaluate Objective Function
+    // 4. Evaluate criterion
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
 
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
-    auto tObjValue = tPlasticityProblem.objectiveValue(tControls, tSolution);
+    std::string tCriterionName("Plastic Work");
+    auto tObjValue = tPlasticityProblem.criterionValue(tControls, tSolution, tCriterionName);
     TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
 
-    auto tObjGrad = tPlasticityProblem.objectiveGradient(tControls, tSolution);
+    auto tObjGrad = tPlasticityProblem.criterionGradient(tControls, tSolution, tCriterionName);
     std::vector<Plato::Scalar> tGold = 
         {
          -0.0869418, -0.115922, -0.0289806, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.0289806, -0.115922,
@@ -3876,7 +3891,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'         type='string'  value='My Plastic Work'/>           \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -3902,12 +3916,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Plastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Plastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -3986,7 +4002,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    std::string tCriterionName("Plastic Work");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -4007,7 +4024,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'         type='string'  value='My Elastic Work'/>           \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -4033,12 +4049,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Elastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Elastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -4096,7 +4114,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    std::string tCriterionName("Elastic Work");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -4117,7 +4136,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/> \n"
-      "  <Parameter name='Objective'         type='string'  value='My Elastic Work'/>           \n"
       "  <ParameterList name='Material Model'>                                                  \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                            \n"
@@ -4143,12 +4161,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
-      "  <ParameterList name='My Elastic Work'>                                                 \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>       \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>          \n"
-      "    <Parameter name='Multiplier'           type='double' value='-1.0'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                   \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                \n"
+      "  <ParameterList name='Criteria'>                                                        \n"
+      "    <ParameterList name='Elastic Work'>                                                  \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>        \n"
+      "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
+      "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
@@ -4227,7 +4247,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    std::string tCriterionName("Elastic Work");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -4248,7 +4269,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "<ParameterList name='Plato Problem'>                                                               \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                           \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/>           \n"
-      "  <Parameter name='Objective'         type='string'  value='My Objective'/>                        \n"
       "  <ParameterList name='Material Model'>                                                            \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                                \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                                      \n"
@@ -4274,23 +4294,25 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                               \n"
       "    </ParameterList>                                                                               \n"
       "  </ParameterList>                                                                                 \n"
-        "  <ParameterList name='My Objective'>                                                            \n"
-        "    <Parameter name='Type' type='string' value='Weighted Sum'/>                                  \n"
-        "    <Parameter name='Functions' type='Array(string)' value='{My Elastic Work,My Plastic Work}'/> \n"
-        "    <Parameter name='Weights' type='Array(double)' value='{-1.0,-1.0}'/>                         \n"
-        "  </ParameterList>                                                                               \n"
-        "  <ParameterList name='My Elastic Work'>                                                         \n"
-        "    <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
-        "    <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>                  \n"
-        "    <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
-        "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
-        "  </ParameterList>                                                                               \n"
-        "  <ParameterList name='My Plastic Work'>                                                         \n"
-        "    <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
-        "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>                  \n"
-        "    <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
-        "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
-        "  </ParameterList>                                                                               \n"
+      "  <ParameterList name='Criteria'>                                                                  \n"
+      "    <ParameterList name='Objective'>                                                               \n"
+      "      <Parameter name='Type' type='string' value='Weighted Sum'/>                                  \n"
+      "      <Parameter name='Functions' type='Array(string)' value='{My Elastic Work,My Plastic Work}'/> \n"
+      "      <Parameter name='Weights' type='Array(double)' value='{-1.0,-1.0}'/>                         \n"
+      "    </ParameterList>                                                                               \n"
+      "    <ParameterList name='My Elastic Work'>                                                         \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>                  \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
+      "    </ParameterList>                                                                               \n"
+      "    <ParameterList name='My Plastic Work'>                                                         \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>                  \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
+      "    </ParameterList>                                                                               \n"
+      "  </ParameterList>                                                                                 \n"
       "  <ParameterList name='Time Stepping'>                                                             \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>                        \n"
       "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>                        \n"
@@ -4347,7 +4369,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    std::string tCriterionName("Objective");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -4368,7 +4391,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "<ParameterList name='Plato Problem'>                                                             \n"
       "  <Parameter name='Physics'          type='string'  value='Mechanical'/>                         \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Infinite Strain Plasticity'/>         \n"
-      "  <Parameter name='Objective'         type='string'  value='My Objective'/>                      \n"
       "  <ParameterList name='Material Model'>                                                          \n"
       "    <ParameterList name='Isotropic Linear Elastic'>                                              \n"
       "      <Parameter  name='Density' type='double' value='1000'/>                                    \n"
@@ -4394,22 +4416,24 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                             \n"
       "    </ParameterList>                                                                             \n"
       "  </ParameterList>                                                                               \n"
-      "  <ParameterList name='My Objective'>                                                            \n"
-      "    <Parameter name='Type' type='string' value='Weighted Sum'/>                                  \n"
-      "    <Parameter name='Functions' type='Array(string)' value='{My Elastic Work,My Plastic Work}'/> \n"
-      "    <Parameter name='Weights' type='Array(double)' value='{-1.0,-1.0}'/>                         \n"
-      "  </ParameterList>                                                                               \n"
-      "  <ParameterList name='My Elastic Work'>                                                         \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
-      "  </ParameterList>                                                                               \n"
-      "  <ParameterList name='My Plastic Work'>                                                         \n"
-      "    <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
-      "    <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>                  \n"
-      "    <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
-      "    <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
+      "  <ParameterList name='Criteria'>                                                                \n"
+      "    <ParameterList name='Objective'>                                                             \n"
+      "      <Parameter name='Type' type='string' value='Weighted Sum'/>                                \n"
+      "      <Parameter name='Functions' type='Array(string)' value='{Elastic Work, Plastic Work}'/>    \n"
+      "      <Parameter name='Weights' type='Array(double)' value='{-1.0,-1.0}'/>                       \n"
+      "    </ParameterList>                                                                             \n"
+      "    <ParameterList name='Elastic Work'>                                                          \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>             \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                         \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                      \n"
+      "    </ParameterList>                                                                             \n"
+      "    <ParameterList name='Plastic Work'>                                                          \n"
+      "      <Parameter name='Type'                 type='string' value='Scalar Function'/>             \n"
+      "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>                \n"
+      "      <Parameter name='Exponent'             type='double' value='3.0'/>                         \n"
+      "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                      \n"
+      "    </ParameterList>                                                                             \n"
       "  </ParameterList>                                                                               \n"
       "  <ParameterList name='Time Stepping'>                                                           \n"
       "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>                      \n"
@@ -4488,7 +4512,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
     // 4. TEST PARTIAL DERIVATIVE
-    auto tApproxError = Plato::test_objective_grad_wrt_control(tPlasticityProblem, *tMesh);
+    std::string tCriterionName("Objective");
+    auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");

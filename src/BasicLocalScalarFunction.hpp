@@ -771,7 +771,7 @@ private:
         Teuchos::ParameterList & aInputParams
     )
     {
-        if(aInputParams.isSublist(mFunctionName) == false)
+        if(aInputParams.sublist("Criteria").isSublist(mFunctionName) == false)
         {
             const auto tError = std::string("UNKNOWN USER DEFINED SCALAR FUNCTION SUBLIST '")
                     + mFunctionName + "'. USER DEFINED SCALAR FUNCTION SUBLIST '" + mFunctionName
@@ -779,8 +779,7 @@ private:
             THROWERR(tError)
         }
 
-        auto tInputData = aInputParams.sublist(mFunctionName);
-
+        auto tInputData = aInputParams.sublist("Criteria").sublist(mFunctionName);
         auto tFunctionType = tInputData.get<std::string>("Scalar Function Type", "UNDEFINED");
 
         mMultiplier = tInputData.get<Plato::Scalar>("Multiplier", 1.0);

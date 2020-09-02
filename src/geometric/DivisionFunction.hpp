@@ -39,25 +39,25 @@ private:
 
 	/******************************************************************************//**
      * @brief Initialization of Division Function
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
     void
     initialize(
-        Teuchos::ParameterList & aInputParams
+        Teuchos::ParameterList & aProblemParams
     )
     {
         Plato::Geometric::ScalarFunctionBaseFactory<PhysicsT> tFactory;
 
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
-        auto tNumeratorFunctionName = tProblemFunctionName.get<std::string>("Numerator");
-        auto tDenominatorFunctionName = tProblemFunctionName.get<std::string>("Denominator");
+        auto tNumeratorFunctionName = tFunctionParams.get<std::string>("Numerator");
+        auto tDenominatorFunctionName = tFunctionParams.get<std::string>("Denominator");
 
         mScalarFunctionBaseNumerator = 
-             tFactory.create(mSpatialModel, mDataMap, aInputParams, tNumeratorFunctionName);
+             tFactory.create(mSpatialModel, mDataMap, aProblemParams, tNumeratorFunctionName);
 
         mScalarFunctionBaseDenominator = 
-             tFactory.create(mSpatialModel, mDataMap, aInputParams, tDenominatorFunctionName);
+             tFactory.create(mSpatialModel, mDataMap, aProblemParams, tDenominatorFunctionName);
     }
 
 public:
@@ -65,13 +65,13 @@ public:
      * @brief Primary division function constructor
      * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
     DivisionFunction(
         const Plato::SpatialModel    & aSpatialModel,
               Plato::DataMap         & aDataMap,
-              Teuchos::ParameterList & aInputParams,
+              Teuchos::ParameterList & aProblemParams,
         const std::string            & aName
     ) :
         Plato::Geometric::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
@@ -79,7 +79,7 @@ public:
         mDataMap      (aDataMap),
         mFunctionName (aName)
     {
-        initialize(aInputParams);
+        initialize(aProblemParams);
     }
 
     /******************************************************************************//**

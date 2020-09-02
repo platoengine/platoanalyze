@@ -70,18 +70,18 @@ class InternalElasticEnergy :
      * @param aSpatialDomain Plato Analyze spatial domain
      * @param aDataMap Plato Analyze data map
      * @param aProblemParams input database for overall problem
-     * @param aPenaltyParams input database for penalty function
+     * @param aFunctionParams input database for function
     **********************************************************************************/
     InternalElasticEnergy(
         const Plato::SpatialDomain   & aSpatialDomain,
               Plato::DataMap         & aDataMap,
               Teuchos::ParameterList & aProblemParams,
-              Teuchos::ParameterList & aPenaltyParams,
+              Teuchos::ParameterList & aFunctionParams,
         const std::string            & aFunctionName
     ) :
         FunctionBaseType   (aSpatialDomain, aDataMap, aFunctionName),
         mCubatureRule      (std::make_shared<CubatureType>()),
-        mIndicatorFunction (aPenaltyParams),
+        mIndicatorFunction (aFunctionParams.sublist("Penalty Function")),
         mApplyWeighting    (mIndicatorFunction)
     {
         Plato::ElasticModelFactory<mSpaceDim> tMaterialModelFactory(aProblemParams);

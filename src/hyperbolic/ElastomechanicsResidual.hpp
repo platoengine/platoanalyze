@@ -81,6 +81,7 @@ class TransientMechanicsResidual :
         mBoundaryLoads        (nullptr)
     /**************************************************************************/
     {
+
         // create material model and get stiffness
         //
         Plato::ElasticModelFactory<SpaceDim> tMaterialModelFactory(aProblemParams);

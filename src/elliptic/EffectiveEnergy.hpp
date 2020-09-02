@@ -78,7 +78,7 @@ class EffectiveEnergy :
       auto materialModel = mmfactory.create(aSpatialDomain.getMaterialName());
       mCellStiffness = materialModel->getStiffnessMatrix();
 
-      Teuchos::ParameterList& tParams = aProblemParams.sublist(aFunctionName);
+      Teuchos::ParameterList& tParams = aProblemParams.sublist("Criteria").sublist(aFunctionName);
       auto tAssumedStrain = tParams.get<Teuchos::Array<Plato::Scalar>>("Assumed Strain");
       assert(tAssumedStrain.size() == mNumVoigtTerms);
       for( Plato::OrdinalType iVoigt=0; iVoigt<mNumVoigtTerms; iVoigt++)

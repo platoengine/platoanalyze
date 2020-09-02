@@ -13,7 +13,7 @@ namespace Parabolic
      * @brief Create method
      * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aDataMap Plato Analyze data map
-     * @param [in] aInputParams parameter input
+     * @param [in] aProblemParams parameter input
      * @param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     template <typename PhysicsT>
@@ -21,16 +21,17 @@ namespace Parabolic
     ScalarFunctionBaseFactory<PhysicsT>::create(
         Plato::SpatialModel    & aSpatialModel,
         Plato::DataMap         & aDataMap,
-        Teuchos::ParameterList & aInputParams,
+        Teuchos::ParameterList & aProblemParams,
         std::string            & aFunctionName
     )
     {
-        auto tProblemFunction = aInputParams.sublist(aFunctionName);
+        auto tProblemFunction = aProblemParams.sublist("Criteria").sublist(aFunctionName);
         auto tFunctionType = tProblemFunction.get<std::string>("Type", "Not Defined");
 
         if(tFunctionType == "Scalar Function")
         {
-            return std::make_shared<Plato::Parabolic::PhysicsScalarFunction<PhysicsT>>(aSpatialModel, aDataMap, aInputParams, aFunctionName);
+            return std::make_shared<Plato::Parabolic::PhysicsScalarFunction<PhysicsT>>
+                (aSpatialModel, aDataMap, aProblemParams, aFunctionName);
         }
         else
         {

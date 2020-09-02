@@ -22,7 +22,7 @@ TEUCHOS_UNIT_TEST( AnalyzeAppTests, MultipleProblemDefinitions )
 
   setenv("PLATO_APP_FILE", "MultipleProblemDefinitions_appfile.xml", true);
 
-  MPMD_App app(argc, argv, myComm);
+  Plato::MPMD_App app(argc, argv, myComm);
 
   app.initialize();
 
@@ -86,7 +86,7 @@ TEUCHOS_UNIT_TEST( AnalyzeAppTests, OperationParameter )
 
   setenv("PLATO_APP_FILE", "OperationParameter_appfile.xml", true);
 
-  MPMD_App app(argc, argv, myComm);
+  Plato::MPMD_App app(argc, argv, myComm);
 
   app.initialize();
 
@@ -161,7 +161,7 @@ TEUCHOS_UNIT_TEST( AnalyzeAppTests, CellForcing )
 
   setenv("PLATO_APP_FILE", "CellForcing_appfile.xml", true);
 
-  MPMD_App app(argc, argv, myComm);
+  Plato::MPMD_App app(argc, argv, myComm);
 
   app.initialize();
 
@@ -215,7 +215,7 @@ TEUCHOS_UNIT_TEST( AnalyzeAppTests, EffectiveEnergy )
 
   setenv("PLATO_APP_FILE", "EffectiveEnergy_appfile.xml", true);
 
-  MPMD_App app(argc, argv, myComm);
+  Plato::MPMD_App app(argc, argv, myComm);
 
   app.initialize();
 
@@ -262,7 +262,7 @@ TEUCHOS_UNIT_TEST( AnalyzeAppTests, InternalEnergyGradX )
 
   setenv("PLATO_APP_FILE", "InternalEnergyGradX_appfile.xml", true);
 
-  MPMD_App app(argc, argv, myComm);
+  Plato::MPMD_App app(argc, argv, myComm);
 
   app.initialize();
 
@@ -356,7 +356,7 @@ void objectiveFiniteDifferenceTest(std::string inputFile, std::string appFile, P
 
   setenv("PLATO_APP_FILE", appFile.c_str(), true);
 
-  MPMD_App app(argc, argv, myComm);
+  Plato::MPMD_App app(argc, argv, myComm);
 
   app.initialize();
 

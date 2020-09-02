@@ -21,17 +21,17 @@ struct FunctionFactory
 {
     /******************************************************************************//**
      * \brief Create a PLATO local vector function  inc (i.e. local residual equations)
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
-     * \param [in] aDataMap PLATO Analyze physics-based database
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
+     * \param [in] aDataMap Plato Analyze physics-based database
      * \param [in] aInputParams input parameters
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<EvaluationType>>
-    createLocalVectorFunctionInc(Omega_h::Mesh& aMesh, 
-                                 Omega_h::MeshSets& aMeshSets,
-                                 Plato::DataMap& aDataMap, 
-                                 Teuchos::ParameterList& aInputParams)
+    createLocalVectorFunctionInc(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aInputParams
+    )
     {
         if(aInputParams.isSublist("Plasticity Model") == false)
         {
@@ -45,7 +45,7 @@ struct FunctionFactory
           constexpr Plato::OrdinalType tSpaceDim = EvaluationType::SpatialDim;
           return std::make_shared
             <J2PlasticityLocalResidual<EvaluationType, Plato::SimplexThermoPlasticity<tSpaceDim>>>
-            (aMesh, aMeshSets, aDataMap, aInputParams);
+            (aSpatialDomain, aDataMap, aInputParams);
         }
         else
         {

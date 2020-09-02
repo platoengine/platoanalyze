@@ -75,18 +75,23 @@ private:
     {
         typename PhysicsT::FunctionFactory tFactory;
 
-        auto tProblemDefault = aInputParams.sublist(mFunctionName);
+        auto tProblemDefault = aInputParams.sublist("Criteria").sublist(mFunctionName);
         auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
 
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tName = tDomain.getDomainName();
 
-            mValueFunctions[tName]     = tFactory.template createScalarFunctionParabolic<Residual> (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
-            mGradientUFunctions[tName] = tFactory.template createScalarFunctionParabolic<GradientU>(tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
-            mGradientVFunctions[tName] = tFactory.template createScalarFunctionParabolic<GradientV>(tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
-            mGradientXFunctions[tName] = tFactory.template createScalarFunctionParabolic<GradientX>(tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
-            mGradientZFunctions[tName] = tFactory.template createScalarFunctionParabolic<GradientZ>(tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mValueFunctions[tName]     = tFactory.template createScalarFunctionParabolic<Residual>
+                (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mGradientUFunctions[tName] = tFactory.template createScalarFunctionParabolic<GradientU>
+                (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mGradientVFunctions[tName] = tFactory.template createScalarFunctionParabolic<GradientV>
+                (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mGradientXFunctions[tName] = tFactory.template createScalarFunctionParabolic<GradientX>
+                (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mGradientZFunctions[tName] = tFactory.template createScalarFunctionParabolic<GradientZ>
+                (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
         }
     }
 

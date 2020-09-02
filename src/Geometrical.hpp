@@ -29,7 +29,7 @@ struct FunctionFactory{
     {
         if( strScalarFunctionType == "Volume" )
         {
-            auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
+            auto penaltyParams = aParamList.sublist("Criteria").sublist(strScalarFunctionName).sublist("Penalty Function");
             std::string penaltyType = penaltyParams.get<std::string>("Type");
             if( penaltyType == "SIMP" )
             {

@@ -622,7 +622,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
             //
             Plato::ScalarArray3DT<ConfigScalar>
                 tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+            Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS, tDomain);
 
             // Workset control
             //

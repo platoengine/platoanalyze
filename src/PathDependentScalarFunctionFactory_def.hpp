@@ -30,7 +30,7 @@ PathDependentScalarFunctionFactory<PhysicsT>::create(
           Teuchos::ParameterList & aInputParams,
     const std::string            & aFunctionName)
 {
-    auto tProblemFunction = aInputParams.sublist(aFunctionName);
+    auto tProblemFunction = aInputParams.sublist("Criteria").sublist(aFunctionName);
     auto tFunctionType = tProblemFunction.get < std::string > ("Type", "UNDEFINED");
     if(tFunctionType == "Scalar Function")
     {

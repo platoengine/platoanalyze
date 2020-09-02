@@ -82,15 +82,16 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                                \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>                 \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Electroelastic Energy'/>\n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                         \n"
-    "  <ParameterList name='My Internal Electroelastic Energy'>                          \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>                  \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Electroelastic Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                         \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                        \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>                   \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                           \n"
+    "  <ParameterList name='Criteria'>                                                   \n"
+    "    <ParameterList name='Internal Electroelastic Energy'>                           \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>                \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Electroelastic Energy'/>  \n"
+    "      <ParameterList name='Penalty Function'>                                       \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>                      \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>                 \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                         \n"
+    "      </ParameterList>                                                              \n"
     "    </ParameterList>                                                                \n"
     "  </ParameterList>                                                                  \n"
     "  <ParameterList name='Elliptic'>                                                   \n"
@@ -256,19 +257,20 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
   }
 
 
-  // create objective
+  // create criterion
   //
+  std::string tMyFunctionName("Internal Electroelastic Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<spaceDim>>
-    scalarFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("Objective"));
+    scalarFunction(tSpatialModel, tDataMap, *params, tMyFunctionName);
 
-  // compute and test objective value
+  // compute and test criterion value
   //
   auto value = scalarFunction.value(Plato::Solution(states), z);
 
   Plato::Scalar value_gold = 21.1519092307692240;
   TEST_FLOATING_EQUALITY(value, value_gold, 1e-13);
 
-  // compute and test objective gradient wrt state, u
+  // compute and test criterion gradient wrt state, u
   //
   auto grad_u = scalarFunction.gradient_u(Plato::Solution(states), z, /*stepIndex=*/0);
 
@@ -295,7 +297,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
     }
   }
 
-  // compute and test objective gradient wrt control, z
+  // compute and test criterion gradient wrt control, z
   //
   auto grad_z = scalarFunction.gradient_z(Plato::Solution(states), z);
 
@@ -318,7 +320,7 @@ TEUCHOS_UNIT_TEST( ElectroelasticTests, InternalElectroelasticEnergy3D )
     TEST_FLOATING_EQUALITY(grad_z_Host[iNode], grad_z_gold[iNode], 1e-13);
   }
 
-  // compute and test objective gradient wrt node position, x
+  // compute and test criterion gradient wrt node position, x
   //
   auto grad_x = scalarFunction.gradient_x(Plato::Solution(states), z);
   

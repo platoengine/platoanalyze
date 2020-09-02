@@ -628,15 +628,17 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, InternalThermalEnergy3D )
     "  <Parameter name='PDE Constraint' type='string' value='Parabolic'/>        \n"
     "  <Parameter name='Objective' type='string' value='My Internal Thermal Energy'/> \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                 \n"
-    "  <ParameterList name='My Internal Thermal Energy'>                         \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>          \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Thermal Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                 \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>           \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                   \n"
-    "    </ParameterList>                                                        \n"
-    "  </ParameterList>                                                          \n"
+    "  <ParameterList name='Criteria'>                                          \n"
+    "    <ParameterList name='Internal Energy'>                                 \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>       \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Thermal Energy'/>  \n"
+    "      <ParameterList name='Penalty Function'>                              \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>             \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>        \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                \n"
+    "      </ParameterList>                                                     \n"
+    "    </ParameterList>                                                       \n"
+    "  </ParameterList>                                                         \n"
     "  <ParameterList name='Material Models'>                                    \n"
     "    <ParameterList name='Unobtainium'>                                      \n"
     "      <ParameterList name='Thermal Mass'>                                   \n"
@@ -688,8 +690,9 @@ TEUCHOS_UNIT_TEST( HeatEquationTests, InternalThermalEnergy3D )
   Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
 
   Plato::DataMap dataMap;
+  std::string tMyFunction("Internal Energy");
   Plato::Parabolic::PhysicsScalarFunction<::Plato::Thermal<spaceDim>>
-    scalarFunction(tSpatialModel, dataMap, *tParamList, tParamList->get<std::string>("Objective"));
+    scalarFunction(tSpatialModel, dataMap, *tParamList, tMyFunction);
 
   auto timeStep = tParamList->sublist("Time Integration").get<Plato::Scalar>("Time Step");
   int timeIncIndex = 1;

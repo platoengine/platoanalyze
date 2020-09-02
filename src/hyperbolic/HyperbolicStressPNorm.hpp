@@ -65,22 +65,20 @@ class StressPNorm :
         const Plato::SpatialDomain   & aSpatialDomain,
               Plato::DataMap         & aDataMap, 
               Teuchos::ParameterList & aProblemParams, 
-              Teuchos::ParameterList & aPenaltyParams,
+              Teuchos::ParameterList & aFunctionParams,
         const std::string            & aFunctionName
     ) :
         FunctionBaseType   (aSpatialDomain, aDataMap, aFunctionName),
         mCubatureRule      (std::make_shared<CubatureType>()),
-        mIndicatorFunction (aPenaltyParams),
+        mIndicatorFunction (aFunctionParams.sublist("Penalty Function")),
         mApplyWeighting    (mIndicatorFunction)
     /**************************************************************************/
     {
       Plato::ElasticModelFactory<mSpaceDim> mmfactory(aProblemParams);
       mMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
 
-      auto params = aProblemParams.get<Teuchos::ParameterList>(aFunctionName);
-
       TensorNormFactory<mNumVoigtTerms, EvaluationType> normFactory;
-      mNorm = normFactory.create(params);
+      mNorm = normFactory.create(aFunctionParams);
     }
 
     /**************************************************************************/

@@ -60,25 +60,28 @@ private:
 private:
     /******************************************************************************//**
      * \brief Initialization of Geometry Scalar Function
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
     **********************************************************************************/
     void
     initialize(
-        Teuchos::ParameterList & aInputParams
+        Teuchos::ParameterList & aProblemParams
     )
     {
         typename GeometryT::FunctionFactory tFactory;
 
-        auto tProblemDefault = aInputParams.sublist(mFunctionName);
-        auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
+        auto tFunctionType = tFunctionParams.get<std::string>("Scalar Function Type", "");
 
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tName = tDomain.getDomainName();
 
-            mValueFunctions    [tName] = tFactory.template createScalarFunction<Residual> (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
-            mGradientXFunctions[tName] = tFactory.template createScalarFunction<GradientX>(tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
-            mGradientZFunctions[tName] = tFactory.template createScalarFunction<GradientZ>(tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mValueFunctions    [tName] = tFactory.template createScalarFunction<Residual> 
+                (tDomain, mDataMap, aProblemParams, tFunctionType, mFunctionName);
+            mGradientXFunctions[tName] = tFactory.template createScalarFunction<GradientX>
+                (tDomain, mDataMap, aProblemParams, tFunctionType, mFunctionName);
+            mGradientZFunctions[tName] = tFactory.template createScalarFunction<GradientZ>
+                (tDomain, mDataMap, aProblemParams, tFunctionType, mFunctionName);
         }
     }
 
@@ -87,13 +90,13 @@ public:
      * \brief Primary physics scalar function constructor
      * \param [in] aSpatialModel Plato Analyze spatial model
      * \param [in] aDataMap PLATO Engine and Analyze data map
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
      * \param [in] aName user defined function name
     **********************************************************************************/
     GeometryScalarFunction(
         const Plato::SpatialModel    & aSpatialModel,
               Plato::DataMap         & aDataMap,
-              Teuchos::ParameterList & aInputParams,
+              Teuchos::ParameterList & aProblemParams,
               std::string            & aName
     ) :
         Plato::Geometric::WorksetBase<GeometryT>(aSpatialModel.Mesh),
@@ -101,7 +104,7 @@ public:
         mDataMap      (aDataMap),
         mFunctionName (aName)
     {
-        initialize(aInputParams);
+        initialize(aProblemParams);
     }
 
     /******************************************************************************//**

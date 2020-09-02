@@ -80,7 +80,7 @@ class SharedValue : public SharedData
 
 struct Analyze {
     PyObject_HEAD
-    std::shared_ptr<MPMD_App> mMPMDApp;
+    std::shared_ptr<Plato::MPMD_App> mMPMDApp;
     std::vector<int> mLocalNodeIDs;
     std::vector<int> mLocalElemIDs;
     static int mNumInstances;
@@ -135,7 +135,7 @@ Analyze_importData(Analyze *self, PyObject *args, PyObject *kwds)
     } else
     if( inType == "SCALAR_PARAMETER" )
     {
-        std::vector<std::string> tokens = split(inName,':');
+        std::vector<std::string> tokens = Plato::split(inName,':');
         auto context = tokens[0];
         auto parameter = tokens[1];
         PlatoPython::ScalarParameter inData(context);
@@ -314,7 +314,7 @@ Analyze_init(Analyze *self, PyObject *args, PyObject *kwds)
     MPI_Comm myComm;
     MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
     setenv("PLATO_APP_FILE", strAppfileName.c_str(), true);
-    self->mMPMDApp = std::make_shared<MPMD_App>(argc, argv, myComm);
+    self->mMPMDApp = std::make_shared<Plato::MPMD_App>(argc, argv, myComm);
 
     free(arg0); free(arg1); free(argv);
 

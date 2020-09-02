@@ -126,13 +126,14 @@ public:
     *
     ******************************************************************************/
     LocalVectorFunctionInc(
-        Omega_h::Mesh& aMesh,
-        Plato::DataMap& aDataMap
+        const Plato::SpatialModel & aSpatialModel,
+              Plato::DataMap      & aDataMap
     ) :
-        mWorksetBase(aMesh),
-        mNumCells(aMesh.nelems()),
-        mNumNodes(aMesh.nverts()),
-        mDataMap(aDataMap)
+        mWorksetBase  (aSpatialModel.Mesh),
+        mNumCells     (aSpatialModel.Mesh.nelems()),
+        mNumNodes     (aSpatialModel.Mesh.nverts()),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap)
     {
     }
 

@@ -62,48 +62,48 @@ private:
      * @brief Initialization of Mass Properties Function
      * @param [in] aMesh mesh database
      * @param [in] aMeshSets side sets database
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
     void
     initialize(
-        Teuchos::ParameterList & aInputParams
+        Teuchos::ParameterList & aProblemParams
     )
     {
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tName = tDomain.getDomainName();
 
-            auto tMaterialModelsInputs = aInputParams.get<Teuchos::ParameterList>("Material Models");
+            auto tMaterialModelsInputs = aProblemParams.get<Teuchos::ParameterList>("Material Models");
             if( tMaterialModelsInputs.isSublist(tDomain.getMaterialName()) )
             {
-                auto tMaterialModelInputs = aInputParams.sublist(tDomain.getMaterialName());
+                auto tMaterialModelInputs = aProblemParams.sublist(tDomain.getMaterialName());
                 mMaterialDensities[tName] = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
             }
 
         }
-        createLeastSquaresFunction(mSpatialModel, aInputParams);
+        createLeastSquaresFunction(mSpatialModel, aProblemParams);
     }
 
     /******************************************************************************//**
      * @brief Create the least squares mass properties function
      * @param [in] aSpatialModel Plato Analyze spatial model
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
     void
     createLeastSquaresFunction(
         const Plato::SpatialModel    & aSpatialModel,
-              Teuchos::ParameterList & aInputParams
+              Teuchos::ParameterList & aProblemParams
     )
     {
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
-        auto tPropertyNamesTeuchos      = tProblemFunctionName.get<Teuchos::Array<std::string>>("Properties");
-        auto tPropertyWeightsTeuchos    = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
-        auto tPropertyGoldValuesTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
+        auto tPropertyNamesArray      = tFunctionParams.get<Teuchos::Array<std::string>>("Properties");
+        auto tPropertyWeightsArray    = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Weights");
+        auto tPropertyGoldValuesArray = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
 
-        auto tPropertyNames      = tPropertyNamesTeuchos.toVector();
-        auto tPropertyWeights    = tPropertyWeightsTeuchos.toVector();
-        auto tPropertyGoldValues = tPropertyGoldValuesTeuchos.toVector();
+        auto tPropertyNames      = tPropertyNamesArray.toVector();
+        auto tPropertyWeights    = tPropertyWeightsArray.toVector();
+        auto tPropertyGoldValues = tPropertyGoldValuesArray.toVector();
 
         if (tPropertyNames.size() != tPropertyWeights.size())
         {
@@ -776,13 +776,13 @@ public:
      * @brief Primary Mass Properties Function constructor
      * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aDataMap Plato Analyze data map
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
     MassPropertiesFunction(
         const Plato::SpatialModel    & aSpatialModel,
               Plato::DataMap         & aDataMap,
-              Teuchos::ParameterList & aInputParams,
+              Teuchos::ParameterList & aProblemParams,
               std::string            & aName
     ) :
         Plato::Geometric::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
@@ -790,7 +790,7 @@ public:
         mDataMap         (aDataMap),
         mFunctionName    (aName)
     {
-        initialize(aInputParams);
+        initialize(aProblemParams);
     }
 
     /******************************************************************************//**

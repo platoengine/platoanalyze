@@ -32,13 +32,12 @@ private:
     using Plato::WorksetBase<PhysicsT>::mNumNodesPerCell; /*!< number of nodes per cell/element */
     using Plato::WorksetBase<PhysicsT>::mNumDofsPerNode; /*!< number of degree of freedom per node */
     using Plato::WorksetBase<PhysicsT>::mNumSpatialDims; /*!< number of spatial dimensions */
-    using Plato::WorksetBase<PhysicsT>::mNumControl; /*!< number of control variables */
     using Plato::WorksetBase<PhysicsT>::mNumNodes; /*!< total number of nodes in the mesh */
     using Plato::WorksetBase<PhysicsT>::mNumCells; /*!< total number of cells/elements in the mesh */
 
-    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal; /*!< number of degree of freedom per cell/element */
-    using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal; /*!< number of degree of freedom per cell/element */
-    using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal; /*!< number of degree of freedom per cell/element */
+    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal;
+    using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
+    using Plato::WorksetBase<PhysicsT>::mConfigEntryOrdinal;
 
     using Residual = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Residual; /*!< result variables automatic differentiation type */
     using Jacobian = typename Plato::Evaluation<typename PhysicsT::SimplexT>::Jacobian; /*!< state variables automatic differentiation type */
@@ -63,26 +62,31 @@ private:
 private:
     /******************************************************************************//**
      * \brief Initialization of Physics Scalar Function
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
     **********************************************************************************/
     void
     initialize(
-        Teuchos::ParameterList & aInputParams
+        Teuchos::ParameterList & aProblemParams
     )
     {
         typename PhysicsT::FunctionFactory tFactory;
 
-        auto tProblemDefault = aInputParams.sublist(mFunctionName);
-        auto tFunctionType   = tProblemDefault.get<std::string>("Scalar Function Type", "");
+        auto tProblemDefault = aProblemParams.sublist("Criteria").sublist(mFunctionName);
+        auto tFunctionType = tProblemDefault.get<std::string>("Scalar Function Type", "");
+
 
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tName = tDomain.getDomainName();
 
-            mValueFunctions[tName]     = tFactory.template createScalarFunction<Residual> (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
-            mGradientUFunctions[tName] = tFactory.template createScalarFunction<Jacobian> (tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
-            mGradientXFunctions[tName] = tFactory.template createScalarFunction<GradientX>(tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
-            mGradientZFunctions[tName] = tFactory.template createScalarFunction<GradientZ>(tDomain, mDataMap, aInputParams, tFunctionType, mFunctionName);
+            mValueFunctions[tName]     = tFactory.template createScalarFunction<Residual> 
+                (tDomain, mDataMap, aProblemParams, tFunctionType, mFunctionName);
+            mGradientUFunctions[tName] = tFactory.template createScalarFunction<Jacobian> 
+                (tDomain, mDataMap, aProblemParams, tFunctionType, mFunctionName);
+            mGradientXFunctions[tName] = tFactory.template createScalarFunction<GradientX>
+                (tDomain, mDataMap, aProblemParams, tFunctionType, mFunctionName);
+            mGradientZFunctions[tName] = tFactory.template createScalarFunction<GradientZ>
+                (tDomain, mDataMap, aProblemParams, tFunctionType, mFunctionName);
         }
     }
 
@@ -91,13 +95,13 @@ public:
      * \brief Primary physics scalar function constructor
      * \param [in] aSpatialModel Plato Analyze spatial model
      * \param [in] aDataMap Plato Analyze data map
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
      * \param [in] aName user defined function name
     **********************************************************************************/
     PhysicsScalarFunction(
         const Plato::SpatialModel    & aSpatialModel,
               Plato::DataMap         & aDataMap,
-              Teuchos::ParameterList & aInputParams,
+              Teuchos::ParameterList & aProblemParams,
               std::string            & aName
     ) :
         Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
@@ -105,7 +109,7 @@ public:
         mDataMap      (aDataMap),
         mFunctionName (aName)
     {
-        initialize(aInputParams);
+        initialize(aProblemParams);
     }
 
     /******************************************************************************//**

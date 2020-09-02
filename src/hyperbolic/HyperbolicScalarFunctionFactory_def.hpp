@@ -26,7 +26,7 @@ namespace Hyperbolic
         std::string            & aFunctionName
     )
     {
-        auto tProblemFunction = aInputParams.sublist(aFunctionName);
+        auto tProblemFunction = aInputParams.sublist("Criteria").sublist(aFunctionName);
         auto tFunctionType = tProblemFunction.get<std::string>("Type", "Not Defined");
 
         if(tFunctionType == "Scalar Function")

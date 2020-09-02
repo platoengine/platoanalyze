@@ -196,14 +196,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3D)
 
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
+
     "<ParameterList name='Plato Problem'>                                           \n"
-    "  <Parameter name='Objective' type='string' value='My Mass Properties'/>       \n"
-    "  <ParameterList name='My Mass Properties'>                                    \n"
-    "      <Parameter name='Type' type='string' value='Mass Properties'/>           \n"
-    "      <Parameter name='Properties' type='Array(string)' value='{Mass,CGx,CGy,CGz,Ixx,Iyy,Izz,Ixy,Iyz}'/>     \n"
-    "      <Parameter name='Weights' type='Array(double)' value='{2.0,0.1,2.0,3.0,4.0,5.0,6.0,7.0,8.0}'/>         \n"
-    "      <Parameter name='Gold Values' type='Array(double)' value='{0.2,0.05,0.55,0.75,0.5,0.5,0.5,0.3,0.3}'/>  \n"
-    "  </ParameterList>                                                             \n"
+    "  <ParameterList name='Criteria'>                                                        \n"
+    "    <ParameterList name='Mass Properties'>                                               \n"
+    "        <Parameter name='Type' type='string' value='Mass Properties'/>                   \n"
+    "        <Parameter name='Properties' type='Array(string)' value='{Mass,CGx,CGy,CGz,Ixx,Iyy,Izz,Ixy,Iyz}'/>     \n"
+    "        <Parameter name='Weights' type='Array(double)' value='{2.0,0.1,2.0,3.0,4.0,5.0,6.0,7.0,8.0}'/>         \n"
+    "        <Parameter name='Gold Values' type='Array(double)' value='{0.2,0.05,0.55,0.75,0.5,0.5,0.5,0.3,0.3}'/>  \n"
+    "    </ParameterList>                                                                     \n"
+    "  </ParameterList>                                                                       \n"
     "  <ParameterList name='Material Models'>                                       \n"
     "    <ParameterList name='Goop'>                                                \n"
     "      <Parameter  name='Density' type='double' value='0.5'/>                   \n"
@@ -225,7 +227,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3D)
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
     Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
     Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParams);
-    std::string tFuncName = "My Mass Properties";
+    std::string tFuncName = "Mass Properties";
     Plato::Geometric::MassPropertiesFunction<Plato::Geometrical<tSpaceDim>>
           tMassProperties(tSpatialModel, tDataMap, *tParams, tFuncName);
 
@@ -263,12 +265,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3DNormalized)
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                           \n"
     "  <Parameter name='Objective' type='string' value='My Mass Properties'/>       \n"
-    "  <ParameterList name='My Mass Properties'>                                    \n"
-    "      <Parameter name='Type' type='string' value='Mass Properties'/>           \n"
-    "      <Parameter name='Properties' type='Array(string)' value='{Mass,CGx,CGy,CGz,Ixx,Iyy,Izz,Ixy,Ixz,Iyz}'/>     \n"
-    "      <Parameter name='Weights' type='Array(double)' value='{2.0,0.1,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0}'/>         \n"
-    "      <Parameter name='Gold Values' type='Array(double)' value='{0.2,0.05,0.55,0.75,5.4,5.5,5.4,-0.1,-0.1,-0.15}'/>  \n"
-    "  </ParameterList>                                                             \n"
+    "  <ParameterList name='Criteria'>                                                        \n"
+    "    <ParameterList name='Mass Properties'>                                               \n"
+    "        <Parameter name='Type' type='string' value='Mass Properties'/>                   \n"
+    "        <Parameter name='Properties' type='Array(string)' value='{Mass,CGx,CGy,CGz,Ixx,Iyy,Izz,Ixy,Ixz,Iyz}'/>     \n"
+    "        <Parameter name='Weights' type='Array(double)' value='{2.0,0.1,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0}'/>         \n"
+    "        <Parameter name='Gold Values' type='Array(double)' value='{0.2,0.05,0.55,0.75,5.4,5.5,5.4,-0.1,-0.1,-0.15}'/>  \n"
+    "    </ParameterList>                                                                     \n"
+    "  </ParameterList>                                                                       \n"
     "  <ParameterList name='Material Models'>                                       \n"
     "    <ParameterList name='Goop'>                                                \n"
     "      <Parameter  name='Density' type='double' value='0.5'/>                   \n"
@@ -290,7 +294,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesValue3DNormalized)
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
     Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
     Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParams);
-    std::string tFuncName = "My Mass Properties";
+    std::string tFuncName = "Mass Properties";
     Plato::Geometric::MassPropertiesFunction<Plato::Geometrical<tSpaceDim>>
           tMassProperties(tSpatialModel, tDataMap, *tParams, tFuncName);
 
@@ -324,12 +328,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesGradZ_3D)
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                      \n"
-    "  <Parameter name='Objective' type='string' value='My Mass Properties'/>  \n"
-    "  <ParameterList name='My Mass Properties'>                               \n"
-    "      <Parameter name='Type' type='string' value='Mass Properties'/>      \n"
-    "      <Parameter name='Properties' type='Array(string)' value='{Mass,CGx,CGy,CGz,Ixx,Iyy,Izz,Ixy,Iyz}'/>  \n"
-    "      <Parameter name='Weights' type='Array(double)' value='{2.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0}'/>      \n"
-    "      <Parameter name='Gold Values' type='Array(double)' value='{0.2,0.45,0.55,0.75,0.5,0.5,0.5,0.3,0.3}'/>  \n"
+    "  <ParameterList name='Criteria'>                                         \n"
+    "    <ParameterList name='Mass Properties'>                                \n"
+    "        <Parameter name='Type' type='string' value='Mass Properties'/>    \n"
+    "        <Parameter name='Properties' type='Array(string)' value='{Mass,CGx,CGy,CGz,Ixx,Iyy,Izz,Ixy,Iyz}'/>  \n"
+    "        <Parameter name='Weights' type='Array(double)' value='{2.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0}'/>      \n"
+    "        <Parameter name='Gold Values' type='Array(double)' value='{0.2,0.45,0.55,0.75,0.5,0.5,0.5,0.3,0.3}'/>  \n"
+    "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                        \n"
     "  <ParameterList name='Material Models'>                                  \n"
     "    <ParameterList name='Goop'>                                           \n"
@@ -352,7 +357,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MassPropertiesGradZ_3D)
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
     Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
     Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParams);
-    std::string tFuncName = "My Mass Properties";
+    std::string tFuncName = "Mass Properties";
     Plato::Geometric::MassPropertiesFunction<Plato::Geometrical<tSpaceDim>>
           tMassProperties(tSpatialModel, tDataMap, *tParams, tFuncName);
 

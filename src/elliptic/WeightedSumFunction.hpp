@@ -51,11 +51,11 @@ private:
 	/******************************************************************************//**
      * \brief Initialization of Weighted Sum Function
      * \param [in] aSpatialModel Plato Analyze spatial model
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
     **********************************************************************************/
     void
     initialize(
-        Teuchos::ParameterList & aInputParams
+        Teuchos::ParameterList & aProblemParams
     )
     {
         Plato::Elliptic::ScalarFunctionBaseFactory<PhysicsT> tFactory;
@@ -63,13 +63,13 @@ private:
         mScalarFunctionBaseContainer.clear();
         mFunctionWeights.clear();
 
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
-        auto tFunctionNamesTeuchos = tProblemFunctionName.get<Teuchos::Array<std::string>>("Functions");
-        auto tFunctionWeightsTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
+        auto tFunctionNamesArray = tFunctionParams.get<Teuchos::Array<std::string>>("Functions");
+        auto tFunctionWeightsArray = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Weights");
 
-        auto tFunctionNames = tFunctionNamesTeuchos.toVector();
-        auto tFunctionWeights = tFunctionWeightsTeuchos.toVector();
+        auto tFunctionNames = tFunctionNamesArray.toVector();
+        auto tFunctionWeights = tFunctionWeightsArray.toVector();
 
         if (tFunctionNames.size() != tFunctionWeights.size())
         {
@@ -82,7 +82,7 @@ private:
         {
             mScalarFunctionBaseContainer.push_back(
                 tFactory.create(
-                    mSpatialModel, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]));
+                    mSpatialModel, mDataMap, aProblemParams, tFunctionNames[tFunctionIndex]));
             mFunctionWeights.push_back(tFunctionWeights[tFunctionIndex]);
         }
 
@@ -93,13 +93,13 @@ public:
      * \brief Primary weight sum function constructor
      * \param [in] aSpatialModel Plato Analyze spatial model
      * \param [in] aDataMap PLATO Engine and Analyze data map
-     * \param [in] aInputParams input parameters database
+     * \param [in] aProblemParams input parameters database
      * \param [in] aName user defined function name
     **********************************************************************************/
     WeightedSumFunction(
         const Plato::SpatialModel    & aSpatialModel,
               Plato::DataMap         & aDataMap,
-              Teuchos::ParameterList & aInputParams,
+              Teuchos::ParameterList & aProblemParams,
               std::string            & aName
     ) :
         Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
@@ -107,7 +107,7 @@ public:
         mDataMap      (aDataMap),
         mFunctionName (aName)
     {
-        initialize(aInputParams);
+        initialize(aProblemParams);
     }
 
     /******************************************************************************//**

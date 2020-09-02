@@ -142,48 +142,6 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
 
     /**************************************************************************//**
     *
-    * @brief Allocate residual evaluator
-    * @param [in] aResidual  residual evaluator
-    * @param [in] aGradientU gradient evaluator
-    *
-    ******************************************************************************/
-/* TODO necessary?
-    void allocateResidual(const std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<Residual>>& aResidual,
-                          const std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientU>>& aGradientU)
-    {
-        mVectorFunctionResidual  = aResidual;
-        mVectorFunctionGradientU = aGradientU;
-    }
-*/
-
-    /**************************************************************************//**
-    *
-    * @brief Allocate partial derivative with respect to control evaluator
-    * @param [in] aGradientZ partial derivative with respect to control evaluator
-    *
-    ******************************************************************************/
-/* TODO necessary?
-    void allocateGradientZ(const std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientZ>>& aGradientZ)
-    {
-        mVectorFunctionGradientZ = aGradientZ; 
-    }
-*/
-
-    /**************************************************************************//**
-    *
-    * @brief Allocate partial derivative with respect to configuration evaluator
-    * @param [in] GradientX partial derivative with respect to configuration evaluator
-    *
-    ******************************************************************************/
-/* TODO necessary?
-    void allocateGradientX(const std::shared_ptr<Plato::Hyperbolic::AbstractVectorFunction<GradientX>>& aGradientX)
-    {
-        mVectorFunctionGradientX = aGradientX; 
-    }
-*/
-
-    /**************************************************************************//**
-    *
     * @brief Return local number of degrees of freedom
     *
     ******************************************************************************/

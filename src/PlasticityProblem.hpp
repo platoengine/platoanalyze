@@ -34,15 +34,19 @@ class PlasticityProblem : public Plato::AbstractProblem
 
 // private member data
 private:
-    static constexpr auto mSpaceDim = PhysicsT::mSpaceDim;                           /*!< spatial dimensions*/
-    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;              /*!< number of nodes per cell*/
-    static constexpr auto mPressureDofOffset = PhysicsT::mPressureDofOffset;          /*!< number of pressure dofs offset*/
-    static constexpr auto mNumGlobalDofsPerNode = PhysicsT::mNumDofsPerNode;          /*!< number of global degrees of freedom per node*/
-    static constexpr auto mNumGlobalDofsPerCell = PhysicsT::mNumDofsPerCell;          /*!< number of global degrees of freedom per cell (i.e. element)*/
-    static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;      /*!< number of local degrees of freedom per cell (i.e. element)*/
+
+    using Criterion       = std::shared_ptr<Plato::LocalScalarFunctionInc>;
+    using Criteria        = std::map<std::string, Criterion>;
+
+    static constexpr auto mSpaceDim                = PhysicsT::mSpaceDim;             /*!< spatial dimensions*/
+    static constexpr auto mNumNodesPerCell         = PhysicsT::mNumNodesPerCell;      /*!< number of nodes per cell*/
+    static constexpr auto mPressureDofOffset       = PhysicsT::mPressureDofOffset;    /*!< number of pressure dofs offset*/
+    static constexpr auto mNumGlobalDofsPerNode    = PhysicsT::mNumDofsPerNode;       /*!< number of global degrees of freedom per node*/
+    static constexpr auto mNumGlobalDofsPerCell    = PhysicsT::mNumDofsPerCell;       /*!< number of global degrees of freedom per cell (i.e. element)*/
+    static constexpr auto mNumLocalDofsPerCell     = PhysicsT::mNumLocalDofsPerCell;  /*!< number of local degrees of freedom per cell (i.e. element)*/
     static constexpr auto mNumPressGradDofsPerCell = PhysicsT::mNumNodeStatePerCell;  /*!< number of projected pressure gradient degrees of freedom per cell (i.e. element)*/
     static constexpr auto mNumPressGradDofsPerNode = PhysicsT::mNumNodeStatePerNode;  /*!< number of projected pressure gradient degrees of freedom per node*/
-    static constexpr auto mNumConfigDofsPerCell = mSpaceDim * mNumNodesPerCell; /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
+    static constexpr auto mNumConfigDofsPerCell    = mSpaceDim * mNumNodesPerCell;    /*!< number of configuration (i.e. coordinates) degrees of freedom per cell (i.e. element) */
 
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
@@ -54,8 +58,7 @@ private:
     std::shared_ptr<Plato::LocalVectorFunctionInc<PlasticityT>> mLocalEquation; /*!< local equality constraint interface */
 
     // Optional
-    std::shared_ptr<Plato::LocalScalarFunctionInc> mObjective;  /*!< objective constraint interface */
-    std::shared_ptr<Plato::LocalScalarFunctionInc> mConstraint; /*!< constraint constraint interface */
+    Criteria mCriteria;
 
     Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps */
     Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps */
@@ -103,8 +106,6 @@ public:
       mLocalEquation(std::make_shared<Plato::LocalVectorFunctionInc<PlasticityT>>(mSpatialModel, mDataMap, aInputs)),
       mGlobalEquation(std::make_shared<Plato::GlobalVectorFunctionInc<PhysicsT>>(mSpatialModel, mDataMap, aInputs, aInputs.get<std::string>("PDE Constraint"))),
       mProjectionEquation(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(mSpatialModel, mDataMap, aInputs, std::string("State Gradient Projection"))),
-      mObjective(nullptr),
-      mConstraint(nullptr),
       mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
       mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
       mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
@@ -136,8 +137,6 @@ public:
             mLocalEquation(nullptr),
             mGlobalEquation(nullptr),
             mProjectionEquation(nullptr),
-            mObjective(nullptr),
-            mConstraint(nullptr),
             mNumPseudoTimeSteps(20),
             mMaxNumPseudoTimeSteps(80),
             mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
@@ -165,24 +164,6 @@ public:
     *******************************************************************************/
     virtual ~PlasticityProblem()
     {
-    }
-
-    /***************************************************************************//**
-     * \brief Append objective function evaluation interface
-     * \param [in] aInput objective function evaluation interface
-    *******************************************************************************/
-    void appendObjective(const std::shared_ptr<Plato::LocalScalarFunctionInc>& aInput)
-    {
-        mObjective = aInput;
-    }
-
-    /***************************************************************************//**
-     * \brief Append constraint function evaluation interface
-     * \param [in] aInput constraint function evaluation interface
-    *******************************************************************************/
-    void appendConstraint(const std::shared_ptr<Plato::LocalScalarFunctionInc>& aInput)
-    {
-        mConstraint = aInput;
     }
 
     /***************************************************************************//**
@@ -345,14 +326,9 @@ public:
         mGlobalEquation->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
         mProjectionEquation->updateProblem(tGlobalState, aControls, mCurrentPseudoTimeStep);
 
-        if(mObjective != nullptr)
+        for( auto tCriterion : mCriteria )
         {
-            mObjective->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
-        }
-
-        if(mConstraint != nullptr)
-        {
-            mConstraint->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
+            tCriterion.second->updateProblem(tGlobalState, mLocalStates, aControls, mCurrentPseudoTimeStep);
         }
     }
 
@@ -411,15 +387,20 @@ public:
     }
 
     /***************************************************************************//**
-     * \fn Plato::Scalar objectiveValue(const Plato::ScalarVector & aControls,
+     * \fn Plato::Scalar criterionValue(const Plato::ScalarVector & aControls,
      *                                  const Plato::Solution     & aSolution)
-     * \brief Evaluate objective function and return its value
+     * \brief Evaluate criterion function and return its value
      * \param [in] aControls 1D view of control variables
      * \param [in] aSolution Plato::Solution composed of state variables
-     * \return objective function value
+     * \param [in] aName Name of criterion.
+     * \return criterion function value
     *******************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControls,
-                                 const Plato::Solution     & aSolution) override
+    Plato::Scalar
+    criterionValue(
+        const Plato::ScalarVector & aControls,
+        const Plato::Solution     & aSolution,
+        const std::string         & aName
+    ) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -429,91 +410,100 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
-        if(mObjective == nullptr)
+
+        if( mCriteria.count(aName) )
         {
-            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
+            Criterion tCriterion = mCriteria[aName];
+
+            this->shouldOptimizationProblemStop();
+            auto tOutput = this->evaluateCriterion(*tCriterion, aSolution.State, mLocalStates, aControls);
+
+            return (tOutput);
         }
-
-        this->shouldOptimizationProblemStop();
-        auto tOutput = this->evaluateCriterion(*mObjective, aSolution.State, mLocalStates, aControls);
-
-        return (tOutput);
+        else
+        {
+            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+        }
     }
 
     /***************************************************************************//**
-     * \brief Evaluate objective function and return its value
+     * \brief Evaluate criterion function and return its value
      * \param [in] aControls 1D view of control variables
-     * \return objective function value
+     * \param [in] aName Name of criterion.
+     * \return criterion function value
     *******************************************************************************/
-    Plato::Scalar objectiveValue(const Plato::ScalarVector & aControls) override
+    Plato::Scalar
+    criterionValue(
+        const Plato::ScalarVector & aControls,
+        const std::string         & aName
+    ) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(mObjective == nullptr)
+
+        if( mCriteria.count(aName) )
         {
-            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
+            Criterion tCriterion = mCriteria[aName];
+
+            this->shouldOptimizationProblemStop();
+            auto tOutput = this->evaluateCriterion(*tCriterion, mGlobalStates, mLocalStates, aControls);
+
+            return (tOutput);
+        }
+        else
+        {
+            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
         }
 
-        this->shouldOptimizationProblemStop();
-        auto tOutput = this->evaluateCriterion(*mObjective, mGlobalStates, mLocalStates, aControls);
-
-        return (tOutput);
     }
 
     /***************************************************************************//**
-     * \brief Evaluate constraint function and return its value
+     * \brief Evaluate criterion partial derivative wrt control variables
      * \param [in] aControls 1D view of control variables
-     * \return constraint function value
+     * \param [in] aName Name of criterion.
+     * \return 1D view - criterion partial derivative wrt control variables
     *******************************************************************************/
-    Plato::Scalar constraintValue(const Plato::ScalarVector & aControls) override
+    Plato::ScalarVector
+    criterionGradient(
+        const Plato::ScalarVector & aControls,
+        const std::string         & aName
+    ) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(mConstraint == nullptr)
+
+        if( mCriteria.count(aName) )
         {
-            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
+            Criterion tCriterion = mCriteria[aName];
+
+            this->shouldOptimizationProblemStop();
+            auto tTotalDerivative = this->criterionGradient(aControls, Plato::Solution(mGlobalStates), tCriterion);
+
+            return tTotalDerivative;
         }
-
-        this->shouldOptimizationProblemStop();
-        auto tOutput = this->evaluateCriterion(*mConstraint, mGlobalStates, mLocalStates, aControls);
-
-        return (tOutput);
+        else
+        {
+            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+        }
     }
 
     /***************************************************************************//**
-     * \brief Evaluate objective partial derivative wrt control variables
-     * \param [in] aControls 1D view of control variables
-     * \return 1D view - objective partial derivative wrt control variables
-    *******************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControls) override
-    {
-        if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
-        }
-        if(mObjective == nullptr)
-        {
-            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
-        }
-
-        this->shouldOptimizationProblemStop();
-        auto tTotalDerivative = this->objectiveGradient(aControls, Plato::Solution(mGlobalStates));
-
-        return tTotalDerivative;
-    }
-
-    /***************************************************************************//**
-     * \brief Evaluate objective gradient wrt control variables
+     * \brief Evaluate criterion gradient wrt control variables
      * \param [in] aControls 1D view of control variables
      * \param [in] aSolution Plato::Solution composed of global state variables
-     * \return 1D view of the objective gradient wrt control variables
+     * \param [in] aName Name of criterion.
+     * \return 1D view of the criterion gradient wrt control variables
     *******************************************************************************/
-    Plato::ScalarVector objectiveGradient(const Plato::ScalarVector & aControls,
-                                          const Plato::Solution     & aSolution) override
+    Plato::ScalarVector
+    criterionGradient(
+        const Plato::ScalarVector & aControls,
+        const Plato::Solution     & aSolution,
+        const std::string         & aName
+    ) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -523,52 +513,102 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
-        if(mObjective == nullptr)
+
+        if( mCriteria.count(aName) )
         {
-            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
+            Criterion tCriterion = mCriteria[aName];
+
+            this->shouldOptimizationProblemStop();
+            auto tTotalDerivative = this->criterionGradient(aControls, aSolution, tCriterion);
+
+            return (tTotalDerivative);
+        }
+        else
+        {
+            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+        }
+    }
+
+    /***************************************************************************//**
+     * \brief Evaluate criterion gradient wrt control variables
+     * \param [in] aControls 1D view of control variables
+     * \param [in] aSolution Plato::Solution composed of global state variables
+     * \param [in] aName Name of criterion.
+     * \return 1D view of the criterion gradient wrt control variables
+    *******************************************************************************/
+    Plato::ScalarVector
+    criterionGradient(
+        const Plato::ScalarVector & aControls,
+        const Plato::Solution     & aSolution,
+              Criterion             aCriterion
+    )
+    {
+        if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
+        }
+        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
 
         this->shouldOptimizationProblemStop();
-        mAdjointSolver->appendScalarFunction(mObjective);
+        mAdjointSolver->appendScalarFunction(aCriterion);
 
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarVector tTotalDerivative("Total Derivative", tNumNodes);
         this->backwardTimeIntegration(Plato::PartialDerivative::CONTROL, aControls, tTotalDerivative);
-        this->addCriterionPartialDerivativeZ(*mObjective, aControls, tTotalDerivative);
+        this->addCriterionPartialDerivativeZ(*aCriterion, aControls, tTotalDerivative);
 
         return (tTotalDerivative);
     }
 
     /***************************************************************************//**
-     * \brief Evaluate objective partial derivative wrt configuration variables
+     * \brief Evaluate criterion partial derivative wrt configuration variables
      * \param [in] aControls 1D view of control variables
-     * \return 1D view - objective partial derivative wrt configuration variables
+     * \param [in] aName Name of criterion.
+     * \return 1D view - criterion partial derivative wrt configuration variables
     *******************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControls) override
+    Plato::ScalarVector
+    criterionGradientX(
+        const Plato::ScalarVector & aControls,
+        const std::string         & aName
+    ) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
             THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
         }
-        if(mObjective == nullptr)
+
+        if( mCriteria.count(aName) )
         {
-            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
+            Criterion tCriterion = mCriteria[aName];
+
+            this->shouldOptimizationProblemStop();
+            auto tTotalDerivative = this->criterionGradientX(aControls, Plato::Solution(mGlobalStates), tCriterion);
+
+            return tTotalDerivative;
+        }
+        else
+        {
+            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
         }
 
-        this->shouldOptimizationProblemStop();
-        auto tTotalDerivative = this->objectiveGradientX(aControls, Plato::Solution(mGlobalStates));
-
-        return tTotalDerivative;
     }
 
     /***************************************************************************//**
-     * \brief Evaluate objective gradient wrt configuration variables
+     * \brief Evaluate criterion gradient wrt configuration variables
      * \param [in] aControls 1D view of control variables
      * \param [in] aSolution Plato::Solution composed of global state variables
-     * \return 1D view of the objective gradient wrt control variables
+     * \param [in] aName Name of criterion.
+     * \return 1D view of the criterion gradient wrt control variables
     *******************************************************************************/
-    Plato::ScalarVector objectiveGradientX(const Plato::ScalarVector & aControls,
-                                           const Plato::Solution     & aSolution) override
+    Plato::ScalarVector
+    criterionGradientX(
+        const Plato::ScalarVector & aControls,
+        const Plato::Solution     & aSolution,
+        const std::string         & aName
+    ) override
     {
         if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
         {
@@ -578,63 +618,51 @@ public:
         {
             THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
-        if(mObjective == nullptr)
+
+        if( mCriteria.count(aName) )
         {
-            THROWERR("PLASTICITY PROBLEM: OBJECTIVE PTR IS NULL.");
+            Criterion tCriterion = mCriteria[aName];
+            auto tTotalDerivative = this->criterionGradientX(aControls, aSolution, tCriterion);
+
+            return (tTotalDerivative);
+        }
+        else
+        {
+            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+        }
+    }
+
+    /***************************************************************************//**
+     * \brief Evaluate criterion gradient wrt configuration variables
+     * \param [in] aControls 1D view of control variables
+     * \param [in] aSolution Plato::Solution composed of global state variables
+     * \param [in] aName Name of criterion.
+     * \return 1D view of the criterion gradient wrt control variables
+    *******************************************************************************/
+    Plato::ScalarVector
+    criterionGradientX(
+        const Plato::ScalarVector & aControls,
+        const Plato::Solution     & aSolution,
+              Criterion             aCriterion
+    )
+    {
+        if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
+        }
+        if(aSolution.State.size() <= static_cast<Plato::OrdinalType>(0))
+        {
+            THROWERR("PLASTICITY PROBLEM: GLOBAL STATE 2D VIEW IS EMPTY.");
         }
 
+
         this->shouldOptimizationProblemStop();
-        mAdjointSolver->appendScalarFunction(mObjective);
+        mAdjointSolver->appendScalarFunction(aCriterion);
         Plato::ScalarVector tTotalDerivative("Total Derivative", mNumConfigDofsPerCell);
         this->backwardTimeIntegration(Plato::PartialDerivative::CONFIGURATION, aControls, tTotalDerivative);
-        this->addCriterionPartialDerivativeX(*mObjective, aControls, tTotalDerivative);
+        this->addCriterionPartialDerivativeX(*aCriterion, aControls, tTotalDerivative);
 
         return (tTotalDerivative);
-    }
-
-    /***************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt control variables
-     * \param [in] aControls 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return 1D view - constraint partial derivative wrt control variables
-    *******************************************************************************/
-    Plato::ScalarVector constraintGradient(const Plato::ScalarVector & aControls) override
-    {
-        if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
-        }
-        if(mConstraint == nullptr)
-        {
-            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
-        }
-
-        auto tTotalDerivative = this->constraintGradient(aControls);
-
-        return tTotalDerivative;
-    }
-
-    /***************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt configuration variables
-     * \param [in] aControls 1D view of control variables
-     * \param [in] aGlobalState 2D view of state variables
-     * \return 1D view - constraint partial derivative wrt configuration variables
-    *******************************************************************************/
-    Plato::ScalarVector constraintGradientX(const Plato::ScalarVector & aControls) override
-    {
-        if(aControls.size() <= static_cast<Plato::OrdinalType>(0))
-        {
-            THROWERR("PLASTICITY PROBLEM: CONTROL 1D VIEW IS EMPTY.");
-        }
-        if(mConstraint == nullptr)
-        {
-            THROWERR("PLASTICITY PROBLEM: CONSTRAINT PTR IS NULL.");
-        }
-
-        this->shouldOptimizationProblemStop();
-        auto tTotalDerivative = this->constraintGradientX(aControls);
-
-        return tTotalDerivative;
     }
 
     /***************************************************************************//**
@@ -668,11 +696,8 @@ private:
     *******************************************************************************/
     void initialize(Teuchos::ParameterList& aInputParams)
     {
-        auto tMesh     = mSpatialModel.Mesh;
-        auto tMeshSets = mSpatialModel.MeshSets;
+        this->allocateCriteria(aInputParams);
 
-        this->allocateObjectiveFunction(aInputParams);
-        this->allocateConstraintFunction(aInputParams);
         if(mNumPseudoTimeSteps >= mMaxNumPseudoTimeSteps)
         {
             mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
@@ -1057,39 +1082,34 @@ private:
      * \brief Allocate objective function interface and adjoint containers
      * \param [in] aInputParams input parameters database
     *******************************************************************************/
-    void allocateObjectiveFunction(Teuchos::ParameterList& aInputParams)
+    void allocateCriteria(Teuchos::ParameterList& aInputParams)
     {
-        if(aInputParams.isType<std::string>("Objective"))
+        if(aInputParams.isSublist("Criteria"))
         {
-            auto tMesh     = mSpatialModel.Mesh;
-            auto tMeshSets = mSpatialModel.MeshSets;
-            auto tUserDefinedName = aInputParams.get<std::string>("Objective");
             Plato::PathDependentScalarFunctionFactory<PhysicsT> tObjectiveFunctionFactory;
-            mObjective = tObjectiveFunctionFactory.create(mSpatialModel, mDataMap, aInputParams, tUserDefinedName);
-        }
-        else
-        {
-            REPORT("Plasticity Problem: Objective Function is disabled for this problem.")
-        }
-    }
 
-    /***************************************************************************//**
-     * \brief Allocate constraint function interface and adjoint containers
-     * \param [in] aInputParams input parameters database
-    *******************************************************************************/
-    void allocateConstraintFunction(Teuchos::ParameterList& aInputParams)
-    {
-        if(aInputParams.isType<std::string>("Constraint"))
-        {
-            auto tMesh     = mSpatialModel.Mesh;
-            auto tMeshSets = mSpatialModel.MeshSets;
-            Plato::PathDependentScalarFunctionFactory<PhysicsT> tContraintFunctionFactory;
-            auto tUserDefinedName = aInputParams.get<std::string>("Constraint");
-            mConstraint = tContraintFunctionFactory.create(mSpatialModel, mDataMap, aInputParams, tUserDefinedName);
+            auto tCriteriaParams = aInputParams.sublist("Criteria");
+            for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
+            {
+                const Teuchos::ParameterEntry & tEntry = tCriteriaParams.entry(tIndex);
+                std::string tName = tCriteriaParams.name(tIndex);
+
+                TEUCHOS_TEST_FOR_EXCEPTION(!tEntry.isList(), std::logic_error,
+                  " Parameter in Criteria block not valid.  Expect lists only.");
+
+                if( tCriteriaParams.sublist(tName).get<bool>("Linear", false) == false )
+                {
+                    auto tCriterion = tObjectiveFunctionFactory.create(mSpatialModel, mDataMap, aInputParams, tName);
+                    if( tCriterion != nullptr )
+                    {
+                        mCriteria[tName] = tCriterion;
+                    }
+                }
+            }
         }
-        else
+        if(mCriteria.size() == 0)
         {
-            REPORT("Plasticity Problem: Constraint function is disabled for this problem.")
+            REPORT("Plasticity Problem: No criteria defined for this problem.")
         }
     }
 };
