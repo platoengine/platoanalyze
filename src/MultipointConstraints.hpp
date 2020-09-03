@@ -29,7 +29,7 @@ private:
     Teuchos::RCP<Plato::CrsMatrixType> mTransformMatrix;
     Teuchos::RCP<Plato::CrsMatrixType> mTransformMatrixTranspose;
     ScalarVector mRhs;
-    LocalOrdinalVector mChildDofs;
+    OrdinalType mNumChildNodes;
 
 public :
 
@@ -64,7 +64,7 @@ public :
                      const ScalarVector & aMpcValues);
     
     // brief get list of chold DOFs
-    void listChildDofs(const LocalOrdinalVector & aMpcChildNodes);
+    /* void listChildNodes(const LocalOrdinalVector & aMpcChildNodes); */
 
     // brief setup transform matrices and RHS
     void setupTransform(const Omega_h::MeshSets & aMeshSets);
@@ -73,13 +73,13 @@ public :
     decltype(mTransformMatrix)          getTransformMatrix()           { return mTransformMatrix; }
     decltype(mTransformMatrixTranspose) getTransformMatrixTranspose()  { return mTransformMatrixTranspose; }
     decltype(mRhs)                      getRhsVector()                 { return mRhs; }
-    decltype(mChildDofs)                getChildDofs()                 { return mChildDofs; }
+    decltype(mNumChildNodes)            getNumChildNodes()             { return mNumChildNodes; }
     
     // brief const getters
     const decltype(mTransformMatrix)          getTransformMatrix()           const { return mTransformMatrix; }
     const decltype(mTransformMatrixTranspose) getTransformMatrixTranspose()  const { return mTransformMatrixTranspose; }
     const decltype(mRhs)                      getRhsVector()                 const { return mRhs; }
-    const decltype(mChildDofs)                getChildDofs()                 const { return mChildDofs; }
+    const decltype(mNumChildNodes)            getNumChildNodes()             const { return mNumChildNodes; }
 };
 
 /****************************************************************************/
@@ -156,18 +156,34 @@ void MultipointConstraints<SimplexPhysicsType>::getMaps(const LocalOrdinalVector
     Kokkos::resize(nodeTypes, mNumNodes);
     Kokkos::resize(nodeConNum, mNumNodes);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, mNumNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
-    {
-        nodeTypes(nodeOrdinal) = 0; 
-        nodeConNum(nodeOrdinal) = -1; 
-    }, "Initialize Node type");
+    Plato::blas1::fill(static_cast<Plato::OrdinalType>(0), nodeTypes);
+    Plato::blas1::fill(static_cast<Plato::OrdinalType>(-1), nodeConNum);
+
+    /* Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, mNumNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal) */
+    /* { */
+    /*     nodeTypes(nodeOrdinal) = 0; */ 
+    /*     nodeConNum(nodeOrdinal) = -1; */ 
+    /* }, "Initialize Node type"); */
 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType childOrdinal)
     {
         OrdinalType childNode = aMpcChildNodes(childOrdinal);
-        nodeTypes(childNode) = 1; // Mark child DOF
+        nodeTypes(childNode) = -1; // Mark child DOF
         nodeConNum(childNode) = childOrdinal;
     }, "Set child node type and constraint number");
+
+    OrdinalType tCondensedOrdinal = 0;
+    LocalOrdinalVector tCondensedOrdinals("column indices", 1);
+    Plato::blas1::fill(static_cast<Plato::OrdinalType>(0), tCondensedOrdinals);
+    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, mNumNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
+    {
+        if (nodeTypes(nodeOrdinal) != -1) // not child node
+        {  
+            nodeTypes(nodeOrdinal) = tCondensedOrdinals(0); 
+            Kokkos::atomic_increment(&tCondensedOrdinals(0));
+            /* Kokkos::atomic_add(&tCondensedOrdinal,static_cast<Plato::OrdinalType>(1)); */
+        }
+    }, "Map from global node ID to condensed node ID");
 }
 
 /****************************************************************************/
@@ -186,6 +202,7 @@ void MultipointConstraints<SimplexPhysicsType>::assembleTransformMatrix(const Te
     const auto& tMpcEntries = aMpcMatrix->entries();
 
     OrdinalType tNumChildNodes = tMpcRowMap.size() - 1;
+    OrdinalType tNumParentNodes = aMpcParentNodes.size();
     OrdinalType tMpcNnz = tMpcEntries.size();
     OrdinalType tOutNnz = tBlockSize*((mNumNodes - tNumChildNodes) + tMpcNnz);
 
@@ -200,7 +217,7 @@ void MultipointConstraints<SimplexPhysicsType>::assembleTransformMatrix(const Te
     {
         OrdinalType tColMapOrdinal = outRowMap(nodeOrdinal);
         OrdinalType nodeType = aNodeTypes(nodeOrdinal);
-        if(nodeType == 1) // Child Node
+        if(nodeType == -1) // Child Node
         {
             OrdinalType conOrdinal = aNodeConNum(nodeOrdinal);
             if (conOrdinal == -1)
@@ -218,7 +235,7 @@ void MultipointConstraints<SimplexPhysicsType>::assembleTransformMatrix(const Te
             for(OrdinalType parentOrdinal=tConRowStart; parentOrdinal<tConRowEnd; parentOrdinal++)
             {
                 OrdinalType tParentNode = aMpcParentNodes(tMpcColumnIndices(parentOrdinal));
-                outColumnIndices(tColMapOrdinal) = tParentNode;
+                outColumnIndices(tColMapOrdinal) = aNodeTypes(tParentNode);
                 Plato::Scalar tMpcEntry = tMpcEntries(parentOrdinal);
                 for(OrdinalType dofOrdinal=0; dofOrdinal<tNumDofsPerNode; dofOrdinal++)
                 {
@@ -231,7 +248,7 @@ void MultipointConstraints<SimplexPhysicsType>::assembleTransformMatrix(const Te
         else 
         {
             outRowMap(nodeOrdinal + 1) = tColMapOrdinal + 1;
-            outColumnIndices(tColMapOrdinal) = nodeOrdinal;
+            outColumnIndices(tColMapOrdinal) = aNodeTypes(nodeOrdinal);
             for(OrdinalType dofOrdinal=0; dofOrdinal<tNumDofsPerNode; dofOrdinal++)
             {
                 OrdinalType entryOrdinal = tColMapOrdinal*tBlockSize + tNumDofsPerNode*dofOrdinal + dofOrdinal; 
@@ -241,7 +258,8 @@ void MultipointConstraints<SimplexPhysicsType>::assembleTransformMatrix(const Te
     }, "Build block transformation matrix");
 
     OrdinalType tNdof = mNumNodes*tNumDofsPerNode;
-    mTransformMatrix = Teuchos::rcp( new Plato::CrsMatrixType(outRowMap, outColumnIndices, outEntries, tNdof, tNdof, tNumDofsPerNode, tNumDofsPerNode) );
+    OrdinalType tNumCondensedDofs = (mNumNodes - tNumChildNodes)*tNumDofsPerNode;
+    mTransformMatrix = Teuchos::rcp( new Plato::CrsMatrixType(outRowMap, outColumnIndices, outEntries, tNdof, tNumCondensedDofs, tNumDofsPerNode, tNumDofsPerNode) );
 }
 
 /****************************************************************************/
@@ -269,26 +287,26 @@ void MultipointConstraints<SimplexPhysicsType>::assembleRhs(const LocalOrdinalVe
 }
 
 /****************************************************************************/
-template<typename SimplexPhysicsType>
-void MultipointConstraints<SimplexPhysicsType>::listChildDofs(const LocalOrdinalVector & aMpcChildNodes)
+/* template<typename SimplexPhysicsType> */
+/* void MultipointConstraints<SimplexPhysicsType>::listChildNodes(const LocalOrdinalVector & aMpcChildNodes) */
 /****************************************************************************/
-{
-    OrdinalType tNumDofsPerNode = SimplexPhysicsType::mNumDofsPerNode;
-    OrdinalType tNumChildNodes = aMpcChildNodes.size();
-    OrdinalType tNumChildDofs = tNumChildNodes*tNumDofsPerNode;
+/* { */
+/*     OrdinalType tNumDofsPerNode = SimplexPhysicsType::mNumDofsPerNode; */
+/*     OrdinalType tNumChildNodes = aMpcChildNodes.size(); */
+/*     OrdinalType tNumChildDofs = tNumChildNodes*tNumDofsPerNode; */
 
-    Kokkos::resize(mChildDofs, tNumChildDofs);
+/*     Kokkos::resize(mChildNodes, tNumChildDofs); */
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType childOrdinal)
-    {
-        OrdinalType childNode = aMpcChildNodes(childOrdinal);
-        for(OrdinalType dofOrdinal=0; dofOrdinal<tNumDofsPerNode; dofOrdinal++)
-        {
-            OrdinalType childDofOrdinal = tNumDofsPerNode*childOrdinal + dofOrdinal;
-            mChildDofs(childDofOrdinal) = tNumDofsPerNode*childNode + dofOrdinal;
-        }
-    }, "Get child DOFs");
-}
+/*     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType childOrdinal) */
+/*     { */
+/*         OrdinalType childNode = aMpcChildNodes(childOrdinal); */
+/*         for(OrdinalType dofOrdinal=0; dofOrdinal<tNumDofsPerNode; dofOrdinal++) */
+/*         { */
+/*             OrdinalType childDofOrdinal = tNumDofsPerNode*childOrdinal + dofOrdinal; */
+/*             mChildNodes(childDofOrdinal) = tNumDofsPerNode*childNode + dofOrdinal; */
+/*         } */
+/*     }, "Get child DOFs"); */
+/* } */
 
 /****************************************************************************/
 template<typename SimplexPhysicsType>
@@ -303,7 +321,8 @@ void MultipointConstraints<SimplexPhysicsType>::setupTransform(const Omega_h::Me
     this->get(aMeshSets, mpcChildNodes, mpcParentNodes, mpcMatrix, mpcValues);
     
     // fill in child DOFs
-    this->listChildDofs(mpcChildNodes);
+    mNumChildNodes = mpcChildNodes.size();
+    /* this->listChildNodes(mpcChildNodes); */
 
     // get mappings from global node to node type and constraint number
     LocalOrdinalVector nodeTypes;

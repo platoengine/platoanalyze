@@ -51,11 +51,11 @@ public:
                               OrdinalType& lengthNnz) override;
 
 private:
-    /* std::string mChildNodeSet; */
-    /* std::string mParentNodeSet; */
+    std::string mChildNodeSet;
+    std::string mParentNodeSet;
 
-    Plato::OrdinalType mChildNodeSet;
-    Plato::OrdinalType mParentNodeSet;
+    /* Plato::OrdinalType mChildNodeSet; */
+    /* Plato::OrdinalType mParentNodeSet; */
 
     Plato::Scalar mValue;
 
@@ -72,8 +72,11 @@ TieMultipointConstraint(const std::string & aName, Teuchos::ParameterList & aPar
     /* mChildNodeSet = "Child"; */
     /* mParentNodeSet = "Parent"; */
 
-    mChildNodeSet = aParam.get<Plato::OrdinalType>("Child");
-    mParentNodeSet = aParam.get<Plato::OrdinalType>("Parent");
+    mChildNodeSet = aParam.get<std::string>("Child");
+    mParentNodeSet = aParam.get<std::string>("Parent");
+
+    /* mChildNodeSet = aParam.get<Plato::OrdinalType>("Child"); */
+    /* mParentNodeSet = aParam.get<Plato::OrdinalType>("Parent"); */
 
     mValue = aParam.get<Plato::Scalar>("Value");
 }
@@ -98,20 +101,20 @@ get(const Omega_h::MeshSets& aMeshSets,
     auto tValue = this->mValue;
     
     // parse child nodes
-    /* auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet); */
-    /* auto tChildNodeLids = (tChildNodeSetsIter->second); */
-    /* auto tNumberChildNodes = tChildNodeLids.size(); */
+    auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet);
+    auto tChildNodeLids = (tChildNodeSetsIter->second);
+    auto tNumberChildNodes = tChildNodeLids.size();
 
-    auto tChildNodeLids = mChildNodeSet;
-    auto tNumberChildNodes = 1;
+    /* auto tChildNodeLids = mChildNodeSet; */
+    /* auto tNumberChildNodes = 1; */
     
     // parse parent nodes
-    /* auto tParentNodeSetsIter = tNodeSets.find(this->mParentNodeSet); */
-    /* auto tParentNodeLids = (tParentNodeSetsIter->second); */
-    /* auto tNumberParentNodes = tParentNodeLids.size(); */
+    auto tParentNodeSetsIter = tNodeSets.find(this->mParentNodeSet);
+    auto tParentNodeLids = (tParentNodeSetsIter->second);
+    auto tNumberParentNodes = tParentNodeLids.size();
 
-    auto tParentNodeLids = mParentNodeSet;
-    auto tNumberParentNodes = 1;
+    /* auto tParentNodeLids = mParentNodeSet; */
+    /* auto tNumberParentNodes = 1; */
 
     // Check that the number of child and parent nodes match
     if (tNumberChildNodes != tNumberParentNodes)
@@ -131,11 +134,11 @@ get(const Omega_h::MeshSets& aMeshSets,
 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
     {
-        /* tChildNodes(offsetChild+nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID */
-        /* tParentNodes(offsetParent+nodeOrdinal) = tParentNodeLids[nodeOrdinal]; // parent node ID */
+        tChildNodes(offsetChild+nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
+        tParentNodes(offsetParent+nodeOrdinal) = tParentNodeLids[nodeOrdinal]; // parent node ID
 
-        tChildNodes(offsetChild+nodeOrdinal) = tChildNodeLids; // child node ID
-        tParentNodes(offsetParent+nodeOrdinal) = tParentNodeLids; // parent node ID
+        /* tChildNodes(offsetChild+nodeOrdinal) = tChildNodeLids; // child node ID */
+        /* tParentNodes(offsetParent+nodeOrdinal) = tParentNodeLids; // parent node ID */
 
         tRowMap(offsetChild+nodeOrdinal) = offsetChild + nodeOrdinal; // row map
         tColumnIndices(offsetNnz+nodeOrdinal) = offsetParent + nodeOrdinal; // column indices (local parent node ID)
@@ -158,20 +161,20 @@ updateLengths(const Omega_h::MeshSets& aMeshSets,
     auto& tNodeSets = aMeshSets[Omega_h::NODE_SET];
 
     // parse child nodes
-    /* auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet); */
-    /* auto tChildNodeLids = (tChildNodeSetsIter->second); */
-    /* auto tNumberChildNodes = tChildNodeLids.size(); */
+    auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet);
+    auto tChildNodeLids = (tChildNodeSetsIter->second);
+    auto tNumberChildNodes = tChildNodeLids.size();
 
-    auto tChildNodeLids = mChildNodeSet;
-    auto tNumberChildNodes = 1;
+    /* auto tChildNodeLids = mChildNodeSet; */
+    /* auto tNumberChildNodes = 1; */
     
     // parse parent nodes
-    /* auto tParentNodeSetsIter = tNodeSets.find(this->mParentNodeSet); */
-    /* auto tParentNodeLids = (tParentNodeSetsIter->second); */
-    /* auto tNumberParentNodes = tParentNodeLids.size(); */
+    auto tParentNodeSetsIter = tNodeSets.find(this->mParentNodeSet);
+    auto tParentNodeLids = (tParentNodeSetsIter->second);
+    auto tNumberParentNodes = tParentNodeLids.size();
 
-    auto tParentNodeLids = mParentNodeSet;
-    auto tNumberParentNodes = 1;
+    /* auto tParentNodeLids = mParentNodeSet; */
+    /* auto tNumberParentNodes = 1; */
 
     // Check that the number of child and parent nodes match
     if (tNumberChildNodes != tNumberParentNodes)
