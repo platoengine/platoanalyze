@@ -209,6 +209,7 @@ public:
             tStringStream << "Unknown Physics type (" << tPhysics << ") requested.";
             THROWERR(tStringStream.str());
         }
+        return nullptr;
     }
 };
 // class ProblemFactory
