@@ -63,7 +63,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, MPCNodeSetTest )
   
   // create test mesh
   //
-  constexpr int meshWidth=8;
+  constexpr int meshWidth=2;
   constexpr int spaceDim=2;
   auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
@@ -92,8 +92,8 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, MPCNodeSetTest )
     "    </ParameterList>                                                    \n"
     "    <ParameterList  name='Node Tie Constraint 3'>                       \n"
     "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n"
-    "      <Parameter  name='Child'    type='string'    value='Fix'/>        \n"
-    "      <Parameter  name='Parent'   type='string'    value='Load'/>       \n"
+    "      <Parameter  name='Child'    type='string'    value='MPC Child'/>  \n"
+    "      <Parameter  name='Parent'   type='string'    value='MPC Parent'/> \n"
     "      <Parameter  name='Value'    type='double'    value='4.8'/>        \n"
     "    </ParameterList>                                                    \n"
     "  </ParameterList>                                                      \n"
@@ -109,6 +109,14 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, MPCNodeSetTest )
 
   Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 3 /* class id */);
   tMeshSets[Omega_h::NODE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
+  
+  // assign edges for MPCs
+  //
+  Omega_h::Read<Omega_h::I8> tMarksParent = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 1 /* class id */); // bottom edge is parent
+  tMeshSets[Omega_h::NODE_SET]["MPC Parent"] = Omega_h::collect_marked(tMarksParent);
+
+  Omega_h::Read<Omega_h::I8> tMarksChild = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 7 /* class id */); // top edge is child
+  tMeshSets[Omega_h::NODE_SET]["MPC Child"] = Omega_h::collect_marked(tMarksChild);
 
   // test getting MPC type
   auto tMpcParams = params->sublist("Multipoint Constraints", false);
@@ -129,6 +137,10 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, MPCNodeSetTest )
 
           std::string tChildNodeSet = tSublist.get<std::string>("Child");
           std::cout << tChildNodeSet << std::endl;
+
+          /* auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet); */
+          /* auto tChildNodeLids = (tChildNodeSetsIter->second); */
+          /* auto tNumberChildNodes = tChildNodeLids.size(); */
       }
 
       if(tSublist.isType<Plato::OrdinalType>("Child"))
@@ -166,133 +178,133 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, MPCNodeSetTest )
   Construct an elliptic problem with MPCs test correct parsing of MPCs
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST( MultipointConstraintTests, MPCParsingTest )
-{
-  // create test mesh
-  //
-  constexpr int meshWidth=8;
-  constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+/* TEUCHOS_UNIT_TEST( MultipointConstraintTests, MPCParsingTest ) */
+/* { */
+/*   // create test mesh */
+/*   // */
+/*   constexpr int meshWidth=8; */
+/*   constexpr int spaceDim=2; */
+/*   auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth); */
 
-  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+/*   using SimplexPhysics = ::Plato::Mechanics<spaceDim>; */
 
-  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
-  int tNumDofs = tNumNodes*tNumDofsPerNode;
+/*   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode; */
+/*   int tNumNodes = mesh->nverts(); */
+/*   int tNumDofs = tNumNodes*tNumDofsPerNode; */
 
-  // create mesh based density
-  //
-  Plato::ScalarVector control("density", tNumDofs);
-  Kokkos::deep_copy(control, 1.0);
+/*   // create mesh based density */
+/*   // */
+/*   Plato::ScalarVector control("density", tNumDofs); */
+/*   Kokkos::deep_copy(control, 1.0); */
 
-  // create mesh based state
-  //
-  Plato::ScalarVector state("state", tNumDofs);
-  Kokkos::deep_copy(state, 0.0);
+/*   // create mesh based state */
+/*   // */
+/*   Plato::ScalarVector state("state", tNumDofs); */
+/*   Kokkos::deep_copy(state, 0.0); */
 
-  // create problem
-  //
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                    \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
-    "  <ParameterList name='Elliptic'>                                       \n"
-    "    <ParameterList name='Penalty Function'>                             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "  <ParameterList name='Material Model'>                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "  <ParameterList  name='Natural Boundary Conditions'>                   \n"
-    "    <ParameterList  name='Traction Vector Boundary Condition'>          \n"
-    "      <Parameter name='Type'   type='string'        value='Uniform'/>   \n"
-    "      <Parameter name='Values' type='Array(double)' value='{1e3, 0}'/>  \n"
-    "      <Parameter name='Sides'  type='string'        value='Load'/>      \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "  <ParameterList  name='Essential Boundary Conditions'>                 \n"
-    "    <ParameterList  name='X Fixed Displacement Boundary Condition'>     \n"
-    "      <Parameter  name='Type'     type='string' value='Zero Value'/>    \n"
-    "      <Parameter  name='Index'    type='int'    value='0'/>             \n"
-    "      <Parameter  name='Sides'    type='string' value='Fix'/>           \n"
-    "    </ParameterList>                                                    \n"
-    "    <ParameterList  name='Y Fixed Displacement Boundary Condition'>     \n"
-    "      <Parameter  name='Type'     type='string' value='Zero Value'/>    \n"
-    "      <Parameter  name='Index'    type='int'    value='1'/>             \n"
-    "      <Parameter  name='Sides'    type='string' value='Fix'/>           \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "  <ParameterList  name='Multipoint Constraints'>                        \n"
-    "    <ParameterList  name='Node Tie Constraint 1'>                       \n"
-    "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n"
-    "      <Parameter  name='Child'    type='int'       value='42'/>         \n"
-    "      <Parameter  name='Parent'   type='int'       value='73'/>         \n"
-    "      <Parameter  name='Value'    type='double'    value='3.0'/>        \n"
-    "    </ParameterList>                                                    \n"
-    "    <ParameterList  name='Node Tie Constraint 2'>                       \n"
-    "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n"
-    "      <Parameter  name='Child'    type='int'       value='24'/>         \n"
-    "      <Parameter  name='Parent'   type='int'       value='3'/>         \n"
-    "      <Parameter  name='Value'    type='double'    value='7.0'/>        \n"
-    "    </ParameterList>                                                    \n"
-    "    <ParameterList  name='Node Tie Constraint 3'>                       \n"
-    "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n"
-    "      <Parameter  name='Child'    type='int'       value='50'/>         \n"
-    "      <Parameter  name='Parent'   type='int'       value='79'/>         \n"
-    "      <Parameter  name='Value'    type='double'    value='4.8'/>        \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "</ParameterList>                                                        \n"
-  );
+/*   // create problem */
+/*   // */
+/*   Teuchos::RCP<Teuchos::ParameterList> params = */
+/*     Teuchos::getParametersFromXmlString( */
+/*     "<ParameterList name='Plato Problem'>                                    \n" */
+/*     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n" */
+/*     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n" */
+/*     "  <ParameterList name='Elliptic'>                                       \n" */
+/*     "    <ParameterList name='Penalty Function'>                             \n" */
+/*     "      <Parameter name='Type' type='string' value='SIMP'/>               \n" */
+/*     "      <Parameter name='Exponent' type='double' value='1.0'/>            \n" */
+/*     "    </ParameterList>                                                    \n" */
+/*     "  </ParameterList>                                                      \n" */
+/*     "  <ParameterList name='Material Model'>                                 \n" */
+/*     "    <ParameterList name='Isotropic Linear Elastic'>                     \n" */
+/*     "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n" */
+/*     "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n" */
+/*     "    </ParameterList>                                                    \n" */
+/*     "  </ParameterList>                                                      \n" */
+/*     "  <ParameterList  name='Natural Boundary Conditions'>                   \n" */
+/*     "    <ParameterList  name='Traction Vector Boundary Condition'>          \n" */
+/*     "      <Parameter name='Type'   type='string'        value='Uniform'/>   \n" */
+/*     "      <Parameter name='Values' type='Array(double)' value='{1e3, 0}'/>  \n" */
+/*     "      <Parameter name='Sides'  type='string'        value='Load'/>      \n" */
+/*     "    </ParameterList>                                                    \n" */
+/*     "  </ParameterList>                                                      \n" */
+/*     "  <ParameterList  name='Essential Boundary Conditions'>                 \n" */
+/*     "    <ParameterList  name='X Fixed Displacement Boundary Condition'>     \n" */
+/*     "      <Parameter  name='Type'     type='string' value='Zero Value'/>    \n" */
+/*     "      <Parameter  name='Index'    type='int'    value='0'/>             \n" */
+/*     "      <Parameter  name='Sides'    type='string' value='Fix'/>           \n" */
+/*     "    </ParameterList>                                                    \n" */
+/*     "    <ParameterList  name='Y Fixed Displacement Boundary Condition'>     \n" */
+/*     "      <Parameter  name='Type'     type='string' value='Zero Value'/>    \n" */
+/*     "      <Parameter  name='Index'    type='int'    value='1'/>             \n" */
+/*     "      <Parameter  name='Sides'    type='string' value='Fix'/>           \n" */
+/*     "    </ParameterList>                                                    \n" */
+/*     "  </ParameterList>                                                      \n" */
+/*     "  <ParameterList  name='Multipoint Constraints'>                        \n" */
+/*     "    <ParameterList  name='Node Tie Constraint 1'>                       \n" */
+/*     "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n" */
+/*     "      <Parameter  name='Child'    type='int'       value='42'/>         \n" */
+/*     "      <Parameter  name='Parent'   type='int'       value='73'/>         \n" */
+/*     "      <Parameter  name='Value'    type='double'    value='3.0'/>        \n" */
+/*     "    </ParameterList>                                                    \n" */
+/*     "    <ParameterList  name='Node Tie Constraint 2'>                       \n" */
+/*     "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n" */
+/*     "      <Parameter  name='Child'    type='int'       value='24'/>         \n" */
+/*     "      <Parameter  name='Parent'   type='int'       value='3'/>         \n" */
+/*     "      <Parameter  name='Value'    type='double'    value='7.0'/>        \n" */
+/*     "    </ParameterList>                                                    \n" */
+/*     "    <ParameterList  name='Node Tie Constraint 3'>                       \n" */
+/*     "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n" */
+/*     "      <Parameter  name='Child'    type='int'       value='50'/>         \n" */
+/*     "      <Parameter  name='Parent'   type='int'       value='79'/>         \n" */
+/*     "      <Parameter  name='Value'    type='double'    value='4.8'/>        \n" */
+/*     "    </ParameterList>                                                    \n" */
+/*     "  </ParameterList>                                                      \n" */
+/*     "</ParameterList>                                                        \n" */
+/*   ); */
 
-  // assign edges for load and boundary conditions
-  //
-  Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
-  Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 5 /* class id */);
-  tMeshSets[Omega_h::SIDE_SET]["Load"] = Omega_h::collect_marked(tMarksLoad);
+/*   // assign edges for load and boundary conditions */
+/*   // */
+/*   Plato::DataMap tDataMap; */
+/*   Omega_h::MeshSets tMeshSets; */
+/*   Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 5 /1* class id *1/); */
+/*   tMeshSets[Omega_h::SIDE_SET]["Load"] = Omega_h::collect_marked(tMarksLoad); */
 
-  Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 3 /* class id */);
-  tMeshSets[Omega_h::NODE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
+/*   Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 3 /1* class id *1/); */
+/*   tMeshSets[Omega_h::NODE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix); */
 
-  // create multipoint constraint
-  Plato::MultipointConstraints<SimplexPhysics> 
-      tMPCs(tNumNodes, params->sublist("Multipoint Constraints", false));
+/*   // create multipoint constraint */
+/*   Plato::MultipointConstraints<SimplexPhysics> */ 
+/*       tMPCs(tNumNodes, params->sublist("Multipoint Constraints", false)); */
   
-  // fill in MPC constraint data
-  Plato::LocalOrdinalVector                 mpcChildNodes;
-  Plato::LocalOrdinalVector                 mpcParentNodes;
-  Teuchos::RCP<Plato::CrsMatrixType>        mpcMatrix;
-  Plato::ScalarVector                       mpcValues;
-  tMPCs.get(tMeshSets, mpcChildNodes, mpcParentNodes, mpcMatrix, mpcValues);
-  tMPCs.setupTransform(tMeshSets);
+/*   // fill in MPC constraint data */
+/*   Plato::LocalOrdinalVector                 mpcChildNodes; */
+/*   Plato::LocalOrdinalVector                 mpcParentNodes; */
+/*   Teuchos::RCP<Plato::CrsMatrixType>        mpcMatrix; */
+/*   Plato::ScalarVector                       mpcValues; */
+/*   tMPCs.get(tMeshSets, mpcChildNodes, mpcParentNodes, mpcMatrix, mpcValues); */
+/*   tMPCs.setupTransform(tMeshSets); */
 
-  // test parent and child node parsing
-  std::vector<Plato::OrdinalType> tGoldChildNodes = { 42, 24, 50 };
-  TEST_ASSERT(is_same(mpcChildNodes, tGoldChildNodes));
+/*   // test parent and child node parsing */
+/*   std::vector<Plato::OrdinalType> tGoldChildNodes = { 42, 24, 50 }; */
+/*   TEST_ASSERT(is_same(mpcChildNodes, tGoldChildNodes)); */
 
-  std::vector<Plato::OrdinalType> tGoldParentNodes = { 73, 3, 79 };
-  TEST_ASSERT(is_same(mpcParentNodes, tGoldParentNodes));
+/*   std::vector<Plato::OrdinalType> tGoldParentNodes = { 73, 3, 79 }; */
+/*   TEST_ASSERT(is_same(mpcParentNodes, tGoldParentNodes)); */
 
-  // test MPC matrix
-  std::vector<Plato::OrdinalType> tGoldMpcMatRowMap = { 0, 1, 2, 3 };
-  std::vector<Plato::OrdinalType> tGoldMpcMatColMap = { 0, 1, 2 };
-  std::vector<Plato::Scalar> tGoldMpcMatEntries = { 1.0, 1.0, 1.0 };
-  TEST_ASSERT(is_same(mpcMatrix->rowMap(), tGoldMpcMatRowMap));
-  TEST_ASSERT(is_same(mpcMatrix->columnIndices(), tGoldMpcMatColMap));
-  TEST_ASSERT(is_same(mpcMatrix->entries(), tGoldMpcMatEntries));
+/*   // test MPC matrix */
+/*   std::vector<Plato::OrdinalType> tGoldMpcMatRowMap = { 0, 1, 2, 3 }; */
+/*   std::vector<Plato::OrdinalType> tGoldMpcMatColMap = { 0, 1, 2 }; */
+/*   std::vector<Plato::Scalar> tGoldMpcMatEntries = { 1.0, 1.0, 1.0 }; */
+/*   TEST_ASSERT(is_same(mpcMatrix->rowMap(), tGoldMpcMatRowMap)); */
+/*   TEST_ASSERT(is_same(mpcMatrix->columnIndices(), tGoldMpcMatColMap)); */
+/*   TEST_ASSERT(is_same(mpcMatrix->entries(), tGoldMpcMatEntries)); */
 
-  // test MPC RHS
-  std::vector<Plato::Scalar> tGoldMpcRhs = { 3.0, 7.0, 4.8 };
-  TEST_ASSERT(is_same(mpcValues, tGoldMpcRhs));
+/*   // test MPC RHS */
+/*   std::vector<Plato::Scalar> tGoldMpcRhs = { 3.0, 7.0, 4.8 }; */
+/*   TEST_ASSERT(is_same(mpcValues, tGoldMpcRhs)); */
 
-}
+/* } */
 
 /******************************************************************************/
 /*!
@@ -321,6 +333,28 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
 
   std::cout << '\n' << "Number of Nodes: " << tNumNodes;
   std::cout << '\n' << "Number of DOFs: " << tNumNodes*tNumDofsPerNode;
+
+  // Test output of node IDs
+
+  std::cout << '\n' << "Edge 3 (x0) Nodes:" << std::endl;
+  auto tNodesX0= PlatoUtestHelpers::get_2D_boundary_nodes_x0(*mesh);
+  PlatoUtestHelpers::print_ordinals(tNodesX0);
+  PlatoUtestHelpers::print_2d_coords(*mesh,tNodesX0);
+
+  std::cout << '\n' <<"Edge 5 (x1) Nodes:" << std::endl;
+  auto tNodesX1= PlatoUtestHelpers::get_2D_boundary_nodes_x1(*mesh);
+  PlatoUtestHelpers::print_ordinals(tNodesX1);
+  PlatoUtestHelpers::print_2d_coords(*mesh,tNodesX1);
+
+  std::cout << '\n' << "Edge 1 (y0) Nodes:" << std::endl;
+  auto tNodesY0= PlatoUtestHelpers::get_2D_boundary_nodes_y0(*mesh);
+  PlatoUtestHelpers::print_ordinals(tNodesY0);
+  PlatoUtestHelpers::print_2d_coords(*mesh,tNodesY0);
+
+  std::cout << '\n' << "Edge 7 (y1) Nodes:" << std::endl;
+  auto tNodesY1= PlatoUtestHelpers::get_2D_boundary_nodes_y1(*mesh);
+  PlatoUtestHelpers::print_ordinals(tNodesY1);
+  PlatoUtestHelpers::print_2d_coords(*mesh,tNodesY1);
 
   // create mesh based density
   //
@@ -373,9 +407,9 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
     "  <ParameterList  name='Multipoint Constraints'>                        \n"
     "    <ParameterList  name='Node Tie Constraint 1'>                       \n"
     "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n"
-    "      <Parameter  name='Child'    type='int'       value='4'/>          \n"
-    "      <Parameter  name='Parent'   type='int'       value='7'/>          \n"
-    "      <Parameter  name='Value'    type='double'    value='3.0'/>        \n"
+    "      <Parameter  name='Child'    type='string'    value='MPC Child'/>  \n"
+    "      <Parameter  name='Parent'   type='string'    value='MPC Parent'/> \n"
+    "      <Parameter  name='Value'    type='double'    value='0.0'/>        \n"
     "    </ParameterList>                                                    \n"
     "  </ParameterList>                                                      \n"
     "</ParameterList>                                                        \n"
@@ -390,28 +424,14 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
 
   Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 3 /* class id */);
   tMeshSets[Omega_h::NODE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
+  
+  // assign edges for MPCs
+  //
+  Omega_h::Read<Omega_h::I8> tMarksParent = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 1 /* class id */); // bottom edge is parent
+  tMeshSets[Omega_h::NODE_SET]["MPC Parent"] = Omega_h::collect_marked(tMarksParent);
 
-  // Test output of node IDs
-
-  std::cout << '\n' << "Edge 3 (x0) Nodes:" << std::endl;
-  auto tNodesX0= PlatoUtestHelpers::get_2D_boundary_nodes_x0(*mesh);
-  PlatoUtestHelpers::print_ordinals(tNodesX0);
-  PlatoUtestHelpers::print_2d_coords(*mesh,tNodesX0);
-
-  std::cout << '\n' <<"Edge 5 (x1) Nodes:" << std::endl;
-  auto tNodesX1= PlatoUtestHelpers::get_2D_boundary_nodes_x1(*mesh);
-  PlatoUtestHelpers::print_ordinals(tNodesX1);
-  PlatoUtestHelpers::print_2d_coords(*mesh,tNodesX1);
-
-  std::cout << '\n' << "Edge 1 (y0) Nodes:" << std::endl;
-  auto tNodesY0= PlatoUtestHelpers::get_2D_boundary_nodes_y0(*mesh);
-  PlatoUtestHelpers::print_ordinals(tNodesY0);
-  PlatoUtestHelpers::print_2d_coords(*mesh,tNodesY0);
-
-  std::cout << '\n' << "Edge 7 (y1) Nodes:" << std::endl;
-  auto tNodesY1= PlatoUtestHelpers::get_2D_boundary_nodes_y1(*mesh);
-  PlatoUtestHelpers::print_ordinals(tNodesY1);
-  PlatoUtestHelpers::print_2d_coords(*mesh,tNodesY1);
+  Omega_h::Read<Omega_h::I8> tMarksChild = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 7 /* class id */); // top edge is child
+  tMeshSets[Omega_h::NODE_SET]["MPC Child"] = Omega_h::collect_marked(tMarksChild);
   
   // parse essential BCs
   //
@@ -460,8 +480,12 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
     "</ParameterList>                                                  \n"
   );
   Plato::SolverFactory tSolverFactory(*tSolverParams);
-  auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
-  
+
+  const Plato::OrdinalType tNumChildNodes = tMPCs.getNumChildNodes();
+  auto tNumCondensedNodes = tNumNodes - tNumChildNodes;
+
+  auto tSolver = tSolverFactory.create(tNumCondensedNodes, tMachine, tNumDofsPerNode);
+
   // apply essential BCs
   //
   Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, bcDofs, bcValues);
@@ -477,8 +501,10 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   
   // build condensed jacobian
   //
-  auto tCondensedJacobianLeft = Teuchos::rcp( new Plato::CrsMatrixType(tNumDofs, tNumDofs, tNumDofsPerNode, tNumDofsPerNode) );
-  auto tCondensedJacobian     = Teuchos::rcp( new Plato::CrsMatrixType(tNumDofs, tNumDofs, tNumDofsPerNode, tNumDofsPerNode) );
+  auto tNumCondensedDofs = tNumCondensedNodes*tNumDofsPerNode;
+
+  auto tCondensedJacobianLeft = Teuchos::rcp( new Plato::CrsMatrixType(tNumDofs, tNumCondensedDofs, tNumDofsPerNode, tNumDofsPerNode) );
+  auto tCondensedJacobian     = Teuchos::rcp( new Plato::CrsMatrixType(tNumCondensedDofs, tNumCondensedDofs, tNumDofsPerNode, tNumDofsPerNode) );
 
   Plato::MatrixMatrixMultiply(jacobian, tTransformMatrix, tCondensedJacobianLeft);
   Plato::MatrixMatrixMultiply(tTransformMatrixTranspose, tCondensedJacobianLeft, tCondensedJacobian);
@@ -489,24 +515,14 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   Plato::blas1::scale(-1.0, tMpcRhs);
   Plato::MatrixTimesVectorPlusVector(jacobian, tMpcRhs, tInnerResidual);
 
-  Plato::ScalarVector tCondensedResidual("Condensed Residual", tNumDofs);
+  Plato::ScalarVector tCondensedResidual("Condensed Residual", tNumCondensedDofs);
   Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedResidual);
 
   Plato::MatrixTimesVectorPlusVector(tTransformMatrixTranspose, tInnerResidual, tCondensedResidual);
 
-  // set diagonals of Child DOFs to 1 and zero corresponding residual entries
-  //
-  auto tMpcChildDofs = tMPCs.getChildDofs();
-
-  std::cout << '\n' << tMpcChildDofs.size();
-  print_view(tMpcChildDofs);
-
-  Plato::setBlockConstrainedDiagonals<SimplexPhysics::mNumDofsPerNode>(tCondensedJacobian, tCondensedResidual, tMpcChildDofs);
-
-
   // solve condensed system
   //
-  Plato::ScalarVector tCondensedState("Condensed State Solution", state.extent(0));
+  Plato::ScalarVector tCondensedState("Condensed State Solution", tNumCondensedDofs);
   Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedState);
   tSolver->solve(*tCondensedJacobian, tCondensedState, tCondensedResidual);
 
@@ -531,7 +547,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   //
   Plato::OrdinalType checkChildNode = 4;
   Plato::OrdinalType checkParentNode = 7;
-  Plato::Scalar      checkValue = 3.0;
+  Plato::Scalar      checkValue = 0.0;
 
   Plato::OrdinalType checkChildDof0 = checkChildNode*tNumDofsPerNode;
   Plato::OrdinalType checkChildDof1 = checkChildNode*tNumDofsPerNode + 1;
