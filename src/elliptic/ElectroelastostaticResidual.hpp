@@ -191,10 +191,10 @@ public:
           mBodyLoads->get( mSpatialDomain, state, control, result, -1.0 );
       }
 
-//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, strain, "strain");
-//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"efield") ) toMap(mDataMap, strain, "efield");
-//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, stress, "stress");
-//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"edisp" ) ) toMap(mDataMap, stress, "edisp" );
+     if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, strain, "strain", mSpatialDomain);
+     if( std::count(mPlottable.begin(),mPlottable.end(),"efield") ) toMap(mDataMap, strain, "efield", mSpatialDomain);
+     if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, stress, "stress", mSpatialDomain);
+     if( std::count(mPlottable.begin(),mPlottable.end(),"edisp" ) ) toMap(mDataMap, stress, "edisp" , mSpatialDomain);
 
     }
     /**************************************************************************/

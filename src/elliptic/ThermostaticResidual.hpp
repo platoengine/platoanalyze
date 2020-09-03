@@ -166,8 +166,8 @@ class ThermostaticResidual :
         
       },"flux divergence");
 
-//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad");
-//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" );
+     if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tGrad, "tgrad", mSpatialDomain);
+     if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, tFlux, "flux" , mSpatialDomain);
     }
 
     /**************************************************************************/

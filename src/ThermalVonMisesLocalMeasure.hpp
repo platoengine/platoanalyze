@@ -60,21 +60,6 @@ public:
         mMaterialModel = tFactory.create(mSpatialDomain.getMaterialName());
     }
 
-    /******************************************************************************//**
-     * \brief Constructor tailored for unit testing
-     * \param [in] aMaterialModel thermoelastic material model
-     * \param [in] aName local measure name
-     **********************************************************************************/
-// TODO this constructor causes problems
-/*
-    ThermalVonMisesLocalMeasure(Teuchos::RCP<Plato::MaterialModel<mSpaceDim>> &aMaterialModel,
-                         const std::string aName) :
-                         AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aName),
-                         mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
-    {
-        mMaterialModel = aMaterialModel;
-    }
-*/
 
     /******************************************************************************//**
      * \brief Destructor

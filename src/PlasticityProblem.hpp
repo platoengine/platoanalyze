@@ -128,36 +128,6 @@ public:
         this->initialize(aInputs);
     }
 
-    /***************************************************************************//**
-     * \brief Plasticity problem constructor
-     * \param [in] aMesh mesh database
-    *******************************************************************************/
-/* TODO this constructor hoses const references
-    explicit PlasticityProblem(Omega_h::Mesh& aMesh) :
-            mLocalEquation(nullptr),
-            mGlobalEquation(nullptr),
-            mProjectionEquation(nullptr),
-            mNumPseudoTimeSteps(20),
-            mMaxNumPseudoTimeSteps(80),
-            mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
-            mPressureScaling(1.0),
-            mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
-            mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
-            mCurrentPseudoTimeStep(0.0),
-            mPseudoTimeStepMultiplier(2),
-            mPressure("Pressure Field", aMesh.nverts()),
-            mLocalStates("Local States", mNumPseudoTimeSteps, aMesh.nelems() * mNumLocalDofsPerCell),
-            mGlobalStates("Global States", mNumPseudoTimeSteps, aMesh.nverts() * mNumGlobalDofsPerNode),
-            mReactionForce("Reaction Force", mNumPseudoTimeSteps, aMesh.nverts()),
-            mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, aMesh.nverts() * mNumPressGradDofsPerNode),
-            mWorksetBase(aMesh),
-            mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh)),
-            mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh)),
-            mStopOptimization(false),
-            mMaxNumPseudoTimeStepsReached(false)
-    {
-    }
-*/
 
     /***************************************************************************//**
      * \brief PLATO Plasticity Problem destructor

@@ -55,7 +55,6 @@ endif()
 ## plasticity sources
 if(PLASTICITY)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
-    LocalVectorFunctionInc.cpp 
     J2PlasticityLocalResidual.cpp 
     NewtonRaphsonSolver.cpp 
     PathDependentAdjointSolver.cpp 

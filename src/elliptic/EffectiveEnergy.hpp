@@ -166,8 +166,8 @@ class EffectiveEnergy :
 
       },"energy gradient");
 
-//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"effective stress") ) toMap(mDataMap, stress, "effective stress");
-//TODO      if( std::count(mPlottable.begin(),mPlottable.end(),"cell volume") ) toMap(mDataMap, cellVolume, "cell volume");
+     if( std::count(mPlottable.begin(),mPlottable.end(),"effective stress") ) toMap(mDataMap, stress, "effective stress", mSpatialDomain);
+     if( std::count(mPlottable.begin(),mPlottable.end(),"cell volume") ) toMap(mDataMap, cellVolume, "cell volume", mSpatialDomain);
 
     }
 };

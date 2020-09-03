@@ -206,11 +206,9 @@ public:
           mBodyLoads->get( mSpatialDomain, aState, aControl, aResult, -1.0 );
       }
 
-/* TODO 
       if(std::count(mPlotTable.begin(), mPlotTable.end(), "strain")) { Plato::toMap(mDataMap, tStrain, "strain", mSpatialDomain); }
       if(std::count(mPlotTable.begin(), mPlotTable.end(), "stress")) { Plato::toMap(mDataMap, tStress, "stress", mSpatialDomain); }
       if(std::count(mPlotTable.begin(), mPlotTable.end(), "Vonmises")) { this->outputVonMises(tStress, mSpatialDomain); }
-*/
     }
     /******************************************************************************//**
      * \brief Evaluate vector function
@@ -246,10 +244,13 @@ public:
      * \brief Compute Von Mises stress field and copy data into output data map
      * \param [in] aCauchyStress Cauchy stress tensor
     **************************************************************************/
-/* TODO 
-    void outputVonMises(const Plato::ScalarMultiVectorT<ResultScalarType> & aCauchyStress) const
+    void
+    outputVonMises(
+        const Plato::ScalarMultiVectorT<ResultScalarType> & aCauchyStress,
+        const Plato::SpatialDomain                        & aSpatialDomain
+    ) const
     {
-            auto tNumCells = mMesh.nelems();
+            auto tNumCells = aSpatialDomain.numCells();
             Plato::VonMisesYieldFunction<mSpaceDim> tComputeVonMises;
             Plato::ScalarVectorT<ResultScalarType> tVonMises("Von Mises", tNumCells);
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -257,9 +258,8 @@ public:
                 tComputeVonMises(aCellOrdinal, aCauchyStress, tVonMises);
             }, "Compute VonMises Stress");
 
-            Plato::toMap(mDataMap, tVonMises, "Vonmises");
+            Plato::toMap(mDataMap, tVonMises, "Vonmises", aSpatialDomain);
     }
-*/
 };
 // class ElastostaticResidual
 

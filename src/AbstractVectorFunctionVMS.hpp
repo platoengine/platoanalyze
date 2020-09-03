@@ -1,9 +1,6 @@
 #ifndef ABSTRACT_VECTOR_FUNCTION_VMS_HPP
 #define ABSTRACT_VECTOR_FUNCTION_VMS_HPP
 
-// TODO needed? #include <Omega_h_mesh.hpp>
-// TODO needed? #include <Omega_h_assoc.hpp>
-
 #include "PlatoStaticsTypes.hpp"
 #include "SpatialModel.hpp"
 

@@ -3,9 +3,6 @@
 
 #include <memory>
 
-// TODO neeeded? #include <Omega_h_mesh.hpp>
-// TODO neeeded? #include <Omega_h_assoc.hpp>
-
 #include "SimplexProjection.hpp"
 #include "PressureGradientProjectionResidual.hpp"
 #include "Simp.hpp"

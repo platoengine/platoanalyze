@@ -291,7 +291,7 @@ public:
                     tTrueConstraintValue(aCellOrdinal) * tTrueConstraintValue(aCellOrdinal) ) );
         },"Compute Quadratic Augmented Lagrangian Function Without Objective");
 
-// TODO         Plato::toMap(mDataMap, tOutputPenalizedLocalMeasure, mLocalMeasureEvaluationType->getName());
+         Plato::toMap(mDataMap, tOutputPenalizedLocalMeasure, mLocalMeasureEvaluationType->getName(), mSpatialDomain);
     }
 
     /******************************************************************************//**

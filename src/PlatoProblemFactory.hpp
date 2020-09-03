@@ -149,13 +149,11 @@ public:
             }
         }
         else
-/* TODO
         if(tPhysics == "StructuralDynamics")
         {
 //            return std::make_shared<Plato::StructuralDynamicsProblem<Plato::StructuralDynamics<SpatialDim>>>(aMesh, aMeshSets, tInputData);
         }
         else
-*/
         if(tPhysics == "Electromechanical")
         {
             auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);

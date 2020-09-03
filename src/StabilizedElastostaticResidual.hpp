@@ -234,16 +234,14 @@ public:
           mBodyLoads->get( mSpatialDomain, aStateWS, aControlWS, aResultWS, -1.0 );
       }
 
-/* TODO
       if(std::count(mPlotTable.begin(), mPlotTable.end(), "pressure"))
       {
-          toMap(mDataMap, tPressure, "pressure");
+          toMap(mDataMap, tPressure, "pressure", mSpatialDomain);
       }
       if( std::count(mPlotTable.begin(),mPlotTable.end(), "deviatoric stress" ) )
       {
-          toMap(mDataMap, tDevStress, "deviatoric stress");
+          toMap(mDataMap, tDevStress, "deviatoric stress", mSpatialDomain);
       }
-*/
     }
     /******************************************************************************//**
      * \brief Evaluate stabilized elastostatics boundary terms residual

@@ -235,7 +235,7 @@ private:
     {
         if(std::count(mPlotTable.begin(), mPlotTable.end(), aName))
         {
-// TODO             Plato::toMap(mDataMap, aData, aName);
+             Plato::toMap(mDataMap, aData, aName, mSpatialDomain);
         }
     }
 

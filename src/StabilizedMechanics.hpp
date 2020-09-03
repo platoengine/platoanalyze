@@ -3,9 +3,6 @@
 
 #include <memory>
 
-// TODO needed? #include <Omega_h_mesh.hpp>
-// TODO needed? #include <Omega_h_assoc.hpp>
-
 #include "parabolic/AbstractScalarFunction.hpp"
 
 #include "elliptic/AbstractScalarFunction.hpp"

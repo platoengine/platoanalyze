@@ -358,7 +358,7 @@ public:
                     + (tStressCriterionWeight * tConstraint(aCellOrdinal));
         },"Compute Augmented Lagrangian Function");
 
-//TODO        Plato::toMap(mDataMap, tOutputVonMises, "Vonmises");
+       Plato::toMap(mDataMap, tOutputVonMises, "Vonmises", mSpatialDomain);
     }
 
     /******************************************************************************//**

@@ -7,8 +7,6 @@
 #include <cassert>
 #include <vector>
 
-#include <Omega_h_mesh.hpp>
-
 #include "WorksetBase.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "elliptic/ScalarFunctionBase.hpp"
@@ -520,28 +518,28 @@ public:
 
 } // namespace Plato
 
-//TODO #include "Thermal.hpp"
+#include "Thermal.hpp"
 #include "Mechanics.hpp"
-//TODO #include "Electromechanics.hpp"
-//TODO #include "Thermomechanics.hpp"
+#include "Electromechanics.hpp"
+#include "Thermomechanics.hpp"
 
 #ifdef PLATOANALYZE_1D
-//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<1>>;
+extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<1>>;
 extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<1>>;
-//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<1>>;
-//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<1>>;
+extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<1>>;
+extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
-//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<2>>;
+extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<2>>;
 extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<2>>;
-//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<2>>;
-//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<2>>;
+extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<2>>;
+extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
-//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<3>>;
+extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermal<3>>;
 extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Mechanics<3>>;
-//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<3>>;
-//TODO extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<3>>;
+extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Electromechanics<3>>;
+extern template class Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<3>>;
 #endif
