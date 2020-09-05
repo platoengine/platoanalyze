@@ -376,14 +376,11 @@ output(
     else
     if(tPhysics == "Mechanical")
     {
-        if(tPDE == "Infinite Strain Plasticity")
-        {
-            Plato::stabilized_mechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
-        }
-        else
-        {
-            Plato::mechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
-        }
+        Plato::mechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
+    }
+    else if(tPhysics == "Plasticity")
+    {
+        Plato::stabilized_mechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
     }
     else
     if(tPhysics == "Stabilized Mechanical")

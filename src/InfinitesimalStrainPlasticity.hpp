@@ -44,7 +44,7 @@ struct FunctionFactory
                                   Teuchos::ParameterList& aInputParams,
                                   std::string aFunctionName)
     {
-        if(aFunctionName == "Infinite Strain Plasticity")
+        if(aFunctionName == "Elliptic")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
             return ( std::make_shared<Plato::InfinitesimalStrainPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>

@@ -118,9 +118,9 @@ private:
     *******************************************************************************/
     void parseOutputDataNames(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Infinite Strain Plasticity"))
+        if(aProblemParams.isSublist("Elliptic"))
         {
-            auto tResidualParams = aProblemParams.sublist("Infinite Strain Plasticity");
+            auto tResidualParams = aProblemParams.sublist("Elliptic");
             if (tResidualParams.isType < Teuchos::Array < std::string >> ("Plottable"))
             {
                 mPlotTable = tResidualParams.get < Teuchos::Array < std::string >> ("Plottable").toVector();
@@ -128,7 +128,7 @@ private:
         }
         else
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Infinite Strain Plasticity' sublist is not defined in XML input file.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Elliptic' sublist is not defined in XML input file.")
         }
     }
 
@@ -138,9 +138,9 @@ private:
     *******************************************************************************/
     void parseMaterialPenaltyInputs(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Infinite Strain Plasticity"))
+        if(aProblemParams.isSublist("Elliptic"))
         {
-            auto tResidualParams = aProblemParams.sublist("Infinite Strain Plasticity");
+            auto tResidualParams = aProblemParams.sublist("Elliptic");
             if(tResidualParams.isSublist("Penalty Function"))
             {
                 auto tPenaltyParams = tResidualParams.sublist("Penalty Function");
@@ -152,7 +152,7 @@ private:
         }
         else
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Infinite Strain Plasticity' sublist is not defined in XML input file.")
+            THROWERR("Infinitesimal Strain Plasticity Residual: 'Elliptic' sublist is not defined in XML input file.")
         }
     }
 

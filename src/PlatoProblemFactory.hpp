@@ -73,7 +73,13 @@ public:
                 return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
             else
-            if(tPDE == "Infinite Strain Plasticity")
+            {
+                THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
+            }
+        }
+        else if(tPhysics == "Plasticity")
+        {
+            if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainPlasticity<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
                 tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
@@ -81,9 +87,7 @@ public:
             }
             else
             {
-                std::stringstream ss;
-                ss << "Unknown PDE type (" << tPDE << ") requested.";
-                THROWERR(ss.str());
+                THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
         else if(tPhysics == "Stabilized Mechanical")
@@ -96,9 +100,7 @@ public:
             }
             else
             {
-                std::stringstream tStringStream;
-                tStringStream << "Unknown PDE type (" << tPDE << ") requested.";
-                THROWERR(tStringStream.str());
+                THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
         else if(tPhysics == "Thermal")
@@ -115,9 +117,7 @@ public:
             }
             else
             {
-                std::stringstream tStringStream;
-                tStringStream << "Unknown PDE type (" << tPDE << ") requested.";
-                THROWERR(tStringStream.str());
+                THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
         else if(tPhysics == "StructuralDynamics")
@@ -140,9 +140,7 @@ public:
             }
             else
             {
-                std::stringstream ss;
-                ss << "Unknown PDE type (" << tPDE << ") requested.";
-                THROWERR(ss.str());
+                THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
         else if(tPhysics == "Thermomechanical")
@@ -159,16 +157,12 @@ public:
             }
             else
             {
-                std::stringstream ss;
-                ss << "Unknown PDE type (" << tPDE << ") requested.";
-                THROWERR(ss.str());
+                THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
         else
         {
-            std::stringstream tStringStream;
-            tStringStream << "Unknown Physics type (" << tPhysics << ") requested.";
-            THROWERR(tStringStream.str());
+            THROWERR(std::string("Requested 'Physics' keyword '") + tPhysics + "' is not supported.");
         }
 
         return (nullptr);
