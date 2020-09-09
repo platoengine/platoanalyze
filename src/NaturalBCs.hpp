@@ -102,7 +102,8 @@ public :
         const Plato::ScalarMultiVectorT<ControlScalarType> &,
         const Plato::ScalarArray3DT    < ConfigScalarType> &,
         const Plato::ScalarMultiVectorT< ResultScalarType> &,
-              Plato::Scalar aScale = 1.0) const;
+              Plato::Scalar aScale = 1.0,
+              Plato::Scalar aCurrentTime = 0.0) const;
 };
 // class NaturalBCs
 
@@ -151,8 +152,10 @@ std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>>
 NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
 (const std::string & aName, Teuchos::ParameterList &aSubList)
 {
-    bool tBC_Value = aSubList.isType<Plato::Scalar>("Value");
-    bool tBC_Values = aSubList.isType<Teuchos::Array<Plato::Scalar>>("Values");
+    bool tBC_Value = (aSubList.isType<Plato::Scalar>("Value") || aSubList.isType<std::string>("Value"));
+
+    bool tBC_Values = (aSubList.isType<Teuchos::Array<Plato::Scalar>>("Values") ||
+                       aSubList.isType<Teuchos::Array<std::string>>("Values"));
 
     const auto tType = aSubList.get < std::string > ("Type");
     std::shared_ptr<NaturalBC<SpatialDim, NumDofs, DofsPerNode, DofOffset>> tBC;
@@ -165,15 +168,48 @@ NaturalBCs<SpatialDim, NumDofs, DofsPerNode, DofOffset>::setUniformNaturalBC
     }
     else if (tBC_Values)
     {
-        auto tValues = aSubList.get<Teuchos::Array<Plato::Scalar>>("Values");
-        aSubList.set("Vector", tValues);
+        if(aSubList.isType<Teuchos::Array<Plato::Scalar>>("Values"))
+        {
+            auto tValues = aSubList.get<Teuchos::Array<Plato::Scalar>>("Values");
+            aSubList.set("Vector", tValues);
+        } else
+        if(aSubList.isType<Teuchos::Array<std::string>>("Values"))
+        {
+            auto tValues = aSubList.get<Teuchos::Array<std::string>>("Values");
+            aSubList.set("Vector", tValues);
+        } else
+        {
+            std::stringstream tMsg;
+            tMsg << "Natural Boundary Condition: unexpected type encountered for 'Values' Parameter Keyword."
+                 << "Specify 'type' of 'Array(double)' or 'Array(string)'.";
+            THROWERR(tMsg.str().c_str())
+        }
     }
     else if (tBC_Value)
     {
-        Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, 0.0);
-        auto tValue = aSubList.get<Plato::Scalar>("Value");
-        tFluxVector[0] = tValue;
-        aSubList.set("Vector", tFluxVector);
+
+        auto tDof = aSubList.get<Plato::OrdinalType>("Index", 0);
+
+        if(aSubList.isType<Plato::Scalar>("Value"))
+        {
+            Teuchos::Array<Plato::Scalar> tFluxVector(NumDofs, 0.0);
+            auto tValue = aSubList.get<Plato::Scalar>("Value");
+            tFluxVector[tDof] = tValue;
+            aSubList.set("Vector", tFluxVector);
+        } else
+        if(aSubList.isType<std::string>("Value"))
+        {
+            Teuchos::Array<std::string> tFluxVector(NumDofs, "0.0");
+            auto tValue = aSubList.get<std::string>("Value");
+            tFluxVector[tDof] = tValue;
+            aSubList.set("Vector", tFluxVector);
+        } else
+        {
+            std::stringstream tMsg;
+            tMsg << "Natural Boundary Condition: unexpected type encountered for 'Value' Parameter Keyword."
+                 << "Specify 'type' of 'double' or 'string'.";
+            THROWERR(tMsg.str().c_str())
+        }
     }
     else
     {
@@ -316,11 +352,13 @@ void NaturalBCs<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(
      const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
      const Plato::ScalarArray3DT     < ConfigScalarType> & aConfig,
      const Plato::ScalarMultiVectorT < ResultScalarType> & aResult,
-     Plato::Scalar aScale) const
+           Plato::Scalar aScale,
+           Plato::Scalar aCurrentTime
+) const
 {
     for (const auto &tMyBC : mBCs)
     {
-        tMyBC->get(aSpatialModel, aState, aControl, aConfig, aResult, aScale);
+        tMyBC->get(aSpatialModel, aState, aControl, aConfig, aResult, aScale, aCurrentTime);
     }
 }
 

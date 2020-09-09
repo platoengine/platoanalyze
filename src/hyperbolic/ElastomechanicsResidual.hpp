@@ -72,7 +72,9 @@ class TransientMechanicsResidual :
               Teuchos::ParameterList & aProblemParams,
               Teuchos::ParameterList & aPenaltyParams
     ) :
-        FunctionBaseType      (aSpatialDomain, aDataMap, {"Displacement X", "Displacement Y", "Displacement Z"}),
+        FunctionBaseType      (aSpatialDomain, aDataMap,
+                               {"Displacement X", "Displacement Y", "Displacement Z"},
+                               {"Velocity X",     "Velocity Y",     "Velocity Z"    }),
         mIndicatorFunction    (aPenaltyParams),
         mApplyStressWeighting (mIndicatorFunction),
         mApplyMassWeighting   (mIndicatorFunction),
@@ -119,7 +121,8 @@ class TransientMechanicsResidual :
         const Plato::ScalarMultiVectorT< ControlScalarType     > & aControl,
         const Plato::ScalarArray3DT    < ConfigScalarType      > & aConfig,
               Plato::ScalarMultiVectorT< ResultScalarType      > & aResult,
-              Plato::Scalar aTimeStep = 0.0
+              Plato::Scalar aTimeStep = 0.0,
+              Plato::Scalar aCurrentTime = 0.0
     ) const override
     /**************************************************************************/
     {
@@ -212,13 +215,14 @@ class TransientMechanicsResidual :
         const Plato::ScalarMultiVectorT< ControlScalarType     > & aControl,
         const Plato::ScalarArray3DT    < ConfigScalarType      > & aConfig,
               Plato::ScalarMultiVectorT< ResultScalarType      > & aResult,
-              Plato::Scalar aTimeStep = 0.0
+              Plato::Scalar aTimeStep = 0.0,
+              Plato::Scalar aCurrentTime = 0.0
     ) const override
     /**************************************************************************/
     {
         if( mBoundaryLoads != nullptr )
         {
-            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0 );
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0, aCurrentTime );
         }
     }
 };

@@ -156,8 +156,8 @@ public:
         {
             THROWERR("Plasticity Problem: Essential Boundary Conditions are not defined for this problem.")
         }
-        Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputs.sublist("Essential Boundary Conditions", false));
-        tDirichletBCs.get(mSpatialModel.MeshSets, mDirichletDofs, mDirichletValues);
+        Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputs.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets);
+        tDirichletBCs.get(mDirichletDofs, mDirichletValues);
     }
 
     /***************************************************************************//**

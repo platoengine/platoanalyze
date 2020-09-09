@@ -162,7 +162,7 @@ class ThermostaticResidual :
     
         // compute stress divergence
         //
-        tFluxDivergence(aCellOrdinal, aResult, tFlux, tGradient, tCellVolume);
+        tFluxDivergence(aCellOrdinal, aResult, tFlux, tGradient, tCellVolume, -1.0);
         
       },"flux divergence");
 
@@ -182,10 +182,9 @@ class ThermostaticResidual :
     ) const
     /**************************************************************************/
     {
-
         if( mBoundaryLoads != nullptr )
         {
-            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0 );
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult,  1.0 );
         }
     }
 };

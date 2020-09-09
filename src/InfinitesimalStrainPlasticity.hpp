@@ -45,7 +45,7 @@ struct FunctionFactory
               std::string              aFunctionName
     )
     {
-        if(aFunctionName == "Infinitesimal Strain Plasticity")
+        if(aFunctionName == "Elliptic")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
             return ( std::make_shared<Plato::InfinitesimalStrainPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>

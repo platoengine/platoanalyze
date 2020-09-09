@@ -1090,7 +1090,7 @@ void MPMD_App::ComputeSolution::operator()()
     if(mWriteNativeOutput)
     {
         auto tStateDataMap = mMyApp->mProblem->getDataMap();
-        Plato::write(mDef->params, mVizFilePath, mMyApp->mGlobalSolution.State, mMyApp->mControl, tStateDataMap, mMyApp->mMesh);
+        Plato::write(mDef->params, mVizFilePath, mMyApp->mGlobalSolution, mMyApp->mControl, tStateDataMap, mMyApp->mMesh);
     }
 }
 
@@ -1344,7 +1344,21 @@ void MPMD_App::Visualization::operator()()
     std::string tProblemPhysics     = mMyApp->mDefaultProblem->params.get<std::string>("Physics");
     auto tSolution = mMyApp->mProblem->getGlobalSolution();
     Plato::DataMap tDataMap = mMyApp->mProblem->getDataMap();
-    Plato::output<3>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution.State, tDataMap, mMyApp->mMesh);
+
+    if (mMyApp->mNumSpatialDims == 3)
+    {
+        Plato::output<3>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
+    }
+    else
+    if (mMyApp->mNumSpatialDims == 2)
+    {
+        Plato::output<2>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
+    }
+    else
+    if (mMyApp->mNumSpatialDims == 1)
+    {
+        Plato::output<1>(mMyApp->mDefaultProblem->params, mOutputFile, tSolution, tDataMap, mMyApp->mMesh);
+    }
 
 }
 /******************************************************************************/

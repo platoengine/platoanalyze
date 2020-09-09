@@ -85,6 +85,7 @@ set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
 if(ELLIPTIC)
   set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
     elliptic/Problem.cpp 
+    elliptic/SolutionFunction.cpp
     elliptic/DivisionFunction.cpp 
     elliptic/LeastSquaresFunction.cpp 
     elliptic/WeightedSumFunction.cpp 

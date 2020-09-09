@@ -22,6 +22,7 @@ protected:
 
     Plato::DataMap& mDataMap;
     std::vector<std::string> mDofNames;
+    std::vector<std::string> mDofDotNames;
 
 public:
     /******************************************************************************/
@@ -29,12 +30,14 @@ public:
     AbstractVectorFunction(
         const Plato::SpatialDomain     & aSpatialDomain,
               Plato::DataMap           & aDataMap,
-              std::vector<std::string>   aStateNames
+              std::vector<std::string>   aStateNames,
+              std::vector<std::string>   aStateDotNames
     ) :
     /******************************************************************************/
         mSpatialDomain (aSpatialDomain),
         mDataMap       (aDataMap),
-        mDofNames      (aStateNames)
+        mDofNames      (aStateNames),
+        mDofDotNames   (aStateDotNames)
     {
     }
     /******************************************************************************/
@@ -67,6 +70,14 @@ public:
         return (mDofNames);
     }
 
+    /****************************************************************************//**
+    * \brief Return reference to state dot index map
+    ********************************************************************************/
+    decltype(mDofDotNames) getDofDotNames() const
+    {
+        return (mDofDotNames);
+    }
+
 
     /******************************************************************************/
     virtual void
@@ -77,7 +88,8 @@ public:
         const Plato::ScalarMultiVectorT< typename EvaluationType::ControlScalarType     > & aControl,
         const Plato::ScalarArray3DT    < typename EvaluationType::ConfigScalarType      > & aConfig,
               Plato::ScalarMultiVectorT< typename EvaluationType::ResultScalarType      > & aResult,
-              Plato::Scalar aTimeStep = 0.0) const = 0;
+              Plato::Scalar aTimeStep = 0.0, 
+              Plato::Scalar aCurrentTime = 0.0) const = 0;
     /******************************************************************************/
 
     /******************************************************************************/
@@ -90,7 +102,8 @@ public:
         const Plato::ScalarMultiVectorT< typename EvaluationType::ControlScalarType     > & aControl,
         const Plato::ScalarArray3DT    < typename EvaluationType::ConfigScalarType      > & aConfig,
               Plato::ScalarMultiVectorT< typename EvaluationType::ResultScalarType      > & aResult,
-              Plato::Scalar aTimeStep = 0.0) const = 0;
+              Plato::Scalar aTimeStep = 0.0, 
+              Plato::Scalar aCurrentTime = 0.0) const = 0;
     /******************************************************************************/
 };
 

@@ -165,7 +165,7 @@ class HeatEquationResidual :
 
         // compute stress divergence
         //
-        tFluxDivergence(tCellOrdinal, aResult, tFlux, tGradient, tCellVolume);
+        tFluxDivergence(tCellOrdinal, aResult, tFlux, tGradient, tCellVolume, -1.0);
 
         // add capacitance terms
         

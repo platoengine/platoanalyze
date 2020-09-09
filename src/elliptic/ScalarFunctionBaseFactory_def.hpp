@@ -4,6 +4,7 @@
 #include "elliptic/PhysicsScalarFunction.hpp"
 #include "elliptic/WeightedSumFunction.hpp"
 #include "elliptic/DivisionFunction.hpp"
+#include "elliptic/SolutionFunction.hpp"
 #include "elliptic/LeastSquaresFunction.hpp"
 #include "elliptic/MassPropertiesFunction.hpp"
 #include "AnalyzeMacros.hpp"
@@ -41,6 +42,11 @@ namespace Elliptic
         if(tFunctionType == "Division")
         {
             return std::make_shared<DivisionFunction<PhysicsT>>(aSpatialModel, aDataMap, aProblemParams, aFunctionName);
+        }
+        else
+        if(tFunctionType == "Solution")
+        {
+            return std::make_shared<SolutionFunction<PhysicsT>>(aSpatialModel, aDataMap, aProblemParams, aFunctionName);
         }
         else
         if(tFunctionType == "Least Squares")

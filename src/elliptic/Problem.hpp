@@ -614,8 +614,9 @@ public:
         {
             THROWERR("ESSENTIAL BOUNDARY CONDITIONS SUBLIST IS NOT DEFINED IN THE INPUT FILE.")
         }
-        Plato::EssentialBCs<SimplexPhysics> tEssentialBoundaryConditions(aProblemParams.sublist("Essential Boundary Conditions", false));
-        tEssentialBoundaryConditions.get(mSpatialModel.MeshSets, mBcDofs, mBcValues);
+        Plato::EssentialBCs<SimplexPhysics>
+        tEssentialBoundaryConditions(aProblemParams.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets);
+        tEssentialBoundaryConditions.get(mBcDofs, mBcValues);
     }
 
     /***************************************************************************//**

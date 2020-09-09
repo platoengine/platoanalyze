@@ -328,7 +328,7 @@ TEUCHOS_UNIT_TEST( AnalyzeAppTests, EMStressPNorm )
 { 
   std::string inputFile = "EMStressPNorm_input.xml";
   std::string appFile = "EMStressPNorm_appfile.xml";
-  Plato::Scalar val1(0.0), val2(0.0), tol(1e-5);
+  Plato::Scalar val1(0.0), val2(0.0), tol(1e-7);
   objectiveFiniteDifferenceTest(inputFile, appFile, val1, val2, tol);
   TEST_FLOATING_EQUALITY(val1, val2, tol);
 }
@@ -337,7 +337,16 @@ TEUCHOS_UNIT_TEST( AnalyzeAppTests, ThermoelasticEnergy )
 { 
   std::string inputFile = "InternalThermoelasticEnergy_input.xml";
   std::string appFile = "InternalThermoelasticEnergy_appfile.xml";
-  Plato::Scalar val1(0.0), val2(0.0), tol(1e-5);
+  Plato::Scalar val1(0.0), val2(0.0), tol(1e-7);
+  objectiveFiniteDifferenceTest(inputFile, appFile, val1, val2, tol);
+  TEST_FLOATING_EQUALITY(val1, val2, tol);
+}
+
+TEUCHOS_UNIT_TEST( AnalyzeAppTests, Displacement )
+{ 
+  std::string inputFile = "Displacement_input.xml";
+  std::string appFile = "Displacement_appfile.xml";
+  Plato::Scalar val1(0.0), val2(0.0), tol(1e-7);
   objectiveFiniteDifferenceTest(inputFile, appFile, val1, val2, tol);
   TEST_FLOATING_EQUALITY(val1, val2, tol);
 }
@@ -407,7 +416,7 @@ void objectiveFiniteDifferenceTest(std::string inputFile, std::string appFile, P
     stdControlIn[iVal] -= dz;
     dval -= stdObjGradOut[iVal]*dz;
   }
- 
+
   fauxControlIn.setData(stdControlIn);
   app.importDataT("Topology", fauxControlIn);
   app.compute("Compute Objective");
@@ -416,6 +425,6 @@ void objectiveFiniteDifferenceTest(std::string inputFile, std::string appFile, P
   std::vector<Plato::Scalar> stdObjValTwo(1);
   fauxObjValOut.getData(stdObjValTwo);
   
-  val1 = stdObjValOne[0];
+  val1 = stdObjValOne[0]+dval;
   val2 = stdObjValTwo[0];
 }
