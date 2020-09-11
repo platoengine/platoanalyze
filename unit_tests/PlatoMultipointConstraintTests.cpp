@@ -440,11 +440,6 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   Plato::EssentialBCs<SimplexPhysics>
       tEssentialBoundaryConditions(params->sublist("Essential Boundary Conditions",false));
   tEssentialBoundaryConditions.get(tMeshSets, bcDofs, bcValues);
-  
-  // parse multipoint constraints
-  //
-  std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(tNumNodes, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
-  tMPCs->setupTransform(tMeshSets);
 
   // create vector function
   //
@@ -462,6 +457,11 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   // compute jacobian
   //
   auto jacobian = vectorFunction.gradient_u(state, control);
+  
+  // parse multipoint constraints
+  //
+  std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(tNumNodes, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
+  tMPCs->setupTransform(tMeshSets);
   
   // create solver
   //

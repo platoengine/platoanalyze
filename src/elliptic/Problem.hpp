@@ -370,7 +370,8 @@ public:
 
             Plato::ScalarVector tAdjointSubView = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
 
-            mSolver->solve(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State);
+            bool tAdjointFlag = true;
+            mSolver->solve(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State, tAdjointFlag);
 
             // compute dgdz: partial of PDE wrt state.
             // dgdz is returned transposed, nxm.  n=z.size() and m=u.size().
@@ -424,7 +425,8 @@ public:
             Plato::ScalarVector
               tAdjointSubView = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
 
-              mSolver->solve(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State);
+              bool tAdjointFlag = true;
+              mSolver->solve(*mJacobian, tAdjointSubView, tPartialObjectiveWRT_State, tAdjointFlag);
 
             // compute dgdx: partial of PDE wrt config.
             // dgdx is returned transposed, nxm.  n=x.size() and m=u.size().
