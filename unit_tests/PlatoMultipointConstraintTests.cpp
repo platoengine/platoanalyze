@@ -443,9 +443,8 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   
   // parse multipoint constraints
   //
-  Plato::MultipointConstraints<SimplexPhysics> 
-      tMPCs(tNumNodes, params->sublist("Multipoint Constraints", false));
-  tMPCs.setupTransform(tMeshSets);
+  std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(tNumNodes, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
+  tMPCs->setupTransform(tMeshSets);
 
   // create vector function
   //
@@ -453,7 +452,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
     vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
   int tNumCells = vectorFunction.numCells();
-  std::cout << '\n' << "Number of Elements: " << tNumCells;
+  std::cout << '\n' << "Number of Elements: " << tNumCells << std::endl;
 
   // compute residual
   //
@@ -481,59 +480,15 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   );
   Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-  const Plato::OrdinalType tNumChildNodes = tMPCs.getNumChildNodes();
-  auto tNumCondensedNodes = tNumNodes - tNumChildNodes;
-
-  auto tSolver = tSolverFactory.create(tNumCondensedNodes, tMachine, tNumDofsPerNode);
+  auto tSolver = tSolverFactory.create(mesh->nverts(), tMachine, tNumDofsPerNode, tMPCs);
 
   // apply essential BCs
   //
   Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, bcDofs, bcValues);
 
-  // get MPC matrices
+  // solve linear system
   //
-  Teuchos::RCP<Plato::CrsMatrixType> tTransformMatrix = tMPCs.getTransformMatrix();
-  Teuchos::RCP<Plato::CrsMatrixType> tTransformMatrixTranspose = tMPCs.getTransformMatrixTranspose();
-  Plato::ScalarVector tMpcRhs = tMPCs.getRhsVector();
-
-   std::cout << '\n' << tMpcRhs.size();
-   print_view(tMpcRhs);
-  
-  // build condensed jacobian
-  //
-  auto tNumCondensedDofs = tNumCondensedNodes*tNumDofsPerNode;
-
-  auto tCondensedJacobianLeft = Teuchos::rcp( new Plato::CrsMatrixType(tNumDofs, tNumCondensedDofs, tNumDofsPerNode, tNumDofsPerNode) );
-  auto tCondensedJacobian     = Teuchos::rcp( new Plato::CrsMatrixType(tNumCondensedDofs, tNumCondensedDofs, tNumDofsPerNode, tNumDofsPerNode) );
-
-  Plato::MatrixMatrixMultiply(jacobian, tTransformMatrix, tCondensedJacobianLeft);
-  Plato::MatrixMatrixMultiply(tTransformMatrixTranspose, tCondensedJacobianLeft, tCondensedJacobian);
-
-  // build condensed residual
-  //
-  Plato::ScalarVector tInnerResidual = residual;
-  Plato::blas1::scale(-1.0, tMpcRhs);
-  Plato::MatrixTimesVectorPlusVector(jacobian, tMpcRhs, tInnerResidual);
-
-  Plato::ScalarVector tCondensedResidual("Condensed Residual", tNumCondensedDofs);
-  Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedResidual);
-
-  Plato::MatrixTimesVectorPlusVector(tTransformMatrixTranspose, tInnerResidual, tCondensedResidual);
-
-  // solve condensed system
-  //
-  Plato::ScalarVector tCondensedState("Condensed State Solution", tNumCondensedDofs);
-  Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedState);
-  tSolver->solve(*tCondensedJacobian, tCondensedState, tCondensedResidual);
-
-  // fill in child DOF values in terms of parent DOF values
-  //
-  Plato::ScalarVector tFullState("Full State Solution", state.extent(0));
-  Plato::blas1::copy(tMpcRhs, tFullState);
-  Plato::blas1::scale(-1.0, tFullState); // since tMpcRhs was scaled by -1 above, set back to original values
-
-  Plato::MatrixTimesVectorPlusVector(tTransformMatrix, tCondensedState, tFullState);
-  Plato::blas1::axpy<Plato::ScalarVector>(1.0, tFullState, state);
+  tSolver->solve(*jacobian, state, residual);
 
   // create mirror view of displacement solution
   //
