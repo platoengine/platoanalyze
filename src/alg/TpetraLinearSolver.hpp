@@ -87,14 +87,27 @@ class TpetraLinearSolver : public AbstractSolver
     );
 
     /******************************************************************************//**
+     * @brief TpetraLinearSolver constructor with MPCs
+
+     This constructor takes an Omega_h::Mesh and MultipointConstraints and creates a new System.
+    **********************************************************************************/
+    TpetraLinearSolver(
+        const Teuchos::ParameterList&                   aSolverParams,
+        int                                             aNumNodes,
+        Comm::Machine                                   aMachine,
+        int                                             aDofsPerNode,
+        std::shared_ptr<Plato::MultipointConstraints>   aMPCs
+    );
+
+    /******************************************************************************//**
      * @brief Solve the linear system
     **********************************************************************************/
     void
-    solve(
+    innerSolve(
         Plato::CrsMatrix<int> aA,
         Plato::ScalarVector   aX,
         Plato::ScalarVector   aB
-    );
+    ) override;
 
     /******************************************************************************//**
      * @brief Setup the Belos solver

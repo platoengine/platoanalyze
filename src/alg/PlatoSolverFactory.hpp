@@ -23,9 +23,17 @@ class SolverFactory
 
     rcp<AbstractSolver>
     create(
-        int                     aNumNodes,
-        Comm::Machine           aMachine,
-        int                     aDofsPerNode
+        int                                             aNumNodes,
+        Comm::Machine                                   aMachine,
+        int                                             aDofsPerNode
+    );
+
+    rcp<AbstractSolver>
+    create(
+        int                                             aNumNodes,
+        Comm::Machine                                   aMachine,
+        int                                             aDofsPerNode,
+        std::shared_ptr<Plato::MultipointConstraints>   aMPCs
     );
 };
 

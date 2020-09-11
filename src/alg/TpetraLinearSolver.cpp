@@ -164,6 +164,41 @@ TpetraLinearSolver::TpetraLinearSolver(
     }
 }
 
+/******************************************************************************//**
+ * @brief TpetraLinearSolver constructor with MPCs
+
+ This constructor takes an Omega_h::Mesh and MultipointConstraints and creates a new System.
+**********************************************************************************/
+TpetraLinearSolver::TpetraLinearSolver(
+    const Teuchos::ParameterList&                   aSolverParams,
+    int                                             aNumNodes,
+    Comm::Machine                                   aMachine,
+    int                                             aDofsPerNode,
+    std::shared_ptr<Plato::MultipointConstraints>   aMPCs
+) :
+    AbstractSolver(aMPCs),
+    mSolverParams(aSolverParams),
+    mSystem(Teuchos::rcp( new TpetraSystem(aNumNodes, aMachine, aDofsPerNode)))
+{
+    if(mSolverParams.isType<int>("Iterations"))
+    {
+        mIterations = mSolverParams.get<int>("Iterations");
+    }
+    else
+    {
+        mIterations = 100;
+    }
+
+    if(mSolverParams.isType<double>("Tolerance"))
+    {
+        mTolerance = mSolverParams.get<double>("Tolerance");
+    }
+    else
+    {
+        mTolerance = 1e-6;
+    }
+}
+
 void getPrecondTypeAndParameters (std::string& precondType, Teuchos::ParameterList& pl)
 {
   precondType = "ILUT";
@@ -249,7 +284,7 @@ TpetraLinearSolver::belosSolve (std::ostream& out, Teuchos::RCP<const OP> A, Teu
  * @brief Solve the linear system
 **********************************************************************************/
 void
-TpetraLinearSolver::solve(
+TpetraLinearSolver::innerSolve(
     Plato::CrsMatrix<int> aA,
     Plato::ScalarVector   aX,
     Plato::ScalarVector   aB

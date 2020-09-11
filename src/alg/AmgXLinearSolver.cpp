@@ -111,10 +111,48 @@ AmgXLinearSolver::AmgXLinearSolver(
 }
 
 /******************************************************************************//**
+ * @brief AmgXLinearSolver constructor with MPCs
+**********************************************************************************/
+AmgXLinearSolver::AmgXLinearSolver(
+    const Teuchos::ParameterList&                   aSolverParams,
+    int                                             aDofsPerNode,
+    std::shared_ptr<Plato::MultipointConstraints>   aMPCs
+) : 
+    AbstractSolver(aMPCs),
+    mDofsPerNode(aDofsPerNode)
+{
+    AMGX_SAFE_CALL(AMGX_initialize());
+    AMGX_SAFE_CALL(AMGX_initialize_plugins());
+    AMGX_SAFE_CALL(AMGX_install_signal_handler());
+
+    std::string tConfigFile("amgx.json");
+    if(aSolverParams.isType<std::string>("Configuration File"))
+    {
+        tConfigFile = aSolverParams.get<std::string>("Configuration File");
+    }
+    auto tConfigString = loadConfigString(tConfigFile);
+    AMGX_config_create(&mConfigHandle, tConfigString.c_str());
+
+    // everything currently assumes exactly one MPI rank.
+    MPI_Comm mpi_comm = MPI_COMM_SELF;
+    int ndevices = 1;
+    int devices[1];
+    //it is critical to specify the current device, which is not always zero
+    cudaGetDevice(&devices[0]);
+    AMGX_resources_create(
+        &mResources, mConfigHandle, &mpi_comm, ndevices, devices);
+
+    AMGX_matrix_create(&mMatrixHandle,   mResources, AMGX_mode_dDDI);
+    AMGX_vector_create(&mForcingHandle,  mResources, AMGX_mode_dDDI);
+    AMGX_vector_create(&mSolutionHandle, mResources, AMGX_mode_dDDI);
+    AMGX_solver_create(&mSolverHandle,   mResources, AMGX_mode_dDDI, mConfigHandle);
+}
+
+/******************************************************************************//**
  * @brief AmgXLinearSolver constructor
 **********************************************************************************/
 void
-AmgXLinearSolver::solve(
+AmgXLinearSolver::innerSolve(
     Plato::CrsMatrix<int> aA,
     Plato::ScalarVector   aX,
     Plato::ScalarVector   aB
