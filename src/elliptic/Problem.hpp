@@ -62,7 +62,7 @@ private:
     Plato::LocalOrdinalVector mBcDofs; /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
     Plato::ScalarVector mBcValues; /*!< values associated with the Dirichlet boundary conditions */
 
-    std::shared_ptr<Plato::MultipointConstraints<SimplexPhysics>> mMPCs; /*!< multipoint constraint interface */
+    std::shared_ptr<Plato::MultipointConstraints> mMPCs; /*!< multipoint constraint interface */
 
     rcp<Plato::AbstractSolver> mSolver;
 
@@ -91,7 +91,7 @@ public:
         this->initialize(aMesh, aMeshSets, aInputParams);
 
         Plato::SolverFactory tSolverFactory(aInputParams.sublist("Linear Solver"));
-        mSolver = tSolverFactory.create(aMesh.nverts(), aMachine, SimplexPhysics::mNumDofsPerNode);
+        mSolver = tSolverFactory.create(aMesh.nverts(), aMachine, SimplexPhysics::mNumDofsPerNode, mMPCs);
     }
 
     virtual ~Problem(){}
@@ -233,14 +233,7 @@ public:
         mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
         this->applyConstraints(mJacobian, mResidual);
 
-        if(mMPCs)
-        {
-            this->mpcSolution(mJacobian, tStatesSubView, mResidual);
-        }
-        else
-        {
-            mSolver->solve(*mJacobian, tStatesSubView, mResidual);
-        }
+        mSolver->solve(*mJacobian, tStatesSubView, mResidual);
 
         mResidual = mPDE->value(tStatesSubView, aControl);
         Plato::blas1::scale(-1.0, mResidual);
@@ -623,9 +616,10 @@ private:
 
         if(aInputParams.isType<std::string>("Multipoint Constraints"))
         {
+            Plato::OrdinalType tNumDofsPerNode = mPDE->numDofsPerNode();
             Plato::OrdinalType tNumNodes = mPDE->numNodes();
             auto & tMyParams = aInputParams.sublist("Multipoint Constraints", false);
-            mMPCs = std::make_shared<Plato::MultipointConstraints<SimplexPhysics>>(tNumNodes, tMyParams);
+            mMPCs = std::make_shared<Plato::MultipointConstraints>(tNumNodes, tNumDofsPerNode, tMyParams);
             mMPCs->setupTransform(aMeshSets);
         }
     }
@@ -642,54 +636,6 @@ private:
         {
             Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tDirichletValues);
         }
-    }
-
-    /******************************************************************************//**
-     * \brief Apply multipoint constraints and solve condensed system
-     * \param [in] aMatrix Compressed Row Storage (CRS) matrix
-     * \param [in] aVector 1D view of Right-Hand-Side forces
-    **********************************************************************************/
-    void mpcSolution(Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, Plato::ScalarVector aState, Plato::ScalarVector & aVector)
-    {
-
-        Teuchos::RCP<Plato::CrsMatrixType> tTransformMatrix = mMPCs->getTransformMatrix();
-        Teuchos::RCP<Plato::CrsMatrixType> tTransformMatrixTranspose = mMPCs->getTransformMatrixTranspose();
-        Plato::ScalarVector tMpcRhs = mMPCs->getRhsVector();
-
-        Plato::OrdinalType tNumNodes = mPDE->numNodes();
-        const Plato::OrdinalType tNumChildNodes = mMPCs->getNumChildNodes();
-        auto tNumCondensedNodes = tNumNodes - tNumChildNodes;
-
-        Plato::OrdinalType tNumDofsPerNode = mPDE->numDofsPerNode();
-        auto tNumDofs = tNumNodes*tNumDofsPerNode;
-        auto tNumCondensedDofs = tNumCondensedNodes*tNumDofsPerNode;
-
-        auto tCondensedMatrixLeft = Teuchos::rcp( new Plato::CrsMatrixType(tNumDofs, tNumCondensedDofs, tNumDofsPerNode, tNumDofsPerNode) );
-        auto tCondensedMatrix     = Teuchos::rcp( new Plato::CrsMatrixType(tNumCondensedDofs, tNumCondensedDofs, tNumDofsPerNode, tNumDofsPerNode) );
-      
-        Plato::MatrixMatrixMultiply(aMatrix, tTransformMatrix, tCondensedMatrixLeft);
-        Plato::MatrixMatrixMultiply(tTransformMatrixTranspose, tCondensedMatrixLeft, tCondensedMatrix);
-
-        Plato::ScalarVector tInnerVector = aVector;
-        Plato::blas1::scale(-1.0, tMpcRhs);
-        Plato::MatrixTimesVectorPlusVector(aMatrix, tMpcRhs, tInnerVector);
-      
-        Plato::ScalarVector tCondensedVector("Condensed Vector", tNumCondensedDofs);
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedVector);
-      
-        Plato::MatrixTimesVectorPlusVector(tTransformMatrixTranspose, tInnerVector, tCondensedVector);
-
-        Plato::ScalarVector tCondensedState("Condensed State Solution", tNumCondensedDofs);
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tCondensedState);
-        mSolver->solve(*tCondensedMatrix, tCondensedState, tCondensedVector);
-
-        Plato::ScalarVector tFullState("Full State Solution", aState.extent(0));
-        Plato::blas1::copy(tMpcRhs, tFullState);
-        Plato::blas1::scale(-1.0, tFullState); // since tMpcRhs was scaled by -1 above, set back to original values
-      
-        Plato::MatrixTimesVectorPlusVector(tTransformMatrix, tCondensedState, tFullState);
-        Plato::blas1::axpy<Plato::ScalarVector>(1.0, tFullState, aState);
-
     }
 
 };
