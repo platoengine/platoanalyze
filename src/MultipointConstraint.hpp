@@ -16,14 +16,13 @@ namespace Plato
 /*!
  \brief virtual base class for multipoint constraints.
  */
-template<typename SimplexPhysicsType>
 class MultipointConstraint
 /******************************************************************************/
 {
 public:
 
-    MultipointConstraint<SimplexPhysicsType>(const std::string & aName) :
-                                             name(aName)
+    MultipointConstraint(const std::string & aName) :
+                        name(aName)
     {
     }
 

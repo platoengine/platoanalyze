@@ -45,6 +45,9 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     InfinitesimalStrainPlasticityResidual.cpp 
     ElasticWorkCriterion.cpp 
     PlasticWorkCriterion.cpp
+    MultipointConstraints.cpp
+    MultipointConstraintFactory.cpp
+    TieMultipointConstraint.cpp
     elliptic/DivisionFunction.cpp 
     elliptic/LeastSquaresFunction.cpp 
     elliptic/WeightedSumFunction.cpp 
