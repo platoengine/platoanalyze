@@ -58,9 +58,6 @@ template<typename ScalarT>
 void MatrixTimesVectorPlusVector(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
                                  const Plato::ScalarVectorT<ScalarT> & aInput,
                                  const Plato::ScalarVectorT<ScalarT> & aOutput)
-/* void MatrixTimesVectorPlusVector(const Plato::CrsMatrixType & aMatrix, */
-/*                                  const Plato::ScalarVectorT<ScalarT> & aInput, */
-/*                                  const Plato::ScalarVectorT<ScalarT> & aOutput) */
 {
     if(aMatrix->numCols() != aInput.size())
     {
@@ -399,10 +396,6 @@ MatrixMatrixMultiply( const Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
                       const Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixTwo,
                             Teuchos::RCP<Plato::CrsMatrixType> & aOutMatrix,
                             SPGEMMAlgorithm aAlgorithm = SPGEMM_KK_SPEED)
-/* MatrixMatrixMultiply( const Plato::CrsMatrixType & aInMatrixOne, */
-/*                       const Plato::CrsMatrixType & aInMatrixTwo, */
-/*                             Plato::CrsMatrixType & aOutMatrix, */
-/*                             SPGEMMAlgorithm aAlgorithm = SPGEMM_KK_SPEED) */
 {
     using Plato::OrdinalType;
     using Plato::Scalar;
