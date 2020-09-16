@@ -15,6 +15,7 @@
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 #include "SpatialModel.hpp"
+#include "PlatoSequence.hpp"
 
 #include "ParseTools.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -58,6 +59,8 @@ private:
 
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
+    Plato::Sequence<SpatialDim> mSequence;
+
     // required
     std::shared_ptr<VectorFunctionType> mPDE; /*!< equality constraint interface */
 
@@ -97,6 +100,7 @@ public:
       Comm::Machine aMachine
     ) :
       mSpatialModel  (aMesh, aMeshSets, aProblemParams),
+      mSequence      (mSpatialModel, aProblemParams),
       mPDE(std::make_shared<VectorFunctionType>(mSpatialModel, mDataMap, aProblemParams, aProblemParams.get<std::string>("PDE Constraint"))),
       mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aProblemParams, "Newton Iteration", "Maximum Iterations",  1  )),
       mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Increment Tolerance", 0.0)),
@@ -252,43 +256,52 @@ public:
 
         mDataMap.clearStates();
 
-        // inner loop for non-linear models
-        for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
+        for( const auto & tSequenceEntry : mSequence.getSteps() )
         {
-            mResidual = mPDE->value(tStatesSubView, aControl);
-            Plato::blas1::scale(-1.0, mResidual);
 
-            if (mNumNewtonSteps > 1) {
-                auto tResidualNorm = Plato::blas1::norm(mResidual);
-                std::cout << " Residual norm: " << tResidualNorm << std::endl;
-                if (tResidualNorm < mNewtonResTol) {
-                    std::cout << " Residual norm tolerance satisfied." << std::endl;
-                    break;
+            mSpatialModel.applyMask(tSequenceEntry.getMask());
+
+            // inner loop for non-linear models
+            for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
+            {
+                mResidual = mPDE->value(tStatesSubView, aControl);
+                Plato::blas1::scale(-1.0, mResidual);
+
+                if (mNumNewtonSteps > 1) {
+                    auto tResidualNorm = Plato::blas1::norm(mResidual);
+                    std::cout << " Residual norm: " << tResidualNorm << std::endl;
+                    if (tResidualNorm < mNewtonResTol) {
+                        std::cout << " Residual norm tolerance satisfied." << std::endl;
+                        break;
+                    }
+                }
+
+                mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
+
+                Plato::OrdinalType tScale = (tNewtonIndex == 0) ? 1.0 : 0.0;
+                this->applyStateConstraints(mJacobian, mResidual, tScale);
+
+                Plato::ScalarVector tDeltaD("increment", tStatesSubView.extent(0));
+                Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
+
+                tSequenceEntry.template constrainInactiveNodes<SimplexPhysics::mNumDofsPerNode>(mJacobian, mResidual);
+
+                mSolver->solve(*mJacobian, tDeltaD, mResidual);
+                Plato::blas1::axpy(1.0, tDeltaD, tStatesSubView);
+
+                if (mNumNewtonSteps > 1) {
+                    auto tIncrementNorm = Plato::blas1::norm(tDeltaD);
+                    std::cout << " Delta norm: " << tIncrementNorm << std::endl;
+                    if (tIncrementNorm < mNewtonIncTol) {
+                        std::cout << " Solution increment norm tolerance satisfied." << std::endl;
+                        break;
+                    }
                 }
             }
 
-            mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
+        } // end sequence loop
 
-            Plato::OrdinalType tScale = (tNewtonIndex == 0) ? 1.0 : 0.0;
-            this->applyStateConstraints(mJacobian, mResidual, tScale);
-
-            Plato::ScalarVector tDeltaD("increment", tStatesSubView.extent(0));
-            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
-
-            mSolver->solve(*mJacobian, tDeltaD, mResidual);
-            Plato::blas1::axpy(1.0, tDeltaD, tStatesSubView);
-
-            if (mNumNewtonSteps > 1) {
-                auto tIncrementNorm = Plato::blas1::norm(tDeltaD);
-                std::cout << " Delta norm: " << tIncrementNorm << std::endl;
-                if (tIncrementNorm < mNewtonIncTol) {
-                    std::cout << " Solution increment norm tolerance satisfied." << std::endl;
-                    break;
-                }
-            }
-        }
-
-        if ( mSaveState )
+        if ( mSaveState ) // TODO how to save state for next sequence
         {
             // evaluate at new state
             mResidual  = mPDE->value(tStatesSubView, aControl);

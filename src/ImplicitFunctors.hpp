@@ -11,6 +11,39 @@
 namespace Plato
 {
 
+/******************************************************************************//**
+* \brief functor that provides mesh-local node ordinal
+* \param [in] aMesh Omega_h mesh
+**********************************************************************************/
+template<Plato::OrdinalType SpaceDim>
+class NodeOrdinal
+{
+  public:
+    const Omega_h::LOs mCells2nodes;
+
+  public:
+    NodeOrdinal(
+      Omega_h::Mesh* aMesh ) : 
+      mCells2nodes(aMesh->ask_elem_verts()) {}
+
+    /******************************************************************************//**
+    * \brief Returns mesh-local node ordinal
+    * \param [in] aCellOrdinal mesh-local element ordinal
+    * \param [in] aNodeOrdinal elem-local node ordinal
+    **********************************************************************************/
+    DEVICE_TYPE inline
+    Plato::OrdinalType
+    operator()(
+        Plato::OrdinalType aCellOrdinal,
+        Plato::OrdinalType aNodeOrdinal
+    ) const
+    {
+        return mCells2nodes[aCellOrdinal*(SpaceDim+1) + aNodeOrdinal];
+    }
+};
+/******************************************************************************/
+
+
 /******************************************************************************/
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType DofsPerNode=1>
 class VectorEntryOrdinal

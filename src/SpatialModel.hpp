@@ -4,6 +4,7 @@
 #include <Omega_h_assoc.hpp>
 #include <Teuchos_ParameterList.hpp>
 
+#include "PlatoMask.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato {
@@ -20,10 +21,14 @@ namespace Plato {
         Omega_h::MeshSets & MeshSets;
 
       private:
-        std::string         mElementBlockName;
-        std::string         mMaterialModelName;
-        std::string         mSpatialDomainName;
-        Omega_h::LOs        mElemLids;
+        using OrdinalList = Plato::ScalarVectorT<Plato::OrdinalType>;
+
+        std::string  mElementBlockName;
+        std::string  mMaterialModelName;
+        std::string  mSpatialDomainName;
+
+        OrdinalList  mTotalElemLids;   /*!< List of all elements in this domain */
+        OrdinalList  mMaskedElemLids;  /*!< List of elements after a mask is applied */
 
       public:
         decltype(mMaterialModelName) getMaterialName() const {return mMaterialModelName;}
@@ -32,13 +37,18 @@ namespace Plato {
         Plato::OrdinalType
         numCells() const
         {
-            return mElemLids.size();
+            return mMaskedElemLids.extent(0);
         }
 
-        Omega_h::LOs
+        /******************************************************************************//**
+         * \brief get cell ordinal list
+                  Note: A const reference is returned to prevent the ref count from being
+                  modified.  
+        **********************************************************************************/
+        const OrdinalList &
         cellOrdinals() const
         {
-            return mElemLids;
+            return mMaskedElemLids;
         }
 
 
@@ -84,8 +94,68 @@ namespace Plato {
                 tMsg << "Could not find element set (block) with name = '" << mElementBlockName;
                 THROWERR(tMsg.str())
             }
-            mElemLids = (tElemSetsI->second);
 
+            auto tElemLids = (tElemSetsI->second);
+            auto tNumElems = tElemLids.size();
+            Kokkos::resize(mTotalElemLids, tNumElems);
+            Kokkos::resize(mMaskedElemLids, tNumElems);
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumElems), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+            {
+                mTotalElemLids(aCellOrdinal) = tElemLids[aCellOrdinal];
+            }, "get element ids");
+            Kokkos::deep_copy(mMaskedElemLids, mTotalElemLids);
+        }
+
+        /******************************************************************************//**
+         * \brief Apply mask to this Domain
+         *        This function removes elements that have a mask value of zero in \p aMask.
+         *        Subsequent calls to numCells() and cellOrdinals() refer to the reduced list.
+         *        Call removeMask() to remove the mask, or applyMask(...) to apply a different
+         *        mask.
+         * \param [in] aMask Plato Mask specifying active/inactive nodes and elements
+        **********************************************************************************/
+        template<int mSpatialDim>
+        void
+        applyMask(
+            std::shared_ptr<Plato::Mask<mSpatialDim>> aMask
+        )
+        {
+            using OrdinalT = Plato::OrdinalType;
+
+            auto tMask = aMask->cellMask();
+            auto tNumEntries = tMask.extent(0);
+
+            // how many non-zeros in the mask?
+            Plato::OrdinalType tSum(0);
+            Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0,tNumEntries), 
+            LAMBDA_EXPRESSION(const Plato::OrdinalType& aOrdinal, Plato::OrdinalType & aUpdate)
+            {
+              aUpdate += tMask(aOrdinal); 
+            }, tSum);
+            Kokkos::resize(mMaskedElemLids, tSum);
+
+            auto tMaskedElemLids = mMaskedElemLids;
+
+            // create a list of elements with non-zero mask values
+            OrdinalT tOffset(0);
+            Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalT>(0,tNumEntries),
+            KOKKOS_LAMBDA (const OrdinalT& iOrdinal, OrdinalT& aUpdate, const bool& tIsFinal)
+            {
+                const OrdinalT tVal = tMask(iOrdinal);
+                if( tIsFinal ) { tMaskedElemLids(aUpdate) = iOrdinal; }
+                aUpdate += tVal;
+            }, tOffset);
+        }
+        /******************************************************************************//**
+         * \brief Remove applied mask.
+         *        This function resets the element list in this domain to the original definition.
+         *        If no mask has been applied, this function has no effect.
+        **********************************************************************************/
+        void
+        removeMask(
+        )
+        {
+            Kokkos::deep_copy(mMaskedElemLids, mTotalElemLids);
         }
     };
 
@@ -143,6 +213,18 @@ namespace Plato {
             else
             {
                 THROWERR("Parsing 'Plato Problem'. Required 'Spatial Model' list not found");
+            }
+        }
+
+        template <int mSpatialDim>
+        void
+        applyMask(
+            std::shared_ptr<Plato::Mask<mSpatialDim>> aMask
+        )
+        {
+            for( auto& tDomain : Domains )
+            {
+                tDomain.applyMask(aMask);
             }
         }
     };
