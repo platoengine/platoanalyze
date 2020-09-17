@@ -15,14 +15,8 @@ TieMultipointConstraint(const std::string & aName, Teuchos::ParameterList & aPar
     Plato::MultipointConstraint(aName)
 /****************************************************************************/
 {
-    /* mChildNodeSet = "Child"; */
-    /* mParentNodeSet = "Parent"; */
-
     mChildNodeSet = aParam.get<std::string>("Child");
     mParentNodeSet = aParam.get<std::string>("Parent");
-
-    /* mChildNodeSet = aParam.get<Plato::OrdinalType>("Child"); */
-    /* mParentNodeSet = aParam.get<Plato::OrdinalType>("Parent"); */
 
     mValue = aParam.get<Plato::Scalar>("Value");
 }
@@ -48,17 +42,11 @@ get(const Omega_h::MeshSets& aMeshSets,
     auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet);
     auto tChildNodeLids = (tChildNodeSetsIter->second);
     auto tNumberChildNodes = tChildNodeLids.size();
-
-    /* auto tChildNodeLids = mChildNodeSet; */
-    /* auto tNumberChildNodes = 1; */
     
     // parse parent nodes
     auto tParentNodeSetsIter = tNodeSets.find(this->mParentNodeSet);
     auto tParentNodeLids = (tParentNodeSetsIter->second);
     auto tNumberParentNodes = tParentNodeLids.size();
-
-    /* auto tParentNodeLids = mParentNodeSet; */
-    /* auto tNumberParentNodes = 1; */
 
     // Check that the number of child and parent nodes match
     if (tNumberChildNodes != tNumberParentNodes)
@@ -80,9 +68,6 @@ get(const Omega_h::MeshSets& aMeshSets,
     {
         tChildNodes(offsetChild+nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
         tParentNodes(offsetParent+nodeOrdinal) = tParentNodeLids[nodeOrdinal]; // parent node ID
-
-        /* tChildNodes(offsetChild+nodeOrdinal) = tChildNodeLids; // child node ID */
-        /* tParentNodes(offsetParent+nodeOrdinal) = tParentNodeLids; // parent node ID */
 
         tRowMap(offsetChild+nodeOrdinal) = offsetChild + nodeOrdinal; // row map
         tColumnIndices(offsetNnz+nodeOrdinal) = offsetParent + nodeOrdinal; // column indices (local parent node ID)
@@ -107,17 +92,11 @@ updateLengths(const Omega_h::MeshSets& aMeshSets,
     auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet);
     auto tChildNodeLids = (tChildNodeSetsIter->second);
     auto tNumberChildNodes = tChildNodeLids.size();
-
-    /* auto tChildNodeLids = mChildNodeSet; */
-    /* auto tNumberChildNodes = 1; */
     
     // parse parent nodes
     auto tParentNodeSetsIter = tNodeSets.find(this->mParentNodeSet);
     auto tParentNodeLids = (tParentNodeSetsIter->second);
     auto tNumberParentNodes = tParentNodeLids.size();
-
-    /* auto tParentNodeLids = mParentNodeSet; */
-    /* auto tNumberParentNodes = 1; */
 
     // Check that the number of child and parent nodes match
     if (tNumberChildNodes != tNumberParentNodes)
