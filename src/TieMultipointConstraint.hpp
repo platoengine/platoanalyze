@@ -62,9 +62,6 @@ private:
     std::string mChildNodeSet;
     std::string mParentNodeSet;
 
-    /* Plato::OrdinalType mChildNodeSet; */
-    /* Plato::OrdinalType mParentNodeSet; */
-
     Plato::Scalar mValue;
 
 };
