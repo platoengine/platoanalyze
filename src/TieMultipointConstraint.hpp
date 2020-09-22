@@ -40,7 +40,8 @@ public:
      \param offsetChild Starting location in rowMap/RHS where constrained nodes/values will be added.
      \param offsetNnz Starting location in columnIndices/entries where constraining nodes/coefficients will be added.
      */
-    void get(const Omega_h::MeshSets& aMeshSets,
+    void get(const Omega_h::Mesh& aMesh,
+             const Omega_h::MeshSets& aMeshSets,
              LocalOrdinalVector & mpcChildNodes,
              LocalOrdinalVector & mpcParentNodes,
              Plato::CrsMatrixType::RowMapVector & mpcRowMap,

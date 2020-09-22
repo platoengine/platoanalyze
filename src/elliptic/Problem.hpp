@@ -622,7 +622,7 @@ private:
             Plato::OrdinalType tNumNodes = mPDE->numNodes();
             auto & tMyParams = aInputParams.sublist("Multipoint Constraints", false);
             mMPCs = std::make_shared<Plato::MultipointConstraints>(tNumNodes, tNumDofsPerNode, tMyParams);
-            mMPCs->setupTransform(aMeshSets);
+            mMPCs->setupTransform(aMesh, aMeshSets);
         }
     }
 

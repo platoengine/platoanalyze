@@ -43,7 +43,8 @@ public :
     /*!
      \brief Get node ordinals and values for constraints.
      */
-    void get(const Omega_h::MeshSets & aMeshSets,
+    void get(const Omega_h::Mesh & aMesh,
+             const Omega_h::MeshSets & aMeshSets,
              LocalOrdinalVector & mpcChildNodes,
              LocalOrdinalVector & mpcParentNodes,
              Teuchos::RCP<Plato::CrsMatrixType> & mpcMatrix,
@@ -65,7 +66,7 @@ public :
                      const ScalarVector & aMpcValues);
 
     // brief setup transform matrices and RHS
-    void setupTransform(const Omega_h::MeshSets & aMeshSets);
+    void setupTransform(const Omega_h::Mesh & aMesh, const Omega_h::MeshSets & aMeshSets);
 
     // brief getters
     decltype(mTransformMatrix)          getTransformMatrix()           { return mTransformMatrix; }

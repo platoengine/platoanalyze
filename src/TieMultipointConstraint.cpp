@@ -23,7 +23,8 @@ TieMultipointConstraint(const std::string & aName, Teuchos::ParameterList & aPar
 
 /****************************************************************************/
 void Plato::TieMultipointConstraint::
-get(const Omega_h::MeshSets& aMeshSets,
+get(const Omega_h::Mesh& aMesh,
+    const Omega_h::MeshSets& aMeshSets,
     LocalOrdinalVector & mpcChildNodes,
     LocalOrdinalVector & mpcParentNodes,
     Plato::CrsMatrixType::RowMapVector & mpcRowMap,
