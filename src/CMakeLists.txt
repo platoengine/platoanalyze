@@ -66,6 +66,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     elliptic/FluxPNorm.cpp 
     elliptic/StressPNorm.cpp 
     elliptic/EMStressPNorm.cpp 
+    elliptic/TMStressPNorm.cpp 
     elliptic/EffectiveEnergy.cpp 
     elliptic/InternalThermalEnergy.cpp 
     elliptic/InternalThermoelasticEnergy.cpp 

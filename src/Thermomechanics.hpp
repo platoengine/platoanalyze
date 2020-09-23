@@ -17,10 +17,10 @@
 #include "elliptic/AbstractVectorFunction.hpp"
 #include "elliptic/ThermoelastostaticResidual.hpp"
 #include "elliptic/InternalThermoelasticEnergy.hpp"
+#include "elliptic/TMStressPNorm.hpp"
 
 #include "AbstractLocalMeasure.hpp"
 #include "AnalyzeMacros.hpp"
-//#include "TMStressPNorm.hpp"
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
@@ -244,7 +244,6 @@ struct FunctionFactory
               throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
           }
         }
-#ifdef NOPE
         else 
         if(aStrScalarFunctionType == "Stress P-Norm")
         {
@@ -252,19 +251,19 @@ struct FunctionFactory
             std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "SIMP");
             if(tPenaltyType == "SIMP")
             {
-                return std::make_shared<Plato::TMStressPNorm<EvaluationType, Plato::MSIMP>>
+                return std::make_shared<Plato::Elliptic::TMStressPNorm<EvaluationType, Plato::MSIMP>>
                          (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else 
             if(tPenaltyType == "RAMP")
             {
-                return std::make_shared<Plato::TMStressPNorm<EvaluationType, Plato::RAMP>>
+                return std::make_shared<Plato::Elliptic::TMStressPNorm<EvaluationType, Plato::RAMP>>
                          (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else 
             if(tPenaltyType == "Heaviside")
             {
-                return std::make_shared<Plato::TMStressPNorm<EvaluationType, Plato::Heaviside>>
+                return std::make_shared<Plato::Elliptic::TMStressPNorm<EvaluationType, Plato::Heaviside>>
                          (aMesh, aMeshSets, aDataMap, aParamList, tPenaltyParams, aStrScalarFunctionName);
             }
             else
@@ -272,8 +271,6 @@ struct FunctionFactory
                 THROWERR("Unknown 'Type' specified in 'Penalty Function' ParameterList");
             }
         }
-        else 
-#endif
         else
         {
             THROWERR("Unknown 'Objective' specified in 'Plato Problem' ParameterList");
