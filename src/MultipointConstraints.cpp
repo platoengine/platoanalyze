@@ -4,12 +4,15 @@ namespace Plato
 {
 
 /****************************************************************************/
-MultipointConstraints::MultipointConstraints(const OrdinalType & aNumNodes, const OrdinalType & aNumDofsPerNode, Teuchos::ParameterList & aParams) :
-        MPCs(),
-        mNumDofsPerNode(aNumDofsPerNode),
-        mNumNodes(aNumNodes),
-        mTransformMatrix(Teuchos::null),
-        mTransformMatrixTranspose(Teuchos::null)
+MultipointConstraints::MultipointConstraints(Omega_h::Mesh & aMesh,
+                                             const Omega_h::MeshSets & aMeshSets, 
+                                             const OrdinalType & aNumDofsPerNode, 
+                                             Teuchos::ParameterList & aParams) :
+                                             MPCs(),
+                                             mNumNodes(aMesh.nverts()),
+                                             mNumDofsPerNode(aNumDofsPerNode),
+                                             mTransformMatrix(Teuchos::null),
+                                             mTransformMatrixTranspose(Teuchos::null)
 /****************************************************************************/
 {
     for(Teuchos::ParameterList::ConstIterator tIndex = aParams.begin(); tIndex != aParams.end(); ++tIndex)
@@ -22,15 +25,13 @@ MultipointConstraints::MultipointConstraints(const OrdinalType & aNumNodes, cons
         Teuchos::ParameterList& tSublist = aParams.sublist(tMyName);
         Plato::MultipointConstraintFactory tMultipointConstraintFactory(tSublist);
 
-        std::shared_ptr<MultipointConstraint> tMyMPC = tMultipointConstraintFactory.create(tMyName);
+        std::shared_ptr<MultipointConstraint> tMyMPC = tMultipointConstraintFactory.create(aMesh, aMeshSets, tMyName);
         MPCs.push_back(tMyMPC);
     }
 }
 
 /****************************************************************************/
-void MultipointConstraints::get(const Omega_h::Mesh & aMesh,
-                                const Omega_h::MeshSets & aMeshSets,
-                                LocalOrdinalVector & mpcChildNodes,
+void MultipointConstraints::get(LocalOrdinalVector & mpcChildNodes,
                                 LocalOrdinalVector & mpcParentNodes,
                                 Teuchos::RCP<Plato::CrsMatrixType> & mpcMatrix,
                                 ScalarVector & mpcValues)
@@ -40,7 +41,7 @@ void MultipointConstraints::get(const Omega_h::Mesh & aMesh,
     OrdinalType numParentNodes(0);
     OrdinalType numConstraintNonzeros(0);
     for(std::shared_ptr<MultipointConstraint> & mpc : MPCs)
-        mpc->updateLengths(aMeshSets, numChildNodes, numParentNodes, numConstraintNonzeros);
+        mpc->updateLengths(numChildNodes, numParentNodes, numConstraintNonzeros);
 
     Kokkos::resize(mpcChildNodes, numChildNodes);
     Kokkos::resize(mpcParentNodes, numParentNodes);
@@ -54,8 +55,8 @@ void MultipointConstraints::get(const Omega_h::Mesh & aMesh,
     OrdinalType offsetNnz(0);
     for(std::shared_ptr<MultipointConstraint> & mpc : MPCs)
     {
-        mpc->get(aMesh, aMeshSets, mpcChildNodes, mpcParentNodes, mpcRowMap, mpcColumnIndices, mpcEntries, mpcValues, offsetChild, offsetParent, offsetNnz);
-        mpc->updateLengths(aMeshSets, offsetChild, offsetParent, offsetNnz);
+        mpc->get(mpcChildNodes, mpcParentNodes, mpcRowMap, mpcColumnIndices, mpcEntries, mpcValues, offsetChild, offsetParent, offsetNnz);
+        mpc->updateLengths(offsetChild, offsetParent, offsetNnz);
     }
 
     // Add total number of nonzeros to the end of rowMap
@@ -67,8 +68,8 @@ void MultipointConstraints::get(const Omega_h::Mesh & aMesh,
 
 /****************************************************************************/
 void MultipointConstraints::getMaps(const LocalOrdinalVector & aMpcChildNodes,
-                                                        LocalOrdinalVector & nodeTypes,
-                                                        LocalOrdinalVector & nodeConNum)
+                                    LocalOrdinalVector & nodeTypes,
+                                    LocalOrdinalVector & nodeConNum)
 /****************************************************************************/
 {
     OrdinalType tNumChildNodes = aMpcChildNodes.size();
@@ -197,7 +198,7 @@ void MultipointConstraints::assembleRhs(const LocalOrdinalVector & aMpcChildNode
 }
 
 /****************************************************************************/
-void MultipointConstraints::setupTransform(const Omega_h::Mesh & aMesh, const Omega_h::MeshSets & aMeshSets)
+void MultipointConstraints::setupTransform()
 /****************************************************************************/
 {
     // fill in all constraint data
@@ -205,7 +206,7 @@ void MultipointConstraints::setupTransform(const Omega_h::Mesh & aMesh, const Om
     LocalOrdinalVector                 mpcParentNodes;
     Teuchos::RCP<Plato::CrsMatrixType> mpcMatrix;
     ScalarVector                       mpcValues;
-    this->get(aMesh, aMeshSets, mpcChildNodes, mpcParentNodes, mpcMatrix, mpcValues);
+    this->get(mpcChildNodes, mpcParentNodes, mpcMatrix, mpcValues);
     
     // fill in child DOFs
     mNumChildNodes = mpcChildNodes.size();

@@ -42,9 +42,7 @@ public:
      \param offsetParent Starting location for storage of parent nodes.
      \param offsetNnz Starting location in columnIndices/entries where constraining nodes/coefficients will be added.
      */
-    virtual void get(const Omega_h::Mesh& aMesh,
-                     const Omega_h::MeshSets& aMeshSets,
-                     LocalOrdinalVector & mpcChildNodes,
+    virtual void get(LocalOrdinalVector & mpcChildNodes,
                      LocalOrdinalVector & mpcParentNodes,
                      Plato::CrsMatrixType::RowMapVector & mpcRowMap,
                      Plato::CrsMatrixType::OrdinalVector & mpcColumnIndices,
@@ -55,10 +53,9 @@ public:
                      OrdinalType offsetNnz) = 0;
 
     // ! Update number of nodes in the child and parent nodesets and number of nonzeros in constraint matrix.
-    virtual void updateLengths(const Omega_h::MeshSets& aMeshSets,
-                            OrdinalType& lengthChild,
-                            OrdinalType& lengthParent,
-                            OrdinalType& lengthNnz) = 0;
+    virtual void updateLengths(OrdinalType& lengthChild,
+                               OrdinalType& lengthParent,
+                               OrdinalType& lengthNnz) = 0;
     
 protected:
     const std::string name;

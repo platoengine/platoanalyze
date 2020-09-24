@@ -325,8 +325,8 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   
   // parse multipoint constraints
   //
-  std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(tNumNodes, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
-  tMPCs->setupTransform(*mesh, tMeshSets);
+  std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(*mesh, tMeshSets, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
+  tMPCs->setupTransform();
   
   // create solver
   //

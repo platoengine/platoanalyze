@@ -38,14 +38,15 @@ public :
      \brief Constructor that parses and creates a vector of MultipointConstraint objects
      based on the ParameterList.
      */
-    MultipointConstraints(const OrdinalType & aNumNodes, const OrdinalType & aNumDofsPerNode, Teuchos::ParameterList & aParams);
+    MultipointConstraints(Omega_h::Mesh & aMesh,
+                          const Omega_h::MeshSets & aMeshSets, 
+                          const OrdinalType & aNumDofsPerNode, 
+                          Teuchos::ParameterList & aParams);
 
     /*!
      \brief Get node ordinals and values for constraints.
      */
-    void get(const Omega_h::Mesh & aMesh,
-             const Omega_h::MeshSets & aMeshSets,
-             LocalOrdinalVector & mpcChildNodes,
+    void get(LocalOrdinalVector & mpcChildNodes,
              LocalOrdinalVector & mpcParentNodes,
              Teuchos::RCP<Plato::CrsMatrixType> & mpcMatrix,
              ScalarVector & mpcValues);
@@ -66,7 +67,7 @@ public :
                      const ScalarVector & aMpcValues);
 
     // brief setup transform matrices and RHS
-    void setupTransform(const Omega_h::Mesh & aMesh, const Omega_h::MeshSets & aMeshSets);
+    void setupTransform();
 
     // brief getters
     decltype(mTransformMatrix)          getTransformMatrix()           { return mTransformMatrix; }

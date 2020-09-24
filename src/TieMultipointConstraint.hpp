@@ -26,7 +26,9 @@ namespace Plato
 class TieMultipointConstraint : public Plato::MultipointConstraint
 {
 public:
-    TieMultipointConstraint(const std::string & aName, Teuchos::ParameterList & aParam);
+    TieMultipointConstraint(const Omega_h::MeshSets & aMeshSets,
+                            const std::string & aName, 
+                            Teuchos::ParameterList & aParam);
 
     virtual ~TieMultipointConstraint(){}
 
@@ -40,9 +42,7 @@ public:
      \param offsetChild Starting location in rowMap/RHS where constrained nodes/values will be added.
      \param offsetNnz Starting location in columnIndices/entries where constraining nodes/coefficients will be added.
      */
-    void get(const Omega_h::Mesh& aMesh,
-             const Omega_h::MeshSets& aMeshSets,
-             LocalOrdinalVector & mpcChildNodes,
+    void get(LocalOrdinalVector & mpcChildNodes,
              LocalOrdinalVector & mpcParentNodes,
              Plato::CrsMatrixType::RowMapVector & mpcRowMap,
              Plato::CrsMatrixType::OrdinalVector & mpcColumnIndices,
@@ -53,16 +53,14 @@ public:
              OrdinalType offsetNnz) override;
     
     // ! Get number of nodes in the constrained nodeset.
-    void updateLengths(const Omega_h::MeshSets& aMeshSets,
-                       OrdinalType& lengthChild,
+    void updateLengths(OrdinalType& lengthChild,
                        OrdinalType& lengthParent,
                        OrdinalType& lengthNnz) override;
 
 private:
-    std::string mChildNodeSet;
-    std::string mParentNodeSet;
-
-    Plato::Scalar mValue;
+    LocalOrdinalVector    mParentNodes;
+    LocalOrdinalVector    mChildNodes;
+    Plato::Scalar         mValue;
 
 };
 // class TieMultipointConstraint

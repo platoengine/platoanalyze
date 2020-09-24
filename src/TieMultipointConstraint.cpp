@@ -11,41 +11,27 @@ namespace Plato
 
 /****************************************************************************/
 Plato::TieMultipointConstraint::
-TieMultipointConstraint(const std::string & aName, Teuchos::ParameterList & aParam) :
-    Plato::MultipointConstraint(aName)
+TieMultipointConstraint(const Omega_h::MeshSets & aMeshSets,
+                        const std::string & aName, 
+                        Teuchos::ParameterList & aParam) :
+                        Plato::MultipointConstraint(aName)
 /****************************************************************************/
 {
-    mChildNodeSet = aParam.get<std::string>("Child");
-    mParentNodeSet = aParam.get<std::string>("Parent");
-
+    // parse RHS value
     mValue = aParam.get<Plato::Scalar>("Value");
-}
 
-/****************************************************************************/
-void Plato::TieMultipointConstraint::
-get(const Omega_h::Mesh& aMesh,
-    const Omega_h::MeshSets& aMeshSets,
-    LocalOrdinalVector & mpcChildNodes,
-    LocalOrdinalVector & mpcParentNodes,
-    Plato::CrsMatrixType::RowMapVector & mpcRowMap,
-    Plato::CrsMatrixType::OrdinalVector & mpcColumnIndices,
-    Plato::CrsMatrixType::ScalarVector & mpcEntries,
-    ScalarVector & mpcValues,
-    OrdinalType offsetChild,
-    OrdinalType offsetParent,
-    OrdinalType offsetNnz)
-/****************************************************************************/
-{
+    // parse child and parent node sets
     auto& tNodeSets = aMeshSets[Omega_h::NODE_SET];
-    auto tValue = this->mValue;
+    std::string tChildNodeSet = aParam.get<std::string>("Child");
+    std::string tParentNodeSet = aParam.get<std::string>("Parent");
     
     // parse child nodes
-    auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet);
+    auto tChildNodeSetsIter = tNodeSets.find(tChildNodeSet);
     auto tChildNodeLids = (tChildNodeSetsIter->second);
     auto tNumberChildNodes = tChildNodeLids.size();
     
     // parse parent nodes
-    auto tParentNodeSetsIter = tNodeSets.find(this->mParentNodeSet);
+    auto tParentNodeSetsIter = tNodeSets.find(tParentNodeSet);
     auto tParentNodeLids = (tParentNodeSetsIter->second);
     auto tNumberParentNodes = tParentNodeLids.size();
 
@@ -57,6 +43,33 @@ get(const Omega_h::Mesh& aMesh,
         THROWERR(tMsg.str())
     }
 
+    // Fill in child and parent nodes
+    Kokkos::resize(mChildNodes, tNumberChildNodes);
+    Kokkos::resize(mParentNodes, tNumberParentNodes);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
+    {
+        mChildNodes(nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
+        mParentNodes(nodeOrdinal) = tParentNodeLids[nodeOrdinal]; // parent node ID
+    }, "Tie constraint data");
+}
+
+/****************************************************************************/
+void Plato::TieMultipointConstraint::
+get(LocalOrdinalVector & mpcChildNodes,
+    LocalOrdinalVector & mpcParentNodes,
+    Plato::CrsMatrixType::RowMapVector & mpcRowMap,
+    Plato::CrsMatrixType::OrdinalVector & mpcColumnIndices,
+    Plato::CrsMatrixType::ScalarVector & mpcEntries,
+    ScalarVector & mpcValues,
+    OrdinalType offsetChild,
+    OrdinalType offsetParent,
+    OrdinalType offsetNnz)
+/****************************************************************************/
+{
+    auto tValue = mValue;
+    auto tNumberChildNodes = mChildNodes.size();
+
     // Fill in constraint info
     auto tChildNodes = mpcChildNodes;
     auto tParentNodes = mpcParentNodes;
@@ -67,8 +80,8 @@ get(const Omega_h::Mesh& aMesh,
 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
     {
-        tChildNodes(offsetChild+nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
-        tParentNodes(offsetParent+nodeOrdinal) = tParentNodeLids[nodeOrdinal]; // parent node ID
+        tChildNodes(offsetChild+nodeOrdinal) = mChildNodes(nodeOrdinal); // child node ID
+        tParentNodes(offsetParent+nodeOrdinal) = mParentNodes(nodeOrdinal); // parent node ID
 
         tRowMap(offsetChild+nodeOrdinal) = offsetChild + nodeOrdinal; // row map
         tColumnIndices(offsetNnz+nodeOrdinal) = offsetParent + nodeOrdinal; // column indices (local parent node ID)
@@ -81,31 +94,13 @@ get(const Omega_h::Mesh& aMesh,
 
 /****************************************************************************/
 void Plato::TieMultipointConstraint::
-updateLengths(const Omega_h::MeshSets& aMeshSets,
-           OrdinalType& lengthChild,
-           OrdinalType& lengthParent,
-           OrdinalType& lengthNnz)
+updateLengths(OrdinalType& lengthChild,
+              OrdinalType& lengthParent,
+              OrdinalType& lengthNnz)
 /****************************************************************************/
 {
-    auto& tNodeSets = aMeshSets[Omega_h::NODE_SET];
-
-    // parse child nodes
-    auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet);
-    auto tChildNodeLids = (tChildNodeSetsIter->second);
-    auto tNumberChildNodes = tChildNodeLids.size();
-    
-    // parse parent nodes
-    auto tParentNodeSetsIter = tNodeSets.find(this->mParentNodeSet);
-    auto tParentNodeLids = (tParentNodeSetsIter->second);
-    auto tNumberParentNodes = tParentNodeLids.size();
-
-    // Check that the number of child and parent nodes match
-    if (tNumberChildNodes != tNumberParentNodes)
-    {
-        std::ostringstream tMsg;
-        tMsg << "CHILD AND PARENT NODESETS FOR TIE CONSTRAINT NOT OF EQUAL LENGTH. \n";
-        THROWERR(tMsg.str())
-    }
+    auto tNumberChildNodes = mChildNodes.size();
+    auto tNumberParentNodes = mParentNodes.size();
 
     lengthChild += tNumberChildNodes;
     lengthParent += tNumberParentNodes;

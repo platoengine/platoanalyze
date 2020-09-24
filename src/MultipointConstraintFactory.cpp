@@ -11,13 +11,16 @@ namespace Plato
 /******************************************************************************//**
 * \brief Create a multipoint constraint
 **********************************************************************************/
-std::shared_ptr<MultipointConstraint> MultipointConstraintFactory::create(const std::string& aName)
+std::shared_ptr<MultipointConstraint> MultipointConstraintFactory::
+create(const Omega_h::Mesh & aMesh, 
+       const Omega_h::MeshSets & aMeshSets,
+       const std::string& aName)
 {
     const std::string tType = mParamList.get<std::string>("Type");
 
     if("Tie" == tType)
     {
-        return std::make_shared<Plato::TieMultipointConstraint>(aName, mParamList);
+        return std::make_shared<Plato::TieMultipointConstraint>(aMeshSets, aName, mParamList);
     }
     /* else if("PBC" == tType) */
     /* { */

@@ -619,10 +619,9 @@ private:
         if(aInputParams.isType<std::string>("Multipoint Constraints"))
         {
             Plato::OrdinalType tNumDofsPerNode = mPDE->numDofsPerNode();
-            Plato::OrdinalType tNumNodes = mPDE->numNodes();
             auto & tMyParams = aInputParams.sublist("Multipoint Constraints", false);
-            mMPCs = std::make_shared<Plato::MultipointConstraints>(tNumNodes, tNumDofsPerNode, tMyParams);
-            mMPCs->setupTransform(aMesh, aMeshSets);
+            mMPCs = std::make_shared<Plato::MultipointConstraints>(aMesh, aMeshSets, tNumDofsPerNode, tMyParams);
+            mMPCs->setupTransform();
         }
     }
 
