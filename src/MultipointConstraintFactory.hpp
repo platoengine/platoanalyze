@@ -8,6 +8,7 @@
 
 #include "MultipointConstraint.hpp"
 #include "TieMultipointConstraint.hpp"
+#include "PbcMultipointConstraint.hpp"
 
 namespace Plato
 {

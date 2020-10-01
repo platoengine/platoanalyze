@@ -22,10 +22,10 @@ create(const Omega_h::Mesh & aMesh,
     {
         return std::make_shared<Plato::TieMultipointConstraint>(aMeshSets, aName, mParamList);
     }
-    /* else if("PBC" == tType) */
-    /* { */
-        /* return std::make_shared<Plato::PbcMultipointConstraint>(aName, mParamList); */
-    /* } */
+    else if("PBC" == tType)
+    {
+        return std::make_shared<Plato::PbcMultipointConstraint>(aMesh, aMeshSets, aName, mParamList);
+    }
     return std::shared_ptr<Plato::MultipointConstraint>(nullptr);
 }
 
