@@ -36,6 +36,18 @@ get(ViewType aView)
     return tView;
 }
 
+template <typename DataType>
+void print_view(const Plato::ScalarVectorT<DataType> & aView)
+{
+   auto tView_host = Kokkos::create_mirror(aView);
+   Kokkos::deep_copy(tView_host, aView);
+   std::cout << '\n';
+   for (unsigned int i = 0; i < aView.extent(0); ++i)
+   {
+       std::cout << tView_host(i) << '\n';
+   }
+}
+
 namespace PlatoTestMeshMap
 {
 
@@ -114,6 +126,14 @@ namespace PlatoTestMeshMap
         }
     }
   }
+
+/******************************************************************************/
+/*!
+  \brief Test symmetry plane implementation.
+
+  test passes if points are mirrored correctly
+*/
+/******************************************************************************/
   TEUCHOS_UNIT_TEST(PlatoTestMeshMap, SymmetryPlane)
   {
 
@@ -182,6 +202,75 @@ namespace PlatoTestMeshMap
     TEST_FLOATING_EQUALITY(/*Gold=*/ p1_Z, /*Result=*/ tXout_host(2,1), tol_double);
   }
 
+/******************************************************************************/
+/*!
+  \brief Test translation implementation.
+
+  test passes if points are translated correctly
+*/
+/******************************************************************************/
+  TEUCHOS_UNIT_TEST(PlatoTestMeshMap, Translation)
+  {
+
+    // create input for Translation
+    //
+    double tx = 0.0, ty = 1.0, tz = 0.0;
+
+    std::stringstream input;
+    input << "<LinearMap>";
+    input << "  <Type>Translation</Type>";
+    input << "  <Vector>";
+    input << "    <X>" << tx << "</X>";
+    input << "    <Y>" << ty << "</Y>";
+    input << "    <Z>" << tz << "</Z>";
+    input << "  </Vector>";
+    input << "</LinearMap>";
+
+    Plato::Parser* parser = new Plato::PugiParser();
+    auto tInputData = parser->parseString(input.str());
+    delete parser;
+
+    // create Translation from input
+    //
+    auto tMathMapParams = tInputData.get<Plato::InputData>("LinearMap");
+    Plato::Geometry::Translation<Plato::Scalar> tMathMap(tMathMapParams);
+
+    // create input and output views
+    //
+    int tNumVals = 2;
+    int tNumDims = 3;
+    Plato::ScalarMultiVector tXin("Xin", tNumDims, tNumVals);
+    Plato::ScalarMultiVector tXout("Xin", tNumDims, tNumVals);
+    auto tXin_host = Kokkos::create_mirror_view(tXin);
+
+    double p0_X = 0.3, p0_Y = 0.0, p0_Z = 1.0;
+    double p1_X = 0.8, p1_Y = 0.5, p1_Z = 5.9;
+
+    tXin_host(0,0) = p0_X; tXin_host(1,0) = p0_Y; tXin_host(2,0) = p0_Z;
+    tXin_host(0,1) = p1_X; tXin_host(1,1) = p1_Y; tXin_host(2,1) = p1_Z;
+
+    Kokkos::deep_copy(tXin, tXin_host);
+
+    // map from input to output
+    //
+    Kokkos::parallel_for(Kokkos::RangePolicy<int>(0, tNumVals), LAMBDA_EXPRESSION(int aOrdinal)
+    {
+        tMathMap(aOrdinal, tXin, tXout);
+    }, "compute");
+
+    // test results
+    //
+    auto tXout_host = Kokkos::create_mirror_view(tXout);
+    Kokkos::deep_copy(tXout_host, tXout);
+
+    double tol_double = 1e-14;
+    TEST_FLOATING_EQUALITY(/*Gold=*/ p0_X+tx, /*Result=*/ tXout_host(0,0), tol_double);
+    TEST_FLOATING_EQUALITY(/*Gold=*/ p0_Y+ty, /*Result=*/ tXout_host(1,0), tol_double);
+    TEST_FLOATING_EQUALITY(/*Gold=*/ p0_Z+tz, /*Result=*/ tXout_host(2,0), tol_double);
+    TEST_FLOATING_EQUALITY(/*Gold=*/ p1_X+tx, /*Result=*/ tXout_host(0,1), tol_double);
+    TEST_FLOATING_EQUALITY(/*Gold=*/ p1_Y+ty, /*Result=*/ tXout_host(1,1), tol_double);
+    TEST_FLOATING_EQUALITY(/*Gold=*/ p1_Z+tz, /*Result=*/ tXout_host(2,1), tol_double);
+  }
 
 /******************************************************************************/
 /*!
@@ -201,7 +290,7 @@ namespace PlatoTestMeshMap
 */
 /******************************************************************************/
 
-  TEUCHOS_UNIT_TEST(PlatoTestMeshMap, MeshMap)
+  TEUCHOS_UNIT_TEST(PlatoTestMeshMap, SymmetryMeshMap)
   {
 
     // create input for MeshMap
@@ -301,7 +390,7 @@ namespace PlatoTestMeshMap
 */
 /******************************************************************************/
 
-  TEUCHOS_UNIT_TEST(PlatoTestMeshMap, MeshMapWFilter)
+  TEUCHOS_UNIT_TEST(PlatoTestMeshMap, SymmetryMeshMapWFilter)
   {
 
     // create input for MeshMap
