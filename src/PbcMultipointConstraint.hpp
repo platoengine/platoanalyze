@@ -16,7 +16,7 @@
 #include "AnalyzeMacros.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "BLAS1.hpp"
-#include "Plato_MeshMap.hpp"
+#include "Plato_MeshMapUtils.hpp"
 
 namespace Plato
 {
@@ -29,7 +29,7 @@ class PbcMultipointConstraint : public Plato::MultipointConstraint
 {
 
 public:
-    PbcMultipointConstraint(const Omega_h::Mesh & aMesh,
+    PbcMultipointConstraint(Omega_h::Mesh & aMesh,
                             const Omega_h::MeshSets & aMeshSets,
                             const std::string & aName, 
                             Teuchos::ParameterList & aParam);
@@ -46,15 +46,15 @@ public:
      \param offsetChild Starting location in rowMap/RHS where constrained nodes/values will be added.
      \param offsetNnz Starting location in columnIndices/entries where constraining nodes/coefficients will be added.
      */
-    void get(LocalOrdinalVector & mpcChildNodes,
-             LocalOrdinalVector & mpcParentNodes,
-             Plato::CrsMatrixType::RowMapVector & mpcRowMap,
-             Plato::CrsMatrixType::OrdinalVector & mpcColumnIndices,
-             Plato::CrsMatrixType::ScalarVector & mpcEntries,
-             ScalarVector & mpcValues,
-             OrdinalType offsetChild,
-             OrdinalType offsetParent,
-             OrdinalType offsetNnz) override;
+    void get(LocalOrdinalVector & aMpcChildNodes,
+             LocalOrdinalVector & aMpcParentNodes,
+             Plato::CrsMatrixType::RowMapVector & aMpcRowMap,
+             Plato::CrsMatrixType::OrdinalVector & aMpcColumnIndices,
+             Plato::CrsMatrixType::ScalarVector & aMpcEntries,
+             ScalarVector & aMpcValues,
+             OrdinalType aOffsetChild,
+             OrdinalType aOffsetParent,
+             OrdinalType aOffsetNnz) override;
     
     // ! Get number of nodes in the constrained nodeset.
     void updateLengths(OrdinalType& lengthChild,
@@ -62,17 +62,17 @@ public:
                        OrdinalType& lengthNnz) override;
 
     // ! Perform translation mapping from child nodes to parent locations
-    void mapChildVertexLocations(const Omega_h::Mesh & aMesh,
-                                 const Plato::Geometry::Translation<Plato::Scalar> & aTranslation,
+    void mapChildVertexLocations(Omega_h::Mesh & aMesh,
+                                 const Plato::Scalar aTranslation[],
                                  Plato::ScalarMultiVector aLocations,
                                  Plato::ScalarMultiVector aMappedLocations);
     
     // ! Use mapped parent elements to find global IDs of unique parent nodes
-    void getUniqueParentNodes(const Omega_h::Mesh & aMesh,
+    void getUniqueParentNodes(Omega_h::Mesh & aMesh,
                               LocalOrdinalVector aParentElements,
                               LocalOrdinalVector aParentGlobalLocalMap);
 
-    void setMatrixValues(const Omega_h::Mesh & aMesh,
+    void setMatrixValues(Omega_h::Mesh & aMesh,
                          LocalOrdinalVector aParentElements,
                          Plato::ScalarMultiVector aMappedLocations,
                          LocalOrdinalVector aParentGlobalLocalMap);

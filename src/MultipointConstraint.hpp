@@ -42,15 +42,15 @@ public:
      \param offsetParent Starting location for storage of parent nodes.
      \param offsetNnz Starting location in columnIndices/entries where constraining nodes/coefficients will be added.
      */
-    virtual void get(LocalOrdinalVector & mpcChildNodes,
-                     LocalOrdinalVector & mpcParentNodes,
-                     Plato::CrsMatrixType::RowMapVector & mpcRowMap,
-                     Plato::CrsMatrixType::OrdinalVector & mpcColumnIndices,
-                     Plato::CrsMatrixType::ScalarVector & mpcEntries,
-                     ScalarVector & mpcValues,
-                     OrdinalType offsetChild,
-                     OrdinalType offsetParent,
-                     OrdinalType offsetNnz) = 0;
+    virtual void get(LocalOrdinalVector & aMpcChildNodes,
+                 LocalOrdinalVector & aMpcParentNodes,
+                 Plato::CrsMatrixType::RowMapVector & aMpcRowMap,
+                 Plato::CrsMatrixType::OrdinalVector & aMpcColumnIndices,
+                 Plato::CrsMatrixType::ScalarVector & aMpcEntries,
+                 ScalarVector & aMpcValues,
+                 OrdinalType aOffsetChild,
+                 OrdinalType aOffsetParent,
+                 OrdinalType aOffsetNnz) = 0;
 
     // ! Update number of nodes in the child and parent nodesets and number of nonzeros in constraint matrix.
     virtual void updateLengths(OrdinalType& lengthChild,

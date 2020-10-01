@@ -11,13 +11,43 @@ namespace Plato
 
 /****************************************************************************/
 Plato::PbcMultipointConstraint::
-PbcMultipointConstraint(const Omega_h::Mesh & aMesh,
+PbcMultipointConstraint(Omega_h::Mesh & aMesh,
                         const Omega_h::MeshSets & aMeshSets,
                         const std::string & aName, 
                         Teuchos::ParameterList & aParam) :
                         Plato::MultipointConstraint(aName)
 /****************************************************************************/
 {
+    // parse translation vector
+    bool tIsVector = aParam.isType<Teuchos::Array<Plato::Scalar>>("Vector");
+
+    Plato::Scalar tTranslation[Plato::Geometry::cSpaceDim];
+    if (tIsVector)
+    {
+        auto tVector = aParam.get<Teuchos::Array<Plato::Scalar>>("Vector");
+        for(Plato::OrdinalType iDim=0; iDim<Plato::Geometry::cSpaceDim; iDim++)
+        {
+            tTranslation[iDim] = tVector[iDim]; 
+        }
+    }
+    else
+    {
+        std::ostringstream tMsg;
+        tMsg << "TRANSLATION VECTOR FOR PBC MULTIPOINT CONSTRAINT NOT PARSED: CHECK INPUT PARAMETER KEYWORDS.";
+        THROWERR(tMsg.str())
+    }
+
+    auto tLength = tTranslation[0] * tTranslation[0]
+                 + tTranslation[1] * tTranslation[1]
+                 + tTranslation[2] * tTranslation[2];
+
+    if( tLength == 0.0 )
+    {
+        std::ostringstream tMsg;
+        tMsg << "TRANSLATION VECTOR FOR PBC MULTIPOINT CONSTRAINT HAS NO LENGTH.";
+        THROWERR(tMsg.str())
+    }
+      
     // parse RHS value
     mValue = aParam.get<Plato::Scalar>("Value");
 
@@ -35,9 +65,6 @@ PbcMultipointConstraint(const Omega_h::Mesh & aMesh,
     {
         mChildNodes(nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
     }, "Child node IDs");
-
-    // construct translation math map object
-    Plato::Geometry::Translation<Plato::Scalar> tTranslation(aParam);
     
     // map child nodes
     Plato::ScalarMultiVector tChildNodeLocations       ("child node locations",        Plato::Geometry::cSpaceDim, tNumberChildNodes);
@@ -59,15 +86,15 @@ PbcMultipointConstraint(const Omega_h::Mesh & aMesh,
 
 /****************************************************************************/
 void Plato::PbcMultipointConstraint::
-get(LocalOrdinalVector & mpcChildNodes,
-    LocalOrdinalVector & mpcParentNodes,
-    Plato::CrsMatrixType::RowMapVector & mpcRowMap,
-    Plato::CrsMatrixType::OrdinalVector & mpcColumnIndices,
-    Plato::CrsMatrixType::ScalarVector & mpcEntries,
-    ScalarVector & mpcValues,
-    OrdinalType offsetChild,
-    OrdinalType offsetParent,
-    OrdinalType offsetNnz)
+get(LocalOrdinalVector & aMpcChildNodes,
+    LocalOrdinalVector & aMpcParentNodes,
+    Plato::CrsMatrixType::RowMapVector & aMpcRowMap,
+    Plato::CrsMatrixType::OrdinalVector & aMpcColumnIndices,
+    Plato::CrsMatrixType::ScalarVector & aMpcEntries,
+    ScalarVector & aMpcValues,
+    OrdinalType aOffsetChild,
+    OrdinalType aOffsetParent,
+    OrdinalType aOffsetNnz)
 /****************************************************************************/
 {
     auto tValue = mValue;
@@ -75,35 +102,39 @@ get(LocalOrdinalVector & mpcChildNodes,
     auto tNumberParentNodes = mParentNodes.size();
 
     // fill in parent nodes
-    auto tParentNodes = mpcParentNodes;
+    auto tParentNodes = aMpcParentNodes;
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberParentNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
     {
-        tParentNodes(offsetParent+nodeOrdinal) = mParentNodes(nodeOrdinal); // parent node ID
+        tParentNodes(aOffsetParent+nodeOrdinal) = mParentNodes(nodeOrdinal); // parent node ID
     }, "parent nodes");
 
     // fill in chuld nodes and constraint info
-    auto tChildNodes = mpcChildNodes;
-    auto tRowMap = mpcRowMap;
-    auto tColumnIndices = mpcColumnIndices;
-    auto tEntries = mpcEntries;
-    auto tValues = mpcValues;
+    const auto& tMpcRowMap = mMpcMatrix->rowMap();
+    const auto& tMpcColumnIndices = mMpcMatrix->columnIndices();
+    const auto& tMpcEntries = mMpcMatrix->entries();
+      
+    auto tChildNodes = aMpcChildNodes;
+    auto tRowMap = aMpcRowMap;
+    auto tColumnIndices = aMpcColumnIndices;
+    auto tEntries = aMpcEntries;
+    auto tValues = aMpcValues;
 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
     {
-        tChildNodes(offsetChild+nodeOrdinal) = mChildNodes(nodeOrdinal); // child node ID
+        tChildNodes(aOffsetChild+nodeOrdinal) = mChildNodes(nodeOrdinal); // child node ID
 
-        auto tRowStart = mMpcMatrix->mRowMap(nodeOrdinal);
-        auto tRowEnd = mMpcMatrix->mRowMap(nodeOrdinal+1);
+        auto tRowStart = tMpcRowMap(nodeOrdinal);
+        auto tRowEnd = tMpcRowMap(nodeOrdinal+1);
         auto tNnz = tRowEnd - tRowStart;
         for(Plato::OrdinalType entryOrdinal = tRowStart; entryOrdinal<tRowEnd; entryOrdinal++)
         {
-            tColumnIndices(offsetNnz+entryOrdinal) = offsetParent + mMpcMatrix->mColumnIndices(entryOrdinal); // column indices
-            tEntries(offsetNnz+entryOrdinal) = mMpcMatrix->mEntries(entryOrdinal); // entries (constraint coefficients)
+            tColumnIndices(aOffsetNnz+entryOrdinal) = aOffsetParent + tMpcColumnIndices(entryOrdinal); // column indices
+            tEntries(aOffsetNnz+entryOrdinal) = tMpcEntries(entryOrdinal); // entries (constraint coefficients)
         }
 
-        tRowMap(offsetChild+nodeOrdinal) = offsetNnz + mMpcMatrix->mRowMap(nodeOrdinal); // row map
+        tRowMap(aOffsetChild+nodeOrdinal) = aOffsetNnz + tMpcRowMap(nodeOrdinal); // row map
 
-        tValues(offsetChild+nodeOrdinal) = tValue; // constraint RHS
+        tValues(aOffsetChild+nodeOrdinal) = tValue; // constraint RHS
         
     }, "child nodes, mpc matrix, and rhs values");
 
@@ -118,7 +149,8 @@ updateLengths(OrdinalType& lengthChild,
 {
     auto tNumberChildNodes = mChildNodes.size();
     auto tNumberParentNodes = mParentNodes.size();
-    auto tNumberNonzero = mMpcMatrix->mRowMap(tNumberChildNodes+1);
+    const auto& tMpcRowMap = mMpcMatrix->rowMap();
+    auto tNumberNonzero = tMpcRowMap(tNumberChildNodes+1);
 
     lengthChild += tNumberChildNodes;
     lengthParent += tNumberParentNodes;
@@ -127,8 +159,8 @@ updateLengths(OrdinalType& lengthChild,
 
 /****************************************************************************/
 void Plato::PbcMultipointConstraint::
-mapChildVertexLocations(const Omega_h::Mesh & aMesh,
-                        const Plato::Geometry::Translation<Plato::Scalar> & aTranslation,
+mapChildVertexLocations(Omega_h::Mesh & aMesh,
+                        const Plato::Scalar aTranslation[],
                         Plato::ScalarMultiVector aLocations,
                         Plato::ScalarMultiVector aMappedLocations)
 /****************************************************************************/
@@ -143,13 +175,16 @@ mapChildVertexLocations(const Omega_h::Mesh & aMesh,
         {
             aLocations(iDim, nodeOrdinal) = tCoords[childNode*Plato::Geometry::cSpaceDim+iDim];
         }
-        aTranslation(nodeOrdinal, aLocations, aMappedLocations);
+        // perform translation mapping
+        aMappedLocations(0, nodeOrdinal) = aLocations(0, nodeOrdinal) + aTranslation[0];
+        aMappedLocations(1, nodeOrdinal) = aLocations(1, nodeOrdinal) + aTranslation[1];
+        aMappedLocations(2, nodeOrdinal) = aLocations(2, nodeOrdinal) + aTranslation[2];
     }, "get verts and apply map");
 }
 
 /****************************************************************************/
 void Plato::PbcMultipointConstraint::
-getUniqueParentNodes(const Omega_h::Mesh & aMesh,
+getUniqueParentNodes(Omega_h::Mesh & aMesh,
                      LocalOrdinalVector aParentElements,
                      LocalOrdinalVector aParentGlobalLocalMap)
 /****************************************************************************/
@@ -166,7 +201,7 @@ getUniqueParentNodes(const Omega_h::Mesh & aMesh,
     // fill in parent element vertex ordinals
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberParentElements), LAMBDA_EXPRESSION(Plato::OrdinalType iElemOrdinal)
     {
-        tElement = aParentElements(iElemOrdinal); 
+    Plato::OrdinalType tElement = aParentElements(iElemOrdinal); 
         if(tElement == -2)
         {
             std::ostringstream tMsg;
@@ -221,7 +256,7 @@ getUniqueParentNodes(const Omega_h::Mesh & aMesh,
 
 /****************************************************************************/
 void Plato::PbcMultipointConstraint::
-setMatrixValues(const Omega_h::Mesh & aMesh,
+setMatrixValues(Omega_h::Mesh & aMesh,
                 LocalOrdinalVector aParentElements,
                 Plato::ScalarMultiVector aMappedLocations,
                 LocalOrdinalVector aParentGlobalLocalMap)
@@ -235,13 +270,13 @@ setMatrixValues(const Omega_h::Mesh & aMesh,
     // build rowmap
     Plato::CrsMatrixType::RowMapVector tRowMap("row map", tNumChildNodes+1);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumChildNodes), LAMBDA_EXPRESSION(OrdinalT iRowOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType iRowOrdinal)
     {
         tRowMap(iRowOrdinal) = Plato::Geometry::cNVertsPerElem;
     }, "nonzeros");
 
     Plato::OrdinalType tNumEntries(0);
-    Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalT>(0,tNumChildNodes+1),
+    Kokkos::parallel_scan (Kokkos::RangePolicy<Plato::OrdinalType>(0,tNumChildNodes+1),
     KOKKOS_LAMBDA (const Plato::OrdinalType& iOrdinal, Plato::OrdinalType& aUpdate, const bool& tIsFinal)
     {
         const Plato::OrdinalType tVal = tRowMap(iOrdinal);

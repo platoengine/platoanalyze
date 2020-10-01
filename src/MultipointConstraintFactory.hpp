@@ -31,7 +31,7 @@ public:
     * \brief Create a multipoint constraint.
     * \return multipoint constraint
     **********************************************************************************/
-    std::shared_ptr<Plato::MultipointConstraint> create(const Omega_h::Mesh & aMesh,
+    std::shared_ptr<Plato::MultipointConstraint> create(Omega_h::Mesh & aMesh,
                                                         const Omega_h::MeshSets & aMeshSets,
                                                         const std::string& aName);
 

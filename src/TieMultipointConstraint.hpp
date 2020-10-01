@@ -42,15 +42,15 @@ public:
      \param offsetChild Starting location in rowMap/RHS where constrained nodes/values will be added.
      \param offsetNnz Starting location in columnIndices/entries where constraining nodes/coefficients will be added.
      */
-    void get(LocalOrdinalVector & mpcChildNodes,
-             LocalOrdinalVector & mpcParentNodes,
-             Plato::CrsMatrixType::RowMapVector & mpcRowMap,
-             Plato::CrsMatrixType::OrdinalVector & mpcColumnIndices,
-             Plato::CrsMatrixType::ScalarVector & mpcEntries,
-             ScalarVector & mpcValues,
-             OrdinalType offsetChild,
-             OrdinalType offsetParent,
-             OrdinalType offsetNnz) override;
+    void get(LocalOrdinalVector & aMpcChildNodes,
+             LocalOrdinalVector & aMpcParentNodes,
+             Plato::CrsMatrixType::RowMapVector & aMpcRowMap,
+             Plato::CrsMatrixType::OrdinalVector & aMpcColumnIndices,
+             Plato::CrsMatrixType::ScalarVector & aMpcEntries,
+             ScalarVector & aMpcValues,
+             OrdinalType aOffsetChild,
+             OrdinalType aOffsetParent,
+             OrdinalType aOffsetNnz) override;
     
     // ! Get number of nodes in the constrained nodeset.
     void updateLengths(OrdinalType& lengthChild,

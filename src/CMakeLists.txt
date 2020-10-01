@@ -48,6 +48,7 @@ set(ANALYZE_SOURCES Plato_AugLagStressCriterionQuadratic.cpp
     MultipointConstraints.cpp
     MultipointConstraintFactory.cpp
     TieMultipointConstraint.cpp
+    PbcMultipointConstraint.cpp
     elliptic/DivisionFunction.cpp 
     elliptic/LeastSquaresFunction.cpp 
     elliptic/WeightedSumFunction.cpp 

@@ -56,38 +56,38 @@ TieMultipointConstraint(const Omega_h::MeshSets & aMeshSets,
 
 /****************************************************************************/
 void Plato::TieMultipointConstraint::
-get(LocalOrdinalVector & mpcChildNodes,
-    LocalOrdinalVector & mpcParentNodes,
-    Plato::CrsMatrixType::RowMapVector & mpcRowMap,
-    Plato::CrsMatrixType::OrdinalVector & mpcColumnIndices,
-    Plato::CrsMatrixType::ScalarVector & mpcEntries,
-    ScalarVector & mpcValues,
-    OrdinalType offsetChild,
-    OrdinalType offsetParent,
-    OrdinalType offsetNnz)
+get(LocalOrdinalVector & aMpcChildNodes,
+    LocalOrdinalVector & aMpcParentNodes,
+    Plato::CrsMatrixType::RowMapVector & aMpcRowMap,
+    Plato::CrsMatrixType::OrdinalVector & aMpcColumnIndices,
+    Plato::CrsMatrixType::ScalarVector & aMpcEntries,
+    ScalarVector & aMpcValues,
+    OrdinalType aOffsetChild,
+    OrdinalType aOffsetParent,
+    OrdinalType aOffsetNnz)
 /****************************************************************************/
 {
     auto tValue = mValue;
     auto tNumberChildNodes = mChildNodes.size();
 
     // Fill in constraint info
-    auto tChildNodes = mpcChildNodes;
-    auto tParentNodes = mpcParentNodes;
-    auto tRowMap = mpcRowMap;
-    auto tColumnIndices = mpcColumnIndices;
-    auto tEntries = mpcEntries;
-    auto tValues = mpcValues;
+    auto tChildNodes = aMpcChildNodes;
+    auto tParentNodes = aMpcParentNodes;
+    auto tRowMap = aMpcRowMap;
+    auto tColumnIndices = aMpcColumnIndices;
+    auto tEntries = aMpcEntries;
+    auto tValues = aMpcValues;
 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
     {
-        tChildNodes(offsetChild+nodeOrdinal) = mChildNodes(nodeOrdinal); // child node ID
-        tParentNodes(offsetParent+nodeOrdinal) = mParentNodes(nodeOrdinal); // parent node ID
+        tChildNodes(aOffsetChild+nodeOrdinal) = mChildNodes(nodeOrdinal); // child node ID
+        tParentNodes(aOffsetParent+nodeOrdinal) = mParentNodes(nodeOrdinal); // parent node ID
 
-        tRowMap(offsetChild+nodeOrdinal) = offsetChild + nodeOrdinal; // row map
-        tColumnIndices(offsetNnz+nodeOrdinal) = offsetParent + nodeOrdinal; // column indices (local parent node ID)
-        tEntries(offsetNnz+nodeOrdinal) = 1.0; // entries (constraint coefficients)
+        tRowMap(aOffsetChild+nodeOrdinal) = aOffsetChild + nodeOrdinal; // row map
+        tColumnIndices(aOffsetNnz+nodeOrdinal) = aOffsetParent + nodeOrdinal; // column indices (local parent node ID)
+        tEntries(aOffsetNnz+nodeOrdinal) = 1.0; // entries (constraint coefficients)
 
-        tValues(offsetChild+nodeOrdinal) = tValue; // constraint RHS
+        tValues(aOffsetChild+nodeOrdinal) = tValue; // constraint RHS
 
     }, "Tie constraint data");
 }

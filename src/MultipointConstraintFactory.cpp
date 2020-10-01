@@ -12,7 +12,7 @@ namespace Plato
 * \brief Create a multipoint constraint
 **********************************************************************************/
 std::shared_ptr<MultipointConstraint> MultipointConstraintFactory::
-create(const Omega_h::Mesh & aMesh, 
+create(Omega_h::Mesh & aMesh, 
        const Omega_h::MeshSets & aMeshSets,
        const std::string& aName)
 {
