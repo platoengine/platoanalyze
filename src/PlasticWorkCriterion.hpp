@@ -59,6 +59,9 @@ private:
     using PrevLocalStateT = typename EvaluationType::PrevLocalStateScalarType; /*!< local state variables automatic differentiation type */
     using PrevGlobalStateT = typename EvaluationType::PrevStateScalarType;     /*!< global state variables automatic differentiation type */
 
+    using FunctionBaseType = Plato::AbstractLocalScalarFunctionInc<EvaluationType>;
+    using Plato::AbstractLocalScalarFunctionInc<EvaluationType>::mSpatialDomain;
+
     Plato::Scalar mBulkModulus;              /*!< elastic bulk modulus */
     Plato::Scalar mShearModulus;             /*!< elastic shear modulus */
 
@@ -74,25 +77,25 @@ public:
     /***************************************************************************//**
      * \brief Constructor for plastic work criterion
      *
-     * \param [in] aMesh        mesh database
-     * \param [in] aMeshSets    side sets database
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
      * \param [in] aDataMap     PLATO Analyze output data map side sets database
      * \param [in] aInputParams input parameters from XML file
      * \param [in] aName        scalar function name
     *******************************************************************************/
-    PlasticWorkCriterion(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap & aDataMap,
-                         Teuchos::ParameterList& aInputParams,
-                         std::string& aName) :
-            Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
-            mBulkModulus(-1.0),
-            mShearModulus(-1.0),
-            mPenaltySIMP(3),
-            mMinErsatz(1e-9),
-            mUpperBoundOnPenaltySIMP(4),
-            mAdditiveContinuationParam(0.1),
-            mCubatureRule()
+    PlasticWorkCriterion(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aName
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap, aName),
+        mBulkModulus(-1.0),
+        mShearModulus(-1.0),
+        mPenaltySIMP(3),
+        mMinErsatz(1e-9),
+        mUpperBoundOnPenaltySIMP(4),
+        mAdditiveContinuationParam(0.1),
+        mCubatureRule()
     {
         this->parsePenaltyModelParams(aInputParams);
         this->parseMaterialProperties(aInputParams);
@@ -101,23 +104,23 @@ public:
     /***************************************************************************//**
      * \brief Constructor of maximize total work criterion
      *
-     * \param [in] aMesh        mesh database
-     * \param [in] aMeshSets    side sets database
+     * \param [in] aSpatialDomain Plato Analyze spatial domain
      * \param [in] aDataMap     PLATO Analyze output data map side sets database
      * \param [in] aName        scalar function name
     *******************************************************************************/
-    PlasticWorkCriterion(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap & aDataMap,
-                         std::string aName = "") :
-            Plato::AbstractLocalScalarFunctionInc<EvaluationType>(aMesh, aMeshSets, aDataMap, aName),
-            mBulkModulus(1.0),
-            mShearModulus(1.0),
-            mPenaltySIMP(3),
-            mMinErsatz(1e-9),
-            mUpperBoundOnPenaltySIMP(4),
-            mAdditiveContinuationParam(0.1),
-            mCubatureRule()
+    PlasticWorkCriterion(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap,
+              std::string            aName = ""
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap, aName),
+        mBulkModulus(1.0),
+        mShearModulus(1.0),
+        mPenaltySIMP(3),
+        mMinErsatz(1e-9),
+        mUpperBoundOnPenaltySIMP(4),
+        mAdditiveContinuationParam(0.1),
+        mCubatureRule()
     {
     }
 
@@ -160,7 +163,7 @@ public:
         Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatz);
 
         // allocate local containers used to evaluate criterion
-        auto tNumCells = this->getMesh().nelems();
+        auto tNumCells = mSpatialDomain.numCells();
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
         Plato::ScalarMultiVectorT<ResultT> tCurrentCauchyStress("current cauchy stress", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ResultT> tPlasticStrainMisfit("plastic strain misfit", tNumCells, mNumStressTerms);
@@ -232,9 +235,10 @@ private:
     void parsePenaltyModelParams(Teuchos::ParameterList &aInputParams)
     {
         auto tFunctionName = this->getName();
-        if(aInputParams.isSublist(tFunctionName) == true)
+        if(aInputParams.sublist("Criteria").isSublist(tFunctionName) == true)
         {
-            Teuchos::ParameterList tInputData = aInputParams.sublist(tFunctionName);
+            Teuchos::ParameterList tFunctionParams = aInputParams.sublist("Criteria").sublist(tFunctionName);
+            Teuchos::ParameterList tInputData = tFunctionParams.sublist("Penalty Function");
             mPenaltySIMP = tInputData.get<Plato::Scalar>("Exponent", 3.0);
             mMinErsatz = tInputData.get<Plato::Scalar>("Minimum Value", 1e-9);
             mAdditiveContinuationParam = tInputData.get<Plato::Scalar>("Additive Continuation", 0.1);
@@ -255,13 +259,16 @@ private:
     **************************************************************************/
     void parseMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Material Model"))
+        if(aProblemParams.isSublist("Material Models"))
         {
-            this->parseIsotropicMaterialProperties(aProblemParams);
+            auto tMaterialName = mSpatialDomain.getMaterialName();
+            Teuchos::ParameterList tMaterialsList = aProblemParams.sublist("Material Models");
+            Teuchos::ParameterList tMaterialList  = tMaterialsList.sublist(tMaterialName);
+            this->parseIsotropicMaterialProperties(tMaterialList);
         }
         else
         {
-            THROWERR("'Material Model' SUBLIST IS NOT DEFINED.")
+            THROWERR("'Material Models' SUBLIST IS NOT DEFINED.")
         }
     }
 
@@ -269,21 +276,13 @@ private:
      * \brief Parse isotropic material properties
      * \param [in] aProblemParams input XML data, i.e. parameter list
     **************************************************************************/
-    void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
+    void parseIsotropicMaterialProperties(Teuchos::ParameterList &aMaterialParams)
     {
-        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
-        if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
-        {
-            auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
-            auto tPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
-            auto tElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
-            mBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
-            mShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
-        }
-        else
-        {
-            THROWERR("'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
-        }
+        auto tElasticSubList = aMaterialParams.sublist("Isotropic Linear Elastic");
+        auto tPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
+        auto tElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
+        mBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
+        mShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
     }
 };
 // class PlasticWorkCriterion

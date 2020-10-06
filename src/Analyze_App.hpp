@@ -18,8 +18,10 @@
 #include <Plato_SharedData.hpp>
 #include <Plato_SharedField.hpp>
 
-#include "Mechanics.hpp"
-#include "Thermal.hpp"
+// JR are these needed?
+//#include "Mechanics.hpp"
+//#include "Thermal.hpp"
+
 #include "PlatoUtilities.hpp"
 #include "PlatoAbstractProblem.hpp"
 #include "alg/ParseInput.hpp"
@@ -44,6 +46,8 @@ typedef Plato::Geometry::ESP<double, Plato::ScalarVectorT<double>::HostMirror> E
 #else
 typedef int ESPType;
 #endif
+
+namespace Plato {
 
 Plato::ScalarVector
 getVectorComponent(Plato::ScalarVector aFrom, int aComponent, int aStride);
@@ -119,6 +123,15 @@ public:
             ESP_Op(MPMD_App* aMyApp, Plato::InputData& aNode);
         protected:
             std::string mESPName;
+    };
+
+    class CriterionOp
+    {
+        public:
+            CriterionOp(MPMD_App* aMyApp, Plato::InputData& aNode);
+        protected:
+            std::string mStrCriterion;
+            Plato::Scalar mTarget;
     };
 
     class OnChangeOp
@@ -285,14 +298,19 @@ public:
         // parse input name
         auto tTokens = split(aName, '@');
         auto tFieldName = tTokens[0];
+        int tFieldIndex = 0;
+        if(tTokens.size() > 1)
+        {
+            tFieldIndex = std::atoi(tTokens[1].c_str());
+        }
 
         if(aSharedField.myLayout() == Plato::data::layout_t::SCALAR_FIELD)
         {
-            this->exportScalarField(tFieldName, aSharedField);
+            this->exportScalarField(tFieldName, aSharedField, tFieldIndex);
         }
         else if(aSharedField.myLayout() == Plato::data::layout_t::ELEMENT_FIELD)
         {
-            this->exportElementField(aName, aSharedField);
+            this->exportElementField(tFieldName, aSharedField, tFieldIndex);
         }
         else if(aSharedField.myLayout() == Plato::data::layout_t::SCALAR)
         {
@@ -308,14 +326,10 @@ public:
     template<typename SharedDataT>
     void exportScalarValue(const std::string& aName, SharedDataT& aSharedField)
     {
-        if(aName == "Objective Value")
+        if(mValueNameToCriterionName.count(aName))
         {
-            std::vector<Plato::Scalar> tValue(1, mObjectiveValue);
-            aSharedField.setData(tValue);
-        }
-        else if(aName == "Constraint Value")
-        {
-            std::vector<Plato::Scalar> tValue(1, mConstraintValue);
+            auto tStrCriterion = mValueNameToCriterionName[aName];
+            std::vector<Plato::Scalar> tValue(1, mCriterionValues[tStrCriterion]);
             aSharedField.setData(tValue);
         }
         else
@@ -348,27 +362,20 @@ public:
      * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
-    void exportElementField(const std::string& aName, SharedDataT& aSharedField)
+    void exportElementField(const std::string& aName, SharedDataT& aSharedField, int aIndex=0)
     {
-        auto tTokens = split(aName, '@');
-        auto tFieldName = tTokens[0];
         auto tDataMap = mProblem->getDataMap();
-        if(tDataMap.scalarVectors.count(tFieldName))
+        if(tDataMap.scalarVectors.count(aName))
         {
-            auto tData = tDataMap.scalarVectors.at(tFieldName);
+            auto tData = tDataMap.scalarVectors.at(aName);
             this->copyFieldFromAnalyze(tData, aSharedField);
         }
-        else if(tDataMap.scalarMultiVectors.count(tFieldName))
+        else if(tDataMap.scalarMultiVectors.count(aName))
         {
-            auto tData = tDataMap.scalarMultiVectors.at(tFieldName);
-            Plato::OrdinalType tComponentIndex = 0;
-            if(tTokens.size() > 1)
-            {
-                tComponentIndex = std::atoi(tTokens[1].c_str());
-            }
-            this->copyFieldFromAnalyze(tData, tComponentIndex, aSharedField);
+            auto tData = tDataMap.scalarMultiVectors.at(aName);
+            this->copyFieldFromAnalyze(tData, aIndex, aSharedField);
         }
-        else if(tDataMap.scalarArray3Ds.count(tFieldName))
+        else if(tDataMap.scalarArray3Ds.count(aName))
         {
         }
     }
@@ -379,31 +386,24 @@ public:
      * @param [out] aSharedData shared data (i.e. data to PLATO Engine)
     **********************************************************************************/
     template<typename SharedDataT>
-    void exportScalarField(const std::string& aName, SharedDataT& aSharedField)
+    void exportScalarField(const std::string& aName, SharedDataT& aSharedField, int aIndex=0)
     {
         if(aName == "Topology")
         {
             this->copyFieldFromAnalyze(mControl, aSharedField);
         }
-        else if(aName == "Objective Gradient")
+        else
+        if(mGradientZNameToCriterionName.count(aName))
         {
-            if(mMeshMap != nullptr && mObjectiveGradientZ.extent(0) != 0)
+            auto tStrCriterion = mGradientZNameToCriterionName[aName];
+            auto tCriter = mCriterionGradientsZ[tStrCriterion];
+            if(mMeshMap != nullptr && tCriter.extent(0) != 0)
             {
-                Plato::ScalarVector tObjectiveGradientZ("unmapped", mObjectiveGradientZ.extent(0));
-                applyT(mMeshMap, mObjectiveGradientZ, tObjectiveGradientZ);
-                Kokkos::deep_copy(mObjectiveGradientZ, tObjectiveGradientZ);
+                Plato::ScalarVector tCriterionGradientZ("unmapped", tCriter.extent(0));
+                applyT(mMeshMap, tCriter, tCriterionGradientZ);
+                Kokkos::deep_copy(tCriter, tCriterionGradientZ);
             }
-            this->copyFieldFromAnalyze(mObjectiveGradientZ, aSharedField);
-        }
-        else if(aName == "Constraint Gradient")
-        {
-            if(mMeshMap != nullptr && mConstraintGradientZ.extent(0) != 0)
-            {
-                Plato::ScalarVector tConstraintGradientZ("unmapped", mConstraintGradientZ.extent(0));
-                applyT(mMeshMap, mConstraintGradientZ, tConstraintGradientZ);
-                Kokkos::deep_copy(mConstraintGradientZ, tConstraintGradientZ);
-            }
-            this->copyFieldFromAnalyze(mConstraintGradientZ, aSharedField);
+            this->copyFieldFromAnalyze(tCriter, aSharedField);
         }
         else if(aName == "Solution")
         {
@@ -433,34 +433,11 @@ public:
             auto tScalarField = getVectorComponent(tStatesSubView,/*component=*/2, /*stride=*/mNumSolutionDofs);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
-        else if(aName == "Objective GradientX X")
+        else
+        if(mGradientXNameToCriterionName.count(aName))
         {
-            auto tScalarField = getVectorComponent(mObjectiveGradientX,/*component=*/0, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromAnalyze(tScalarField, aSharedField);
-        }
-        else if(aName == "Objective GradientX Y")
-        {
-            auto tScalarField = getVectorComponent(mObjectiveGradientX,/*component=*/1, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromAnalyze(tScalarField, aSharedField);
-        }
-        else if(aName == "Objective GradientX Z")
-        {
-            auto tScalarField = getVectorComponent(mObjectiveGradientX,/*component=*/2, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromAnalyze(tScalarField, aSharedField);
-        }
-        else if(aName == "Constraint GradientX X")
-        {
-            auto tScalarField = getVectorComponent(mConstraintGradientX,/*component=*/0, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromAnalyze(tScalarField, aSharedField);
-        }
-        else if(aName == "Constraint GradientX Y")
-        {
-            auto tScalarField = getVectorComponent(mConstraintGradientX,/*component=*/1, /*stride=*/mNumSpatialDims);
-            this->copyFieldFromAnalyze(tScalarField, aSharedField);
-        }
-        else if(aName == "Constraint GradientX Z")
-        {
-            auto tScalarField = getVectorComponent(mConstraintGradientX,/*component=*/2, /*stride=*/mNumSpatialDims);
+            auto tStrCriterion = mGradientXNameToCriterionName[aName];
+            auto tScalarField = getVectorComponent(mCriterionGradientsX[tStrCriterion], aIndex, /*stride=*/mNumSpatialDims);
             this->copyFieldFromAnalyze(tScalarField, aSharedField);
         }
     }
@@ -579,17 +556,17 @@ private:
 
     std::shared_ptr<Plato::AbstractProblem> mProblem;
 
-    Plato::Solution mGlobalSolution;
-    Plato::ScalarVector mControl;
+    Plato::Solution          mGlobalSolution;
+    Plato::ScalarVector      mControl;
     Plato::ScalarMultiVector mCoords;
 
-    Plato::Scalar mObjectiveValue;
-    Plato::ScalarVector mObjectiveGradientZ;
-    Plato::ScalarVector mObjectiveGradientX;
+    std::map<std::string, Plato::Scalar>       mCriterionValues;
+    std::map<std::string, Plato::ScalarVector> mCriterionGradientsZ;
+    std::map<std::string, Plato::ScalarVector> mCriterionGradientsX;
 
-    Plato::Scalar mConstraintValue;
-    Plato::ScalarVector mConstraintGradientZ;
-    Plato::ScalarVector mConstraintGradientX;
+    std::map<std::string, std::string> mValueNameToCriterionName;
+    std::map<std::string, std::string> mGradientZNameToCriterionName;
+    std::map<std::string, std::string> mGradientXNameToCriterionName;
 
     Plato::OrdinalType mNumSpatialDims;
     Plato::OrdinalType mNumSolutionDofs;
@@ -676,188 +653,92 @@ private:
     friend class UpdateProblem;
     /******************************************************************************/
 
-    // Objective sub-classes
+    // Criterion sub-classes
     //
     /******************************************************************************/
-    class ComputeObjective : public LocalOp
+    class ComputeCriterion : public LocalOp, public CriterionOp
     {
     public:
-        ComputeObjective(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        ComputeCriterion(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        std::string mStrValName;
+        std::string mStrGradName;
     };
-    friend class ComputeObjective;
+    friend class ComputeCriterion;
     /******************************************************************************/
 
     /******************************************************************************/
-    class ComputeObjectiveX : public LocalOp
+    class ComputeCriterionX : public LocalOp, public CriterionOp
     {
     public:
-        ComputeObjectiveX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        ComputeCriterionX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        std::string mStrValName;
+        std::string mStrGradName;
     };
-    friend class ComputeObjectiveX;
+    friend class ComputeCriterionX;
     /******************************************************************************/
 
     /******************************************************************************/
-    class ComputeObjectiveP : public LocalOp, public ESP_Op
+    class ComputeCriterionP : public LocalOp, public ESP_Op, public CriterionOp
     {
     public:
-        ComputeObjectiveP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        ComputeCriterionP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     private:
         std::string mStrGradientP;
     };
-    friend class ComputeObjectiveP;
+    friend class ComputeCriterionP;
     /******************************************************************************/
 
     /******************************************************************************/
-    class ComputeObjectiveValue : public LocalOp
+    class ComputeCriterionValue : public LocalOp, public CriterionOp
     {
     public:
-        ComputeObjectiveValue(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        ComputeCriterionValue(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        std::string mStrValName;
     };
-    friend class ComputeObjectiveValue;
+    friend class ComputeCriterionValue;
     /******************************************************************************/
 
     /******************************************************************************/
-    class ComputeObjectiveGradient : public LocalOp
+    class ComputeCriterionGradient : public LocalOp, public CriterionOp
     {
     public:
-        ComputeObjectiveGradient(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        ComputeCriterionGradient(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        std::string mStrGradName;
     };
-    friend class ComputeObjectiveGradient;
+    friend class ComputeCriterionGradient;
     /******************************************************************************/
 
     /******************************************************************************/
-    class ComputeObjectiveGradientX : public LocalOp
+    class ComputeCriterionGradientX : public LocalOp, public CriterionOp
     {
     public:
-        ComputeObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        ComputeCriterionGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
+    private:
+        std::string mStrGradName;
     };
-    friend class ComputeObjectiveGradientX;
+    friend class ComputeCriterionGradientX;
     /******************************************************************************/
 
     /******************************************************************************/
-    class ComputeObjectiveGradientP : public LocalOp, public ESP_Op
+    class ComputeCriterionGradientP : public LocalOp, public ESP_Op, public CriterionOp
     {
     public:
-        ComputeObjectiveGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        ComputeCriterionGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
         void operator()();
     private:
         std::string mStrGradientP;
     };
-    friend class ComputeObjectiveGradientP;
-    /******************************************************************************/
-
-    // Constraint sub-classes
-    //
-    class ComputeConstraint : public LocalOp
-    {
-    public:
-        ComputeConstraint(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
-        void operator()();
-    private:
-        Plato::Scalar mTarget;
-    };
-    friend class ComputeConstraint;
-    /******************************************************************************/
-
-    /******************************************************************************/
-    class ComputeConstraintX : public LocalOp
-    {
-    public:
-        ComputeConstraintX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
-        void operator()();
-    private:
-        Plato::Scalar mTarget;
-    };
-    friend class ComputeConstraintX;
-    /******************************************************************************/
-
-    /******************************************************************************/
-    class ComputeConstraintP : public LocalOp, public ESP_Op
-    {
-    public:
-        ComputeConstraintP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
-        void operator()();
-    private:
-        std::string mStrGradientP;
-        Plato::Scalar mTarget;
-    };
-    friend class ComputeConstraintP;
-    /******************************************************************************/
-
-    /******************************************************************************/
-    class ComputeConstraintValue : public LocalOp
-    {
-    public:
-        ComputeConstraintValue(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
-        void operator()();
-    private:
-        Plato::Scalar mTarget;
-    };
-    friend class ComputeConstraintValue;
-    /******************************************************************************/
-
-    /******************************************************************************/
-    class ComputeConstraintGradient : public LocalOp
-    {
-    public:
-        ComputeConstraintGradient(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
-        void operator()();
-    };
-    friend class ComputeConstraintGradient;
-    /******************************************************************************/
-
-    /******************************************************************************/
-    class ComputeConstraintGradientX : public LocalOp
-    {
-    public:
-        ComputeConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
-        void operator()();
-    };
-    friend class ComputeConstraintGradientX;
-    /******************************************************************************/
-
-    /******************************************************************************/
-    class MapObjectiveGradientX : public LocalOp
-    {
-    public:
-        MapObjectiveGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
-        void operator()();
-    private:
-        std::string mStrOutputName;
-        std::vector<std::string> mStrInputNames;
-    };
-    friend class MapObjectiveGradientX;
-    /******************************************************************************/
-
-    /******************************************************************************/
-    class MapConstraintGradientX : public LocalOp
-    {
-    public:
-        MapConstraintGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
-        void operator()();
-    private:
-        std::string mStrOutputName;
-        std::vector<std::string> mStrInputNames;
-    };
-    friend class MapConstraintGradientX;
-    /******************************************************************************/
-
-    /******************************************************************************/
-    class ComputeConstraintGradientP : public LocalOp, public ESP_Op
-    {
-    public:
-        ComputeConstraintGradientP(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
-        void operator()();
-    private:
-        std::string mStrGradientP;
-    };
-    friend class ComputeConstraintGradientP;
+    friend class ComputeCriterionGradientP;
     /******************************************************************************/
 
     // Output sub-classes
@@ -887,6 +768,19 @@ private:
     friend class ComputeFiniteDifference;
     /******************************************************************************/
 
+    /******************************************************************************/
+    class MapCriterionGradientX : public LocalOp, public CriterionOp
+    {
+    public:
+        MapCriterionGradientX(MPMD_App* aMyApp, Plato::InputData& aNode, Teuchos::RCP<ProblemDefinition> aOpDef);
+        void operator()();
+    private:
+        std::string mStrOutputName;
+        std::vector<std::string> mStrInputNames;
+        std::string mStrGradientName;
+    };
+    friend class MapCriterionGradientX;
+    /******************************************************************************/
 
     /******************************************************************************/
 
@@ -1041,4 +935,7 @@ private:
     std::map<std::string, LocalOp*> mOperationMap;
 
 };
+
+} // end namespace Plato
+
 #endif

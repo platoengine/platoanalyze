@@ -31,51 +31,55 @@ private:
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase> mScalarFunctionBaseNumerator; /*!< numerator function */
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase> mScalarFunctionBaseDenominator; /*!< denominator function */
 
+    const Plato::SpatialModel & mSpatialModel;
+
     Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
 
     std::string mFunctionName; /*!< User defined function name */
 
 	/******************************************************************************//**
      * @brief Initialization of Division Function
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
-    void initialize (Omega_h::Mesh& aMesh, 
-                     Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+    void
+    initialize(
+        Teuchos::ParameterList & aProblemParams
+    )
     {
         Plato::Geometric::ScalarFunctionBaseFactory<PhysicsT> tFactory;
 
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
-        auto tNumeratorFunctionName = tProblemFunctionName.get<std::string>("Numerator");
-        auto tDenominatorFunctionName = tProblemFunctionName.get<std::string>("Denominator");
+        auto tNumeratorFunctionName = tFunctionParams.get<std::string>("Numerator");
+        auto tDenominatorFunctionName = tFunctionParams.get<std::string>("Denominator");
 
         mScalarFunctionBaseNumerator = 
-             tFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tNumeratorFunctionName);
+             tFactory.create(mSpatialModel, mDataMap, aProblemParams, tNumeratorFunctionName);
 
         mScalarFunctionBaseDenominator = 
-             tFactory.create(aMesh, aMeshSets, mDataMap, aInputParams, tDenominatorFunctionName);
+             tFactory.create(mSpatialModel, mDataMap, aProblemParams, tDenominatorFunctionName);
     }
 
 public:
     /******************************************************************************//**
      * @brief Primary division function constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialModel Plato Analyze spatial model
      * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
-    DivisionFunction(Omega_h::Mesh& aMesh,
-                Omega_h::MeshSets& aMeshSets,
-                Plato::DataMap & aDataMap,
-                Teuchos::ParameterList& aInputParams,
-                std::string& aName) :
-            Plato::Geometric::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName(aName)
+    DivisionFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+        const std::string            & aName
+    ) :
+        Plato::Geometric::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName (aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aProblemParams);
     }
 
     /******************************************************************************//**
@@ -83,10 +87,14 @@ public:
      * @param [in] aMesh mesh database
      * @param [in] aMeshSets side sets database
     **********************************************************************************/
-    DivisionFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
-            Plato::Geometric::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName("Division Function")
+    DivisionFunction(
+        const Plato::SpatialModel & aSpatialModel,
+              Plato::DataMap      & aDataMap
+    ) :
+        Plato::Geometric::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName ("Division Function")
     {
     }
 
@@ -112,7 +120,7 @@ public:
      * @brief Update physics-based parameters within optimization iterations
      * @param [in] aControl 1D view of control variables
      **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl) const
+    void updateProblem(const Plato::ScalarVector & aControl) const override
     {
         mScalarFunctionBaseNumerator->updateProblem(aControl);
         mScalarFunctionBaseDenominator->updateProblem(aControl);
@@ -124,7 +132,7 @@ public:
      * @param [in] aTimeStep time step (default = 0.0)
      * @return scalar function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aControl) const
+    Plato::Scalar value(const Plato::ScalarVector & aControl) const override
     {
         Plato::Scalar tNumeratorValue = mScalarFunctionBaseNumerator->value(aControl);
         Plato::Scalar tDenominatorValue = mScalarFunctionBaseDenominator->value(aControl);
@@ -143,7 +151,7 @@ public:
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl) const
+    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl) const override
     {
         const Plato::OrdinalType tNumDofs = mNumSpatialDims * mNumNodes;
         Plato::ScalarVector tGradientX ("gradient configuration", tNumDofs);
@@ -168,7 +176,7 @@ public:
      * @param [in] aTimeStep time step (default = 0.0)
      * @return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl) const
+    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl) const override
     {
         const Plato::OrdinalType tNumDofs = mNumNodes;
         Plato::ScalarVector tGradientZ ("gradient control", tNumDofs);

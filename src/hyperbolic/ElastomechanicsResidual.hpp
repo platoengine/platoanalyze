@@ -39,9 +39,8 @@ class TransientMechanicsResidual :
     using Plato::SimplexMechanics<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexMechanics<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mDataMap;
-    using Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType       = typename EvaluationType::StateScalarType;
     using StateDotScalarType    = typename EvaluationType::StateDotScalarType;
@@ -50,12 +49,15 @@ class TransientMechanicsResidual :
     using ConfigScalarType      = typename EvaluationType::ConfigScalarType;
     using ResultScalarType      = typename EvaluationType::ResultScalarType;
 
+    using FunctionBaseType = Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<SpaceDim>;
+
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
     Plato::ApplyWeighting<SpaceDim, SpaceDim,       IndicatorFunctionType> mApplyMassWeighting;
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<SpaceDim>> mCubatureRule;
+    std::shared_ptr<CubatureType> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>> mBoundaryLoads;
 
     Teuchos::RCP<Plato::LinearElasticMaterial<SpaceDim>> mMaterialModel;
@@ -65,25 +67,28 @@ class TransientMechanicsResidual :
   public:
     /**************************************************************************/
     TransientMechanicsResidual(
-      Omega_h::Mesh& aMesh,
-      Omega_h::MeshSets& aMeshSets,
-      Plato::DataMap& aDataMap,
-      Teuchos::ParameterList& aProblemParams,
-      Teuchos::ParameterList& aPenaltyParams) :
-     Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap,
-        {"Displacement X", "Displacement Y", "Displacement Z"}),
-     mIndicatorFunction(aPenaltyParams),
-     mApplyStressWeighting(mIndicatorFunction),
-     mApplyMassWeighting(mIndicatorFunction),
-     mBodyLoads(nullptr),
-     mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>()),
-     mBoundaryLoads(nullptr)
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+    ) :
+        FunctionBaseType      (aSpatialDomain, aDataMap,
+                               {"Displacement X", "Displacement Y", "Displacement Z"},
+                               {"Velocity X",     "Velocity Y",     "Velocity Z"    }),
+        mIndicatorFunction    (aPenaltyParams),
+        mApplyStressWeighting (mIndicatorFunction),
+        mApplyMassWeighting   (mIndicatorFunction),
+        mBodyLoads            (nullptr),
+        mCubatureRule         (std::make_shared<CubatureType>()),
+        mBoundaryLoads        (nullptr)
     /**************************************************************************/
     {
+
         // create material model and get stiffness
         //
         Plato::ElasticModelFactory<SpaceDim> tMaterialModelFactory(aProblemParams);
-        mMaterialModel = tMaterialModelFactory.create();
+        mMaterialModel = tMaterialModelFactory.create(aSpatialDomain.getMaterialName());
+
         // parse body loads
         //
         if(aProblemParams.isSublist("Body Loads"))
@@ -102,22 +107,26 @@ class TransientMechanicsResidual :
 
         auto tResidualParams = aProblemParams.sublist("Hyperbolic");
         if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
-          mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
-
+        {
+            mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        }
     }
 
     /**************************************************************************/
     void
-    evaluate( const Plato::ScalarMultiVectorT< StateScalarType       > & aState,
-              const Plato::ScalarMultiVectorT< StateDotScalarType    > & aStateDot,
-              const Plato::ScalarMultiVectorT< StateDotDotScalarType > & aStateDotDot,
-              const Plato::ScalarMultiVectorT< ControlScalarType     > & aControl,
-              const Plato::ScalarArray3DT    < ConfigScalarType      > & aConfig,
-                    Plato::ScalarMultiVectorT< ResultScalarType      > & aResult,
-                    Plato::Scalar aTimeStep = 0.0) const
+    evaluate(
+        const Plato::ScalarMultiVectorT< StateScalarType       > & aState,
+        const Plato::ScalarMultiVectorT< StateDotScalarType    > & aStateDot,
+        const Plato::ScalarMultiVectorT< StateDotDotScalarType > & aStateDotDot,
+        const Plato::ScalarMultiVectorT< ControlScalarType     > & aControl,
+        const Plato::ScalarArray3DT    < ConfigScalarType      > & aConfig,
+              Plato::ScalarMultiVectorT< ResultScalarType      > & aResult,
+              Plato::Scalar aTimeStep = 0.0,
+              Plato::Scalar aCurrentTime = 0.0
+    ) const override
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using StrainScalarType =
           typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
@@ -188,18 +197,33 @@ class TransientMechanicsResidual :
 
       }, "Compute Residual");
 
-      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, tStress, "stress");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, tStress, "strain");
+     if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, tStress, "stress", mSpatialDomain);
+     if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, tStress, "strain", mSpatialDomain);
 
       if( mBodyLoads != nullptr )
       {
-          mBodyLoads->get( mMesh, aState, aControl, aResult, -1.0 );
+          mBodyLoads->get( mSpatialDomain, aState, aControl, aResult, -1.0 );
       }
-
-      if( mBoundaryLoads != nullptr )
-      {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult, -1.0 );
-      }
+    }
+    /**************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                                & aSpatialModel,
+        const Plato::ScalarMultiVectorT< StateScalarType       > & aState,
+        const Plato::ScalarMultiVectorT< StateDotScalarType    > & aStateDot,
+        const Plato::ScalarMultiVectorT< StateDotDotScalarType > & aStateDotDot,
+        const Plato::ScalarMultiVectorT< ControlScalarType     > & aControl,
+        const Plato::ScalarArray3DT    < ConfigScalarType      > & aConfig,
+              Plato::ScalarMultiVectorT< ResultScalarType      > & aResult,
+              Plato::Scalar aTimeStep = 0.0,
+              Plato::Scalar aCurrentTime = 0.0
+    ) const override
+    /**************************************************************************/
+    {
+        if( mBoundaryLoads != nullptr )
+        {
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult, -1.0, aCurrentTime );
+        }
     }
 };
 

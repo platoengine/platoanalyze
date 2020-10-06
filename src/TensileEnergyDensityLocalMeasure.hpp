@@ -26,6 +26,8 @@ private:
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mSpaceDim; /*!< space dimension */
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mNumVoigtTerms; /*!< number of voigt tensor terms */
     using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mNumNodesPerCell; /*!< number of nodes per cell */
+    using AbstractLocalMeasure<EvaluationType,SimplexPhysics>::mSpatialDomain; 
+
     Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffMatrix; /*!< cell/element Lame constants matrix */
 
     using StateT = typename EvaluationType::StateScalarType; /*!< state variables automatic differentiation type */
@@ -40,12 +42,15 @@ private:
     **********************************************************************************/
     void getYoungsModulusAndPoissonsRatio(Teuchos::ParameterList & aInputParams)
     {
-        auto modelParamList = aInputParams.get<Teuchos::ParameterList>("Material Model");
+        auto tMaterialName = mSpatialDomain.getMaterialName();
 
-        if( modelParamList.isSublist("Isotropic Linear Elastic") ){
-            auto paramList = modelParamList.sublist("Isotropic Linear Elastic");
-            mPoissonsRatio = paramList.get<Plato::Scalar>("Poissons Ratio");
-            mYoungsModulus = paramList.get<Plato::Scalar>("Youngs Modulus");
+        auto tModelParamLists = aInputParams.get<Teuchos::ParameterList>("Material Models");
+        auto tModelParamList  = tModelParamLists.get<Teuchos::ParameterList>(tMaterialName);
+
+        if( tModelParamList.isSublist("Isotropic Linear Elastic") ){
+            Teuchos::ParameterList tParamList = tModelParamList.sublist("Isotropic Linear Elastic");
+            mPoissonsRatio = tParamList.get<Plato::Scalar>("Poissons Ratio");
+            mYoungsModulus = tParamList.get<Plato::Scalar>("Youngs Modulus");
         }
         else
         {
@@ -71,9 +76,12 @@ public:
      * \param [in] aInputParams input parameters database
      * \param [in] aName local measure name
      **********************************************************************************/
-    TensileEnergyDensityLocalMeasure(Teuchos::ParameterList & aInputParams,
-                                     const std::string & aName) : 
-                                     AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aInputParams, aName)
+    TensileEnergyDensityLocalMeasure(
+        const Plato::SpatialDomain   & aSpatialModel,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aName
+    ) : 
+        AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aSpatialModel, aInputParams, aName)
     {
         getYoungsModulusAndPoissonsRatio(aInputParams);
         computeLameConstants();
@@ -85,12 +93,15 @@ public:
      * \param [in] aPoissonsRatio Poisson's ratio
      * \param [in] aName local measure name
      **********************************************************************************/
-    TensileEnergyDensityLocalMeasure(const Plato::Scalar & aYoungsModulus,
-                                     const Plato::Scalar & aPoissonsRatio,
-                                     const std::string & aName) :
-                                     AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aName),
-                                     mYoungsModulus(aYoungsModulus),
-                                     mPoissonsRatio(aPoissonsRatio)
+    TensileEnergyDensityLocalMeasure(
+        const Plato::SpatialDomain & aSpatialModel,
+        const Plato::Scalar        & aYoungsModulus,
+        const Plato::Scalar        & aPoissonsRatio,
+        const std::string          & aName
+    ) :
+        AbstractLocalMeasure<EvaluationType,SimplexPhysics>(aSpatialModel, aName),
+        mYoungsModulus(aYoungsModulus),
+        mPoissonsRatio(aPoissonsRatio)
     {
         computeLameConstants();
     }
@@ -109,11 +120,15 @@ public:
      * \param [in] aDataMap map to stored data
      * \param [out] aResult 1D container of cell local measure values
     **********************************************************************************/
-    void operator()(const Plato::ScalarMultiVectorT<StateT> & aStateWS,
-                    const Plato::ScalarArray3DT<ConfigT> & aConfigWS,
-                    Plato::ScalarVectorT<ResultT> & aResultWS) override
+    void
+    operator()(
+        const Plato::ScalarMultiVectorT <StateT>  & aStateWS,
+        const Plato::ScalarArray3DT     <ConfigT> & aConfigWS,
+              Plato::ScalarVectorT      <ResultT> & aResultWS
+    ) override
     {
         const Plato::OrdinalType tNumCells = aResultWS.size();
+
         using StrainT = typename Plato::fad_type_t<SimplexPhysics, StateT, ConfigT>;
 
         Plato::Strain<mSpaceDim> tComputeCauchyStrain;

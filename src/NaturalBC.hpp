@@ -11,6 +11,7 @@
 #include <Teuchos_ParameterList.hpp>
 
 #include "AnalyzeMacros.hpp"
+#include "PlatoMathExpr.hpp"
 #include "SurfaceLoadIntegral.hpp"
 #include "SurfacePressureIntegral.hpp"
 
@@ -76,6 +77,7 @@ class NaturalBC
     const std::string mType;         /*!< natural boundary condition type */
     const std::string mSideSetName;  /*!< side set name */
     Omega_h::Vector<NumDofs> mFlux;  /*!< force vector values */
+    std::shared_ptr<Plato::MathExpr> mFluxExpr[NumDofs];
 
 public:
     /***************************************************************************//**
@@ -86,12 +88,29 @@ public:
     NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>(const std::string & aLoadName, Teuchos::ParameterList &aSubList) :
         mName(aLoadName),
         mType(aSubList.get<std::string>("Type")),
-        mSideSetName(aSubList.get<std::string>("Sides"))
+        mSideSetName(aSubList.get<std::string>("Sides")),
+        mFluxExpr{nullptr}
     {
-        auto tFlux = aSubList.get<Teuchos::Array<Plato::Scalar>>("Vector");
-        for(Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
+        auto tIsValue = aSubList.isType<Teuchos::Array<Plato::Scalar>>("Vector");
+        auto tIsExpr  = aSubList.isType<Teuchos::Array<std::string>>("Vector");
+
+        if (tIsValue)
         {
-            mFlux(tDof) = tFlux[tDof];
+            auto tFlux = aSubList.get<Teuchos::Array<Plato::Scalar>>("Vector");
+            for(Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
+            {
+                mFlux(tDof) = tFlux[tDof];
+            }
+        }
+        else
+        if (tIsExpr)
+        {
+            auto tExpr = aSubList.get<Teuchos::Array<std::string>>("Vector");
+            for(Plato::OrdinalType tDof=0; tDof<NumDofs; tDof++)
+            {
+                mFluxExpr[tDof] = std::make_shared<Plato::MathExpr>(tExpr[tDof]);
+                mFlux(tDof) = mFluxExpr[tDof]->value(0.0);
+            }
         }
     }
 
@@ -108,13 +127,11 @@ public:
      * \tparam ConfigScalarType  configuration FAD type
      * \tparam ResultScalarType  result FAD type
      *
-     * \param [in]  aMesh     Omega_h mesh database.
-     * \param [in]  aMeshSets Omega_h side set database.
-     * \param [in]  aState    2-D view of state variables.
-     * \param [in]  aControl  2-D view of control variables.
-     * \param [in]  aConfig   3-D view of configuration variables.
-     * \param [out] aResult   Assembled vector to which the boundary terms will be added
-     * \param [in]  aScale    scalar multiplier
+     * \param [in]  aState        2-D view of state variables.
+     * \param [in]  aControl      2-D view of control variables.
+     * \param [in]  aConfig       3-D view of configuration variables.
+     * \param [out] aResult       Assembled vector to which the boundary terms will be added
+     * \param [in]  aScale        scalar multiplier
      *
      * The boundary terms are integrated on the parameterized surface, \f$\phi(\xi,\psi)\f$, according to:
      *  \f{eqnarray*}{
@@ -136,13 +153,13 @@ public:
              typename ControlScalarType,
              typename ConfigScalarType,
              typename ResultScalarType>
-    void get(Omega_h::Mesh* aMesh,
-             const Omega_h::MeshSets& aMeshSets,
+    void get(const Plato::SpatialModel&,
              const Plato::ScalarMultiVectorT<  StateScalarType>&,
              const Plato::ScalarMultiVectorT<ControlScalarType>&,
              const Plato::ScalarArray3DT    < ConfigScalarType>&,
              const Plato::ScalarMultiVectorT< ResultScalarType>&,
-             Plato::Scalar aScale) const;
+             Plato::Scalar aScale,
+             Plato::Scalar aCurrentTime);
 
     /***************************************************************************//**
      * \brief Return natural boundary condition sublist name
@@ -156,19 +173,7 @@ public:
     *******************************************************************************/
     decltype(mSideSetName) const& getSideSetName() const { return mSideSetName; }
 
-    /***************************************************************************//**
-     * \brief Return force vector for this natural boundary condition
-     * \return force vector values
-    *******************************************************************************/
-    decltype(mFlux) getValues() const { return mFlux; }
-
-    /***************************************************************************//**
-     * \brief Return natural boundary condition type
-     * \return natural boundary condition type
-    *******************************************************************************/
-    decltype(mType) getType() const { return mType; }
-};
-// class NaturalBC
+}; // class NaturalBC
 
 /***************************************************************************//**
  * \brief NaturalBC::get function definition
@@ -178,15 +183,25 @@ template<typename StateScalarType,
          typename ControlScalarType,
          typename ConfigScalarType,
          typename ResultScalarType>
-void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
-(Omega_h::Mesh* aMesh,
- const Omega_h::MeshSets& aMeshSets,
- const Plato::ScalarMultiVectorT<  StateScalarType>& aState,
- const Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
- const Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
- const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
- Plato::Scalar aScale) const
+void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(
+    const Plato::SpatialModel                          & aSpatialModel,
+    const Plato::ScalarMultiVectorT<  StateScalarType> & aState,
+    const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
+    const Plato::ScalarArray3DT    < ConfigScalarType> & aConfig,
+    const Plato::ScalarMultiVectorT< ResultScalarType> & aResult,
+          Plato::Scalar aScale,
+          Plato::Scalar aCurrentTime
+)
 {
+
+    for(int iDim=0; iDim<NumDofs; iDim++)
+    {
+        if(mFluxExpr[iDim])
+        {
+            mFlux(iDim) = mFluxExpr[iDim]->value(aCurrentTime);
+        }
+    }
+
     auto tType = Plato::natural_boundary_condition_type(mType);
     switch(tType)
     {
@@ -194,13 +209,13 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
         case Plato::Neumann::UNIFORM_COMPONENT:
         {
             Plato::SurfaceLoadIntegral<SpatialDim, NumDofs, DofsPerNode, DofOffset> tSurfaceLoad(mSideSetName, mFlux);
-            tSurfaceLoad(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+            tSurfaceLoad(aSpatialModel, aState, aControl, aConfig, aResult, aScale);
             break;
         }
         case Plato::Neumann::UNIFORM_PRESSURE:
         {
             Plato::SurfacePressureIntegral<SpatialDim, NumDofs, DofsPerNode, DofOffset> tSurfacePress(mSideSetName, mFlux);
-            tSurfacePress(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+            tSurfacePress(aSpatialModel, aState, aControl, aConfig, aResult, aScale);
             break;
         }
         default:
@@ -211,7 +226,6 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get
         }
     }
 }
-// class NaturalBC::get
 
 }
 // namespace Plato

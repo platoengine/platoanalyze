@@ -562,8 +562,8 @@ private:
         // Parse essential boundary conditions (i.e. Dirichlet)
         //
         Plato::EssentialBCs<SimplexPhysics>
-            tEssentialBoundaryConditions(aParamList.sublist("Essential Boundary Conditions",false));
-        tEssentialBoundaryConditions.get(aMeshSets, mBcDofs, mBcValues);
+            tEssentialBoundaryConditions(aParamList.sublist("Essential Boundary Conditions",false), aMeshSets);
+        tEssentialBoundaryConditions.get(mBcDofs, mBcValues);
     }
 
     /******************************************************************************/

@@ -46,17 +46,16 @@ private:
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerNode;
     using Plato::SimplexThermomechanics<SpaceDim>::mNumDofsPerCell;
 
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mDataMap;
-    using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
-    using StateScalarType = typename EvaluationType::StateScalarType;
+    using StateScalarType   = typename EvaluationType::StateScalarType;
     using ControlScalarType = typename EvaluationType::ControlScalarType;
-    using ConfigScalarType = typename EvaluationType::ConfigScalarType;
-    using ResultScalarType = typename EvaluationType::ResultScalarType;
+    using ConfigScalarType  = typename EvaluationType::ConfigScalarType;
+    using ResultScalarType  = typename EvaluationType::ResultScalarType;
 
     IndicatorFunctionType mIndicatorFunction;
-    Plato::ApplyWeighting<SpaceDim, SpaceDim,        IndicatorFunctionType> mApplyFluxWeighting;
+    Plato::ApplyWeighting<SpaceDim, SpaceDim,       IndicatorFunctionType> mApplyFluxWeighting;
     Plato::ApplyWeighting<SpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
@@ -72,26 +71,26 @@ private:
 
 public:
     /**************************************************************************/
-    ThermoelastostaticResidual(Omega_h::Mesh& aMesh,
-                               Omega_h::MeshSets& aMeshSets,
-                               Plato::DataMap& aDataMap,
-                               Teuchos::ParameterList& aProblemParams,
-                               Teuchos::ParameterList& aPenaltyParams) :
-            Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyStressWeighting(mIndicatorFunction),
-            mApplyFluxWeighting(mIndicatorFunction),
-            mBodyLoads(nullptr),
-            mBoundaryLoads(nullptr),
-            mBoundaryFluxes(nullptr),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    ThermoelastostaticResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+    ) :
+        Plato::Elliptic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap),
+        mIndicatorFunction    (aPenaltyParams),
+        mApplyStressWeighting (mIndicatorFunction),
+        mApplyFluxWeighting   (mIndicatorFunction),
+        mBodyLoads            (nullptr),
+        mBoundaryLoads(nullptr),
+        mBoundaryFluxes(nullptr),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     /**************************************************************************/
     {
         // create material model and get stiffness
         //
         Plato::ThermoelasticModelFactory<SpaceDim> mmfactory(aProblemParams);
-        mMaterialModel = mmfactory.create();
-  
+        mMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
 
         // parse body loads
         // 
@@ -104,38 +103,43 @@ public:
         // 
         if(aProblemParams.isSublist("Mechanical Natural Boundary Conditions"))
         {
-            mBoundaryLoads =   std::make_shared<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>>(aProblemParams.sublist("Mechanical Natural Boundary Conditions"));
+            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim, NMechDims, mNumDofsPerNode, MDofOffset>>
+                (aProblemParams.sublist("Mechanical Natural Boundary Conditions"));
         }
   
         // parse thermal boundary Conditions
         // 
         if(aProblemParams.isSublist("Thermal Natural Boundary Conditions"))
         {
-            mBoundaryFluxes = std::make_shared<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>>(aProblemParams.sublist("Thermal Natural Boundary Conditions"));
+            mBoundaryFluxes = std::make_shared<Plato::NaturalBCs<SpaceDim, NThrmDims, mNumDofsPerNode, TDofOffset>>
+                (aProblemParams.sublist("Thermal Natural Boundary Conditions"));
         }
   
         auto tResidualParams = aProblemParams.sublist("Elliptic");
         if( tResidualParams.isType<Teuchos::Array<std::string>>("Plottable") )
-          mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
-
+        {
+            mPlottable = tResidualParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        }
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & state,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & control,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & config,
-                  Plato::ScalarMultiVectorT<ResultScalarType> & result,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & state,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & control,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & config,
+              Plato::ScalarMultiVectorT <ResultScalarType>  & result,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = state.extent(0);
 
       using GradScalarType =
       typename Plato::fad_type_t<Plato::SimplexThermomechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
 
       Plato::ComputeGradientWorkset<SpaceDim> computeGradient;
-      Plato::TMKinematics<SpaceDim>                  kinematics;
-      Plato::TMKinetics<SpaceDim>                    kinetics(mMaterialModel);
+      Plato::TMKinematics<SpaceDim>           kinematics;
+      Plato::TMKinetics<SpaceDim>             kinetics(mMaterialModel);
       
       Plato::StressDivergence<SpaceDim, mNumDofsPerNode, MDofOffset> stressDivergence;
       Plato::FluxDivergence  <SpaceDim, mNumDofsPerNode, TDofOffset> fluxDivergence;
@@ -190,24 +194,35 @@ public:
 
       if( mBodyLoads != nullptr )
       {
-          mBodyLoads->get( mMesh, state, control, result, -1.0 );
+          mBodyLoads->get( mSpatialDomain, state, control, result, -1.0 );
       }
 
+      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, strain, "strain", mSpatialDomain);
+      if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad" ) ) toMap(mDataMap, tgrad,  "tgrad",  mSpatialDomain);
+      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, stress, "stress", mSpatialDomain);
+      if( std::count(mPlottable.begin(),mPlottable.end(),"flux"  ) ) toMap(mDataMap, flux,   "flux" ,  mSpatialDomain);
+
+    }
+    /**************************************************************************/
+    void evaluate_boundary(
+        const Plato::SpatialModel                           & aSpatialModel,
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarMultiVectorT <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
+    /**************************************************************************/
+    {
       if( mBoundaryLoads != nullptr )
       {
-          mBoundaryLoads->get( &mMesh, mMeshSets, state, control, config, result, -1.0 );
+          mBoundaryLoads->get( aSpatialModel, aState, aControl, aConfig, aResult, -1.0 );
       }
 
       if( mBoundaryFluxes != nullptr )
       {
-          mBoundaryFluxes->get( &mMesh, mMeshSets, state, control, config, result, -1.0 );
+          mBoundaryFluxes->get( aSpatialModel, aState, aControl, aConfig, aResult, -1.0 );
       }
-
-      if( std::count(mPlottable.begin(),mPlottable.end(),"strain") ) toMap(mDataMap, strain, "strain");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"tgrad") ) toMap(mDataMap, tgrad, "tgrad");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"stress") ) toMap(mDataMap, stress, "stress");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"flux" ) ) toMap(mDataMap, flux, "flux" );
-
     }
 };
 // class ThermoelastostaticResidual

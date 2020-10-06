@@ -27,7 +27,7 @@ class Volume : public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
   private:
     static constexpr int SpaceDim = EvaluationType::SpatialDim;
     
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
  
     using StateScalarType   = typename EvaluationType::StateScalarType;
@@ -42,34 +42,38 @@ class Volume : public Plato::Elliptic::AbstractScalarFunction<EvaluationType>
 
   public:
     /**************************************************************************/
-    Volume(Omega_h::Mesh& aMesh, 
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap& aDataMap, 
-           Teuchos::ParameterList&, 
-           Teuchos::ParameterList& aPenaltyParams,
-           std::string& aFunctionName) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-            mPenaltyFunction(aPenaltyParams),
-            mApplyWeighting(mPenaltyFunction)
+    Volume(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList &, 
+              Teuchos::ParameterList & aPenaltyParams,
+              std::string            & aFunctionName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFunctionName),
+        mPenaltyFunction(aPenaltyParams),
+        mApplyWeighting(mPenaltyFunction)
     /**************************************************************************/
     {
+// TODO fix quadrature
       mQuadratureWeight = 1.0; // for a 1-point quadrature rule for simplices
       for (Plato::OrdinalType tDimIndex=2; tDimIndex<=SpaceDim; tDimIndex++)
       { 
         mQuadratureWeight /= Plato::Scalar(tDimIndex);
       }
-    
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType  > & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT    <ConfigScalarType > & aConfig,
-                        Plato::ScalarVectorT     <ResultScalarType > & aResult,
-                        Plato::Scalar aTimeStep = 0.0) const override
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT<StateScalarType  > & aState,
+        const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT    <ConfigScalarType > & aConfig,
+              Plato::ScalarVectorT     <ResultScalarType > & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const override
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       Plato::ComputeCellVolume<SpaceDim> tComputeCellVolume;
 

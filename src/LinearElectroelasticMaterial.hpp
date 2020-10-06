@@ -81,22 +81,41 @@ LinearElectroelasticMaterial()
 {
   public:
     ElectroelasticModelFactory(const Teuchos::ParameterList& paramList) : mParamList(paramList) {}
-    Teuchos::RCP<Plato::LinearElectroelasticMaterial<SpatialDim>> create();
+    Teuchos::RCP<Plato::LinearElectroelasticMaterial<SpatialDim>> create(std::string aModelName);
   private:
     const Teuchos::ParameterList& mParamList;
 };
 /******************************************************************************/
 template<int SpatialDim>
 Teuchos::RCP<LinearElectroelasticMaterial<SpatialDim>>
-ElectroelasticModelFactory<SpatialDim>::create()
+ElectroelasticModelFactory<SpatialDim>::create(std::string aModelName)
 /******************************************************************************/
 {
-  auto modelParamList = mParamList.get<Teuchos::ParameterList>("Material Model");
+    if (!mParamList.isSublist("Material Models"))
+    {
+        REPORT("'Material Models' list not found! Returning 'nullptr'");
+        return Teuchos::RCP<Plato::LinearElectroelasticMaterial<SpatialDim>>(nullptr);
+    }
+    else
+    {
+        auto tModelsParamList = mParamList.get<Teuchos::ParameterList>("Material Models");
 
-  if( modelParamList.isSublist("Isotropic Linear Electroelastic") ){
-    return Teuchos::rcp(new Plato::IsotropicLinearElectroelasticMaterial<SpatialDim>(modelParamList.sublist("Isotropic Linear Electroelastic")));
-  }
-  return Teuchos::RCP<Plato::LinearElectroelasticMaterial<SpatialDim>>(nullptr);
+        if (!tModelsParamList.isSublist(aModelName))
+        {
+            std::stringstream ss;
+            ss << "Requested a material model ('" << aModelName << "') that isn't defined";
+            THROWERR(ss.str());
+        }
+
+        auto tModelParamList = tModelsParamList.sublist(aModelName);
+
+        if( tModelParamList.isSublist("Isotropic Linear Electroelastic") )
+        {
+          return Teuchos::rcp(new Plato::IsotropicLinearElectroelasticMaterial<SpatialDim>
+              (tModelParamList.sublist("Isotropic Linear Electroelastic")));
+        }
+        return Teuchos::RCP<Plato::LinearElectroelasticMaterial<SpatialDim>>(nullptr);
+    }
 }
 
 } // namespace Plato

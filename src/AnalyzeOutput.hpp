@@ -22,18 +22,21 @@ namespace Plato
 /******************************************************************************//**
  * \brief Output data associated with an electro-mechanical simulation.
  * \param [in] aOutputFilePath  output viz file path
- * \param [in] aState           global state data
+ * \param [in] aSolution        global solution data
  * \param [in] aStateDataMap    Plato Analyze data map
  * \param [in] aMesh            mesh database
  **********************************************************************************/
 template<const Plato::OrdinalType SpatialDim>
-inline void electromechanical_output(const std::string & aOutputFilePath,
-                                     const Plato::ScalarMultiVector & aState,
-                                     const Plato::DataMap & aStateDataMap,
-                                     Omega_h::Mesh& aMesh)
+inline void
+electromechanical_output(
+    const std::string     & aOutputFilePath,
+    const Plato::Solution & aSolution,
+    const Plato::DataMap  & aStateDataMap,
+          Omega_h::Mesh   & aMesh
+)
 {
     const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-    auto tSubView = Kokkos::subview(aState, tTIME_STEP_INDEX, Kokkos::ALL());
+    auto tSubView = Kokkos::subview(aSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
 
     auto tNumVertices = aMesh.nverts();
     auto tNumDisp = tNumVertices * SpatialDim;
@@ -61,23 +64,28 @@ inline void electromechanical_output(const std::string & aOutputFilePath,
 /******************************************************************************//**
  * \brief Output data associated with a stabilized thermo-mechanical simulation.
  * \param [in] aOutputFilePath  output viz file path
- * \param [in] aState           global state data
+ * \param [in] aSolution        global solution data
  * \param [in] aStateDataMap    Plato Analyze data map
  * \param [in] aMesh            mesh database
  **********************************************************************************/
 template<const Plato::OrdinalType SpatialDim>
-inline void stabilized_thermomechanical_output(const std::string & aOutputFilePath,
-                                               const Plato::ScalarMultiVector & aState,
-                                               const Plato::DataMap & aStateDataMap,
-                                               Omega_h::Mesh& aMesh)
+inline void
+stabilized_thermomechanical_output(
+    const std::string     & aOutputFilePath,
+    const Plato::Solution & aSolution,
+    const Plato::DataMap  & aStateDataMap,
+          Omega_h::Mesh   & aMesh
+)
 {
+    auto tState = aSolution.State;
+
     const Plato::Scalar tRestartTime = 0.;
     Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aOutputFilePath, &aMesh, SpatialDim, tRestartTime);
 
-    auto tNumSteps = aState.extent(0);
+    auto tNumSteps = tState.extent(0);
     for(decltype(tNumSteps) tStepIndex=0; tStepIndex<tNumSteps; tStepIndex++)
     {
-        auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
+        auto tSubView = Kokkos::subview(tState, tStepIndex, Kokkos::ALL());
 
         auto tNumVertices = aMesh.nverts();
         Omega_h::Write<Omega_h::Real> tTemp(tNumVertices, "Temperature");
@@ -109,23 +117,28 @@ inline void stabilized_thermomechanical_output(const std::string & aOutputFilePa
 /******************************************************************************//**
  * \brief Output data associated with a thermo-mechanical simulation.
  * \param [in] aOutputFilePath  output viz file path
- * \param [in] aState           global state data
+ * \param [in] aSolution        global solution data
  * \param [in] aStateDataMap    Plato Analyze data map
  * \param [in] aMesh            mesh database
  **********************************************************************************/
 template<const Plato::OrdinalType SpatialDim>
-inline void thermomechanical_output(const std::string & aOutputFilePath,
-                                    const Plato::ScalarMultiVector & aState,
-                                    const Plato::DataMap & aStateDataMap,
-                                    Omega_h::Mesh& aMesh)
+inline void
+thermomechanical_output(
+    const std::string     & aOutputFilePath,
+    const Plato::Solution & aSolution,
+    const Plato::DataMap  & aStateDataMap,
+          Omega_h::Mesh   & aMesh
+)
 {
+    auto tState = aSolution.State;
+
     const Plato::Scalar tRestartTime = 0.;
     Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aOutputFilePath, &aMesh, SpatialDim, tRestartTime);
 
-    auto tNumSteps = aState.extent(0);
+    auto tNumSteps = tState.extent(0);
     for(decltype(tNumSteps) tStepIndex=0; tStepIndex<tNumSteps; tStepIndex++)
     {
-        auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
+        auto tSubView = Kokkos::subview(tState, tStepIndex, Kokkos::ALL());
 
         auto tNumVertices = aMesh.nverts();
         Omega_h::Write<Omega_h::Real> tTemp(tNumVertices, "Temperature");
@@ -156,32 +169,63 @@ inline void thermomechanical_output(const std::string & aOutputFilePath,
 /******************************************************************************//**
  * \brief Output data associated with a mechanical simulation.
  * \param [in] aOutputFilePath  output viz file path
- * \param [in] aState           global state data
+ * \param [in] aSolution        global solution data
  * \param [in] aStateDataMap    Plato Analyze data map
  * \param [in] aMesh            mesh database
  **********************************************************************************/
 template<const Plato::OrdinalType SpatialDim>
-inline void mechanical_output(const std::string & aOutputFilePath,
-                              const Plato::ScalarMultiVector & aState,
-                              const Plato::DataMap & aStateDataMap,
-                              Omega_h::Mesh& aMesh)
+inline void
+mechanical_output(
+    const std::string     & aOutputFilePath,
+    const Plato::Solution & aSolution,
+    const Plato::DataMap  & aStateDataMap,
+          Omega_h::Mesh   & aMesh)
 {
+    auto tState = aSolution.State;
+    auto tStateDot = aSolution.StateDot;
+    auto tStateDotDot = aSolution.StateDotDot;
+
     const Plato::Scalar tRestartTime = 0.;
     Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aOutputFilePath, &aMesh, SpatialDim, tRestartTime);
 
-    auto tNumSteps = aState.extent(0);
+    auto tNumSteps = tState.extent(0);
     for(decltype(tNumSteps) tStepIndex=0; tStepIndex<tNumSteps; tStepIndex++)
     {
-        auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
+        if (tState.extent(0) != 0)
+        {
+            auto tSubView = Kokkos::subview(tState, tStepIndex, Kokkos::ALL());
+            auto tNumVertices = aMesh.nverts();
+            auto tNumDisp = tNumVertices * SpatialDim;
+            constexpr auto tNumDofsPerNode = SpatialDim;
+            constexpr auto tNumDispPerNode = SpatialDim;
+            Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
+            Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*stride=*/0, tNumVertices, tSubView, tDisp);
+            aMesh.add_tag(Omega_h::VERT, "Displacements", tNumDispPerNode, Omega_h::Reals(tDisp));
+        }
 
-        auto tNumVertices = aMesh.nverts();
-        auto tNumDisp = tNumVertices * SpatialDim;
-        constexpr auto tNumDofsPerNode = SpatialDim;
-        constexpr auto tNumDispPerNode = SpatialDim;
-        Omega_h::Write<Omega_h::Real> tDisp(tNumDisp, "Displacement");
-        Plato::copy<tNumDofsPerNode, tNumDispPerNode>(/*stride=*/0, tNumVertices, tSubView, tDisp);
+        if (tStateDot.extent(0) != 0)
+        {
+            auto tSubView = Kokkos::subview(tStateDot, tStepIndex, Kokkos::ALL());
+            auto tNumVertices = aMesh.nverts();
+            auto tNumVel = tNumVertices * SpatialDim;
+            constexpr auto tNumDofsPerNode = SpatialDim;
+            constexpr auto tNumVelPerNode = SpatialDim;
+            Omega_h::Write<Omega_h::Real> tVel(tNumVel, "Velocity");
+            Plato::copy<tNumDofsPerNode, tNumVelPerNode>(/*stride=*/0, tNumVertices, tSubView, tVel);
+            aMesh.add_tag(Omega_h::VERT, "Velocity", tNumVelPerNode, Omega_h::Reals(tVel));
+        }
 
-        aMesh.add_tag(Omega_h::VERT, "Displacements", tNumDispPerNode, Omega_h::Reals(tDisp));
+        if (tStateDotDot.extent(0) != 0)
+        {
+            auto tSubView = Kokkos::subview(tStateDotDot, tStepIndex, Kokkos::ALL());
+            auto tNumVertices = aMesh.nverts();
+            auto tNumAcc = tNumVertices * SpatialDim;
+            constexpr auto tNumDofsPerNode = SpatialDim;
+            constexpr auto tNumAccPerNode = SpatialDim;
+            Omega_h::Write<Omega_h::Real> tAcc(tNumAcc, "Acceleration");
+            Plato::copy<tNumDofsPerNode, tNumAccPerNode>(/*stride=*/0, tNumVertices, tSubView, tAcc);
+            aMesh.add_tag(Omega_h::VERT, "Acceleration", tNumAccPerNode, Omega_h::Reals(tAcc));
+        }
 
         if (aStateDataMap.stateDataMaps.size() > tStepIndex)
         {
@@ -197,23 +241,27 @@ inline void mechanical_output(const std::string & aOutputFilePath,
 /******************************************************************************//**
  * \brief Output data associated with a stabilized mechanical simulation.
  * \param [in] aOutputFilePath  output viz file path
- * \param [in] aState           global state data
+ * \param [in] aSolution        global solution data
  * \param [in] aStateDataMap    Plato Analyze data map
  * \param [in] aMesh            mesh database
  **********************************************************************************/
 template<const Plato::OrdinalType SpatialDim>
-inline void stabilized_mechanical_output(const std::string & aOutputFilePath,
-                                         const Plato::ScalarMultiVector & aState,
-                                         const Plato::DataMap & aStateDataMap,
-                                         Omega_h::Mesh& aMesh)
+inline void
+stabilized_mechanical_output(
+    const std::string     & aOutputFilePath,
+    const Plato::Solution & aSolution,
+    const Plato::DataMap  & aStateDataMap,
+          Omega_h::Mesh   & aMesh)
 {
+    auto tState = aSolution.State;
+
     const Plato::Scalar tRestartTime = 0.;
     Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aOutputFilePath, &aMesh, SpatialDim, tRestartTime);
 
-    auto tNumSteps = aState.extent(0);
+    auto tNumSteps = tState.extent(0);
     for(decltype(tNumSteps) tStepIndex=0; tStepIndex<tNumSteps; tStepIndex++)
     {
-        auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
+        auto tSubView = Kokkos::subview(tState, tStepIndex, Kokkos::ALL());
 
         auto tNumVertices = aMesh.nverts();
         Omega_h::Write<Omega_h::Real> tPress(tNumVertices, "Pressure");
@@ -243,23 +291,27 @@ inline void stabilized_mechanical_output(const std::string & aOutputFilePath,
 /******************************************************************************//**
  * \brief Output data associated with a thermal simulation.
  * \param [in] aOutputFilePath  output viz file path
- * \param [in] aState           global state data
+ * \param [in] aSolution        global solution data
  * \param [in] aStateDataMap    Plato Analyze data map
  * \param [in] aMesh            mesh database
  **********************************************************************************/
 template<const Plato::OrdinalType SpatialDim>
-inline void thermal_output(const std::string & aOutputFilePath,
-                           const Plato::ScalarMultiVector & aState,
-                           const Plato::DataMap & aStateDataMap,
-                           Omega_h::Mesh& aMesh)
+inline void
+thermal_output(
+    const std::string     & aOutputFilePath,
+    const Plato::Solution & aSolution,
+    const Plato::DataMap  & aStateDataMap,
+          Omega_h::Mesh   & aMesh)
 {
+    auto tState = aSolution.State;
+
     const Plato::Scalar tRestartTime = 0.;
     Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aOutputFilePath, &aMesh, SpatialDim, tRestartTime);
 
-    auto tNumSteps = aState.extent(0);
+    auto tNumSteps = tState.extent(0);
     for(decltype(tNumSteps) tStepIndex=0; tStepIndex<tNumSteps; tStepIndex++)
     {
-        auto tSubView = Kokkos::subview(aState, tStepIndex, Kokkos::ALL());
+        auto tSubView = Kokkos::subview(tState, tStepIndex, Kokkos::ALL());
 
         auto tNumVertices = aMesh.nverts();
         Omega_h::Write<Omega_h::Real> tTemp(tNumVertices, "Temperature");
@@ -291,11 +343,14 @@ inline void thermal_output(const std::string & aOutputFilePath,
  * \param [in] aMesh            mesh database
  **********************************************************************************/
 template<const Plato::OrdinalType SpatialDim>
-void output(Teuchos::ParameterList & aInputData,
-            const std::string & aOutputFilePath,
-            const Plato::ScalarMultiVector & aState,
-            const Plato::DataMap & aStateDataMap,
-            Omega_h::Mesh& aMesh)
+void
+output(
+          Teuchos::ParameterList & aInputData,
+    const std::string            & aOutputFilePath,
+    const Plato::Solution        & aSolution,
+    const Plato::DataMap         & aStateDataMap,
+          Omega_h::Mesh          & aMesh
+)
 {
     auto tProblemSpecs = aInputData.sublist("Plato Problem");
     assert(tProblemSpecs.isParameter("Physics"));
@@ -304,36 +359,33 @@ void output(Teuchos::ParameterList & aInputData,
 
     if(tPhysics == "Electromechanical")
     {
-        Plato::electromechanical_output<SpatialDim>(aOutputFilePath, aState, aStateDataMap, aMesh);
+        Plato::electromechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
     }
     else
     if(tPhysics == "Thermomechanical")
     {
         if( tPDE == "Stabilized Elliptic" )
         {
-            Plato::stabilized_thermomechanical_output<SpatialDim>(aOutputFilePath, aState, aStateDataMap, aMesh);
+            Plato::stabilized_thermomechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
         }
         else
         {
-            Plato::thermomechanical_output<SpatialDim>(aOutputFilePath, aState, aStateDataMap, aMesh);
+            Plato::thermomechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
         }
     }
     else
     if(tPhysics == "Mechanical")
     {
-        if(tPDE == "Infinite Strain Plasticity")
-        {
-            Plato::stabilized_mechanical_output<SpatialDim>(aOutputFilePath, aState, aStateDataMap, aMesh);
-        }
-        else
-        {
-            Plato::mechanical_output<SpatialDim>(aOutputFilePath, aState, aStateDataMap, aMesh);
-        }
+        Plato::mechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
+    }
+    else if(tPhysics == "Plasticity")
+    {
+        Plato::stabilized_mechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
     }
     else
     if(tPhysics == "Stabilized Mechanical")
     {
-        Plato::stabilized_mechanical_output<SpatialDim>(aOutputFilePath, aState, aStateDataMap, aMesh);
+        Plato::stabilized_mechanical_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
     }
     else
     if(tPhysics == "StructuralDynamics")
@@ -342,7 +394,7 @@ void output(Teuchos::ParameterList & aInputData,
     else
     if(tPhysics == "Thermal")
     {
-        Plato::thermal_output<SpatialDim>(aOutputFilePath, aState, aStateDataMap, aMesh);
+        Plato::thermal_output<SpatialDim>(aOutputFilePath, aSolution, aStateDataMap, aMesh);
     }
 }
 // function output
@@ -352,16 +404,19 @@ void output(Teuchos::ParameterList & aInputData,
  * \brief Write data associated with a Plato Analyze simulation to an output file.
  * \param [in] aInputData       input parameters list
  * \param [in] aOutputFilePath  output viz file path
- * \param [in] aState           global state data
+ * \param [in] aSolution        global solution data
  * \param [in] aStateDataMap    Plato Analyze data map
  * \param [in] aMesh            mesh database
  **********************************************************************************/
-inline void write(Teuchos::ParameterList & aInputData,
-                  const std::string & aOutputFilePath,
-                  const Plato::ScalarMultiVector & aState,
-                  const Plato::ScalarVector & aControl,
-                  const Plato::DataMap & aStateDataMap,
-                  Omega_h::Mesh& aMesh)
+inline void
+write(
+          Teuchos::ParameterList & aInputData,
+    const std::string            & aOutputFilePath,
+    const Plato::Solution        & aSolution,
+    const Plato::ScalarVector    & aControl,
+    const Plato::DataMap         & aStateDataMap,
+          Omega_h::Mesh          & aMesh
+)
 {
     auto tNumVertices = aMesh.nverts();
     Omega_h::Write<Omega_h::Real> tControl (tNumVertices, "Control");
@@ -372,7 +427,7 @@ inline void write(Teuchos::ParameterList & aInputData,
     if(tSpaceDim == static_cast<Plato::OrdinalType>(1))
     {
         #ifdef PLATOANALYZE_1D
-        Plato::output<1>(aInputData, aOutputFilePath, aState, aStateDataMap, aMesh);
+        Plato::output<1>(aInputData, aOutputFilePath, aSolution, aStateDataMap, aMesh);
         #else
         throw std::runtime_error("1D physics is not compiled.");
         #endif
@@ -380,7 +435,7 @@ inline void write(Teuchos::ParameterList & aInputData,
     if(tSpaceDim == static_cast<Plato::OrdinalType>(2))
     {
         #ifdef PLATOANALYZE_2D
-        Plato::output<2>(aInputData, aOutputFilePath, aState, aStateDataMap, aMesh);
+        Plato::output<2>(aInputData, aOutputFilePath, aSolution, aStateDataMap, aMesh);
         #else
         throw std::runtime_error("2D physics is not compiled.");
         #endif
@@ -388,7 +443,7 @@ inline void write(Teuchos::ParameterList & aInputData,
     if(tSpaceDim == static_cast<Plato::OrdinalType>(3))
     {
         #ifdef PLATOANALYZE_3D
-        Plato::output<3>(aInputData, aOutputFilePath, aState, aStateDataMap, aMesh);
+        Plato::output<3>(aInputData, aOutputFilePath, aSolution, aStateDataMap, aMesh);
         #else
         throw std::runtime_error("3D physics is not compiled.");
         #endif

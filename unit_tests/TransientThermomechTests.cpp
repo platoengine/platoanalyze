@@ -101,30 +101,32 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, 3D )
   //
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                         \n"
-    "  <ParameterList name='Material Model'>                                      \n"
-    "    <ParameterList name='Thermal Mass'>                                      \n"
-    "      <Parameter name='Mass Density' type='double' value='0.3'/>             \n"
-    "      <Parameter name='Specific Heat' type='double' value='1.0e6'/>          \n"
-    "    </ParameterList>                                                         \n"
-    "    <ParameterList name='Thermoelastic'>                                     \n"
-    "      <ParameterList name='Elastic Stiffness'>                               \n"
-    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>        \n"
-    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>     \n"
-    "      </ParameterList>                                                       \n"
-    "      <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>  \n"
-    "      <Parameter  name='Thermal Conductivity' type='double' value='1000.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>   \n"
-    "    </ParameterList>                                                         \n"
-    "  </ParameterList>                                                           \n"
-    "</ParameterList>                                                             \n"
+    "<ParameterList name='Plato Problem'>                                           \n"
+    "  <ParameterList name='Material Models'>                                       \n"
+    "    <ParameterList name='Cookie Dough'>                                        \n"
+    "      <ParameterList name='Thermal Mass'>                                      \n"
+    "        <Parameter name='Mass Density' type='double' value='0.3'/>             \n"
+    "        <Parameter name='Specific Heat' type='double' value='1.0e6'/>          \n"
+    "      </ParameterList>                                                         \n"
+    "      <ParameterList name='Thermoelastic'>                                     \n"
+    "        <ParameterList name='Elastic Stiffness'>                               \n"
+    "          <Parameter  name='Poissons Ratio' type='double' value='0.3'/>        \n"
+    "          <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>     \n"
+    "        </ParameterList>                                                       \n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>  \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='1000.0'/> \n"
+    "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>   \n"
+    "      </ParameterList>                                                         \n"
+    "    </ParameterList>                                                           \n"
+    "  </ParameterList>                                                             \n"
+    "</ParameterList>                                                               \n"
   );
 
   Plato::ThermalMassModelFactory<spaceDim> mmmfactory(*params);
-  auto massMaterialModel = mmmfactory.create();
+  auto massMaterialModel = mmmfactory.create("Cookie Dough");
 
   Plato::ThermoelasticModelFactory<spaceDim> mmfactory(*params);
-  auto materialModel = mmfactory.create();
+  auto materialModel = mmfactory.create("Cookie Dough");
 
   Plato::ComputeGradientWorkset<spaceDim>  computeGradient;
   Plato::TMKinematics<spaceDim>                   kinematics;
@@ -369,12 +371,12 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   // create mesh based solution from host data
   //
   int tNumDofsPerNode = (spaceDim+1);
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
   Plato::ScalarVector state("state", tNumDofs);
   Plato::ScalarVector stateDot("state dot", tNumDofs);
@@ -399,45 +401,57 @@ TEUCHOS_UNIT_TEST( TransientThermomechTests, TransientThermomechResidual3D )
   //
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                         \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Parabolic'/>         \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                 \n"
-    "  <ParameterList name='Parabolic'>                                           \n"
-    "    <ParameterList name='Penalty Function'>                                  \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                 \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>            \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                    \n"
-    "    </ParameterList>                                                         \n"
-    "  </ParameterList>                                                           \n"
-    "  <ParameterList name='Material Model'>                                      \n"
-    "    <ParameterList name='Thermal Mass'>                                      \n"
-    "      <Parameter name='Mass Density' type='double' value='0.3'/>             \n"
-    "      <Parameter name='Specific Heat' type='double' value='1.0e6'/>          \n"
-    "    </ParameterList>                                                         \n"
-    "    <ParameterList name='Thermoelastic'>                                     \n"
-    "      <ParameterList name='Elastic Stiffness'>                               \n"
-    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>        \n"
-    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>     \n"
-    "      </ParameterList>                                                       \n"
-    "      <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>  \n"
-    "      <Parameter  name='Thermal Conductivity' type='double' value='1000.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>   \n"
-    "    </ParameterList>                                                         \n"
-    "  </ParameterList>                                                           \n"
-    "  <ParameterList name='Time Integration'>                                    \n"
-    "    <Parameter name='Number Time Steps' type='int' value='3'/>               \n"
-    "    <Parameter name='Time Step' type='double' value='0.5'/>                  \n"
-    "    <Parameter name='Trapezoid Alpha' type='double' value='0.5'/>            \n"
-    "  </ParameterList>                                                           \n"
-    "</ParameterList>                                                             \n"
+    "<ParameterList name='Plato Problem'>                                          \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Parabolic'/>          \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                  \n"
+    "  <ParameterList name='Parabolic'>                                            \n"
+    "    <ParameterList name='Penalty Function'>                                   \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>                  \n"
+    "      <Parameter name='Minimum Value' type='double' value='0.0'/>             \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                     \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Frozen Peas'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Frozen Peas'>                                        \n"
+    "      <ParameterList name='Thermal Mass'>                                     \n"
+    "        <Parameter name='Mass Density' type='double' value='0.3'/>            \n"
+    "        <Parameter name='Specific Heat' type='double' value='1.0e6'/>         \n"
+    "      </ParameterList>                                                        \n"
+    "      <ParameterList name='Thermoelastic'>                                    \n"
+    "        <ParameterList name='Elastic Stiffness'>                              \n"
+    "          <Parameter  name='Poissons Ratio' type='double' value='0.3'/>       \n"
+    "          <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>    \n"
+    "        </ParameterList>                                                      \n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/> \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='1000.0'/>\n"
+    "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>  \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Time Integration'>                                     \n"
+    "    <Parameter name='Number Time Steps' type='int' value='3'/>                \n"
+    "    <Parameter name='Time Step' type='double' value='0.5'/>                   \n"
+    "    <Parameter name='Trapezoid Alpha' type='double' value='0.5'/>             \n"
+    "  </ParameterList>                                                            \n"
+    "</ParameterList>                                                              \n"
   );
 
   // create constraint evaluator
   //
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
   Plato::Parabolic::VectorFunction<::Plato::Thermomechanics<spaceDim>>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
 
   // compute and test value

@@ -47,37 +47,44 @@ private:
     using ConfigScalarType = typename EvaluationType::ConfigScalarType;
     using ResultScalarType = typename EvaluationType::ResultScalarType;
 
+    using FunctionBaseType = Plato::Elliptic::AbstractScalarFunction<EvaluationType>;
+
     Plato::ScalarMultiVector mExpStates;
     std::vector<Plato::Scalar> mTimeSteps;
 
-    Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode> mGlobalStateEntryOrdinal;
+    using OrdinalFunctorT = Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode>;
+    OrdinalFunctorT mGlobalStateEntryOrdinal;
 
 public:
     /*************************************************************************/
-    explicit FrequencyResponseMisfit(Omega_h::Mesh& aMesh,
-                                     Omega_h::MeshSets& aMeshSets, 
-                                     Plato::DataMap aDataMap,
-                                     Teuchos::ParameterList & aParamList) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Frequency Response Misfit"),
-            mExpStates(),
-            mTimeSteps(),
-            mGlobalStateEntryOrdinal(Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode>(&aMesh))
+    explicit
+    FrequencyResponseMisfit(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap           aDataMap,
+              Teuchos::ParameterList & aParamList
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap, "Frequency Response Misfit"),
+        mExpStates(),
+        mTimeSteps(),
+        mGlobalStateEntryOrdinal(OrdinalFunctorT(aSpatialDomain.Mesh))
     /*************************************************************************/
     {
         this->readTimeSteps(aParamList);
-        this->readExperimentalData(aMesh, aParamList);
+        this->readExperimentalData(aSpatialDomain.Mesh, aParamList);
     }
 
     /*************************************************************************/
-    explicit FrequencyResponseMisfit(Omega_h::Mesh& aMesh,       
-                                     Omega_h::MeshSets& aMeshSets,
-                                     Plato::DataMap aDataMap,
-                                     const std::vector<Plato::Scalar> & aTimeSteps,
-                                     const Plato::ScalarMultiVector & aExpStates) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Frequency Response Misfit"),
-            mExpStates(aExpStates),
-            mTimeSteps(aTimeSteps),
-            mGlobalStateEntryOrdinal(Plato::VectorEntryOrdinal<EvaluationType::SpatialDim, mNumDofsPerNode>(&aMesh))
+    explicit
+    FrequencyResponseMisfit(
+        const Plato::SpatialDomain       & aSpatialDomain,
+              Plato::DataMap               aDataMap,
+        const std::vector<Plato::Scalar> & aTimeSteps,
+        const Plato::ScalarMultiVector   & aExpStates
+    ) :
+        FunctionBaseType(aSpatialDomain, aDataMap, "Frequency Response Misfit"),
+        mExpStates(aExpStates),
+        mTimeSteps(aTimeSteps),
+        mGlobalStateEntryOrdinal(OrdinalFunctorT(&(aSpatialDomain.Mesh)))
     /*************************************************************************/
     {
     }
@@ -93,11 +100,14 @@ public:
      * states, z denotes controls, K denotes the stiffness matrix and M denotes
      * the mass matrix.
      **************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aStates,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControls,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResults,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aStates,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControls,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResults,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
         // Find input frequency argument in frequency array and return its index

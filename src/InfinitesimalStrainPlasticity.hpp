@@ -38,17 +38,18 @@ struct FunctionFactory
     *******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractGlobalVectorFunctionInc<EvaluationType>>
-    createGlobalVectorFunctionInc(Omega_h::Mesh& aMesh,
-                                  Omega_h::MeshSets& aMeshSets,
-                                  Plato::DataMap& aDataMap,
-                                  Teuchos::ParameterList& aInputParams,
-                                  std::string aFunctionName)
+    createGlobalVectorFunctionInc(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+              std::string              aFunctionName
+    )
     {
-        if(aFunctionName == "Infinite Strain Plasticity")
+        if(aFunctionName == "Elliptic")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
             return ( std::make_shared<Plato::InfinitesimalStrainPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams) );
+                    (aSpatialDomain, aDataMap, aInputParams) );
         }
         else
         {
@@ -74,24 +75,25 @@ struct FunctionFactory
     *******************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractLocalScalarFunctionInc<EvaluationType>>
-    createLocalScalarFunctionInc(Omega_h::Mesh& aMesh,
-                                 Omega_h::MeshSets& aMeshSets,
-                                 Plato::DataMap& aDataMap,
-                                 Teuchos::ParameterList & aInputParams,
-                                 std::string aFuncType,
-                                 std::string aFuncName)
+    createLocalScalarFunctionInc(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+              std::string              aFuncType,
+              std::string              aFuncName
+    )
     {
         if(aFuncType == "Plastic Work")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
             return ( std::make_shared<Plato::PlasticWorkCriterion<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
+                    (aSpatialDomain, aDataMap, aInputParams, aFuncName) );
         } else
         if(aFuncType == "Elastic Work")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
             return ( std::make_shared<Plato::ElasticWorkCriterion<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
-                    (aMesh, aMeshSets, aDataMap, aInputParams, aFuncName) );
+                    (aSpatialDomain, aDataMap, aInputParams, aFuncName) );
         }
         else
         {
