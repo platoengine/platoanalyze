@@ -1,5 +1,4 @@
-#ifndef PLATO_PROBLEM_HPP
-#define PLATO_PROBLEM_HPP
+#pragma once
 
 #include "PlatoUtilities.hpp"
 
@@ -15,6 +14,7 @@
 #include "ImplicitFunctors.hpp"
 #include "ApplyConstraints.hpp"
 #include "SpatialModel.hpp"
+#include "PlatoSequence.hpp"
 
 #include "ParseTools.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -25,8 +25,9 @@
 #include "geometric/ScalarFunctionBase.hpp"
 #include "geometric/ScalarFunctionBaseFactory.hpp"
 
-#include "elliptic/VectorFunction.hpp"
-#include "elliptic/ScalarFunctionBaseFactory.hpp"
+#include "elliptic/updated_lagrangian/VectorFunction.hpp"
+#include "elliptic/updated_lagrangian/LagrangianUpdate.hpp"
+#include "elliptic/updated_lagrangian/ScalarFunctionBaseFactory.hpp"
 #include "AnalyzeMacros.hpp"
 
 #include "alg/ParallelComm.hpp"
@@ -38,6 +39,9 @@ namespace Plato
 namespace Elliptic
 {
 
+namespace UpdatedLagrangian
+{
+
 /******************************************************************************//**
  * \brief Manage scalar and vector function evaluations
 **********************************************************************************/
@@ -46,7 +50,7 @@ class Problem: public Plato::AbstractProblem
 {
 private:
 
-    using Criterion       = std::shared_ptr<Plato::Elliptic::ScalarFunctionBase>;
+    using Criterion       = std::shared_ptr<Plato::Elliptic::UpdatedLagrangian::ScalarFunctionBase>;
     using Criteria        = std::map<std::string, Criterion>;
 
     using LinearCriterion = std::shared_ptr<Plato::Geometric::ScalarFunctionBase>;
@@ -54,9 +58,11 @@ private:
 
     static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims; /*!< spatial dimensions */
 
-    using VectorFunctionType = Plato::Elliptic::VectorFunction<SimplexPhysics>;
+    using VectorFunctionType = Plato::Elliptic::UpdatedLagrangian::VectorFunction<SimplexPhysics>;
 
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
+
+    Plato::Sequence<SpatialDim> mSequence;
 
     // required
     std::shared_ptr<VectorFunctionType> mPDE; /*!< equality constraint interface */
@@ -72,7 +78,9 @@ private:
     Plato::ScalarMultiVector mAdjoint;
     Plato::ScalarVector mResidual;
 
-    Plato::ScalarMultiVector mStates; /*!< state variables */
+    Plato::ScalarMultiVector mGlobalStates;
+    Plato::ScalarMultiVector mTotalStates;
+    Plato::ScalarMultiVector mLocalStates;
 
     bool mIsSelfAdjoint; /*!< indicates if problem is self-adjoint */
 
@@ -82,6 +90,8 @@ private:
     Plato::ScalarVector mBcValues; /*!< values associated with the Dirichlet boundary conditions */
 
     rcp<Plato::AbstractSolver> mSolver;
+
+    Plato::LagrangianUpdate<SpatialDim> mLagrangianUpdate;
 
 public:
     /******************************************************************************//**
@@ -97,13 +107,16 @@ public:
       Comm::Machine aMachine
     ) :
       mSpatialModel  (aMesh, aMeshSets, aProblemParams),
+      mSequence      (mSpatialModel, aProblemParams),
       mPDE(std::make_shared<VectorFunctionType>(mSpatialModel, mDataMap, aProblemParams, aProblemParams.get<std::string>("PDE Constraint"))),
       mNumNewtonSteps(Plato::ParseTools::getSubParam<int>   (aProblemParams, "Newton Iteration", "Maximum Iterations",  1  )),
       mNewtonIncTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Increment Tolerance", 0.0)),
       mNewtonResTol  (Plato::ParseTools::getSubParam<double>(aProblemParams, "Newton Iteration", "Residual Tolerance",  0.0)),
-      mSaveState     (aProblemParams.sublist("Elliptic").isType<Teuchos::Array<std::string>>("Plottable")),
+      mSaveState     (aProblemParams.sublist("Updated Lagrangian Elliptic").isType<Teuchos::Array<std::string>>("Plottable")),
       mResidual      ("MyResidual", mPDE->size()),
-      mStates        ("States", static_cast<Plato::OrdinalType>(1), mPDE->size()),
+      mGlobalStates  ("Global states", mSequence.getNumSteps(), mPDE->size()),
+      mTotalStates   ("Total states",  mSequence.getNumSteps(), mPDE->size()),
+      mLocalStates   ("Local states",  mSequence.getNumSteps(), mPDE->stateSize()),
       mJacobian      (Teuchos::null),
       mIsSelfAdjoint (aProblemParams.get<bool>("Self-Adjoint", false))
     {
@@ -167,9 +180,9 @@ public:
     void setGlobalSolution(const Plato::Solution & aSolution)
     {
         auto tState = aSolution.State;
-        assert(tState.extent(0) == mStates.extent(0));
-        assert(tState.extent(1) == mStates.extent(1));
-        Kokkos::deep_copy(mStates, tState);
+        assert(tState.extent(0) == mGlobalStates.extent(0));
+        assert(tState.extent(1) == mGlobalStates.extent(1));
+        Kokkos::deep_copy(mGlobalStates, tState);
     }
 
     /******************************************************************************//**
@@ -178,7 +191,7 @@ public:
     **********************************************************************************/
     Plato::Solution getGlobalSolution()
     {
-        return Plato::Solution(mStates);
+        return Plato::Solution(mGlobalStates);
     }
 
     /******************************************************************************//**
@@ -246,56 +259,85 @@ public:
     Plato::Solution
     solution(const Plato::ScalarVector & aControl)
     {
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        Plato::ScalarVector tStatesSubView = Kokkos::subview(mStates, tTIME_STEP_INDEX, Kokkos::ALL());
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tStatesSubView);
-
         mDataMap.clearStates();
 
-        // inner loop for non-linear models
-        for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
-        {
-            mResidual = mPDE->value(tStatesSubView, aControl);
-            Plato::blas1::scale(-1.0, mResidual);
+        auto& tSequenceSteps = mSequence.getSteps();
+        auto tNumSequenceSteps = tSequenceSteps.size(); 
 
-            if (mNumNewtonSteps > 1) {
-                auto tResidualNorm = Plato::blas1::norm(mResidual);
-                std::cout << " Residual norm: " << tResidualNorm << std::endl;
-                if (tResidualNorm < mNewtonResTol) {
-                    std::cout << " Residual norm tolerance satisfied." << std::endl;
-                    break;
+        for (Plato::OrdinalType tStepIndex=0; tStepIndex<tNumSequenceSteps; tStepIndex++)
+        {
+            Plato::ScalarVector tGlobalState = Kokkos::subview(mGlobalStates, tStepIndex, Kokkos::ALL());
+            Plato::ScalarVector tTotalState  = Kokkos::subview(mTotalStates, tStepIndex, Kokkos::ALL());
+
+            const auto& tSequenceStep = tSequenceSteps[tStepIndex];
+
+            Plato::ScalarVector tLocalState;
+            if (tStepIndex > 0)
+            {
+                tLocalState  = Kokkos::subview(mLocalStates, tStepIndex-1, Kokkos::ALL());
+                Kokkos::deep_copy(tTotalState, Kokkos::subview(mTotalStates, tStepIndex-1, Kokkos::ALL()));
+            }
+            else
+            {
+                // kokkos initializes new views to zero.
+                tLocalState  = Plato::ScalarVector("initial local state",  mPDE->stateSize());
+            }
+
+            mSpatialModel.applyMask(tSequenceStep.getMask());
+
+            // inner loop for non-linear models
+            for(Plato::OrdinalType tNewtonIndex = 0; tNewtonIndex < mNumNewtonSteps; tNewtonIndex++)
+            {
+                mResidual = mPDE->value(tGlobalState, tLocalState, aControl);
+                Plato::blas1::scale(-1.0, mResidual);
+
+                if (mNumNewtonSteps > 1) {
+                    auto tResidualNorm = Plato::blas1::norm(mResidual);
+                    std::cout << " Residual norm: " << tResidualNorm << std::endl;
+                    if (tResidualNorm < mNewtonResTol) {
+                        std::cout << " Residual norm tolerance satisfied." << std::endl;
+                        break;
+                    }
+                }
+
+                mJacobian = mPDE->gradient_u(tGlobalState, tLocalState, aControl);
+
+                Plato::OrdinalType tScale = (tNewtonIndex == 0) ? 1.0 : 0.0;
+                this->applyStateConstraints(mJacobian, mResidual, tScale);
+
+                Plato::ScalarVector tDeltaD("increment", tGlobalState.extent(0));
+                Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
+
+                tSequenceStep.template constrainInactiveNodes<SimplexPhysics::mNumDofsPerNode>(mJacobian, mResidual);
+
+                mSolver->solve(*mJacobian, tDeltaD, mResidual);
+                Plato::blas1::axpy(1.0, tDeltaD, tGlobalState);
+
+                if (mNumNewtonSteps > 1) {
+                    auto tIncrementNorm = Plato::blas1::norm(tDeltaD);
+                    std::cout << " Delta norm: " << tIncrementNorm << std::endl;
+                    if (tIncrementNorm < mNewtonIncTol) {
+                        std::cout << " Solution increment norm tolerance satisfied." << std::endl;
+                        break;
+                    }
                 }
             }
 
-            mJacobian = mPDE->gradient_u(tStatesSubView, aControl);
+            // compute residual at end state
+            mResidual  = mPDE->value(tGlobalState, tLocalState, aControl);
 
-            Plato::OrdinalType tScale = (tNewtonIndex == 0) ? 1.0 : 0.0;
-            this->applyStateConstraints(mJacobian, mResidual, tScale);
+            Plato::ScalarVector tUpdatedLocalState = Kokkos::subview(mLocalStates, tStepIndex, Kokkos::ALL());
+            mLagrangianUpdate(mDataMap, tLocalState, tUpdatedLocalState);
 
-            Plato::ScalarVector tDeltaD("increment", tStatesSubView.extent(0));
-            Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaD);
+            Plato::blas1::axpy(1.0, tGlobalState, tTotalState);
+            mDataMap.vectorNodeFields["total displacement"] = tTotalState;
+            mDataMap.scalarNodeFields["topology"] = aControl;
 
-            mSolver->solve(*mJacobian, tDeltaD, mResidual);
-            Plato::blas1::axpy(1.0, tDeltaD, tStatesSubView);
-
-            if (mNumNewtonSteps > 1) {
-                auto tIncrementNorm = Plato::blas1::norm(tDeltaD);
-                std::cout << " Delta norm: " << tIncrementNorm << std::endl;
-                if (tIncrementNorm < mNewtonIncTol) {
-                    std::cout << " Solution increment norm tolerance satisfied." << std::endl;
-                    break;
-                }
-            }
-        }
-
-        if ( mSaveState )
-        {
-            // evaluate at new state
-            mResidual  = mPDE->value(tStatesSubView, aControl);
             mDataMap.saveState();
-        }
 
-        return Plato::Solution(mStates);
+        } // end sequence loop
+
+        return Plato::Solution(mGlobalStates);
     }
 
     /******************************************************************************//**
@@ -313,7 +355,7 @@ public:
         if( mCriteria.count(aName) )
         {
             Criterion tCriterion = mCriteria[aName];
-            return tCriterion->value(Plato::Solution(mStates), aControl);
+            return tCriterion->value(Plato::Solution(mGlobalStates), mLocalStates, aControl);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -341,10 +383,16 @@ public:
         const std::string         & aName
     ) override
     {
+
+// TODO input argument 'aSolution' and member datum 'mLocalStates' must be consistent
+// (i.e., computed from a single call to solution()), so taking 'aSolution' as an 
+// argument and not 'mLocalStates' is inviting abuse and adds nothing to the utility
+// of this function. Should this function be removed?
+
         if( mCriteria.count(aName) )
         {
             Criterion tCriterion = mCriteria[aName];
-            return tCriterion->value(aSolution, aControl);
+            return tCriterion->value(aSolution, mLocalStates, aControl);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -404,6 +452,7 @@ public:
               Criterion             aCriterion
     )
     {
+#ifdef COMING_SOON
         assert(aSolution.State.extent(0) == mStates.extent(0));
         assert(aSolution.State.extent(1) == mStates.extent(1));
 
@@ -453,6 +502,7 @@ public:
             Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Control, tAdjointSubView, tPartialCriterionWRT_Control);
         }
         return tPartialCriterionWRT_Control;
+#endif
     }
 
     /******************************************************************************//**
@@ -500,6 +550,7 @@ public:
         const Plato::Solution     & aSolution,
               Criterion             aCriterion)
     {
+#ifdef COMING_SOON
         assert(aSolution.State.extent(0) == mStates.extent(0));
         assert(aSolution.State.extent(1) == mStates.extent(1));
 
@@ -544,6 +595,7 @@ public:
             Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Config, tAdjointSubView, tPartialCriterionWRT_Config);
         }
         return tPartialCriterionWRT_Config;
+#endif
     }
 
     /******************************************************************************//**
@@ -561,7 +613,7 @@ public:
         if( mCriteria.count(aName) )
         {
             Criterion tCriterion = mCriteria[aName];
-            return criterionGradient(aControl, Plato::Solution(mStates), tCriterion);
+            return criterionGradient(aControl, Plato::Solution(mGlobalStates), tCriterion);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -590,7 +642,7 @@ public:
         if( mCriteria.count(aName) )
         {
             Criterion tCriterion = mCriteria[aName];
-            return criterionGradientX(aControl, Plato::Solution(mStates), tCriterion);
+            return criterionGradientX(aControl, Plato::Solution(mGlobalStates), tCriterion);
         }
         else
         if( mLinearCriteria.count(aName) )
@@ -645,12 +697,12 @@ private:
     void initialize(Teuchos::ParameterList& aProblemParams)
     {
         auto tName = aProblemParams.get<std::string>("PDE Constraint");
-        mPDE = std::make_shared<Plato::Elliptic::VectorFunction<SimplexPhysics>>(mSpatialModel, mDataMap, aProblemParams, tName);
+        mPDE = std::make_shared<Plato::Elliptic::UpdatedLagrangian::VectorFunction<SimplexPhysics>>(mSpatialModel, mDataMap, aProblemParams, tName);
 
         if(aProblemParams.isSublist("Criteria"))
         {
             Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tLinearFunctionBaseFactory;
-            Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tNonlinearFunctionBaseFactory;
+            Plato::Elliptic::UpdatedLagrangian::ScalarFunctionBaseFactory<SimplexPhysics> tNonlinearFunctionBaseFactory;
 
             auto tCriteriaParams = aProblemParams.sublist("Criteria");
             for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
@@ -703,32 +755,32 @@ private:
 };
 // class Problem
 
+} // namespace UpdatedLagrangian
+
 } // namespace Elliptic
 
 } // namespace Plato
 
-#include "Thermal.hpp"
+// TODO #include "Thermal.hpp"
 #include "Mechanics.hpp"
-#include "Electromechanics.hpp"
-#include "Thermomechanics.hpp"
+// TODO #include "Electromechanics.hpp"
+// TODO #include "Thermomechanics.hpp"
 
 #ifdef PLATOANALYZE_1D
-extern template class Plato::Elliptic::Problem<::Plato::Thermal<1>>;
+// TODO extern template class Plato::Elliptic::Problem<::Plato::Thermal<1>>;
 extern template class Plato::Elliptic::Problem<::Plato::Mechanics<1>>;
-extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<1>>;
-extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<1>>;
+// TODO extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<1>>;
+// TODO extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<1>>;
 #endif
 #ifdef PLATOANALYZE_2D
-extern template class Plato::Elliptic::Problem<::Plato::Thermal<2>>;
+// TODO extern template class Plato::Elliptic::Problem<::Plato::Thermal<2>>;
 extern template class Plato::Elliptic::Problem<::Plato::Mechanics<2>>;
-extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<2>>;
-extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<2>>;
+// TODO extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<2>>;
+// TODO extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<2>>;
 #endif
 #ifdef PLATOANALYZE_3D
-extern template class Plato::Elliptic::Problem<::Plato::Thermal<3>>;
+// TODO extern template class Plato::Elliptic::Problem<::Plato::Thermal<3>>;
 extern template class Plato::Elliptic::Problem<::Plato::Mechanics<3>>;
-extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<3>>;
-extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<3>>;
+// TODO extern template class Plato::Elliptic::Problem<::Plato::Electromechanics<3>>;
+// TODO extern template class Plato::Elliptic::Problem<::Plato::Thermomechanics<3>>;
 #endif
-
-#endif // PLATO_PROBLEM_HPP

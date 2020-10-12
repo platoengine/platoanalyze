@@ -359,6 +359,31 @@ target_include_directories(PlatoFunctorsUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/sr
 build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/PlatoFunctorsUnitTests)
 add_test(NAME runPlatoFunctorsUnitTests COMMAND ${ES_MPI_TEST})
 
+set(PlatoSpatialModel_SOURCES
+  PlatoSpatialModelTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(PlatoSpatialModel_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(PlatoSpatialModelUnitTests
+  ${PlatoSpatialModel_SOURCES}
+  ${PlatoSpatialModel_HEADERS}
+)
+
+target_link_libraries(PlatoSpatialModelUnitTests
+  analyzelib
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+  )
+target_include_directories(PlatoSpatialModelUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/PlatoSpatialModelUnitTests)
+add_test(NAME runPlatoSpatialModelUnitTests COMMAND ${ES_MPI_TEST})
+
 set(Derivatives_SOURCES
   DerivativeTests.cpp
   PlatoTestHelpers.cpp

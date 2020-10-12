@@ -74,6 +74,8 @@ namespace Plato {
       public:
         const decltype(mSteps) & getSteps() { return mSteps; }
 
+        int getNumSteps() const { return mSteps.size(); }
+
         Sequence(
                   Plato::SpatialModel    & aSpatialModel,
             const Teuchos::ParameterList & aInputParams

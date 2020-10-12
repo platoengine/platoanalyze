@@ -53,12 +53,12 @@ public:
      * \brief Compute Cauchy stress tensor
      * \param [in]  aCellOrdinal element ordinal
      * \param [out] aCauchyStress Cauchy stress tensor
-     * \param [in]  aCauchyStrain Cauchy strain tensor
+     * \param [in]  aStrain Small strain tensor
     **********************************************************************************/
     template<typename StressScalarType, typename StrainScalarType>
     DEVICE_TYPE inline void operator()(Plato::OrdinalType aCellOrdinal,
                                        Kokkos::View<StressScalarType**, Plato::Layout, Plato::MemSpace> const& aCauchyStress,
-                                       Kokkos::View<StrainScalarType**, Plato::Layout, Plato::MemSpace> const& aCauchyStrain) const
+                                       Kokkos::View<StrainScalarType**, Plato::Layout, Plato::MemSpace> const& aStrain) const
     {
 
         // compute stress
@@ -68,8 +68,38 @@ public:
             aCauchyStress(aCellOrdinal, tVoigtIndex_I) = 0.0;
             for(Plato::OrdinalType tVoigtIndex_J = 0; tVoigtIndex_J < mNumVoigtTerms; tVoigtIndex_J++)
             {
-                aCauchyStress(aCellOrdinal, tVoigtIndex_I) += (aCauchyStrain(aCellOrdinal, tVoigtIndex_J)
+                aCauchyStress(aCellOrdinal, tVoigtIndex_I) += (aStrain(aCellOrdinal, tVoigtIndex_J)
                         - mReferenceStrain(tVoigtIndex_J)) * mCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
+            }
+        }
+    }
+    /******************************************************************************//**
+     * \brief Compute Cauchy stress tensor
+     * \param [in]  aCellOrdinal element ordinal
+     * \param [out] aCauchyStress Cauchy stress tensor
+     * \param [in]  aStrainInc Incremental strain tensor
+     * \param [in]  aPrevStrain Reference strain tensor
+    **********************************************************************************/
+    template<typename StressScalarType, typename StrainScalarType, typename PrevStrainScalarType>
+    DEVICE_TYPE inline void
+    operator()(
+        Plato::OrdinalType aCellOrdinal,
+        Kokkos::View<StressScalarType**,     Plato::Layout, Plato::MemSpace> const& aCauchyStress,
+        Kokkos::View<StrainScalarType**,     Plato::Layout, Plato::MemSpace> const& aStrainInc,
+        Kokkos::View<PrevStrainScalarType**, Plato::Layout, Plato::MemSpace> const& aPrevStrain
+    ) const
+    {
+
+        // compute stress
+        //
+        for(Plato::OrdinalType tVoigtIndex_I = 0; tVoigtIndex_I < mNumVoigtTerms; tVoigtIndex_I++)
+        {
+            aCauchyStress(aCellOrdinal, tVoigtIndex_I) = 0.0;
+            for(Plato::OrdinalType tVoigtIndex_J = 0; tVoigtIndex_J < mNumVoigtTerms; tVoigtIndex_J++)
+            {
+                aCauchyStress(aCellOrdinal, tVoigtIndex_I) +=
+                    (aStrainInc(aCellOrdinal, tVoigtIndex_J) - mReferenceStrain(tVoigtIndex_J) + aPrevStrain(aCellOrdinal, tVoigtIndex_J))
+                  * mCellStiffness(tVoigtIndex_I, tVoigtIndex_J);
             }
         }
     }

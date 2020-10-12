@@ -6,6 +6,7 @@
 
 #include <Teuchos_ParameterList.hpp>
 
+#include "PlatoStaticsTypes.hpp"
 #include "OmegaHUtilities.hpp"
 #include "ImplicitFunctors.hpp"
 

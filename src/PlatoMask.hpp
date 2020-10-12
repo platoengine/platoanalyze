@@ -8,7 +8,11 @@
 
 namespace Plato {
 
-    using OrdinalList = Plato::ScalarVectorT<Plato::OrdinalType>;
+    template <int mSpaceDim>
+    struct BoxLimits {
+      Plato::Scalar mMaximum[mSpaceDim];
+      Plato::Scalar mMinimum[mSpaceDim];
+    };
 
     /******************************************************************************/
     /*!
@@ -20,9 +24,10 @@ namespace Plato {
     {
 
       protected:
-        OrdinalList mCellMask;
-        OrdinalList mNodeMask;
+        LocalOrdinalVector mCellMask;
+        LocalOrdinalVector mNodeMask;
 
+      public:
         /******************************************************************************//**
          * \brief Compute node mask from element mask
          * \param [in] aMesh Omega_h mesh
@@ -36,17 +41,18 @@ namespace Plato {
 
             NodeOrdinal<mSpaceDim> tNodeOrdinalFunctor(&aMesh);
 
-            auto tNumCells = mCellMask.extent(0);
+            auto tCellMask = mCellMask;
+            auto tNodeMask = mNodeMask;
 
-            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells),
-            LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+            auto tNumCells = mCellMask.extent(0);
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                if (mCellMask(aCellOrdinal) == 1)
+                if (tCellMask(aCellOrdinal) == 1)
                 {
                     for (Plato::OrdinalType tNode=0; tNode<mSpaceDim+1; tNode++)
                     {
                         auto tNodeOrdinal = tNodeOrdinalFunctor(aCellOrdinal, tNode);
-                        mNodeMask(tNodeOrdinal) = 1;
+                        tNodeMask(tNodeOrdinal) = 1;
                     }
                 }
             }, "compute node mask");
@@ -85,7 +91,6 @@ namespace Plato {
             return tCellCenters;
         }
 
-      public:
         Mask(
             const Omega_h::Mesh & aMesh
         ) :
@@ -99,7 +104,7 @@ namespace Plato {
          * \brief Compute node mask from element mask
          * \param [in] aMesh Omega_h mesh
         **********************************************************************************/
-        OrdinalList
+        LocalOrdinalVector
         getInactiveNodes(
         ) const
         {
@@ -109,14 +114,15 @@ namespace Plato {
 
             // how many zeros in the mask?
             Plato::OrdinalType tSum(0);
+            auto tNodeMask = mNodeMask;
             Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0,tNumEntries),
             LAMBDA_EXPRESSION(const Plato::OrdinalType& aOrdinal, Plato::OrdinalType & aUpdate)
             {
-              aUpdate += mNodeMask(aOrdinal);
+              aUpdate += tNodeMask(aOrdinal);
             }, tSum);
 
             auto tNumFixed = tNumEntries - tSum;
-            OrdinalList tNodes("inactive nodes", tNumFixed);
+            LocalOrdinalVector tNodes("inactive nodes", tNumFixed);
 
             if (tNumFixed > 0)
             {
@@ -125,8 +131,8 @@ namespace Plato {
                 Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalT>(0,tNumEntries),
                 KOKKOS_LAMBDA (const OrdinalT& iOrdinal, OrdinalT& aUpdate, const bool& tIsFinal)
                 {
-                    const OrdinalT tVal = mNodeMask(iOrdinal);
-                    if( tIsFinal ) { tNodes(aUpdate) = iOrdinal; }
+                    const OrdinalT tVal = tNodeMask(iOrdinal);
+                    if( tIsFinal && !tVal ) { tNodes(aUpdate) = iOrdinal; }
                     aUpdate += (1-tVal);
                 }, tOffset);
             }
@@ -142,8 +148,7 @@ namespace Plato {
       private:
         using Plato::Mask<mSpaceDim>::mCellMask;
 
-        Plato::Scalar mMaximum[mSpaceDim];
-        Plato::Scalar mMinimum[mSpaceDim];
+        Plato::BoxLimits<mSpaceDim> mLimits;
 
         std::string mMaxKeywords[3];
         std::string mMinKeywords[3];
@@ -159,44 +164,53 @@ namespace Plato {
             const Teuchos::ParameterList & aInputParams
         ) :
             Plato::Mask<mSpaceDim>(aMesh),
-            mMaxKeywords({"Maximum X", "Maximum Y", "Maximum Z"}),
-            mMinKeywords({"Minimum X", "Minimum Y", "Minimum Z"})
+            mMaxKeywords{"Maximum X", "Maximum Y", "Maximum Z"},
+            mMinKeywords{"Minimum X", "Minimum Y", "Minimum Z"}
+        {
+            initialize(aMesh, aInputParams);
+        }
+
+        void initialize(
+                  Omega_h::Mesh          & aMesh,
+            const Teuchos::ParameterList & aInputParams
+        )
         {
             for (Plato::OrdinalType tDim=0; tDim<mSpaceDim; tDim++)
             {
                 auto tMaxKeyword = mMaxKeywords[tDim];
                 if (aInputParams.isType<Plato::Scalar>(tMaxKeyword))
                 {
-                    mMaximum[tDim] = aInputParams.get<Plato::Scalar>(tMaxKeyword);
+                    mLimits.mMaximum[tDim] = aInputParams.get<Plato::Scalar>(tMaxKeyword);
                 }
                 else
                 {
-                    mMaximum[tDim] = 1e12;
+                    mLimits.mMaximum[tDim] = 1e12;
                 }
                 auto tMinKeyword = mMinKeywords[tDim];
                 if (aInputParams.isType<Plato::Scalar>(tMinKeyword))
                 {
-                    mMinimum[tDim] = aInputParams.get<Plato::Scalar>(tMinKeyword);
+                    mLimits.mMinimum[tDim] = aInputParams.get<Plato::Scalar>(tMinKeyword);
                 }
                 else
                 {
-                    mMinimum[tDim] = -1e12;
+                    mLimits.mMinimum[tDim] = -1e12;
                 }
             }
 
             auto tCellCenters = this->getCellCenters(aMesh);
-            
+
+            auto tCellMask = mCellMask;
+            auto tLimits = mLimits;
             auto tNumCells = tCellCenters.extent(0);
-            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells),
-            LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+            Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                mCellMask(aCellOrdinal) = 1;
+                tCellMask(aCellOrdinal) = 1;
 
                 for (Plato::OrdinalType tDim=0; tDim<mSpaceDim; tDim++)
                 {
                     auto tVal = tCellCenters(aCellOrdinal, tDim);
-                    if (tVal > mMaximum[tDim]) mCellMask(aCellOrdinal) = 0;
-                    if (tVal < mMinimum[tDim]) mCellMask(aCellOrdinal) = 0;
+                    if (tVal > tLimits.mMaximum[tDim]) tCellMask(aCellOrdinal) = 0;
+                    if (tVal < tLimits.mMinimum[tDim]) tCellMask(aCellOrdinal) = 0;
                 }
             }, "cell mask");
 
@@ -231,6 +245,10 @@ namespace Plato {
                     if (tMaskType == "Brick")
                     {
                         return std::make_shared<Plato::BrickMask<mSpaceDim>>(aMesh, tMaskParams);
+                    }
+                    else
+                    {
+                        THROWERR("Unknown 'Mask Type' requested");
                     }
                 }
             }

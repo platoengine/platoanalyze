@@ -156,7 +156,7 @@ thermomechanical_output(
 
         if (aStateDataMap.stateDataMaps.size() > tStepIndex)
         {
-            Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+            Plato::add_state_tags(aMesh, aStateDataMap, tStepIndex);
         }
 
         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
@@ -229,7 +229,7 @@ mechanical_output(
 
         if (aStateDataMap.stateDataMaps.size() > tStepIndex)
         {
-            Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+            Plato::add_state_tags(aMesh, aStateDataMap, tStepIndex);
         }
         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
         tWriter.write(/*time_index*/tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);
@@ -279,7 +279,7 @@ stabilized_mechanical_output(
 
         if (aStateDataMap.stateDataMaps.size() > tStepIndex)
         {
-            Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+            Plato::add_state_tags(aMesh, aStateDataMap, tStepIndex);
         }
         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
         tWriter.write(/*time_index*/tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);
@@ -325,7 +325,7 @@ thermal_output(
 
         if (aStateDataMap.stateDataMaps.size() > tStepIndex)
         {
-            Plato::add_element_state_tags(aMesh, aStateDataMap, tStepIndex);
+            Plato::add_state_tags(aMesh, aStateDataMap, tStepIndex);
         }
         Omega_h::TagSet tTags = Omega_h::vtk::get_all_vtk_tags(&aMesh, SpatialDim);
         tWriter.write(/*time_index*/tStepIndex, /*current_time=*/(Plato::Scalar)tStepIndex, tTags);

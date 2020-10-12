@@ -21,14 +21,13 @@ namespace Plato {
         Omega_h::MeshSets & MeshSets;
 
       private:
-        using OrdinalList = Plato::ScalarVectorT<Plato::OrdinalType>;
 
         std::string  mElementBlockName;
         std::string  mMaterialModelName;
         std::string  mSpatialDomainName;
 
-        OrdinalList  mTotalElemLids;   /*!< List of all elements in this domain */
-        OrdinalList  mMaskedElemLids;  /*!< List of elements after a mask is applied */
+        Plato::LocalOrdinalVector mTotalElemLids;   /*!< List of all elements in this domain */
+        Plato::LocalOrdinalVector mMaskedElemLids;  /*!< List of elements after a mask is applied */
 
       public:
         decltype(mMaterialModelName) getMaterialName() const {return mMaterialModelName;}
@@ -45,7 +44,7 @@ namespace Plato {
                   Note: A const reference is returned to prevent the ref count from being
                   modified.  
         **********************************************************************************/
-        const OrdinalList &
+        const Plato::LocalOrdinalVector &
         cellOrdinals() const
         {
             return mMaskedElemLids;
@@ -67,6 +66,13 @@ namespace Plato {
             Mesh(aMesh),
             MeshSets(aMeshSets),
             mSpatialDomainName(aName)
+        {
+            initialize(aInputParams);
+        }
+
+        void initialize(
+            const Teuchos::ParameterList & aInputParams
+        )
         {
             if(aInputParams.isType<std::string>("Element Block"))
             {
@@ -97,13 +103,16 @@ namespace Plato {
 
             auto tElemLids = (tElemSetsI->second);
             auto tNumElems = tElemLids.size();
-            Kokkos::resize(mTotalElemLids, tNumElems);
-            Kokkos::resize(mMaskedElemLids, tNumElems);
+            mTotalElemLids = Plato::LocalOrdinalVector("element list", tNumElems);
+            mMaskedElemLids = Plato::LocalOrdinalVector("masked element list", tNumElems);
+
+            auto tTotalElemLids = mTotalElemLids;
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumElems), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                mTotalElemLids(aCellOrdinal) = tElemLids[aCellOrdinal];
+                tTotalElemLids(aCellOrdinal) = tElemLids[aCellOrdinal];
             }, "get element ids");
             Kokkos::deep_copy(mMaskedElemLids, mTotalElemLids);
+
         }
 
         /******************************************************************************//**
@@ -142,7 +151,7 @@ namespace Plato {
             KOKKOS_LAMBDA (const OrdinalT& iOrdinal, OrdinalT& aUpdate, const bool& tIsFinal)
             {
                 const OrdinalT tVal = tMask(iOrdinal);
-                if( tIsFinal ) { tMaskedElemLids(aUpdate) = iOrdinal; }
+                if( tIsFinal && tVal ) { tMaskedElemLids(aUpdate) = iOrdinal; }
                 aUpdate += tVal;
             }, tOffset);
         }
