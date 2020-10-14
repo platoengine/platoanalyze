@@ -167,6 +167,26 @@ public:
 
     /******************************************************************************//**
      * \brief Get global state workset, e.g. displacements in mechanic problem
+     * \tparam NumDofsPerNode  number of degrees of freedom per node
+     *
+     * \param [in] aState global state (scalar type), as a 1-D Kokkos::View
+     * \param [in/out] aFadStateWS global state workset (scalar type), as a 2-D Kokkos::View
+     * \param [in] aDomain Domain containing elements to be added to workset
+    **********************************************************************************/
+    template<Plato::OrdinalType NumDofsPerNode>
+    void
+    worksetState(
+        const Plato::ScalarVectorT      <Plato::Scalar> & aState,
+              Plato::ScalarMultiVectorT <Plato::Scalar> & aStateWS,
+        const Plato::SpatialDomain                      & aDomain
+    ) const
+    {
+        Plato::workset_state_scalar_scalar<NumDofsPerNode, mNumNodesPerCell>(
+            aDomain, mGlobalStateEntryOrdinal, aState, aStateWS);
+    }
+
+    /******************************************************************************//**
+     * \brief Get global state workset, e.g. displacements in mechanic problem
      * \param [in] aState global state (scalar type), as a 1-D Kokkos::View
      * \param [in/out] aFadStateWS global state workset (scalar type), as a 2-D Kokkos::View
     **********************************************************************************/

@@ -343,7 +343,7 @@ public:
             Plato::WorksetBase<PhysicsT>::worksetState(aState.momentum(), tMomentumWS, tDomain);
 
             Plato::ScalarMultiVectorT<MassScalarT> tMassWS("Mass Workset", tNumCells, PhysicsT::mNumMassDofsPerCell);
-            Plato::WorksetBase<PhysicsT>::worksetState(aState.mass(), tMassWS, tDomain);
+            Plato::WorksetBase<PhysicsT>::worksetState<PhysicsT::mNumMassDofsPerNode>(aState.mass(), tMassWS, tDomain);
         }
 
         return tReturnValue;
