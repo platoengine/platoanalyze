@@ -374,7 +374,7 @@ findParentElements(
 
     auto tNumLocations = aParentElements.size();
     Kokkos::View<int*, DeviceType> tIndices("indices", 0), tOffset("offset", 0);
-    bvh.query(Points{d_x.data(), d_y.data(), d_z.data(), tNumLocations}, tIndices, tOffset);
+    bvh.query(Points{d_x.data(), d_y.data(), d_z.data(), static_cast<int>(tNumLocations)}, tIndices, tOffset);
 
     // loop over indices and find containing element
     GetBasis<ScalarT> tGetBasis(aMesh);
@@ -394,18 +394,18 @@ findParentElements(
             {
                 auto tElem = tIndices(iElem);
                 tGetBasis(aMappedLocations, iNodeOrdinal, tElem, tBasis);
-                ScalarT tMin = tBasis[0];
+                ScalarT tEleMin = tBasis[0];
                 for(OrdinalT iB=1; iB<cNVertsPerElem; iB++)
                 {
-                    if( tBasis[iB] < tMin ) tMin = tBasis[iB];
+                    if( tBasis[iB] < tEleMin ) tEleMin = tBasis[iB];
                 }
-                if( tMin > cNotFound )
+                if( tEleMin > tMaxMin )
                 {
-                     tMaxMin = tMin;
+                     tMaxMin = tEleMin;
                      iParent = tElem;
                 }
             }
-            if( tMaxMin > cNotFound )
+            if( tMaxMin >= 0.0 )
             {
                 aParentElements(iNodeOrdinal) = iParent;
             }

@@ -419,6 +419,10 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic3DPbcMPC )
   Kokkos::deep_copy(state, 0.0);
   
   // Test output of node IDs
+  auto tNodesAll = PlatoUtestHelpers::get_boundary_nodes(*mesh);
+  PlatoUtestHelpers::print_ordinals(tNodesAll);
+  PlatoUtestHelpers::print_3d_coords(*mesh,tNodesAll);
+
   auto tMeshObject = *mesh;
 
   std::cout << '\n' << "Face 12 (x0) Nodes:" << std::endl;
@@ -556,57 +560,61 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic3DPbcMPC )
   std::shared_ptr<Plato::MultipointConstraints> tMPCs = std::make_shared<Plato::MultipointConstraints>(*mesh, tMeshSets, tNumDofsPerNode, params->sublist("Multipoint Constraints", false));
   tMPCs->setupTransform();
   
-  /* // create solver */
-  /* // */
-  /* MPI_Comm myComm; */
-  /* MPI_Comm_dup(MPI_COMM_WORLD, &myComm); */
-  /* Plato::Comm::Machine tMachine(myComm); */
+  // create solver
+  //
+  MPI_Comm myComm;
+  MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
+  Plato::Comm::Machine tMachine(myComm);
 
-  /* Teuchos::RCP<Teuchos::ParameterList> tSolverParams = */
-  /*   Teuchos::getParametersFromXmlString( */
-  /*   "<ParameterList name='Linear Solver'>                              \n" */
-  /*   "  <Parameter name='Solver' type='string' value='AztecOO'/>        \n" */
-  /*   "  <Parameter name='Display Iterations' type='int' value='0'/>     \n" */
-  /*   "  <Parameter name='Iterations' type='int' value='50'/>            \n" */
-  /*   "  <Parameter name='Tolerance' type='double' value='1e-14'/>       \n" */
-  /*   "</ParameterList>                                                  \n" */
-  /* ); */
-  /* Plato::SolverFactory tSolverFactory(*tSolverParams); */
+  Teuchos::RCP<Teuchos::ParameterList> tSolverParams =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Linear Solver'>                              \n"
+    "  <Parameter name='Solver' type='string' value='AztecOO'/>        \n"
+    "  <Parameter name='Display Iterations' type='int' value='0'/>     \n"
+    "  <Parameter name='Iterations' type='int' value='50'/>            \n"
+    "  <Parameter name='Tolerance' type='double' value='1e-14'/>       \n"
+    "</ParameterList>                                                  \n"
+  );
+  Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-  /* auto tSolver = tSolverFactory.create(mesh->nverts(), tMachine, tNumDofsPerNode, tMPCs); */
+  auto tSolver = tSolverFactory.create(mesh->nverts(), tMachine, tNumDofsPerNode, tMPCs);
 
-  /* // apply essential BCs */
-  /* // */
-  /* Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, bcDofs, bcValues); */
+  // apply essential BCs
+  //
+  Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, bcDofs, bcValues);
 
-  /* // solve linear system */
-  /* // */
-  /* tSolver->solve(*jacobian, state, residual); */
+  // solve linear system
+  //
+  tSolver->solve(*jacobian, state, residual);
 
-  /* // create mirror view of displacement solution */
-  /* // */
-  /* Plato::ScalarVector statesView("State",tNumDofs); */
-  /* Kokkos::deep_copy(statesView, state); */
+  // create mirror view of displacement solution
+  //
+  Plato::ScalarVector statesView("State",tNumDofs);
+  Kokkos::deep_copy(statesView, state);
 
-  /* auto stateView_host = Kokkos::create_mirror_view(statesView); */
-  /* Kokkos::deep_copy(stateView_host, statesView); */
+  auto stateView_host = Kokkos::create_mirror_view(statesView);
+  Kokkos::deep_copy(stateView_host, statesView);
 
-  /* // test difference between constrained nodes */
-  /* // */
-  /* Plato::OrdinalType checkChildNode = 4; */
-  /* Plato::OrdinalType checkParentNode = 7; */
-  /* Plato::Scalar      checkValue = 0.0; */
+  // test difference between constrained nodes
+  //
+  Plato::OrdinalType checkChildNode = 22;
+  Plato::OrdinalType checkParentNode = 15;
+  Plato::Scalar      checkValue = 0.0;
 
-  /* Plato::OrdinalType checkChildDof0 = checkChildNode*tNumDofsPerNode; */
-  /* Plato::OrdinalType checkChildDof1 = checkChildNode*tNumDofsPerNode + 1; */
+  Plato::OrdinalType checkChildDof0 = checkChildNode*tNumDofsPerNode;
+  Plato::OrdinalType checkChildDof1 = checkChildNode*tNumDofsPerNode + 1;
+  Plato::OrdinalType checkChildDof2 = checkChildNode*tNumDofsPerNode + 2;
 
-  /* Plato::OrdinalType checkParentDof0 = checkParentNode*tNumDofsPerNode; */
-  /* Plato::OrdinalType checkParentDof1 = checkParentNode*tNumDofsPerNode + 1; */
+  Plato::OrdinalType checkParentDof0 = checkParentNode*tNumDofsPerNode;
+  Plato::OrdinalType checkParentDof1 = checkParentNode*tNumDofsPerNode + 1;
+  Plato::OrdinalType checkParentDof2 = checkParentNode*tNumDofsPerNode + 2;
 
-  /* Plato::Scalar checkDifferenceDof0 = stateView_host(checkChildDof0) - stateView_host(checkParentDof0); */
-  /* Plato::Scalar checkDifferenceDof1 = stateView_host(checkChildDof1) - stateView_host(checkParentDof1); */
+  Plato::Scalar checkDifferenceDof0 = stateView_host(checkChildDof0) - stateView_host(checkParentDof0);
+  Plato::Scalar checkDifferenceDof1 = stateView_host(checkChildDof1) - stateView_host(checkParentDof1);
+  Plato::Scalar checkDifferenceDof2 = stateView_host(checkChildDof2) - stateView_host(checkParentDof2);
 
-  /* TEST_FLOATING_EQUALITY(checkDifferenceDof0, checkValue, 1.0e-12); */
-  /* TEST_FLOATING_EQUALITY(checkDifferenceDof1, checkValue, 1.0e-12); */
+  TEST_FLOATING_EQUALITY(checkDifferenceDof0, checkValue, 1.0e-8);
+  TEST_FLOATING_EQUALITY(checkDifferenceDof1, checkValue, 1.0e-8);
+  TEST_FLOATING_EQUALITY(checkDifferenceDof2, checkValue, 1.0e-8);
 
 }
