@@ -18,6 +18,15 @@ PbcMultipointConstraint(Omega_h::Mesh & aMesh,
                         Plato::MultipointConstraint(aName)
 /****************************************************************************/
 {
+    // Ensure mesh is 3D
+    auto tSpaceDim = aMesh.dim();
+    if (tSpaceDim != Plato::Geometry::cSpaceDim)
+    {
+        std::ostringstream tMsg;
+        tMsg << "INVALID MESH DIMENSION: PBC MULTIPOINT CONSTRAINTS ONLY IMPLEMENTED FOR 3D MESHES.";
+        THROWERR(tMsg.str())
+    }
+    //
     // parse translation vector
     bool tIsVector = aParam.isType<Teuchos::Array<Plato::Scalar>>("Vector");
 
@@ -150,19 +159,20 @@ updateLengths(OrdinalType& lengthChild,
     auto tNumberChildNodes = mChildNodes.size();
     auto tNumberParentNodes = mParentNodes.size();
     const auto& tMpcRowMap = mMpcMatrix->rowMap();
-    auto tNumberNonzero = tMpcRowMap(tNumberChildNodes+1);
+    auto tNumberNonzero = tMpcRowMap(tNumberChildNodes);
 
     lengthChild += tNumberChildNodes;
     lengthParent += tNumberParentNodes;
     lengthNnz += tNumberNonzero;
+
 }
 
 /****************************************************************************/
 void Plato::PbcMultipointConstraint::
 mapChildVertexLocations(Omega_h::Mesh & aMesh,
                         const Plato::Scalar aTranslation[],
-                        Plato::ScalarMultiVector aLocations,
-                        Plato::ScalarMultiVector aMappedLocations)
+                        Plato::ScalarMultiVector & aLocations,
+                        Plato::ScalarMultiVector & aMappedLocations)
 /****************************************************************************/
 {
     auto tCoords = aMesh.coords();
@@ -185,8 +195,8 @@ mapChildVertexLocations(Omega_h::Mesh & aMesh,
 /****************************************************************************/
 void Plato::PbcMultipointConstraint::
 getUniqueParentNodes(Omega_h::Mesh & aMesh,
-                     LocalOrdinalVector aParentElements,
-                     LocalOrdinalVector aParentGlobalLocalMap)
+                     LocalOrdinalVector & aParentElements,
+                     LocalOrdinalVector & aParentGlobalLocalMap)
 /****************************************************************************/
 {
     auto tNVerts = aMesh.nverts();
@@ -201,7 +211,7 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
     // fill in parent element vertex ordinals
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberParentElements), LAMBDA_EXPRESSION(Plato::OrdinalType iElemOrdinal)
     {
-    Plato::OrdinalType tElement = aParentElements(iElemOrdinal); 
+        Plato::OrdinalType tElement = aParentElements(iElemOrdinal); 
         if(tElement == -2)
         {
             std::ostringstream tMsg;
@@ -257,9 +267,9 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
 /****************************************************************************/
 void Plato::PbcMultipointConstraint::
 setMatrixValues(Omega_h::Mesh & aMesh,
-                LocalOrdinalVector aParentElements,
-                Plato::ScalarMultiVector aMappedLocations,
-                LocalOrdinalVector aParentGlobalLocalMap)
+                LocalOrdinalVector & aParentElements,
+                Plato::ScalarMultiVector & aMappedLocations,
+                LocalOrdinalVector & aParentGlobalLocalMap)
 /****************************************************************************/
 {
     auto tCells2Nodes = aMesh.ask_elem_verts();

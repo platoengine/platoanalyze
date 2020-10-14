@@ -64,18 +64,18 @@ public:
     // ! Perform translation mapping from child nodes to parent locations
     void mapChildVertexLocations(Omega_h::Mesh & aMesh,
                                  const Plato::Scalar aTranslation[],
-                                 Plato::ScalarMultiVector aLocations,
-                                 Plato::ScalarMultiVector aMappedLocations);
+                                 Plato::ScalarMultiVector & aLocations,
+                                 Plato::ScalarMultiVector & aMappedLocations);
     
     // ! Use mapped parent elements to find global IDs of unique parent nodes
     void getUniqueParentNodes(Omega_h::Mesh & aMesh,
-                              LocalOrdinalVector aParentElements,
-                              LocalOrdinalVector aParentGlobalLocalMap);
+                              LocalOrdinalVector & aParentElements,
+                              LocalOrdinalVector & aParentGlobalLocalMap);
 
     void setMatrixValues(Omega_h::Mesh & aMesh,
-                         LocalOrdinalVector aParentElements,
-                         Plato::ScalarMultiVector aMappedLocations,
-                         LocalOrdinalVector aParentGlobalLocalMap);
+                         LocalOrdinalVector & aParentElements,
+                         Plato::ScalarMultiVector & aMappedLocations,
+                         LocalOrdinalVector & aParentGlobalLocalMap);
 
 private:
     LocalOrdinalVector                 mChildNodes;
