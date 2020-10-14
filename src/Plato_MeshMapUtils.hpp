@@ -372,13 +372,13 @@ findParentElements(
     auto d_y = Kokkos::subview(aMappedLocations, (size_t)Dim::Y, Kokkos::ALL());
     auto d_z = Kokkos::subview(aMappedLocations, (size_t)Dim::Z, Kokkos::ALL());
 
-    auto tNVerts = aMesh.nverts();
+    auto tNumLocations = aParentElements.size();
     Kokkos::View<int*, DeviceType> tIndices("indices", 0), tOffset("offset", 0);
-    bvh.query(Points{d_x.data(), d_y.data(), d_z.data(), tNVerts}, tIndices, tOffset);
+    bvh.query(Points{d_x.data(), d_y.data(), d_z.data(), tNumLocations}, tIndices, tOffset);
 
     // loop over indices and find containing element
     GetBasis<ScalarT> tGetBasis(aMesh);
-    Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNVerts), LAMBDA_EXPRESSION(OrdinalT iNodeOrdinal)
+    Kokkos::parallel_for(Kokkos::RangePolicy<OrdinalT>(0, tNumLocations), LAMBDA_EXPRESSION(OrdinalT iNodeOrdinal)
     {
         ScalarT tBasis[cNVertsPerElem];
         aParentElements(iNodeOrdinal) = -1;
