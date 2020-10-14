@@ -505,6 +505,33 @@ if(HYPERBOLIC)
   add_test(NAME runTransientDynamicsUnitTests COMMAND ${ES_MPI_TEST})
 endif()
 
+if(HYPERBOLIC)
+  set(ComputationalFluidDynamicsTests_SOURCES
+    ComputationalFluidDynamicsTests.cpp
+    PlatoTestHelpers.cpp
+    PlatoUnitTestMain.cpp
+  )
+
+  set(ComputationalFluidDynamicsTests_HEADERS
+    PlatoTestHelpers.hpp
+  )
+
+  add_executable(ComputationalFluidDynamicsTests
+    ${ComputationalFluidDynamicsTests_SOURCES}
+    ${ComputationalFluidDynamicsTests_HEADERS}
+  )
+
+  target_link_libraries(ComputationalFluidDynamicsTests
+    analyzelib
+    ${Trilinos_LIBRARIES}
+    ${Trilinos_TPL_LIBRARIES}
+  )
+  target_include_directories(ComputationalFluidDynamicsTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+  build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/ComputationalFluidDynamicsTests)
+  add_test(NAME runComputationalFluidDynamicsTests COMMAND ${ES_MPI_TEST})
+endif()
+
 set(TwoFieldTests_SOURCES
   TwoFieldTests.cpp
   PlatoTestHelpers.cpp

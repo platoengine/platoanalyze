@@ -1,5 +1,5 @@
 /*
- * ComputationalFluidDynamicsTest.cpp
+ * ComputationalFluidDynamicsTests.cpp
  *
  *  Created on: Oct 13, 2020
  */
