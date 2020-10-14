@@ -5,7 +5,10 @@
  */
 
 #include "Simplex.hpp"
-#include "PlatoStaticsTypes.hpp"
+#include "WorksetBase.hpp"
+#include "SpatialModel.hpp"
+#include "SimplexFadTypes.hpp"
+#include "PlatoAbstractProblem.hpp"
 
 namespace Plato
 {
@@ -172,8 +175,38 @@ struct Evaluation
 }
 // namespace FluidMechanics
 
+namespace Momentum
+{
+
+/******************************************************************************/
+/*! constraint class
+
+   This class takes as a template argument a vector function in the form:
+
+   F = F(\phi, U^k, V^k, A^k, X)
+
+   and manages the evaluation of the function and derivatives with respect to
+   state, U^k, state dot, V^k, state dot dot, V^k, and control, X.
+
+*/
+/******************************************************************************/
+template<typename PhysicsT>
+class VectorFunction : public Plato::WorksetBase<PhysicsT>
+{
+
+};
+
+}
+// namespace Momentum
+
 }
 // namespace Hyperbolic
+
+namespace FluidMechanics
+{
+
+}
+// namespace FluidMechanics
 
 }
 //namespace Plato
