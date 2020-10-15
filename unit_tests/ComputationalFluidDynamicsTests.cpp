@@ -15,6 +15,24 @@
 namespace Plato
 {
 
+/******************************************************************************//**
+ * \fn tolower
+ * \brief Convert uppercase word to lowercase.
+ * \param [in] aInput word
+ * \return lowercase word
+**********************************************************************************/
+inline std::string tolower(const std::string& aInput)
+{
+    std::locale tLocale;
+    std::ostringstream tOutput;
+    for (auto& tChar : aInput)
+    {
+        tOutput << std::tolower(tChar,tLocale);
+    }
+    return (tOutput.str());
+}
+// function tolower
+
 /***************************************************************************//**
  *  \brief Base class for simplex-based fluid mechanics problems
  *  \tparam SpaceDim    (integer) spatial dimensions
@@ -41,63 +59,20 @@ public:
 };
 // class SimplexFluidDynamics
 
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
-class MassConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
-{
-public:
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumEnergyDofsPerNode;
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumEnergyDofsPerCell;
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMomentumDofsPerNode;
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMomentumDofsPerCell;
-
-    static constexpr Plato::OrdinalType mNumLocalDofsPerCell = 0;
-    static constexpr auto mNumDofsPerNode  = Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMassDofsPerNode;
-    static constexpr auto mNumNodesPerCell = Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMassDofsPerCell;
-
-    using SimplexT = Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
-};
-
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
-class EnergyConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
-{
-public:
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMassDofsPerNode;
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMassDofsPerCell;
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMomentumDofsPerNode;
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMomentumDofsPerCell;
-
-    static constexpr Plato::OrdinalType mNumLocalDofsPerCell = 0;
-    static constexpr auto mNumDofsPerNode  = Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumEnergyDofsPerNode;
-    static constexpr auto mNumNodesPerCell = Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumEnergyDofsPerCell;
-
-    using SimplexT = Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
-};
-
-template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
-class MomentumConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
-{
-public:
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMassDofsPerNode;
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMassDofsPerCell;
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumEnergyDofsPerNode;
-    using Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumEnergyDofsPerCell;
-
-    static constexpr Plato::OrdinalType mNumLocalDofsPerCell = 0;
-    static constexpr auto mNumDofsPerNode  = Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMomentumDofsPerNode;
-    static constexpr auto mNumNodesPerCell = Plato::SimplexFluidMechanics<SpaceDim, NumControls>::mNumMomentumDofsPerCell;
-
-    using SimplexT = Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
-};
-
 namespace Hyperbolic
 {
 
 namespace FluidMechanics
 {
 
-enum struct state
+template<typename SimplexPhysics>
+struct SimplexFadTypes
 {
-    MOMENTUM, ENERGY, MASS
+    using MassFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMassDofsPerCell>;
+    using ControlFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumNodesPerCell>;
+    using ConfigFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumSpatialDims *  SimplexPhysics::mNumNodesPerCell>;
+    using EnergyFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumEnergyDofsPerNode * SimplexPhysics::mNumNodesPerCell>;
+    using MomentumFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMomentumDofsPerNode * SimplexPhysics::mNumNodesPerCell>;
 };
 
 struct State
@@ -105,7 +80,7 @@ struct State
 private:
     Plato::Scalar mTimeStep = 1.0;
     Plato::Scalar mCurrentTime = 0.0;
-    std::unordered_map<Plato::Hyperbolic::FluidMechanics::state, Plato::ScalarVector> mStates;
+    std::unordered_map<std::string, Plato::ScalarVector> mStates;
 
 public:
     Plato::Scalar time() const
@@ -124,29 +99,20 @@ public:
     {
         mTimeStep = aInput;
     }
-    Plato::ScalarVector mass()
+    Plato::ScalarVector get(const std::string& aTag)
     {
-        return mStates.find(Plato::Hyperbolic::FluidMechanics::state::MASS)->second;
+        auto tLowerTag = Plato::tolower(aTag);
+        auto tItr = mStates.find(tLowerTag);
+        if(tItr == mStates.end())
+        {
+            THROWERR(std::string("State with tag '") + aTag + "' is not defined in state map.")
+        }
+        return tItr->second;
     }
-    void mass(const Plato::ScalarVector& aInput)
+    void set(const std::string& aTag, const Plato::ScalarVector& aInput)
     {
-        mStates[Plato::Hyperbolic::FluidMechanics::state::MASS] = aInput;
-    }
-    Plato::ScalarVector energy()
-    {
-        return mStates.find(Plato::Hyperbolic::FluidMechanics::state::ENERGY)->second;
-    }
-    void energy(const Plato::ScalarVector& aInput)
-    {
-        mStates[Plato::Hyperbolic::FluidMechanics::state::ENERGY] = aInput;
-    }
-    Plato::ScalarVector momentum()
-    {
-        return mStates.find(Plato::Hyperbolic::FluidMechanics::state::MOMENTUM)->second;
-    }
-    void momentum(const Plato::ScalarVector& aInput)
-    {
-        mStates[Plato::Hyperbolic::FluidMechanics::state::MOMENTUM] = aInput;
+        auto tLowerTag = Plato::tolower(aTag);
+        mStates[tLowerTag] = aInput;
     }
 };
 
@@ -166,88 +132,183 @@ struct EvaluationTypes
 template <typename SimplexPhysicsT>
 struct ResidualTypes : EvaluationTypes<SimplexPhysicsT>
 {
-    using ControlScalarType  = Plato::Scalar;
-    using ConfigScalarType   = Plato::Scalar;
-    using MassScalarType     = Plato::Scalar;
-    using EnergyScalarType   = Plato::Scalar;
-    using MomentumScalarType = Plato::Scalar;
-    using ResultScalarType   = Plato::Scalar;
+    using ControlScalarType           = Plato::Scalar;
+    using ConfigScalarType            = Plato::Scalar;
+    using ResultScalarType            = Plato::Scalar;
+    using CurrentMassScalarType       = Plato::Scalar;
+    using CurrentEnergyScalarType     = Plato::Scalar;
+    using CurrentMomentumScalarType   = Plato::Scalar;
+    using PreviousMassScalarType      = Plato::Scalar;
+    using PreviousEnergyScalarType    = Plato::Scalar;
+    using PreviousMomentumScalarType  = Plato::Scalar;
+    using MomentumPredictorScalarType = Plato::Scalar;
 };
 
 template <typename SimplexPhysicsT>
-struct GradientMomentumTypes : EvaluationTypes<SimplexPhysicsT>
+struct GradCurrentMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
+  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
 
-  using ControlScalarType  = Plato::Scalar;
-  using ConfigScalarType   = Plato::Scalar;
-  using MassScalarType     = Plato::Scalar;
-  using EnergyScalarType   = Plato::Scalar;
-  using MomentumScalarType = SFadType;
-  using ResultScalarType   = SFadType;
+  using ControlScalarType           = Plato::Scalar;
+  using ConfigScalarType            = Plato::Scalar;
+  using ResultScalarType            = FadType;
+  using CurrentMassScalarType       = Plato::Scalar;
+  using CurrentEnergyScalarType     = Plato::Scalar;
+  using CurrentMomentumScalarType   = FadType;
+  using PreviousMassScalarType      = Plato::Scalar;
+  using PreviousEnergyScalarType    = Plato::Scalar;
+  using PreviousMomentumScalarType  = Plato::Scalar;
+  using MomentumPredictorScalarType = Plato::Scalar;
 };
 
 template <typename SimplexPhysicsT>
-struct GradientEnergyTypes : EvaluationTypes<SimplexPhysicsT>
+struct GradCurrentEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
+  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::EnergyFad;
 
-  using ControlScalarType  = Plato::Scalar;
-  using ConfigScalarType   = Plato::Scalar;
-  using MassScalarType     = Plato::Scalar;
-  using EnergyScalarType   = SFadType;
-  using MomentumScalarType = Plato::Scalar;
-  using ResultScalarType   = SFadType;
+  using ControlScalarType           = Plato::Scalar;
+  using ConfigScalarType            = Plato::Scalar;
+  using ResultScalarType            = FadType;
+  using CurrentMassScalarType       = Plato::Scalar;
+  using CurrentEnergyScalarType     = FadType;
+  using CurrentMomentumScalarType   = Plato::Scalar;
+  using PreviousMassScalarType      = Plato::Scalar;
+  using PreviousEnergyScalarType    = Plato::Scalar;
+  using PreviousMomentumScalarType  = Plato::Scalar;
+  using MomentumPredictorScalarType = Plato::Scalar;
 };
 
 template <typename SimplexPhysicsT>
-struct GradientMassTypes : EvaluationTypes<SimplexPhysicsT>
+struct GradCurrentMassTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::StateFad;
+  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MassFad;
 
-  using ControlScalarType  = Plato::Scalar;
-  using ConfigScalarType   = Plato::Scalar;
-  using MassScalarType     = SFadType;
-  using EnergyScalarType   = Plato::Scalar;
-  using MomentumScalarType = Plato::Scalar;
-  using ResultScalarType   = SFadType;
+  using ControlScalarType           = Plato::Scalar;
+  using ConfigScalarType            = Plato::Scalar;
+  using ResultScalarType            = FadType;
+  using CurrentMassScalarType       = FadType;
+  using CurrentEnergyScalarType     = Plato::Scalar;
+  using CurrentMomentumScalarType   = Plato::Scalar;
+  using PreviousMassScalarType      = Plato::Scalar;
+  using PreviousEnergyScalarType    = Plato::Scalar;
+  using PreviousMomentumScalarType  = Plato::Scalar;
+  using MomentumPredictorScalarType = Plato::Scalar;
 };
 
 template <typename SimplexPhysicsT>
-struct GradientConfigTypes : EvaluationTypes<SimplexPhysicsT>
+struct GradPreviousMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::ConfigFad;
+  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
 
-  using ControlScalarType  = Plato::Scalar;
-  using ConfigScalarType   = SFadType;
-  using MassScalarType     = Plato::Scalar;
-  using EnergyScalarType   = Plato::Scalar;
-  using MomentumScalarType = Plato::Scalar;
-  using ResultScalarType   = SFadType;
+  using ControlScalarType           = Plato::Scalar;
+  using ConfigScalarType            = Plato::Scalar;
+  using ResultScalarType            = FadType;
+  using CurrentMassScalarType       = Plato::Scalar;
+  using CurrentEnergyScalarType     = Plato::Scalar;
+  using CurrentMomentumScalarType   = Plato::Scalar;
+  using PreviousMassScalarType      = Plato::Scalar;
+  using PreviousEnergyScalarType    = Plato::Scalar;
+  using PreviousMomentumScalarType  = FadType;
+  using MomentumPredictorScalarType = Plato::Scalar;
 };
 
 template <typename SimplexPhysicsT>
-struct GradientControlTypes : EvaluationTypes<SimplexPhysicsT>
+struct GradPreviousEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using SFadType = typename SimplexFadTypes<SimplexPhysicsT>::ControlFad;
+  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::EnergyFad;
 
-  using ControlScalarType  = SFadType;
-  using ConfigScalarType   = Plato::Scalar;
-  using MassScalarType     = Plato::Scalar;
-  using EnergyScalarType   = Plato::Scalar;
-  using MomentumScalarType = Plato::Scalar;
-  using ResultScalarType   = SFadType;
+  using ControlScalarType           = Plato::Scalar;
+  using ConfigScalarType            = Plato::Scalar;
+  using ResultScalarType            = FadType;
+  using CurrentMassScalarType       = Plato::Scalar;
+  using CurrentEnergyScalarType     = Plato::Scalar;
+  using CurrentMomentumScalarType   = Plato::Scalar;
+  using PreviousMassScalarType      = Plato::Scalar;
+  using PreviousEnergyScalarType    = FadType;
+  using PreviousMomentumScalarType  = Plato::Scalar;
+  using MomentumPredictorScalarType = Plato::Scalar;
+};
+
+template <typename SimplexPhysicsT>
+struct GradPreviousMassTypes : EvaluationTypes<SimplexPhysicsT>
+{
+  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MassFad;
+
+  using ControlScalarType           = Plato::Scalar;
+  using ConfigScalarType            = Plato::Scalar;
+  using ResultScalarType            = FadType;
+  using CurrentMassScalarType       = Plato::Scalar;
+  using CurrentEnergyScalarType     = Plato::Scalar;
+  using CurrentMomentumScalarType   = Plato::Scalar;
+  using PreviousMassScalarType      = FadType;
+  using PreviousEnergyScalarType    = Plato::Scalar;
+  using PreviousMomentumScalarType  = Plato::Scalar;
+  using MomentumPredictorScalarType = Plato::Scalar;
+};
+
+template <typename SimplexPhysicsT>
+struct GradMomentumPredictorTypes : EvaluationTypes<SimplexPhysicsT>
+{
+  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
+
+  using ControlScalarType           = Plato::Scalar;
+  using ConfigScalarType            = Plato::Scalar;
+  using ResultScalarType            = FadType;
+  using CurrentMassScalarType       = Plato::Scalar;
+  using CurrentEnergyScalarType     = Plato::Scalar;
+  using CurrentMomentumScalarType   = Plato::Scalar;
+  using PreviousMassScalarType      = Plato::Scalar;
+  using PreviousEnergyScalarType    = Plato::Scalar;
+  using PreviousMomentumScalarType  = Plato::Scalar;
+  using MomentumPredictorScalarType = FadType;
+};
+
+template <typename SimplexPhysicsT>
+struct GradConfigTypes : EvaluationTypes<SimplexPhysicsT>
+{
+  using FadType = typename SimplexFadTypes<SimplexPhysicsT>::ConfigFad;
+
+  using ControlScalarType           = Plato::Scalar;
+  using ConfigScalarType            = FadType;
+  using ResultScalarType            = FadType;
+  using CurrentMassScalarType       = Plato::Scalar;
+  using CurrentEnergyScalarType     = Plato::Scalar;
+  using CurrentMomentumScalarType   = Plato::Scalar;
+  using PreviousMassScalarType      = Plato::Scalar;
+  using PreviousEnergyScalarType    = Plato::Scalar;
+  using PreviousMomentumScalarType  = Plato::Scalar;
+  using MomentumPredictorScalarType = Plato::Scalar;
+};
+
+template <typename SimplexPhysicsT>
+struct GradControlTypes : EvaluationTypes<SimplexPhysicsT>
+{
+  using FadType = typename SimplexFadTypes<SimplexPhysicsT>::ControlFad;
+
+  using ControlScalarType          = FadType;
+  using ConfigScalarType           = Plato::Scalar;
+  using ResultScalarType           = FadType;
+  using CurrentMassScalarType      = Plato::Scalar;
+  using CurrentEnergyScalarType    = Plato::Scalar;
+  using CurrentMomentumScalarType  = Plato::Scalar;
+  using PreviousMassScalarType     = Plato::Scalar;
+  using PreviousEnergyScalarType   = Plato::Scalar;
+  using PreviousMomentumScalarType = Plato::Scalar;
 };
 
 template <typename SimplexPhysicsT>
 struct Evaluation
 {
    using Residual         = ResidualTypes<SimplexPhysicsT>;
-   using GradientMomentum = GradientMomentumTypes<SimplexPhysicsT>;
-   using GradientEnergy   = GradientEnergyTypes<SimplexPhysicsT>;
-   using GradientMass     = GradientMassTypes<SimplexPhysicsT>;
-   using GradientControl  = GradientConfigTypes<SimplexPhysicsT>;
-   using GradientConfig   = GradientControlTypes<SimplexPhysicsT>;
+   using GradConfig       = GradControlTypes<SimplexPhysicsT>;
+   using GradControl      = GradConfigTypes<SimplexPhysicsT>;
+   using GradMassCurr     = GradCurrentMassTypes<SimplexPhysicsT>;
+   using GradMassPrev     = GradCurrentMassTypes<SimplexPhysicsT>;
+   using GradEnergyCurr   = GradCurrentEnergyTypes<SimplexPhysicsT>;
+   using GradEnergyPrev   = GradPreviousEnergyTypes<SimplexPhysicsT>;
+   using GradMomentumCurr = GradPreviousMomentumTypes<SimplexPhysicsT>;
+   using GradMomentumPrev = GradPreviousMomentumTypes<SimplexPhysicsT>;
+   using GradMomentumPred = GradMomentumPredictorTypes<SimplexPhysicsT>;
 };
 
 }
@@ -269,30 +330,41 @@ namespace Momentum
 */
 /******************************************************************************/
 template<typename PhysicsT>
-class VectorFunction : public Plato::WorksetBase<PhysicsT>
+class VectorFunction
 {
 private:
-    using Plato::WorksetBase<PhysicsT>::mNumDofsPerCell;
-    using Plato::WorksetBase<PhysicsT>::mNumNodesPerCell;
-    using Plato::WorksetBase<PhysicsT>::mNumDofsPerNode;
-    using Plato::WorksetBase<PhysicsT>::mNumSpatialDims;
-    using Plato::WorksetBase<PhysicsT>::mNumControl;
-    using Plato::WorksetBase<PhysicsT>::mNumNodes;
-    using Plato::WorksetBase<PhysicsT>::mNumCells;
+    static constexpr auto mNumControls          = PhysicsT::SimplexT::mNumControl;             /*!< number of design variable fields */
+    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
+    static constexpr auto mNumVelDofsPerCell    = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
+    static constexpr auto mNumTempDofsPerCell   = PhysicsT::SimplexT::mNumEnergyDofsPerCell;   /*!< number of energy dofs per cell */
+    static constexpr auto mNumPressDofsPerCell  = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of mass dofs per cell */
+    static constexpr auto mNumVelDofsPerNode   = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
+    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration degrees of freedom per cell */
 
-    using Plato::WorksetBase<PhysicsT>::mGlobalStateEntryOrdinal;
-    using Plato::WorksetBase<PhysicsT>::mControlEntryOrdinal;
-
-    using Residual     = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
-    using GradMass     = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradientMass;
-    using GradEnergy   = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradientEnergy;
-    using GradMomentum = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradientMomentum;
-    using GradControl  = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradientControl;
-    using GradConfig   = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradientConfig;
+    using Residual         = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
+    using GradConfig       = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
+    using GradControl      = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradControl;
+    using GradMassCurr     = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassCurr;
+    using GradMassPrev     = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassPrev;
+    using GradEnergyCurr   = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyCurr;
+    using GradEnergyPrev   = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyPrev;
+    using GradMomentumCurr = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumCurr;
+    using GradMomentumPrev = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumPrev;
+    using GradMomentumPred = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumPred;
 
     Plato::DataMap& mDataMap;
     const Plato::SpatialModel& mSpatialModel;
-    static constexpr Plato::OrdinalType mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;
+
+    Plato::NodeCoordinate<mNumSpatialDims> mNodeCoordinate; /*!< node coordinates metadata */
+
+    Plato::VectorEntryOrdinal<mNumSpatialDims, mNumControls>         mControlEntryOrdinal;    /*!< control local-to-global ID map */
+    Plato::VectorEntryOrdinal<mNumSpatialDims, mNumSpatialDims>      mConfigEntryOrdinal;     /*!< configuration local-to-global ID map */
+    Plato::VectorEntryOrdinal<mNumSpatialDims, mNumVelDofsPerCell>   mVelStateEntryOrdinal;   /*!< momentum state local-to-global ID map */
+    Plato::VectorEntryOrdinal<mNumSpatialDims, mNumTempDofsPerCell>  mTempStateEntryOrdinal;  /*!< energy state local-to-global ID map */
+    Plato::VectorEntryOrdinal<mNumSpatialDims, mNumPressDofsPerCell> mPressStateEntryOrdinal; /*!< mass state local-to-global ID map */
 
 public:
     /**************************************************************************//**
@@ -310,43 +382,127 @@ public:
         mSpatialModel(aSpatialModel),
         mDataMap(aDataMap)
     {
-
     }
 
     /**************************************************************************//**
-    * \brief Return local number of degrees of freedom
+    * \brief Return total number of momentum degrees of freedom
     ******************************************************************************/
     Plato::OrdinalType size() const
     {
-      return (mNumNodes * mNumDofsPerNode);
+        auto tNumNodes = mSpatialModel.Mesh.nverts();
+        return (tNumNodes * mNumVelDofsPerCell);
     }
 
     Plato::ScalarVector
     value(Plato::Hyperbolic::FluidMechanics::State& aState) const
     {
-        using ControlScalarT  = typename Residual::ControlScalarType;
-        using ConfigScalarT   = typename Residual::ConfigScalarType;
-        using MassScalarT     = typename Residual::MassScalarType;
-        using EnergyScalarT   = typename Residual::EnergyScalarType;
-        using MomentumScalarT = typename Residual::MomentumScalarType;
-        using ResultScalarT   = typename Residual::ResultScalarType;
+        using ControlScalarT   = typename Residual::ControlScalarType;
+        using ConfigScalarT    = typename Residual::ConfigScalarType;
+        using ResultScalarT    = typename Residual::ResultScalarType;
+        using VelPredScalarT   = typename Residual::MomentumPredictorScalarType;
+        using PrevVelScalarT   = typename Residual::PreviousMomentumScalarType;
+        using PrevTempScalarT  = typename Residual::PreviousEnergyScalarType;
+        using PrevPressScalarT = typename Residual::PreviousMassScalarType;
 
         auto tLength = this->size();
         Plato::ScalarVector tReturnValue("Assembled Residual", tLength);
 
+        // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            Plato::ScalarMultiVectorT<MomentumScalarT> tMomentumWS("Momentum Workset", tNumCells, mNumDofsPerCell);
-            Plato::WorksetBase<PhysicsT>::worksetState(aState.momentum(), tMomentumWS, tDomain);
+            Plato::ScalarMultiVectorT<PrevVelScalarT> tVelPredictorWS("Velocity Predictor Workset", tNumCells, mNumVelDofsPerCell);
+            Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
+                (tDomain, mVelStateEntryOrdinal, aState.get("velocity predictor"), tVelPredictorWS);
 
-            Plato::ScalarMultiVectorT<MassScalarT> tMassWS("Mass Workset", tNumCells, PhysicsT::mNumMassDofsPerCell);
-            Plato::WorksetBase<PhysicsT>::worksetState<PhysicsT::mNumMassDofsPerNode>(aState.mass(), tMassWS, tDomain);
+            Plato::ScalarMultiVectorT<PrevVelScalarT> tPrevMomentumWS("Previous Velocity Workset", tNumCells, mNumVelDofsPerCell);
+            Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
+                (tDomain, mVelStateEntryOrdinal, aState.get("previous velocity"), tPrevMomentumWS);
+
+            Plato::ScalarMultiVectorT<PrevPressScalarT> tPrevPressWS("Previous Pressure Workset", tNumCells, mNumPressDofsPerCell);
+            Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
+                (tDomain, mPressStateEntryOrdinal, aState.get("previous pressure"), tPrevPressWS);
+
+            Plato::ScalarMultiVectorT<PrevTempScalarT> tPrevTempWS("Previous Temperature Workset", tNumCells, mNumTempDofsPerCell);
+            Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
+                (tDomain, mTempStateEntryOrdinal, aState.get("previous temperature"), tPrevTempWS);
+
+            Plato::ScalarMultiVectorT<ControlScalarT> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::workset_control_scalar_scalar<mNumNodesPerCell>
+                (tDomain, mControlEntryOrdinal, aState.get("current controls"), tControlWS);
+
+            Plato::ScalarArray3DT<ConfigScalarT> tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell>(tDomain, mNodeCoordinate, tConfigWS);
+
+            Plato::ScalarMultiVectorT<ResultScalarT> tResidualWS("Residual Workset", tNumCells, mNumVelDofsPerCell);
+            //mResidualFunctions.at(tName)->evaluate( tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tResidualWS, aTimeStep, aCurrentTime );
+
+            Plato::assemble_residual<mNumNodesPerCell, mNumVelDofsPerNode>
+                (tDomain, mVelStateEntryOrdinal, tResidualWS, tReturnValue);
+        }
+
+        // external force contribution
+        {
+            auto tNumCells = mSpatialModel.Mesh.nverts();
+
+            Plato::ScalarMultiVectorT<PrevVelScalarT> tVelPredictorWS("Velocity Predictor Workset", tNumCells, mNumVelDofsPerCell);
+            Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
+                (tNumCells, mVelStateEntryOrdinal, aState.get("velocity predictor"), tVelPredictorWS);
+
+            Plato::ScalarMultiVectorT<PrevVelScalarT> tPrevMomentumWS("Previous Velocity Workset", tNumCells, mNumVelDofsPerCell);
+            Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
+                (tNumCells, mVelStateEntryOrdinal, aState.get("previous velocity"), tPrevMomentumWS);
+
+            Plato::ScalarMultiVectorT<PrevPressScalarT> tPrevPressWS("Previous Pressure Workset", tNumCells, mNumPressDofsPerCell);
+            Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
+                (tNumCells, mPressStateEntryOrdinal, aState.get("previous pressure"), tPrevPressWS);
+
+            Plato::ScalarMultiVectorT<PrevTempScalarT> tPrevTempWS("Previous Temperature Workset", tNumCells, mNumTempDofsPerCell);
+            Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
+                (tNumCells, mTempStateEntryOrdinal, aState.get("previous temperature"), tPrevTempWS);
+
+            Plato::ScalarMultiVectorT<ControlScalarT> tControlWS("Control Workset", tNumCells, mNumNodesPerCell);
+            Plato::workset_control_scalar_scalar<mNumNodesPerCell>
+                (tNumCells, mControlEntryOrdinal, aState.get("current controls"), tControlWS);
+
+            Plato::ScalarArray3DT<ConfigScalarT> tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+            Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell>(tNumCells, mNodeCoordinate, tConfigWS);
+
+            Plato::ScalarMultiVectorT<ResultScalarT> tResidualWS("Residual Workset", tNumCells, mNumVelDofsPerCell);
+            //mResidualFunctions.begin()->evaluate_boundary(mSpatialModel, tStateWS, tStateDotWS, tStateDotDotWS, tControlWS, tConfigWS, tResidualWS, aTimeStep, aCurrentTime );
+
+            Plato::assemble_residual<mNumNodesPerCell, mNumVelDofsPerNode>
+                (tNumCells, mVelStateEntryOrdinal, tResidualWS, tReturnValue);
         }
 
         return tReturnValue;
+    }
+
+    Teuchos::RCP<Plato::CrsMatrixType>
+    gradient_x(Plato::Hyperbolic::FluidMechanics::State& aState) const
+    {
+        using ControlScalarT   = typename Residual::ControlScalarType;
+        using ConfigScalarT    = typename Residual::ConfigScalarType;
+        using ResultScalarT    = typename Residual::ResultScalarType;
+        using VelPredScalarT   = typename Residual::MomentumPredictorScalarType;
+        using PrevVelScalarT   = typename Residual::PreviousMomentumScalarType;
+        using PrevTempScalarT  = typename Residual::PreviousEnergyScalarType;
+        using PrevPressScalarT = typename Residual::PreviousMassScalarType;
+
+        // create return matrix
+        //
+        auto tMesh = mSpatialModel.Mesh;
+        Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumVelDofsPerNode>(&tMesh);
+        for(const auto& tDomain : mSpatialModel.Domains)
+        {
+            auto tNumCells = tDomain.numCells();
+            auto tName     = tDomain.getDomainName();
+        }
+
+        return tJacobian;
     }
 };
 
