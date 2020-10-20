@@ -27,9 +27,9 @@ public:
         const std::string            & aName,
               Teuchos::ParameterList & aParam
     ) :
-        name(aName),
-        ns_name(aParam.get < std::string > ("Sides")),
-        dof(aParam.get<Plato::OrdinalType>("Index", 0)),
+        mName(aName),
+        mNodeSetName(aParam.get < std::string > ("Sides")),
+        mDof(aParam.get<Plato::OrdinalType>("Index", 0)),
         mMathExpr(nullptr)
     {
         if (aParam.isType<Plato::Scalar>("Value") && aParam.isType<std::string>("Function") )
@@ -42,7 +42,7 @@ public:
         } else
         if (aParam.isType<Plato::Scalar>("Value"))
         {
-            value = aParam.get<Plato::Scalar>("Value");
+            mValue = aParam.get<Plato::Scalar>("Value");
         } else
         if (aParam.isType<std::string>("Function"))
         {
@@ -65,9 +65,9 @@ public:
     void
     get(
         const Omega_h::MeshSets  & aMeshSets,
-              LocalOrdinalVector & bcDofs,
-              ScalarVector       & bcValues,
-              OrdinalType          offset,
+              LocalOrdinalVector & aBcDofs,
+              ScalarVector       & aBcValues,
+              OrdinalType          aOffset,
               Plato::Scalar        aTime=0);
 
     // ! Get number of nodes is the constrained nodeset.
@@ -76,13 +76,13 @@ public:
     // ! Get nodeset name
     std::string const& get_ns_name() const
     {
-        return ns_name;
+        return mNodeSetName;
     }
 
     // ! Get index of constrained dof (i.e., if X dof is to be constrained, get_dof() returns 0).
     Plato::OrdinalType get_dof() const
     {
-        return dof;
+        return mDof;
     }
 
     // ! Get the value to which the dofs will be constrained.
@@ -90,7 +90,7 @@ public:
     {
         if (mMathExpr == nullptr)
         {
-            return value;
+            return mValue;
         }
         else
         {
@@ -99,10 +99,10 @@ public:
     }
 
 protected:
-    const std::string name;
-    const std::string ns_name;
-    const Plato::OrdinalType dof;
-    Scalar value;
+    const std::string mName;
+    const std::string mNodeSetName;
+    const Plato::OrdinalType mDof;
+    Plato::Scalar mValue;
     std::shared_ptr<Plato::MathExpr> mMathExpr;
 
 };
@@ -119,7 +119,7 @@ private:
 
     const Omega_h::MeshSets  & mMeshSets;
 
-    std::vector<std::shared_ptr<EssentialBC<SimplexPhysicsType>>>BCs;
+    std::vector<std::shared_ptr<EssentialBC<SimplexPhysicsType>>>mBCs;
 
 public :
 
@@ -131,16 +131,20 @@ public :
 
     /*!
      \brief Get ordinals and values for constraints.
-     \param mesh Omega_h mesh that contains the constrained nodesets.
-     \param bcDofs Ordinals of all constrained dofs.
-     \param bcValues Values of all constrained dofs.
-     \param time Current time.
+     \param [in/out] aBcDofs   Ordinals of all constrained dofs.
+     \param [in/out] aBcValues Values of all constrained dofs.
+     \param [in]     aTime     Current time (default=0.0).
      */
     void
     get(
-        LocalOrdinalVector & bcDofs,
-        ScalarVector       & bcValues,
+        LocalOrdinalVector & aBcDofs,
+        ScalarVector       & aBcValues,
         Plato::Scalar        aTime=0.0);
+
+    bool empty() const
+    {
+        return mBCs.empty();
+    }
 };
 
 /****************************************************************************/
@@ -149,11 +153,11 @@ OrdinalType EssentialBC<SimplexPhysicsType>::get_length(const Omega_h::MeshSets&
 /****************************************************************************/
 {
     auto& tNodeSets = aMeshSets[Omega_h::NODE_SET];
-    auto tNodeSetsIter = tNodeSets.find(this->ns_name);
+    auto tNodeSetsIter = tNodeSets.find(this->mNodeSetName);
     if(tNodeSetsIter == tNodeSets.end())
     {
         std::ostringstream tMsg;
-        tMsg << "COULD NOT FIND NODE SET WITH NAME = '" << ns_name.c_str()
+        tMsg << "COULD NOT FIND NODE SET WITH NAME = '" << mNodeSetName.c_str()
                 << "'.  NODE SET IS NOT DEFINED IN INPUT MESH FILE, I.E. EXODUS FILE.\n";
         THROWERR(tMsg.str())
     }
@@ -168,36 +172,36 @@ template<typename SimplexPhysicsType>
 void
 EssentialBC<SimplexPhysicsType>::get(
     const Omega_h::MeshSets  & aMeshSets,
-          LocalOrdinalVector & bcDofs,
-          ScalarVector       & bcValues,
-          OrdinalType          offset,
+          LocalOrdinalVector & aBcDofs,
+          ScalarVector       & aBcValues,
+          OrdinalType          aOffset,
           Plato::Scalar        aTime)
 /****************************************************************************/
 {
     // parse constrained nodesets
     auto& tNodeSets = aMeshSets[Omega_h::NODE_SET];
-    auto tNodeSetsIter = tNodeSets.find(this->ns_name);
+    auto tNodeSetsIter = tNodeSets.find(this->mNodeSetName);
     if(tNodeSetsIter == tNodeSets.end())
     {
         std::ostringstream tMsg;
-        tMsg << "Could not find Node Set with name = '" << ns_name.c_str()
+        tMsg << "Could not find Node Set with name = '" << mNodeSetName.c_str()
                 << "'. Node Set is not defined in input geometry/mesh file.\n";
         THROWERR(tMsg.str())
     }
     auto tNodeLids = (tNodeSetsIter->second);
     auto tNumberConstrainedNodes = tNodeLids.size();
 
-    constexpr Plato::OrdinalType dofsPerNode = SimplexPhysicsType::mNumDofsPerNode;
+    constexpr Plato::OrdinalType tDofsPerNode = SimplexPhysicsType::mNumDofsPerNode;
 
-    auto tValue = get_value(aTime);
+    auto tValue = this->get_value(aTime);
 
-    auto tLdofs = bcDofs;
-    auto tLvals = bcValues;
-    auto tLdof = this->dof;
-    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberConstrainedNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
+    auto tLdofs = aBcDofs;
+    auto tLvals = aBcValues;
+    auto tLdof = this->get_dof();
+    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberConstrainedNodes), LAMBDA_EXPRESSION(Plato::OrdinalType aNodeOrdinal)
     {
-        tLdofs(offset+nodeOrdinal) = dofsPerNode*tNodeLids[nodeOrdinal]+tLdof;
-        tLvals(offset+nodeOrdinal) = tValue;
+        tLdofs(aOffset+aNodeOrdinal) = tDofsPerNode*tNodeLids[aNodeOrdinal]+tLdof;
+        tLvals(aOffset+aNodeOrdinal) = tValue;
     }, "Dirichlet BC");
 }
 
@@ -208,7 +212,7 @@ EssentialBCs<SimplexPhysicsType>::EssentialBCs(
     const Omega_h::MeshSets      & aMeshSets
 ) :
     mMeshSets(aMeshSets),
-    BCs()
+    mBCs()
 /****************************************************************************/
 {
     for(Teuchos::ParameterList::ConstIterator tIndex = aParams.begin(); tIndex != aParams.end(); ++tIndex)
@@ -231,32 +235,33 @@ EssentialBCs<SimplexPhysicsType>::EssentialBCs(
             tMyBC.reset(new EssentialBC<SimplexPhysicsType>(tMyName, tSublist));
         else
             TEUCHOS_TEST_FOR_EXCEPTION(true, std::logic_error, " Boundary Condition type invalid: Not 'Zero Value' or 'Fixed Value'.");
-        BCs.push_back(tMyBC);
+        mBCs.push_back(tMyBC);
     }
 }
 
 /****************************************************************************/
 template<typename SimplexPhysicsType>
 void
-EssentialBCs<SimplexPhysicsType>::get(
-     LocalOrdinalVector & bcDofs,
-     ScalarVector       & bcValues,
-     Plato::Scalar        aTime
-)
+EssentialBCs<SimplexPhysicsType>::get
+(Plato::LocalOrdinalVector & aBcDofs,
+ Plato::ScalarVector       & aBcValues,
+ Plato::Scalar               aTime)
 /****************************************************************************/
 {
-    OrdinalType numConstrainedDofs(0);
-    for(std::shared_ptr<EssentialBC<SimplexPhysicsType>> &bc : BCs)
-        numConstrainedDofs += bc->get_length(mMeshSets);
-
-    Kokkos::resize(bcDofs, numConstrainedDofs);
-    Kokkos::resize(bcValues, numConstrainedDofs);
-
-    OrdinalType offset(0);
-    for(std::shared_ptr<EssentialBC<SimplexPhysicsType>> &bc : BCs)
+    Plato::OrdinalType tNumConstrainedDofs(0);
+    for(std::shared_ptr<EssentialBC<SimplexPhysicsType>> &tBC : mBCs)
     {
-        bc->get(mMeshSets, bcDofs, bcValues, offset, aTime);
-        offset += bc->get_length(mMeshSets);
+        tNumConstrainedDofs += tBC->get_length(mMeshSets);
+    }
+
+    Kokkos::resize(aBcDofs, tNumConstrainedDofs);
+    Kokkos::resize(aBcValues, tNumConstrainedDofs);
+
+    Plato::OrdinalType tOffset(0);
+    for(std::shared_ptr<EssentialBC<SimplexPhysicsType>> &tBC : mBCs)
+    {
+        tBC->get(mMeshSets, aBcDofs, aBcValues, tOffset, aTime);
+        tOffset += tBC->get_length(mMeshSets);
     }
 }
 

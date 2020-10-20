@@ -8,12 +8,17 @@
 #include "PlatoTestHelpers.hpp"
 
 #include <unordered_map>
+#include <Omega_h_shape.hpp>
 
+#include "BLAS1.hpp"
 #include "Simplex.hpp"
 #include "WorksetBase.hpp"
 #include "SpatialModel.hpp"
+#include "EssentialBCs.hpp"
 #include "SimplexFadTypes.hpp"
 #include "PlatoAbstractProblem.hpp"
+
+#include "alg/PlatoSolverFactory.hpp"
 
 namespace Plato
 {
@@ -62,8 +67,63 @@ public:
 };
 // class SimplexFluidDynamics
 
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
+class MomentumConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
+{
+public:
+    using SimplexT = Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
+    static constexpr auto mNumDofsPerNode = SimplexT::mNumMomentumDofsPerNode;
+};
+
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
+class MassConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
+{
+public:
+    using SimplexT = Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
+    static constexpr auto mNumDofsPerNode = SimplexT::mNumMassDofsPerNode;
+};
+
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
+class EnergyConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
+{
+public:
+    using SimplexT = Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
+    static constexpr auto mNumDofsPerNode = SimplexT::mNumEnergyDofsPerNode;
+};
+
+template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
+class IncompressibleFluids : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
+{
+public:
+    using SimplexT = typename Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
+    static constexpr auto mNumSpatialDims = SpaceDim;
+};
+
 namespace Hyperbolic
 {
+
+struct Solution
+{
+private:
+    std::unordered_map<std::string, Plato::ScalarMultiVector> mSolution;
+
+public:
+    void set(const std::string& aTag, const Plato::ScalarMultiVector& aData)
+    {
+        auto tLowerTag = Plato::tolower(aTag);
+        mSolution[tLowerTag] = aData;
+    }
+    Plato::ScalarMultiVector get(const std::string& aTag) const
+    {
+        auto tLowerTag = Plato::tolower(aTag);
+        auto tItr = mSolution.find(tLowerTag);
+        if(tItr == mSolution.end())
+        {
+            THROWERR(std::string("Did not find array with tag '") + aTag + "' in solution map.")
+        }
+        return tItr->second;
+    }
+};
 
 namespace FluidMechanics
 {
@@ -81,28 +141,27 @@ struct SimplexFadTypes
 struct States
 {
 private:
-    Plato::Scalar mTimeStep = 1.0;
-    Plato::Scalar mCurrentTime = 0.0;
+    std::unordered_map<std::string, Plato::Scalar> mScalars;
     std::unordered_map<std::string, Plato::ScalarVector> mStates;
 
 public:
-    Plato::Scalar time() const
+    Plato::Scalar getScalar(const std::string& aTag) const
     {
-        return mCurrentTime;
+        auto tLowerTag = Plato::tolower(aTag);
+        auto tItr = mScalars.find(tLowerTag);
+        if(tItr == mScalars.end())
+        {
+            THROWERR(std::string("State scalar with tag '") + aTag + "' is not defined in state map.")
+        }
+        return tItr->second;
     }
-    void time(Plato::Scalar aInput)
+    void setScalar(const std::string& aTag, const Plato::Scalar& aInput)
     {
-        mCurrentTime = aInput;
+        auto tLowerTag = Plato::tolower(aTag);
+        mScalars[tLowerTag] = aInput;
     }
-    Plato::Scalar timeStep() const
-    {
-        return mTimeStep;
-    }
-    void timeStep(Plato::Scalar aInput)
-    {
-        mTimeStep = aInput;
-    }
-    Plato::ScalarVector get(const std::string& aTag) const
+
+    Plato::ScalarVector getVector(const std::string& aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
         auto tItr = mStates.find(tLowerTag);
@@ -112,7 +171,7 @@ public:
         }
         return tItr->second;
     }
-    void set(const std::string& aTag, const Plato::ScalarVector& aInput)
+    void setVector(const std::string& aTag, const Plato::ScalarVector& aInput)
     {
         auto tLowerTag = Plato::tolower(aTag);
         mStates[tLowerTag] = aInput;
@@ -420,6 +479,7 @@ public:
 
     virtual void evaluate(Plato::Hyperbolic::FluidMechanics::WorkSets<SimplexPhysicsT, EvaluationT>& aWorkSets) const = 0;
     virtual void evaluate_boundary(Plato::Hyperbolic::FluidMechanics::WorkSets<SimplexPhysicsT, EvaluationT>& aWorkSets) const = 0;
+    virtual void updateProblem(const Plato::Hyperbolic::FluidMechanics::States& aStates) const = 0;
 };
 // class AbstractVectorFunction
 
@@ -919,19 +979,19 @@ private:
      WorkSetT& aWorkSets)
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVelStateEntryOrdinal, aState.get("momentum predictor"), aWorkSets.momentumPredictor());
+            (aDomain, mVelStateEntryOrdinal, aState.getVector("momentum predictor"), aWorkSets.momentumPredictor());
 
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVelStateEntryOrdinal, aState.get("previous momentum"), aWorkSets.previousMomentum());
+            (aDomain, mVelStateEntryOrdinal, aState.getVector("previous momentum"), aWorkSets.previousMomentum());
 
         Plato::workset_state_scalar_scalar<mNumMassDofsPerNode, mNumNodesPerCell>
-            (aDomain, mPressStateEntryOrdinal, aState.get("previous mass"), aWorkSets.previousMass());
+            (aDomain, mPressStateEntryOrdinal, aState.getVector("previous mass"), aWorkSets.previousMass());
 
         Plato::workset_state_scalar_scalar<mNumEnergyDofsPerNode, mNumNodesPerCell>
-            (aDomain, mTempStateEntryOrdinal, aState.get("previous energy"), aWorkSets.previousEnergy());
+            (aDomain, mTempStateEntryOrdinal, aState.getVector("previous energy"), aWorkSets.previousEnergy());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mControlEntryOrdinal, aState.get("controls"), aWorkSets.controls());
+            (aDomain, mControlEntryOrdinal, aState.getVector("controls"), aWorkSets.controls());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -944,19 +1004,19 @@ private:
     {
         auto tNumCells = aWorkSets.numCells();
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVelStateEntryOrdinal, aState.get("momentum predictor"), aWorkSets.momentumPredictor());
+            (tNumCells, mVelStateEntryOrdinal, aState.getVector("momentum predictor"), aWorkSets.momentumPredictor());
 
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVelStateEntryOrdinal, aState.get("previous momentum"), aWorkSets.previousMomentum());
+            (tNumCells, mVelStateEntryOrdinal, aState.getVector("previous momentum"), aWorkSets.previousMomentum());
 
         Plato::workset_state_scalar_scalar<mNumMassDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mPressStateEntryOrdinal, aState.get("previous mass"), aWorkSets.previousMass());
+            (tNumCells, mPressStateEntryOrdinal, aState.getVector("previous mass"), aWorkSets.previousMass());
 
         Plato::workset_state_scalar_scalar<mNumEnergyDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mTempStateEntryOrdinal, aState.get("previous energy"), aWorkSets.previousEnergy());
+            (tNumCells, mTempStateEntryOrdinal, aState.getVector("previous energy"), aWorkSets.previousEnergy());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (tNumCells, mControlEntryOrdinal, aState.get("controls"), aWorkSets.controls());
+            (tNumCells, mControlEntryOrdinal, aState.getVector("controls"), aWorkSets.controls());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell>
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
@@ -967,6 +1027,541 @@ private:
 
 }
 // namespace FluidMechanics
+
+}
+// namespace Hyperbolic
+
+namespace cbs
+{
+
+template<Plato::OrdinalType SpaceDim>
+inline Plato::ScalarVector
+calculate_element_characteristic_size
+(const Plato::OrdinalType & aNumCells,
+ const Plato::NodeCoordinate<SpaceDim> & aNodeCoordinate)
+{
+    Omega_h::Few<Omega_h::Vector<SpaceDim>, SpaceDim + 1> tElementCoords;
+    Plato::ScalarVector tElemCharacteristicSize("element size", aNumCells);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < SpaceDim + 1; tNodeIndex++)
+        {
+            for(Plato::OrdinalType tDimIndex = 0; tDimIndex < SpaceDim; tDimIndex++)
+            {
+                tElementCoords(tNodeIndex)(tDimIndex) = aNodeCoordinate(aCellOrdinal, tNodeIndex, tDimIndex);
+            }
+        }
+        auto tSphere = Omega_h::get_inball(tElementCoords);
+        tElemCharacteristicSize(aCellOrdinal) = static_cast<Plato::Scalar>(2.0) * tSphere.r;
+    },"calculate characteristic element size");
+    return tElemCharacteristicSize;
+}
+
+inline Plato::ScalarVector
+calculate_artificial_compressibility
+(const Plato::Hyperbolic::FluidMechanics::States& aStates,
+ Plato::Scalar aEpsilonConstant = 0.5)
+{
+    auto tPrandtl = aStates.getScalar("prandtl");
+    auto tReynolds = aStates.getScalar("reynolds");
+    auto tElemSize = aStates.getVector("element size");
+    auto tVelocity = aStates.getVector("current momentum");
+
+    auto tLength = tVelocity.size();
+    Plato::ScalarVector tArtificalCompress("artificial compressibility", tLength);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        // calculate velocities
+        Plato::Scalar tConvectiveVelocity = tVelocity(aOrdinal) * tVelocity(aOrdinal);
+        tConvectiveVelocity = sqrt(tConvectiveVelocity);
+        auto tDiffusionVelocity = static_cast<Plato::Scalar>(1.0) / (tElemSize(aOrdinal) * tReynolds);
+        auto tThermalVelocity = static_cast<Plato::Scalar>(1.0) / (tElemSize(aOrdinal) * tReynolds * tPrandtl);
+
+        // calculate minimum artificial compressibility
+        auto tArtificialCompressibility = (tConvectiveVelocity < tDiffusionVelocity) && (tConvectiveVelocity < tThermalVelocity)
+            && (tConvectiveVelocity < aEpsilonConstant) ? tConvectiveVelocity : aEpsilonConstant;
+        tArtificialCompressibility = (tDiffusionVelocity < tConvectiveVelocity ) && (tDiffusionVelocity < tThermalVelocity)
+            && (tDiffusionVelocity < aEpsilonConstant) ? tDiffusionVelocity : tArtificialCompressibility;
+        tArtificialCompressibility = (tThermalVelocity < tConvectiveVelocity ) && (tThermalVelocity < tDiffusionVelocity)
+            && (tThermalVelocity < aEpsilonConstant) ? tThermalVelocity : tArtificialCompressibility;
+
+        tArtificalCompress(aOrdinal) = tArtificialCompressibility;
+    }, "calculate artificial compressibility");
+
+    return tArtificalCompress;
+}
+
+inline Plato::ScalarVector
+calculate_stable_time_step
+(const Plato::Hyperbolic::FluidMechanics::States& aStates)
+{
+    auto tElemSize = aStates.getVector("element size");
+    auto tVelocity = aStates.getVector("current momentum");
+    auto tArtificialCompressibility = aStates.getVector("artificial compressibility");
+
+    auto tLength = tVelocity.size();
+    Plato::ScalarVector tTimeStep("time step", tLength);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        // calculate convective velocity
+        Plato::Scalar tConvectiveVelocity = tVelocity(aOrdinal) * tVelocity(aOrdinal);
+        tConvectiveVelocity = sqrt(tConvectiveVelocity);
+
+        // calculate stable time step
+        tTimeStep(aOrdinal) = tElemSize(aOrdinal) / (tConvectiveVelocity + tArtificialCompressibility(aOrdinal));
+    }, "calculate stable time step");
+
+    return tTimeStep;
+}
+
+inline void
+enforce_boundary_condition
+(const Plato::LocalOrdinalVector & aBcDofs,
+ const Plato::ScalarVector       & aBcValues,
+ Plato::ScalarVector             & aState)
+{
+    auto tLength = aBcValues.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        auto tDOF = aBcDofs(aOrdinal);
+        aState(tDOF) = aBcValues(aOrdinal);
+    }, "enforce boundary condition");
+}
+
+inline Plato::Scalar
+calculate_stopping_criterion
+(const Plato::ScalarVector& aTimeStep,
+ const Plato::ScalarVector& aCurrentState,
+ const Plato::ScalarVector& aPreviousState,
+ const Plato::ScalarVector& aArtificialCompressibility)
+{
+    Plato::Scalar tResidual(0);
+    auto tLength = aCurrentState.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        auto tDeltaPressOverTimeStep = aCurrentState(aOrdinal) - aPreviousState(aOrdinal) / aTimeStep(aOrdinal);
+        tResidual += ( static_cast<Plato::Scalar>(1) /
+            ( aArtificialCompressibility(aOrdinal) * aArtificialCompressibility(aOrdinal) ) )
+                * (tDeltaPressOverTimeStep * tDeltaPressOverTimeStep);
+
+    }, "enforce boundary condition");
+
+    return tResidual;
+}
+
+inline Plato::Scalar
+calculate_explicit_solve_convergence_criterion
+(const Plato::Hyperbolic::FluidMechanics::States& aStates)
+{
+    auto tTimeStep = aStates.getVector("time step");
+    auto tCurrentPressure = aStates.getVector("current mass");
+    auto tPreviousPressure = aStates.getVector("previous mass");
+    auto tArtificialCompress = aStates.getVector("artificial compressibility");
+
+    auto tError = Plato::cbs::calculate_stopping_criterion(tTimeStep, tCurrentPressure, tPreviousPressure, tArtificialCompress);
+
+    return tError;
+}
+
+inline Plato::Scalar
+calculate_semi_implicit_solve_convergence_criterion
+(const Plato::Hyperbolic::FluidMechanics::States& aStates)
+{
+    std::vector<Plato::Scalar> tErrors;
+
+    // pressure error
+    auto tTimeStep = aStates.getVector("time step");
+    auto tCurrentState = aStates.getVector("current mass");
+    auto tPreviousState = aStates.getVector("previous mass");
+    auto tArtificialCompress = aStates.getVector("artificial compressibility");
+    auto tMyResidual = Plato::cbs::calculate_stopping_criterion(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
+    Plato::Scalar tMyMaxStateError(0);
+    Plato::blas1::max(tMyResidual, tMyMaxStateError);
+    tErrors.push_back(tMyMaxStateError);
+
+    // velocity error
+    tCurrentState = aStates.getVector("current momentum");
+    tPreviousState = aStates.getVector("previous momentum");
+    tMyResidual = Plato::cbs::calculate_stopping_criterion(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
+    tMyMaxStateError(0.0);
+    Plato::blas1::max(tMyResidual, tMyMaxStateError);
+    tErrors.push_back(tMyMaxStateError);
+
+    // temperature error
+    tCurrentState = aStates.getVector("current energy");
+    tPreviousState = aStates.getVector("previous energy");
+    tMyResidual = Plato::cbs::calculate_stopping_criterion(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
+    tMyMaxStateError(0.0);
+    Plato::blas1::max(tMyResidual, tMyMaxStateError);
+    tErrors.push_back(tMyMaxStateError);
+
+    auto tMax = *std::max_element(tErrors.begin(), tErrors.end());
+
+    return tMax;
+}
+
+}
+// namespace cbs
+
+namespace Hyperbolic
+{
+
+class AbstractProblem
+{
+public:
+    virtual ~AbstractProblem() {}
+
+    virtual void output(const Plato::ScalarVector &aControl, const Plato::Hyperbolic::Solution &aSolution)=0;
+    virtual Plato::Hyperbolic::Solution solution(const Plato::ScalarVector& aControl) = 0;
+    virtual Plato::Scalar criterionValue(const Plato::ScalarVector & aControl, const std::string& aName) = 0;
+    virtual Plato::ScalarVector criterionGradient(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
+    virtual Plato::ScalarVector criterionGradientX(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
+};
+
+template<typename PhysicsT>
+class FluidMechanicsProblem
+{
+private:
+    static constexpr auto mNumSpatialDims         = PhysicsT::mNumSpatialDims;         /*!< number of mass dofs per node */
+    static constexpr auto mNumMassDofsPerNode     = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
+    static constexpr auto mNumEnergyDofsPerNode   = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumMomentumDofsPerNode = PhysicsT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+
+    Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
+
+    bool mIsExplicitSolve = true;
+    bool mIsTransientProblem = false;
+    Plato::Scalar mPrandtlNumber = 1.0;
+    Plato::Scalar mReynoldsNumber = 1.0;
+    Plato::Scalar mCBSsolverTolerance = 1e-5;
+    Plato::OrdinalType mNumSteps = 100;
+
+    Plato::ScalarMultiVector mMass;
+    Plato::ScalarMultiVector mEnergy;
+    Plato::ScalarMultiVector mMomentum;
+    Plato::ScalarMultiVector mPredictor;
+
+    using VectorFunctionType = Plato::Hyperbolic::FluidMechanics::VectorFunction<PhysicsT>;
+    VectorFunctionType mPressureResidual;
+    VectorFunctionType mTemperatureResidual;
+    VectorFunctionType mVelocityPredictorResidual;
+    VectorFunctionType mVelocityCorrectorResidual;
+
+    using MassT     = typename Plato::MassConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControls>;
+    using EnergyT   = typename Plato::EnergyConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControls>;
+    using MomentumT = typename Plato::MomentumConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControls>;
+    Plato::EssentialBCs<MomentumT> mVelocityStateBoundaryConditions;
+    Plato::EssentialBCs<MassT>     mPressureStateBoundaryConditions;
+    Plato::EssentialBCs<EnergyT>   mTemperatureStateBoundaryConditions;
+
+    std::shared_ptr<Plato::AbstractSolver> mVectorFieldSolver;
+    std::shared_ptr<Plato::AbstractSolver> mScalarFieldSolver;
+
+public:
+    FluidMechanicsProblem
+    (Omega_h::Mesh &aMesh,
+     Omega_h::MeshSets &aMeshSets,
+     Teuchos::ParameterList &aProblemParams,
+     Comm::Machine aMachine)
+    {
+        Plato::SolverFactory tSolverFactory(aProblemParams.sublist("Linear Solver"));
+        mScalarFieldSolver = tSolverFactory.create(aMesh, aMachine, mNumMassDofsPerNode);
+        mVectorFieldSolver = tSolverFactory.create(aMesh, aMachine, mNumMomentumDofsPerNode);
+    }
+
+    void output(const Plato::ScalarVector &aControl, const Plato::Hyperbolic::Solution &aSolution)
+    {
+    }
+
+    Plato::Hyperbolic::Solution solution(const Plato::ScalarVector& aControl)
+    {
+        Plato::Hyperbolic::FluidMechanics::States tStates;
+        tStates.setVector("control", aControl);
+
+        this->calculateElemCharacteristicSize(tStates);
+        for (decltype(mNumSteps) tStep = 1; tStep < mNumSteps; tStep++)
+        {
+            tStates.setScalar("step index", tStep);
+            this->setStates(tStates);
+
+            this->calculateStableTimeStep(tStates);
+            this->calculateVelocityPredictor(tStates);
+            this->calculatePressureState(tStates);
+            this->calculateVelocityCorrector(tStates);
+            this->calculateTemperatureState(tStates);
+
+            this->enforceVelocityBoundaryConditions(tStates);
+            this->enforcePressureBoundaryConditions(tStates);
+            this->enforceTemperatureBoundaryConditions(tStates);
+
+            if(this->checkStoppingCriteria(tStates))
+            {
+                break;
+            }
+        }
+
+        Plato::Hyperbolic::Solution tSolution;
+        tSolution.set("mass state", mMass);
+        tSolution.set("energy state", mEnergy);
+        tSolution.set("momentum state", mMomentum);
+        return tSolution;
+    }
+
+    Plato::Scalar criterionValue(const Plato::ScalarVector & aControl, const std::string& aName)
+    {
+    }
+
+    Plato::ScalarVector criterionGradient(const Plato::ScalarVector &aControl, const std::string &aName)
+    {
+    }
+
+    Plato::ScalarVector criterionGradientX(const Plato::ScalarVector &aControl, const std::string &aName)
+    {
+    }
+
+private:
+    bool checkStoppingCriteria(const Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        bool tStop = false;
+        if(!mIsTransientProblem)
+        {
+            Plato::Scalar tCriterionValue(0.0);
+            if(mIsExplicitSolve)
+            {
+                tCriterionValue = Plato::cbs::calculate_explicit_solve_convergence_criterion(aStates);
+            }
+            else
+            {
+                tCriterionValue = Plato::cbs::calculate_semi_implicit_solve_convergence_criterion(aStates);
+            }
+
+            if(tCriterionValue < mCBSsolverTolerance)
+            {
+                tStop = true;
+            }
+        }
+        return tStop;
+    }
+    void calculateElemCharacteristicSize(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        Plato::ScalarVector tElementSize;
+        Plato::NodeCoordinate<mNumSpatialDims> tNodeCoordinates;
+        auto tNumCells = mSpatialModel.Mesh.nverts();
+        auto tElemCharacteristicSize =
+            Plato::cbs::calculate_element_characteristic_size<mNumSpatialDims>(tNumCells, tNodeCoordinates);
+        aStates.setVector("element size", tElemCharacteristicSize);
+    }
+
+    void calculateStableTimeStep(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        auto tArtificialCompressibility = Plato::cbs::calculate_artificial_compressibility(aStates);
+        aStates.setVector("artificial compressibility", tArtificialCompressibility);
+        auto tTimeStep = Plato::cbs::calculate_stable_time_step(aStates);
+        if(mIsTransientProblem)
+        {
+            Plato::Scalar tMinTimeStep(0);
+            Plato::blas1::min(tTimeStep, tMinTimeStep);
+            Plato::blas1::fill(tMinTimeStep, tTimeStep);
+            auto tCurrentTimeStepIndex = aStates.getScalar("step index");
+            auto tCurrentTime = tMinTimeStep * static_cast<Plato::Scalar>(tCurrentTimeStepIndex);
+            aStates.setScalar("current time", tCurrentTime);
+        }
+        aStates.setVector("time step", tTimeStep);
+    }
+
+    void enforceVelocityBoundaryConditions(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        if(mIsTransientProblem)
+        {
+            auto tCurrentTime = aStates.getScalar("current time");
+            mVelocityStateBoundaryConditions.get(tBcDofs, tBcValues, tCurrentTime);
+        }
+        else
+        {
+            mVelocityStateBoundaryConditions.get(tBcDofs, tBcValues);
+        }
+        auto tCurrentVelocity = aStates.getVector("current momentum");
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
+    }
+
+    void enforcePressureBoundaryConditions(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        if(mIsTransientProblem)
+        {
+            auto tCurrentTime = aStates.getScalar("current time");
+            mPressureStateBoundaryConditions.get(tBcDofs, tBcValues, tCurrentTime);
+        }
+        else
+        {
+            mPressureStateBoundaryConditions.get(tBcDofs, tBcValues);
+        }
+        auto tCurrentPressure = aStates.getVector("current mass");
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
+    }
+
+    void enforceTemperatureBoundaryConditions(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        if(mIsTransientProblem)
+        {
+            auto tCurrentTime = aStates.getScalar("current time");
+            mTemperatureStateBoundaryConditions.get(tBcDofs, tBcValues, tCurrentTime);
+        }
+        else
+        {
+            mTemperatureStateBoundaryConditions.get(tBcDofs, tBcValues);
+        }
+        auto tCurrentTemperature = aStates.getVector("current energy");
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
+    }
+
+    void setStates(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        Plato::OrdinalType tStep = aStates.getScalar("step index");
+        auto tPrevStep = tStep - 1;
+        auto tMomentumPredictor = Kokkos::subview(mPredictor, tStep, Kokkos::ALL());
+        auto tCurrentMass       = Kokkos::subview(mMass,      tStep, Kokkos::ALL());
+        auto tCurrentMomentum   = Kokkos::subview(mMomentum,  tStep, Kokkos::ALL());
+        auto tCurrentEnergy     = Kokkos::subview(mEnergy,    tStep, Kokkos::ALL());
+        aStates.setVector("current mass", tCurrentMass);
+        aStates.setVector("current energy", tCurrentEnergy);
+        aStates.setVector("current momentum", tCurrentMomentum);
+        aStates.setVector("momentum predictor", tMomentumPredictor);
+
+        auto tPreviousMass     = Kokkos::subview(mMass,     tPrevStep, Kokkos::ALL());
+        auto tPreviousMomentum = Kokkos::subview(mMomentum, tPrevStep, Kokkos::ALL());
+        auto tPreviousEnergy   = Kokkos::subview(mEnergy,   tPrevStep, Kokkos::ALL());
+        aStates.setVector("previous mass", tPreviousMass);
+        aStates.setVector("previous energy", tPreviousEnergy);
+        aStates.setVector("previous momentum", tPreviousMomentum);
+    }
+
+    void calculateVelocityCorrector(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        // calculate current residual and jacobian matrix
+        auto tResidualCorrector = mVelocityCorrectorResidual.value(aStates);
+        auto tJacobianCorrector = mVelocityCorrectorResidual.gradient_uc(aStates);
+
+        // solve momentum corrector equation (consistent or mass lumped)
+        Plato::ScalarVector tDeltaVelocity("increment", tResidualCorrector.size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
+        mScalarFieldSolver->solve(*tJacobianCorrector, tDeltaVelocity, tResidualCorrector);
+
+        // update velocity
+        auto tCurrentVelocity = aStates.getVector("current momentum");
+        auto tPreviousVelocity = aStates.getVector("previous momentum");
+        Plato::blas1::copy(tPreviousVelocity, tCurrentVelocity);
+        Plato::blas1::axpy(1.0, tDeltaVelocity, tCurrentVelocity);
+    }
+
+    void calculateVelocityPredictor(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        // calculate current residual and jacobian matrix
+        auto tResidualPredictor = mVelocityPredictorResidual.value(aStates);
+        auto tJacobianPredictor = mVelocityPredictorResidual.gradient_du(aStates);
+
+        // solve momentum predictor equation (consistent or mass lumped)
+        auto tDeltaVelocityPredictor = aStates.getVector("momentum predictor");
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocityPredictor);
+        mVectorFieldSolver->solve(*tJacobianPredictor, tDeltaVelocityPredictor, tResidualPredictor);
+    }
+
+    void calculatePressureState(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        // calculate current residual and jacobian matrix
+        auto tResidualPressure = mPressureResidual.value(aStates);
+        auto tJacobianPressure = mPressureResidual.gradient_mc(aStates);
+
+        // solve mass equation (consistent or mass lumped)
+        Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPressure);
+        mScalarFieldSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
+
+        // update pressure
+        auto tCurrentPressure = aStates.getVector("current mass");
+        auto tPreviousPressure = aStates.getVector("previous mass");
+        Plato::blas1::copy(tPreviousPressure, tCurrentPressure);
+        Plato::blas1::axpy(1.0, tDeltaPressure, tCurrentPressure);
+    }
+
+    void calculateTemperatureState(Plato::Hyperbolic::FluidMechanics::States& aStates)
+    {
+        // calculate current residual and jacobian matrix
+        auto tResidualTemperature = mTemperatureResidual.value(aStates);
+        auto tJacobianTemperature = mTemperatureResidual.gradient_ec(aStates);
+
+        // solve energy equation (consistent or mass lumped)
+        Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaTemperature);
+        mScalarFieldSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
+
+        // update temperature
+        auto tCurrentTemperature = aStates.getVector("current energy");
+        auto tPreviousTemperature = aStates.getVector("previous energy");
+        Plato::blas1::copy(tPreviousTemperature, tCurrentTemperature);
+        Plato::blas1::axpy(1.0, tDeltaTemperature, tCurrentTemperature);
+    }
+
+    void checkEssentialBoundaryConditions()
+    {
+        auto tEssentialBoundaryConditionsAreEmpty = mTemperatureStateBoundaryConditions.empty()
+            && mPressureStateBoundaryConditions.empty() && mVelocityStateBoundaryConditions.empty();
+        if(tEssentialBoundaryConditionsAreEmpty)
+        {
+            THROWERR("Essential Boundary Conditions are empty.")
+        }
+    }
+
+    void readTemperatureBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        if(aInputs.isSublist("Temperature Boundary Conditions"))
+        {
+            auto tVelocityBCs = aInputs.sublist("Temperature Boundary Conditions");
+            if(tVelocityBCs.isSublist("Essential Boundary Conditions"))
+            {
+                auto tParamListBCs = aInputs.sublist("Essential Boundary Conditions");
+                mTemperatureStateBoundaryConditions = Plato::EssentialBCs<EnergyT>(tParamListBCs, mSpatialModel.MeshSets);
+            }
+        }
+    }
+
+    void readPressureBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        if(aInputs.isSublist("Pressure Boundary Conditions"))
+        {
+            auto tVelocityBCs = aInputs.sublist("Pressure Boundary Conditions");
+            if(tVelocityBCs.isSublist("Essential Boundary Conditions"))
+            {
+                auto tParamListBCs = aInputs.sublist("Essential Boundary Conditions");
+                mPressureStateBoundaryConditions = Plato::EssentialBCs<MassT>(tParamListBCs, mSpatialModel.MeshSets);
+            }
+        }
+    }
+
+    void readVelocityBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        if(aInputs.isSublist("Velocity Boundary Conditions"))
+        {
+            auto tVelocityBCs = aInputs.sublist("Velocity Boundary Conditions");
+            if(tVelocityBCs.isSublist("Essential Boundary Conditions"))
+            {
+                auto tParamListBCs = aInputs.sublist("Essential Boundary Conditions");
+                mVelocityStateBoundaryConditions = Plato::EssentialBCs<MomentumT>(tParamListBCs, mSpatialModel.MeshSets);
+            }
+        }
+    }
+};
 
 }
 // namespace Hyperbolic
