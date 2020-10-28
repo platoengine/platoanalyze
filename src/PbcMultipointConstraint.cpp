@@ -64,6 +64,13 @@ PbcMultipointConstraint(Omega_h::Mesh & aMesh,
     auto& tNodeSets = aMeshSets[Omega_h::NODE_SET];
     std::string tChildNodeSet = aParam.get<std::string>("Child");
     auto tChildNodeSetsIter = tNodeSets.find(tChildNodeSet);
+    if(tChildNodeSetsIter == tNodeSets.end())
+    {
+        std::ostringstream tMsg;
+        tMsg << "Could not find Node Set with name = '" << tChildNodeSet.c_str()
+                << "'. Node Set is not defined in input geometry/mesh file.\n";
+        THROWERR(tMsg.str())
+    }
     auto tChildNodeLids = (tChildNodeSetsIter->second);
     auto tNumberChildNodes = tChildNodeLids.size();
     

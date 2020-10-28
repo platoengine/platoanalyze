@@ -27,11 +27,25 @@ TieMultipointConstraint(const Omega_h::MeshSets & aMeshSets,
     
     // parse child nodes
     auto tChildNodeSetsIter = tNodeSets.find(tChildNodeSet);
+    if(tChildNodeSetsIter == tNodeSets.end())
+    {
+        std::ostringstream tMsg;
+        tMsg << "Could not find Node Set with name = '" << tChildNodeSet.c_str()
+                << "'. Node Set is not defined in input geometry/mesh file.\n";
+        THROWERR(tMsg.str())
+    }
     auto tChildNodeLids = (tChildNodeSetsIter->second);
     auto tNumberChildNodes = tChildNodeLids.size();
     
     // parse parent nodes
     auto tParentNodeSetsIter = tNodeSets.find(tParentNodeSet);
+    if(tParentNodeSetsIter == tNodeSets.end())
+    {
+        std::ostringstream tMsg;
+        tMsg << "Could not find Node Set with name = '" << tParentNodeSet.c_str()
+                << "'. Node Set is not defined in input geometry/mesh file.\n";
+        THROWERR(tMsg.str())
+    }
     auto tParentNodeLids = (tParentNodeSetsIter->second);
     auto tNumberParentNodes = tParentNodeLids.size();
 
