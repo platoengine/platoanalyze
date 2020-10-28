@@ -91,7 +91,12 @@ public:
         this->initialize(aMesh, aMeshSets, aInputParams);
 
         Plato::SolverFactory tSolverFactory(aInputParams.sublist("Linear Solver"));
-        mSolver = tSolverFactory.create(aMesh.nverts(), aMachine, SimplexPhysics::mNumDofsPerNode, mMPCs);
+
+        if(mMPCs)
+            mSolver = tSolverFactory.create(aMesh.nverts(), aMachine, SimplexPhysics::mNumDofsPerNode, mMPCs);
+        else
+            mSolver = tSolverFactory.create(aMesh.nverts(), aMachine, SimplexPhysics::mNumDofsPerNode);
+
     }
 
     virtual ~Problem(){}
