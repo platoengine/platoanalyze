@@ -616,7 +616,7 @@ private:
             mAdjoint = Plato::ScalarMultiVector("Adjoint Variables", 1, tLength);
         }
 
-        if(aInputParams.isType<std::string>("Multipoint Constraints"))
+        if(aInputParams.isSublist("Multipoint Constraints") == true)
         {
             Plato::OrdinalType tNumDofsPerNode = mPDE->numDofsPerNode();
             auto & tMyParams = aInputParams.sublist("Multipoint Constraints", false);
