@@ -388,6 +388,7 @@ findParentElements(
         {
             aParentElements(iNodeOrdinal) = -2;
             constexpr ScalarT cNotFound = -1e8; // big negative number ensures max min is found
+            constexpr ScalarT cEpsilon = -1e-8; // small negative number for checking if float greater than 0
             ScalarT tMaxMin = cNotFound;
             typename Plato::ScalarVectorT<int>::value_type iParent = -2;
             for( int iElem=tOffset(iNodeOrdinal); iElem<tOffset(iNodeOrdinal+1); iElem++ )
@@ -405,7 +406,7 @@ findParentElements(
                      iParent = tElem;
                 }
             }
-            if( tMaxMin >= 0.0 )
+            if( tMaxMin >= cEpsilon )
             {
                 aParentElements(iNodeOrdinal) = iParent;
             }
