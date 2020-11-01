@@ -104,7 +104,7 @@ public:
 };
 // class SimplexFluidDynamics
 
-namespace Hyperbolic
+namespace FluidMechanics
 {
 
 struct Solution
@@ -129,9 +129,6 @@ public:
         return tItr->second;
     }
 };
-
-namespace FluidMechanics
-{
 
 template<typename SimplexPhysics>
 struct SimplexFadTypes
@@ -276,7 +273,7 @@ struct ResultTypes : EvaluationTypes<SimplexPhysicsT>
 template <typename SimplexPhysicsT>
 struct GradCurrentMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
+  using FadType = typename Plato::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
 
   using ControlScalarType           = Plato::Scalar;
   using ConfigScalarType            = Plato::Scalar;
@@ -294,7 +291,7 @@ struct GradCurrentMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 template <typename SimplexPhysicsT>
 struct GradCurrentEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::EnergyFad;
+  using FadType = typename Plato::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::EnergyFad;
 
   using ControlScalarType           = Plato::Scalar;
   using ConfigScalarType            = Plato::Scalar;
@@ -312,7 +309,7 @@ struct GradCurrentEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 template <typename SimplexPhysicsT>
 struct GradCurrentMassTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MassFad;
+  using FadType = typename Plato::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MassFad;
 
   using ControlScalarType           = Plato::Scalar;
   using ConfigScalarType            = Plato::Scalar;
@@ -330,7 +327,7 @@ struct GradCurrentMassTypes : EvaluationTypes<SimplexPhysicsT>
 template <typename SimplexPhysicsT>
 struct GradPreviousMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
+  using FadType = typename Plato::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
 
   using ControlScalarType           = Plato::Scalar;
   using ConfigScalarType            = Plato::Scalar;
@@ -348,7 +345,7 @@ struct GradPreviousMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 template <typename SimplexPhysicsT>
 struct GradPreviousEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::EnergyFad;
+  using FadType = typename Plato::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::EnergyFad;
 
   using ControlScalarType           = Plato::Scalar;
   using ConfigScalarType            = Plato::Scalar;
@@ -366,7 +363,7 @@ struct GradPreviousEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 template <typename SimplexPhysicsT>
 struct GradPreviousMassTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MassFad;
+  using FadType = typename Plato::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MassFad;
 
   using ControlScalarType           = Plato::Scalar;
   using ConfigScalarType            = Plato::Scalar;
@@ -384,7 +381,7 @@ struct GradPreviousMassTypes : EvaluationTypes<SimplexPhysicsT>
 template <typename SimplexPhysicsT>
 struct GradMomentumPredictorTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
+  using FadType = typename Plato::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
 
   using ControlScalarType           = Plato::Scalar;
   using ConfigScalarType            = Plato::Scalar;
@@ -402,7 +399,7 @@ struct GradMomentumPredictorTypes : EvaluationTypes<SimplexPhysicsT>
 template <typename SimplexPhysicsT>
 struct GradMomentumCorrectorTypes : EvaluationTypes<SimplexPhysicsT>
 {
-  using FadType = typename Plato::Hyperbolic::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
+  using FadType = typename Plato::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
 
   using ControlScalarType           = Plato::Scalar;
   using ConfigScalarType            = Plato::Scalar;
@@ -581,7 +578,7 @@ public:
     virtual ~AbstractScalarFunction(){}
 
     virtual void evaluate
-    (const Plato::Hyperbolic::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
+    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
      Plato::ScalarVectorT<typename EvaluationT::ResultScalarType>                         & aResult) const = 0;
 };
 // class AbstractScalarFunction
@@ -602,7 +599,7 @@ public:
 class CriterionBase
 {
 private:
-    using PrimalStates = Plato::Hyperbolic::FluidMechanics::States;
+    using PrimalStates = Plato::FluidMechanics::States;
 
 public:
     virtual ~CriterionBase(){}
@@ -640,7 +637,7 @@ public:
 // class ScalarFunctionBase
 
 template<typename PhysicsT>
-class PhysicsScalarFunction : public Plato::Hyperbolic::FluidMechanics::CriterionBase
+class PhysicsScalarFunction : public Plato::FluidMechanics::CriterionBase
 {
 private:
     std::string mScalarFuncName;
@@ -657,20 +654,20 @@ private:
     static constexpr auto mNumConfigDofsPerCell   = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration degrees of freedom per cell */
 
     // forward automatic differentiation types
-    using Result           = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
-    using GradConfig       = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
-    using GradControl      = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradControl;
-    using GradCurrMass     = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassCurr;
-    using GradCurrEnergy   = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyCurr;
-    using GradCurrMomentum = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumCurr;
+    using Result           = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
+    using GradConfig       = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
+    using GradControl      = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradControl;
+    using GradCurrMass     = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassCurr;
+    using GradCurrEnergy   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyCurr;
+    using GradCurrMomentum = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumCurr;
 
     // element residual functions
-    using ResultFunc           = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, Result>>;
-    using GradConfigFunc       = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradConfig>>;
-    using GradControlFunc      = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradControl>>;
-    using GradCurrMassFunc     = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradCurrMass>>;
-    using GradCurrEnergyFunc   = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradCurrEnergy>>;
-    using GradCurrMomentumFunc = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradCurrMomentum>>;
+    using ResultFunc           = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, Result>>;
+    using GradConfigFunc       = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradConfig>>;
+    using GradControlFunc      = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradControl>>;
+    using GradCurrMassFunc     = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradCurrMass>>;
+    using GradCurrEnergyFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradCurrEnergy>>;
+    using GradCurrMomentumFunc = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradCurrMomentum>>;
 
     // element scalar functions per element block, i.e. domain
     std::unordered_map<std::string, ResultFunc>           mValueFuncs;
@@ -691,7 +688,7 @@ private:
     Plato::VectorEntryOrdinal<mNumSpatialDims, mNumEnergyDofsPerCell>   mEnergyStateEntryOrdinal;   /*!< energy state local-to-global ID map */
     Plato::VectorEntryOrdinal<mNumSpatialDims, mNumMomentumDofsPerCell> mMomentumStateEntryOrdinal; /*!< momentum state local-to-global ID map */
 
-    using PrimalStates = Plato::Hyperbolic::FluidMechanics::States;
+    using PrimalStates = Plato::FluidMechanics::States;
 
 public:
     PhysicsScalarFunction
@@ -721,7 +718,7 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, Result> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, Result> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -745,7 +742,7 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradConfig> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradConfig> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -770,7 +767,7 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradControl> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradControl> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -795,7 +792,7 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCurrMass> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurrMass> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -820,7 +817,7 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCurrEnergy> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurrEnergy> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -845,7 +842,7 @@ public:
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCurrMomentum> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurrMomentum> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -924,18 +921,18 @@ private:
 
 
 template<typename PhysicsT, typename EvaluationT>
-class AbstractVectorFunctionBase
+class AbstractVectorFunction
 {
 public:
-    AbstractVectorFunctionBase(){}
-    virtual ~AbstractVectorFunctionBase(){}
+    AbstractVectorFunction(){}
+    virtual ~AbstractVectorFunction(){}
 
     virtual void evaluate
-    (const Plato::Hyperbolic::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
+    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
      Plato::ScalarMultiVectorT<typename EvaluationT::ResultScalarType>                          & aResult) const = 0;
 
     virtual void evaluateBoundary
-    (const Plato::Hyperbolic::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
+    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
      Plato::ScalarMultiVectorT<typename EvaluationT::ResultScalarType>                          & aResult) const = 0;
 };
 // class AbstractVectorFunction
@@ -944,7 +941,7 @@ public:
 
 template<typename PhysicsT, typename EvaluationT>
 class VelocityPredictorResidual :
-    public Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>
+    public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -968,7 +965,7 @@ private:
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>      mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>> mNeumannLoads; /*!< Neumann loads interface */
 
-    using StateWorkSets = Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
+    using StateWorkSets = Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
 
     Plato::Scalar mDaNum = 1.0;
     Plato::Scalar mPrNum = 1.0;
@@ -1003,7 +1000,7 @@ public:
      Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         using StrainT =
-            typename Plato::Hyperbolic::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
+            typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
 
         auto tNumCells = mSpatialDomain.numCells();
         Plato::ScalarVectorT<ConfigT>   tCellVolume("cell weight", tNumCells);
@@ -1251,7 +1248,7 @@ private:
 
 template<typename PhysicsT, typename EvaluationT>
 class VelocityCorrectorResidual :
-    public Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>
+    public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -1274,7 +1271,7 @@ private:
 
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;
 
-    using StateWorkSets = Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
+    using StateWorkSets = Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
 
     Plato::Scalar mThetaTwo = 0.0;
 
@@ -1406,7 +1403,7 @@ public:
 
 template<typename PhysicsT, typename EvaluationT>
 class TemperatureIncrementResidual :
-    public Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>
+    public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -1431,7 +1428,7 @@ private:
 
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>> mHeatFlux; /*!< heat flux evaluator */
 
-    using StateWorkSets = Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
+    using StateWorkSets = Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
 
     Plato::Scalar mHeatSource                = 0.0;
     Plato::Scalar mFluidDomainCutOff         = 0.5;
@@ -1467,8 +1464,7 @@ public:
      Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         // set local forward ad type
-        using StabForceT = typename
-            Plato::Hyperbolic::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT, PrevTempT>;
+        using StabForceT = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT, PrevTempT>;
 
         // set local data
         auto tNumCells = mSpatialDomain.numCells();
@@ -1635,7 +1631,7 @@ public:
 
 template<typename PhysicsT, typename EvaluationT>
 class PressureIncrementResidual :
-    public Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>
+    public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     Plato::DataMap& mDataMap;                   /*!< output database */
@@ -1690,30 +1686,30 @@ private:
     static constexpr auto mNumTimeStepsPerNode  = 1; /*!< number of time step dofs per node */
 
     // forward automatic differentiation types
-    using Residual      = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
-    using GradConfig    = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
-    using GradControl   = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradControl;
-    using GradCurrVel   = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumCurr;
-    using GradPrevVel   = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumPrev;
-    using GradCurrTemp  = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyCurr;
-    using GradPrevTemp  = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyPrev;
-    using GradCurrPress = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassCurr;
-    using GradPrevPress = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassPrev;
-    using GradPredictor = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradPredictor;
-    using GradCorrector = typename Plato::Hyperbolic::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCorrector;
+    using Residual      = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
+    using GradConfig    = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
+    using GradControl   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradControl;
+    using GradCurrVel   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumCurr;
+    using GradPrevVel   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumPrev;
+    using GradCurrTemp  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyCurr;
+    using GradPrevTemp  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyPrev;
+    using GradCurrPress = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassCurr;
+    using GradPrevPress = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassPrev;
+    using GradPredictor = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradPredictor;
+    using GradCorrector = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCorrector;
 
     // element residual functions
-    using ResidualFunc      = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, Residual>>;
-    using GradConfigFunc    = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradConfig>>;
-    using GradControlFunc   = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradControl>>;
-    using GradCurrVelFunc   = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradCurrVel>>;
-    using GradPrevVelFunc   = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradPrevVel>>;
-    using GradCurrTempFunc  = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradCurrTemp>>;
-    using GradPrevTempFunc  = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradPrevTemp>>;
-    using GradCurrPressFunc = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradCurrPress>>;
-    using GradPrevPressFunc = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradPrevPress>>;
-    using GradPredictorFunc = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradPredictor>>;
-    using GradCorrectorFunc = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<typename PhysicsT::SimplexT, GradCorrector>>;
+    using ResidualFunc      = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, Residual>>;
+    using GradConfigFunc    = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradConfig>>;
+    using GradControlFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradControl>>;
+    using GradCurrVelFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurrVel>>;
+    using GradPrevVelFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPrevVel>>;
+    using GradCurrTempFunc  = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurrTemp>>;
+    using GradPrevTempFunc  = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPrevTemp>>;
+    using GradCurrPressFunc = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurrPress>>;
+    using GradPrevPressFunc = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPrevPress>>;
+    using GradPredictorFunc = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPredictor>>;
+    using GradCorrectorFunc = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCorrector>>;
 
     // element vector functions per element block, i.e. domain
     std::unordered_map<std::string, ResidualFunc>      mResidualFuncs;
@@ -1738,7 +1734,7 @@ private:
     Plato::VectorEntryOrdinal<mNumSpatialDims, mNumVelDofsPerCell>   mVectorStateEntryOrdinal; /*!< vector state (e.g. velocity) local-to-global ID map */
     Plato::VectorEntryOrdinal<mNumSpatialDims, mNumPressDofsPerCell> mScalarStateEntryOrdinal; /*!< scalar state (e.g. pressure) local-to-global ID map */
 
-    using PrimalStates = Plato::Hyperbolic::FluidMechanics::States;
+    using PrimalStates = Plato::FluidMechanics::States;
 
 public:
     /**************************************************************************//**
@@ -1785,7 +1781,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, Residual> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, Residual> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1807,7 +1803,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, Residual> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, Residual> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<Residual> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -1842,7 +1838,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradConfig> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradConfig> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1856,7 +1852,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradConfig> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradConfig> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradConfig> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -1883,7 +1879,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradControl> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradControl> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1897,7 +1893,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradControl> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradControl> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradControl> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -1924,7 +1920,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradPredictor> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradPredictor> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1938,7 +1934,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradPredictor> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradPredictor> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradPredictor> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -1965,7 +1961,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCorrector> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCorrector> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1979,7 +1975,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCorrector> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCorrector> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradCorrector> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -2006,7 +2002,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradPrevVel> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradPrevVel> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -2020,7 +2016,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradPrevVel> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradPrevVel> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradPrevVel> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -2047,7 +2043,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradPrevPress> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradPrevPress> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -2061,7 +2057,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradPrevPress> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradPrevPress> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradPrevPress> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -2088,7 +2084,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradPrevTemp> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradPrevTemp> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -2102,7 +2098,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradPrevTemp> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradPrevTemp> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradPrevTemp> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -2129,7 +2125,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCurrVel> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurrVel> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -2143,7 +2139,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCurrVel> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurrVel> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradCurrVel> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -2170,7 +2166,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCurrPress> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurrPress> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -2184,7 +2180,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCurrPress> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurrPress> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradCurrPress> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -2211,7 +2207,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCurrTemp> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurrTemp> tWorkSets(tNumCells);
             this->setWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -2225,7 +2221,7 @@ public:
         // external force contribution
         {
             auto tNumCells = mSpatialModel.Mesh.nverts();
-            Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, GradCurrTemp> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurrTemp> tWorkSets(tNumCells);
             this->setWorkSets(aControls, aStates, tWorkSets);
 
             Plato::ScalarMultiVectorT<GradCurrTemp> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
@@ -2373,7 +2369,7 @@ template<typename PhysicsT>
 class CriterionFactory
 {
 private:
-    using ScalarFunctionType = Plato::Hyperbolic::FluidMechanics::CriterionBase;
+    using ScalarFunctionType = Plato::FluidMechanics::CriterionBase;
 
 public:
     /******************************************************************************//**
@@ -2407,7 +2403,7 @@ public:
         if(tLowerType == "scalar function")
         {
             auto tCriterion =
-                std::make_shared<Plato::Hyperbolic::FluidMechanics::PhysicsScalarFunction<PhysicsT>>
+                std::make_shared<Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>>
                     (aSpatialModel, aDataMap, aInputs, aName);
             return tCriterion;
         }
@@ -2422,7 +2418,7 @@ struct FunctionFactory
 {
 public:
     template <typename PhysicsT, typename EvaluationT>
-    std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>>
+    std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>>
     createVectorFunction
     (const Plato::SpatialDomain & aSpatialDomain,
      Plato::DataMap             & aDataMap,
@@ -2441,7 +2437,7 @@ public:
     }
 
     template <typename PhysicsT, typename EvaluationT>
-    std::shared_ptr<Plato::Hyperbolic::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>>
+    std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>>
     createScalarFunction
     (const Plato::SpatialDomain & aSpatialDomain,
      Plato::DataMap             & aDataMap,
@@ -2476,9 +2472,6 @@ public:
 }
 // namespace FluidMechanics
 
-}
-// namespace Hyperbolic
-
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
 class MomentumConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
 {
@@ -2512,7 +2505,7 @@ class IncompressibleFluids : public Plato::SimplexFluidMechanics<SpaceDim, NumCo
 public:
     static constexpr auto mNumSpatialDims = SpaceDim;
 
-    typedef Plato::Hyperbolic::FluidMechanics::FunctionFactory FunctionFactory;
+    typedef Plato::FluidMechanics::FunctionFactory FunctionFactory;
     using SimplexT = typename Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
 
     using MassPhysicsT     = typename Plato::MassConservation<SpaceDim, NumControls>;
@@ -2548,7 +2541,7 @@ calculate_element_characteristic_size
 
 inline Plato::ScalarVector
 calculate_artificial_compressibility
-(const Plato::Hyperbolic::FluidMechanics::States & aStates,
+(const Plato::FluidMechanics::States & aStates,
  Plato::Scalar aEpsilonConstant = 0.5)
 {
     auto tPrandtl = aStates.getScalar("prandtl");
@@ -2582,7 +2575,7 @@ calculate_artificial_compressibility
 
 inline Plato::ScalarVector
 calculate_stable_time_step
-(const Plato::Hyperbolic::FluidMechanics::States & aStates)
+(const Plato::FluidMechanics::States & aStates)
 {
     auto tElemSize = aStates.getVector("element size");
     auto tVelocity = aStates.getVector("current velocity");
@@ -2640,7 +2633,7 @@ calculate_stopping_criterion
 
 inline Plato::Scalar
 calculate_explicit_solve_convergence_criterion
-(const Plato::Hyperbolic::FluidMechanics::States & aStates)
+(const Plato::FluidMechanics::States & aStates)
 {
     auto tTimeStep = aStates.getVector("time step");
     auto tCurrentPressure = aStates.getVector("current pressure");
@@ -2654,7 +2647,7 @@ calculate_explicit_solve_convergence_criterion
 
 inline Plato::Scalar
 calculate_semi_implicit_solve_convergence_criterion
-(const Plato::Hyperbolic::FluidMechanics::States & aStates)
+(const Plato::FluidMechanics::States & aStates)
 {
     std::vector<Plato::Scalar> tErrors;
 
@@ -2692,7 +2685,7 @@ calculate_semi_implicit_solve_convergence_criterion
 }
 // namespace cbs
 
-namespace Hyperbolic
+namespace FluidMechanics
 {
 
 class AbstractProblem
@@ -2702,14 +2695,14 @@ public:
 
     virtual void output(std::string aFilePath) = 0;
     virtual const Plato::DataMap& getDataMap() const = 0;
-    virtual Plato::Hyperbolic::Solution solution(const Plato::ScalarVector& aControl) = 0;
+    virtual Plato::FluidMechanics::Solution solution(const Plato::ScalarVector& aControl) = 0;
     virtual Plato::Scalar criterionValue(const Plato::ScalarVector & aControl, const std::string& aName) = 0;
     virtual Plato::ScalarVector criterionGradient(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
     virtual Plato::ScalarVector criterionGradientX(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
 };
 
 template<typename PhysicsT>
-class FluidMechanicsProblem : public Plato::Hyperbolic::AbstractProblem
+class FluidMechanicsProblem : public Plato::FluidMechanics::AbstractProblem
 {
 private:
     static constexpr auto mNumSpatialDims     = PhysicsT::mNumSpatialDims;         /*!< number of mass dofs per node */
@@ -2734,13 +2727,13 @@ private:
     Plato::ScalarMultiVector mCorrector;
     Plato::ScalarMultiVector mTemperature;
 
-    Plato::Hyperbolic::FluidMechanics::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
-    Plato::Hyperbolic::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mVelocityResidual;
-    Plato::Hyperbolic::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
-    Plato::Hyperbolic::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mCorrectorResidual;
-    Plato::Hyperbolic::FluidMechanics::VectorFunction<typename PhysicsT::EnergyPhysicsT>   mTemperatureResidual;
+    Plato::FluidMechanics::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
+    Plato::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mVelocityResidual;
+    Plato::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
+    Plato::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mCorrectorResidual;
+    Plato::FluidMechanics::VectorFunction<typename PhysicsT::EnergyPhysicsT>   mTemperatureResidual;
 
-    using Criterion = std::shared_ptr<Plato::Hyperbolic::FluidMechanics::CriterionBase>;
+    using Criterion = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
     using Criteria  = std::unordered_map<std::string, Criterion>;
     Criteria mCriteria;
 
@@ -2754,8 +2747,8 @@ private:
     std::shared_ptr<Plato::AbstractSolver> mVectorFieldSolver;
     std::shared_ptr<Plato::AbstractSolver> mScalarFieldSolver;
 
-    using DualStates = Plato::Hyperbolic::FluidMechanics::Dual;
-    using PrimalStates = Plato::Hyperbolic::FluidMechanics::States;
+    using DualStates = Plato::FluidMechanics::Dual;
+    using PrimalStates = Plato::FluidMechanics::States;
 
 public:
     FluidMechanicsProblem
@@ -2809,7 +2802,7 @@ public:
         }
     }
 
-    Plato::Hyperbolic::Solution solution(const Plato::ScalarVector& aControl)
+    Plato::FluidMechanics::Solution solution(const Plato::ScalarVector& aControl)
     {
         PrimalStates tStates;
         this->calculateElemCharacteristicSize(tStates);
@@ -2835,7 +2828,7 @@ public:
             }
         }
 
-        Plato::Hyperbolic::Solution tSolution;
+        Plato::FluidMechanics::Solution tSolution;
         tSolution.set("mass state", mPressure);
         tSolution.set("energy state", mTemperature);
         tSolution.set("momentum state", mVelocity);
@@ -2998,7 +2991,7 @@ private:
     {
         if(aInputs.isSublist("Criteria"))
         {
-            Plato::Hyperbolic::FluidMechanics::CriterionFactory<PhysicsT> tScalarFuncFactory;
+            Plato::FluidMechanics::CriterionFactory<PhysicsT> tScalarFuncFactory;
 
             auto tCriteriaParams = aInputs.sublist("Criteria");
             for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
