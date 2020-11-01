@@ -947,15 +947,12 @@ class VelocityPredictorResidual :
     public Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>
 {
 private:
-    static constexpr auto mNumVoigtTerms        = PhysicsT::SimplexT::mNumVoigtTerms;          /*!< number of Voigt terms */
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
     static constexpr auto mNumVelDofsPerCell    = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
     static constexpr auto mNumTempDofsPerCell   = PhysicsT::SimplexT::mNumEnergyDofsPerCell;   /*!< number of energy dofs per cell */
-    static constexpr auto mNumPressDofsPerCell  = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of mass dofs per cell */
     static constexpr auto mNumVelDofsPerNode    = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
     static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
-    static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
     static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration degrees of freedom per cell */
 
     using ResultT    = typename EvaluationT::ResultScalarType;
@@ -969,10 +966,9 @@ private:
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
 
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>      mCubatureRule;
-    Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode> mNeumannLoads; /*!< Neumann loads interface */
+    std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>> mNeumannLoads; /*!< Neumann loads interface */
 
-    using StateWorkSets = Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, valuationT>;
-    using FunctionBaseType = Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>;
+    using StateWorkSets = Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
 
     Plato::Scalar mDaNum = 1.0;
     Plato::Scalar mPrNum = 1.0;
@@ -987,7 +983,6 @@ public:
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs) :
-         FunctionBaseType(),
          mDataMap(aDataMap),
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
@@ -995,7 +990,7 @@ public:
         if(aInputs.isSublist("Traction Boundary Conditions"))
         {
             auto tSublist = aInputs.sublist("Traction Boundary Conditions");
-            mNeumannLoads = Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>(tSublist);
+            mNeumannLoads = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>>(tSublist);
         }
         this->setPenaltyModel(aInputs);
         this->setDimensionlessProperties(aInputs);
@@ -1051,7 +1046,7 @@ public:
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
-            // calculate convective inertial forces, which are defined as
+            // calculate convective inertial force integral, which are defined as
             // \int_{\Omega_e} N_u^a \left( \frac{\partial}{\partial x_j}(u^h_j u^h_i) \right) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
@@ -1090,7 +1085,7 @@ public:
                 ( tDensity * ( tPrNum * (1.0 - tPrNumConvexityParam) - 1.0 ) + 1.0 ) /
                 ( tPrNum * (1.0 + tPrNumConvexityParam * tDensity) );
 
-            // calculate viscous forces, which are defined as,
+            // calculate viscous force integral, which are defined as,
             // \int_{\Omega_e}\frac{\partial N_u^a}{\partial x_j}\tau^h_{ij} d\Omega_e
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
@@ -1105,7 +1100,7 @@ public:
                 }
             }
 
-            // calculate natural convective forces, which are defined as
+            // calculate natural convective force integral, which are defined as
             // \int_{\Omega_e} N_u^a \left(Gr_i Pr^2 T^h \right) d\Omega_e,
             // where e_i is the unit vector in the gravitational direction
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP)
@@ -1121,7 +1116,7 @@ public:
                 }
             }
 
-            // calculate brinkman forces, which are defined as
+            // calculate brinkman force integral, which are defined as
             // \int_{\Omega_e} N_u^a (\frac{Pr}{Da} u^h_i) d\Omega
             ControlT tPenalizedBrinkmanCoeff = (tPrNum / tDaNum) * (1.0 - tDensity) / (1.0 + (tBrinkmanConvexityParam * tDensity));
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
@@ -1135,7 +1130,7 @@ public:
                 }
             }
 
-            // add stabilizing forces, which are defined as
+            // calculate stabilizing force integral, which are defined as
             // \int_{\Omega_e} \left( \frac{\partial N_u^a}{\partial x_k} u^h_k \right) F_i^{stab} d\Omega_e
             // where the stabilizing force, F_i^{stab}, is defined as
             // F_i^{stab} = \frac{\partial}{\partial x_j}(u^h_j u^h_i) + Gr_i Pr^2 T^h + \frac{Pr}{Da} u^h_i
@@ -1164,7 +1159,7 @@ public:
                 }
             }
 
-            // calculate inertial forces, which are defined as
+            // calculate inertial force integral, which are defined as
             // \int_{Omega_e} N_u^a (u^h_\ast) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredictorGP);
             tCalculateInertialForce(aCellOrdinal, tCellVolume, tBasisFunctions, tPredictorGP, aResult);
@@ -1259,7 +1254,6 @@ class VelocityCorrectorResidual :
     public Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>
 {
 private:
-    static constexpr auto mNumVoigtTerms        = PhysicsT::SimplexT::mNumVoigtTerms;          /*!< number of Voigt terms */
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
     static constexpr auto mNumVelDofsPerCell    = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
@@ -1280,8 +1274,7 @@ private:
 
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;
 
-    using StateWorkSets = Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, valuationT>;
-    using FunctionBaseType = Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>;
+    using StateWorkSets = Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
 
     Plato::Scalar mThetaTwo = 0.0;
 
@@ -1290,7 +1283,6 @@ public:
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs) :
-         FunctionBaseType(),
          mDataMap(aDataMap),
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
@@ -1317,7 +1309,7 @@ public:
         Plato::ScalarMultiVectorT<PrevVelT>   tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<CorrectorT> tCorrectorGP("corrector at Gauss point", tNumCells, mNumVelDofsPerNode);
 
-        Plato::ScalarArray3DT<ConfigT>   tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
@@ -1347,7 +1339,7 @@ public:
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tCurPressWS, tCurPressGP);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevPressWS, tPrevPressGP);
 
-            // calculate pressure gradient, which is defined as
+            // calculate pressure gradient integral, which is defined as
             //  \int_{\Omega_e} N_u^a \frac{\partial p^{n+\theta_2}}{\partial x_i} d\Omega_e,
             //  where p^{n+\theta_2} = \frac{\partial p^{n-1}}{\partial x_i} + \theta_2
             //  \frac{\partial\delta{p}}{\partial x_i} and \delta{p} = p^n - p^{n-1}
@@ -1368,7 +1360,7 @@ public:
                 }
             }
 
-            // calculate stabilizing force, which is defined as
+            // calculate stabilizing force integral, which is defined as
             // \int_{\Omega_e} \left( \frac{\partial N_u^a}{\partial x_k} u_k \right) * F_i^{stab} d\Omega_e
             // where the stabilizing force, F_i^{stab}, is defined as
             // F_i^{stab} = \frac{\partial p^{n+\theta_2}}{\partial x_i} d\Omega_e
@@ -1380,9 +1372,8 @@ public:
                     auto tDofIndex = (mNumSpatialDims * tNode) + tDimI;
                     for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
                     {
-                        aResult(aCellOrdinal, tDofIndex) += static_cast<Plato::Scalar>(0.5) *
-                            tTimeStepWS(aCellOrdinal, tNode) * tCellVolume(aCellOrdinal) *
-                            tBasisFunctions(tNode) * ( tGradient(aCellOrdinal, tNode, tDimJ) *
+                        aResult(aCellOrdinal, tDofIndex) += static_cast<Plato::Scalar>(0.5) * tTimeStepWS(aCellOrdinal, tNode) *
+                            tCellVolume(aCellOrdinal) * tBasisFunctions(tNode) * ( tGradient(aCellOrdinal, tNode, tDimJ) *
                                 tPrevVelGP(tDimJ) ) * tStabForce(aCellOrdinal, tDimI);
                     }
                 }
@@ -1399,7 +1390,7 @@ public:
                 }
             }
 
-            // calculate inertial forces, which are defined as
+            // calculate inertial force integral, which are defined as
             // \int_{Omega_e} N_u^a (u^h_{**}) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCorrectorWS, tCorrectorGP);
             tCalculateInertialForce(aCellOrdinal, tCellVolume, tBasisFunctions, tCorrectorGP, aResult);
@@ -1412,6 +1403,227 @@ public:
     { return; }
 };
 // class VelocityCorrectorResidual
+
+template<typename PhysicsT, typename EvaluationT>
+class TemperatureIncrementResidual :
+    public Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>
+{
+private:
+    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
+    static constexpr auto mNumVelDofsPerCell    = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
+    static constexpr auto mNumTempDofsPerCell   = PhysicsT::SimplexT::mNumEnergyDofsPerCell;   /*!< number of energy dofs per cell */
+    static constexpr auto mNumVelDofsPerNode    = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration degrees of freedom per cell */
+
+    using ResultT   = typename EvaluationT::ResultScalarType;
+    using ConfigT   = typename EvaluationT::ConfigScalarType;
+    using ControlT  = typename EvaluationT::ControlScalarType;
+    using CurTempT  = typename EvaluationT::CurrentEnergyScalarType;
+    using PrevVelT  = typename EvaluationT::PreviousMomentumScalarType;
+    using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;
+
+    Plato::DataMap& mDataMap;                   /*!< output database */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
+
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;                   /*!< integration rule */
+    std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>> mHeatFlux; /*!< heat flux evaluator */
+
+    using StateWorkSets = Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
+
+    Plato::Scalar mHeatSource                = 0.0;
+    Plato::Scalar mFluidDomainCutOff         = 0.5;
+    Plato::Scalar mCharacteristicLength      = 1.0;
+    Plato::Scalar mSolidThermalDiffusivity   = 1.0;
+    Plato::Scalar mFluidThermalDiffusivity   = 1.0;
+    Plato::Scalar mReferenceTempDifference   = 1.0;
+    Plato::Scalar mFluidThermalConductivity  = 1.0;
+    Plato::Scalar mDiffusivityConvexityParam = 0.5;
+
+
+public:
+    TemperatureIncrementResidual
+    (const Plato::SpatialDomain & aDomain,
+     Plato::DataMap             & aDataMap,
+     Teuchos::ParameterList     & aInputs) :
+         mDataMap(aDataMap),
+         mSpatialDomain(aDomain),
+         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>()),
+         mHeatSource(Plato::ScalarVector("heat source", mNumSpatialDims))
+    {
+        if(aInputs.isSublist("Heat Flux Boundary Conditions"))
+        {
+            auto tSublist = aInputs.sublist("Heat Flux Boundary Conditions");
+            mHeatFlux = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>>(tSublist);
+        }
+    }
+
+    virtual ~TemperatureIncrementResidual(){}
+
+    void evaluate
+    (const StateWorkSets                & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    {
+        // set local data
+        auto tNumCells = mSpatialDomain.numCells();
+        Plato::ScalarVectorT<ConfigT>   tCellVolume("cell weight", tNumCells);
+        Plato::ScalarVectorT<PrevTempT> tCurTempGP("current temperature at Gauss point", tNumCells);
+        Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
+
+        Plato::ScalarMultiVectorT<ResultT>  tStabForce("stabilized force", tNumCells, mNumNodesPerCell);
+        Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<ResultT>  tPrevThermalGradGP("previous thermal gradient at Gauss point", tNumCells, mNumSpatialDims);
+
+        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+
+        // set local functors
+        Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
+        Plato::ProjectToNode<mNumSpatialDims, mNumVelDofsPerNode> tCalculateInertialForce;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumTempDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplScalarField;
+
+        // set input state worksets
+        auto tConfigWS   = aWorkSets.configuration();
+        auto tControlWS  = aWorkSets.control();
+        auto tTimeStepWS = aWorkSets.timeStep();
+        auto tPrevVelWS  = aWorkSets.previousVelocity();
+        auto tCurTempWS  = aWorkSets.currentTemperature();
+        auto tPrevTempWS = aWorkSets.previousTemperature();
+
+        // transfer member data to device
+        auto tHeatSource                = mHeatSource;
+        auto tFluidDomainCutOff         = mFluidDomainCutOff;
+        auto tCharacteristicLength      = mCharacteristicLength;
+        auto tFluidThermalDiffusivity   = mFluidThermalDiffusivity;
+        auto tSolidThermalDiffusivity   = mSolidThermalDiffusivity;
+        auto tReferenceTempDifference   = mReferenceTempDifference;
+        auto tFluidThermalConductivity  = mFluidThermalConductivity;
+        auto tDiffusivityConvexityParam = mDiffusivityConvexityParam;
+
+        auto tCubWeight = mCubatureRule->getCubWeight();
+        auto tBasisFunctions = mCubatureRule->getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+            tCellVolume(aCellOrdinal) *= tCubWeight;
+
+            // calculate convective force integral, which is defined as
+            // \int_{\Omega_e} N_T^a \left( u^h_i \frac{\partial T^h}{\partial x_i} \right) d\Omega_e
+            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
+            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+            {
+                for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
+                {
+                    tStabForce(aCellOrdinal, tNode) += ( tGradient(aCellOrdinal, tNode, tDim) *
+                        tPrevVelGP(aCellOrdinal, tDim) ) * tPrevTempGP(aCellOrdinal);
+
+                    aResult(aCellOrdinal, tNode) += tCellVolume(aCellOrdinal) * tBasisFunctions(tNode) *
+                        ( ( tGradient(aCellOrdinal, tNode, tDim) * tPrevVelGP(aCellOrdinal, tDim) ) * tPrevTempGP(aCellOrdinal) );
+                }
+            }
+
+            // calculate penalized thermal diffusivity properties \pi(\theta), which is defined as
+            // \pi(\theta) = \frac{\theta*( \hat{\alpha}(\mathbf{x})(1-q_{\pi}) - 1 ) + 1}{\hat{\alpha}(\mathbf{x})(1+q_{\pi})}
+            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, tControlWS);
+            auto tDiffusivityRatio = tDensity >= tFluidDomainCutOff ? 1.0 : tSolidThermalDiffusivity / tFluidThermalDiffusivity;
+            ControlT tNumerator = ( tDensity * ( (tDiffusivityRatio * (1.0 - tDiffusivityConvexityParam)) - 1.0 ) ) + 1.0;
+            ControlT tDenominator = tDiffusivityRatio * (1.0 + (tDiffusivityConvexityParam * tDensity) );
+            ControlT tPenalizedThermalDiff = tNumerator / tDenominator;
+
+            // calculate penalized thermal gradient, which is defined as
+            // \pi_T(\theta) \frac{\partial T^h}{\partial x_i} = \pi_T(\theta)\partial_i T^h
+            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+            {
+                for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
+                {
+                    tPrevThermalGradGP(aCellOrdinal, tDim) += tPenalizedThermalDiff *
+                        tGradient(aCellOrdinal, tNode, tDim) * tPrevTempGP(aCellOrdinal);
+                }
+            }
+
+            // calculate diffusive force integral, which is defined as
+            // int_{\Omega_e} \frac{partial N_T^a}{\partial x_i} \left(\pi_T(\theta)\partial_i T^h\right) d\Omega_e
+            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+            {
+                for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
+                {
+                    aResult(aCellOrdinal, tNode) += tCellVolume(aCellOrdinal) * tBasisFunctions(tNode) *
+                        ( tGradient(aCellOrdinal, tNode, tDim) * tPrevThermalGradGP(aCellOrdinal, tDim) );
+                }
+            }
+
+            // calculate heat source integral, which is defined as
+            // \int_{Omega_e} N_T^a (\beta Q_i) d\Omega_e
+            auto tHeatSourceConstant = tDensity >= tFluidDomainCutOff ? 0.0 :
+                tCharacteristicLength * tCharacteristicLength / (tFluidThermalConductivity * tReferenceTempDifference);
+            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+            {
+                tStabForce(aCellOrdinal, tNode) -= tHeatSourceConstant * tHeatSource;
+                for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
+                {
+                    aResult(aCellOrdinal, tNode) -= tCellVolume(aCellOrdinal) *
+                        tBasisFunctions(tNode) * tHeatSourceConstant * tHeatSource;
+                }
+            }
+
+            // calculate stabilizing force integral, which is defined as
+            // \int_{\Omega_e} \frac{\partial N_T^a}{\partial x_k}u_k F^{stab} d\Omega_e
+            // where F^{stab} = u_i\frac{\partial T^h}{\partial x_i} - \beta Q
+            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+            {
+                for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
+                {
+                    aResult(aCellOrdinal, tNode) += static_cast<Plato::Scalar>(0.5) * tTimeStepWS(aCellOrdinal, tNode) *
+                        tCellVolume(aCellOrdinal) * tBasisFunctions(tNode) * ( tGradient(aCellOrdinal, tNode, tDim) *
+                            tPrevVelGP(aCellOrdinal, tDim) ) * tStabForce(aCellOrdinal, tNode);
+                }
+            }
+
+            // apply time step multiplier to internal force plus stabilizing force vectors,
+            // i.e. F = \Delta{t} * \left( F_i^{int} + F_i^{stab} \right)
+            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+            {
+                aResult(aCellOrdinal, tNode) *= tTimeStepWS(aCellOrdinal, tNode);
+            }
+
+            // calculate inertial force integral, which are defined as
+            // \int_{Omega_e} N_T^a (T^h) d\Omega_e
+            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
+            tCalculateInertialForce(aCellOrdinal, tCellVolume, tBasisFunctions, tCurTempGP, aResult);
+
+        }, "temperature increment residual");
+    }
+
+    void evaluateBoundary
+    (const StateWorkSets                & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    {
+        if( mNeumannLoads != nullptr )
+        {
+            // set input state worksets
+            auto tConfigWS   = aWorkSets.configuration();
+            auto tControlWS  = aWorkSets.control();
+            auto tTimeStepWS = aWorkSets.timeStep();
+            auto tPrevTempWS = aWorkSets.previousTemperature();
+
+            // set output force
+            auto tNumCells = mSpatialDomain.numCells();
+            Plato::ScalarMultiVectorT<ResultT> tHeatFlux("heat flux", tNumCells, mNumNodesPerCell);
+            mNeumannLoads.get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tHeatFlux, -1.0 );
+
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+            {
+                for(Plato::OrdinalType tDof = 0; tDof < mNumTempDofsPerCell; tDof++)
+                {
+                    aResult(aCellOrdinal, tDof) += tTimeStepWS(aCellOrdinal, tDof) * tHeatFlux(aCellOrdinal, tDof);
+                }
+            }, "add heat flux to residual");
+        }
+    }
+};
+// class TemperatureIncrementResidual
 
 /******************************************************************************/
 /*! vector function class
