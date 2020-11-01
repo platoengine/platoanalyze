@@ -147,11 +147,11 @@ struct SimplexFadTypes
 //
 template <typename TypesT, typename T>
 struct is_fad {
-  static constexpr bool value = std::is_same< T, typename TypesT::StateFad     >::value ||
-                                std::is_same< T, typename TypesT::ControlFad   >::value ||
-                                std::is_same< T, typename TypesT::ConfigFad    >::value ||
-                                std::is_same< T, typename TypesT::NodeStateFad >::value ||
-                                std::is_same< T, typename TypesT::LocalStateFad >::value;
+  static constexpr bool value = std::is_same< T, typename TypesT::MassFad     >::value ||
+                                std::is_same< T, typename TypesT::ControlFad  >::value ||
+                                std::is_same< T, typename TypesT::ConfigFad   >::value ||
+                                std::is_same< T, typename TypesT::EnergyFad   >::value ||
+                                std::is_same< T, typename TypesT::MomentumFad >::value;
 };
 
 
@@ -1427,7 +1427,8 @@ private:
     Plato::DataMap& mDataMap;                   /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
 
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;                   /*!< integration rule */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< integration rule */
+
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>> mHeatFlux; /*!< heat flux evaluator */
 
     using StateWorkSets = Plato::Hyperbolic::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
@@ -1465,21 +1466,24 @@ public:
     (const StateWorkSets                & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
+        // set local forward ad type
+        using StabForceT = typename
+            Plato::Hyperbolic::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT, PrevTempT>;
+
         // set local data
         auto tNumCells = mSpatialDomain.numCells();
         Plato::ScalarVectorT<ConfigT>   tCellVolume("cell weight", tNumCells);
-        Plato::ScalarVectorT<PrevTempT> tCurTempGP("current temperature at Gauss point", tNumCells);
+        Plato::ScalarVectorT<CurTempT>  tCurTempGP("current temperature at Gauss point", tNumCells);
         Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
 
-        Plato::ScalarMultiVectorT<ResultT>  tStabForce("stabilized force", tNumCells, mNumNodesPerCell);
-        Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<ResultT>  tPrevThermalGradGP("previous thermal gradient at Gauss point", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<StabForceT> tStabForce("stabilized force", tNumCells, mNumNodesPerCell);
+        Plato::ScalarMultiVectorT<PrevVelT>   tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<ResultT>    tPrevThermalGradGP("previous thermal gradient at Gauss point", tNumCells, mNumSpatialDims);
 
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
-        Plato::ProjectToNode<mNumSpatialDims, mNumVelDofsPerNode> tCalculateInertialForce;
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumTempDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplScalarField;
 
@@ -1509,7 +1513,7 @@ public:
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
             // calculate convective force integral, which is defined as
-            // \int_{\Omega_e} N_T^a \left( u^h_i \frac{\partial T^h}{\partial x_i} \right) d\Omega_e
+            // \int_{\Omega_e} N_T^a \left( u_i^{n-1} \frac{\partial T^{n-1}}{\partial x_i} \right) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
@@ -1533,7 +1537,7 @@ public:
             ControlT tPenalizedThermalDiff = tNumerator / tDenominator;
 
             // calculate penalized thermal gradient, which is defined as
-            // \pi_T(\theta) \frac{\partial T^h}{\partial x_i} = \pi_T(\theta)\partial_i T^h
+            // \pi_T(\theta) \frac{\partial T^{n-1}}{\partial x_i} = \pi_T(\theta)\partial_i T^{n-1}
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
@@ -1544,7 +1548,7 @@ public:
             }
 
             // calculate diffusive force integral, which is defined as
-            // int_{\Omega_e} \frac{partial N_T^a}{\partial x_i} \left(\pi_T(\theta)\partial_i T^h\right) d\Omega_e
+            // int_{\Omega_e} \frac{partial N_T^a}{\partial x_i} \left(\pi_T(\theta)\partial_i T^{n-1}\right) d\Omega_e
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
@@ -1570,7 +1574,7 @@ public:
 
             // calculate stabilizing force integral, which is defined as
             // \int_{\Omega_e} \frac{\partial N_T^a}{\partial x_k}u_k F^{stab} d\Omega_e
-            // where F^{stab} = u_i\frac{\partial T^h}{\partial x_i} - \beta Q
+            // where F^{stab} = u_i^{n-1}\frac{\partial T^{n-1}}{\partial x_i} - \beta Q
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
@@ -1589,9 +1593,13 @@ public:
             }
 
             // calculate inertial force integral, which are defined as
-            // \int_{Omega_e} N_T^a (T^h) d\Omega_e
+            // \int_{Omega_e} N_T^a \left( T^{n} - T^{n-1} \right) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
-            tCalculateInertialForce(aCellOrdinal, tCellVolume, tBasisFunctions, tCurTempGP, aResult);
+            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+            {
+                aResult(aCellOrdinal, tNode) += tCellVolume(aCellOrdinal) * tBasisFunctions(tNode) *
+                    (tCurTempGP(aCellOrdinal) - tPrevTempGP(aCellOrdinal));
+            }
 
         }, "temperature increment residual");
     }
@@ -1600,7 +1608,7 @@ public:
     (const StateWorkSets                & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult)
     {
-        if( mNeumannLoads != nullptr )
+        if( mHeatFlux != nullptr )
         {
             // set input state worksets
             auto tConfigWS   = aWorkSets.configuration();
@@ -1624,6 +1632,32 @@ public:
     }
 };
 // class TemperatureIncrementResidual
+
+template<typename PhysicsT, typename EvaluationT>
+class PressureIncrementResidual :
+    public Plato::Hyperbolic::FluidMechanics::AbstractVectorFunctionBase<PhysicsT, EvaluationT>
+{
+private:
+    Plato::DataMap& mDataMap;                   /*!< output database */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
+
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;                   /*!< integration rule */
+
+public:
+    PressureIncrementResidual
+    (const Plato::SpatialDomain & aDomain,
+     Plato::DataMap             & aDataMap,
+     Teuchos::ParameterList     & aInputs) :
+         mDataMap(aDataMap),
+         mSpatialDomain(aDomain),
+         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
+    {
+    }
+
+    virtual ~PressureIncrementResidual(){}
+
+};
+// class PressureIncrementResidual
 
 /******************************************************************************/
 /*! vector function class
