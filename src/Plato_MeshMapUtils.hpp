@@ -394,6 +394,11 @@ findParentElements(
             for( int iElem=tOffset(iNodeOrdinal); iElem<tOffset(iNodeOrdinal+1); iElem++ )
             {
                 auto tElem = tIndices(iElem);
+
+                ScalarT tLenX = tMax(Dim::X,tElem) - tMin(Dim::X,tElem);
+                ScalarT tLenY = tMax(Dim::Y,tElem) - tMin(Dim::Y,tElem);
+                ScalarT tLenZ = tMax(Dim::Z,tElem) - tMin(Dim::Z,tElem);
+
                 tGetBasis(aMappedLocations, iNodeOrdinal, tElem, tBasis);
                 ScalarT tEleMin = tBasis[0];
                 for(OrdinalT iB=1; iB<cNVertsPerElem; iB++)
