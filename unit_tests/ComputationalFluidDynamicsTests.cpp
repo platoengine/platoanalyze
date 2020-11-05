@@ -1933,20 +1933,27 @@ public:
 template<typename PhysicsT>
 class VectorFunction
 {
+    // todo: fix, i need one general vector function with derivatives with respect to current and previous state, control, and config
 private:
-    static constexpr auto mNumControlPerNode    = PhysicsT::SimplexT::mNumControl;             /*!< number of design variable fields */
+    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of mass dofs per cell */
+    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell; /*!< number of energy dofs per cell */
+
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
+    static constexpr auto mNumControlPerNode    = PhysicsT::SimplexT::mNumControl;             /*!< number of design variable fields */
+    static constexpr auto mNumControlPerCell    = mNumControlPerNode * mNumNodesPerCell;       /*!< number of design variable fields */
     static constexpr auto mNumPressDofsPerCell  = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of mass dofs per cell */
     static constexpr auto mNumTempDofsPerCell   = PhysicsT::SimplexT::mNumEnergyDofsPerCell;   /*!< number of energy dofs per cell */
     static constexpr auto mNumVelDofsPerCell    = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
     static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
     static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
     static constexpr auto mNumVelDofsPerNode    = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
-    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration degrees of freedom per cell */
 
-    static constexpr auto mNumTimeStepsPerNode = 1; /*!< number of time step dofs per node */
-    static constexpr auto mNumACompressPerNode = 1; /*!< number of artificial compressibility dofs per node */
+    static constexpr auto mNumConfigDofsPerNode = mNumSpatialDims;                    /*!< number of configuration degrees of freedom per cell */
+    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell; /*!< number of configuration degrees of freedom per cell */
+
+    static constexpr auto mNumTimeStepsDofsPerNode = 1; /*!< number of time step dofs per node */
+    static constexpr auto mNumACompressDofsPerNode = 1; /*!< number of artificial compressibility dofs per node */
 
     // forward automatic differentiation evaluation types
     using ResidualEvalT      = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
@@ -1964,11 +1971,11 @@ private:
     using ResidualFuncT      = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, ResidualEvalT>>;
     using GradConfigFuncT    = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradConfigEvalT>>;
     using GradControlFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradControlEvalT>>;
-    using GradCurrVelFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurVelEvalT>>;
+    using GradCurVelFuncT    = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurVelEvalT>>;
     using GradPrevVelFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPrevVelEvalT>>;
-    using GradCurrTempFuncT  = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurTempEvalT>>;
+    using GradCurTempFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurTempEvalT>>;
     using GradPrevTempFuncT  = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPrevTempEvalT>>;
-    using GradCurrPressFuncT = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurPressEvalT>>;
+    using GradCurPressFuncT  = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurPressEvalT>>;
     using GradPrevPressFuncT = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPrevPressEvalT>>;
     using GradPredictorFuncT = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPredictorEvalT>>;
 
@@ -1976,11 +1983,11 @@ private:
     std::unordered_map<std::string, ResidualFuncT>      mResidualFuncs;
     std::unordered_map<std::string, GradConfigFuncT>    mGradConfigFuncs;
     std::unordered_map<std::string, GradControlFuncT>   mGradControlFuncs;
-    std::unordered_map<std::string, GradCurrVelFuncT>   mGradCurrVelFuncs;
+    std::unordered_map<std::string, GradCurVelFuncT>    mGradCurVelFuncs;
     std::unordered_map<std::string, GradPrevVelFuncT>   mGradPrevVelFuncs;
-    std::unordered_map<std::string, GradCurrTempFuncT>  mGradCurrTempFuncs;
+    std::unordered_map<std::string, GradCurTempFuncT>   mGradCurTempFuncs;
     std::unordered_map<std::string, GradPrevTempFuncT>  mGradPrevTempFuncs;
-    std::unordered_map<std::string, GradCurrPressFuncT> mGradCurrPressFuncs;
+    std::unordered_map<std::string, GradCurPressFuncT>  mGradCurPressFuncs;
     std::unordered_map<std::string, GradPrevPressFuncT> mGradPrevPressFuncs;
     std::unordered_map<std::string, GradPredictorFuncT> mGradPredictorFuncs;
 
@@ -2039,19 +2046,11 @@ public:
             this->setValueWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mResidualFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
-            if(tFunctionType == "vector function")
-            {
-                Plato::assemble_residual<mNumNodesPerCell, mNumSpatialDims /*num. vector state dofs per node*/>
-                    (tDomain, mVectorStateEntryOrdinal, tResultWS, tReturnValue);
-            }
-            else
-            {
-                Plato::assemble_residual<mNumNodesPerCell, 1 /*num. scalar dofs per node*/>
-                    (tDomain, mScalarStateEntryOrdinal, tResultWS, tReturnValue);
-            }
+            Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
+                (tNumCells, mVectorStateEntryOrdinal, tResultWS, tReturnValue);
         }
 
         // external force contribution
@@ -2060,19 +2059,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, ResidualEvalT> tWorkSets(tNumCells);
             this->setValueWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mResidualFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
 
-            if(tFunctionType == "vector function")
-            {
-                Plato::assemble_residual<mNumNodesPerCell, mNumSpatialDims /*num vector state dofs per node*/>
-                    (tNumCells, mVectorStateEntryOrdinal, tResultWS, tReturnValue);
-            }
-            else
-            {
-                Plato::assemble_residual<mNumNodesPerCell, 1 /*num scalar state dofs per node*/>
-                    (tNumCells, mScalarStateEntryOrdinal, tResultWS, tReturnValue);
-            }
+            Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
+                (tNumCells, mVectorStateEntryOrdinal, tResultWS, tReturnValue);
         }
 
         return tReturnValue;
@@ -2088,7 +2079,7 @@ public:
         // create return matrix
         auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
-            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumSpatialDims, mNumVelDofsPerNode>(&tMesh);
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumConfigDofsPerNode, mNumDofsPerNode>(&tMesh);
 
         // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -2098,7 +2089,7 @@ public:
             this->setGradConfigWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradConfigFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
@@ -2111,11 +2102,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, GradConfigEvalT> tWorkSets(tNumCells);
             this->setGradConfigWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradConfigFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumSpatialDims, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tNumCells, mNumVelDofsPerCell, mNumConfigDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumConfigDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumConfigDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         return tJacobian;
@@ -2131,7 +2122,7 @@ public:
         // create return matrix
         auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
-            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumControlPerNode, mNumVelDofsPerNode>( &tMesh );
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumControlPerNode, mNumDofsPerNode>( &tMesh );
 
         // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -2141,11 +2132,11 @@ public:
             this->setGradControlWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradControlFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControlPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tDomain, mNumVelDofsPerCell, mNumNodesPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControlPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumControlPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         // external force contribution
@@ -2154,11 +2145,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, GradControlEvalT> tWorkSets(tNumCells);
             this->setGradControlWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradControlFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControlPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tNumCells, mNumVelDofsPerCell, mNumNodesPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControlPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumControlPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         return tJacobian;
@@ -2174,7 +2165,7 @@ public:
         // create return matrix
         auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
-            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumVelDofsPerNode, mNumVelDofsPerNode>( &tMesh );
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumVelDofsPerNode, mNumDofsPerNode>( &tMesh );
 
         // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -2184,11 +2175,11 @@ public:
             this->setGradPredictorWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPredictorFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tDomain, mNumVelDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         // external force contribution
@@ -2197,11 +2188,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, GradPredictorEvalT> tWorkSets(tNumCells);
             this->setGradPredictorWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPredictorFuncs.begin()->evaluateBoundary(tWorkSets);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tNumCells, mNumVelDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         return tJacobian;
@@ -2217,7 +2208,7 @@ public:
         // create return matrix
         auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
-            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumVelDofsPerNode, mNumVelDofsPerNode>( &tMesh );
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumVelDofsPerNode, mNumDofsPerNode>( &tMesh );
 
         // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -2227,11 +2218,11 @@ public:
             this->setGradPrevVelWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevVelFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tDomain, mNumVelDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         // external force contribution
@@ -2240,11 +2231,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, GradPrevVelEvalT> tWorkSets(tNumCells);
             this->setGradPrevVelWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevVelFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tNumCells, mNumVelDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         return tJacobian;
@@ -2260,7 +2251,7 @@ public:
         // create return matrix
         auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
-            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumPressDofsPerNode, mNumVelDofsPerNode>( &tMesh );
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumPressDofsPerNode, mNumDofsPerNode>( &tMesh );
 
         // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -2270,11 +2261,11 @@ public:
             this->setGradPrevPressWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevPressFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tDomain, mNumVelDofsPerCell, mNumPressDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumPressDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         // external force contribution
@@ -2283,11 +2274,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, GradPrevPressEvalT> tWorkSets(tNumCells);
             this->setGradPrevPressWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevPressFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tNumCells, mNumVelDofsPerCell, mNumPressDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         return tJacobian;
@@ -2303,7 +2294,7 @@ public:
         // create return matrix
         auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
-            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumTempDofsPerNode, mNumVelDofsPerNode>( &tMesh );
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumTempDofsPerNode, mNumDofsPerNode>( &tMesh );
 
         // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -2313,11 +2304,11 @@ public:
             this->setGradPrevTempWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevTempFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tDomain, mNumVelDofsPerCell, mNumTempDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumTempDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         // external force contribution
@@ -2326,11 +2317,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, GradPrevTempEvalT> tWorkSets(tNumCells);
             this->setGradPrevTempWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevTempFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tNumCells, mNumVelDofsPerCell, mNumTempDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         return tJacobian;
@@ -2346,7 +2337,7 @@ public:
         // create return matrix
         auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
-            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumVelDofsPerNode, mNumVelDofsPerNode>( &tMesh );
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumVelDofsPerNode, mNumDofsPerNode>( &tMesh );
 
         // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -2356,11 +2347,11 @@ public:
             this->setGradCurVelWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
-            mGradCurrVelFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
+            mGradCurVelFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tDomain, mNumVelDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         // external force contribution
@@ -2369,11 +2360,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, GradCurVelEvalT> tWorkSets(tNumCells);
             this->setGradCurVelWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
-            mGradCurrVelFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
+            mGradCurVelFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tNumCells, mNumVelDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         return tJacobian;
@@ -2389,7 +2380,7 @@ public:
         // create return matrix
         auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
-            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumPressDofsPerNode, mNumVelDofsPerNode>( &tMesh );
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumPressDofsPerNode, mNumDofsPerNode>( &tMesh );
 
         // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -2399,11 +2390,11 @@ public:
             this->setGradCurPressWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
-            mGradCurrPressFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
+            mGradCurPressFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tDomain, mNumVelDofsPerCell, mNumPressDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumPressDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         // external force contribution
@@ -2412,11 +2403,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, GradCurPressEvalT> tWorkSets(tNumCells);
             this->setGradCurPressWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
-            mGradCurrPressFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
+            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
+            mGradCurPressFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tNumCells, mNumVelDofsPerCell, mNumPressDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         return tJacobian;
@@ -2430,7 +2421,7 @@ public:
         // create return matrix
         auto tMesh = mSpatialModel.Mesh;
         Teuchos::RCP<Plato::CrsMatrixType> tJacobian =
-            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumTempDofsPerNode, mNumVelDofsPerNode>( &tMesh );
+            Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumTempDofsPerNode, mNumDofsPerNode>( &tMesh );
 
         // internal force contribution
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -2440,11 +2431,11 @@ public:
             this->setGradCurTempWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            Plato::ScalarMultiVectorT<GradCurTempEvalT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
-            mGradCurrTempFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
+            Plato::ScalarMultiVectorT<GradCurTempEvalT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
+            mGradCurTempFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tDomain, mNumVelDofsPerCell, mNumTempDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumTempDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         // external force contribution
@@ -2453,11 +2444,11 @@ public:
             Plato::FluidMechanics::WorkSets<PhysicsT, GradCurTempEvalT> tWorkSets(tNumCells);
             this->setGradCurTempWorkSets(aControls, aStates, tWorkSets);
 
-            Plato::ScalarMultiVectorT<GradCurTempEvalT> tResultWS("Cells Results", tNumCells, PhysicsT::mNumDofsPerCell);
-            mGradCurrTempFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
+            Plato::ScalarMultiVectorT<GradCurTempEvalT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
+            mGradCurTempFuncs.begin()->evaluateBoundary(tWorkSets, tResultWS);
 
-            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumVelDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
-            Plato::assemble_transpose_jacobian(tNumCells, mNumVelDofsPerCell, mNumTempDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
+            Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacobianEntryOrdinal(tJacobian, &tMesh);
+            Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell, tJacobianEntryOrdinal, tResultWS, tJacobian->entries());
         }
 
         return tJacobian;
@@ -2483,19 +2474,19 @@ private:
             mGradConfigFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradConfigEvalT>
                 (tDomain, aDataMap, aInputs, aName);
 
-            mGradCurrPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurPressEvalT>
+            mGradCurPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurPressEvalT>
                 (tDomain, aDataMap, aInputs, aName);
 
             mGradPrevPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPrevPressEvalT>
                 (tDomain, aDataMap, aInputs, aName);
 
-            mGradCurrTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurTempEvalT>
+            mGradCurTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurTempEvalT>
                 (tDomain, aDataMap, aInputs, aName);
 
             mGradPrevTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPrevTempEvalT>
                 (tDomain, aDataMap, aInputs, aName);
 
-            mGradCurrVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurVelEvalT>
+            mGradCurVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurVelEvalT>
                 (tDomain, aDataMap, aInputs, aName);
 
             mGradPrevVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPrevVelEvalT>
@@ -2519,11 +2510,11 @@ private:
     {
         if(aState.isEmpty("artificial compressibility") == false)
         {
-            Plato::workset_state_scalar_scalar<mNumACompressPerNode, mNumNodesPerCell>
+            Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
                 (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
         }
 
-        Plato::workset_state_scalar_scalar<mNumTimeStepsPerNode, mNumNodesPerCell>
+        Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
             (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
     }
 
@@ -2535,11 +2526,11 @@ private:
         auto tNumCells = aWorkSets.numCells();
         if(aState.isEmpty("artificial compressibility") == false)
         {
-            Plato::workset_state_scalar_scalar<mNumACompressPerNode, mNumNodesPerCell>
+            Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
                 (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
         }
 
-        Plato::workset_state_scalar_scalar<mNumTimeStepsPerNode, mNumNodesPerCell>
+        Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
             (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
     }
 
@@ -3397,6 +3388,7 @@ public:
 }
 // namespace FluidMechanics
 
+
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
 class MomentumConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
 {
@@ -3437,6 +3429,7 @@ public:
     using EnergyPhysicsT   = typename Plato::EnergyConservation<SpaceDim, NumControls>;
     using MomentumPhysicsT = typename Plato::MomentumConservation<SpaceDim, NumControls>;
 };
+
 
 namespace cbs
 {
