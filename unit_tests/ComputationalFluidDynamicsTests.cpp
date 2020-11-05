@@ -3673,9 +3673,8 @@ private:
     Plato::ScalarMultiVector mTemperature;
 
     Plato::FluidMechanics::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
-    Plato::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mVelocityResidual;
     Plato::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
-    Plato::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mCorrectorResidual;
+    Plato::FluidMechanics::VectorFunction<typename PhysicsT::MomentumPhysicsT> mVelocityResidual;
     Plato::FluidMechanics::VectorFunction<typename PhysicsT::EnergyPhysicsT>   mTemperatureResidual;
 
     using Criterion = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
@@ -3705,7 +3704,6 @@ public:
          mPressureResidual   (mSpatialModel, mDataMap, aInputs, "Pressure Residual"),
          mVelocityResidual   (mSpatialModel, mDataMap, aInputs, "Velocity Residual"),
          mPredictorResidual  (mSpatialModel, mDataMap, aInputs, "Predictor Residual"),
-         mCorrectorResidual  (mSpatialModel, mDataMap, aInputs, "Corrector Residual"),
          mTemperatureResidual(mSpatialModel, mDataMap, aInputs, "Temperature Residual")
     {
         this->initialize(aInputs, aMachine);
@@ -3758,11 +3756,12 @@ public:
             this->setPrimalStates(tStates);
             this->calculateStableTimeSteps(tStates);
 
-            this->calculateVelocityPredictor(aControl, tStates);
-            this->calculatePressureState(aControl, tStates);
-            this->calculateVelocityCorrector(aControl, tStates);
-            this->calculateTemperatureState(aControl, tStates);
+            this->updatePredictor(aControl, tStates);
+            this->updatePressure(aControl, tStates);
+            this->updateVelocity(aControl, tStates);
+            this->updateTemperature(aControl, tStates);
 
+            // todo: verify BC enforcement
             this->enforceVelocityBoundaryConditions(tStates);
             this->enforcePressureBoundaryConditions(tStates);
             this->enforceTemperatureBoundaryConditions(tStates);
@@ -3837,9 +3836,8 @@ public:
                 this->calculateStableTimeSteps(tCurrentStates);
                 this->calculateStableTimeSteps(tPreviousStates);
 
-                this->calculateMomentumAdjoint(aName, aControl, tCurrentStates, tPreviousStates, tDualStates);
+                this->calculateVelocityAdjoint(aName, aControl, tCurrentStates, tPreviousStates, tDualStates);
                 this->calculateTemperatureAdjoint(aName, aControl, tCurrentStates, tPreviousStates, tDualStates);
-                this->calculateCorrectorAdjoint(aControl, tCurrentStates, tDualStates);
                 this->calculatePressureAdjoint(aName, aControl, tCurrentStates, tPreviousStates, tDualStates);
                 this->calculatePredictorAdjoint(aControl, tCurrentStates, tDualStates);
 
@@ -3880,9 +3878,8 @@ public:
                 this->calculateStableTimeSteps(tCurrentStates);
                 this->calculateStableTimeSteps(tPreviousStates);
 
-                this->calculateMomentumAdjoint(aName, aControl, tCurrentStates, tPreviousStates, tDualStates);
+                this->calculateVelocityAdjoint(aName, aControl, tCurrentStates, tPreviousStates, tDualStates);
                 this->calculateTemperatureAdjoint(aName, aControl, tCurrentStates, tPreviousStates, tDualStates);
-                this->calculateCorrectorAdjoint(aControl, tCurrentStates, tDualStates);
                 this->calculatePressureAdjoint(aName, aControl, tCurrentStates, tPreviousStates, tDualStates);
                 this->calculatePredictorAdjoint(aControl, tCurrentStates, tDualStates);
 
@@ -4069,7 +4066,8 @@ private:
         {
             // FIRST BACKWARD TIME INTEGRATION STEP
             auto tTotalNumNodes = mSpatialModel.Mesh.nverts();
-            std::vector<std::string> tNames = {"current pressure adjoint" , "current temperature adjoint",
+            std::vector<std::string> tNames =
+                {"current pressure adjoint" , "current temperature adjoint",
                 "previous pressure adjoint", "previous temperature adjoint"};
             for(auto& tName : tNames)
             {
@@ -4078,8 +4076,8 @@ private:
             }
 
             auto tTotalNumDofs = mNumVelDofsPerNode * tTotalNumNodes;
-            tNames = {"current velocity adjoint" , "current predictor adjoint" , "previous velocity adjoint",
-                "previous predictor adjoint", "previous corrector adjoint"};
+            tNames = {"current velocity adjoint" , "current predictor adjoint" ,
+                      "previous velocity adjoint", "previous predictor adjoint"};
             for(auto& tName : tNames)
             {
                 Plato::ScalarVector tView(tName, tTotalNumDofs);
@@ -4089,8 +4087,8 @@ private:
         else
         {
             // N-TH BACKWARD TIME INTEGRATION STEP
-            std::vector<std::string> tNames = {"mass adjoint", "energy adjoint",
-                "momentum adjoint", "predictor adjoint" };
+            std::vector<std::string> tNames =
+                {"pressure adjoint", "temperature adjoint", "velocity adjoint", "predictor adjoint" };
             for(auto& tName : tNames)
             {
                 auto tVector = aStates.getVector(std::string("current ") + tName);
@@ -4102,65 +4100,67 @@ private:
     void setPrimalStates(PrimalStates & aStates)
     {
         Plato::OrdinalType tStep = aStates.getScalar("step");
-        auto tCurrentMass       = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
-        auto tCurrentEnergy     = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
-        auto tCurrentMomentum   = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
-        auto tMomentumPredictor = Kokkos::subview(mPredictor, tStep, Kokkos::ALL());
-        aStates.setVector("current pressure", tCurrentMass);
-        aStates.setVector("current temperature", tCurrentEnergy);
-        aStates.setVector("current velocity", tCurrentMomentum);
-        aStates.setVector("predictor", tMomentumPredictor);
+        auto tCurrentVel   = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
+        auto tCurrentPred  = Kokkos::subview(mPredictor, tStep, Kokkos::ALL());
+        auto tCurrentTemp  = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
+        auto tCurrentPress = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
+        aStates.setVector("current velocity", tCurrentVel);
+        aStates.setVector("current pressure", tCurrentPress);
+        aStates.setVector("current temperature", tCurrentTemp);
+        aStates.setVector("current predictor", tCurrentPred);
 
         auto tPrevStep = tStep - 1;
         if (tPrevStep >= static_cast<Plato::OrdinalType>(0))
         {
-            auto tPreviousMass     = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
-            auto tPreviousEnergy   = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
-            auto tPreviousMomentum = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
-            aStates.setVector("previous pressure", tPreviousMass);
-            aStates.setVector("previous temperature", tPreviousEnergy);
-            aStates.setVector("previous velocity", tPreviousMomentum);
+            auto tPreviouVel    = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
+            auto tPreviousPred  = Kokkos::subview(mPredictor, tStep, Kokkos::ALL());
+            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
+            auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
+            aStates.setVector("previous velocity", tPreviouVel);
+            aStates.setVector("previous predictor", tPreviousPred);
+            aStates.setVector("previous pressure", tPreviousPress);
+            aStates.setVector("previous temperature", tPreviousTemp);
         }
         else
         {
             auto tLength = mPressure.extent(1);
-            Plato::ScalarVector tPreviousMass("previous pressure", tLength);
-            aStates.setVector("previous pressure", tPreviousMass);
+            Plato::ScalarVector tPreviousPress("previous pressure", tLength);
+            aStates.setVector("previous pressure", tPreviousPress);
             tLength = mTemperature.extent(1);
-            Plato::ScalarVector tPreviousEnergy("previous temperature", tLength);
-            aStates.setVector("previous temperature", tPreviousEnergy);
+            Plato::ScalarVector tPreviousTemp("previous temperature", tLength);
+            aStates.setVector("previous temperature", tPreviousTemp);
             tLength = mVelocity.extent(1);
-            Plato::ScalarVector tPreviousMomentum("previous velocity", tLength);
-            aStates.setVector("previous velocity", tPreviousMomentum);
+            Plato::ScalarVector tPreviousVel("previous velocity", tLength);
+            aStates.setVector("previous velocity", tPreviousVel);
+            tLength = mPredictor.extent(1);
+            Plato::ScalarVector tPreviousPred("previous predictor", tLength);
+            aStates.setVector("previous previous predictor", tPreviousPred);
         }
     }
 
-    void calculateVelocityCorrector
+    void updateVelocity
     (const Plato::ScalarVector& aControl,
      PrimalStates & aStates)
     {
-        // TODO: FIX update - verify that it is working based on new chencges to element residuals
         aStates.function("vector function");
 
         // calculate current residual and jacobian matrix
-        auto tResidualCorrector = mCorrectorResidual.value(aStates);
-        auto tJacobianCorrector = mCorrectorResidual.gradientCorrector(aStates);
+        auto tResidualVelocity = mVelocityResidual.value(aStates);
+        auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aStates);
 
         // solve corrector equation (consistent or mass lumped)
-        auto tVelocityCorrector = aStates.getVector("corrector");
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tVelocityCorrector);
-        mScalarFieldSolver->solve(*tJacobianCorrector, tVelocityCorrector, tResidualCorrector);
+        Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
+        mVectorFieldSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
 
         // update velocity
-        auto tCurrentVelocity = aStates.getVector("current velocity");
+        auto tCurrentVelocity  = aStates.getVector("current velocity");
         auto tPreviousVelocity = aStates.getVector("previous velocity");
-        auto tVelocityPredictor = aStates.getVector("predictor");
         Plato::blas1::copy(tPreviousVelocity, tCurrentVelocity);
-        Plato::blas1::axpy(1.0, tVelocityPredictor, tCurrentVelocity);
-        Plato::blas1::axpy(1.0, tVelocityCorrector, tCurrentVelocity);
+        Plato::blas1::axpy(1.0, tDeltaVelocity, tCurrentVelocity);
     }
 
-    void calculateVelocityPredictor
+    void updatePredictor
     (const Plato::ScalarVector& aControl,
      PrimalStates & aStates)
     {
@@ -4171,12 +4171,18 @@ private:
         auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aStates);
 
         // solve predictor equation (consistent or mass lumped)
-        auto tVelocityPredictor = aStates.getVector("predictor");
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tVelocityPredictor);
-        mVectorFieldSolver->solve(*tJacobianPredictor, tVelocityPredictor, tResidualPredictor);
+        Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPredictor);
+        mVectorFieldSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
+
+        // update current predictor
+        auto tCurrentPredictor  = aStates.getVector("current predictor");
+        auto tPreviousPredictor = aStates.getVector("previous predictor");
+        Plato::blas1::copy(tPreviousPredictor, tCurrentPredictor);
+        Plato::blas1::axpy(1.0, tDeltaPredictor, tCurrentPredictor);
     }
 
-    void calculatePressureState
+    void updatePressure
     (const Plato::ScalarVector& aControl,
      PrimalStates & aStates)
     {
@@ -4184,7 +4190,7 @@ private:
 
         // calculate current residual and jacobian matrix
         auto tResidualPressure = mPressureResidual.value(aStates);
-        auto tJacobianPressure = mPressureResidual.gradientCurrMass(aStates);
+        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aStates);
 
         // solve mass equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
@@ -4198,7 +4204,7 @@ private:
         Plato::blas1::axpy(1.0, tDeltaPressure, tCurrentPressure);
     }
 
-    void calculateTemperatureState
+    void updateTemperature
     (const Plato::ScalarVector& aControl,
      PrimalStates & aStates)
     {
@@ -4206,7 +4212,7 @@ private:
 
         // calculate current residual and jacobian matrix
         auto tResidualTemperature = mTemperatureResidual.value(aStates);
-        auto tJacobianTemperature = mTemperatureResidual.gradientCurrEnergy(aStates);
+        auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aStates);
 
         // solve energy equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
@@ -4214,7 +4220,7 @@ private:
         mScalarFieldSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
 
         // update temperature
-        auto tCurrentTemperature = aStates.getVector("current temperature");
+        auto tCurrentTemperature  = aStates.getVector("current temperature");
         auto tPreviousTemperature = aStates.getVector("previous temperature");
         Plato::blas1::copy(tPreviousTemperature, tCurrentTemperature);
         Plato::blas1::axpy(1.0, tDeltaTemperature, tCurrentTemperature);
@@ -4242,25 +4248,6 @@ private:
         mVectorFieldSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
     }
 
-    void calculateCorrectorAdjoint
-    (const Plato::ScalarVector & aControl,
-     const PrimalStates & aCurrentStates,
-     DualStates & aDualStates)
-    {
-        // TODO: FIX BASED ON NEW CHANGES TO ELEMENT RESIDUALS - THE CORRECTOR STEPS COMPUTES THE DELTA VELOCITY
-        // NOT THE DELTA CORRECTOR, MAKE APPROPRIATE CHANGES
-        auto tCurrentVelocityAdjoint = aDualStates.getVector("current velocity adjoint");
-        auto tGradResVelWrtCorrector = mVelocityResidual.gradientCorrector(aControl, aCurrentStates);
-        Plato::ScalarVector tRHS("right hand side", tCurrentVelocityAdjoint.size());
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtCorrector, tCurrentVelocityAdjoint, tRHS);
-        Plato::blas1::scale(-1.0, tRHS);
-
-        auto tCurrentCorrectorAdjoint = aDualStates.getVector("current corrector adjoint");
-        Plato::blas1::fill(0.0, tCurrentCorrectorAdjoint);
-        auto tJacobianCorrector = mCorrectorResidual.gradientCorrector(aControl, aCurrentStates);
-        mVectorFieldSolver->solve(*tJacobianCorrector, tCurrentCorrectorAdjoint, tRHS);
-    }
-
     void calculatePressureAdjoint
     (const std::string & aName,
      const Plato::ScalarVector & aControl,
@@ -4268,27 +4255,25 @@ private:
      const PrimalStates & aPreviousStates,
      DualStates & aDualStates)
     {
-        // TODO: FIX BASED ON NEW CHANGES TO ELEMENT RESIDUALS - THE CORRECTOR STEPS COMPUTES THE DELTA VELOCITY
-        // NOT THE DELTA CORRECTOR, MAKE APPROPRIATE CHANGES
         auto tRHS = mCriteria[aName]->gradientCurrentPress(aControl, aCurrentStates);
 
-        auto tGradResCorrWrtCurPres = mCorrectorResidual.gradientCurrentPress(aControl, aCurrentStates);
-        auto tCurrentCorrectorAdjoint = aDualStates.getVector("current corrector adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResCorrWrtCurPres, tCurrentCorrectorAdjoint, tRHS);
+        auto tGradResVelWrtCurPress = mVelocityResidual.gradientCurrentPress(aControl, aCurrentStates);
+        auto tCurrentVelocityAdjoint = aDualStates.getVector("current velocity adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtCurPress, tCurrentVelocityAdjoint, tRHS);
 
         auto tGradResPressWrtPrevPress = mPressureResidual.gradientPreviousPress(aControl, aPreviousStates);
         auto tPrevPressureAdjoint = aDualStates.getVector("previous pressure adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPrevPress, tPrevPressureAdjoint, tRHS);
 
-        auto tGradResCorrWrtPrevPress = mCorrectorResidual.gradientPreviousPress(aControl, aPreviousStates);
-        auto tPrevCorrectorAdjoint = aDualStates.getVector("previous corrector adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResCorrWrtPrevPress, tPrevCorrectorAdjoint, tRHS);
+        auto tGradResVelWrtPrevPress = mVelocityResidual.gradientPreviousPress(aControl, aPreviousStates);
+        auto tPrevVelocityAdjoint = aDualStates.getVector("previous velocity adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPrevPress, tPrevVelocityAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
         auto tCurrentPressAdjoint = aDualStates.getVector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
-        auto tJacobianPress = mPressureResidual.gradientCurrentPress(aControl, aCurrentStates);
-        mVectorFieldSolver->solve(*tJacobianPress, tCurrentPressAdjoint, tRHS);
+        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aCurrentStates);
+        mScalarFieldSolver->solve(*tJacobianPressure, tCurrentPressAdjoint, tRHS);
     }
 
     void calculateTemperatureAdjoint
@@ -4311,28 +4296,26 @@ private:
 
         auto tCurrentTempAdjoint = aDualStates.getVector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
-        auto tJacobianTemp = mTemperatureResidual.gradientCurrentTemp(aControl, aCurrentStates);
-        mVectorFieldSolver->solve(*tJacobianTemp, tCurrentTempAdjoint, tRHS);
+        auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aControl, aCurrentStates);
+        mScalarFieldSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
     }
 
-    void calculateMomentumAdjoint
+    void calculateVelocityAdjoint
     (const std::string & aName,
      const Plato::ScalarVector & aControl,
      const PrimalStates & aCurrentStates,
      const PrimalStates & aPreviousStates,
      DualStates & aDualStates)
     {
-        // TODO: FIX BASED ON NEW CHANGES TO ELEMENT RESIDUALS - THE CORRECTOR STEPS COMPUTES THE DELTA VELOCITY
-        // NOT THE DELTA CORRECTOR, MAKE APPROPRIATE CHANGES
         auto tRHS = mCriteria[aName]->gradientCurrentVel(aControl, aCurrentStates);
 
         auto tGradResPredWrtPrevVel = mPredictorResidual.gradientPreviousVel(aControl, aPreviousStates);
         auto tPrevPredictorAdjoint = aDualStates.getVector("previous predictor adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevVel, tPrevPredictorAdjoint, tRHS);
 
-        auto tGradResCorrWrtPrevVel = mCorrectorResidual.gradientPreviousVel(aControl, aPreviousStates);
-        auto tPrevCorrectorAdjoint = aDualStates.getVector("previous corrector adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResCorrWrtPrevVel, tPrevCorrectorAdjoint, tRHS);
+        auto tGradResVelWrtPrevVel = mVelocityResidual.gradientPreviousVel(aControl, aPreviousStates);
+        auto tPrevVelocityAdjoint = aDualStates.getVector("previous velocity adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPrevVel, tPrevVelocityAdjoint, tRHS);
 
         auto tGradResPressWrtPrevVel = mPressureResidual.gradientPreviousVel(aControl, aPreviousStates);
         auto tPrevPressureAdjoint = aDualStates.getVector("previous pressure adjoint");
@@ -4341,16 +4324,12 @@ private:
         auto tGradResTempWrtPrevVel = mTemperatureResidual.gradientPreviousVel(aControl, aPreviousStates);
         auto tPrevTemperatureAdjoint = aDualStates.getVector("previous temperature adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResTempWrtPrevVel, tPrevTemperatureAdjoint, tRHS);
-
-        auto tPrevVelocityAdjoint = aDualStates.getVector("previous velocity adjoint");
-        auto tGradResVelWrtPrevVel = mVelocityResidual.gradientPreviousVel(aControl, aPreviousStates);
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPrevVel, tPrevVelocityAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
         auto tCurrentVelocityAdjoint = aDualStates.getVector("current velocity adjoint");
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
-        auto tJacobianVel = mVelocityResidual.gradientCurrentVel(aControl, aCurrentStates);
-        mVectorFieldSolver->solve(*tJacobianVel, tCurrentVelocityAdjoint, tRHS);
+        auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aControl, aCurrentStates);
+        mVectorFieldSolver->solve(*tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
     }
 
     void calculateGradientControl
@@ -4360,8 +4339,6 @@ private:
      const DualStates & aDualStates,
      Plato::ScalarVector & aTotalDerivative)
     {
-        // TODO: FIX BASED ON NEW CHANGES TO ELEMENT RESIDUALS - THE CORRECTOR STEPS COMPUTES THE DELTA VELOCITY
-        // NOT THE DELTA CORRECTOR, MAKE APPROPRIATE CHANGES
         auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aCurrentStates);
 
         auto tCurrentPredictorAdjoint = aDualStates.getVector("current predictor adjoint");
@@ -4371,10 +4348,6 @@ private:
         auto tCurrentPressureAdjoint = aDualStates.getVector("current pressure adjoint");
         auto tGradResPressWrtControl = mPressureResidual.gradientControl(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtControl, tCurrentPressureAdjoint, tGradCriterionWrtControl);
-
-        auto tCurrentCorrectorAdjoint = aDualStates.getVector("current corrector adjoint");
-        auto tGradResCorrWrtControl = mCorrectorResidual.gradientControl(aControl, aCurrentStates);
-        Plato::MatrixTimesVectorPlusVector(tGradResCorrWrtControl, tCurrentCorrectorAdjoint, tGradCriterionWrtControl);
 
         auto tCurrentTemperatureAdjoint = aDualStates.getVector("current temperature adjoint");
         auto tGradResTempWrtControl = mTemperatureResidual.gradientControl(aControl, aCurrentStates);
@@ -4394,8 +4367,6 @@ private:
      const DualStates & aDualStates,
      Plato::ScalarVector & aTotalDerivative)
     {
-        // TODO: FIX BASED ON NEW CHANGES TO ELEMENT RESIDUALS - THE CORRECTOR STEPS COMPUTES THE DELTA VELOCITY
-        // NOT THE DELTA CORRECTOR, MAKE APPROPRIATE CHANGES
         auto tGradCriterionWrtConfig = mCriteria[aName]->gradientConfig(aControl, aCurrentStates);
 
         auto tCurrentPredictorAdjoint = aDualStates.getVector("current predictor adjoint");
@@ -4405,10 +4376,6 @@ private:
         auto tCurrentPressureAdjoint = aDualStates.getVector("current pressure adjoint");
         auto tGradResPressWrtConfig = mPressureResidual.gradientConfig(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtConfig, tCurrentPressureAdjoint, tGradCriterionWrtConfig);
-
-        auto tCurrentCorrectorAdjoint = aDualStates.getVector("current corrector adjoint");
-        auto tGradResCorrWrtConfig = mCorrectorResidual.gradientConfig(aControl, aCurrentStates);
-        Plato::MatrixTimesVectorPlusVector(tGradResCorrWrtConfig, tCurrentCorrectorAdjoint, tGradCriterionWrtConfig);
 
         auto tCurrentTemperatureAdjoint = aDualStates.getVector("current temperature adjoint");
         auto tGradResTempWrtConfig = mTemperatureResidual.gradientConfig(aControl, aCurrentStates);
