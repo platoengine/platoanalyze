@@ -440,12 +440,12 @@ struct Evaluation
    using Residual         = ResultTypes<SimplexPhysicsT>;
    using GradConfig       = GradConfigTypes<SimplexPhysicsT>;
    using GradControl      = GradControlTypes<SimplexPhysicsT>;
-   using GradMassCurr     = GradCurrentMassTypes<SimplexPhysicsT>;
-   using GradMassPrev     = GradCurrentMassTypes<SimplexPhysicsT>;
-   using GradEnergyCurr   = GradCurrentEnergyTypes<SimplexPhysicsT>;
-   using GradEnergyPrev   = GradPreviousEnergyTypes<SimplexPhysicsT>;
-   using GradMomentumCurr = GradPreviousMomentumTypes<SimplexPhysicsT>;
-   using GradMomentumPrev = GradPreviousMomentumTypes<SimplexPhysicsT>;
+   using GradCurMass      = GradCurrentMassTypes<SimplexPhysicsT>;
+   using GradPrevMass     = GradCurrentMassTypes<SimplexPhysicsT>;
+   using GradCurEnergy    = GradCurrentEnergyTypes<SimplexPhysicsT>;
+   using GradPrevEnergy   = GradPreviousEnergyTypes<SimplexPhysicsT>;
+   using GradCurMomentum  = GradPreviousMomentumTypes<SimplexPhysicsT>;
+   using GradPrevMomentum = GradPreviousMomentumTypes<SimplexPhysicsT>;
    using GradPredictor    = GradMomentumPredictorTypes<SimplexPhysicsT>;
 };
 
@@ -475,8 +475,7 @@ private:
     Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMassScalarType> mPreviousPress;
     Plato::ScalarMultiVectorT<typename EvaluationT::PreviousEnergyScalarType> mPreviousTemp;
     Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMomentumScalarType> mPreviousVel;
-    Plato::ScalarMultiVectorT<typename EvaluationT::MomentumPredictorScalarType> mMomentumPredictor;
-    Plato::ScalarMultiVectorT<typename EvaluationT::MomentumCorrectorScalarType> mMomentumCorrector;
+    Plato::ScalarMultiVectorT<typename EvaluationT::MomentumPredictorScalarType> mVelPredictor;
 
 public:
     explicit WorkSets(const Plato::OrdinalType& aNumCells) :
@@ -491,8 +490,7 @@ public:
         mPreviousPress("Previous Mass Workset", aNumCells, mNumPressDofsPerCell),
         mPreviousTemp("Previous Energy Workset", aNumCells, mNumTempDofsPerCell),
         mPreviousVel("Previous Momentum Workset", aNumCells, mNumVelDofsPerCell),
-        mMomentumPredictor("Momentum Predictor Workset", aNumCells, mNumVelDofsPerCell),
-        mMomentumCorrector("Momentum Corrector Workset", aNumCells, mNumVelDofsPerCell)
+        mVelPredictor("Momentum Predictor Workset", aNumCells, mNumVelDofsPerCell)
     {}
 
     decltype(mNumCells) numCells() const
@@ -550,16 +548,9 @@ public:
         return mPreviousVel;
     }
 
-    decltype(mMomentumPredictor) predictor()
+    decltype(mVelPredictor) predictor()
     {
-        return mMomentumPredictor;
-    }
-
-    // TODO: FIX BASED ON NEW CHANGES TO ELEMENT RESIDUALS - THE CORRECTOR STEPS COMPUTES THE DELTA VELOCITY
-    // NOT THE DELTA CORRECTOR, MAKE APPROPRIATE CHANGES
-    decltype(mMomentumCorrector) corrector()
-    {
-        return mMomentumCorrector;
+        return mVelPredictor;
     }
 };
 
@@ -650,9 +641,9 @@ private:
     using ResultEvalT       = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
     using GradConfigEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
     using GradControlEvalT  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradControl;
-    using GradCurVelEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumCurr;
-    using GradCurTempEvalT  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyCurr;
-    using GradCurPressEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassCurr;
+    using GradCurVelEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCurMomentum;
+    using GradCurTempEvalT  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCurEnergy;
+    using GradCurPressEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCurMass;
 
     // element scalar functions types
     using ResultFunc       = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, ResultEvalT>>;
@@ -1961,12 +1952,12 @@ private:
     using ResidualEvalT      = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
     using GradConfigEvalT    = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
     using GradControlEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradControl;
-    using GradCurVelEvalT    = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumCurr;
-    using GradPrevVelEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMomentumPrev;
-    using GradCurTempEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyCurr;
-    using GradPrevTempEvalT  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradEnergyPrev;
-    using GradCurPressEvalT  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassCurr;
-    using GradPrevPressEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradMassPrev;
+    using GradCurVelEvalT    = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCurMomentum;
+    using GradPrevVelEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradPrevMomentum;
+    using GradCurTempEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCurEnergy;
+    using GradPrevTempEvalT  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradPrevEnergy;
+    using GradCurPressEvalT  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCurMass;
+    using GradPrevPressEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradPrevMass;
     using GradPredictorEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradPredictor;
 
     // element residual vector function types
@@ -3366,7 +3357,7 @@ public:
 
         auto tFunParams = aInputs.sublist(aName);
         auto tLowerName = Plato::tolower(aName);
-        // TODO: Add pressure, velocity, temperature, predictor and corrector element residuals. explore function interface
+        // TODO: Add pressure, velocity, temperature, and predictor element residuals. explore function interface
         return nullptr;
     }
 
@@ -4148,7 +4139,7 @@ private:
         auto tResidualVelocity = mVelocityResidual.value(aStates);
         auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aStates);
 
-        // solve corrector equation (consistent or mass lumped)
+        // solve velocity equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
         mVectorFieldSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
