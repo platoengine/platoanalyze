@@ -96,7 +96,6 @@ void MultipointConstraints::getMaps(const LocalOrdinalVector & aMpcChildNodes,
         {  
             nodeTypes(nodeOrdinal) = tCondensedOrdinals(0); 
             Kokkos::atomic_increment(&tCondensedOrdinals(0));
-            /* Kokkos::atomic_add(&tCondensedOrdinal,static_cast<Plato::OrdinalType>(1)); */
         }
     }, "Map from global node ID to condensed node ID");
 }
@@ -126,6 +125,7 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
     Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), outEntries);
 
     outRowMap(0) = 0;
+    LocalOrdinalVector tNumMisassignedNodes("misassigned node counter", 1); 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, mNumNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
     {
         OrdinalType tColMapOrdinal = outRowMap(nodeOrdinal);
@@ -135,9 +135,7 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
             OrdinalType conOrdinal = aNodeConNum(nodeOrdinal);
             if (conOrdinal == -1)
             {
-                std::ostringstream tMsg;
-                tMsg << "Constrained node not associated with constraint number. \n";
-                THROWERR(tMsg.str())
+                Kokkos::atomic_increment(&tNumMisassignedNodes(0));
             }
 
             OrdinalType tConRowStart = tMpcRowMap(conOrdinal);
@@ -169,6 +167,13 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
             }
         }
     }, "Build block transformation matrix");
+
+    if ( tNumMisassignedNodes(0) > 0 )
+    {
+        std::ostringstream tMsg;
+        tMsg << "At least one constrained node in MPCs is not associated with correct constraint number. Transformation matrix will be incorrect. \n";
+        THROWERR(tMsg.str())
+    }
 
     OrdinalType tNdof = mNumNodes*mNumDofsPerNode;
     OrdinalType tNumCondensedDofs = (mNumNodes - tNumChildNodes)*mNumDofsPerNode;

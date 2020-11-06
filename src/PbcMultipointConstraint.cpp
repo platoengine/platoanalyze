@@ -216,20 +216,19 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
     Plato::blas1::fill(static_cast<Plato::OrdinalType>(0), tNodeCounter);
 
     // fill in parent element vertex ordinals
+    LocalOrdinalVector tNumMissingParent("missing parent element counter", 1); 
+    LocalOrdinalVector tNumMissingMap("missing child node map counter", 1); 
+
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberParentElements), LAMBDA_EXPRESSION(Plato::OrdinalType iElemOrdinal)
     {
         Plato::OrdinalType tElement = aParentElements(iElemOrdinal); 
         if(tElement == -2)
         {
-            std::ostringstream tMsg;
-            tMsg << "NO PARENT ELEMENT COULD BE FOUND FOR CHILD NODE IN PBC MULTIPOINT CONSTRAINT. \n";
-            THROWERR(tMsg.str())
+            Kokkos::atomic_increment(&tNumMissingParent(0));
         }
         if(tElement == -1)
         {
-            std::ostringstream tMsg;
-            tMsg << "CHILD NODE COULD NOT BE MAPPED IN PBC MULTIPOINT CONSTRAINT. \n";
-            THROWERR(tMsg.str())
+            Kokkos::atomic_increment(&tNumMissingMap(0));
         }
         for(Plato::OrdinalType iVertOrdinal=0; iVertOrdinal < tNVertsPerElem; ++iVertOrdinal)
         {
@@ -237,6 +236,19 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
             tNodeCounter(tVertIndex) = 1;
         }
     }, "mark 1 for parent element vertices");
+
+    if ( tNumMissingParent(0) > 0 )
+    {
+        std::ostringstream tMsg;
+        tMsg << "NO PARENT ELEMENT COULD BE FOUND FOR AT LEAST ONE CHILD NODE IN PBC MULTIPOINT CONSTRAINT. \n";
+        THROWERR(tMsg.str())
+    }
+    if ( tNumMissingMap(0) > 0 )
+    {
+        std::ostringstream tMsg;
+        tMsg << "AT LEAST ONE CHILD NODE COULD NOT BE MAPPED IN PBC MULTIPOINT CONSTRAINT. \n";
+        THROWERR(tMsg.str())
+    }
     
     // get number of unique parent nodes
     Plato::OrdinalType tSum(0);
@@ -310,6 +322,7 @@ setMatrixValues(Omega_h::Mesh & aMesh,
 
     Plato::Geometry::GetBasis<Plato::Scalar> tGetBasis(aMesh);
 
+    LocalOrdinalVector tNumMissingParent("missing parent node counter", 1); 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType iRowOrdinal)
     {
 
@@ -329,9 +342,7 @@ setMatrixValues(Omega_h::Mesh & aMesh,
 
         if(iP0 == -1 || iP1 == -1 || iP2 == -1 || iP3 == -1)
         {
-            std::ostringstream tMsg;
-            tMsg << "PARENT ELEMENT NODE ID NOT RECOGNIZED AS PARENT NODE IN PBC MULTIPOINT CONSTRAINT. \n";
-            THROWERR(tMsg.str())
+            Kokkos::atomic_increment(&tNumMissingParent(0));
         }
 
         // basis function values
@@ -352,6 +363,13 @@ setMatrixValues(Omega_h::Mesh & aMesh,
         tEntries(iEntryOrdinal+3) = tBasisValues[3];
 
     }, "colmap and entries");
+
+    if ( tNumMissingParent(0) > 0 )
+    {
+        std::ostringstream tMsg;
+        tMsg << "PARENT ELEMENT NODE ID NOT RECOGNIZED AS PARENT NODE FOR AT LEAST ONE CHILD NODE IN PBC MULTIPOINT CONSTRAINT. \n";
+        THROWERR(tMsg.str())
+    }
 
     // fill in mpc matrix
     mMpcMatrix = Teuchos::rcp( new Plato::CrsMatrixType(tRowMap, tColMap, tEntries, tNumChildNodes, tNumParentNodes, 1, 1) );
