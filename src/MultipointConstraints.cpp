@@ -87,7 +87,6 @@ void MultipointConstraints::getMaps(const LocalOrdinalVector & aMpcChildNodes,
         nodeConNum(childNode) = childOrdinal;
     }, "Set child node type and constraint number");
 
-    OrdinalType tCondensedOrdinal = 0;
     LocalOrdinalVector tCondensedOrdinals("column indices", 1);
     Plato::blas1::fill(static_cast<Plato::OrdinalType>(0), tCondensedOrdinals);
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, mNumNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
