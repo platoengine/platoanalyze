@@ -15,6 +15,24 @@ namespace Plato
 {
 
 /******************************************************************************//**
+ * \fn tolower
+ * \brief Convert uppercase word to lowercase.
+ * \param [in] aInput word
+ * \return lowercase word
+**********************************************************************************/
+inline std::string tolower(const std::string& aInput)
+{
+    std::locale tLocale;
+    std::ostringstream tOutput;
+    for (auto& tChar : aInput)
+    {
+        tOutput << std::tolower(tChar,tLocale);
+    }
+    return (tOutput.str());
+}
+// function tolower
+
+/******************************************************************************//**
  * \brief Print 1D standard vector to terminal - host function
  * \param [in] aInput 1D standard vector
  * \param [in] aName  container name (default = "")

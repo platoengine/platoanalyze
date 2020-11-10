@@ -100,10 +100,6 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
           Plato::Scalar aScale
 ) const
 {
-    // get sideset faces
-    auto tFaceLocalOrdinals = Plato::get_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
-    auto tNumFaces = tFaceLocalOrdinals.size();
-
     // get mesh vertices
     auto tFace2Verts = aSpatialModel.Mesh.ask_verts_of(SpatialDim-1);
     auto tCell2Verts = aSpatialModel.Mesh.ask_elem_verts();
@@ -120,7 +116,11 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
     Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
     Plato::ComputeSurfaceIntegralWeight<SpatialDim> tComputeSurfaceIntegralWeight;
     Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
-    Plato::ScalarArray3DT<ConfigScalarType> tJacobian("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
+
+    // get sideset faces
+    auto tFaceLocalOrdinals = Plato::get_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
+    auto tNumFaces = tFaceLocalOrdinals.size();
+    Plato::ScalarArray3DT<ConfigScalarType> tJacobians("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
 
     auto tFlux = mFlux;
     auto tNumDofs = NumDofs;
@@ -130,7 +130,9 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
     {
         THROWERR("Surface Pressure Integral: A non-finite cubature weight was detected.")
     }
-    auto tMultiplier = aScale * tCubatureWeight;
+
+    // pressure forces should act towards the surface; thus, -1.0 is used to invert the outward facing normal inwards.
+    Plato::Scalar tNormalMultiplier = -1.0;
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
     {
@@ -146,8 +148,9 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
           tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
           ConfigScalarType tWeight(0.0);
-          tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobian);
-          tComputeSurfaceIntegralWeight(aFaceI, tMultiplier, tJacobian, tWeight);
+          auto tCubWeightMultiplier = aScale * tCubatureWeight;
+          tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobians);
+          tComputeSurfaceIntegralWeight(aFaceI, tCubWeightMultiplier, tJacobians, tWeight);
 
           // compute unit normal vector
           auto tElemFaceOrdinal = Plato::get_face_ordinal<SpatialDim>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
@@ -159,7 +162,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
               for( Plato::OrdinalType tDof=0; tDof<tNumDofs; tDof++)
               {
                   auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
-                  aResult(tCellOrdinal,tCellDofOrdinal) += tUnitNormalVec(tDof) * tFlux(tDof) * tWeight;
+                  aResult(tCellOrdinal,tCellDofOrdinal) += tNormalMultiplier * tUnitNormalVec(tDof) * tFlux(tDof) * tWeight;
               }
           }
       }
