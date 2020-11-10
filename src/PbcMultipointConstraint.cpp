@@ -77,10 +77,7 @@ PbcMultipointConstraint(Omega_h::Mesh & aMesh,
     // Fill in child nodes
     Kokkos::resize(mChildNodes, tNumberChildNodes);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
-    {
-        mChildNodes(nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
-    }, "Child node IDs");
+    this->updateNodesets(tNumberChildNodes, tChildNodeLids);
     
     // map child nodes
     Plato::ScalarMultiVector tChildNodeLocations       ("child node locations",        Plato::Geometry::cSpaceDim, tNumberChildNodes);
@@ -141,7 +138,6 @@ get(LocalOrdinalVector & aMpcChildNodes,
 
         auto tRowStart = tMpcRowMap(nodeOrdinal);
         auto tRowEnd = tMpcRowMap(nodeOrdinal+1);
-        auto tNnz = tRowEnd - tRowStart;
         for(Plato::OrdinalType entryOrdinal = tRowStart; entryOrdinal<tRowEnd; entryOrdinal++)
         {
             tColumnIndices(aOffsetNnz+entryOrdinal) = aOffsetParent + tMpcColumnIndices(entryOrdinal); // column indices
@@ -172,6 +168,18 @@ updateLengths(OrdinalType& lengthChild,
     lengthParent += tNumberParentNodes;
     lengthNnz += tNumberNonzero;
 
+}
+
+/****************************************************************************/
+void Plato::PbcMultipointConstraint::
+updateNodesets(const OrdinalType& tNumberChildNodes,
+               const Omega_h::LOs& tChildNodeLids)
+/****************************************************************************/
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
+    {
+        mChildNodes(nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
+    }, "Child node IDs");
 }
 
 /****************************************************************************/

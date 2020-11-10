@@ -34,7 +34,7 @@ TieMultipointConstraint(const Omega_h::MeshSets & aMeshSets,
                 << "'. Node Set is not defined in input geometry/mesh file.\n";
         THROWERR(tMsg.str())
     }
-    auto tChildNodeLids = (tChildNodeSetsIter->second);
+    Omega_h::LOs tChildNodeLids = (tChildNodeSetsIter->second);
     auto tNumberChildNodes = tChildNodeLids.size();
     
     // parse parent nodes
@@ -46,7 +46,7 @@ TieMultipointConstraint(const Omega_h::MeshSets & aMeshSets,
                 << "'. Node Set is not defined in input geometry/mesh file.\n";
         THROWERR(tMsg.str())
     }
-    auto tParentNodeLids = (tParentNodeSetsIter->second);
+    Omega_h::LOs tParentNodeLids = (tParentNodeSetsIter->second);
     auto tNumberParentNodes = tParentNodeLids.size();
 
     // Check that the number of child and parent nodes match
@@ -61,11 +61,7 @@ TieMultipointConstraint(const Omega_h::MeshSets & aMeshSets,
     Kokkos::resize(mChildNodes, tNumberChildNodes);
     Kokkos::resize(mParentNodes, tNumberParentNodes);
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
-    {
-        mChildNodes(nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
-        mParentNodes(nodeOrdinal) = tParentNodeLids[nodeOrdinal]; // parent node ID
-    }, "Tie constraint data");
+    this->updateNodesets(tNumberChildNodes, tChildNodeLids, tParentNodeLids);
 }
 
 /****************************************************************************/
@@ -119,6 +115,20 @@ updateLengths(OrdinalType& lengthChild,
     lengthChild += tNumberChildNodes;
     lengthParent += tNumberParentNodes;
     lengthNnz += tNumberChildNodes;
+}
+
+/****************************************************************************/
+void Plato::TieMultipointConstraint::
+updateNodesets(const OrdinalType& tNumberChildNodes,
+               const Omega_h::LOs& tChildNodeLids,
+               const Omega_h::LOs& tParentNodeLids)
+/****************************************************************************/
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
+    {
+        mChildNodes(nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
+        mParentNodes(nodeOrdinal) = tParentNodeLids[nodeOrdinal]; // parent node ID
+    }, "Tie constraint data");
 }
 
 }

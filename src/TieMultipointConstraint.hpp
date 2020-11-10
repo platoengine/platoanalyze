@@ -57,6 +57,11 @@ public:
                        OrdinalType& lengthParent,
                        OrdinalType& lengthNnz) override;
 
+    // ! Fill in node set members
+    void updateNodesets(const OrdinalType& tNumberChildNodes,
+                        const Omega_h::LOs& tChildNodeLids,
+                        const Omega_h::LOs& tParentNodeLids);
+
 private:
     LocalOrdinalVector    mParentNodes;
     LocalOrdinalVector    mChildNodes;

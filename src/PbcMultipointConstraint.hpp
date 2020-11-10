@@ -61,6 +61,10 @@ public:
                        OrdinalType& lengthParent,
                        OrdinalType& lengthNnz) override;
 
+    // ! Fill in node set members
+    void updateNodesets(const OrdinalType& tNumberChildNodes,
+                        const Omega_h::LOs& tChildNodeLids);
+
     // ! Perform translation mapping from child nodes to parent locations
     void mapChildVertexLocations(Omega_h::Mesh & aMesh,
                                  const Plato::Scalar aTranslation[],
