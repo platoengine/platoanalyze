@@ -1058,8 +1058,10 @@ class PressureSurfaceForces
 private:
     static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom (dofs) per node */
 
-    static constexpr auto mNumSpatialDims      = PhysicsT::SimplexT::mNumSpatialDims;     /*!< number of spatial dimensions */
-    static constexpr auto mNumPressDofsPerNode = PhysicsT::SimplexT::mNumMassDofsPerNode; /*!< number of pressure dofs per node */
+    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;       /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;      /*!< number of nodes per face */
+    static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;   /*!< number of pressure dofs per node */
+    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace; /*!< number of spatial dimensions on face */
 
     // forward automatic differentiation types
     using ResultT    = typename EvaluationT::ResultScalarType;
@@ -1069,7 +1071,7 @@ private:
     const std::string mSideSetName; /*!< side set name */
 
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;  /*!< integration rule */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mCubatureRule;  /*!< integration rule */
 
 public:
     PressureSurfaceForces
@@ -1078,11 +1080,6 @@ public:
          mSideSetName(aSideSetName),
          mSpatialDomain(aSpatialDomain)
     {
-    }
-
-    void sideset(const std::string & aName)
-    {
-        mSideSetName = aName;
     }
 
     void operator()
@@ -1112,23 +1109,18 @@ public:
         // get sideset faces
         auto tFaceLocalOrdinals = Plato::get_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
-        Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDims - 1, mNumSpatialDims);
+        Plato::ScalarArray3DT<ConfigT> tSurfaceJacobians("jacobian", tNumFaces, mNumSpatialDims - 1, mNumSpatialDims);
 
         // set previous pressure at Gauss points container
         auto tNumBoundaryCells = tFace2Elems_map.size();
         Plato::ScalarVectorT<PrevPressT> tPrevPressGP("previous pressure at Gauss point", tNumBoundaryCells);
 
-        auto tNodesPerFace = mNumSpatialDims;
-        auto tCubatureWeight = mCubatureRule.getCubWeight();
-        if(std::isfinite(tCubatureWeight) == false)
-        {
-            THROWERR(std::string("Fluid Dynamics Surface Integral: A non-finite cubature weight ") +
-                "was detected while computing the pressure surface forces.")
-        }
-
         // set input state worksets
         auto tConfigWS    = aWorkSets.configuration();
         auto tPrevPressWS = aWorkSets.previousPressure();
+
+        // calculate surface integral
+        auto tCubatureWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
         {
@@ -1143,9 +1135,9 @@ public:
               tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
               // calculate surface jacobians
-              ConfigT tWeight(0.0);
-              tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
-              tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tWeight);
+              ConfigT tSurfaceAreaTimesCubWeight(0.0);
+              tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tSurfaceJacobians);
+              tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tSurfaceJacobians, tSurfaceAreaTimesCubWeight);
 
               // compute unit normal vector
               auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
@@ -1153,13 +1145,13 @@ public:
 
               // project into aResult workset
               tIntrplScalarField(tCellOrdinal, tBasisFunctions, tPrevPressWS, tPrevPressGP);
-              for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++ )
+              for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
                   for( Plato::OrdinalType tDof = 0; tDof < mNumDofsPerNode; tDof++ )
                   {
                       auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * mNumDofsPerNode) + tDof;
-                      aResult(tCellOrdinal, tCellDofOrdinal) +=
-                          aMultiplier * tUnitNormalVec(tDof) * tPrevPressGP(tElem) * tWeight;
+                      aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode) *
+                          tUnitNormalVec(tDof) * tPrevPressGP(tElem) * tSurfaceAreaTimesCubWeight;
                   }
               }
           }
@@ -1167,6 +1159,160 @@ public:
     }
 };
 // class PressureSurfaceForces
+
+
+
+
+template<typename PhysicsT, typename EvaluationT>
+class DeviatoricSurfaceForces
+{
+private:
+    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
+    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell; /*!< number of degrees of freedom per cell */
+
+    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;       /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;      /*!< number of nodes per face */
+    static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;      /*!< number of nodes per cell */
+    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace; /*!< number of spatial dimensions on face */
+
+    // forward automatic differentiation types
+    using ResultT  = typename EvaluationT::ResultScalarType;
+    using ConfigT  = typename EvaluationT::ConfigScalarType;
+    using ControlT = typename EvaluationT::ControlScalarType;
+    using PrevVelT = typename EvaluationT::PreviousMomentumScalarType;
+
+    using StrainT = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
+
+
+    Plato::Scalar mPrNum = 1.0;
+    Plato::Scalar mPrNumConvexityParam = 0.5;
+    const std::string mSideSetName; /*!< side set name */
+
+    const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;  /*!< integration rule */
+
+public:
+    DeviatoricSurfaceForces
+    (const Plato::SpatialDomain & aSpatialDomain,
+     std::string aSideSetName = "empty") :
+         mSideSetName(aSideSetName),
+         mSpatialDomain(aSpatialDomain)
+    {
+    }
+
+    void operator()
+    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult,
+     Plato::Scalar aMultiplier = 1.0) const
+    {
+        // get mesh vertices
+        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDims - 1);
+        auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
+
+        // get face to element graph
+        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDims - 1, mNumSpatialDims);
+        auto tFace2Elems_map   = tFace2eElems.a2ab;
+        auto tFace2Elems_elems = tFace2eElems.ab2b;
+
+        // get element to face map
+        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDims - 1).ab2b;
+
+        // set local functors
+        Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
+        Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
+        Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
+        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumDofsPerNode> tIntrplVectorField;
+        Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
+
+        // get sideset faces
+        auto tFaceLocalOrdinals = Plato::get_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+
+        // set local data structures
+        auto tNumFaces = tFaceLocalOrdinals.size();
+        auto tNumBoundaryCells = tFace2Elems_elems.size();
+        Plato::ScalarVectorT<ConfigT>  tCellVolume("cell weight", tNumBoundaryCells);
+        Plato::ScalarArray3DT<ConfigT> tJacobians("cell jacobians", tNumFaces, mNumSpatialDims - 1, mNumSpatialDims);
+        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumBoundaryCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumBoundaryCells, mNumSpatialDims, mNumSpatialDims);
+
+        // set input state worksets
+        auto tControlWS    = aWorkSets.control();
+        auto tConfigWS     = aWorkSets.configuration();
+        auto tPrevVelWS    = aWorkSets.previousVelocity();
+
+        // transfer member data to device
+        auto tPrNum = mPrNum;
+        auto tPrNumConvexityParam = mPrNumConvexityParam;
+
+        // calculate surface integral
+        auto tCubatureWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
+        {
+            auto tFaceOrdinal = tFaceLocalOrdinals[aFaceI];
+            // for each element that the face is connected to: (either 1 or 2 elements)
+            for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal + 1]; tElem++ )
+            {
+                // create a map from face local node index to elem local node index
+                Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
+                auto tCellOrdinal = tFace2Elems_elems[tElem];
+                tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+
+                // calculate surface jacobians
+                ConfigT tSurfaceAreaTimesCubWeight(0.0);
+                tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
+                tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+
+                // compute unit normal vector
+                auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
+                auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
+
+                // calculate strain rate
+                tComputeGradient(tCellOrdinal, tGradient, tConfigWS, tCellVolume);
+
+                // calculate strain rate for incompressible flows, which is defined as
+                // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
+                for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+                {
+                    for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
+                    {
+                        for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
+                        {
+                            tStrainRate(tCellOrdinal, tDimI, tDimJ) += static_cast<Plato::Scalar>(0.5) *
+                                ( ( tGradient(tCellOrdinal, tNode, tDimJ) * tPrevVelWS(tCellOrdinal, tDimI) )
+                                + ( tGradient(tCellOrdinal, tNode, tDimI) * tPrevVelWS(tCellOrdinal, tDimJ) ) );
+                        }
+                    }
+                }
+
+                // calculate penalized prandtl number
+                ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(tCellOrdinal, tControlWS);
+                ControlT tPenalizedPrandtlNum = ( tDensity * ( tPrNum * (1.0 - tPrNumConvexityParam) - 1.0 ) + 1.0 )
+                    / ( tPrNum * (1.0 + tPrNumConvexityParam * tDensity) );
+
+                // calculate deviatoric traction forces, which are defined as,
+                // \int_{\Gamma_e} N_u^a \left( \tau^h_{ij}n_j \right) d\Gamma_e
+                for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
+                {
+                    for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
+                    {
+                        auto tDof = (mNumSpatialDims * tNode) + tDimI;
+                        for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
+                        {
+                            aResult(tCellOrdinal, tDof) += tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight *
+                                aMultiplier * ( ( static_cast<Plato::Scalar>(2.0) * tPenalizedPrandtlNum *
+                                    tStrainRate(tCellOrdinal, tDimI, tDimJ) ) * tUnitNormalVec(tDimJ) );
+                        }
+                    }
+                }
+            }
+
+        }, "calculate deviatoric traction integral");
+    }
+};
+// class DeviatoricSurfaceForces
+
 
 template<typename PhysicsT, typename EvaluationT>
 class AbstractVectorFunction
@@ -1221,6 +1367,9 @@ private:
 
     using PressureForces = Plato::FluidMechanics::PressureSurfaceForces<PhysicsT, EvaluationT>;
     std::unordered_map<std::string, std::shared_ptr<PressureForces>> mPressureBCs;  /*!< prescribed pressure forces */
+
+    using DeviatoricForces = Plato::FluidMechanics::DeviatoricSurfaceForces<PhysicsT, EvaluationT>;
+    std::unordered_map<std::string, std::shared_ptr<DeviatoricForces>> mDeviatoricBCs;  /*!< stabilized deviatoric tractions */
 
     Plato::Scalar mDaNum = 1.0;
     Plato::Scalar mPrNum = 1.0;
@@ -1426,14 +1575,40 @@ public:
         }, "velocity predictor residual");
     }
 
-    // todo: verify formulation with document
+    // todo: can i used the prescribed traction side sets to identify the non traction side sets with out the user
+    // having to define a side set, right now the user is defining these side sets. dan showed me a way to
+    // do it but i have a few questions for him: 1) how do i indentify the traction_side_set_id from the
+    // side set name, 2) how to combine multiple side sets into one big array.
    void evaluateBoundary
    (const StateWorkSets                & aWorkSets,
     Plato::ScalarMultiVectorT<ResultT> & aResult) const
    {
-       // todo: add boundary term
        // calculate boundary integral, which is defined as
        // \int_{\Gamma-\Gamma_t} N_u^a\left(\tau_{ij}n_j\right) d\Gamma
+       if( mDeviatoricBCs.empty() == false )
+       {
+           auto tNumCells = aResult.extent(0);
+           Plato::ScalarMultiVectorT<ResultT> tResultWS("deviatoric traction forces", tNumCells, mNumDofsPerCell);
+           for(auto& tPair : mDeviatoricBCs)
+           {
+               tPair.second->operator()(aWorkSets, tResultWS);
+           }
+
+           // multiply force vector by the corresponding nodal time steps
+           auto tTimeStepWS = aWorkSets.timeStep();
+           Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+           {
+               for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+               {
+                   for(Plato::OrdinalType tDof = 0; tDof < mNumDofsPerNode; tDof++)
+                   {
+                       auto tDofIndex = (mNumDofsPerNode * tNode) + tDof;
+                       aResult(aCellOrdinal, tDofIndex) += tTimeStepWS(aCellOrdinal, tNode) *
+                           static_cast<Plato::Scalar>(-1.0) * tResultWS(aCellOrdinal, tDofIndex);
+                   }
+               }
+           }, "deviatoric traction forces");
+       }
    }
 
    void evaluatePrescribed
@@ -1450,7 +1625,7 @@ public:
            // calculate deviatoric traction forces, which are defined as
            // \int_{\Gamma_t} N_u^a\left(t_i + p^{n-1}n_i\right) d\Gamma
            auto tNumCells = aResult.extent(0);
-           Plato::ScalarMultiVectorT<ResultT> tResultWS("deviatoric traction forces", tNumCells, mNumDofsPerCell);
+           Plato::ScalarMultiVectorT<ResultT> tResultWS("traction forces", tNumCells, mNumDofsPerCell);
            mPrescribedBCs->get( mSpatialDomain, tPrevVelWS, tControlWS, tConfigWS, tResultWS);
            for(auto& tPair : mPressureBCs)
            {
@@ -1470,7 +1645,7 @@ public:
                            static_cast<Plato::Scalar>(-1.0) * tResultWS(aCellOrdinal, tDofIndex);
                    }
                }
-           }, "prescribed deviatoric traction forces");
+           }, "prescribed traction forces");
        }
    }
 
@@ -1949,7 +2124,7 @@ public:
             // evaluate prescribed flux integral
             auto tNumCells = aResult.extent(0);
             Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumNodesPerCell);
-            mNeumannLoads.get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
+            mPrescribedBC.get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
 
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
@@ -1969,8 +2144,10 @@ template<typename PhysicsT, typename EvaluationT>
 class MomentumSurfaceForces
 {
 private:
-    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode;           /*!< number of degrees of freedom (dofs) per node */
-    static constexpr auto mNumSpatialDims = PhysicsT::SimplexT::mNumSpatialDims; /*!< number of spatial dimensions */
+    static constexpr auto mNumDofsPerNode  = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom (dofs) per node */
+
+    static constexpr auto mNumNodesPerFace = PhysicsT::SimplexT::mNumNodesPerFace; /*!< number of nodes per face */
+    static constexpr auto mNumSpatialDims  = PhysicsT::SimplexT::mNumSpatialDims;  /*!< number of spatial dimensions */
 
     // forward automatic differentiation types
     using ResultT    = typename EvaluationT::ResultScalarType;
@@ -1989,11 +2166,6 @@ public:
          mSideSetName(aSideSetName),
          mSpatialDomain(aSpatialDomain)
     {
-    }
-
-    void sideset(const std::string & aName)
-    {
-        mSideSetName = aName;
     }
 
     void operator()
@@ -2029,16 +2201,11 @@ public:
         auto tNumBoundaryCells = tFace2Elems_map.size();
         Plato::ScalarVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumBoundaryCells, mNumDofsPerNode);
 
-        auto tNodesPerFace = mNumSpatialDims;
-        auto tCubatureWeight = mCubatureRule.getCubWeight();
-        if(std::isfinite(tCubatureWeight) == false)
-        {
-            THROWERR("Surface Pressure Integral: A non-finite cubature weight was detected.")
-        }
 
         // set input state worksets
-        auto tConfigWS    = aWorkSets.configuration();
-        auto tPrevVelWS = aWorkSets.previousVelocity();
+        auto tConfigWS       = aWorkSets.configuration();
+        auto tPrevVelWS      = aWorkSets.previousVelocity();
+        auto tCubatureWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
         {
@@ -2063,13 +2230,13 @@ public:
 
               // project into aResult workset
               tIntrplVectorField(tCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
-              for( Plato::OrdinalType tNode=0; tNode<tNodesPerFace; tNode++ )
+              for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
                   for( Plato::OrdinalType tDof = 0; tDof < mNumDofsPerNode; tDof++ )
                   {
                       auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * mNumDofsPerNode) + tDof;
-                      aResult(tCellOrdinal, tCellDofOrdinal) +=
-                          aMultiplier * tUnitNormalVec(tDof) * tPrevVelGP(tElem, tDof) * tWeight;
+                      aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode) *
+                          tUnitNormalVec(tDof) * tPrevVelGP(tElem, tDof) * tWeight;
                   }
               }
           }
