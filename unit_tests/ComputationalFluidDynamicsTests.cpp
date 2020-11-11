@@ -4373,10 +4373,10 @@ private:
 
 public:
     FluidMechanicsProblem
-    (Omega_h::Mesh & aMesh,
-     Omega_h::MeshSets & aMeshSets,
+    (Omega_h::Mesh          & aMesh,
+     Omega_h::MeshSets      & aMeshSets,
      Teuchos::ParameterList & aInputs,
-     Comm::Machine & aMachine) :
+     Comm::Machine          & aMachine) :
          mSpatialModel       (aMesh, aMeshSets, aInputs),
          mPressureResidual   (mSpatialModel, mDataMap, aInputs, "Pressure Residual"),
          mVelocityResidual   (mSpatialModel, mDataMap, aInputs, "Velocity Residual"),
@@ -4399,7 +4399,7 @@ public:
 
         constexpr auto tStride = 0;
         const auto tNumNodes = tMesh.nverts();
-        for(decltype(tTimeSteps) tStep = 0; tStep < tTimeSteps; tStep++)
+        for(Plato::OrdinalType tStep = 0; tStep < tTimeSteps; tStep++)
         {
             auto tPressSubView = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
             Omega_h::Write<Omega_h::Real> tPressure(tPressSubView.size(), "Pressure");
@@ -4422,12 +4422,13 @@ public:
         }
     }
 
-    Plato::FluidMechanics::Solution solution(const Plato::ScalarVector& aControl)
+    Plato::FluidMechanics::Solution solution
+    (const Plato::ScalarVector& aControl)
     {
         PrimalStates tStates;
         this->calculateElemCharacteristicSize(tStates);
 
-        for (decltype(mNumTimeSteps) tStep = 1; tStep < mNumTimeSteps; tStep++)
+        for (Plato::OrdinalType tStep = 1; tStep < mNumTimeSteps; tStep++)
         {
             tStates.setScalar("step", tStep);
             this->setPrimalStates(tStates);
@@ -4458,7 +4459,7 @@ public:
 
     Plato::Scalar criterionValue
     (const Plato::ScalarVector & aControl,
-     const std::string & aName)
+     const std::string         & aName)
     {
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
@@ -4468,7 +4469,7 @@ public:
 
             Plato::Scalar tOutput(0);
             auto tNumTimeSteps = mVelocity.extent(0);
-            for (decltype(tNumTimeSteps) tStep = 0; tStep < tNumTimeSteps; tStep++)
+            for (Plato::OrdinalType tStep = 0; tStep < tNumTimeSteps; tStep++)
             {
                 tPrimalStates.setScalar("step", tStep);
                 auto tPressure = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
@@ -4489,7 +4490,7 @@ public:
 
     Plato::ScalarVector criterionGradient
     (const Plato::ScalarVector & aControl,
-     const std::string & aName)
+     const std::string         & aName)
     {
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
@@ -4531,7 +4532,7 @@ public:
 
     Plato::ScalarVector criterionGradientX
     (const Plato::ScalarVector & aControl,
-     const std::string & aName)
+     const std::string         & aName)
     {
         auto tItr = mCriteria.find(aName);
         if (tItr == mCriteria.end())
@@ -4573,8 +4574,8 @@ public:
 
 private:
     void initialize
-    (Teuchos::ParameterList &aInputs,
-     Comm::Machine& aMachine)
+    (Teuchos::ParameterList & aInputs,
+     Comm::Machine          & aMachine)
     {
         Plato::SolverFactory tSolverFactory(aInputs.sublist("Linear Solver"));
         mVectorFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
@@ -4816,8 +4817,8 @@ private:
     }
 
     void updateVelocity
-    (const Plato::ScalarVector& aControl,
-     PrimalStates & aStates)
+    (const Plato::ScalarVector & aControl,
+           PrimalStates        & aStates)
     {
         aStates.function("vector function");
 
@@ -4838,8 +4839,8 @@ private:
     }
 
     void updatePredictor
-    (const Plato::ScalarVector& aControl,
-     PrimalStates & aStates)
+    (const Plato::ScalarVector & aControl,
+           PrimalStates        & aStates)
     {
         aStates.function("vector function");
 
@@ -4860,8 +4861,8 @@ private:
     }
 
     void updatePressure
-    (const Plato::ScalarVector& aControl,
-     PrimalStates & aStates)
+    (const Plato::ScalarVector & aControl,
+           PrimalStates        & aStates)
     {
         aStates.function("scalar function");
 
@@ -4882,8 +4883,8 @@ private:
     }
 
     void updateTemperature
-    (const Plato::ScalarVector& aControl,
-     PrimalStates & aStates)
+    (const Plato::ScalarVector & aControl,
+           PrimalStates        & aStates)
     {
         aStates.function("scalar function");
 
@@ -4905,8 +4906,8 @@ private:
 
     void calculatePredictorAdjoint
     (const Plato::ScalarVector & aControl,
-     const PrimalStates & aCurrentStates,
-     DualStates & aDualStates)
+     const PrimalStates        & aCurrentStates,
+           DualStates          & aDualStates)
     {
 
         auto tCurrentVelocityAdjoint = aDualStates.getVector("current velocity adjoint");
@@ -4926,11 +4927,11 @@ private:
     }
 
     void calculatePressureAdjoint
-    (const std::string & aName,
+    (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const PrimalStates & aCurrentStates,
-     const PrimalStates & aPreviousStates,
-     DualStates & aDualStates)
+     const PrimalStates        & aCurrentStates,
+     const PrimalStates        & aPreviousStates,
+           DualStates          & aDualStates)
     {
         auto tRHS = mCriteria[aName]->gradientCurrentPress(aControl, aCurrentStates);
 
@@ -4958,11 +4959,11 @@ private:
     }
 
     void calculateTemperatureAdjoint
-    (const std::string & aName,
+    (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const PrimalStates & aCurrentStates,
-     const PrimalStates & aPreviousStates,
-     DualStates & aDualStates)
+     const PrimalStates        & aCurrentStates,
+     const PrimalStates        & aPreviousStates,
+           DualStates          & aDualStates)
     {
         auto tRHS = mCriteria[aName]->gradientCurrentTemp(aControl, aCurrentStates);
 
@@ -4982,11 +4983,11 @@ private:
     }
 
     void calculateVelocityAdjoint
-    (const std::string & aName,
+    (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const PrimalStates & aCurrentStates,
-     const PrimalStates & aPreviousStates,
-     DualStates & aDualStates)
+     const PrimalStates        & aCurrentStates,
+     const PrimalStates        & aPreviousStates,
+           DualStates          & aDualStates)
     {
         auto tRHS = mCriteria[aName]->gradientCurrentVel(aControl, aCurrentStates);
 
@@ -5014,11 +5015,11 @@ private:
     }
 
     void calculateGradientControl
-    (const std::string & aName,
+    (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const PrimalStates & aCurrentStates,
-     const DualStates & aDualStates,
-     Plato::ScalarVector & aTotalDerivative)
+     const PrimalStates        & aCurrentStates,
+     const DualStates          & aDualStates,
+           Plato::ScalarVector & aTotalDerivative)
     {
         auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aCurrentStates);
 
@@ -5042,11 +5043,11 @@ private:
     }
 
     void calculateGradientConfig
-    (const std::string & aName,
+    (const std::string         & aName,
      const Plato::ScalarVector & aControl,
-     const PrimalStates & aCurrentStates,
-     const DualStates & aDualStates,
-     Plato::ScalarVector & aTotalDerivative)
+     const PrimalStates        & aCurrentStates,
+     const DualStates          & aDualStates,
+           Plato::ScalarVector & aTotalDerivative)
     {
         auto tGradCriterionWrtConfig = mCriteria[aName]->gradientConfig(aControl, aCurrentStates);
 
