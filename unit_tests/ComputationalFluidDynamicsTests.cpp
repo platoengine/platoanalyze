@@ -1163,6 +1163,33 @@ public:
 
 
 
+template<Plato::OrdinalType NumNodesPerCell,
+         Plato::OrdinalType NumSpaceDim,
+         typename StateT,
+         typename ConfigT,
+         typename ResultT>
+DEVICE_TYPE void calculate_strain_rate
+(const Plato::OrdinalType & aCellOrdinal,
+ const StateT  & aStateWS,
+ const ConfigT & aGradient,
+       ResultT & aStrainRate)
+{
+    // calculate strain rate for incompressible flows, which is defined as
+    // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < NumSpaceDim; tDimI++)
+        {
+            for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpaceDim; tDimJ++)
+            {
+                aStrainRate(aCellOrdinal, tDimI, tDimJ) += static_cast<Plato::Scalar>(0.5) *
+                    ( ( aGradient(aCellOrdinal, tNode, tDimJ) * aStateWS(aCellOrdinal, tDimI) )
+                    + ( aGradient(aCellOrdinal, tNode, tDimI) * aStateWS(aCellOrdinal, tDimJ) ) );
+            }
+        }
+    }
+}
+
 template<typename PhysicsT, typename EvaluationT>
 class DeviatoricSurfaceForces
 {
@@ -1223,8 +1250,8 @@ public:
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
         Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
-        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumDofsPerNode> tIntrplVectorField;
+        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // get sideset faces
@@ -1272,21 +1299,8 @@ public:
 
                 // calculate strain rate
                 tComputeGradient(tCellOrdinal, tGradient, tConfigWS, tCellVolume);
-
-                // calculate strain rate for incompressible flows, which is defined as
-                // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
-                for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-                {
-                    for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
-                    {
-                        for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
-                        {
-                            tStrainRate(tCellOrdinal, tDimI, tDimJ) += static_cast<Plato::Scalar>(0.5) *
-                                ( ( tGradient(tCellOrdinal, tNode, tDimJ) * tPrevVelWS(tCellOrdinal, tDimI) )
-                                + ( tGradient(tCellOrdinal, tNode, tDimI) * tPrevVelWS(tCellOrdinal, tDimJ) ) );
-                        }
-                    }
-                }
+                Plato::FluidMechanics::calculate_strain_rate<mNumNodesPerCell, mNumSpatialDims>
+                    (tCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
 
                 // calculate penalized prandtl number
                 ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(tCellOrdinal, tControlWS);
@@ -1516,9 +1530,8 @@ public:
 
             // calculate penalized prandtl number
             ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, tControlWS);
-            ControlT tPenalizedPrandtlNum =
-                ( tDensity * ( tPrNum * (1.0 - tPrNumConvexityParam) - 1.0 ) + 1.0 ) /
-                ( tPrNum * (1.0 + tPrNumConvexityParam * tDensity) );
+            ControlT tPenalizedPrandtlNum = ( tDensity * ( tPrNum * (1.0 - tPrNumConvexityParam) - 1.0 ) + 1.0 )
+                / ( tPrNum * (1.0 + tPrNumConvexityParam * tDensity) );
 
             // calculate viscous force integral, which are defined as,
             // \int_{\Omega_e}\frac{\partial N_u^a}{\partial x_j}\tau^h_{ij} d\Omega_e
