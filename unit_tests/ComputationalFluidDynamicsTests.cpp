@@ -710,8 +710,6 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            auto tName     = tDomain.getDomainName();
-
             Plato::FluidMechanics::WorkSets<PhysicsT, ResultEvalT> tWorkSets(tNumCells);
             this->setValueWorkSets(tDomain, aControls, aStates, tWorkSets);
 
@@ -735,8 +733,6 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            auto tName     = tDomain.getDomainName();
-
             Plato::FluidMechanics::WorkSets<PhysicsT, GradConfigEvalT> tWorkSets(tNumCells);
             this->setGradConfigWorkSets(tDomain, aControls, aStates, tWorkSets);
 
@@ -761,8 +757,6 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            auto tName     = tDomain.getDomainName();
-
             Plato::FluidMechanics::WorkSets<PhysicsT, GradControlEvalT> tWorkSets(tNumCells);
             this->setGradControlWorkSets(tDomain, aControls, aStates, tWorkSets);
 
@@ -787,8 +781,6 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            auto tName     = tDomain.getDomainName();
-
             Plato::FluidMechanics::WorkSets<PhysicsT, GradCurPressEvalT> tWorkSets(tNumCells);
             this->setGradPressWorkSets(tDomain, aControls, aStates, tWorkSets);
 
@@ -813,8 +805,6 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            auto tName     = tDomain.getDomainName();
-
             Plato::FluidMechanics::WorkSets<PhysicsT, GradCurTempEvalT> tWorkSets(tNumCells);
             this->setGradTempWorkSets(tDomain, aControls, aStates, tWorkSets);
 
@@ -839,8 +829,6 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            auto tName     = tDomain.getDomainName();
-
             Plato::FluidMechanics::WorkSets<PhysicsT, GradCurVelEvalT> tWorkSets(tNumCells);
             this->setGradVelWorkSets(tDomain, aControls, aStates, tWorkSets);
 
