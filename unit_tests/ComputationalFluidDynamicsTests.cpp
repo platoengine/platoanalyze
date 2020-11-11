@@ -637,7 +637,7 @@ class PhysicsScalarFunction : public Plato::FluidMechanics::CriterionBase
 private:
     std::string mScalarFuncName;
 
-    static constexpr auto mNumControlsPerNode      = PhysicsT::SimplexT::mNumControl;             /*!< number of design variable fields */
+    static constexpr auto mNumControlsPerNode     = PhysicsT::SimplexT::mNumControl;             /*!< number of design variable fields */
     static constexpr auto mNumSpatialDims         = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerCell        = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
     static constexpr auto mNumMassDofsPerCell     = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of mass dofs per cell */
@@ -649,7 +649,7 @@ private:
     static constexpr auto mNumConfigDofsPerCell   = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration degrees of freedom per cell */
 
     // forward automatic differentiation evaluation types
-    using ResultEvalT       = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
+    using ResidualEvalT     = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
     using GradConfigEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
     using GradControlEvalT  = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradControl;
     using GradCurVelEvalT   = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCurMomentum;
@@ -657,7 +657,7 @@ private:
     using GradCurPressEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCurMass;
 
     // element scalar functions types
-    using ResultFunc       = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, ResultEvalT>>;
+    using ResidualFunc     = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, ResidualEvalT>>;
     using GradConfigFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradConfigEvalT>>;
     using GradControlFunc  = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradControlEvalT>>;
     using GradCurVelFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradCurVelEvalT>>;
@@ -665,7 +665,7 @@ private:
     using GradCurPressFunc = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT::SimplexT, GradCurPressEvalT>>;
 
     // element scalar functions per element block, i.e. domain
-    std::unordered_map<std::string, ResultFunc>       mResultFuncs;
+    std::unordered_map<std::string, ResidualFunc>     mResidualFuncs;
     std::unordered_map<std::string, GradConfigFunc>   mGradConfigFuncs;
     std::unordered_map<std::string, GradControlFunc>  mGradControlFuncs;
     std::unordered_map<std::string, GradCurVelFunc>   mGradCurrMomentumFuncs;
@@ -706,17 +706,17 @@ public:
     (const Plato::ScalarVector & aControls,
      const PrimalStates & aStates) const
     {
-        ResultEvalT tReturnValue(0.0);
+        ResidualEvalT tReturnValue(0.0);
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::WorkSets<PhysicsT, ResultEvalT> tWorkSets(tNumCells);
+            Plato::FluidMechanics::WorkSets<PhysicsT, ResidualEvalT> tWorkSets(tNumCells);
             this->setValueWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
-            using ResultScalarT = typename ResultEvalT::ResultScalarType;
+            using ResultScalarT = typename ResidualEvalT::ResultScalarType;
             Plato::ScalarVectorT<ResultScalarT> tResultWS("cells value", tNumCells);
-            mResultFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
+            mResidualFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
             tReturnValue += Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
         }
@@ -739,7 +739,7 @@ public:
             auto tName = tDomain.getDomainName();
             using ResultScalarT = typename GradConfigEvalT::ResultScalarType;
             Plato::ScalarVectorT<ResultScalarT> tResultWS("cells value", tNumCells);
-            mResultFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
+            mResidualFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>
                 (tDomain, mConfigEntryOrdinal, tResultWS, tGradient);
@@ -763,7 +763,7 @@ public:
             auto tName = tDomain.getDomainName();
             using ResultScalarT = typename GradControlEvalT::ResultScalarType;
             Plato::ScalarVectorT<ResultScalarT> tResultWS("cells value", tNumCells);
-            mResultFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
+            mResidualFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlsPerNode>
                 (tDomain, mScalarEntryOrdinal, tResultWS, tGradient);
@@ -787,7 +787,7 @@ public:
             auto tName = tDomain.getDomainName();
             using ResultScalarT = typename GradCurPressEvalT::ResultScalarType;
             Plato::ScalarVectorT<ResultScalarT> tResultWS("cells value", tNumCells);
-            mResultFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
+            mResidualFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMassDofsPerNode>
                 (tDomain, mScalarStateEntryOrdinal, tResultWS, tGradient);
@@ -811,7 +811,7 @@ public:
             auto tName = tDomain.getDomainName();
             using ResultScalarT = typename GradCurTempEvalT::ResultScalarType;
             Plato::ScalarVectorT<ResultScalarT> tResultWS("cells value", tNumCells);
-            mResultFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
+            mResidualFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumEnergyDofsPerNode>
                 (tDomain, mScalarStateEntryOrdinal, tResultWS, tGradient);
@@ -835,7 +835,7 @@ public:
             auto tName = tDomain.getDomainName();
             using ResultScalarT = typename GradCurVelEvalT::ResultScalarType;
             Plato::ScalarVectorT<ResultScalarT> tResultWS("cells value", tNumCells);
-            mResultFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
+            mResidualFuncs.at(tName)->evaluate(tWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMomentumDofsPerNode>
                 (tDomain, mVectorStateEntryOrdinal, tResultWS, tGradient);
@@ -856,8 +856,8 @@ private:
         {
             auto tName = tDomain.getDomainName();
 
-            mResultFuncs[tName] =
-                tScalarFuncFactory.template createScalarFunction<ResultEvalT>
+            mResidualFuncs[tName] =
+                tScalarFuncFactory.template createScalarFunction<ResidualEvalT>
                     (tDomain, mDataMap, aInputs, tFunctionType, mScalarFuncName);
 
             mGradConfigFuncs[tName] =
@@ -886,7 +886,7 @@ private:
     (const Plato::SpatialDomain & aDomain,
      const Plato::ScalarVector & aControls,
      const PrimalStates & aState,
-     Plato::FluidMechanics::WorkSets<PhysicsT, ResultEvalT> & aWorkSets)
+     Plato::FluidMechanics::WorkSets<PhysicsT, ResidualEvalT> & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
             (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
