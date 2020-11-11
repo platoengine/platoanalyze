@@ -573,8 +573,8 @@ public:
     virtual ~AbstractScalarFunction(){}
 
     virtual void evaluate
-    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
-     Plato::ScalarVectorT<typename EvaluationT::ResultScalarType>                   & aResult) const = 0;
+    (const Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT> & aWorkSets,
+     Plato::ScalarVectorT<typename EvaluationT::ResultScalarType> & aResult) const = 0;
 };
 // class AbstractScalarFunction
 
@@ -1083,7 +1083,7 @@ public:
     }
 
     void operator()
-    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
+    (const Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT> & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult,
      Plato::Scalar aMultiplier = 1.0) const
     {
@@ -1230,9 +1230,9 @@ public:
     }
 
     void operator()
-    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult,
-     Plato::Scalar aMultiplier = 1.0) const
+    (const Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT> & aWorkSets,
+           Plato::ScalarMultiVectorT<ResultT>                     & aResult,
+           Plato::Scalar                                            aMultiplier = 1.0) const
     {
         // get mesh vertices
         auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDims - 1);
@@ -1371,16 +1371,16 @@ public:
     virtual ~AbstractVectorFunction(){}
 
     virtual void evaluate
-    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
-     Plato::ScalarMultiVectorT<typename EvaluationT::ResultScalarType>                          & aResult) const = 0;
+    (const Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>      & aWorkSets,
+     Plato::ScalarMultiVectorT<typename EvaluationT::ResultScalarType> & aResult) const = 0;
 
     virtual void evaluateBoundary
-    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
-     Plato::ScalarMultiVectorT<typename EvaluationT::ResultScalarType>                          & aResult) const = 0;
+    (const Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>      & aWorkSets,
+     Plato::ScalarMultiVectorT<typename EvaluationT::ResultScalarType> & aResult) const = 0;
 
     virtual void evaluatePrescribed
-    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
-     Plato::ScalarMultiVectorT<typename EvaluationT::ResultScalarType>                          & aResult) const = 0;
+    (const Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>      & aWorkSets,
+     Plato::ScalarMultiVectorT<typename EvaluationT::ResultScalarType> & aResult) const = 0;
 };
 // class AbstractVectorFunction
 
@@ -2223,9 +2223,9 @@ public:
     }
 
     void operator()
-    (const Plato::FluidMechanics::WorkSets<typename PhysicsT, typename EvaluationT> & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult,
-     Plato::Scalar aMultiplier = 1.0) const
+    (const Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT> & aWorkSets,
+           Plato::ScalarMultiVectorT<ResultT>                     & aResult,
+           Plato::Scalar                                            aMultiplier = 1.0) const
     {
         // get mesh vertices
         auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDims - 1);
@@ -4255,23 +4255,25 @@ enforce_boundary_condition
     }, "enforce boundary condition");
 }
 
-inline Plato::Scalar
-calculate_stopping_criterion
+inline Plato::ScalarVector
+calculate_pressure_residual
 (const Plato::ScalarVector& aTimeStep,
  const Plato::ScalarVector& aCurrentState,
  const Plato::ScalarVector& aPreviousState,
  const Plato::ScalarVector& aArtificialCompressibility)
 {
-    Plato::Scalar tResidual(0);
+    // calculate stopping criterion, which is defined as
+    // \frac{1}{\beta^2} \left( \frac{p^{n} - p^{n-1}}{\Delta{t}}\right ),
+    // where \beta denotes the artificial compressibility
     auto tLength = aCurrentState.size();
+    Plato::ScalarVector tResidual("pressure residual", tLength);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
-        auto tDeltaPressOverTimeStep = aCurrentState(aOrdinal) - aPreviousState(aOrdinal) / aTimeStep(aOrdinal);
-        tResidual += ( static_cast<Plato::Scalar>(1) /
-            ( aArtificialCompressibility(aOrdinal) * aArtificialCompressibility(aOrdinal) ) )
-                * (tDeltaPressOverTimeStep * tDeltaPressOverTimeStep);
-
-    }, "enforce boundary condition");
+        auto tDeltaPressOverTimeStep = ( aCurrentState(aOrdinal) - aPreviousState(aOrdinal) ) / aTimeStep(aOrdinal);
+        auto tOneOverBetaSquared = static_cast<Plato::Scalar>(1) /
+            ( aArtificialCompressibility(aOrdinal) * aArtificialCompressibility(aOrdinal) );
+        tResidual(aOrdinal) = tOneOverBetaSquared * tDeltaPressOverTimeStep;
+    }, "calculate stopping criterion");
 
     return tResidual;
 }
@@ -4284,10 +4286,9 @@ calculate_explicit_solve_convergence_criterion
     auto tCurrentPressure = aStates.getVector("current pressure");
     auto tPreviousPressure = aStates.getVector("previous pressure");
     auto tArtificialCompress = aStates.getVector("artificial compressibility");
-
-    auto tError = Plato::cbs::calculate_stopping_criterion(tTimeStep, tCurrentPressure, tPreviousPressure, tArtificialCompress);
-
-    return tError;
+    auto tResidual = Plato::cbs::calculate_pressure_residual(tTimeStep, tCurrentPressure, tPreviousPressure, tArtificialCompress);
+    auto tStoppingCriterion = Plato::blas1::dot(tResidual, tResidual);
+    return tStoppingCriterion;
 }
 
 inline Plato::Scalar
@@ -4301,30 +4302,10 @@ calculate_semi_implicit_solve_convergence_criterion
     auto tCurrentState = aStates.getVector("current pressure");
     auto tPreviousState = aStates.getVector("previous pressure");
     auto tArtificialCompress = aStates.getVector("artificial compressibility");
-    auto tMyResidual = Plato::cbs::calculate_stopping_criterion(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
-    Plato::Scalar tMyMaxStateError(0);
-    Plato::blas1::max(tMyResidual, tMyMaxStateError);
-    tErrors.push_back(tMyMaxStateError);
-
-    // velocity error
-    tCurrentState = aStates.getVector("current velocity");
-    tPreviousState = aStates.getVector("previous velocity");
-    tMyResidual = Plato::cbs::calculate_stopping_criterion(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
-    tMyMaxStateError(0.0);
-    Plato::blas1::max(tMyResidual, tMyMaxStateError);
-    tErrors.push_back(tMyMaxStateError);
-
-    // temperature error
-    tCurrentState = aStates.getVector("current temperature");
-    tPreviousState = aStates.getVector("previous temperature");
-    tMyResidual = Plato::cbs::calculate_stopping_criterion(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
-    tMyMaxStateError(0.0);
-    Plato::blas1::max(tMyResidual, tMyMaxStateError);
-    tErrors.push_back(tMyMaxStateError);
-
-    auto tMax = *std::max_element(tErrors.begin(), tErrors.end());
-
-    return tMax;
+    auto tMyResidual = Plato::cbs::calculate_pressure_residual(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
+    Plato::Scalar tInfinityNorm = 0.0;
+    Plato::blas1::max(tMyResidual, tInfinityNorm);
+    return tInfinityNorm;
 }
 
 }
