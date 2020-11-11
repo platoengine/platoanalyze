@@ -682,7 +682,14 @@ private:
     Plato::VectorEntryOrdinal<mNumSpatialDims, mNumMomentumDofsPerCell> mVectorStateEntryOrdinal; /*!< momentum state local-to-global ID map */
     Plato::VectorEntryOrdinal<mNumSpatialDims, mNumMassDofsPerCell>     mScalarStateEntryOrdinal; /*!< mass state local-to-global ID map */
 
-    using PrimalStates = Plato::FluidMechanics::States;
+    // define local type names
+    using PrimalStates        = Plato::FluidMechanics::States;
+    using ResidualWorkSets    = Plato::FluidMechanics::WorkSets<PhysicsT, ResidualEvalT>;
+    using GradVelWorkSets     = Plato::FluidMechanics::WorkSets<PhysicsT, GradCurVelEvalT>;
+    using GradTempWorkSets    = Plato::FluidMechanics::WorkSets<PhysicsT, GradCurTempEvalT>;
+    using GradPressWorkSets   = Plato::FluidMechanics::WorkSets<PhysicsT, GradCurPressEvalT>;
+    using GradConfigWorkSets  = Plato::FluidMechanics::WorkSets<PhysicsT, GradConfigEvalT>;
+    using GradControlWorkSets = Plato::FluidMechanics::WorkSets<PhysicsT, GradControlEvalT>;
 
 public:
     PhysicsScalarFunction
@@ -710,7 +717,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::WorkSets<PhysicsT, ResidualEvalT> tWorkSets(tNumCells);
+            ResidualWorkSets tWorkSets(tNumCells);
             this->setValueWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -733,7 +740,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::WorkSets<PhysicsT, GradConfigEvalT> tWorkSets(tNumCells);
+            GradConfigWorkSets tWorkSets(tNumCells);
             this->setGradConfigWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -757,7 +764,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::WorkSets<PhysicsT, GradControlEvalT> tWorkSets(tNumCells);
+            GradControlWorkSets tWorkSets(tNumCells);
             this->setGradControlWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -781,7 +788,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurPressEvalT> tWorkSets(tNumCells);
+            GradPressWorkSets tWorkSets(tNumCells);
             this->setGradPressWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -805,7 +812,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurTempEvalT> tWorkSets(tNumCells);
+            GradTempWorkSets tWorkSets(tNumCells);
             this->setGradTempWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -829,7 +836,7 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::WorkSets<PhysicsT, GradCurVelEvalT> tWorkSets(tNumCells);
+            GradVelWorkSets tWorkSets(tNumCells);
             this->setGradVelWorkSets(tDomain, aControls, aStates, tWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -884,9 +891,9 @@ private:
 
     void setValueWorkSets
     (const Plato::SpatialDomain & aDomain,
-     const Plato::ScalarVector & aControls,
-     const PrimalStates & aState,
-     Plato::FluidMechanics::WorkSets<PhysicsT, ResidualEvalT> & aWorkSets) const
+     const Plato::ScalarVector  & aControls,
+     const PrimalStates         & aState,
+           ResidualWorkSets     & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
             (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
@@ -909,9 +916,9 @@ private:
 
     void setGradConfigWorkSets
     (const Plato::SpatialDomain & aDomain,
-     const Plato::ScalarVector & aControls,
-     const PrimalStates & aState,
-     Plato::FluidMechanics::WorkSets<PhysicsT, GradConfigEvalT> & aWorkSets)
+     const Plato::ScalarVector  & aControls,
+     const PrimalStates         & aState,
+           GradConfigWorkSets   & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
             (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
@@ -935,9 +942,9 @@ private:
 
     void setGradControlWorkSets
     (const Plato::SpatialDomain & aDomain,
-     const Plato::ScalarVector & aControls,
-     const PrimalStates & aState,
-     Plato::FluidMechanics::WorkSets<PhysicsT, GradControlEvalT> & aWorkSets)
+     const Plato::ScalarVector  & aControls,
+     const PrimalStates         & aState,
+           GradControlWorkSets  & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
             (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
@@ -961,9 +968,9 @@ private:
 
     void setGradPressWorkSets
     (const Plato::SpatialDomain & aDomain,
-     const Plato::ScalarVector & aControls,
-     const PrimalStates & aState,
-     Plato::FluidMechanics::WorkSets<PhysicsT, GradCurPressEvalT> & aWorkSets)
+     const Plato::ScalarVector  & aControls,
+     const PrimalStates         & aState,
+           GradPressWorkSets    & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
             (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
@@ -987,9 +994,9 @@ private:
 
     void setGradTempWorkSets
     (const Plato::SpatialDomain & aDomain,
-     const Plato::ScalarVector & aControls,
-     const PrimalStates & aState,
-     Plato::FluidMechanics::WorkSets<PhysicsT, GradCurTempEvalT> & aWorkSets)
+     const Plato::ScalarVector  & aControls,
+     const PrimalStates         & aState,
+           GradTempWorkSets     & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
             (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
@@ -1013,9 +1020,9 @@ private:
 
     void setGradVelWorkSets
     (const Plato::SpatialDomain & aDomain,
-     const Plato::ScalarVector & aControls,
-     const PrimalStates & aState,
-     Plato::FluidMechanics::WorkSets<PhysicsT, GradCurVelEvalT> & aWorkSets)
+     const Plato::ScalarVector  & aControls,
+     const PrimalStates         & aState,
+           GradVelWorkSets      & aWorkSets) const
     {
         using VelScalarT = typename GradCurVelEvalT::CurrentMomentumScalarType;
         Plato::workset_state_scalar_fad<mNumMomentumDofsPerNode, mNumNodesPerCell, VelScalarT>
