@@ -2540,7 +2540,7 @@ private:
                 const auto tSideSetName = tSublist.get<std::string>("Sides");
 
                 auto tPrescribedBC = std::make_shared<PrescribedForces>(tParamListName, tParamList);
-                mPrescirbedNaturalBCs.insert(std::make_pair<std::string, std::shared_ptr<PrescribedForces>>(tSideSetName, tPrescribedBC));
+                mPrescribedNaturalBCs.insert(std::make_pair<std::string, std::shared_ptr<PrescribedForces>>(tSideSetName, tPrescribedBC));
 
                 auto tMomentumBC = std::make_shared<MomentumForces>(mSpatialDomain, tSideSetName);
                 mMomentumNaturalBCs.insert(std::make_pair<std::string, std::shared_ptr<MomentumForces>>(tSideSetName, tMomentumBC));
@@ -4493,7 +4493,7 @@ public:
 
             auto tLastStepIndex = mVelocity.extent(0) - 1;
             Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
-            for(decltype(tLastStepIndex) tStep = tLastStepIndex; tStep >= 0; tStep--)
+            for(Plato::OrdinalType tStep = tLastStepIndex; tStep >= 0; tStep--)
             {
                 tDualStates.setScalar("step", tStep);
                 tCurrentStates.setScalar("step", tStep);
@@ -4535,7 +4535,7 @@ public:
 
             auto tLastStepIndex = mVelocity.extent(0) - 1;
             Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
-            for(decltype(tLastStepIndex) tStep = tLastStepIndex; tStep >= 0; tStep--)
+            for(Plato::OrdinalType tStep = tLastStepIndex; tStep >= 0; tStep--)
             {
                 tDualStates.setScalar("step", tStep);
                 tCurrentStates.setScalar("step", tStep);
