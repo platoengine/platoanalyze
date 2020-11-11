@@ -1496,7 +1496,7 @@ public:
                                 tPrevVelGP(aCellOrdinal, tDimI) ) );
 
                         tStabForce(aCellOrdinal, tDimI) += tGradient(aCellOrdinal, tNode, tDimJ) *
-                            ( tPrevVelGP(aCellOrdinal, tDimJ) * tPrevVelGP(aCellOrdinal, tDimI) )
+                            ( tPrevVelGP(aCellOrdinal, tDimJ) * tPrevVelGP(aCellOrdinal, tDimI) );
                     }
                 }
             }
@@ -1539,7 +1539,7 @@ public:
             // calculate natural convective force integral, which are defined as
             // \int_{\Omega_e} N_u^a \left(Gr_i Pr^2 T^h \right) d\Omega_e,
             // where e_i is the unit vector in the gravitational direction
-            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP)
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
             ControlT tPenalizedPrNumSquared = pow(tDensity, tPowerPenaltySIMP) * tPrNum * tPrNum;
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
@@ -1651,7 +1651,7 @@ public:
    (const StateWorkSets                & aWorkSets,
     Plato::ScalarMultiVectorT<ResultT> & aResult) const
    {
-       if( mPrescribedForces != nullptr )
+       if( mPrescribedBCs != nullptr )
        {
            // set input worksets
            auto tConfigWS   = aWorkSets.configuration();
@@ -1689,9 +1689,9 @@ private:
    void setPenaltyModel
    (Teuchos::ParameterList & aInputs)
    {
-       if(aProblemParams.isSublist("Hyperbolic"))
+       if(aInputs.isSublist("Hyperbolic"))
        {
-           auto tHyperbolicList = aProblemParams.sublist("Hyperbolic");
+           auto tHyperbolicList = aInputs.sublist("Hyperbolic");
            if(tHyperbolicList.isSublist("Penalty Function"))
            {
                auto tPenaltyFuncList = tHyperbolicList.sublist("Penalty Function");
@@ -1994,8 +1994,9 @@ public:
          mDataMap(aDataMap),
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>()),
-         mHeatSource(Plato::ScalarVector("heat source", mNumSpatialDims))
+         mHeatSource(0.0)
     {
+        // todo: read thermal source scalar
         if(aInputs.isSublist("Thermal Natural Boundary Conditions"))
         {
             auto tSublist = aInputs.sublist("Thermal Natural Boundary Conditions");
