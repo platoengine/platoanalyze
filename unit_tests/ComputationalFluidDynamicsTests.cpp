@@ -84,8 +84,8 @@ inline T parse_dimensionless_property
     }
     else
     {
-        THROWERR(std::string("") + aTag + " must be defined for analysis. Use '") + aTag +
-            "' keyword inside sublist 'Dimensionless Properties' to define its value")
+        THROWERR(std::string("Dimensionless parameter with '") + aTag + "' must be defined for analysis. Use '"
+            + aTag + "' keyword inside sublist 'Dimensionless Properties' to define its value")
     }
 }
 
