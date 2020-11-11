@@ -1183,7 +1183,6 @@ private:
 
     using StrainT = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
 
-
     Plato::Scalar mPrNum = 1.0;
     Plato::Scalar mPrNumConvexityParam = 0.5;
     const std::string mSideSetName; /*!< side set name */
@@ -1194,10 +1193,13 @@ private:
 public:
     DeviatoricSurfaceForces
     (const Plato::SpatialDomain & aSpatialDomain,
+     Teuchos::ParameterList & aInputs,
      std::string aSideSetName = "empty") :
          mSideSetName(aSideSetName),
          mSpatialDomain(aSpatialDomain)
     {
+        this->setPenaltyModel(aInputs);
+        this->setDimensionlessProperties(aInputs);
     }
 
     void operator()
@@ -1309,6 +1311,39 @@ public:
             }
 
         }, "calculate deviatoric traction integral");
+    }
+
+private:
+    void setPenaltyModel
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Hyperbolic"))
+        {
+            auto tHyperbolicList = aInputs.sublist("Hyperbolic");
+            if(tHyperbolicList.isSublist("Penalty Function"))
+            {
+                auto tPenaltyFuncList = tHyperbolicList.sublist("Penalty Function");
+                mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Number Convexity Parameter", 0.5);
+            }
+        }
+        else
+        {
+            THROWERR("'Hyperbolic' sublist is not defined.")
+        }
+    }
+
+    void setDimensionlessProperties
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Dimensionless Properties"))
+        {
+            auto tSublist = aInputs.sublist("Dimensionless Properties");
+            mPrNum = Plato::parse_dimensionless_property<Plato::Scalar>(tSublist, "Prandtl Number");
+        }
+        else
+        {
+            THROWERR("'Dimensionless Properties' block is not defined.")
+        }
     }
 };
 // class DeviatoricSurfaceForces
@@ -1694,7 +1729,7 @@ private:
         }
         else
         {
-            THROWERR("'Dimensionless Properties' sublist is not defined.")
+            THROWERR("'Dimensionless Properties' block is not defined.")
         }
     }
 
@@ -1731,6 +1766,9 @@ private:
             }
         }
     }
+
+    // todo: do i need to read the side sets for the stabilized terms, or can i used omega_h tools to
+    // identify the stabilized force side sets from the traction side sets.
 };
 // class VelocityPredictorResidual
 
@@ -1910,6 +1948,9 @@ class TemperatureIncrementResidual :
     public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
+    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
+    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell; /*!< number of degrees of freedom per cell */
+
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
     static constexpr auto mNumVelDofsPerCell    = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
@@ -1930,7 +1971,7 @@ private:
 
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< integration rule */
 
-    std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>> mHeatFlux; /*!< heat flux evaluator */
+    std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mHeatFlux; /*!< heat flux evaluator */
 
     using StateWorkSets = Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
 
@@ -1954,10 +1995,10 @@ public:
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>()),
          mHeatSource(Plato::ScalarVector("heat source", mNumSpatialDims))
     {
-        if(aInputs.isSublist("Heat Flux Boundary Conditions"))
+        if(aInputs.isSublist("Thermal Natural Boundary Conditions"))
         {
-            auto tSublist = aInputs.sublist("Heat Flux Boundary Conditions");
-            mHeatFlux = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumVelDofsPerNode>>(tSublist);
+            auto tSublist = aInputs.sublist("Thermal Natural Boundary Conditions");
+            mHeatFlux = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tSublist);
         }
     }
 
@@ -2118,21 +2159,21 @@ public:
             // set input state worksets
             auto tConfigWS   = aWorkSets.configuration();
             auto tControlWS  = aWorkSets.control();
-            auto tTimeStepWS = aWorkSets.timeStep();
             auto tPrevTempWS = aWorkSets.previousTemperature();
 
-            // evaluate prescribed flux integral
+            // evaluate prescribed flux
             auto tNumCells = aResult.extent(0);
-            Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumNodesPerCell);
-            mPrescribedBC.get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
+            Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumDofsPerCell);
+            mHeatFlux.get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
 
+            auto tTimeStepWS = aWorkSets.timeStep();
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                for(Plato::OrdinalType tDof = 0; tDof < mNumTempDofsPerCell; tDof++)
+                for(Plato::OrdinalType tDof = 0; tDof < mNumDofsPerCell; tDof++)
                 {
                     aResult(aCellOrdinal, tDof) += tTimeStepWS(aCellOrdinal, tDof) * tResultWS(aCellOrdinal, tDof);
                 }
-            }, "add heat flux to residual");
+            }, "heat flux contribution");
         }
     }
 };
