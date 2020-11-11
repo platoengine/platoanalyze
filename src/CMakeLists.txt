@@ -104,6 +104,8 @@ if(ELLIPTIC)
     elliptic/ElastostaticResidual.cpp
     elliptic/ThermostaticResidual.cpp
     IntermediateDensityPenalty.cpp
+    elliptic/updated_lagrangian/Problem.cpp
+    elliptic/updated_lagrangian/ElastostaticResidual.cpp
     elliptic/updated_lagrangian/ScalarFunctionBaseFactory.cpp
     elliptic/updated_lagrangian/PhysicsScalarFunction.cpp
     elliptic/updated_lagrangian/InternalElasticEnergy.cpp

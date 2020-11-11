@@ -4,6 +4,7 @@
 
 #include "elliptic/updated_lagrangian/AbstractVectorFunction.hpp"
 #include "elliptic/updated_lagrangian/SimplexMechanics.hpp"
+#include "elliptic/updated_lagrangian/EllipticUpLagSimplexFadTypes.hpp"
 
 #include "PlatoTypes.hpp"
 #include "Strain.hpp"
@@ -159,7 +160,7 @@ public:
       auto tNumCells = mSpatialDomain.numCells();
 
       using StrainScalarType =
-          typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>, GlobalStateScalarType, ConfigScalarType>;
+          typename Plato::fad_type_t<Plato::Elliptic::UpdatedLagrangian::SimplexMechanics<EvaluationType::SpatialDim>, GlobalStateScalarType, ConfigScalarType>;
 
       Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
       Plato::Strain<mSpaceDim>                 tComputeVoigtStrainIncrement;
@@ -280,13 +281,13 @@ public:
 } // namespace Plato
 
 #ifdef PLATOANALYZE_1D
-PLATO_ELLIPTIC_UPLAG_EXPL_DEC(Plato::Elliptic::UpdatedLagrangian::ElastostaticResidual, Plato::SimplexMechanics, 1)
+PLATO_ELLIPTIC_UPLAG_EXPL_DEC(Plato::Elliptic::UpdatedLagrangian::ElastostaticResidual, Plato::Elliptic::UpdatedLagrangian::SimplexMechanics, 1)
 #endif
 
 #ifdef PLATOANALYZE_2D
-PLATO_ELLIPTIC_UPLAG_EXPL_DEC(Plato::Elliptic::UpdatedLagrangian::ElastostaticResidual, Plato::SimplexMechanics, 2)
+PLATO_ELLIPTIC_UPLAG_EXPL_DEC(Plato::Elliptic::UpdatedLagrangian::ElastostaticResidual, Plato::Elliptic::UpdatedLagrangian::SimplexMechanics, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_ELLIPTIC_UPLAG_EXPL_DEC(Plato::Elliptic::UpdatedLagrangian::ElastostaticResidual, Plato::SimplexMechanics, 3)
+PLATO_ELLIPTIC_UPLAG_EXPL_DEC(Plato::Elliptic::UpdatedLagrangian::ElastostaticResidual, Plato::Elliptic::UpdatedLagrangian::SimplexMechanics, 3)
 #endif

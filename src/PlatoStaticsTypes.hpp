@@ -81,6 +81,17 @@ struct DataMap
 
   std::vector<DataMap> stateDataMaps;
 
+  void clearAll()
+  {
+    clearStates();
+    mScalarValues.clear();
+    scalarVectors.clear();
+    scalarMultiVectors.clear();
+    scalarArray3Ds.clear();
+    scalarNodeFields.clear();
+    vectorNodeFields.clear();
+  }
+
   void clearStates()
   {
     stateDataMaps.clear();

@@ -87,7 +87,6 @@ public:
             {
                 using PhysicsType = Plato::Elliptic::UpdatedLagrangian::Mechanics<SpatialDim>;
                 auto tOutput = std::make_shared<Plato::Elliptic::UpdatedLagrangian::Problem<PhysicsType>> (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
 #endif

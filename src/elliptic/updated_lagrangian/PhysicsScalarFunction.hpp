@@ -498,13 +498,11 @@ public:
 
         // create and assemble to return view
         //
-        Plato::ScalarVector tObjGradientC("objective gradient state", mNumDofsPerNode * mNumNodes);
+        Plato::ScalarVector tObjGradientC("objective gradient state", mNumLocalDofsPerCell * mNumCells);
 
         Plato::Scalar tValue(0.0);
         for(const auto& tDomain : mSpatialModel.Domains)
         {
-// TODO
-#ifdef TODO
             auto tNumCells = tDomain.numCells();
             auto tName     = tDomain.getDomainName();
 
@@ -540,11 +538,9 @@ public:
             //
             mGradientCFunctions.at(tName)->evaluate(tGlobalStateWS, tLocalStateWS, tControlWS, tConfigWS, tResult, aTimeStep);
 
-            Plato::flatten_cell_workset_fad<mNumLocalDofsPerCell>
-                (tDomain, tResult, tObjGradientC);
+            Plato::transform_ad_type_to_pod_1Dview<mNumLocalDofsPerCell>(tDomain, tResult, tObjGradientC);
 
             tValue += Plato::assemble_scalar_func_value<Plato::Scalar>(tNumCells, tResult);
-#endif
         }
         auto tName = mSpatialModel.Domains[0].getDomainName();
         mGradientCFunctions.at(tName)->postEvaluate(tObjGradientC, tValue);

@@ -124,7 +124,7 @@ flatten_vector_workset(
  * \tparam AViewType Input  workset, as a 2-D Kokkos::View
  * \tparam BViewType Output workset, as a 1-D Kokkos::View
  *
- * \param [in]     aNumCells number of cells, i.e. elements
+ * \param [in]     aDomain   Plato Analyze spatial domain
  * \param [in]     aInput    input workset (NumCells, LocalNumCellDofs)
  * \param [in/out] aOutput   output vector (NumCells * LocalNumCellDofs)
 **********************************************************************************/
@@ -162,6 +162,38 @@ assemble_vector_workset(
     }, "combine residual vector");
 }
 // function assemble_vector_workset
+
+/************************************************************************//**
+ *
+ * \brief (1D-View) Transform automatic differentiation (AD) type to POD.
+ *
+ * \tparam NumNodesPerCell number of nodes per cell
+ * \tparam ADType          AD scalar type
+ *
+ * \param [in]     aDomain    Plato Analyze spatial domain
+ * \param [in]     aInput     AD partial derivative
+ * \param [in\out] aOutput    Scalar partial derivative
+ *
+ ********************************************************************************/
+template<Plato::OrdinalType NumDofsPerCell, typename ADType>
+inline void
+transform_ad_type_to_pod_1Dview(
+    const Plato::SpatialDomain         & aDomain,
+    const Plato::ScalarVectorT<ADType> & aInput,
+          Plato::ScalarVector          & aOutput)
+{
+    auto tNumCells = aDomain.numCells();
+    auto tCellOrdinals = aDomain.cellOrdinals();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+        for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerCell; tDimIndex++)
+        {
+            aOutput(tCellOrdinal, tDimIndex) = aInput(tCellOrdinal).dx(tDimIndex);
+        }
+    }, "Convert AD Partial to POD type");
+}
+// function transform_ad_type_to_pod_2Dview
 
 /************************************************************************//**
  *
@@ -206,7 +238,7 @@ inline void transform_ad_type_to_pod_2Dview(const Plato::ScalarVectorT<ADType>& 
  * \tparam NumNodesPerCell number of nodes per cell
  * \tparam ADType          AD scalar type
  *
- * \param [in]     aNumCells  number of cells
+ * \param [in]     aDomain    Plato Analyze spatial domain
  * \param [in]     aInput     AD partial derivative
  * \param [in\out] aOutput    Scalar partial derivative
  *
@@ -248,7 +280,7 @@ transform_ad_type_to_pod_2Dview(
  * \tparam NumColsPerCell number of columns per cell
  * \tparam ADType         AD scalar type
  *
- * \param [in]     aNumCells  number of cells
+ * \param [in]     aDomain    Plato Analyze spatial domain
  * \param [in]     aInput     AD Jacobian
  * \param [in/out] aOutput    Scalar Jacobian
  *

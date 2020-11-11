@@ -41,7 +41,7 @@ namespace Elliptic
 /******************************************************************************//**
  * \brief Manage scalar and vector function evaluations
 **********************************************************************************/
-template<typename SimplexPhysics>
+template<typename PhysicsT>
 class Problem: public Plato::AbstractProblem
 {
 private:
@@ -52,9 +52,9 @@ private:
     using LinearCriterion = std::shared_ptr<Plato::Geometric::ScalarFunctionBase>;
     using LinearCriteria  = std::map<std::string, LinearCriterion>;
 
-    static constexpr Plato::OrdinalType SpatialDim = SimplexPhysics::mNumSpatialDims; /*!< spatial dimensions */
+    static constexpr Plato::OrdinalType SpatialDim = PhysicsT::mNumSpatialDims; /*!< spatial dimensions */
 
-    using VectorFunctionType = Plato::Elliptic::VectorFunction<SimplexPhysics>;
+    using VectorFunctionType = Plato::Elliptic::VectorFunction<PhysicsT>;
 
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
@@ -110,7 +110,7 @@ public:
         this->initialize(aProblemParams);
 
         Plato::SolverFactory tSolverFactory(aProblemParams.sublist("Linear Solver"));
-        mSolver = tSolverFactory.create(aMesh, aMachine, SimplexPhysics::mNumDofsPerNode);
+        mSolver = tSolverFactory.create(aMesh, aMachine, PhysicsT::mNumDofsPerNode);
     }
 
     ~Problem(){}
@@ -157,7 +157,7 @@ public:
     **********************************************************************************/
     Plato::OrdinalType getNumSolutionDofs()
     {
-        return SimplexPhysics::mNumDofsPerNode;
+        return PhysicsT::mNumDofsPerNode;
     }
 
     /******************************************************************************//**
@@ -208,11 +208,11 @@ public:
     {
         if(mJacobian->isBlockMatrix())
         {
-            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues, aScale);
+            Plato::applyBlockConstraints<PhysicsT::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues, aScale);
         }
         else
         {
-            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues, aScale);
+            Plato::applyConstraints<PhysicsT::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, mBcValues, aScale);
         }
     }
 
@@ -614,7 +614,7 @@ public:
         {
             THROWERR("ESSENTIAL BOUNDARY CONDITIONS SUBLIST IS NOT DEFINED IN THE INPUT FILE.")
         }
-        Plato::EssentialBCs<SimplexPhysics>
+        Plato::EssentialBCs<PhysicsT>
         tEssentialBoundaryConditions(aProblemParams.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets);
         tEssentialBoundaryConditions.get(mBcDofs, mBcValues);
     }
@@ -645,12 +645,12 @@ private:
     void initialize(Teuchos::ParameterList& aProblemParams)
     {
         auto tName = aProblemParams.get<std::string>("PDE Constraint");
-        mPDE = std::make_shared<Plato::Elliptic::VectorFunction<SimplexPhysics>>(mSpatialModel, mDataMap, aProblemParams, tName);
+        mPDE = std::make_shared<Plato::Elliptic::VectorFunction<PhysicsT>>(mSpatialModel, mDataMap, aProblemParams, tName);
 
         if(aProblemParams.isSublist("Criteria"))
         {
             Plato::Geometric::ScalarFunctionBaseFactory<Plato::Geometrical<SpatialDim>> tLinearFunctionBaseFactory;
-            Plato::Elliptic::ScalarFunctionBaseFactory<SimplexPhysics> tNonlinearFunctionBaseFactory;
+            Plato::Elliptic::ScalarFunctionBaseFactory<PhysicsT> tNonlinearFunctionBaseFactory;
 
             auto tCriteriaParams = aProblemParams.sublist("Criteria");
             for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
@@ -692,11 +692,11 @@ private:
         Plato::blas1::scale(static_cast<Plato::Scalar>(0.0), tDirichletValues);
         if(mJacobian->isBlockMatrix())
         {
-            Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tDirichletValues);
+            Plato::applyBlockConstraints<PhysicsT::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tDirichletValues);
         }
         else
         {
-            Plato::applyConstraints<SimplexPhysics::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tDirichletValues);
+            Plato::applyConstraints<PhysicsT::mNumDofsPerNode>(aMatrix, aVector, mBcDofs, tDirichletValues);
         }
     }
 

@@ -530,6 +530,33 @@ if(HYPERBOLIC)
   add_test(NAME runTransientDynamicsUnitTests COMMAND ${ES_MPI_TEST})
 endif()
 
+
+set(EllipticUpdLagTests_SOURCES
+  EllipticUpdLagTests.cpp
+  PlatoTestHelpers.cpp
+  PlatoUnitTestMain.cpp
+)
+
+set(EllipticUpdLagTests_HEADERS
+  PlatoTestHelpers.hpp
+)
+
+add_executable(EllipticUpdLagUnitTests
+  ${EllipticUpdLagTests_SOURCES}
+  ${EllipticUpdLagTests_HEADERS}
+)
+
+target_link_libraries(EllipticUpdLagUnitTests
+  analyzelib
+  ${Trilinos_LIBRARIES}
+  ${Trilinos_TPL_LIBRARIES}
+)
+target_include_directories(EllipticUpdLagUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+build_mpi_test_string(ES_MPI_TEST 1 ${CMAKE_CURRENT_BINARY_DIR}/EllipticUpdLagUnitTests)
+add_test(NAME runEllipticUpdLagUnitTests COMMAND ${ES_MPI_TEST})
+
+
 set(TwoFieldTests_SOURCES
   TwoFieldTests.cpp
   PlatoTestHelpers.cpp
