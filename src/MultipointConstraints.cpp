@@ -59,9 +59,6 @@ void MultipointConstraints::get(LocalOrdinalVector & mpcChildNodes,
         mpc->updateLengths(offsetChild, offsetParent, offsetNnz);
     }
 
-    // Add total number of nonzeros to the end of rowMap
-    mpcRowMap(offsetChild) = numConstraintNonzeros;
-
     // Build full CRS matrix to return
     mpcMatrix = Teuchos::rcp( new Plato::CrsMatrixType(mpcRowMap, mpcColumnIndices, mpcEntries, numChildNodes, numParentNodes, 1, 1) );
 }

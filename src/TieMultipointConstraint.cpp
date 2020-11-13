@@ -81,23 +81,28 @@ get(LocalOrdinalVector & aMpcChildNodes,
     auto tNumberChildNodes = mChildNodes.size();
 
     // Fill in constraint info
-    auto tChildNodes = aMpcChildNodes;
-    auto tParentNodes = aMpcParentNodes;
+    auto tMpcChildNodes = aMpcChildNodes;
+    auto tMpcParentNodes = aMpcParentNodes;
     auto tRowMap = aMpcRowMap;
     auto tColumnIndices = aMpcColumnIndices;
     auto tEntries = aMpcEntries;
     auto tValues = aMpcValues;
 
+    auto tChildNodes = mChildNodes;
+    auto tParentNodes = mParentNodes;
+
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
     {
-        tChildNodes(aOffsetChild+nodeOrdinal) = mChildNodes(nodeOrdinal); // child node ID
-        tParentNodes(aOffsetParent+nodeOrdinal) = mParentNodes(nodeOrdinal); // parent node ID
+        tMpcChildNodes(aOffsetChild + nodeOrdinal) = tChildNodes(nodeOrdinal); // child node ID
+        tMpcParentNodes(aOffsetParent + nodeOrdinal) = tParentNodes(nodeOrdinal); // parent node ID
 
-        tRowMap(aOffsetChild+nodeOrdinal) = aOffsetChild + nodeOrdinal; // row map
-        tColumnIndices(aOffsetNnz+nodeOrdinal) = aOffsetParent + nodeOrdinal; // column indices (local parent node ID)
-        tEntries(aOffsetNnz+nodeOrdinal) = 1.0; // entries (constraint coefficients)
+        tRowMap(aOffsetChild + nodeOrdinal) = aOffsetChild + nodeOrdinal; // row map
+        tRowMap(aOffsetChild + nodeOrdinal + 1) = aOffsetChild + nodeOrdinal + 1; // row map
 
-        tValues(aOffsetChild+nodeOrdinal) = tValue; // constraint RHS
+        tColumnIndices(aOffsetNnz + nodeOrdinal) = aOffsetParent + nodeOrdinal; // column indices (local parent node ID)
+        tEntries(aOffsetNnz + nodeOrdinal) = 1.0; // entries (constraint coefficients)
+
+        tValues(aOffsetChild + nodeOrdinal) = tValue; // constraint RHS
 
     }, "Tie constraint data");
 }
@@ -124,10 +129,13 @@ updateNodesets(const OrdinalType& tNumberChildNodes,
                const Omega_h::LOs& tParentNodeLids)
 /****************************************************************************/
 {
+    auto tChildNodes = mChildNodes;
+    auto tParentNodes = mParentNodes;
+
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
     {
-        mChildNodes(nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
-        mParentNodes(nodeOrdinal) = tParentNodeLids[nodeOrdinal]; // parent node ID
+        tChildNodes(nodeOrdinal) = tChildNodeLids[nodeOrdinal]; // child node ID
+        tParentNodes(nodeOrdinal) = tParentNodeLids[nodeOrdinal]; // parent node ID
     }, "Tie constraint data");
 }
 
