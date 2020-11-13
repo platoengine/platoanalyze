@@ -120,7 +120,7 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
 
     Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), outEntries);
 
-    outRowMap(0) = 0;
+    auto tNumDofsPerNode = mNumDofsPerNode;
     LocalOrdinalVector tNumMisassignedNodes("misassigned node counter", 1); 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, mNumNodes), LAMBDA_EXPRESSION(Plato::OrdinalType nodeOrdinal)
     {
@@ -144,9 +144,9 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
                 OrdinalType tParentNode = aMpcParentNodes(tMpcColumnIndices(parentOrdinal));
                 outColumnIndices(tColMapOrdinal) = aNodeTypes(tParentNode);
                 Plato::Scalar tMpcEntry = tMpcEntries(parentOrdinal);
-                for(OrdinalType dofOrdinal=0; dofOrdinal<mNumDofsPerNode; dofOrdinal++)
+                for(OrdinalType dofOrdinal=0; dofOrdinal<tNumDofsPerNode; dofOrdinal++)
                 {
-                    OrdinalType entryOrdinal = tColMapOrdinal*tBlockSize + mNumDofsPerNode*dofOrdinal + dofOrdinal; 
+                    OrdinalType entryOrdinal = tColMapOrdinal*tBlockSize + tNumDofsPerNode*dofOrdinal + dofOrdinal; 
                     outEntries(entryOrdinal) = tMpcEntry;
                 }
                 tColMapOrdinal += 1;
@@ -156,9 +156,9 @@ void MultipointConstraints::assembleTransformMatrix(const Teuchos::RCP<Plato::Cr
         {
             outRowMap(nodeOrdinal + 1) = tColMapOrdinal + 1;
             outColumnIndices(tColMapOrdinal) = aNodeTypes(nodeOrdinal);
-            for(OrdinalType dofOrdinal=0; dofOrdinal<mNumDofsPerNode; dofOrdinal++)
+            for(OrdinalType dofOrdinal=0; dofOrdinal<tNumDofsPerNode; dofOrdinal++)
             {
-                OrdinalType entryOrdinal = tColMapOrdinal*tBlockSize + mNumDofsPerNode*dofOrdinal + dofOrdinal; 
+                OrdinalType entryOrdinal = tColMapOrdinal*tBlockSize + tNumDofsPerNode*dofOrdinal + dofOrdinal; 
                 outEntries(entryOrdinal) = 1.0;
             }
         }
@@ -187,13 +187,16 @@ void MultipointConstraints::assembleRhs(const LocalOrdinalVector & aMpcChildNode
     Kokkos::resize(mRhs, tNdof);
     Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mRhs);
 
+    auto tRhs = mRhs;
+
+    auto tNumDofsPerNode = mNumDofsPerNode;
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType childOrdinal)
     {
         OrdinalType childNode = aMpcChildNodes(childOrdinal);
-        for(OrdinalType dofOrdinal=0; dofOrdinal<mNumDofsPerNode; dofOrdinal++)
+        for(OrdinalType dofOrdinal=0; dofOrdinal<tNumDofsPerNode; dofOrdinal++)
         {
-            OrdinalType entryOrdinal = mNumDofsPerNode*childNode + dofOrdinal; 
-            mRhs(entryOrdinal) = aMpcValues(childOrdinal);
+            OrdinalType entryOrdinal = tNumDofsPerNode*childNode + dofOrdinal; 
+            tRhs(entryOrdinal) = aMpcValues(childOrdinal);
         }
     }, "Set RHS vector values");
 }
