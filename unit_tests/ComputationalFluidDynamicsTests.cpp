@@ -4,8 +4,8 @@
  *  Created on: Oct 13, 2020
  */
 
-#include "Teuchos_UnitTestHarness.hpp"
-#include "PlatoTestHelpers.hpp"
+#include <Teuchos_UnitTestHarness.hpp>
+#include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
 #include <unordered_map>
 
@@ -30,6 +30,8 @@
 #include "LinearTetCubRuleDegreeOne.hpp"
 
 #include "alg/PlatoSolverFactory.hpp"
+
+#include "PlatoTestHelpers.hpp"
 
 namespace Plato
 {
@@ -5334,9 +5336,44 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StateWS_Test)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
 {
+    // 1. test throw
+    TEST_THROW(Plato::is_valid_function("some function"), std::runtime_error);
 
+    // 2. test scalar function
+    auto tOutput = Plato::is_valid_function("some function");
+    TEST_COMPARE(tOutput, ==, "scalar function");
+
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SidesetNames)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+    Teuchos::getParametersFromXmlString(
+        "<ParameterList  name='Natural Boundary Conditions'>"
+        "  <ParameterList  name='Traction Vector Boundary Condition 1'>"
+        "    <Parameter  name='Type'     type='string'        value='Uniform'/>"
+        "    <Parameter  name='Values'   type='Array(double)' value='{0.0, -3.0e3, 0.0}'/>"
+        "    <Parameter  name='Sides'    type='string'        value='ss_1'/>"
+        "  </ParameterList>"
+        "  <ParameterList  name='Traction Vector Boundary Condition 2'>"
+        "    <Parameter  name='Type'     type='string'        value='Uniform'/>"
+        "    <Parameter  name='Values'   type='Array(double)' value='{0.0, -3.0e3, 0.0}'/>"
+        "    <Parameter  name='Sides'    type='string'        value='ss_2'/>"
+        "  </ParameterList>"
+        "</ParameterList>"
+    );
+
+    auto tBCs = tParams->sublist("Natural Boundary Conditions");
+    auto tOutput = Plato::sideset_names(tBCs);
+
+    std::vector<std::string> tGold = {"ss_1", "ss_2"}
+    for(auto& tName : tOutput)
+    {
+        auto tIndex = &tName - &tOutput[0];
+        TEST_COMPARE(tName, ==, tGold[tIndex]);
+    }
 }
 
 }
