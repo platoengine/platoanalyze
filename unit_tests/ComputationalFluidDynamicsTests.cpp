@@ -5413,52 +5413,88 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SolutionsStruct)
 {
+    Plato::Solutions tSolution;
     constexpr Plato::OrdinalType tNumTimeSteps = 2;
 
     // set velocity
     constexpr Plato::OrdinalType tNumVelDofs = 12;
-    Plato::ScalarMultiVector tVel("velocity", tNumTimeSteps, tNumVelDofs);
-    auto tHostVel = Kokkos::create_mirror(tVel);
+    Plato::ScalarMultiVector tGoldVel("velocity", tNumTimeSteps, tNumVelDofs);
+    auto tHostGoldVel = Kokkos::create_mirror(tGoldVel);
     for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
     {
         for(auto tDof = 0; tDof < tNumVelDofs; tDof++)
         {
-            tHostVel(tStep, tDof) = (tStep * tNumTimeSteps) + tDof;
+            tHostGoldVel(tStep, tDof) = (tStep * tNumTimeSteps) + tDof;
         }
     }
-    Kokkos::deep_copy(tVel, tHostVel);
+    Kokkos::deep_copy(tGoldVel, tHostGoldVel);
+    tSolution.set("velocity", tGoldVel);
 
     // set pressure
     constexpr Plato::OrdinalType tNumPressDofs = 6;
-    Plato::ScalarMultiVector tPress("pressure", tNumTimeSteps, tNumPressDofs);
-    auto tHostPress = Kokkos::create_mirror(tPress);
+    Plato::ScalarMultiVector tGoldPress("pressure", tNumTimeSteps, tNumPressDofs);
+    auto tHostGoldPress = Kokkos::create_mirror(tGoldPress);
     for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
     {
         for(auto tDof = 0; tDof < tNumPressDofs; tDof++)
         {
-            tHostPress(tStep, tDof) = (tStep * tNumTimeSteps) + tDof;
+            tHostGoldPress(tStep, tDof) = (tStep * tNumTimeSteps) + tDof;
         }
     }
-    Kokkos::deep_copy(tPress, tHostPress);
+    Kokkos::deep_copy(tGoldPress, tHostGoldPress);
+    tSolution.set("pressure", tGoldPress);
 
     // set temperature
     constexpr Plato::OrdinalType tNumTempDofs = 6;
-    Plato::ScalarMultiVector tTemp("temperature", tNumTimeSteps, tNumTempDofs);
-    auto tHostTemp = Kokkos::create_mirror(tTemp);
+    Plato::ScalarMultiVector tGoldTemp("temperature", tNumTimeSteps, tNumTempDofs);
+    auto tHostGoldTemp = Kokkos::create_mirror(tGoldTemp);
     for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
     {
         for(auto tDof = 0; tDof < tNumTempDofs; tDof++)
         {
-            tHostTemp(tStep, tDof) = (tStep * tNumTimeSteps) + tDof;
+            tHostGoldTemp(tStep, tDof) = (tStep * tNumTimeSteps) + tDof;
         }
     }
-    Kokkos::deep_copy(tTemp, tHostTemp);
+    Kokkos::deep_copy(tGoldTemp, tHostGoldTemp);
+    tSolution.set("temperature", tGoldTemp);
 
-    // set solution
-    Plato::Solutions tSolution;
-    tSolution.set("velocity", tVel);
-    tSolution.set("pressure", tPress);
-    tSolution.set("temperature", tTemp);
+    // ********** test velocity **********
+    auto tTolerance = 1e-6;
+    auto tVel   = tSolution.get("velocity");
+    auto tHostVel = Kokkos::create_mirror(tVel);
+    tHostGoldVel  = Kokkos::create_mirror(tGoldVel);
+    for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
+    {
+        for(auto tDof = 0; tDof < tNumVelDofs; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tHostGoldVel(tStep, tDof), tHostVel(tStep, tDof), tTolerance);
+        }
+    }
+
+    // ********** test pressure **********
+    auto tPress = tSolution.get("pressure");
+    auto tHostPress = Kokkos::create_mirror(tPress);
+    tHostGoldPress  = Kokkos::create_mirror(tGoldPress);
+    for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
+    {
+        for(auto tDof = 0; tDof < tNumPressDofs; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tHostGoldPress(tStep, tDof), tHostPress(tStep, tDof), tTolerance);
+        }
+    }
+
+    // ********** test temperature **********
+    auto tTemp  = tSolution.get("temperature");
+    auto tHostTemp = Kokkos::create_mirror(tTemp);
+    tHostGoldTemp  = Kokkos::create_mirror(tGoldTemp);
+    for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
+    {
+        for(auto tDof = 0; tDof < tNumTempDofs; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tHostGoldTemp(tStep, tDof), tHostTemp(tStep, tDof), tTolerance);
+        }
+    }
+
 }
 
 }
