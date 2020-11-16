@@ -519,7 +519,7 @@ template<typename PhysicsT, typename EvaluationT>
 struct WorkSets
 {
 private:
-    static constexpr auto mNumControls         = PhysicsT::SimplexT::mNumControl;             /*!< number of design variable fields */
+    static constexpr auto mNumControls         = PhysicsT::SimplexT::mNumControls;            /*!< number of design variable fields */
     static constexpr auto mNumSpatialDims      = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerCell     = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
     static constexpr auto mNumPressDofsPerCell = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of mass dofs per cell */
