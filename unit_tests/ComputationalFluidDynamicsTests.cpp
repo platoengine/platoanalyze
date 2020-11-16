@@ -5531,6 +5531,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     TEST_COMPARE(tStates.isScalarMapEmpty(), ==, true);
     TEST_COMPARE(tStates.isVectorMapEmpty(), ==, true);
 
+    // set function type
+    tStates.function("vector function");
+    TEST_COMPARE(tStates.function(), ==, "vector function");
+    TEST_COMPARE(tStates.function(), !=, "scalar function");
+
     // set time step index
     tStates.scalar("step", 1);
     TEST_COMPARE(tStates.isScalarMapEmpty(), ==, false);
