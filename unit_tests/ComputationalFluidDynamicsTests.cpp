@@ -5590,12 +5590,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, WorkSetsMetaData)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, tNumCells)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename Plato::IncompressibleFluids::SimplexT>::Residual;
-    Plato::FluidMechanics::WorkSets<Plato::IncompressibleFluids<tSpaceDim>, ResidualEvalT> tWorksets(tNumCells);
+    using PhysicsT = Plato::IncompressibleFluids<tSpaceDim>;
+    using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
+    Plato::FluidMechanics::WorkSets<PhysicsT, ResidualEvalT> tWorksets(tNumCells);
 
     TEST_EQUALITY(2, tWorksets.numCells());
 }
