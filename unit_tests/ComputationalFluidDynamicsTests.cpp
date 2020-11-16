@@ -5599,11 +5599,36 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Plato_FluidMechanics_WorkSets)
     Plato::FluidMechanics::WorkSets<PhysicsT, ResidualEvalT> tWorksets(tNumCells);
     TEST_EQUALITY(tNumCells, tWorksets.numCells());
 
+    // test scalar fields
     constexpr Plato::OrdinalType tNumNodesPerCell = 4;
     TEST_EQUALITY(tNumCells, tWorksets.artificialCompress().extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tWorksets.artificialCompress().extent(1));
     TEST_EQUALITY(tNumCells, tWorksets.timeStep().extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tWorksets.timeStep().extent(1));
+    TEST_EQUALITY(tNumCells, tWorksets.control().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorksets.control().extent(1));
+    TEST_EQUALITY(tNumCells, tWorksets.previousPressure().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorksets.previousPressure().extent(1));
+    TEST_EQUALITY(tNumCells, tWorksets.currentPressure().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorksets.currentPressure().extent(1));
+    TEST_EQUALITY(tNumCells, tWorksets.previousTemperature().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorksets.previousTemperature().extent(1));
+    TEST_EQUALITY(tNumCells, tWorksets.currentTemperature().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorksets.currentTemperature().extent(1));
+
+    // test vector fields
+    constexpr Plato::OrdinalType tNumVelDofsPerCell = tSpaceDim * tNumNodesPerCell;
+    TEST_EQUALITY(tNumCells, tWorksets.predictor().extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tWorksets.predictor().extent(1));
+    TEST_EQUALITY(tNumCells, tWorksets.previousVelocity().extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tWorksets.previousVelocity().extent(1));
+    TEST_EQUALITY(tNumCells, tWorksets.currentVelocity().extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tWorksets.currentVelocity().extent(1));
+
+    // test configuration
+    TEST_EQUALITY(tNumCells, tWorksets.configuration().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorksets.configuration().extent(1));
+    TEST_EQUALITY(tSpaceDim, tWorksets.configuration().extent(2));
 }
 
 }
