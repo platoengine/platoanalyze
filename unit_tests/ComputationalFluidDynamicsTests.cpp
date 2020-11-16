@@ -217,9 +217,9 @@ template <typename PhysicsT, typename ...P> using fad_type_t = typename fad_type
 struct States
 {
 private:
-    std::string mType;
+    std::string mType = "undefined";
     std::unordered_map<std::string, Plato::Scalar> mScalars;
-    std::unordered_map<std::string, Plato::ScalarVector> mStates;
+    std::unordered_map<std::string, Plato::ScalarVector> mVectors;
 
 public:
     decltype(mType) function() const
@@ -232,7 +232,7 @@ public:
         mType = aInput;
     }
 
-    Plato::Scalar getScalar(const std::string& aTag) const
+    Plato::Scalar scalar(const std::string& aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
         auto tItr = mScalars.find(tLowerTag);
@@ -243,49 +243,77 @@ public:
         return tItr->second;
     }
 
-    void setScalar(const std::string& aTag, const Plato::Scalar& aInput)
+    void scalar(const std::string& aTag, const Plato::Scalar& aInput)
     {
         auto tLowerTag = Plato::tolower(aTag);
         mScalars[tLowerTag] = aInput;
     }
 
-    Plato::ScalarVector getVector(const std::string& aTag) const
+    Plato::ScalarVector vector(const std::string& aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
-        auto tItr = mStates.find(tLowerTag);
-        if(tItr == mStates.end())
+        auto tItr = mVectors.find(tLowerTag);
+        if(tItr == mVectors.end())
         {
             THROWERR(std::string("State with tag '") + aTag + "' is not defined in state map.")
         }
         return tItr->second;
     }
 
-    void setVector(const std::string& aTag, const Plato::ScalarVector& aInput)
+    void vector(const std::string& aTag, const Plato::ScalarVector& aInput)
     {
         auto tLowerTag = Plato::tolower(aTag);
-        mStates[tLowerTag] = aInput;
+        mVectors[tLowerTag] = aInput;
     }
 
     bool isVectorMapEmpty() const
     {
-        return mStates.empty();
+        return mVectors.empty();
     }
 
     bool isScalarMapEmpty() const
     {
-        return mStates.empty();
+        return mScalars.empty();
     }
 
-    bool isEmpty(const std::string & aTag) const
+    bool empty(const std::string & aTag, std::string aMap = "vector") const
+    {
+        auto tLowerMap = Plato::tolower(aMap);
+        if(tLowerMap == "vector")
+        {
+            return this->isVectorDefined(aTag);
+        }
+        else if(tLowerMap == "scalar")
+        {
+            return this->isScalarDefined(aTag);
+        }
+        else
+        {
+            THROWERR(std::string("Map '") + aMap + "' is not supported.")
+        }
+    }
+
+private:
+    bool isScalarDefined(const std::string & aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
-        auto tItr = mStates.find(tLowerTag);
-        if(tItr == mStates.end())
+        auto tItr = mScalars.find(tLowerTag);
+        if(tItr == mScalars.end())
         {
-            THROWERR(std::string("State with tag '") + aTag + "' is not defined in state map.")
+            return true;
         }
-        auto tIsEmpty = tItr->second.size() > 0 ? false : true;
-        return tIsEmpty;
+        return false;
+    }
+
+    bool isVectorDefined(const std::string & aTag) const
+    {
+        auto tLowerTag = Plato::tolower(aTag);
+        auto tItr = mVectors.find(tLowerTag);
+        if(tItr == mVectors.end())
+        {
+            return true;
+        }
+        return false;
     }
 };
 typedef States Dual;
@@ -922,19 +950,19 @@ private:
            ResidualWorkSets     & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumMassDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumEnergyDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -947,19 +975,19 @@ private:
            GradConfigWorkSets   & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumMassDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumEnergyDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
         using ConfigScalarT = typename GradConfigEvalT::ConfigScalarType;
         Plato::workset_config_fad<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell, ConfigScalarT>
@@ -973,20 +1001,20 @@ private:
            GradControlWorkSets  & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumMassDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumEnergyDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         using ControlScalarT = typename GradControlEvalT::ControlScalarType;
         Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlScalarT>
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -999,20 +1027,20 @@ private:
            GradPressWorkSets    & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         using PressScalarT = typename GradCurPressEvalT::CurrentMassScalarType;
         Plato::workset_state_scalar_fad<mNumMassDofsPerNode, mNumNodesPerCell, PressScalarT>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumEnergyDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -1025,20 +1053,20 @@ private:
            GradTempWorkSets     & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumMomentumDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumMassDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         using TempScalarT = typename GradCurTempEvalT::CurrentEnergyScalarType;
         Plato::workset_state_scalar_fad<mNumEnergyDofsPerNode, mNumNodesPerCell, TempScalarT>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -1052,19 +1080,19 @@ private:
     {
         using VelScalarT = typename GradCurVelEvalT::CurrentMomentumScalarType;
         Plato::workset_state_scalar_fad<mNumMomentumDofsPerNode, mNumNodesPerCell, VelScalarT>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumMassDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumEnergyDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -3324,25 +3352,25 @@ private:
            ResidualWorkSets     & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3351,12 +3379,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3367,25 +3395,25 @@ private:
     {
         auto tNumCells = aWorkSets.numCells();
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (tNumCells, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3394,12 +3422,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3410,25 +3438,25 @@ private:
            GradConfigWorkSets   & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3438,12 +3466,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3454,25 +3482,25 @@ private:
     {
         auto tNumCells = aWorkSets.numCells();
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (tNumCells, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3482,12 +3510,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3498,25 +3526,25 @@ private:
            GradControlWorkSets  & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         using ControlScalarT = typename GradControlEvalT::ControlScalarType;
         Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlScalarT>
@@ -3526,12 +3554,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3542,25 +3570,25 @@ private:
     {
         auto tNumCells = aWorkSets.numCells();
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         using ControlScalarT = typename GradControlEvalT::ControlScalarType;
         Plato::workset_control_scalar_fad<mNumNodesPerCell, ControlScalarT>
@@ -3570,12 +3598,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3587,25 +3615,25 @@ private:
     {
         using PredictorScalarT = typename GradPredictorEvalT::MomentumPredictorScalarType;
         Plato::workset_state_scalar_fad<mNumVelDofsPerNode, mNumNodesPerCell, PredictorScalarT>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3614,12 +3642,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3632,25 +3660,25 @@ private:
 
         using PredictorScalarT = typename GradPredictorEvalT::MomentumPredictorScalarType;
         Plato::workset_state_scalar_fad<mNumVelDofsPerNode, mNumNodesPerCell, PredictorScalarT>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (tNumCells, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3659,12 +3687,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3675,26 +3703,26 @@ private:
            GradPrevVelWorkSets  & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         using PrevVelScalarT = typename GradPrevVelEvalT::PreviousMomentumScalarType;
         Plato::workset_state_scalar_fad<mNumVelDofsPerNode, mNumNodesPerCell, PrevVelScalarT>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3703,12 +3731,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3720,26 +3748,26 @@ private:
         auto tNumCells = aWorkSets.numCells();
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         using PrevVelScalarT = typename GradPrevVelEvalT::PreviousMomentumScalarType;
         Plato::workset_state_scalar_fad<mNumVelDofsPerNode, mNumNodesPerCell, PrevVelScalarT>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (tNumCells, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3748,12 +3776,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3764,26 +3792,26 @@ private:
            GradPrevPressWorkSets & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         using PrevPressScalarT = typename GradPrevPressEvalT::PreviousMassScalarType;
         Plato::workset_state_scalar_fad<mNumPressDofsPerNode, mNumNodesPerCell, PrevPressScalarT>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3792,12 +3820,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3809,26 +3837,26 @@ private:
         auto tNumCells = aWorkSets.numCells();
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         using PrevPressScalarT = typename GradPrevPressEvalT::PreviousMassScalarType;
         Plato::workset_state_scalar_fad<mNumPressDofsPerNode, mNumNodesPerCell, PrevPressScalarT>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (tNumCells, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3837,12 +3865,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3853,26 +3881,26 @@ private:
            GradPrevTempWorkSets & aWorkSets)
     {
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         using PrevTempScalarT = typename GradPrevTempEvalT::PreviousEnergyScalarType;
         Plato::workset_state_scalar_fad<mNumTempDofsPerNode, mNumNodesPerCell, PrevTempScalarT>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3881,12 +3909,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3898,26 +3926,26 @@ private:
         auto tNumCells = aWorkSets.numCells();
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         using PrevTempScalarT = typename GradPrevTempEvalT::PreviousEnergyScalarType;
         Plato::workset_state_scalar_fad<mNumTempDofsPerNode, mNumNodesPerCell, PrevTempScalarT>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (tNumCells, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3926,12 +3954,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3942,26 +3970,26 @@ private:
            GradCurVelWorkSets   & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         using CurVelScalarT = typename GradCurVelEvalT::CurrentMomentumScalarType;
         Plato::workset_state_scalar_fad<mNumVelDofsPerNode, mNumNodesPerCell, CurVelScalarT>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -3970,12 +3998,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -3987,26 +4015,26 @@ private:
         auto tNumCells = aWorkSets.numCells();
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         using CurVelScalarT = typename GradCurVelEvalT::CurrentMomentumScalarType;
         Plato::workset_state_scalar_fad<mNumVelDofsPerNode, mNumNodesPerCell, CurVelScalarT>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (tNumCells, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -4015,12 +4043,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -4031,26 +4059,26 @@ private:
            GradCurPressWorkSets & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         using CurPressScalarT = typename GradCurPressEvalT::CurrentMassScalarType;
         Plato::workset_state_scalar_fad<mNumPressDofsPerNode, mNumNodesPerCell, CurPressScalarT>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -4059,12 +4087,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -4076,26 +4104,26 @@ private:
         auto tNumCells = aWorkSets.numCells();
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         using CurPressScalarT = typename GradCurPressEvalT::CurrentMassScalarType;
         Plato::workset_state_scalar_fad<mNumPressDofsPerNode, mNumNodesPerCell, CurPressScalarT>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (tNumCells, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -4104,12 +4132,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -4120,26 +4148,26 @@ private:
            GradCurTempWorkSets  & aWorkSets) const
     {
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         using CurTempScalarT = typename GradCurTempEvalT::CurrentEnergyScalarType;
         Plato::workset_state_scalar_fad<mNumTempDofsPerNode, mNumNodesPerCell, CurTempScalarT>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (aDomain, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (aDomain, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (aDomain, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -4148,12 +4176,12 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(!aState.isEmpty("artificial compressibility"))
+        if(!aState.empty("artificial compressibility"))
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (aDomain, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (aDomain, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 
@@ -4165,26 +4193,26 @@ private:
         auto tNumCells = aWorkSets.numCells();
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current predictor"), aWorkSets.predictor());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current predictor"), aWorkSets.predictor());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("current velocity"), aWorkSets.currentVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("current velocity"), aWorkSets.currentVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current pressure"), aWorkSets.currentPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current pressure"), aWorkSets.currentPressure());
 
         using CurTempScalarT = typename GradCurTempEvalT::CurrentEnergyScalarType;
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell, CurTempScalarT>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("current temperature"), aWorkSets.currentTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("current temperature"), aWorkSets.currentTemperature());
 
         Plato::workset_state_scalar_scalar<mNumVelDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mVectorStateEntryOrdinal, aState.getVector("previous velocity"), aWorkSets.previousVelocity());
+            (tNumCells, mVectorStateEntryOrdinal, aState.vector("previous velocity"), aWorkSets.previousVelocity());
 
         Plato::workset_state_scalar_scalar<mNumPressDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous pressure"), aWorkSets.previousPressure());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous pressure"), aWorkSets.previousPressure());
 
         Plato::workset_state_scalar_scalar<mNumTempDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("previous temperature"), aWorkSets.previousTemperature());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("previous temperature"), aWorkSets.previousTemperature());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
             (tNumCells, mControlEntryOrdinal, aControls, aWorkSets.control());
@@ -4193,12 +4221,12 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.getVector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
 
-        if(aState.isEmpty("artificial compressibility") == false)
+        if(aState.empty("artificial compressibility") == false)
         {
             Plato::workset_state_scalar_scalar<mNumACompressDofsPerNode, mNumNodesPerCell>
-                (tNumCells, mScalarStateEntryOrdinal, aState.getVector("artificial compressibility"), aWorkSets.artificialCompress());
+                (tNumCells, mScalarStateEntryOrdinal, aState.vector("artificial compressibility"), aWorkSets.artificialCompress());
         }
     }
 };
@@ -4385,10 +4413,10 @@ calculate_artificial_compressibility
 (const Plato::FluidMechanics::States & aStates,
  Plato::Scalar aCritialCompresibility = 0.5)
 {
-    auto tPrandtl = aStates.getScalar("prandtl");
-    auto tReynolds = aStates.getScalar("reynolds");
-    auto tElemSize = aStates.getVector("element size");
-    auto tVelocity = aStates.getVector("current velocity");
+    auto tPrandtl = aStates.scalar("prandtl");
+    auto tReynolds = aStates.scalar("reynolds");
+    auto tElemSize = aStates.vector("element size");
+    auto tVelocity = aStates.vector("current velocity");
 
     auto tLength = tVelocity.size();
     Plato::ScalarVector tArtificalCompress("artificial compressibility", tLength);
@@ -4418,12 +4446,12 @@ inline Plato::ScalarVector
 calculate_stable_time_step
 (const Plato::FluidMechanics::States & aStates)
 {
-    auto tElemSize = aStates.getVector("element size");
-    auto tVelocity = aStates.getVector("current velocity");
-    auto tArtificialCompressibility = aStates.getVector("artificial compressibility");
+    auto tElemSize = aStates.vector("element size");
+    auto tVelocity = aStates.vector("current velocity");
+    auto tArtificialCompressibility = aStates.vector("artificial compressibility");
 
-    auto tReynolds = aStates.getScalar("reynolds");
-    auto tSafetyFactor = aStates.getScalar("time step safety factor");
+    auto tReynolds = aStates.scalar("reynolds");
+    auto tSafetyFactor = aStates.scalar("time step safety factor");
 
     auto tLength = tVelocity.size();
     Plato::ScalarVector tTimeStep("time step", tLength);
@@ -4489,10 +4517,10 @@ inline Plato::Scalar
 calculate_explicit_solve_convergence_criterion
 (const Plato::FluidMechanics::States & aStates)
 {
-    auto tTimeStep = aStates.getVector("time step");
-    auto tCurrentPressure = aStates.getVector("current pressure");
-    auto tPreviousPressure = aStates.getVector("previous pressure");
-    auto tArtificialCompress = aStates.getVector("artificial compressibility");
+    auto tTimeStep = aStates.vector("time step");
+    auto tCurrentPressure = aStates.vector("current pressure");
+    auto tPreviousPressure = aStates.vector("previous pressure");
+    auto tArtificialCompress = aStates.vector("artificial compressibility");
     auto tResidual = Plato::cbs::calculate_pressure_residual(tTimeStep, tCurrentPressure, tPreviousPressure, tArtificialCompress);
     auto tStoppingCriterion = Plato::blas1::dot(tResidual, tResidual);
     return tStoppingCriterion;
@@ -4505,10 +4533,10 @@ calculate_semi_implicit_solve_convergence_criterion
     std::vector<Plato::Scalar> tErrors;
 
     // pressure error
-    auto tTimeStep = aStates.getVector("time step");
-    auto tCurrentState = aStates.getVector("current pressure");
-    auto tPreviousState = aStates.getVector("previous pressure");
-    auto tArtificialCompress = aStates.getVector("artificial compressibility");
+    auto tTimeStep = aStates.vector("time step");
+    auto tCurrentState = aStates.vector("current pressure");
+    auto tPreviousState = aStates.vector("previous pressure");
+    auto tArtificialCompress = aStates.vector("artificial compressibility");
     auto tMyResidual = Plato::cbs::calculate_pressure_residual(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
     Plato::Scalar tInfinityNorm = 0.0;
     Plato::blas1::max(tMyResidual, tInfinityNorm);
@@ -4641,7 +4669,7 @@ public:
 
         for (Plato::OrdinalType tStep = 1; tStep < mNumTimeSteps; tStep++)
         {
-            tStates.setScalar("step", tStep);
+            tStates.scalar("step", tStep);
             this->setPrimalStates(tStates);
             this->calculateStableTimeSteps(tStates);
 
@@ -4682,13 +4710,13 @@ public:
             auto tNumTimeSteps = mVelocity.extent(0);
             for (Plato::OrdinalType tStep = 0; tStep < tNumTimeSteps; tStep++)
             {
-                tPrimalStates.setScalar("step", tStep);
+                tPrimalStates.scalar("step", tStep);
                 auto tPressure = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
                 auto tVelocity = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
                 auto tTemperature = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
-                tPrimalStates.setVector("current pressure", tPressure);
-                tPrimalStates.setVector("current velocity", tVelocity);
-                tPrimalStates.setVector("current temperature", tTemperature);
+                tPrimalStates.vector("current pressure", tPressure);
+                tPrimalStates.vector("current velocity", tVelocity);
+                tPrimalStates.vector("current temperature", tTemperature);
                 tOutput += tItr->second->value(aControl, tPrimalStates);
             }
             return tOutput;
@@ -4714,9 +4742,9 @@ public:
             Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
             for(Plato::OrdinalType tStep = tLastStepIndex; tStep >= 0; tStep--)
             {
-                tDualStates.setScalar("step", tStep);
-                tCurrentStates.setScalar("step", tStep);
-                tPreviousStates.setScalar("step", tStep + 1);
+                tDualStates.scalar("step", tStep);
+                tCurrentStates.scalar("step", tStep);
+                tPreviousStates.scalar("step", tStep + 1);
 
                 this->setDualStates(tDualStates);
                 this->setPrimalStates(tCurrentStates);
@@ -4756,9 +4784,9 @@ public:
             Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
             for(Plato::OrdinalType tStep = tLastStepIndex; tStep >= 0; tStep--)
             {
-                tDualStates.setScalar("step", tStep);
-                tCurrentStates.setScalar("step", tStep);
-                tPreviousStates.setScalar("step", tStep + 1);
+                tDualStates.scalar("step", tStep);
+                tCurrentStates.scalar("step", tStep);
+                tPreviousStates.scalar("step", tStep + 1);
 
                 this->setDualStates(tDualStates);
                 this->setPrimalStates(tCurrentStates);
@@ -4856,7 +4884,7 @@ private:
                 tCriterionValue = Plato::cbs::calculate_semi_implicit_solve_convergence_criterion(aStates);
             }
 
-            Plato::OrdinalType tStep = aStates.getScalar("step");
+            Plato::OrdinalType tStep = aStates.scalar("step");
             if(tCriterionValue < mCBSsolverTolerance)
             {
                 tStop = true;
@@ -4876,26 +4904,26 @@ private:
         auto tNumCells = mSpatialModel.Mesh.nverts();
         auto tElemCharacteristicSize =
             Plato::cbs::calculate_element_characteristic_size<mNumSpatialDims>(tNumCells, tNodeCoordinates);
-        aStates.setVector("element size", tElemCharacteristicSize);
+        aStates.vector("element size", tElemCharacteristicSize);
     }
 
     void calculateStableTimeSteps(PrimalStates & aStates)
     {
         auto tArtificialCompressibility = Plato::cbs::calculate_artificial_compressibility(aStates);
-        aStates.setVector("artificial compressibility", tArtificialCompressibility);
+        aStates.vector("artificial compressibility", tArtificialCompressibility);
 
-        aStates.setScalar("time step safety factor", mTimeStepSafetyFactor);
+        aStates.scalar("time step safety factor", mTimeStepSafetyFactor);
         auto tTimeStep = Plato::cbs::calculate_stable_time_step(aStates);
         if(mIsTransientProblem)
         {
             Plato::Scalar tMinTimeStep(0);
             Plato::blas1::min(tTimeStep, tMinTimeStep);
             Plato::blas1::fill(tMinTimeStep, tTimeStep);
-            auto tCurrentTimeStepIndex = aStates.getScalar("step index");
+            auto tCurrentTimeStepIndex = aStates.scalar("step index");
             auto tCurrentTime = tMinTimeStep * static_cast<Plato::Scalar>(tCurrentTimeStepIndex);
-            aStates.setScalar("current time", tCurrentTime);
+            aStates.scalar("current time", tCurrentTime);
         }
-        aStates.setVector("time step", tTimeStep);
+        aStates.vector("time step", tTimeStep);
     }
 
     void enforceVelocityBoundaryConditions(PrimalStates & aStates)
@@ -4904,14 +4932,14 @@ private:
         Plato::LocalOrdinalVector tBcDofs;
         if(mIsTransientProblem)
         {
-            auto tCurrentTime = aStates.getScalar("current time");
+            auto tCurrentTime = aStates.scalar("current time");
             mVelocityStateBoundaryConditions.get(tBcDofs, tBcValues, tCurrentTime);
         }
         else
         {
             mVelocityStateBoundaryConditions.get(tBcDofs, tBcValues);
         }
-        auto tCurrentVelocity = aStates.getVector("current velocity");
+        auto tCurrentVelocity = aStates.vector("current velocity");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
     }
 
@@ -4921,14 +4949,14 @@ private:
         Plato::LocalOrdinalVector tBcDofs;
         if(mIsTransientProblem)
         {
-            auto tCurrentTime = aStates.getScalar("current time");
+            auto tCurrentTime = aStates.scalar("current time");
             mPressureStateBoundaryConditions.get(tBcDofs, tBcValues, tCurrentTime);
         }
         else
         {
             mPressureStateBoundaryConditions.get(tBcDofs, tBcValues);
         }
-        auto tCurrentPressure = aStates.getVector("current pressure");
+        auto tCurrentPressure = aStates.vector("current pressure");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
     }
 
@@ -4938,14 +4966,14 @@ private:
         Plato::LocalOrdinalVector tBcDofs;
         if(mIsTransientProblem)
         {
-            auto tCurrentTime = aStates.getScalar("current time");
+            auto tCurrentTime = aStates.scalar("current time");
             mTemperatureStateBoundaryConditions.get(tBcDofs, tBcValues, tCurrentTime);
         }
         else
         {
             mTemperatureStateBoundaryConditions.get(tBcDofs, tBcValues);
         }
-        auto tCurrentTemperature = aStates.getVector("current temperature");
+        auto tCurrentTemperature = aStates.vector("current temperature");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
     }
 
@@ -4961,7 +4989,7 @@ private:
             for(auto& tName : tNames)
             {
                 Plato::ScalarVector tView(tName, tTotalNumNodes);
-                aStates.setVector(tName, tView);
+                aStates.vector(tName, tView);
             }
 
             auto tTotalNumDofs = mNumVelDofsPerNode * tTotalNumNodes;
@@ -4970,7 +4998,7 @@ private:
             for(auto& tName : tNames)
             {
                 Plato::ScalarVector tView(tName, tTotalNumDofs);
-                aStates.setVector(tName, tView);
+                aStates.vector(tName, tView);
             }
         }
         else
@@ -4980,23 +5008,23 @@ private:
                 {"pressure adjoint", "temperature adjoint", "velocity adjoint", "predictor adjoint" };
             for(auto& tName : tNames)
             {
-                auto tVector = aStates.getVector(std::string("current ") + tName);
-                aStates.setVector(std::string("previous ") + tName, tVector);
+                auto tVector = aStates.vector(std::string("current ") + tName);
+                aStates.vector(std::string("previous ") + tName, tVector);
             }
         }
     }
 
     void setPrimalStates(PrimalStates & aStates)
     {
-        Plato::OrdinalType tStep = aStates.getScalar("step");
+        Plato::OrdinalType tStep = aStates.scalar("step");
         auto tCurrentVel   = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
         auto tCurrentPred  = Kokkos::subview(mPredictor, tStep, Kokkos::ALL());
         auto tCurrentTemp  = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
         auto tCurrentPress = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
-        aStates.setVector("current velocity", tCurrentVel);
-        aStates.setVector("current pressure", tCurrentPress);
-        aStates.setVector("current temperature", tCurrentTemp);
-        aStates.setVector("current predictor", tCurrentPred);
+        aStates.vector("current velocity", tCurrentVel);
+        aStates.vector("current pressure", tCurrentPress);
+        aStates.vector("current temperature", tCurrentTemp);
+        aStates.vector("current predictor", tCurrentPred);
 
         auto tPrevStep = tStep - 1;
         if (tPrevStep >= static_cast<Plato::OrdinalType>(0))
@@ -5005,25 +5033,25 @@ private:
             auto tPreviousPred  = Kokkos::subview(mPredictor, tStep, Kokkos::ALL());
             auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
             auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
-            aStates.setVector("previous velocity", tPreviouVel);
-            aStates.setVector("previous predictor", tPreviousPred);
-            aStates.setVector("previous pressure", tPreviousPress);
-            aStates.setVector("previous temperature", tPreviousTemp);
+            aStates.vector("previous velocity", tPreviouVel);
+            aStates.vector("previous predictor", tPreviousPred);
+            aStates.vector("previous pressure", tPreviousPress);
+            aStates.vector("previous temperature", tPreviousTemp);
         }
         else
         {
             auto tLength = mPressure.extent(1);
             Plato::ScalarVector tPreviousPress("previous pressure", tLength);
-            aStates.setVector("previous pressure", tPreviousPress);
+            aStates.vector("previous pressure", tPreviousPress);
             tLength = mTemperature.extent(1);
             Plato::ScalarVector tPreviousTemp("previous temperature", tLength);
-            aStates.setVector("previous temperature", tPreviousTemp);
+            aStates.vector("previous temperature", tPreviousTemp);
             tLength = mVelocity.extent(1);
             Plato::ScalarVector tPreviousVel("previous velocity", tLength);
-            aStates.setVector("previous velocity", tPreviousVel);
+            aStates.vector("previous velocity", tPreviousVel);
             tLength = mPredictor.extent(1);
             Plato::ScalarVector tPreviousPred("previous predictor", tLength);
-            aStates.setVector("previous previous predictor", tPreviousPred);
+            aStates.vector("previous previous predictor", tPreviousPred);
         }
     }
 
@@ -5043,8 +5071,8 @@ private:
         mVectorFieldSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
 
         // update velocity
-        auto tCurrentVelocity  = aStates.getVector("current velocity");
-        auto tPreviousVelocity = aStates.getVector("previous velocity");
+        auto tCurrentVelocity  = aStates.vector("current velocity");
+        auto tPreviousVelocity = aStates.vector("previous velocity");
         Plato::blas1::copy(tPreviousVelocity, tCurrentVelocity);
         Plato::blas1::axpy(1.0, tDeltaVelocity, tCurrentVelocity);
     }
@@ -5065,8 +5093,8 @@ private:
         mVectorFieldSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
 
         // update current predictor
-        auto tCurrentPredictor  = aStates.getVector("current predictor");
-        auto tPreviousPredictor = aStates.getVector("previous predictor");
+        auto tCurrentPredictor  = aStates.vector("current predictor");
+        auto tPreviousPredictor = aStates.vector("previous predictor");
         Plato::blas1::copy(tPreviousPredictor, tCurrentPredictor);
         Plato::blas1::axpy(1.0, tDeltaPredictor, tCurrentPredictor);
     }
@@ -5087,8 +5115,8 @@ private:
         mScalarFieldSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
 
         // update pressure
-        auto tCurrentPressure = aStates.getVector("current pressure");
-        auto tPreviousPressure = aStates.getVector("previous pressure");
+        auto tCurrentPressure = aStates.vector("current pressure");
+        auto tPreviousPressure = aStates.vector("previous pressure");
         Plato::blas1::copy(tPreviousPressure, tCurrentPressure);
         Plato::blas1::axpy(1.0, tDeltaPressure, tCurrentPressure);
     }
@@ -5109,8 +5137,8 @@ private:
         mScalarFieldSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
 
         // update temperature
-        auto tCurrentTemperature  = aStates.getVector("current temperature");
-        auto tPreviousTemperature = aStates.getVector("previous temperature");
+        auto tCurrentTemperature  = aStates.vector("current temperature");
+        auto tPreviousTemperature = aStates.vector("previous temperature");
         Plato::blas1::copy(tPreviousTemperature, tCurrentTemperature);
         Plato::blas1::axpy(1.0, tDeltaTemperature, tCurrentTemperature);
     }
@@ -5121,17 +5149,17 @@ private:
            DualStates          & aDualStates)
     {
 
-        auto tCurrentVelocityAdjoint = aDualStates.getVector("current velocity adjoint");
+        auto tCurrentVelocityAdjoint = aDualStates.vector("current velocity adjoint");
         auto tGradResVelWrtPredictor = mVelocityResidual.gradientPredictor(aControl, aCurrentStates);
         Plato::ScalarVector tRHS("right hand side", tCurrentVelocityAdjoint.size());
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPredictor, tCurrentVelocityAdjoint, tRHS);
 
-        auto tCurrentPressureAdjoint = aDualStates.getVector("current pressure adjoint");
+        auto tCurrentPressureAdjoint = aDualStates.vector("current pressure adjoint");
         auto tGradResPressWrtPredictor = mPressureResidual.gradientPredictor(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPredictor, tCurrentPressureAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
-        auto tCurrentPredictorAdjoint = aDualStates.getVector("current predictor adjoint");
+        auto tCurrentPredictorAdjoint = aDualStates.vector("current predictor adjoint");
         Plato::blas1::fill(0.0, tCurrentPredictorAdjoint);
         auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurrentStates);
         mVectorFieldSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
@@ -5147,23 +5175,23 @@ private:
         auto tRHS = mCriteria[aName]->gradientCurrentPress(aControl, aCurrentStates);
 
         auto tGradResVelWrtCurPress = mVelocityResidual.gradientCurrentPress(aControl, aCurrentStates);
-        auto tCurrentVelocityAdjoint = aDualStates.getVector("current velocity adjoint");
+        auto tCurrentVelocityAdjoint = aDualStates.vector("current velocity adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtCurPress, tCurrentVelocityAdjoint, tRHS);
 
         auto tGradResPressWrtPrevPress = mPressureResidual.gradientPreviousPress(aControl, aPreviousStates);
-        auto tPrevPressureAdjoint = aDualStates.getVector("previous pressure adjoint");
+        auto tPrevPressureAdjoint = aDualStates.vector("previous pressure adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPrevPress, tPrevPressureAdjoint, tRHS);
 
         auto tGradResVelWrtPrevPress = mVelocityResidual.gradientPreviousPress(aControl, aPreviousStates);
-        auto tPrevVelocityAdjoint = aDualStates.getVector("previous velocity adjoint");
+        auto tPrevVelocityAdjoint = aDualStates.vector("previous velocity adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPrevPress, tPrevVelocityAdjoint, tRHS);
 
         auto tGradResPredWrtPrevPress = mPredictorResidual.gradientPreviousPress(aControl, aPreviousStates);
-        auto tPrevPredictorAdjoint = aDualStates.getVector("previous predictor adjoint");
+        auto tPrevPredictorAdjoint = aDualStates.vector("previous predictor adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevPress, tPrevPredictorAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
-        auto tCurrentPressAdjoint = aDualStates.getVector("current pressure adjoint");
+        auto tCurrentPressAdjoint = aDualStates.vector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
         auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aCurrentStates);
         mScalarFieldSolver->solve(*tJacobianPressure, tCurrentPressAdjoint, tRHS);
@@ -5179,15 +5207,15 @@ private:
         auto tRHS = mCriteria[aName]->gradientCurrentTemp(aControl, aCurrentStates);
 
         auto tGradResPredWrtPrevTemp = mPredictorResidual.gradientPreviousTemp(aControl, aPreviousStates);
-        auto tPrevPredictorAdjoint = aDualStates.getVector("previous predictor adjoint");
+        auto tPrevPredictorAdjoint = aDualStates.vector("previous predictor adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevTemp, tPrevPredictorAdjoint, tRHS);
 
         auto tGradResTempWrtPrevTemp = mTemperatureResidual.gradientPreviousTemp(aControl, aPreviousStates);
-        auto tPrevTempAdjoint = aDualStates.getVector("previous temperature adjoint");
+        auto tPrevTempAdjoint = aDualStates.vector("previous temperature adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResTempWrtPrevTemp, tPrevTempAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
-        auto tCurrentTempAdjoint = aDualStates.getVector("current temperature adjoint");
+        auto tCurrentTempAdjoint = aDualStates.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
         auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aControl, aCurrentStates);
         mScalarFieldSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
@@ -5203,23 +5231,23 @@ private:
         auto tRHS = mCriteria[aName]->gradientCurrentVel(aControl, aCurrentStates);
 
         auto tGradResPredWrtPrevVel = mPredictorResidual.gradientPreviousVel(aControl, aPreviousStates);
-        auto tPrevPredictorAdjoint = aDualStates.getVector("previous predictor adjoint");
+        auto tPrevPredictorAdjoint = aDualStates.vector("previous predictor adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevVel, tPrevPredictorAdjoint, tRHS);
 
         auto tGradResVelWrtPrevVel = mVelocityResidual.gradientPreviousVel(aControl, aPreviousStates);
-        auto tPrevVelocityAdjoint = aDualStates.getVector("previous velocity adjoint");
+        auto tPrevVelocityAdjoint = aDualStates.vector("previous velocity adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPrevVel, tPrevVelocityAdjoint, tRHS);
 
         auto tGradResPressWrtPrevVel = mPressureResidual.gradientPreviousVel(aControl, aPreviousStates);
-        auto tPrevPressureAdjoint = aDualStates.getVector("previous pressure adjoint");
+        auto tPrevPressureAdjoint = aDualStates.vector("previous pressure adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPrevVel, tPrevPressureAdjoint, tRHS);
 
         auto tGradResTempWrtPrevVel = mTemperatureResidual.gradientPreviousVel(aControl, aPreviousStates);
-        auto tPrevTemperatureAdjoint = aDualStates.getVector("previous temperature adjoint");
+        auto tPrevTemperatureAdjoint = aDualStates.vector("previous temperature adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResTempWrtPrevVel, tPrevTemperatureAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
-        auto tCurrentVelocityAdjoint = aDualStates.getVector("current velocity adjoint");
+        auto tCurrentVelocityAdjoint = aDualStates.vector("current velocity adjoint");
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
         auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aControl, aCurrentStates);
         mVectorFieldSolver->solve(*tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
@@ -5234,19 +5262,19 @@ private:
     {
         auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aCurrentStates);
 
-        auto tCurrentPredictorAdjoint = aDualStates.getVector("current predictor adjoint");
+        auto tCurrentPredictorAdjoint = aDualStates.vector("current predictor adjoint");
         auto tGradResPredWrtControl = mPredictorResidual.gradientControl(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResPredWrtControl, tCurrentPredictorAdjoint, tGradCriterionWrtControl);
 
-        auto tCurrentPressureAdjoint = aDualStates.getVector("current pressure adjoint");
+        auto tCurrentPressureAdjoint = aDualStates.vector("current pressure adjoint");
         auto tGradResPressWrtControl = mPressureResidual.gradientControl(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtControl, tCurrentPressureAdjoint, tGradCriterionWrtControl);
 
-        auto tCurrentTemperatureAdjoint = aDualStates.getVector("current temperature adjoint");
+        auto tCurrentTemperatureAdjoint = aDualStates.vector("current temperature adjoint");
         auto tGradResTempWrtControl = mTemperatureResidual.gradientControl(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResTempWrtControl, tCurrentTemperatureAdjoint, tGradCriterionWrtControl);
 
-        auto tCurrentVelocityAdjoint = aDualStates.getVector("current velocity adjoint");
+        auto tCurrentVelocityAdjoint = aDualStates.vector("current velocity adjoint");
         auto tGradResVelWrtControl = mVelocityResidual.gradientControl(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtControl, tCurrentVelocityAdjoint, tGradCriterionWrtControl);
 
@@ -5262,19 +5290,19 @@ private:
     {
         auto tGradCriterionWrtConfig = mCriteria[aName]->gradientConfig(aControl, aCurrentStates);
 
-        auto tCurrentPredictorAdjoint = aDualStates.getVector("current predictor adjoint");
+        auto tCurrentPredictorAdjoint = aDualStates.vector("current predictor adjoint");
         auto tGradResPredWrtConfig = mPredictorResidual.gradientConfig(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResPredWrtConfig, tCurrentPredictorAdjoint, tGradCriterionWrtConfig);
 
-        auto tCurrentPressureAdjoint = aDualStates.getVector("current pressure adjoint");
+        auto tCurrentPressureAdjoint = aDualStates.vector("current pressure adjoint");
         auto tGradResPressWrtConfig = mPressureResidual.gradientConfig(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtConfig, tCurrentPressureAdjoint, tGradCriterionWrtConfig);
 
-        auto tCurrentTemperatureAdjoint = aDualStates.getVector("current temperature adjoint");
+        auto tCurrentTemperatureAdjoint = aDualStates.vector("current temperature adjoint");
         auto tGradResTempWrtConfig = mTemperatureResidual.gradientConfig(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResTempWrtConfig, tCurrentTemperatureAdjoint, tGradCriterionWrtConfig);
 
-        auto tCurrentVelocityAdjoint = aDualStates.getVector("current velocity adjoint");
+        auto tCurrentVelocityAdjoint = aDualStates.vector("current velocity adjoint");
         auto tGradResVelWrtConfig = mVelocityResidual.gradientConfig(aControl, aCurrentStates);
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtConfig, tCurrentVelocityAdjoint, tGradCriterionWrtConfig);
 
@@ -5494,7 +5522,68 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SolutionsStruct)
             TEST_FLOATING_EQUALITY(tHostGoldTemp(tStep, tDof), tHostTemp(tStep, tDof), tTolerance);
         }
     }
+}
 
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
+{
+    Plato::FluidMechanics::States tStates;
+    TEST_COMPARE(tStates.isScalarMapEmpty(), ==, true);
+    TEST_COMPARE(tStates.isVectorMapEmpty(), ==, true);
+
+    // set time step index
+    tStates.scalar("step", 1);
+    TEST_COMPARE(tStates.isScalarMapEmpty(), ==, false);
+
+    // set velocity
+    constexpr Plato::OrdinalType tNumVelDofs = 12;
+    Plato::ScalarVector tGoldVel("velocity", tNumVelDofs);
+    auto tHostGoldVel = Kokkos::create_mirror(tGoldVel);
+    for(auto tDof = 0; tDof < tNumVelDofs; tDof++)
+    {
+        tHostGoldVel(tDof) = tDof;
+    }
+    Kokkos::deep_copy(tGoldVel, tHostGoldVel);
+    tStates.vector("velocity", tGoldVel);
+    TEST_COMPARE(tStates.isVectorMapEmpty(), ==, false);
+
+    // set pressure
+    constexpr Plato::OrdinalType tNumPressDofs = 6;
+    Plato::ScalarVector tGoldPress("pressure", tNumPressDofs);
+    auto tHostGoldPress = Kokkos::create_mirror(tGoldPress);
+    for(auto tDof = 0; tDof < tNumPressDofs; tDof++)
+    {
+        tHostGoldPress(tDof) = tDof;
+    }
+    Kokkos::deep_copy(tGoldPress, tHostGoldPress);
+    tStates.vector("pressure", tGoldPress);
+
+    // test empty funciton
+    TEST_COMPARE(tStates.empty("velocity"), ==, false);
+    TEST_COMPARE(tStates.empty("temperature"), ==, true);
+    TEST_COMPARE(tStates.empty("pressure", "vector"), ==, false);
+    TEST_COMPARE(tStates.empty("step", "scalar"), ==, false);
+    TEST_COMPARE(tStates.empty("time step", "scalar"), ==, true);
+
+    // test metadata
+    auto tTolerance = 1e-6;
+    TEST_FLOATING_EQUALITY(1.0, tStates.scalar("step"), tTolerance);
+
+    auto tVel  = tStates.vector("velocity");
+    auto tHostVel = Kokkos::create_mirror(tVel);
+    tHostGoldVel  = Kokkos::create_mirror(tGoldVel);
+    for(auto tDof = 0; tDof < tNumVelDofs; tDof++)
+    {
+        TEST_FLOATING_EQUALITY(tHostGoldVel(tDof), tHostVel(tDof), tTolerance);
+    }
+
+    auto tPress  = tStates.vector("pressure");
+    auto tHostPress = Kokkos::create_mirror(tPress);
+    tHostGoldPress  = Kokkos::create_mirror(tGoldPress);
+    for(auto tDof = 0; tDof < tNumPressDofs; tDof++)
+    {
+        TEST_FLOATING_EQUALITY(tHostGoldPress(tDof), tHostPress(tDof), tTolerance);
+    }
 }
 
 }
