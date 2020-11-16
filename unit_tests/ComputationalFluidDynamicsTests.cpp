@@ -603,7 +603,7 @@ public:
         return mPreviousPress;
     }
 
-    decltype(mPreviousTemp)& previousTemperature()
+    decltype(mPreviousTemp) previousTemperature()
     {
         return mPreviousTemp;
     }
@@ -5524,7 +5524,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SolutionsStruct)
     }
 }
 
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
 {
     Plato::FluidMechanics::States tStates;
@@ -5589,6 +5588,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     {
         TEST_FLOATING_EQUALITY(tHostGoldPress(tDof), tHostPress(tDof), tTolerance);
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, WorkSetsMetaData)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename Plato::IncompressibleFluids::SimplexT>::Residual;
+    Plato::FluidMechanics::WorkSets<Plato::IncompressibleFluids<tSpaceDim>, ResidualEvalT> tWorksets(tNumCells);
+
+    TEST_EQUALITY(2, tWorksets.numCells());
 }
 
 }
