@@ -5368,12 +5368,40 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SidesetNames)
     auto tBCs = tParams->sublist("Natural Boundary Conditions");
     auto tOutput = Plato::sideset_names(tBCs);
 
-    std::vector<std::string> tGold = {"ss_1", "ss_2"}
+    std::vector<std::string> tGold = {"ss_1", "ss_2"};
     for(auto& tName : tOutput)
     {
         auto tIndex = &tName - &tOutput[0];
         TEST_COMPARE(tName, ==, tGold[tIndex]);
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+    Teuchos::getParametersFromXmlString(
+        "<ParameterList  name='Dimensionless Properties'>"
+        "  <Parameter  name='Prandtl'   type='double'        value='2.1'/>"
+        "  <Parameter  name='Grashof'   type='Array(double)' value='{0.0, 1.5, 0.0}'/>"
+        "  <Parameter  name='Darcy'     type='double'        value='2.2'/>"
+        "</ParameterList>"
+    );
+
+    // Prandtl #
+    auto tScalarOutput = Plato::parse_dimensionless_property<Plato::Scalar>(tParams.operator*(), "Prandtl");
+    auto tTolerance = 1e-6;
+    TEST_FLOATING_EQUALITY(tScalarOutput, 2.1, tTolerance);
+
+    // Darcy #
+    tScalarOutput = Plato::parse_dimensionless_property<Plato::Scalar>(tParams.operator*(), "Darcy");
+    TEST_FLOATING_EQUALITY(tScalarOutput, 2.2, tTolerance);
+
+    // Grashof #
+    auto tArrayOutput = Plato::parse_dimensionless_property<Teuchos::Array<Plato::Scalar>>(tParams.operator*(), "Grashof");
+    TEST_EQUALITY(3, tArrayOutput.size());
+    TEST_FLOATING_EQUALITY(tArrayOutput[0], 0.0, tTolerance);
+    TEST_FLOATING_EQUALITY(tArrayOutput[1], 1.5, tTolerance);
+    TEST_FLOATING_EQUALITY(tArrayOutput[2], 0.0, tTolerance);
 }
 
 }
