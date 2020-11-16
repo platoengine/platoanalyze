@@ -147,7 +147,7 @@ DEVICE_TYPE inline Omega_h::Few< Omega_h::Vector<SpatialDim>, NodesPerCell > loc
  * \return face local ordinals
  *
 *******************************************************************************/
-inline Omega_h::LOs get_face_ordinals(const Omega_h::MeshSets& aMeshSets, const std::string& aSideSetName)
+inline Omega_h::LOs side_set_face_ordinals(const Omega_h::MeshSets& aMeshSets, const std::string& aSideSetName)
 {
     auto& tSideSets = aMeshSets[Omega_h::SIDE_SET];
     auto tSideSetMapIterator = tSideSets.find(aSideSetName);
@@ -161,7 +161,7 @@ inline Omega_h::LOs get_face_ordinals(const Omega_h::MeshSets& aMeshSets, const 
     auto tFaceLids = (tSideSetMapIterator->second);
     return tFaceLids;
 }
-// function get_face_ordinals
+// function side_set_face_ordinals
 
 /******************************************************************************//**
 * \brief Normalized vector : 1-D specialization

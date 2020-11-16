@@ -8,7 +8,10 @@
 #include "PlatoTestHelpers.hpp"
 
 #include <unordered_map>
+
+#include <Omega_h_mark.hpp>
 #include <Omega_h_shape.hpp>
+#include <Omega_h_array_ops.hpp>
 
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
@@ -30,6 +33,26 @@
 
 namespace Plato
 {
+
+inline Omega_h::LOs
+faces_on_non_prescribed_boundary
+(const std::vector<std::string> & aSideSetNames,
+       Omega_h::Mesh            & aMesh,
+       Omega_h::MeshSets        & aMeshSets)
+{
+    auto tNumFaces = aMesh.nfaces();
+    auto tFacesAreOnNonPrescribedBoundary = Omega_h::mark_by_class_dim(&aMesh, Omega_h::FACE, Omega_h::FACE);
+    for(auto& tName : aSideSetNames)
+    {
+        auto tFacesOnPrescribedBoundary = Plato::side_set_face_ordinals(aMeshSets, tName);
+        auto tFacesAreOnPrescribedBoundary = Omega_h::mark_image(tFacesOnPrescribedBoundary, tNumFaces);
+        auto tFacesAreNotOnPrescribedBoundary = Omega_h::invert_marks(tFacesAreOnPrescribedBoundary);
+        tFacesAreOnNonPrescribedBoundary = Omega_h::land_each(tFacesAreOnNonPrescribedBoundary, tFacesAreNotOnPrescribedBoundary);
+    }
+    // this last array has one entry for every non-traction boundary mesh face, and that entry is the face number
+    auto tFacesOnNonPrescribedBoundary = Omega_h::collect_marked(tFacesAreOnNonPrescribedBoundary);
+    return tFacesOnNonPrescribedBoundary;
+}
 
 inline std::string is_valid_function(const std::string& aInput)
 {
@@ -1102,7 +1125,7 @@ public:
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // get sideset faces
-        auto tFaceLocalOrdinals = Plato::get_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tSurfaceJacobians("jacobian", tNumFaces, mNumSpatialDims - 1, mNumSpatialDims);
 
@@ -1207,8 +1230,9 @@ private:
 
     Plato::Scalar mPrNum = 1.0;
     Plato::Scalar mPrNumConvexityParam = 0.5;
-    const std::string mSideSetName; /*!< side set name */
+    std::string mSideSetName = ""; /*!< side set name */
 
+    Omega_h::LOs mBoundaryFaceOrdinals;
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;  /*!< integration rule */
 
@@ -1216,12 +1240,13 @@ public:
     DeviatoricSurfaceForces
     (const Plato::SpatialDomain & aSpatialDomain,
      Teuchos::ParameterList & aInputs,
-     std::string aSideSetName = "empty") :
+     std::string aSideSetName = "") :
          mSideSetName(aSideSetName),
          mSpatialDomain(aSpatialDomain)
     {
         this->setPenaltyModel(aInputs);
         this->setDimensionlessProperties(aInputs);
+        this->setFacesOnNonPrescribedBoundary(aInputs);
     }
 
     void operator()
@@ -1249,11 +1274,13 @@ public:
         Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
-        // get sideset faces
-        auto tFaceLocalOrdinals = Plato::get_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+        // transfer member data to device
+        auto tPrNum = mPrNum;
+        auto tPrNumConvexityParam = mPrNumConvexityParam;
+        auto tBoundaryFaceOrdinals = mBoundaryFaceOrdinals;
 
         // set local data structures
-        auto tNumFaces = tFaceLocalOrdinals.size();
+        auto tNumFaces = tBoundaryFaceOrdinals.size();
         auto tNumBoundaryCells = tFace2Elems_elems.size();
         Plato::ScalarVectorT<ConfigT>  tCellVolume("cell weight", tNumBoundaryCells);
         Plato::ScalarArray3DT<ConfigT> tJacobians("cell jacobians", tNumFaces, mNumSpatialDims - 1, mNumSpatialDims);
@@ -1265,16 +1292,12 @@ public:
         auto tConfigWS     = aWorkSets.configuration();
         auto tPrevVelWS    = aWorkSets.previousVelocity();
 
-        // transfer member data to device
-        auto tPrNum = mPrNum;
-        auto tPrNumConvexityParam = mPrNumConvexityParam;
-
         // calculate surface integral
         auto tCubatureWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
         {
-            auto tFaceOrdinal = tFaceLocalOrdinals[aFaceI];
+            auto tFaceOrdinal = tBoundaryFaceOrdinals[aFaceI];
             // for each element that the face is connected to: (either 1 or 2 elements)
             for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal + 1]; tElem++ )
             {
@@ -1354,6 +1377,30 @@ private:
             THROWERR("'Dimensionless Properties' block is not defined.")
         }
     }
+
+    void setFacesOnNonPrescribedBoundary(Teuchos::ParameterList& aInputs)
+    {
+        if(mSideSetName.empty())
+        {
+            if(aInputs.isSublist("Momentum Natural Boundary Conditions"))
+            {
+                auto tNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
+                auto tNames = Plato::sideset_names(tNaturalBCs);
+                mBoundaryFaceOrdinals =
+                    Plato::faces_on_non_prescribed_boundary(tNames, mSpatialDomain.Mesh, mSpatialDomain.MeshSets);
+            }
+            else
+            {
+                THROWERR(std::string("Expected to deduce stabilized momentum residual boundary surfaces from the ")
+                    + "'Momentum Natural Boundary Conditions' block defined in the input file.  However, this block "
+                    + "is not defined in the input file.")
+            }
+        }
+        else
+        {
+            mBoundaryFaceOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+        }
+    }
 };
 // class DeviatoricSurfaceForces
 
@@ -1402,19 +1449,21 @@ private:
     using PrevTempT  = typename EvaluationT::PreviousEnergyScalarType;
     using PredictorT = typename EvaluationT::MomentumPredictorScalarType;
 
-    Plato::DataMap& mDataMap;                   /*!< output database */
+    Plato::DataMap& mDataMap; /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< cubature rule evaluator */
 
+    // set local type names
+    using StateWorkSets    = Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
+    using PressureForces   = Plato::FluidMechanics::PressureSurfaceForces<PhysicsT, EvaluationT>;
+    using DeviatoricForces = Plato::FluidMechanics::DeviatoricSurfaceForces<PhysicsT, EvaluationT>;
+
+    // set external force evaluators
+    std::unordered_map<std::string, std::shared_ptr<PressureForces>>     mPressureBCs;   /*!< prescribed pressure forces */
+    std::unordered_map<std::string, std::shared_ptr<DeviatoricForces>>   mDeviatoricBCs; /*!< stabilized deviatoric boundary forces */
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mPrescribedBCs; /*!< prescribed boundary conditions, e.g. tractions */
 
-    using PressureForces = Plato::FluidMechanics::PressureSurfaceForces<PhysicsT, EvaluationT>;
-    std::unordered_map<std::string, std::shared_ptr<PressureForces>> mPressureBCs;  /*!< prescribed pressure forces */
-
-    using DeviatoricForces = Plato::FluidMechanics::DeviatoricSurfaceForces<PhysicsT, EvaluationT>;
-    std::unordered_map<std::string, std::shared_ptr<DeviatoricForces>> mDeviatoricBCs;  /*!< stabilized deviatoric tractions */
-
+    // set member scalar data
     Plato::Scalar mDaNum = 1.0;
     Plato::Scalar mPrNum = 1.0;
     Plato::Scalar mGrNumExponent = 3.0;
@@ -1422,8 +1471,6 @@ private:
     Plato::Scalar mBrinkmanConvexityParam = 0.5;
 
     Plato::ScalarVector mGrNum;
-
-    using StateWorkSets = Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
 
 public:
     VelocityPredictorResidual
@@ -1436,7 +1483,8 @@ public:
     {
         this->setPenaltyModel(aInputs);
         this->setDimensionlessProperties(aInputs);
-        this->readNaturalBoundaryConditions(aInputs);
+        this->setNaturalBoundaryConditions(aInputs);
+        this->checkNaturalBoundaryConditions(aInputs);
     }
 
     virtual ~VelocityPredictorResidual(){}
@@ -1618,40 +1666,33 @@ public:
         }, "velocity predictor residual");
     }
 
-    // todo: can i used the prescribed traction side sets to identify the non traction side sets with out the user
-    // having to define a side set, right now the user is defining these side sets. dan showed me a way to
-    // do it but i have a few questions for him: 1) how do i indentify the traction_side_set_id from the
-    // side set name, 2) how to combine multiple side sets into one big array.
    void evaluateBoundary
    (const StateWorkSets                & aWorkSets,
     Plato::ScalarMultiVectorT<ResultT> & aResult) const
    {
        // calculate boundary integral, which is defined as
        // \int_{\Gamma-\Gamma_t} N_u^a\left(\tau_{ij}n_j\right) d\Gamma
-       if( mDeviatoricBCs.empty() == false )
+       auto tNumCells = aResult.extent(0);
+       Plato::ScalarMultiVectorT<ResultT> tResultWS("deviatoric forces", tNumCells, mNumDofsPerCell);
+       for(auto& tPair : mDeviatoricBCs)
        {
-           auto tNumCells = aResult.extent(0);
-           Plato::ScalarMultiVectorT<ResultT> tResultWS("deviatoric traction forces", tNumCells, mNumDofsPerCell);
-           for(auto& tPair : mDeviatoricBCs)
-           {
-               tPair.second->operator()(aWorkSets, tResultWS);
-           }
-
-           // multiply force vector by the corresponding nodal time steps
-           auto tTimeStepWS = aWorkSets.timeStep();
-           Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-           {
-               for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-               {
-                   for(Plato::OrdinalType tDof = 0; tDof < mNumDofsPerNode; tDof++)
-                   {
-                       auto tDofIndex = (mNumDofsPerNode * tNode) + tDof;
-                       aResult(aCellOrdinal, tDofIndex) += tTimeStepWS(aCellOrdinal, tNode) *
-                           static_cast<Plato::Scalar>(-1.0) * tResultWS(aCellOrdinal, tDofIndex);
-                   }
-               }
-           }, "deviatoric traction forces");
+           tPair.second->operator()(aWorkSets, tResultWS);
        }
+
+       // multiply force vector by the corresponding nodal time steps
+       auto tTimeStepWS = aWorkSets.timeStep();
+       Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+       {
+           for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
+           {
+               for(Plato::OrdinalType tDof = 0; tDof < mNumDofsPerNode; tDof++)
+               {
+                   auto tDofIndex = (mNumDofsPerNode * tNode) + tDof;
+                   aResult(aCellOrdinal, tDofIndex) += tTimeStepWS(aCellOrdinal, tNode) *
+                       static_cast<Plato::Scalar>(-1.0) * tResultWS(aCellOrdinal, tDofIndex);
+               }
+           }
+       }, "deviatoric traction forces");
    }
 
    void evaluatePrescribed
@@ -1741,11 +1782,11 @@ private:
         }
     }
 
-    void readNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
+    void setNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
     {
-        if(aInputs.isSublist("Momentum Predictor Natural Boundary Conditions"))
+        if(aInputs.isSublist("Momentum Natural Boundary Conditions"))
         {
-            auto tInputsNaturalBCs = aInputs.sublist("Momentum Predictor Natural Boundary Conditions");
+            auto tInputsNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
             mPrescribedBCs = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tInputsNaturalBCs);
 
             for (Teuchos::ParameterList::ConstIterator tItr = tInputsNaturalBCs.begin(); tItr != tInputsNaturalBCs.end(); ++tItr)
@@ -1769,14 +1810,62 @@ private:
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
 
-                auto tPressureBC = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
-                mPressureBCs.insert(std::make_pair<std::string, std::shared_ptr<PressureForces>>(tSideSetName, tPressureBC));
+                auto tNaturalBC = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
+                mPressureBCs.insert(std::make_pair<std::string, std::shared_ptr<PressureForces>>(tSideSetName, tNaturalBC));
             }
         }
     }
 
-    // todo: do i need to read the side sets for the stabilized terms, or can i used omega_h tools to
-    // identify the stabilized force side sets from the traction side sets.
+    void setStabilizedNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        if(aInputs.isSublist("Balancing Momentum Natural Boundary Conditions"))
+        {
+            auto tInputsNaturalBCs = aInputs.sublist("Balancing Momentum Natural Boundary Conditions");
+            for (Teuchos::ParameterList::ConstIterator tItr = tInputsNaturalBCs.begin(); tItr != tInputsNaturalBCs.end(); ++tItr)
+            {
+                const Teuchos::ParameterEntry &tEntry = tInputsNaturalBCs.entry(tItr);
+                if (!tEntry.isList())
+                {
+                    THROWERR("Get Side Set Names: Parameter list block is not valid.  Expect lists only.")
+                }
+
+                const std::string &tName = tInputsNaturalBCs.name(tItr);
+                if(tInputsNaturalBCs.isSublist(tName) == false)
+                {
+                    THROWERR(std::string("Parameter sublist with name '") + tName.c_str() + "' is not defined.")
+                }
+
+                Teuchos::ParameterList &tSubList = tInputsNaturalBCs.sublist(tName);
+                if(tSubList.isParameter("Sides") == false)
+                {
+                    THROWERR(std::string("Keyword 'Sides' is not define in Parameter Sublist with name '") + tName.c_str() + "'.")
+                }
+                const auto tSideSetName = tSubList.get<std::string>("Sides");
+
+                auto tNaturalBC = std::make_shared<DeviatoricForces>(mSpatialDomain, tSideSetName);
+                mDeviatoricBCs.insert(std::make_pair<std::string, std::shared_ptr<DeviatoricForces>>(tSideSetName, tNaturalBC));
+            }
+        }
+        else
+        {
+            std::string tSideSetName = "Will be Deduced From Prescribed Natural Boundary Conditions";
+            auto tNaturalBC = std::make_shared<DeviatoricForces>(mSpatialDomain, tSideSetName);
+            mDeviatoricBCs.insert(std::make_pair<std::string, std::shared_ptr<DeviatoricForces>>(tSideSetName, tNaturalBC));
+        }
+    }
+
+
+    void checkNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        auto tPrescribedNaturalBCsDefined = aInputs.isSublist("Momentum Natural Boundary Conditions");
+        auto tStabilizedNaturalBCsDefined = aInputs.isSublist("Balancing Momentum Natural Boundary Conditions");
+        if(!tPrescribedNaturalBCsDefined && !tStabilizedNaturalBCsDefined)
+        {
+            THROWERR(std::string("Balancing momentum forces side sets should be defined inside the 'Balancing Momentum ")
+                + "Natural Boundary Conditions' block if prescribed momentum natural boundary conditions side sets are "
+                + "not defined, i.e. the 'Momentum Natural Boundary Conditions' block is not defined.")
+        }
+    }
 };
 // class VelocityPredictorResidual
 
@@ -2243,7 +2332,7 @@ public:
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // get sideset faces
-        auto tFaceLocalOrdinals = Plato::get_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDims - 1, mNumSpatialDims);
 

@@ -118,7 +118,7 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
     Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
     // get sideset faces
-    auto tFaceLocalOrdinals = Plato::get_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
+    auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
     auto tNumFaces = tFaceLocalOrdinals.size();
     Plato::ScalarArray3DT<ConfigScalarType> tJacobians("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
 

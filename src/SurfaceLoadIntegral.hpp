@@ -103,7 +103,7 @@ void SurfaceLoadIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator()(
 ) const
 {
     // get sideset faces
-    auto tFaceLids = Plato::get_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
+    auto tFaceLids = Plato::side_set_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
     auto tNumFaces = tFaceLids.size();
 
     // get mesh vertices
