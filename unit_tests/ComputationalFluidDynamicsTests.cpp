@@ -140,10 +140,7 @@ public:
 };
 // class SimplexFluidDynamics
 
-namespace FluidMechanics
-{
-
-struct Solution
+struct Solutions
 {
 private:
     std::unordered_map<std::string, Plato::ScalarMultiVector> mSolution;
@@ -165,6 +162,10 @@ public:
         return tItr->second;
     }
 };
+// struct Solutions
+
+namespace FluidMechanics
+{
 
 template<typename SimplexPhysics>
 struct SimplexFadTypes
@@ -4527,7 +4528,7 @@ public:
 
     virtual void output(std::string aFilePath) = 0;
     virtual const Plato::DataMap& getDataMap() const = 0;
-    virtual Plato::FluidMechanics::Solution solution(const Plato::ScalarVector& aControl) = 0;
+    virtual Plato::Solutions solution(const Plato::ScalarVector& aControl) = 0;
     virtual Plato::Scalar criterionValue(const Plato::ScalarVector & aControl, const std::string& aName) = 0;
     virtual Plato::ScalarVector criterionGradient(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
     virtual Plato::ScalarVector criterionGradientX(const Plato::ScalarVector &aControl, const std::string &aName) = 0;
@@ -4632,7 +4633,7 @@ public:
         }
     }
 
-    Plato::FluidMechanics::Solution solution
+    Plato::Solutions solution
     (const Plato::ScalarVector& aControl)
     {
         PrimalStates tStates;
@@ -4660,7 +4661,7 @@ public:
             }
         }
 
-        Plato::FluidMechanics::Solution tSolution;
+        Plato::Solutions tSolution;
         tSolution.set("mass state", mPressure);
         tSolution.set("energy state", mTemperature);
         tSolution.set("momentum state", mVelocity);
@@ -5402,6 +5403,56 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
     TEST_FLOATING_EQUALITY(tArrayOutput[0], 0.0, tTolerance);
     TEST_FLOATING_EQUALITY(tArrayOutput[1], 1.5, tTolerance);
     TEST_FLOATING_EQUALITY(tArrayOutput[2], 0.0, tTolerance);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SolutionsStruct)
+{
+    constexpr Plato::OrdinalType tNumTimeSteps = 2;
+
+    // set velocity
+    constexpr Plato::OrdinalType tNumVelDofs = 12;
+    Plato::ScalarMultiVector tVel("velocity", tNumTimeSteps, tNumVelDofs);
+    auto tHostVel = Kokkos::create_mirror(tVel);
+    for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
+    {
+        for(auto tDof = 0; tDof < tNumVelDofs; tDof++)
+        {
+            tHostVel(tStep, tDof) = (tStep * tNumTimeSteps) + tDof;
+        }
+    }
+    Kokkos::deep_copy(tVel, tHostVel);
+
+    // set pressure
+    constexpr Plato::OrdinalType tNumPressDofs = 6;
+    Plato::ScalarMultiVector tPress("pressure", tNumTimeSteps, tNumPressDofs);
+    auto tHostPress = Kokkos::create_mirror(tPress);
+    for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
+    {
+        for(auto tDof = 0; tDof < tNumPressDofs; tDof++)
+        {
+            tHostPress(tStep, tDof) = (tStep * tNumTimeSteps) + tDof;
+        }
+    }
+    Kokkos::deep_copy(tPress, tHostPress);
+
+    // set temperature
+    constexpr Plato::OrdinalType tNumTempDofs = 6;
+    Plato::ScalarMultiVector tTemp("temperature", tNumTimeSteps, tNumTempDofs);
+    auto tHostTemp = Kokkos::create_mirror(tTemp);
+    for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
+    {
+        for(auto tDof = 0; tDof < tNumTempDofs; tDof++)
+        {
+            tHostTemp(tStep, tDof) = (tStep * tNumTimeSteps) + tDof;
+        }
+    }
+    Kokkos::deep_copy(tTemp, tHostTemp);
+
+    // set solution
+    Plato::Solutions tSolution;
+    tSolution.set("velocity", tVel);
+    tSolution.set("pressure", tPress);
+    tSolution.set("temperature", tTemp);
 }
 
 }
