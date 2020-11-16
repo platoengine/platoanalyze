@@ -5343,8 +5343,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
     TEST_THROW(Plato::is_valid_function("some function"), std::runtime_error);
 
     // 2. test scalar function
-    auto tOutput = Plato::is_valid_function("some function");
+    auto tOutput = Plato::is_valid_function("scalar function");
     TEST_COMPARE(tOutput, ==, "scalar function");
+
+    // 2. test vector function
+    tOutput = Plato::is_valid_function("vector function");
+    TEST_COMPARE(tOutput, ==, "vector function");
 
 }
 
@@ -5381,10 +5385,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
 {
     Teuchos::RCP<Teuchos::ParameterList> tParams =
     Teuchos::getParametersFromXmlString(
-        "<ParameterList  name='Dimensionless Properties'>"
-        "  <Parameter  name='Prandtl'   type='double'        value='2.1'/>"
-        "  <Parameter  name='Grashof'   type='Array(double)' value='{0.0, 1.5, 0.0}'/>"
-        "  <Parameter  name='Darcy'     type='double'        value='2.2'/>"
+        "<ParameterList  name='Plato Problem'>"
+        "  <ParameterList  name='Dimensionless Properties'>"
+        "    <Parameter  name='Prandtl'   type='double'        value='2.1'/>"
+        "    <Parameter  name='Grashof'   type='Array(double)' value='{0.0, 1.5, 0.0}'/>"
+        "    <Parameter  name='Darcy'     type='double'        value='2.2'/>"
+        "  </ParameterList>"
         "</ParameterList>"
     );
 
