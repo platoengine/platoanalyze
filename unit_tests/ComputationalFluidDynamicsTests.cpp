@@ -7,6 +7,7 @@
 #include <Teuchos_UnitTestHarness.hpp>
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
+#include <any>
 #include <unordered_map>
 
 #include <Omega_h_mark.hpp>
@@ -651,6 +652,10 @@ public:
     virtual void evaluate
     (const Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT> & aWorkSets,
      Plato::ScalarVectorT<typename EvaluationT::ResultScalarType> & aResult) const = 0;
+
+    virtual void evaluateBoundary
+    (const Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT> & aWorkSets,
+     Plato::ScalarVectorT<typename EvaluationT::ResultScalarType> & aResult) const = 0;
 };
 // class AbstractScalarFunction
 
@@ -658,16 +663,10 @@ template<typename PhysicsT, typename EvaluationT>
 class AverageSurfacePressure : Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>
 {
 private:
-    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
-    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell; /*!< number of degrees of freedom per cell */
-
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace;   /*!< number of spatial dimensions on face */
-    static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
     static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
-    static constexpr auto mNumPressDofsPerCell  = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of energy dofs per cell */
     static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of energy dofs per node */
-    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration degrees of freedom per cell */
 
     using ResultT   = typename EvaluationT::ResultScalarType;
     using ConfigT   = typename EvaluationT::ConfigScalarType;
@@ -703,6 +702,9 @@ public:
     virtual ~AverageSurfacePressure(){}
 
     void evaluate(const StateWorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
+    { return; }
+
+    void evaluateBoundary(const StateWorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
     {
         // set face to element graph
         auto tFace2eElems      = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
@@ -833,11 +835,13 @@ public:
 };
 // class ScalarFunctionBase
 
+
+// todo: physics scalar function
 template<typename PhysicsT>
 class PhysicsScalarFunction : public Plato::FluidMechanics::CriterionBase
 {
 private:
-    std::string mScalarFuncName;
+    std::string mFuncName;
 
     static constexpr auto mNumControlsPerNode     = PhysicsT::SimplexT::mNumControl;             /*!< number of design variable fields */
     static constexpr auto mNumSpatialDims         = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -899,16 +903,18 @@ public:
      Plato::DataMap & aDataMap,
      Teuchos::ParameterList & aInputs,
      std::string & aName):
-        mSpatialModel   (aSpatialModel),
-        mDataMap        (aDataMap),
-        mScalarFuncName (aName)
+        mSpatialModel(aSpatialModel),
+        mDataMap     (aDataMap),
+        mFuncName    (aName)
     {
         this->initialize(aInputs);
     }
 
+    virtual ~PhysicsScalarFunction(){}
+
     std::string name() const
     {
-        return mScalarFuncName;
+        return mFuncName;
     }
 
     Plato::Scalar value
@@ -1058,7 +1064,7 @@ private:
     {
         typename PhysicsT::FunctionFactory tScalarFuncFactory;
 
-        auto tInputs = aInputs.sublist("Criteria").sublist(mScalarFuncName);
+        auto tInputs = aInputs.sublist("Criteria").sublist(mFuncName);
         auto tFunctionType = tInputs.get<std::string>("Scalar Function Type", "not defined");
 
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -1067,27 +1073,27 @@ private:
 
             mResidualFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<ResidualEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mScalarFuncName);
+                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
 
             mGradConfigFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradConfigEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mScalarFuncName);
+                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
 
             mGradControlFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradControlEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mScalarFuncName);
+                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
 
             mGradCurrMassFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradCurPressEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mScalarFuncName);
+                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
 
             mGradCurrEnergyFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradCurTempEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mScalarFuncName);
+                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
 
             mGradCurrMomentumFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradCurVelEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mScalarFuncName);
+                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
         }
     }
 
@@ -1247,6 +1253,57 @@ private:
     }
 };
 // class PhysicsScalarFunction
+
+
+
+
+// todo: finish weighted scalar function
+template<typename PhysicsT>
+class WeightedScalarFunction : public Plato::FluidMechanics::CriterionBase
+{
+private:
+    // static metadata
+    static constexpr auto mNumSpatialDims         = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell        = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
+    static constexpr auto mNumMassDofsPerCell     = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of mass dofs per cell */
+    static constexpr auto mNumEnergyDofsPerCell   = PhysicsT::SimplexT::mNumEnergyDofsPerCell;   /*!< number of energy dofs per cell */
+    static constexpr auto mNumMomentumDofsPerCell = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
+    static constexpr auto mNumMassDofsPerNode     = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
+    static constexpr auto mNumEnergyDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumMomentumDofsPerNode = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumControlsPerNode     = PhysicsT::SimplexT::mNumControl;             /*!< number of design variables per node */
+    static constexpr auto mNumConfigDofsPerCell   = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration dofs per cell */
+
+    // set local typenames
+    using Criterion = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
+
+    Plato::DataMap& mDataMap; /*!< output database */
+    const Plato::SpatialModel& mSpatialModel; /*!< mesh database */
+
+    std::string mFuncName; /*!< weighted scalar function name */
+
+    std::vector<Criterion>     mCriteria;         /*!< list of scalar function criteria */
+    std::vector<std::string>   mCriterionNames;   /*!< list of criterion names */
+    std::vector<Plato::Scalar> mCriterionWeights; /*!< list of criterion weights */
+
+public:
+    WeightedScalarFunction
+    (const Plato::SpatialModel & aSpatialModel,
+     Plato::DataMap & aDataMap,
+     Teuchos::ParameterList & aInputs,
+     std::string & aName):
+        mDataMap     (aDataMap),
+        mSpatialModel(aSpatialModel),
+        mFuncName    (aName)
+    {
+    }
+
+    virtual ~WeightedScalarFunction(){}
+};
+
+
+
+
 
 
 template<typename PhysicsT, typename EvaluationT>
@@ -2826,6 +2883,10 @@ private:
 };
 // class PressureIncrementResidual
 
+
+
+
+// todo: vector function
 /******************************************************************************/
 /*! vector function class
 
@@ -5780,6 +5841,36 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Plato_FluidMechanics_WorkSets)
     TEST_EQUALITY(tNumCells, tWorksets.configuration().extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tWorksets.configuration().extent(1));
     TEST_EQUALITY(tSpaceDim, tWorksets.configuration().extent(2));
+}
+
+/*
+template<typename PhysicsT, typename EvaluationT>
+class WorkSets
+{
+private:
+    std::unordered_map<std::string, std::shared_ptr<void>> mData;
+
+public:
+    WorkSets(){}
+    ~WorkSets(){}
+
+    void get(const std::string & aTag)
+    {
+
+    }
+};
+*/
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AnyWorkSets)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    using PhysicsT = Plato::IncompressibleFluids<tSpaceDim>;
+    using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
+
+
+    std::cout << "ScalarVector vs ScalarVectorT<ResidualEvalT::ResultTypes>: ";
+    std::cout << ( typeid(Plato::ScalarVector)==typeid(Plato::ScalarVectorT<ResidualEvalT::ResultTypes>) ) << '\n';
 }
 
 }
