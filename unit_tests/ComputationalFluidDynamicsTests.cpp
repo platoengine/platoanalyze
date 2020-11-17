@@ -5865,7 +5865,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AnyWorkSets)
     using PhysicsT = Plato::IncompressibleFluids<tSpaceDim>;
     using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
 
-    std::cout << "ScalarVector vs ScalarVectorT<ResidualEvalT::ResultTypes>: ";
+    std::cout << "\n\nScalarVector vs ScalarVectorT<ResidualEvalT::ResultTypes>: ";
     std::cout << ( typeid(Plato::ScalarVector)==typeid(Plato::ScalarVectorT<ResidualEvalT::ResultTypes>) ) << '\n';
 }
 
