@@ -6,7 +6,6 @@
 
 #include <Teuchos_UnitTestHarness.hpp>
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
-
 #include <unordered_map>
 
 #include <Omega_h_mark.hpp>
@@ -771,7 +770,7 @@ public:
                         }
                     }
                 }
-            }, "average surface pressure integral")
+            }, "average surface pressure integral");
 
         }
     }
@@ -5862,11 +5861,9 @@ public:
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AnyWorkSets)
 {
-    constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tSpaceDim = 3;
     using PhysicsT = Plato::IncompressibleFluids<tSpaceDim>;
     using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
-
 
     std::cout << "ScalarVector vs ScalarVectorT<ResidualEvalT::ResultTypes>: ";
     std::cout << ( typeid(Plato::ScalarVector)==typeid(Plato::ScalarVectorT<ResidualEvalT::ResultTypes>) ) << '\n';
