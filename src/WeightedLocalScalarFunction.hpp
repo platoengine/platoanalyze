@@ -268,6 +268,7 @@ public:
                 printf("Scalar Function Name = %s \t Value = %f\n", tFunctionName.c_str(), tMyFunctionValue);
             }
         }
+
         if(mWriteDiagnostics)
         {
             printf("Weighted Sum Name = %s \t Value = %f\n", mWeigthedSumFunctionName.c_str(), tResult);

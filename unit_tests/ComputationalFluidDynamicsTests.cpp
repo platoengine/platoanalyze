@@ -35,6 +35,42 @@
 namespace Plato
 {
 
+inline std::vector<std::string>
+parse_criterion_names(Teuchos::ParameterList & aInputs)
+{
+    if(aInputs.isParameter("Functions") == false)
+    {
+        THROWERR(std::string("'Functions' keyword is not defined. ") +
+                 "The 'Functions' keyword is used to set the names of each weighted scalar function.")
+    }
+
+    std::vector<std::string> tOutput;
+    auto tNames = aInputs.get<Teuchos::Array<std::string>>("Functions").toVector();
+    for (Plato::OrdinalType tIndex = 0; tIndex < tNames.size(); tIndex++)
+    {
+        tOutput.push_back(tNames[tIndex]);
+    }
+    return tOutput;
+}
+
+inline std::vector<Plato::Scalar>
+parse_criterion_weights(Teuchos::ParameterList & aInputs)
+{
+    if(aInputs.isParameter("Weights") == false)
+    {
+        THROWERR(std::string("'Weights' keyword is not defined. ") +
+                 "The 'Weights' keyword is used to set the weight of each weighted scalar function.")
+    }
+
+    std::vector<Plato::Scalar> tOutput;
+    auto tWeights = aInputs.get<Teuchos::Array<Plato::Scalar>>("Weights").toVector();
+    for (Plato::OrdinalType tIndex = 0; tIndex < tWeights.size(); tIndex++)
+    {
+        tOutput.push_back(tWeights[tIndex]);
+    }
+    return tOutput;
+}
+
 inline Omega_h::LOs
 faces_on_non_prescribed_boundary
 (const std::vector<std::string> & aSideSetNames,
@@ -1255,49 +1291,6 @@ private:
 
 
 
-// todo: finish weighted scalar function
-template<typename PhysicsT>
-class WeightedScalarFunction : public Plato::FluidMechanics::CriterionBase
-{
-private:
-    // static metadata
-    static constexpr auto mNumSpatialDims         = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerCell        = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
-    static constexpr auto mNumMassDofsPerCell     = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of mass dofs per cell */
-    static constexpr auto mNumEnergyDofsPerCell   = PhysicsT::SimplexT::mNumEnergyDofsPerCell;   /*!< number of energy dofs per cell */
-    static constexpr auto mNumMomentumDofsPerCell = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
-    static constexpr auto mNumMassDofsPerNode     = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
-    static constexpr auto mNumEnergyDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
-    static constexpr auto mNumMomentumDofsPerNode = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
-    static constexpr auto mNumControlsPerNode     = PhysicsT::SimplexT::mNumControl;             /*!< number of design variables per node */
-    static constexpr auto mNumConfigDofsPerCell   = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration dofs per cell */
-
-    // set local typenames
-    using Criterion = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
-
-    Plato::DataMap& mDataMap; /*!< output database */
-    const Plato::SpatialModel& mSpatialModel; /*!< mesh database */
-
-    std::string mFuncName; /*!< weighted scalar function name */
-
-    std::vector<Criterion>     mCriteria;         /*!< list of scalar function criteria */
-    std::vector<std::string>   mCriterionNames;   /*!< list of criterion names */
-    std::vector<Plato::Scalar> mCriterionWeights; /*!< list of criterion weights */
-
-public:
-    WeightedScalarFunction
-    (const Plato::SpatialModel & aSpatialModel,
-     Plato::DataMap & aDataMap,
-     Teuchos::ParameterList & aInputs,
-     std::string & aName):
-        mDataMap     (aDataMap),
-        mSpatialModel(aSpatialModel),
-        mFuncName    (aName)
-    {
-    }
-
-    virtual ~WeightedScalarFunction(){}
-};
 
 
 
@@ -4445,7 +4438,7 @@ template<typename PhysicsT>
 class CriterionFactory
 {
 private:
-    using ScalarFunctionType = Plato::FluidMechanics::CriterionBase;
+    using ScalarFunctionType = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
 
 public:
     /******************************************************************************//**
@@ -4459,13 +4452,13 @@ public:
     ~CriterionFactory() {}
 
     /******************************************************************************//**
-     * \brief Creates a Plato Analyze criterion.
+     * \brief Creates criterion interface, which allows evaluations.
      * \param [in] aSpatialModel  C++ structure with volume and surface mesh databases
      * \param [in] aDataMap       Plato Analyze data map
      * \param [in] aInputs        input parameters from Analyze's input file
      * \param [in] aName          scalar function name
      **********************************************************************************/
-    std::shared_ptr<ScalarFunctionType>
+    ScalarFunctionType
     createCriterion
     (Plato::SpatialModel & aSpatialModel,
      Plato::DataMap & aDataMap,
@@ -4544,6 +4537,204 @@ public:
         }
     }
 };
+
+
+
+
+
+// todo: finish weighted scalar function
+template<typename PhysicsT>
+class WeightedScalarFunction : public Plato::FluidMechanics::CriterionBase
+{
+private:
+    // static metadata
+    static constexpr auto mNumSpatialDims         = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumPressDofsPerNode    = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
+    static constexpr auto mNumTempDofsPerNode     = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumVelDofsPerNode      = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumControlsPerNode     = PhysicsT::SimplexT::mNumControl;             /*!< number of design variables per node */
+
+    // set local typenames
+    using PrimalStates = Plato::FluidMechanics::States;
+    using Criterion    = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
+
+    bool mDiagnostics; /*!< write diagnostics to terminal */
+    Plato::DataMap& mDataMap; /*!< output database */
+    const Plato::SpatialModel& mSpatialModel; /*!< mesh database */
+
+    std::string mFuncName; /*!< weighted scalar function name */
+
+    std::vector<Criterion>     mCriteria;         /*!< list of scalar function criteria */
+    std::vector<std::string>   mCriterionNames;   /*!< list of criterion names */
+    std::vector<Plato::Scalar> mCriterionWeights; /*!< list of criterion weights */
+
+public:
+    WeightedScalarFunction
+    (const Plato::SpatialModel & aSpatialModel,
+     Plato::DataMap & aDataMap,
+     Teuchos::ParameterList & aInputs,
+     std::string & aName) :
+         mDiagnostics(false),
+         mDataMap     (aDataMap),
+         mSpatialModel(aSpatialModel),
+         mFuncName    (aName)
+    {
+        this->initialize(aInputs);
+    }
+
+    virtual ~WeightedScalarFunction(){}
+
+    void append
+    (const Criterion     & aFunc,
+     const std::string   & aName,
+           Plato::Scalar   aWeight = 1.0)
+    {
+        mCriteria.push_back(aFunc);
+        mCriterionNames.push_back(aName);
+        mCriterionWeights.push_back(aWeight);
+    }
+
+    std::string name() const override
+    {
+        return mFuncName;
+    }
+
+    Plato::Scalar
+    value
+    (const Plato::ScalarVector & aControls,
+     const PrimalStates & aStates) const override
+    {
+        Plato::Scalar tResult = 0.0;
+        for (auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tValue = tCriterion->value(aControls, aStates);
+            const auto tFuncWeight = mCriterionWeights[tIndex];
+            const auto tFuncValue = tFuncWeight * tValue;
+
+            const auto tFuncName = mCriterionNames[tIndex];
+            mDataMap.mScalarValues[tFuncName] = tFuncValue;
+            tResult += tFuncValue;
+
+            if(mDiagnostics)
+            {
+                printf("Scalar Function Name = %s \t Value = %f\n", tFuncName.c_str(), tFuncValue);
+            }
+        }
+
+        if(mDiagnostics)
+        {
+            printf("Weighted Sum Name = %s \t Value = %f\n", mFuncName.c_str(), tResult);
+        }
+        return tResult;
+    }
+
+    Plato::ScalarVector gradientConfig
+    (const Plato::ScalarVector & aControls,
+     const PrimalStates & aStates) const override
+    {
+        const auto tNumNodes = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tTotalDerivative("total derivative", mNumSpatialDims * tNumNodes);
+        for (auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            auto tGradient = tCriterion->gradientConfig(aControls, aStates);
+            const auto tFuncWeight = mCriterionWeights[tIndex];
+            Plato::blas1::update(tFuncWeight, tGradient, static_cast<Plato::Scalar>(1.0), tTotalDerivative);
+        }
+        return tTotalDerivative;
+    }
+
+    Plato::ScalarVector gradientControl
+    (const Plato::ScalarVector & aControls,
+     const PrimalStates & aStates) const override
+    {
+        const auto tNumNodes = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tTotalDerivative("total derivative", mNumControlsPerNode * tNumNodes);
+        for (auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            auto tGradient = tCriterion->gradientControl(aControls, aStates);
+            const auto tFuncWeight = mCriterionWeights[tIndex];
+            Plato::blas1::update(tFuncWeight, tGradient, static_cast<Plato::Scalar>(1.0), tTotalDerivative);
+        }
+        return tTotalDerivative;
+    }
+
+    Plato::ScalarVector gradientCurrentPress
+    (const Plato::ScalarVector & aControls,
+     const PrimalStates & aStates) const override
+    {
+        const auto tNumNodes = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tTotalDerivative("total derivative", mNumPressDofsPerNode * tNumNodes);
+        for (auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            auto tGradient = tCriterion->gradientCurrentPress(aControls, aStates);
+            const auto tFuncWeight = mCriterionWeights[tIndex];
+            Plato::blas1::update(tFuncWeight, tGradient, static_cast<Plato::Scalar>(1.0), tTotalDerivative);
+        }
+        return tTotalDerivative;
+    }
+
+    Plato::ScalarVector gradientCurrentTemp
+    (const Plato::ScalarVector & aControls,
+     const PrimalStates & aStates) const override
+    {
+        const auto tNumNodes = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tTotalDerivative("total derivative", mNumTempDofsPerNode * tNumNodes);
+        for (auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            auto tGradient = tCriterion->gradientCurrentTemp(aControls, aStates);
+            const auto tFuncWeight = mCriterionWeights[tIndex];
+            Plato::blas1::update(tFuncWeight, tGradient, static_cast<Plato::Scalar>(1.0), tTotalDerivative);
+        }
+        return tTotalDerivative;
+    }
+
+    Plato::ScalarVector gradientCurrentVel
+    (const Plato::ScalarVector & aControls,
+     const PrimalStates & aStates) const override
+    {
+        const auto tNumNodes = mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tTotalDerivative("total derivative", mNumVelDofsPerNode * tNumNodes);
+        for (auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            auto tGradient = tCriterion->gradientCurrentVel(aControls, aStates);
+            const auto tFuncWeight = mCriterionWeights[tIndex];
+            Plato::blas1::update(tFuncWeight, tGradient, static_cast<Plato::Scalar>(1.0), tTotalDerivative);
+        }
+        return tTotalDerivative;
+    }
+
+private:
+    void initialize(Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.sublist("Criteria").isSublist(mFuncName) == false)
+        {
+            THROWERR(std::string("Scalar function with tag '") + mFuncName + "' is not defined in the input file.")
+        }
+        auto tCriteriaInputs = aInputs.sublist("Criteria").sublist(mFuncName);
+
+        mCriterionNames   = Plato::parse_criterion_names(tCriteriaInputs);
+        mCriterionWeights = Plato::parse_criterion_weights(tCriteriaInputs);
+        if (mCriterionNames.size() != mCriterionWeights.size())
+        {
+            THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Weights' do not match. ") +
+                     "Check scalar function with name '" + mFuncName + "'.")
+        }
+
+        Plato::FluidMechanics::CriterionFactory<PhysicsT> tFactory;
+        for(auto& tName : mCriterionNames)
+        {
+            auto tScalarFunction = tFactory.createCriterion(mSpatialModel, mDataMap, aInputs, tName);
+            mCriteria.push_back(tScalarFunction);
+        }
+    }
+};
+// class WeightedScalarFunction
 
 }
 // namespace FluidMechanics
@@ -5839,34 +6030,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Plato_FluidMechanics_WorkSets)
     TEST_EQUALITY(tNumCells, tWorksets.configuration().extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tWorksets.configuration().extent(1));
     TEST_EQUALITY(tSpaceDim, tWorksets.configuration().extent(2));
-}
-
-/*
-template<typename PhysicsT, typename EvaluationT>
-class WorkSets
-{
-private:
-    std::unordered_map<std::string, std::shared_ptr<void>> mData;
-
-public:
-    WorkSets(){}
-    ~WorkSets(){}
-
-    void get(const std::string & aTag)
-    {
-
-    }
-};
-*/
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AnyWorkSets)
-{
-    constexpr Plato::OrdinalType tSpaceDim = 3;
-    using PhysicsT = Plato::IncompressibleFluids<tSpaceDim>;
-    using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
-
-    std::cout << "\n\nScalarVector vs ScalarVectorT<ResidualEvalT::ResultTypes>: ";
-    std::cout << ( typeid(Plato::ScalarVector)==typeid(Plato::ScalarVectorT<ResidualEvalT::ResultTypes>) ) << '\n';
 }
 
 }
