@@ -228,21 +228,43 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
     Plato::LocalOrdinalVector tNodeCounter("parent node counting", tNVerts);
     Plato::blas1::fill(static_cast<Plato::OrdinalType>(0), tNodeCounter);
 
-    // fill in parent element vertex ordinals
-    LocalOrdinalVector tNumMissingParent("missing parent element counter", 1); 
-    LocalOrdinalVector tNumMissingMap("missing child node map counter", 1); 
+    // check for missing parent elements or parent nodes
+    Plato::OrdinalType tNumMissingParent(0);
+    Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0, tNumberParentElements),
+    LAMBDA_EXPRESSION(const Plato::OrdinalType& aElemOrdinal, Plato::OrdinalType & aUpdate)
+    {
+        if (aParentElements(aElemOrdinal) == -2) 
+        {  
+            aUpdate++;
+        }
+    }, tNumMissingParent);
+    if ( tNumMissingParent > 0 )
+    {
+        std::ostringstream tMsg;
+        tMsg << "NO PARENT ELEMENT COULD BE FOUND FOR AT LEAST ONE CHILD NODE IN PBC MULTIPOINT CONSTRAINT. \n";
+        THROWERR(tMsg.str())
+    }
 
+    Plato::OrdinalType tNumMissingMap(0);
+    Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0, tNumberParentElements),
+    LAMBDA_EXPRESSION(const Plato::OrdinalType& aElemOrdinal, Plato::OrdinalType & aUpdate)
+    {
+        if (aParentElements(aElemOrdinal) == -1) 
+        {  
+            aUpdate++;
+        }
+    }, tNumMissingMap);
+    if ( tNumMissingMap > 0 )
+    {
+        std::ostringstream tMsg;
+        tMsg << "AT LEAST ONE CHILD NODE COULD NOT BE MAPPED IN PBC MULTIPOINT CONSTRAINT. \n";
+        THROWERR(tMsg.str())
+    }
+
+    // fill in parent element vertex ordinals
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumberParentElements), LAMBDA_EXPRESSION(Plato::OrdinalType iElemOrdinal)
     {
         Plato::OrdinalType tElement = aParentElements(iElemOrdinal); 
-        if(tElement == -2)
-        {
-            Kokkos::atomic_increment(&tNumMissingParent(0));
-        }
-        if(tElement == -1)
-        {
-            Kokkos::atomic_increment(&tNumMissingMap(0));
-        }
         for(Plato::OrdinalType iVertOrdinal=0; iVertOrdinal < tNVertsPerElem; ++iVertOrdinal)
         {
             Plato::OrdinalType tVertIndex = tCells2Nodes[tElement*tNVertsPerElem + iVertOrdinal];
@@ -250,19 +272,6 @@ getUniqueParentNodes(Omega_h::Mesh & aMesh,
         }
     }, "mark 1 for parent element vertices");
 
-    if ( tNumMissingParent(0) > 0 )
-    {
-        std::ostringstream tMsg;
-        tMsg << "NO PARENT ELEMENT COULD BE FOUND FOR AT LEAST ONE CHILD NODE IN PBC MULTIPOINT CONSTRAINT. \n";
-        THROWERR(tMsg.str())
-    }
-    if ( tNumMissingMap(0) > 0 )
-    {
-        std::ostringstream tMsg;
-        tMsg << "AT LEAST ONE CHILD NODE COULD NOT BE MAPPED IN PBC MULTIPOINT CONSTRAINT. \n";
-        THROWERR(tMsg.str())
-    }
-    
     // get number of unique parent nodes
     Plato::OrdinalType tSum(0);
     Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0,tNVerts),
@@ -336,7 +345,6 @@ setMatrixValues(Omega_h::Mesh & aMesh,
 
     Plato::Geometry::GetBasis<Plato::Scalar> tGetBasis(aMesh);
 
-    LocalOrdinalVector tNumMissingParent("missing parent node counter", 1); 
     Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumChildNodes), LAMBDA_EXPRESSION(Plato::OrdinalType iRowOrdinal)
     {
 
@@ -353,11 +361,6 @@ setMatrixValues(Omega_h::Mesh & aMesh,
         Plato::OrdinalType iP1 = aParentGlobalLocalMap(i1);
         Plato::OrdinalType iP2 = aParentGlobalLocalMap(i2);
         Plato::OrdinalType iP3 = aParentGlobalLocalMap(i3);
-
-        if(iP0 == -1 || iP1 == -1 || iP2 == -1 || iP3 == -1)
-        {
-            Kokkos::atomic_increment(&tNumMissingParent(0));
-        }
 
         // basis function values
         Plato::Scalar tBasisValues[Plato::Geometry::cNVertsPerElem];
@@ -378,16 +381,8 @@ setMatrixValues(Omega_h::Mesh & aMesh,
 
     }, "colmap and entries");
 
-    if ( tNumMissingParent(0) > 0 )
-    {
-        std::ostringstream tMsg;
-        tMsg << "PARENT ELEMENT NODE ID NOT RECOGNIZED AS PARENT NODE FOR AT LEAST ONE CHILD NODE IN PBC MULTIPOINT CONSTRAINT. \n";
-        THROWERR(tMsg.str())
-    }
-
     // fill in mpc matrix
     mMpcMatrix = Teuchos::rcp( new Plato::CrsMatrixType(tRowMap, tColMap, tEntries, tNumChildNodes, tNumParentNodes, 1, 1) );
-
 }
 
 }
