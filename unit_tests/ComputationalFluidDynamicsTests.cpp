@@ -7,7 +7,6 @@
 #include <Teuchos_UnitTestHarness.hpp>
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
-#include <any>
 #include <unordered_map>
 
 #include <Omega_h_mark.hpp>
