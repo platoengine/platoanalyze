@@ -96,6 +96,26 @@ sideset_names(Teuchos::ParameterList & aInputs)
     return tOutput;
 }
 
+inline std::vector<std::string> parse_input_parameter_list
+(const std::string & aTag,
+ const Teuchos::ParameterList & aInputs)
+{
+    if(!aInputs.isParameter(aTag))
+    {
+        THROWERR(std::string("Parameter with tag '") + aTag + "' in block '" + aInputs.name() + "' is not defined.")
+    }
+    auto tSideSets = aInputs.get< Teuchos::Array<std::string> >(aTag);
+
+    auto tLength = tSideSets.size();
+    std::vector<std::string> tOutput(tLength);
+    for(auto & tName : tOutput)
+    {
+        auto tIndex = &tName - &tOutput[0];
+        tOutput[tIndex] = tSideSets[tIndex];
+    }
+    return tOutput;
+}
+
 template <typename T>
 inline T parse_dimensionless_property
 (const Teuchos::ParameterList & aInputs,
@@ -619,6 +639,8 @@ public:
     }
 };
 
+
+// todo: abstract scalar function
 template<typename PhysicsT, typename EvaluationT>
 class AbstractScalarFunction
 {
@@ -631,6 +653,120 @@ public:
      Plato::ScalarVectorT<typename EvaluationT::ResultScalarType> & aResult) const = 0;
 };
 // class AbstractScalarFunction
+
+template<typename PhysicsT, typename EvaluationT>
+class Pressure : Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>
+{
+private:
+    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
+    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell; /*!< number of degrees of freedom per cell */
+
+    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace;   /*!< number of spatial dimensions on face */
+    static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
+    static constexpr auto mNumPressDofsPerCell  = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of energy dofs per cell */
+    static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of energy dofs per node */
+    static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell;          /*!< number of configuration degrees of freedom per cell */
+
+    using ResultT   = typename EvaluationT::ResultScalarType;
+    using ConfigT   = typename EvaluationT::ConfigScalarType;
+    using ControlT  = typename EvaluationT::ControlScalarType;
+    using PressureT = typename EvaluationT::CurrentMassScalarType;
+
+    // set local typenames
+    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
+    using StateWorkSets = Plato::FluidMechanics::WorkSets<PhysicsT, EvaluationT>;
+
+    // member metadata
+    Plato::DataMap& mDataMap;
+    CubatureRule mCubatureRule;
+    const Plato::SpatialDomain& mSpatialDomain;
+
+    // member parameters
+    std::vector<std::string> mWallSets;
+
+public:
+    Pressure
+    (const std::string          & aName,
+     const Plato::SpatialDomain & aDomain,
+     Plato::DataMap             & aDataMap,
+     Teuchos::ParameterList     & aInputs) :
+         mDataMap(aDataMap),
+         mCubatureRule(CubatureRule()),
+         mSpatialDomain(aDomain)
+    {
+        auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
+        mWallSets  = Plato::parse_input_parameter_list("Wall", tMyCriteria);
+    }
+
+    virtual ~Pressure(){}
+
+    void evaluate(const StateWorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
+    {
+        // set face to element graph
+        auto tFace2eElems      = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
+        auto tFace2Elems_map   = tFace2eElems.a2ab;
+        auto tFace2Elems_elems = tFace2eElems.ab2b;
+
+        // set mesh vertices
+        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
+        auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
+
+        // allocate local functors
+        Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
+        Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
+        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumPressDofsPerNode> tIntrplScalarField;
+        Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
+
+        // set local data
+        auto tCubatureWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+
+        // set local worksets
+        auto tNumCells = mSpatialDomain.numCells();
+        Plato::ScalarVectorT<PressureT> tCurrentPressGP("current pressure at Gauss point", tNumCells);
+
+        // set input worksets
+        auto tCurrentPressureWS = aWorkSets.currentPressure();
+        auto tConfigurationWS   = aWorkSets.configuration();
+
+        for(auto& tName : mWallSets)
+        {
+            // get faces on this side set
+            auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
+            auto tNumFaces = tFaceOrdinalsOnSideSet.size();
+            Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
+
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
+            {
+                auto tFaceOrdinal = tFaceOrdinalsOnSideSet[aFaceI];
+                // for all elements connected to this face, which is either 1 or 2 elements
+                for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal+1]; tElem++ )
+                {
+                    // create a map from face local node index to elem local node index
+                    Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
+                    auto tCellOrdinal = tFace2Elems_elems[tElem];
+                    tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+
+                    // calculate surface Jacobian and surface integral weight
+                    ConfigT tWeight(0.0);
+                    tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigurationWS, tJacobians);
+                    tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tWeight);
+
+                    // evaluate surface scalar function
+                    tIntrplScalarField(tCellOrdinal, tBasisFunctions, tCurrentPressureWS, tCurrentPressGP);
+                    // todo: finish surface integral
+                }
+            }, "surface integral")
+
+        }
+    }
+};
+// class PressureDrop
+
+
+
 
 /******************************************************************************/
 /*! scalar function class
@@ -1137,16 +1273,16 @@ public:
      Plato::Scalar aMultiplier = 1.0) const
     {
         // get mesh vertices
-        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDims - 1);
+        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
         auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
 
         // get face to element graph
-        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDims - 1, mNumSpatialDims);
+        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
         auto tFace2Elems_map   = tFace2eElems.a2ab;
         auto tFace2Elems_elems = tFace2eElems.ab2b;
 
         // get element to face map
-        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDims - 1).ab2b;
+        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
 
         // set local functors
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
@@ -1158,11 +1294,11 @@ public:
         // get sideset faces
         auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
-        Plato::ScalarArray3DT<ConfigT> tSurfaceJacobians("jacobian", tNumFaces, mNumSpatialDims - 1, mNumSpatialDims);
+        Plato::ScalarArray3DT<ConfigT> tSurfaceJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
         // set previous pressure at Gauss points container
-        auto tNumBoundaryCells = tFace2Elems_map.size();
-        Plato::ScalarVectorT<PrevPressT> tPrevPressGP("previous pressure at Gauss point", tNumBoundaryCells);
+        auto tNumCells = mSpatialDomain.numCells();
+        Plato::ScalarVectorT<PrevPressT> tPrevPressGP("previous pressure at Gauss point", tNumCells);
 
         // set input state worksets
         auto tConfigWS    = aWorkSets.configuration();
@@ -1286,16 +1422,16 @@ public:
            Plato::Scalar                                            aMultiplier = 1.0) const
     {
         // get mesh vertices
-        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDims - 1);
+        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
         auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
 
         // get face to element graph
-        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDims - 1, mNumSpatialDims);
+        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
         auto tFace2Elems_map   = tFace2eElems.a2ab;
         auto tFace2Elems_elems = tFace2eElems.ab2b;
 
         // get element to face map
-        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDims - 1).ab2b;
+        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
@@ -1311,12 +1447,12 @@ public:
         auto tBoundaryFaceOrdinals = mBoundaryFaceOrdinals;
 
         // set local data structures
+        auto tNumCells = mSpatialDomain.numCells();
+        Plato::ScalarVectorT<ConfigT>  tCellVolume("cell weight", tNumCells);
+        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
         auto tNumFaces = tBoundaryFaceOrdinals.size();
-        auto tNumBoundaryCells = tFace2Elems_elems.size();
-        Plato::ScalarVectorT<ConfigT>  tCellVolume("cell weight", tNumBoundaryCells);
-        Plato::ScalarArray3DT<ConfigT> tJacobians("cell jacobians", tNumFaces, mNumSpatialDims - 1, mNumSpatialDims);
-        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumBoundaryCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumBoundaryCells, mNumSpatialDims, mNumSpatialDims);
+        Plato::ScalarArray3DT<ConfigT> tJacobians("cell jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
         // set input state worksets
         auto tControlWS    = aWorkSets.control();
@@ -1435,7 +1571,7 @@ private:
 };
 // class DeviatoricSurfaceForces
 
-
+// todo: abstract vector function
 template<typename PhysicsT, typename EvaluationT>
 class AbstractVectorFunction
 {
@@ -2344,16 +2480,16 @@ public:
            Plato::Scalar                                            aMultiplier = 1.0) const
     {
         // get mesh vertices
-        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDims - 1);
+        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
         auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
 
         // get face to element graph
-        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDims - 1, mNumSpatialDims);
+        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
         auto tFace2Elems_map   = tFace2eElems.a2ab;
         auto tFace2Elems_elems = tFace2eElems.ab2b;
 
         // get element to face map
-        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDims - 1).ab2b;
+        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
 
         // set local functors
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
@@ -2365,11 +2501,11 @@ public:
         // get sideset faces
         auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
-        Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDims - 1, mNumSpatialDims);
+        Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
         // set previous pressure at Gauss points container
-        auto tNumBoundaryCells = tFace2Elems_map.size();
-        Plato::ScalarVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumBoundaryCells, mNumDofsPerNode);
+        auto tNumCells = mSpatialDomain.numCells();
+        Plato::ScalarVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumDofsPerNode);
 
 
         // set input state worksets
@@ -4340,6 +4476,7 @@ public:
 // namespace FluidMechanics
 
 
+// todo: physics types
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
 class MomentumConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
 {
