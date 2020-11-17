@@ -1099,7 +1099,7 @@ private:
         typename PhysicsT::FunctionFactory tScalarFuncFactory;
 
         auto tInputs = aInputs.sublist("Criteria").sublist(mFuncName);
-        auto tFunctionType = tInputs.get<std::string>("Scalar Function Type", "not defined");
+        auto tFuncType = tInputs.get<std::string>("Scalar Function Type", "not defined");
 
         for(const auto& tDomain : mSpatialModel.Domains)
         {
@@ -1107,27 +1107,27 @@ private:
 
             mResidualFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<ResidualEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
+                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradConfigFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradConfigEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
+                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradControlFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradControlEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
+                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradCurrMassFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradCurPressEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
+                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradCurrEnergyFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradCurTempEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
+                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradCurrMomentumFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<GradCurVelEvalT>
-                    (tDomain, mDataMap, aInputs, tFunctionType, mFuncName);
+                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
         }
     }
 
@@ -2983,11 +2983,10 @@ public:
     * \param [in] aProblemType  problem type
     ******************************************************************************/
     VectorFunction
-    (const Plato::SpatialModel    & aSpatialModel,
+    (const std::string            & aName,
+     const Plato::SpatialModel    & aSpatialModel,
            Plato::DataMap         & aDataMap,
-           Teuchos::ParameterList & aInputs,
-           std::string            & aName) :
-        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+           Teuchos::ParameterList & aInputs) :
         mSpatialModel(aSpatialModel),
         mDataMap(aDataMap),
         mConfigEntryOrdinal(Plato::VectorEntryOrdinal<mNumSpatialDims, mNumSpatialDims>(&aSpatialModel.Mesh)),
@@ -2995,7 +2994,7 @@ public:
         mVectorStateEntryOrdinal(Plato::VectorEntryOrdinal<mNumSpatialDims, mNumVelDofsPerCell>(&aSpatialModel.Mesh)),
         mScalarStateEntryOrdinal(Plato::VectorEntryOrdinal<mNumSpatialDims, mNumPressDofsPerCell>(&aSpatialModel.Mesh))
     {
-        this->initialize(aDataMap, aInputs, aName);
+        this->initialize(aName, aDataMap, aInputs);
     }
 
     Plato::ScalarVector value
@@ -3009,7 +3008,6 @@ public:
         Plato::ScalarVector tReturnValue("Assembled Residual", tLength);
 
         // evaluate internal forces
-        auto tFunctionType = Plato::is_valid_function(aStates.function());
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tNumCells = tDomain.numCells();
@@ -3506,9 +3504,9 @@ public:
 
 private:
     void initialize
-    (Plato::DataMap         & aDataMap,
-     Teuchos::ParameterList & aInputs,
-     std::string            & aName)
+    (const std::string      & aName,
+     Plato::DataMap         & aDataMap,
+     Teuchos::ParameterList & aInputs)
     {
         typename PhysicsT::FunctionFactory tVecFuncFactory;
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -3516,34 +3514,34 @@ private:
             auto tName = tDomain.getDomainName();
 
             mResidualFuncs[tName]  = tVecFuncFactory.template createVectorFunction<ResidualEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
 
             mGradControlFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradControlEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
 
             mGradConfigFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradConfigEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
 
             mGradCurPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurPressEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
 
             mGradPrevPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPrevPressEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
 
             mGradCurTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurTempEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
 
             mGradPrevTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPrevTempEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
 
             mGradCurVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurVelEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
 
             mGradPrevVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPrevVelEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
 
             mGradPredictorFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPredictorEvalT>
-                (tDomain, aDataMap, aInputs, aName);
+                (aName, tDomain, aDataMap, aInputs);
         }
     }
 
@@ -4489,30 +4487,49 @@ public:
     template <typename PhysicsT, typename EvaluationT>
     std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>>
     createVectorFunction
-    (const Plato::SpatialDomain & aSpatialDomain,
+    (const std::string          & aTag,
+     const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
-     Teuchos::ParameterList     & aInputs,
-     std::string                & aName)
+     Teuchos::ParameterList     & aInputs)
     {
-        if( !aInputs.isSublist(aName) == false )
+        if( !aInputs.isSublist(aTag) == false )
         {
-            THROWERR(std::string("Vector function with tag '") + aName + "' is not supported.")
+            THROWERR(std::string("Vector function with tag '") + aTag + "' is not supported.")
         }
 
-        auto tFunParams = aInputs.sublist(aName);
-        auto tLowerName = Plato::tolower(aName);
+        auto tFunParams = aInputs.sublist(aTag);
+        auto tLowerTag = Plato::tolower(aTag);
         // TODO: Add pressure, velocity, temperature, and predictor element residuals. explore function interface
-        return nullptr;
+        if( tLowerTag == "pressure" )
+        {
+            return ( std::make_shared<Plato::FluidMechanics::PressureIncrementResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+        }
+        else if( tLowerTag == "velocity" )
+        {
+            return ( std::make_shared<Plato::FluidMechanics::VelocityIncrementResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+        }
+        else if( tLowerTag == "temperature" )
+        {
+            return ( std::make_shared<Plato::FluidMechanics::TemperatureIncrementResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+        }
+        else if( tLowerTag == "velocity predictor" )
+        {
+            return ( std::make_shared<Plato::FluidMechanics::VelocityPredictorResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+        }
+        else
+        {
+            THROWERR(std::string("Vector function with tag '") + aTag + "' is not supported.")
+        }
     }
 
     template <typename PhysicsT, typename EvaluationT>
     std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>>
     createScalarFunction
-    (const Plato::SpatialDomain & aSpatialDomain,
+    (const std::string          & aType,
+     const std::string          & aTag,
+     const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
-     Teuchos::ParameterList     & aInputs,
-     std::string                & aType,
-     std::string                & aTag)
+     Teuchos::ParameterList     & aInputs)
     {
         if( !aInputs.isSublist("Criteria") )
         {
@@ -4526,17 +4543,18 @@ public:
         auto tFuncTypeList = tCriteriaList.sublist(aType);
 
         auto tLowerTag = Plato::tolower(aTag);
-        if( tLowerTag == "pressure drop" )
+        if( tLowerTag == "average surface pressure" )
         {
-            // TODO: Add pressure drop and others. explore function interface
-            return nullptr;
+            return ( std::make_shared<Plato::FluidMechanics::AverageSurfacePressure<PhysicsT, EvaluationT>>
+                (tLowerTag, aDomain, aDataMap, aInputs) );
         }
         else
         {
-            THROWERR(std::string("Scalar function of type '") + aType + "' and tag ' " + aTag + "' is not supported.")
+            THROWERR(std::string("Scalar function of type '") + aType + "' with tag ' " + aTag + "' is not supported.")
         }
     }
 };
+// struct FunctionFactory
 
 
 
@@ -5018,10 +5036,10 @@ public:
      Teuchos::ParameterList & aInputs,
      Comm::Machine          & aMachine) :
          mSpatialModel       (aMesh, aMeshSets, aInputs),
-         mPressureResidual   (mSpatialModel, mDataMap, aInputs, "Pressure Residual"),
-         mVelocityResidual   (mSpatialModel, mDataMap, aInputs, "Velocity Residual"),
-         mPredictorResidual  (mSpatialModel, mDataMap, aInputs, "Predictor Residual"),
-         mTemperatureResidual(mSpatialModel, mDataMap, aInputs, "Temperature Residual")
+         mPressureResidual   ("Pressure", mSpatialModel, mDataMap, aInputs),
+         mVelocityResidual   ("Velocity", mSpatialModel, mDataMap, aInputs),
+         mPredictorResidual  ("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
+         mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs)
     {
         this->initialize(aInputs, aMachine);
     }
