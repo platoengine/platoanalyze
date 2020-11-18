@@ -5944,8 +5944,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IncompressibleFlowsWorksets)
     TEST_EQUALITY(tNumNodesPerCell, tConfig.extent(1));
     TEST_EQUALITY(tSpaceDim, tConfig.extent(2));
 
-    // test error
-    TEST_THROW(tWorkSets.get("current displacements"), std::runtime_error);
+    // test errors
+    TEST_THROW(tWorkSets.get("current displacements"), std::runtime_error); // not defined
+    TEST_THROW(Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("configuration")), std::runtime_error); // bad cast
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
