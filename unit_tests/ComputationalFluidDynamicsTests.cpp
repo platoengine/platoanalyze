@@ -5795,9 +5795,9 @@ public:
 };
 
 template<class Type>
-inline Type workset(std::shared_ptr<WorkSetBase> & aInput)
+inline Type workset(std::shared_ptr<Plato::WorkSetBase> & aInput)
 {
-    return (dynamic_cast<WorkSet<Type>>(aInput.operator*()).mData);
+    return (dynamic_cast<Plato::WorkSet<Type>&>(aInput.operator*()).mData);
 }
 
 //todo: add free function to set use case specific worksets based on the scalar evaluation types
@@ -5811,8 +5811,9 @@ public:
     WorkSets() {}
     void set(const std::string & aName, const std::shared_ptr<Plato::WorkSetBase> & aData)
     {
-        mData.insert(std::make_pair<std::string, std::shared_ptr<Plato::WorkSetBase>>(aName, aData));
+        mData[aName] = aData;
     }
+
     std::shared_ptr<Plato::WorkSetBase> get(const std::string & aName) const
     {
         auto tItr = mData.find(aName);
