@@ -5777,12 +5777,6 @@ private:
 }
 // namespace Hyperbolic
 
-}
-//namespace Plato
-
-
-namespace ComputationalFluidDynamicsTests
-{
 
 class WorkSetBase
 {
@@ -5811,15 +5805,15 @@ inline Type workset(std::shared_ptr<WorkSetBase> & aInput)
 class WorkSets
 {
 private:
-    std::unordered_map<std::string, std::shared_ptr<WorkSetBase>> mData;
+    std::unordered_map<std::string, std::shared_ptr<Plato::WorkSetBase>> mData;
 
 public:
     WorkSets() {}
-    void set(const std::string & aName, const std::shared_ptr<WorkSetBase> & aData)
+    void set(const std::string & aName, const std::shared_ptr<Plato::WorkSetBase> & aData)
     {
-        mData.insert(std::make_pair<std::string, std::shared_ptr<WorkSetBase>>(aName, aData));
+        mData.insert(std::make_pair<std::string, std::shared_ptr<Plato::WorkSetBase>>(aName, aData));
     }
-    std::shared_ptr<WorkSetBase> get(const std::string & aName) const
+    std::shared_ptr<Plato::WorkSetBase> get(const std::string & aName) const
     {
         auto tItr = mData.find(aName);
         if(tItr != mData.end())
@@ -5832,6 +5826,13 @@ public:
         }
     }
 };
+
+}
+//namespace Plato
+
+
+namespace ComputationalFluidDynamicsTests
+{
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
 {
