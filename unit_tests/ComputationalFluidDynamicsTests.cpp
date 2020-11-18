@@ -5784,6 +5784,55 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+class WorkSetBase
+{
+public:
+    virtual ~WorkSetBase() = 0;
+};
+inline WorkSetBase::~WorkSetBase(){}
+
+template<class Type>
+class WorkSet : public WorkSetBase
+{
+public:
+    explicit WorkSet(const Type &aData) : mData(aData) {}
+    WorkSet() {}
+    Type mData;
+};
+
+template<class Type>
+inline Type workset(WorkSetBase & aInput)
+{
+    return (dynamic_cast<WorkSet<Type>>(aInput).mData);
+}
+
+//todo: add free function to set use case specific worksets based on the scalar evaluation types
+
+class WorkSets
+{
+private:
+    std::unordered_map<std::string, WorkSetBase> mData;
+
+public:
+    WorkSets() {}
+    void set(const std::string & aName, const WorkSetBase & aData)
+    {
+        mData.insert(std::make_pair<std::string, WorkSetBase>(aName, aData));
+    }
+    WorkSetBase get(const std::string & aName) const
+    {
+        auto tItr = mData.find(aName);
+        if(tItr != mData.end())
+        {
+            return tItr->second;
+        }
+        else
+        {
+            THROWERR(std::string("Did not find 'WorkSetBase' with tag '") + aName + "'.")
+        }
+    }
+};
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
 {
     // 1. test throw
