@@ -569,7 +569,7 @@ struct Evaluation
    using GradPredictor    = GradMomentumPredictorTypes<SimplexPhysicsT>;
 };
 
-
+// todo: worksets
 template<typename PhysicsT, typename EvaluationT>
 struct WorkSets
 {
@@ -1150,7 +1150,7 @@ private:
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -1175,7 +1175,7 @@ private:
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         using ConfigScalarT = typename GradConfigEvalT::ConfigScalarType;
         Plato::workset_config_fad<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell, ConfigScalarT>
@@ -1202,7 +1202,7 @@ private:
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -1228,7 +1228,7 @@ private:
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -1254,7 +1254,7 @@ private:
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -1280,7 +1280,7 @@ private:
             (aDomain, mScalarEntryOrdinal, aControls, aWorkSets.control());
 
         Plato::workset_control_scalar_scalar<mNumNodesPerCell>
-            (aDomain, mScalarEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         Plato::workset_config_scalar<mNumSpatialDims, mNumNodesPerCell, mNumConfigDofsPerCell>
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
@@ -3579,7 +3579,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -3622,7 +3622,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -3666,7 +3666,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -3710,7 +3710,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -3754,7 +3754,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -3798,7 +3798,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -3842,7 +3842,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -3887,7 +3887,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -3931,7 +3931,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -3976,7 +3976,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -4020,7 +4020,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -4065,7 +4065,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -4109,7 +4109,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -4154,7 +4154,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -4198,7 +4198,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -4243,7 +4243,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -4287,7 +4287,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -4332,7 +4332,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -4376,7 +4376,7 @@ private:
             (aDomain, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (aDomain, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (aDomain, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(!aState.empty("artificial compressibility"))
         {
@@ -4421,7 +4421,7 @@ private:
             (tNumCells, mNodeCoordinate, aWorkSets.configuration());
 
         Plato::workset_state_scalar_scalar<mNumTimeStepsDofsPerNode, mNumNodesPerCell>
-            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time step"), aWorkSets.timeStep());
+            (tNumCells, mScalarStateEntryOrdinal, aState.vector("time steps"), aWorkSets.timeStep());
 
         if(aState.empty("artificial compressibility") == false)
         {
@@ -4873,7 +4873,7 @@ calculate_stable_time_step
     auto tSafetyFactor = aStates.scalar("time step safety factor");
 
     auto tLength = tVelocity.size();
-    Plato::ScalarVector tTimeStep("time step", tLength);
+    Plato::ScalarVector tTimeStep("time steps", tLength);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
         // calculate convective velocity
@@ -4936,7 +4936,7 @@ inline Plato::Scalar
 calculate_explicit_solve_convergence_criterion
 (const Plato::FluidMechanics::States & aStates)
 {
-    auto tTimeStep = aStates.vector("time step");
+    auto tTimeStep = aStates.vector("time steps");
     auto tCurrentPressure = aStates.vector("current pressure");
     auto tPreviousPressure = aStates.vector("previous pressure");
     auto tArtificialCompress = aStates.vector("artificial compressibility");
@@ -4952,7 +4952,7 @@ calculate_semi_implicit_solve_convergence_criterion
     std::vector<Plato::Scalar> tErrors;
 
     // pressure error
-    auto tTimeStep = aStates.vector("time step");
+    auto tTimeStep = aStates.vector("time steps");
     auto tCurrentState = aStates.vector("current pressure");
     auto tPreviousState = aStates.vector("previous pressure");
     auto tArtificialCompress = aStates.vector("artificial compressibility");
@@ -5342,7 +5342,7 @@ private:
             auto tCurrentTime = tMinTimeStep * static_cast<Plato::Scalar>(tCurrentTimeStepIndex);
             aStates.scalar("current time", tCurrentTime);
         }
-        aStates.vector("time step", tTimeStep);
+        aStates.vector("time steps", tTimeStep);
     }
 
     void enforceVelocityBoundaryConditions(PrimalStates & aStates)
@@ -5828,12 +5828,77 @@ public:
     }
 };
 
+
+namespace FluidMechanics
+{
+
+/*mNumCells(aNumCells),
+mTimeStep("Time Step Workset", aNumCells, mNumNodesPerCell),
+mArtificialCompressibility("Artificial Compressibility Workset", aNumCells, mNumNodesPerCell),
+mConfiguration("Configuration Workset", aNumCells, mNumNodesPerCell, mNumSpatialDims),
+mControls("Control Workset", aNumCells, mNumNodesPerCell),
+mCurrentPress("Current Mass Workset", aNumCells, mNumPressDofsPerCell),
+mCurrentTemp("Current Energy Workset", aNumCells, mNumTempDofsPerCell),
+mCurrentVel("Current Momentum Workset", aNumCells, mNumVelDofsPerCell),
+mPreviousPress("Previous Mass Workset", aNumCells, mNumPressDofsPerCell),
+mPreviousTemp("Previous Energy Workset", aNumCells, mNumTempDofsPerCell),
+mPreviousVel("Previous Momentum Workset", aNumCells, mNumVelDofsPerCell),
+mVelPredictor("Momentum Predictor Workset", aNumCells, mNumVelDofsPerCell)
+
+    Plato::ScalarMultiVector mTimeStep;
+    Plato::ScalarMultiVector mArtificialCompressibility;
+
+    Plato::ScalarArray3DT<typename EvaluationT::ConfigScalarType> mConfiguration;
+
+    Plato::ScalarMultiVectorT<typename EvaluationT::ControlScalarType> mControls;
+    Plato::ScalarMultiVectorT<typename EvaluationT::CurrentMassScalarType> mCurrentPress;
+    Plato::ScalarMultiVectorT<typename EvaluationT::CurrentEnergyScalarType> mCurrentTemp;
+    Plato::ScalarMultiVectorT<typename EvaluationT::CurrentMomentumScalarType> mCurrentVel;
+    Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMassScalarType> mPreviousPress;
+    Plato::ScalarMultiVectorT<typename EvaluationT::PreviousEnergyScalarType> mPreviousTemp;
+    Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMomentumScalarType> mPreviousVel;
+    Plato::ScalarMultiVectorT<typename EvaluationT::MomentumPredictorScalarType> mVelPredictor;
+
+*/
+
+// todo: finish
+template<typename PhysicsT, typename EvaluationT>
+void build_worksets(const Plato::OrdinalType & aNumCells, Plato::WorkSets & aWorkSets)
+{
+    auto tTimeSteps = std::make_shared<Plato::WorkSet<Plato::ScalarMultiVector>>
+        (Plato::ScalarMultiVector("time steps", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell));
+    aWorkSets.set("time steps", tTimeSteps);
+
+    auto tArtificialCompressibility = std::make_shared<Plato::WorkSet<Plato::ScalarMultiVector>>
+        (Plato::ScalarMultiVector("artificial compressibility", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell));
+    aWorkSets.set("artificial compressibility", tArtificialCompressibility);
+
+    auto tConfiguration = std::make_shared< Plato::WorkSet< Plato::ScalarArray3DT<typename EvaluationT::ConfigScalarType> > >
+        (Plato::ScalarArray3DT("configuration", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumSpatialDims));
+    aWorkSets.set("configuration", tConfiguration);
+}
+
+}
+// namespace FluidMechanics
+
+
 }
 //namespace Plato
 
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildWorksets)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDim = 3;
+    using PhysicsT = Plato::IncompressibleFluids<tSpaceDim>;
+    using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
+
+    Plato::WorkSets tWorkSets;
+    Plato::FluidMechanics::build_worksets<PhysicsT, ResidualEvalT>(tNumCells, tWorkSets);
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
 {
@@ -6037,7 +6102,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     TEST_COMPARE(tStates.empty("temperature"), ==, true);
     TEST_COMPARE(tStates.empty("pressure", "vector"), ==, false);
     TEST_COMPARE(tStates.empty("step", "scalar"), ==, false);
-    TEST_COMPARE(tStates.empty("time step", "scalar"), ==, true);
+    TEST_COMPARE(tStates.empty("time steps", "scalar"), ==, true);
 
     // test metadata
     auto tTolerance = 1e-6;
