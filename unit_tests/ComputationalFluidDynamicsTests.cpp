@@ -5823,7 +5823,7 @@ public:
         }
         else
         {
-            THROWERR(std::string("Did not find 'WorkSetBase' with tag '") + aName + "'.")
+            THROWERR(std::string("Did not find 'MetaData' with tag '") + aName + "'.")
         }
     }
 };
@@ -5892,7 +5892,7 @@ void incompressible_flows_worksets(const Plato::OrdinalType & aNumCells, Plato::
 namespace ComputationalFluidDynamicsTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildWorksets)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IncompressibleFlowsWorksets)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tSpaceDim = 3;
@@ -5913,30 +5913,39 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildWorksets)
     auto tControls = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ControlScalarType>>(tWorkSets.get("control"));
     TEST_EQUALITY(tNumCells, tControls.extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tControls.extent(1));
-    /*
-    TEST_EQUALITY(tNumCells, tWorkSets.previousPressure().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.previousPressure().extent(1));
-    TEST_EQUALITY(tNumCells, tWorkSets.currentPressure().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.currentPressure().extent(1));
-    TEST_EQUALITY(tNumCells, tWorkSets.previousTemperature().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.previousTemperature().extent(1));
-    TEST_EQUALITY(tNumCells, tWorkSets.currentTemperature().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.currentTemperature().extent(1));
+    auto tPrevPress = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::PreviousMassScalarType>>(tWorkSets.get("previous pressure"));
+    TEST_EQUALITY(tNumCells, tPrevPress.extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tPrevPress.extent(1));
+    auto tPrevTemp = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::PreviousEnergyScalarType>>(tWorkSets.get("previous temperature"));
+    TEST_EQUALITY(tNumCells, tPrevTemp.extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tPrevTemp.extent(1));
+    auto tCurPress = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::CurrentMassScalarType>>(tWorkSets.get("current pressure"));
+    TEST_EQUALITY(tNumCells, tCurPress.extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tCurPress.extent(1));
+    auto tCurTemp = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::CurrentEnergyScalarType>>(tWorkSets.get("current temperature"));
+    TEST_EQUALITY(tNumCells, tCurTemp.extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tCurTemp.extent(1));
 
     // test vector fields
     constexpr Plato::OrdinalType tNumVelDofsPerCell = tSpaceDim * tNumNodesPerCell;
-    TEST_EQUALITY(tNumCells, tWorkSets.predictor().extent(0));
-    TEST_EQUALITY(tNumVelDofsPerCell, tWorkSets.predictor().extent(1));
-    TEST_EQUALITY(tNumCells, tWorkSets.previousVelocity().extent(0));
-    TEST_EQUALITY(tNumVelDofsPerCell, tWorkSets.previousVelocity().extent(1));
-    TEST_EQUALITY(tNumCells, tWorkSets.currentVelocity().extent(0));
-    TEST_EQUALITY(tNumVelDofsPerCell, tWorkSets.currentVelocity().extent(1));
+    auto tCurVelPred = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::MomentumPredictorScalarType>>(tWorkSets.get("current velocity predictor"));
+    TEST_EQUALITY(tNumCells, tCurVelPred.extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tCurVelPred.extent(1));
+    auto tPrevVel = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::PreviousMomentumScalarType>>(tWorkSets.get("previous velocity"));
+    TEST_EQUALITY(tNumCells, tPrevVel.extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tPrevVel.extent(1));
+    auto tCurVel = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::CurrentMomentumScalarType>>(tWorkSets.get("current velocity"));
+    TEST_EQUALITY(tNumCells, tCurVel.extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tCurVel.extent(1));
 
     // test configuration
-    TEST_EQUALITY(tNumCells, tWorkSets.configuration().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.configuration().extent(1));
-    TEST_EQUALITY(tSpaceDim, tWorkSets.configuration().extent(2));
-    */
+    auto tConfig = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ConfigScalarType>>(tWorkSets.get("configuration"));
+    TEST_EQUALITY(tNumCells, tConfig.extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tConfig.extent(1));
+    TEST_EQUALITY(tSpaceDim, tConfig.extent(2));
+
+    // test error
+    TEST_THROW(tWorkSets.get("current displacements"), std::runtime_error);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
@@ -6162,47 +6171,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     {
         TEST_FLOATING_EQUALITY(tHostGoldPress(tDof), tHostPress(tDof), tTolerance);
     }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Plato_FluidMechanics_WorkSets)
-{
-    constexpr Plato::OrdinalType tNumCells = 2;
-    constexpr Plato::OrdinalType tSpaceDim = 3;
-    using PhysicsT = Plato::IncompressibleFluids<tSpaceDim>;
-    using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
-    Plato::FluidMechanics::WorkSets<PhysicsT, ResidualEvalT> tWorksets(tNumCells);
-    TEST_EQUALITY(tNumCells, tWorksets.numCells());
-
-    // test scalar fields
-    constexpr Plato::OrdinalType tNumNodesPerCell = 4;
-    TEST_EQUALITY(tNumCells, tWorksets.artificialCompress().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorksets.artificialCompress().extent(1));
-    TEST_EQUALITY(tNumCells, tWorksets.timeStep().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorksets.timeStep().extent(1));
-    TEST_EQUALITY(tNumCells, tWorksets.control().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorksets.control().extent(1));
-    TEST_EQUALITY(tNumCells, tWorksets.previousPressure().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorksets.previousPressure().extent(1));
-    TEST_EQUALITY(tNumCells, tWorksets.currentPressure().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorksets.currentPressure().extent(1));
-    TEST_EQUALITY(tNumCells, tWorksets.previousTemperature().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorksets.previousTemperature().extent(1));
-    TEST_EQUALITY(tNumCells, tWorksets.currentTemperature().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorksets.currentTemperature().extent(1));
-
-    // test vector fields
-    constexpr Plato::OrdinalType tNumVelDofsPerCell = tSpaceDim * tNumNodesPerCell;
-    TEST_EQUALITY(tNumCells, tWorksets.predictor().extent(0));
-    TEST_EQUALITY(tNumVelDofsPerCell, tWorksets.predictor().extent(1));
-    TEST_EQUALITY(tNumCells, tWorksets.previousVelocity().extent(0));
-    TEST_EQUALITY(tNumVelDofsPerCell, tWorksets.previousVelocity().extent(1));
-    TEST_EQUALITY(tNumCells, tWorksets.currentVelocity().extent(0));
-    TEST_EQUALITY(tNumVelDofsPerCell, tWorksets.currentVelocity().extent(1));
-
-    // test configuration
-    TEST_EQUALITY(tNumCells, tWorksets.configuration().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorksets.configuration().extent(1));
-    TEST_EQUALITY(tSpaceDim, tWorksets.configuration().extent(2));
 }
 
 }
