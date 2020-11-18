@@ -5795,7 +5795,7 @@ public:
 };
 
 template<class Type>
-inline Type metadata(std::shared_ptr<Plato::MetaDataBase> & aInput)
+inline Type metadata(const std::shared_ptr<Plato::MetaDataBase> & aInput)
 {
     return (dynamic_cast<Plato::MetaData<Type>&>(aInput.operator*()).mData);
 }
@@ -5814,7 +5814,7 @@ public:
         mData[aName] = aData;
     }
 
-    std::shared_ptr<Plato::MetaDataBase> & get(const std::string & aName) const
+    const std::shared_ptr<Plato::MetaDataBase> & get(const std::string & aName) const
     {
         auto tItr = mData.find(aName);
         if(tItr != mData.end())
