@@ -5801,7 +5801,7 @@ public:
 };
 
 template<class Type>
-inline Type workset(std::unique_ptr<WorkSetBase> & aInput)
+inline Type workset(std::shared_ptr<WorkSetBase> & aInput)
 {
     return (dynamic_cast<WorkSet<Type>>(aInput.operator*()).mData);
 }
@@ -5811,15 +5811,15 @@ inline Type workset(std::unique_ptr<WorkSetBase> & aInput)
 class WorkSets
 {
 private:
-    std::unordered_map<std::string, std::unique_ptr<WorkSetBase>> mData;
+    std::unordered_map<std::string, std::shared_ptr<WorkSetBase>> mData;
 
 public:
     WorkSets() {}
-    void set(const std::string & aName, const std::unique_ptr<WorkSetBase> & aData)
+    void set(const std::string & aName, const std::shared_ptr<WorkSetBase> & aData)
     {
-        mData.insert(std::make_pair<std::string, std::unique_ptr<WorkSetBase>>(aName, aData));
+        mData.insert(std::make_pair<std::string, std::shared_ptr<WorkSetBase>>(aName, aData));
     }
-    std::unique_ptr<WorkSetBase> get(const std::string & aName) const
+    std::shared_ptr<WorkSetBase> get(const std::string & aName) const
     {
         auto tItr = mData.find(aName);
         if(tItr != mData.end())
