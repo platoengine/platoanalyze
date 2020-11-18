@@ -5939,7 +5939,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IncompressibleFlowsWorksets)
     TEST_EQUALITY(tNumVelDofsPerCell, tCurVel.extent(1));
 
     // test configuration
-    auto tConfig = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ConfigScalarType>>(tWorkSets.get("configuration"));
+    auto tConfig = Plato::metadata<Plato::ScalarArray3DT<ResidualEvalT::ConfigScalarType>>(tWorkSets.get("configuration"));
     TEST_EQUALITY(tNumCells, tConfig.extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tConfig.extent(1));
     TEST_EQUALITY(tSpaceDim, tConfig.extent(2));
