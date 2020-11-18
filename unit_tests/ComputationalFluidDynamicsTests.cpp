@@ -5874,7 +5874,8 @@ void build_worksets(const Plato::OrdinalType & aNumCells, Plato::WorkSets & aWor
     aWorkSets.set("artificial compressibility", tArtificialCompressibility);
 
     auto tConfiguration = std::make_shared< Plato::WorkSet< Plato::ScalarArray3DT<typename EvaluationT::ConfigScalarType> > >
-        (Plato::ScalarArray3DT("configuration", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumSpatialDims));
+        (Plato::ScalarArray3DT<typename EvaluationT::ConfigScalarType>("configuration", aNumCells,
+            PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumSpatialDims));
     aWorkSets.set("configuration", tConfiguration);
 }
 
