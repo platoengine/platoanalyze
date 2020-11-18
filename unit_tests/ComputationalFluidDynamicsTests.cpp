@@ -5814,7 +5814,7 @@ public:
         mData[aName] = aData;
     }
 
-    std::shared_ptr<Plato::MetaDataBase> get(const std::string & aName) const
+    std::shared_ptr<Plato::MetaDataBase> & get(const std::string & aName) const
     {
         auto tItr = mData.find(aName);
         if(tItr != mData.end())
@@ -5904,11 +5904,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildWorksets)
 
     // test scalar fields
     constexpr Plato::OrdinalType tNumNodesPerCell = 4;
-    Plato::ScalarMultiVector tMetaData = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("artificial compressibility"));
-
+    auto tArtificialCompress = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("artificial compressibility"));
+    TEST_EQUALITY(tNumCells, tArtificialCompress.extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tArtificialCompress.extent(1));
     /*
-    TEST_EQUALITY(tNumCells, tWorkSets.get("artificial compressibility").extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.artificialCompress().extent(1));
     TEST_EQUALITY(tNumCells, tWorkSets.timeStep().extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tWorkSets.timeStep().extent(1));
     TEST_EQUALITY(tNumCells, tWorkSets.control().extent(0));
