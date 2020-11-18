@@ -5778,26 +5778,26 @@ private:
 // namespace Hyperbolic
 
 
-class WorkSetBase
+class MetaDataBase
 {
 public:
-    virtual ~WorkSetBase() = 0;
+    virtual ~MetaDataBase() = 0;
 };
-inline WorkSetBase::~WorkSetBase(){}
+inline MetaDataBase::~MetaDataBase(){}
 
 template<class Type>
-class WorkSet : public WorkSetBase
+class MetaData : public MetaDataBase
 {
 public:
-    explicit WorkSet(const Type &aData) : mData(aData) {}
-    WorkSet() {}
+    explicit MetaData(const Type &aData) : mData(aData) {}
+    MetaData() {}
     Type mData;
 };
 
 template<class Type>
-inline Type workset(std::shared_ptr<Plato::WorkSetBase> & aInput)
+inline Type metadata(std::shared_ptr<Plato::MetaDataBase> & aInput)
 {
-    return (dynamic_cast<Plato::WorkSet<Type>&>(aInput.operator*()).mData);
+    return (dynamic_cast<Plato::MetaData<Type>&>(aInput.operator*()).mData);
 }
 
 //todo: add free function to set use case specific worksets based on the scalar evaluation types
@@ -5805,16 +5805,16 @@ inline Type workset(std::shared_ptr<Plato::WorkSetBase> & aInput)
 class WorkSets
 {
 private:
-    std::unordered_map<std::string, std::shared_ptr<Plato::WorkSetBase>> mData;
+    std::unordered_map<std::string, std::shared_ptr<Plato::MetaDataBase>> mData;
 
 public:
     WorkSets() {}
-    void set(const std::string & aName, const std::shared_ptr<Plato::WorkSetBase> & aData)
+    void set(const std::string & aName, const std::shared_ptr<Plato::MetaDataBase> & aData)
     {
         mData[aName] = aData;
     }
 
-    std::shared_ptr<Plato::WorkSetBase> get(const std::string & aName) const
+    std::shared_ptr<Plato::MetaDataBase> get(const std::string & aName) const
     {
         auto tItr = mData.find(aName);
         if(tItr != mData.end())
@@ -5832,51 +5832,53 @@ public:
 namespace FluidMechanics
 {
 
-/*mNumCells(aNumCells),
-mTimeStep("Time Step Workset", aNumCells, mNumNodesPerCell),
-mArtificialCompressibility("Artificial Compressibility Workset", aNumCells, mNumNodesPerCell),
-mConfiguration("Configuration Workset", aNumCells, mNumNodesPerCell, mNumSpatialDims),
-mControls("Control Workset", aNumCells, mNumNodesPerCell),
-mCurrentPress("Current Mass Workset", aNumCells, mNumPressDofsPerCell),
-mCurrentTemp("Current Energy Workset", aNumCells, mNumTempDofsPerCell),
-mCurrentVel("Current Momentum Workset", aNumCells, mNumVelDofsPerCell),
-mPreviousPress("Previous Mass Workset", aNumCells, mNumPressDofsPerCell),
-mPreviousTemp("Previous Energy Workset", aNumCells, mNumTempDofsPerCell),
-mPreviousVel("Previous Momentum Workset", aNumCells, mNumVelDofsPerCell),
-mVelPredictor("Momentum Predictor Workset", aNumCells, mNumVelDofsPerCell)
-
-    Plato::ScalarMultiVector mTimeStep;
-    Plato::ScalarMultiVector mArtificialCompressibility;
-
-    Plato::ScalarArray3DT<typename EvaluationT::ConfigScalarType> mConfiguration;
-
-    Plato::ScalarMultiVectorT<typename EvaluationT::ControlScalarType> mControls;
-    Plato::ScalarMultiVectorT<typename EvaluationT::CurrentMassScalarType> mCurrentPress;
-    Plato::ScalarMultiVectorT<typename EvaluationT::CurrentEnergyScalarType> mCurrentTemp;
-    Plato::ScalarMultiVectorT<typename EvaluationT::CurrentMomentumScalarType> mCurrentVel;
-    Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMassScalarType> mPreviousPress;
-    Plato::ScalarMultiVectorT<typename EvaluationT::PreviousEnergyScalarType> mPreviousTemp;
-    Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMomentumScalarType> mPreviousVel;
-    Plato::ScalarMultiVectorT<typename EvaluationT::MomentumPredictorScalarType> mVelPredictor;
-
-*/
-
 // todo: finish
 template<typename PhysicsT, typename EvaluationT>
-void build_worksets(const Plato::OrdinalType & aNumCells, Plato::WorkSets & aWorkSets)
+void incompressible_flows_worksets(const Plato::OrdinalType & aNumCells, Plato::WorkSets & aWorkSets)
 {
-    auto tTimeSteps = std::make_shared<Plato::WorkSet<Plato::ScalarMultiVector>>
+    auto tTimeStepsWS = std::make_shared<Plato::MetaData<Plato::ScalarMultiVector>>
         (Plato::ScalarMultiVector("time steps", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell));
-    aWorkSets.set("time steps", tTimeSteps);
+    aWorkSets.set("time steps", tTimeStepsWS);
 
-    auto tArtificialCompressibility = std::make_shared<Plato::WorkSet<Plato::ScalarMultiVector>>
+    auto tArtificialCompressibilityWS = std::make_shared<Plato::MetaData<Plato::ScalarMultiVector>>
         (Plato::ScalarMultiVector("artificial compressibility", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell));
-    aWorkSets.set("artificial compressibility", tArtificialCompressibility);
+    aWorkSets.set("artificial compressibility", tArtificialCompressibilityWS);
 
-    auto tConfiguration = std::make_shared< Plato::WorkSet< Plato::ScalarArray3DT<typename EvaluationT::ConfigScalarType> > >
-        (Plato::ScalarArray3DT<typename EvaluationT::ConfigScalarType>("configuration", aNumCells,
-            PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumSpatialDims));
-    aWorkSets.set("configuration", tConfiguration);
+    auto tConfigurationWS = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<typename EvaluationT::ConfigScalarType> > >
+        ( Plato::ScalarArray3DT<typename EvaluationT::ConfigScalarType>("configuration", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumSpatialDims) );
+    aWorkSets.set("configuration", tConfigurationWS);
+
+    auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<typename EvaluationT::ControlScalarType> > >
+        ( Plato::ScalarMultiVectorT<typename EvaluationT::ControlScalarType>("control", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
+    aWorkSets.set("control", tControlWS);
+
+    auto tCurrentPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<typename EvaluationT::CurrentMassScalarType> > >
+        ( Plato::ScalarMultiVectorT<typename EvaluationT::CurrentMassScalarType>("current pressure", aNumCells, PhysicsT::SimplexT::mNumMassDofsPerCell) );
+    aWorkSets.set("current pressure", tCurrentPressWS);
+
+    auto tCurrentTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<typename EvaluationT::CurrentEnergyScalarType> > >
+        ( Plato::ScalarMultiVectorT<typename EvaluationT::CurrentEnergyScalarType>("current temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
+    aWorkSets.set("current temperature", tCurrentTempWS);
+
+    auto tCurrentVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<typename EvaluationT::CurrentMomentumScalarType> > >
+        ( Plato::ScalarMultiVectorT<typename EvaluationT::CurrentMomentumScalarType>("current velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
+    aWorkSets.set("current velocity", tCurrentVelWS);
+
+    auto tPreviousPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMassScalarType> > >
+        ( Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMassScalarType>("previous pressure", aNumCells, PhysicsT::SimplexT::mNumMassDofsPerCell) );
+    aWorkSets.set("previous pressure", tPreviousPressWS);
+
+    auto tPreviousTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<typename EvaluationT::PreviousEnergyScalarType> > >
+        ( Plato::ScalarMultiVectorT<typename EvaluationT::PreviousEnergyScalarType>("previous temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
+    aWorkSets.set("previous temperature", tPreviousTempWS);
+
+    auto tPreviousVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMomentumScalarType> > >
+        ( Plato::ScalarMultiVectorT<typename EvaluationT::PreviousMomentumScalarType>("previous velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
+    aWorkSets.set("previous velocity", tPreviousVelWS);
+
+    auto tVelPredictorWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<typename EvaluationT::MomentumPredictorScalarType> > >
+        ( Plato::ScalarMultiVectorT<typename EvaluationT::MomentumPredictorScalarType>("current velocity predictor", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
+    aWorkSets.set("current velocity predictor", tVelPredictorWS);
 }
 
 }
@@ -5898,7 +5900,42 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildWorksets)
     using ResidualEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::Residual;
 
     Plato::WorkSets tWorkSets;
-    Plato::FluidMechanics::build_worksets<PhysicsT, ResidualEvalT>(tNumCells, tWorkSets);
+    Plato::FluidMechanics::incompressible_flows_worksets<PhysicsT, ResidualEvalT>(tNumCells, tWorkSets);
+
+    // test scalar fields
+    constexpr Plato::OrdinalType tNumNodesPerCell = 4;
+    Plato::ScalarMultiVector tMetaData = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("artificial compressibility"));
+
+    /*
+    TEST_EQUALITY(tNumCells, tWorkSets.get("artificial compressibility").extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.artificialCompress().extent(1));
+    TEST_EQUALITY(tNumCells, tWorkSets.timeStep().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.timeStep().extent(1));
+    TEST_EQUALITY(tNumCells, tWorkSets.control().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.control().extent(1));
+    TEST_EQUALITY(tNumCells, tWorkSets.previousPressure().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.previousPressure().extent(1));
+    TEST_EQUALITY(tNumCells, tWorkSets.currentPressure().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.currentPressure().extent(1));
+    TEST_EQUALITY(tNumCells, tWorkSets.previousTemperature().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.previousTemperature().extent(1));
+    TEST_EQUALITY(tNumCells, tWorkSets.currentTemperature().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.currentTemperature().extent(1));
+
+    // test vector fields
+    constexpr Plato::OrdinalType tNumVelDofsPerCell = tSpaceDim * tNumNodesPerCell;
+    TEST_EQUALITY(tNumCells, tWorkSets.predictor().extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tWorkSets.predictor().extent(1));
+    TEST_EQUALITY(tNumCells, tWorkSets.previousVelocity().extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tWorkSets.previousVelocity().extent(1));
+    TEST_EQUALITY(tNumCells, tWorkSets.currentVelocity().extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tWorkSets.currentVelocity().extent(1));
+
+    // test configuration
+    TEST_EQUALITY(tNumCells, tWorkSets.configuration().extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.configuration().extent(1));
+    TEST_EQUALITY(tSpaceDim, tWorkSets.configuration().extent(2));
+    */
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
