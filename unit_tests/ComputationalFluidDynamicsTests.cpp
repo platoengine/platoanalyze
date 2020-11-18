@@ -5907,11 +5907,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildWorksets)
     auto tArtificialCompress = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("artificial compressibility"));
     TEST_EQUALITY(tNumCells, tArtificialCompress.extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tArtificialCompress.extent(1));
+    auto tTimeSteps = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("time steps"));
+    TEST_EQUALITY(tNumCells, tTimeSteps.extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tTimeSteps.extent(1));
+    auto tControls = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ControlScalarType>>(tWorkSets.get("control"));
+    TEST_EQUALITY(tNumCells, tControls.extent(0));
+    TEST_EQUALITY(tNumNodesPerCell, tControls.extent(1));
     /*
-    TEST_EQUALITY(tNumCells, tWorkSets.timeStep().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.timeStep().extent(1));
-    TEST_EQUALITY(tNumCells, tWorkSets.control().extent(0));
-    TEST_EQUALITY(tNumNodesPerCell, tWorkSets.control().extent(1));
     TEST_EQUALITY(tNumCells, tWorkSets.previousPressure().extent(0));
     TEST_EQUALITY(tNumNodesPerCell, tWorkSets.previousPressure().extent(1));
     TEST_EQUALITY(tNumCells, tWorkSets.currentPressure().extent(0));
