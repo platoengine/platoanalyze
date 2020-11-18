@@ -5801,9 +5801,9 @@ public:
 };
 
 template<class Type>
-inline Type workset(WorkSetBase & aInput)
+inline Type workset(std::unique_ptr<WorkSetBase> & aInput)
 {
-    return (dynamic_cast<WorkSet<Type>>(aInput).mData);
+    return (dynamic_cast<WorkSet<Type>>(aInput.operator*()).mData);
 }
 
 //todo: add free function to set use case specific worksets based on the scalar evaluation types
@@ -5811,15 +5811,15 @@ inline Type workset(WorkSetBase & aInput)
 class WorkSets
 {
 private:
-    std::unordered_map<std::string, WorkSetBase> mData;
+    std::unordered_map<std::string, std::unique_ptr<WorkSetBase>> mData;
 
 public:
     WorkSets() {}
-    void set(const std::string & aName, const WorkSetBase & aData)
+    void set(const std::string & aName, const std::unique_ptr<WorkSetBase> & aData)
     {
-        mData.insert(std::make_pair<std::string, WorkSetBase>(aName, aData));
+        mData.insert(std::make_pair<std::string, std::unique_ptr<WorkSetBase>>(aName, aData));
     }
-    WorkSetBase get(const std::string & aName) const
+    std::unique_ptr<WorkSetBase> get(const std::string & aName) const
     {
         auto tItr = mData.find(aName);
         if(tItr != mData.end())
