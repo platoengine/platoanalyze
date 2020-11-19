@@ -1549,7 +1549,7 @@ public:
 
         // set input state worksets
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tPrevPressWS = Plato::metadata<Plato::ScalarArray3DT<PrevPressT>>(aWorkSets.get("previous pressure"));
+        auto tPrevPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevPressT>>(aWorkSets.get("previous pressure"));
 
         // calculate surface integral
         auto tCubatureWeight = mCubatureRule.getCubWeight();
