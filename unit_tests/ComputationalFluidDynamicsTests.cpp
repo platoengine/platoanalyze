@@ -1061,6 +1061,125 @@ public:
 };
 // class AverageSurfacePressure
 
+template<typename PhysicsT, typename EvaluationT>
+class AverageSurfaceTemperature : Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>
+{
+private:
+    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace;   /*!< number of spatial dimensions on face */
+    static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
+    static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of energy dofs per node */
+
+    using TempT    = typename EvaluationT::CurrentEnergyScalarType;
+    using ResultT  = typename EvaluationT::ResultScalarType;
+    using ConfigT  = typename EvaluationT::ConfigScalarType;
+    using ControlT = typename EvaluationT::ControlScalarType;
+
+    // set local typenames
+    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
+
+    // member metadata
+    Plato::DataMap& mDataMap;
+    CubatureRule mCubatureRule;
+    const Plato::SpatialDomain& mSpatialDomain;
+
+    // member parameters
+    std::vector<std::string> mWallSets;
+
+public:
+    AverageSurfaceTemperature
+    (const std::string          & aName,
+     const Plato::SpatialDomain & aDomain,
+     Plato::DataMap             & aDataMap,
+     Teuchos::ParameterList     & aInputs) :
+         mDataMap(aDataMap),
+         mCubatureRule(CubatureRule()),
+         mSpatialDomain(aDomain)
+    {
+        auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
+        mWallSets = Plato::parse_input_parameter_list("Wall", tMyCriteria);
+    }
+
+    virtual ~AverageSurfaceTemperature(){}
+
+    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
+    { return; }
+
+    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
+    {
+        // set face to element graph
+        auto tFace2eElems      = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
+        auto tFace2Elems_map   = tFace2eElems.a2ab;
+        auto tFace2Elems_elems = tFace2eElems.ab2b;
+
+        // set mesh vertices
+        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
+        auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
+
+        // allocate local functors
+        Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
+        Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
+        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumPressDofsPerNode> tIntrplScalarField;
+        Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
+
+        // set local data
+        auto tCubatureWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+
+        // set local worksets
+        auto tNumCells = mSpatialDomain.Mesh.nelems();
+        Plato::ScalarVectorT<TempT> tCurrentTempGP("current temperature at Gauss point", tNumCells);
+
+        // set input worksets
+        auto tCurrentTempWS   = Plato::metadata<Plato::ScalarMultiVectorT<TempT>>(aWorkSets.get("current temperature"));
+        auto tConfigurationWS = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+
+        for(auto& tName : mWallSets)
+        {
+            // get faces on this side set
+            auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
+            auto tNumFaces = tFaceOrdinalsOnSideSet.size();
+            Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
+
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
+            {
+                auto tFaceOrdinal = tFaceOrdinalsOnSideSet[aFaceI];
+                // for all elements connected to this face, which is either 1 or 2 elements
+                for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal+1]; tElem++ )
+                {
+                    // create a map from face local node index to elem local node index
+                    Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
+                    auto tCellOrdinal = tFace2Elems_elems[tElem];
+                    tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+
+                    // calculate surface Jacobian and surface integral weight
+                    ConfigT tSurfaceAreaTimesCubWeight(0.0);
+                    tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigurationWS, tJacobians);
+                    tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+
+                    // evaluate surface scalar function
+                    tIntrplScalarField(tCellOrdinal, tBasisFunctions, tCurrentTempWS, tCurrentTempGP);
+
+                    // calculate surface integral, which is defined as
+                    // \int_{\Gamma_e}N_p^a p^h d\Gamma_e
+                    for( Plato::OrdinalType tNode=0; tNode < mNumNodesPerFace; tNode++)
+                    {
+                        for( Plato::OrdinalType tDof=0; tDof < mNumPressDofsPerNode; tDof++)
+                        {
+                            auto tDofOrdinal = tLocalNodeOrd[tNode] * mNumPressDofsPerNode + tDof;
+                            aResult(tCellOrdinal, tDofOrdinal) += tBasisFunctions(tNode) *
+                                tCurrentTempGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
+                        }
+                    }
+                }
+            }, "average surface temperature integral");
+
+        }
+    }
+};
+// class AverageSurfaceTemperature
+
 
 /******************************************************************************/
 /*! scalar function class
@@ -3821,6 +3940,11 @@ public:
             return ( std::make_shared<Plato::FluidMechanics::AverageSurfacePressure<PhysicsT, EvaluationT>>
                 (tLowerTag, aDomain, aDataMap, aInputs) );
         }
+        else if( tLowerTag == "average surface temperature" )
+        {
+            return ( std::make_shared<Plato::FluidMechanics::AverageSurfaceTemperature<PhysicsT, EvaluationT>>
+                (tLowerTag, aDomain, aDataMap, aInputs) );
+        }
         else
         {
             THROWERR(std::string("Scalar function of type '") + aType + "' with tag ' " + aTag + "' is not supported.")
@@ -3839,11 +3963,11 @@ class WeightedScalarFunction : public Plato::FluidMechanics::CriterionBase
 {
 private:
     // static metadata
-    static constexpr auto mNumSpatialDims         = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
-    static constexpr auto mNumPressDofsPerNode    = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
-    static constexpr auto mNumTempDofsPerNode     = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
-    static constexpr auto mNumVelDofsPerNode      = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
-    static constexpr auto mNumControlsPerNode     = PhysicsT::SimplexT::mNumControl;             /*!< number of design variables per node */
+    static constexpr auto mNumSpatialDims      = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumPressDofsPerNode = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
+    static constexpr auto mNumTempDofsPerNode  = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumVelDofsPerNode   = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumControlsPerNode  = PhysicsT::SimplexT::mNumControl;             /*!< number of design variables per node */
 
     // set local typenames
     using PrimalStates = Plato::FluidMechanics::States;
@@ -4255,7 +4379,7 @@ public:
 };
 
 template<typename PhysicsT>
-class FluidMechanicsProblem : public Plato::FluidMechanics::AbstractProblem
+class FluidsProblem : public Plato::FluidMechanics::AbstractProblem
 {
 private:
     static constexpr auto mNumSpatialDims     = PhysicsT::mNumSpatialDims;         /*!< number of mass dofs per node */
@@ -4303,7 +4427,7 @@ private:
     using PrimalStates = Plato::FluidMechanics::States;
 
 public:
-    FluidMechanicsProblem
+    FluidsProblem
     (Omega_h::Mesh          & aMesh,
      Omega_h::MeshSets      & aMeshSets,
      Teuchos::ParameterList & aInputs,
