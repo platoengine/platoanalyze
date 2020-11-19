@@ -131,7 +131,7 @@ sideset_names(Teuchos::ParameterList & aInputs)
     return tOutput;
 }
 
-inline std::vector<std::string> parse_input_parameter_list
+inline std::vector<std::string> parse_array
 (const std::string & aTag,
  const Teuchos::ParameterList & aInputs)
 {
@@ -152,21 +152,23 @@ inline std::vector<std::string> parse_input_parameter_list
 }
 
 template <typename T>
-inline T parse_dimensionless_property
-(const Teuchos::ParameterList & aInputs,
- const std::string            & aTag)
+inline T parse_parameter
+(const std::string            & aTag,
+ const std::string            & aBlock,
+ const Teuchos::ParameterList & aInputs)
 {
-    auto tSublist = aInputs.sublist("Dimensionless Properties");
-    if(tSublist.isParameter(aTag))
+    if( !aInputs.isSublist(aBlock) )
     {
-        auto tOutput = tSublist.get<T>(aTag);
-        return tOutput;
+        THROWERR(std::string("Sublist with name '") + aBlock + "' is not defined.")
     }
-    else
+    auto tSublist = aInputs.sublist(aBlock);
+
+    if( !tSublist.isParameter(aTag) )
     {
-        THROWERR(std::string("Dimensionless parameter with '") + aTag + "' must be defined for analysis. Use '"
-            + aTag + "' keyword inside sublist 'Dimensionless Properties' to define its value")
+        THROWERR(std::string("Parameter with '") + aTag + "' is not defined in sublist with name '" + aBlock + "'.")
     }
+    auto tOutput = tSublist.get<T>(aTag);
+    return tOutput;
 }
 
 /***************************************************************************//**
@@ -978,7 +980,7 @@ public:
          mSpatialDomain(aDomain)
     {
         auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
-        mWallSets = Plato::parse_input_parameter_list("Wall", tMyCriteria);
+        mWallSets = Plato::parse_array("Wall", tMyCriteria);
     }
 
     virtual ~AverageSurfacePressure(){}
@@ -1097,7 +1099,7 @@ public:
          mSpatialDomain(aDomain)
     {
         auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
-        mWallSets = Plato::parse_input_parameter_list("Wall", tMyCriteria);
+        mWallSets = Plato::parse_array("Wall", tMyCriteria);
     }
 
     virtual ~AverageSurfaceTemperature(){}
@@ -1774,12 +1776,13 @@ public:
     (const Plato::SpatialDomain & aSpatialDomain,
      Teuchos::ParameterList & aInputs,
      std::string aSideSetName = "") :
+         mPrNum(Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs)),
          mSideSetName(aSideSetName),
          mSpatialDomain(aSpatialDomain)
     {
         this->setPenaltyModel(aInputs);
-        this->setDimensionlessProperties(aInputs);
         this->setFacesOnNonPrescribedBoundary(aInputs);
+        // todo parse all parameters
     }
 
     void operator()
@@ -1894,20 +1897,6 @@ private:
         else
         {
             THROWERR("'Hyperbolic' sublist is not defined.")
-        }
-    }
-
-    void setDimensionlessProperties
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Dimensionless Properties"))
-        {
-            auto tSublist = aInputs.sublist("Dimensionless Properties");
-            mPrNum = Plato::parse_dimensionless_property<Plato::Scalar>(tSublist, "Prandtl Number");
-        }
-        else
-        {
-            THROWERR("'Dimensionless Properties' block is not defined.")
         }
     }
 
@@ -2280,29 +2269,21 @@ private:
     void setDimensionlessProperties
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Dimensionless Properties"))
-        {
-            auto tSublist = aInputs.sublist("Dimensionless Properties");
-            mDaNum = Plato::parse_dimensionless_property<Plato::Scalar>(tSublist, "Darcy Number");
-            mPrNum = Plato::parse_dimensionless_property<Plato::Scalar>(tSublist, "Prandtl Number");
+        mDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", aInputs);
+        mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs);
 
-            auto tGrNum = Plato::parse_dimensionless_property<Teuchos::Array<Plato::Scalar>>(tSublist, "Grashof Number");
-            if(tGrNum.size() != mNumSpatialDims)
-            {
-                THROWERR("Grashof Number array length should match the number of spatial dimensions.")
-            }
-
-            auto tHostGrNum = Kokkos::create_mirror(mGrNum);
-            for(decltype(mNumSpatialDims) tDim = 0; tDim < mNumSpatialDims; tDim++)
-            {
-                tHostGrNum(tDim) = tGrNum[tDim];
-            }
-            Kokkos::deep_copy(mGrNum, tHostGrNum);
-        }
-        else
+        auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", aInputs);
+        if(tGrNum.size() != mNumSpatialDims)
         {
-            THROWERR("'Dimensionless Properties' block is not defined.")
+            THROWERR("Grashof Number array length should match the number of spatial dimensions.")
         }
+
+        auto tHostGrNum = Kokkos::create_mirror(mGrNum);
+        for(decltype(mNumSpatialDims) tDim = 0; tDim < mNumSpatialDims; tDim++)
+        {
+            tHostGrNum(tDim) = tGrNum[tDim];
+        }
+        Kokkos::deep_copy(mGrNum, tHostGrNum);
     }
 
     void setNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
@@ -5239,16 +5220,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseDimensionlessProperty)
     );
 
     // Prandtl #
-    auto tScalarOutput = Plato::parse_dimensionless_property<Plato::Scalar>(tParams.operator*(), "Prandtl");
+    auto tScalarOutput = Plato::parse_parameter<Plato::Scalar>("Prandtl", "Dimensionless Properties", tParams.operator*());
     auto tTolerance = 1e-6;
     TEST_FLOATING_EQUALITY(tScalarOutput, 2.1, tTolerance);
 
     // Darcy #
-    tScalarOutput = Plato::parse_dimensionless_property<Plato::Scalar>(tParams.operator*(), "Darcy");
+    tScalarOutput = Plato::parse_parameter<Plato::Scalar>("Darcy", "Dimensionless Properties", tParams.operator*());
     TEST_FLOATING_EQUALITY(tScalarOutput, 2.2, tTolerance);
 
     // Grashof #
-    auto tArrayOutput = Plato::parse_dimensionless_property<Teuchos::Array<Plato::Scalar>>(tParams.operator*(), "Grashof");
+    auto tArrayOutput = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof", "Dimensionless Properties", tParams.operator*());
     TEST_EQUALITY(3, tArrayOutput.size());
     TEST_FLOATING_EQUALITY(tArrayOutput[0], 0.0, tTolerance);
     TEST_FLOATING_EQUALITY(tArrayOutput[1], 1.5, tTolerance);
