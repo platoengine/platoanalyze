@@ -5162,6 +5162,44 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseCriterion_Names_And_Weights)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList  name='Criteria'>"
+            "  <Parameter  name='Type'         type='string'         value='Weighted Sum'/>""
+            "  <Parameter  name='Functions'    type='Array(string)'  value='{My Inlet Pressure, My Outlet Pressure}'/>""
+            "  <Parameter  name='Weights'      type='Array(double)'  value='{1.0,-1.0}'/>""
+            "  <ParameterList  name='My Inlet Pressure'>"
+            "    <Parameter  name='Type'                   type='string'           value='Scalar Function'/>"
+            "    <Parameter  name='Scalar Function Type'   type='string'           value='Average Surface Pressure'/>"
+            "    <Parameter  name='Sides'                  type='Array(string)'    value='{ss_1}'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='My Outlet Pressure'>"
+            "    <Parameter  name='Type'                   type='string'           value='Scalar Function'/>"
+            "    <Parameter  name='Scalar Function Type'   type='string'           value='Average Surface Pressure'/>"
+            "    <Parameter  name='Sides'                  type='Array(string)'    value='{ss_2}'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+    auto tNames = Plato::parse_criterion_names(tParams.operator*());
+
+    std::vector<std::string> tGoldNames = {"My Inlet Pressure", "My Outlet Pressure"};
+    for(auto& tName : tNames)
+    {
+        auto tIndex = &tName - &tNames[0];
+        TEST_EQUALITY(tName, tGoldNames[tIndex]);
+    }
+
+    auto tWeights = Plato::parse_criterion_weights(*tParams);
+    std::vector<Plato::Scalar> tGoldWeights = {1.0, -1.};
+    for(auto& tWeight : tWeights)
+    {
+        auto tIndex = &tWeight - &tWeights[0];
+        TEST_EQUALITY(tWeight, tGoldWeights[tIndex]);
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
 {
     // 1. test throw
@@ -5174,7 +5212,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
     // 2. test vector function
     tOutput = Plato::is_valid_function("vector function");
     TEST_COMPARE(tOutput, ==, "vector function");
-
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SidesetNames)
