@@ -5217,9 +5217,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     {
         for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
         {
+            auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumSpatialDims; tDim++)
             {
-                auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
                 auto tMyCoordIndex = tMyVertexIndex * tNumSpaceDim + tDim;
                 tCoordOrdinals(tMyCoordIndex) = tLocalOrdinalMaps.mNodeCoordinate(aCellOrdinal, tNode, tDim);
             }
@@ -5227,19 +5227,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
 
         for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
         {
+            auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
+            printf("tMyVertexIndex = %d\n", tMyVertexIndex);
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumControls; tDim++)
             {
-                auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
                 auto tMyControlIndex = tMyVertexIndex * PhysicsT::mNumControls + tDim;
+                printf("tMyControlIndex = %d\n", tMyControlIndex);
                 tControlOrdinals(tMyControlIndex) = tLocalOrdinalMaps.mControlOrdinalMap(aCellOrdinal, tNode, tDim);
             }
         }
 
         for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
         {
+            auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumMassDofsPerNode; tDim++)
             {
-                auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
                 auto tMyScalarIndex = tMyVertexIndex * PhysicsT::mNumMassDofsPerNode + tDim;
                 tScalarOrdinals(tMyScalarIndex) = tLocalOrdinalMaps.mScalarStateOrdinalMap(aCellOrdinal, tNode, tDim);
             }
@@ -5247,9 +5249,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
 
         for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
         {
+            auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumMomentumDofsPerNode; tDim++)
             {
-                auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
                 auto tMyScalarIndex = tMyVertexIndex * PhysicsT::mNumMomentumDofsPerNode + tDim;
                 tVectorOrdinals(tMyScalarIndex) = tLocalOrdinalMaps.mVectorStateOrdinalMap(aCellOrdinal, tNode, tDim);
             }
