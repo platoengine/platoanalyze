@@ -5204,65 +5204,37 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     Plato::LocalOrdinalMaps<PhysicsT> tLocalOrdinalMaps(tMesh.operator*());
 
     auto tNumCells = tMesh->nelems();
-    auto tNumCoords = tNumSpaceDim * tMesh->nverts();
-    Plato::ScalarVector tCoordOrdinals("coordinates", tNumCoords);
-    auto tNumControls = tMesh->nverts();
-    Plato::ScalarVector tControlOrdinals("control", tNumControls);
-    auto tNumScalarFields = PhysicsT::mNumMassDofsPerNode * tMesh->nverts();
-    Plato::ScalarVector tScalarOrdinals("scalar field", tNumScalarFields);
-    auto tNumVectorFields = PhysicsT::mNumMomentumDofsPerNode * tMesh->nverts();
-    Plato::ScalarVector tVectorOrdinals("vector field", tNumVectorFields);
+    Plato::ScalarArray3D tCoordOrdinals("coordinates", tNumCells, PhysicsT::mNumNodesPerCell, tNumSpaceDim);
+    Plato::ScalarMultiVector tControlOrdinals("control", tNumCells, PhysicsT::mNumNodesPerCell);
+    Plato::ScalarMultiVector tScalarOrdinals("scalar field", tNumCells, PhysicsT::mNumNodesPerCell);
+    Plato::ScalarArray3D tVectorOrdinals("vector field", tNumCells, PhysicsT::mNumNodesPerCell, PhysicsT::mNumMomentumDofsPerNode);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
         {
-            auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumSpatialDims; tDim++)
             {
-                auto tMyCoordIndex = tMyVertexIndex * tNumSpaceDim + tDim;
-                tCoordOrdinals(tMyCoordIndex) = tLocalOrdinalMaps.mNodeCoordinate(aCellOrdinal, tNode, tDim);
+                tCoordOrdinals(aCellOrdinal, tNode, tDim) = tLocalOrdinalMaps.mNodeCoordinate(aCellOrdinal, tNode, tDim);
+                tVectorOrdinals(aCellOrdinal, tNode, tDim) = tLocalOrdinalMaps.mVectorStateOrdinalMap(aCellOrdinal, tNode, tDim);
             }
         }
 
         for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
         {
-            auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
-            printf("tMyVertexIndex = %d\n", tMyVertexIndex);
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumControls; tDim++)
             {
-                auto tMyControlIndex = tMyVertexIndex * PhysicsT::mNumControls + tDim;
-                printf("tMyControlIndex = %d\n", tMyControlIndex);
-                tControlOrdinals(tMyControlIndex) = tLocalOrdinalMaps.mControlOrdinalMap(aCellOrdinal, tNode, tDim);
-            }
-        }
-
-        for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
-        {
-            auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
-            for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumMassDofsPerNode; tDim++)
-            {
-                auto tMyScalarIndex = tMyVertexIndex * PhysicsT::mNumMassDofsPerNode + tDim;
-                tScalarOrdinals(tMyScalarIndex) = tLocalOrdinalMaps.mScalarStateOrdinalMap(aCellOrdinal, tNode, tDim);
-            }
-        }
-
-        for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
-        {
-            auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
-            for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumMomentumDofsPerNode; tDim++)
-            {
-                auto tMyScalarIndex = tMyVertexIndex * PhysicsT::mNumMomentumDofsPerNode + tDim;
-                tVectorOrdinals(tMyScalarIndex) = tLocalOrdinalMaps.mVectorStateOrdinalMap(aCellOrdinal, tNode, tDim);
+                tControlOrdinals(aCellOrdinal, tNode) = tLocalOrdinalMaps.mControlOrdinalMap(aCellOrdinal, tNode, tDim);
+                tScalarOrdinals(aCellOrdinal, tNode) = tLocalOrdinalMaps.mScalarStateOrdinalMap(aCellOrdinal, tNode, tDim);
             }
         }
 
     },"test");
 
-    Plato::print(tCoordOrdinals, "coordinate ordinals");
-    Plato::print(tControlOrdinals, "control ordinals");
-    Plato::print(tScalarOrdinals, "scalar ordinals");
-    Plato::print(tVectorOrdinals, "vector ordinals");
+    Plato::print_array_3D(tCoordOrdinals, "coordinate ordinals");
+    Plato::print_array_3D(tVectorOrdinals, "vector ordinals");
+    Plato::print_array_2D(tControlOrdinals, "control ordinals");
+    Plato::print_array_2D(tScalarOrdinals, "scalar ordinals");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
