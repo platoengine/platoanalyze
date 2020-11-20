@@ -4092,8 +4092,8 @@ private:
         }
         auto tCriteriaInputs = aInputs.sublist("Criteria").sublist(mFuncName);
 
-        mCriterionNames   = Plato::parse_criterion_names(tCriteriaInputs);
-        mCriterionWeights = Plato::parse_criterion_weights(tCriteriaInputs);
+        mCriterionNames   = Plato::parse_array<std::string>("Functions", tCriteriaInputs);
+        mCriterionWeights = Plato::parse_array<Plato::Scalar>("Weights", tCriteriaInputs);
         if (mCriterionNames.size() != mCriterionWeights.size())
         {
             THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Weights' do not match. ") +
