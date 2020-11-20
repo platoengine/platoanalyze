@@ -5250,6 +5250,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     tHostGoldCoords(4,0,2) = 0; tHostGoldCoords(4,1,2) = 1; tHostGoldCoords(4,2,2) = 1; tHostGoldCoords(4,3,2) = 0;
     tHostGoldCoords(5,0,2) = 0; tHostGoldCoords(5,1,2) = 1; tHostGoldCoords(5,2,2) = 0; tHostGoldCoords(5,3,2) = 0;
     auto tHostCoords = Kokkos::create_mirror(tCoords);
+    Kokkos::deep_copy(tHostCoords, tCoords);
 
     Plato::ScalarArray3D tGoldVectorOrdinals("vector field", tNumCells, PhysicsT::mNumNodesPerCell, PhysicsT::mNumMomentumDofsPerNode);
     auto tHostGoldVecOrdinals = Kokkos::create_mirror(tGoldVectorOrdinals);
@@ -5272,6 +5273,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     tHostGoldVecOrdinals(4,0,2) = 23; tHostGoldVecOrdinals(4,1,2) = 20; tHostGoldVecOrdinals(4,2,2) = 17; tHostGoldVecOrdinals(4,3,2) = 2;
     tHostGoldVecOrdinals(5,0,2) = 23; tHostGoldVecOrdinals(5,1,2) = 17; tHostGoldVecOrdinals(5,2,2) = 14; tHostGoldVecOrdinals(5,3,2) = 2;
     auto tHostVectorOrdinals = Kokkos::create_mirror(tVectorOrdinals);
+    Kokkos::deep_copy(tHostVectorOrdinals, tVectorOrdinals);
 
     auto tTol = 1e-6;
     for(Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
@@ -5296,6 +5298,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     tHostGoldControlOrdinals(4,0) = 7; tHostGoldControlOrdinals(4,1) = 6; tHostGoldControlOrdinals(4,2) = 5; tHostGoldControlOrdinals(4,3) = 0;
     tHostGoldControlOrdinals(5,0) = 7; tHostGoldControlOrdinals(5,1) = 5; tHostGoldControlOrdinals(5,2) = 4; tHostGoldControlOrdinals(5,3) = 0;
     auto tHostControlOrdinals = Kokkos::create_mirror(tControlOrdinals);
+    Kokkos::deep_copy(tHostControlOrdinals, tControlOrdinals);
 
     Plato::ScalarMultiVector tGoldScalarOrdinals("scalar field", tNumCells, PhysicsT::mNumNodesPerCell);
     auto tHostGoldScalarOrdinals = Kokkos::create_mirror(tGoldScalarOrdinals);
@@ -5306,6 +5309,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     tHostGoldScalarOrdinals(4,0) = 7; tHostGoldScalarOrdinals(4,1) = 6; tHostGoldScalarOrdinals(4,2) = 5; tHostGoldScalarOrdinals(4,3) = 0;
     tHostGoldScalarOrdinals(5,0) = 7; tHostGoldScalarOrdinals(5,1) = 5; tHostGoldScalarOrdinals(5,2) = 4; tHostGoldScalarOrdinals(5,3) = 0;
     auto tHostScalarOrdinals = Kokkos::create_mirror(tScalarOrdinals);
+    Kokkos::deep_copy(tHostScalarOrdinals, tScalarOrdinals);
 
     for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
     {
