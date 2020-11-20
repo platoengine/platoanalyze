@@ -257,6 +257,13 @@ struct LocalOrdinalMaps
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumControl>      mControlOrdinalMap;
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumSpatialDims>  mVectorStateOrdinalMap;
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumNodesPerCell> mScalarStateOrdinalMap;
+
+    LocalOrdinalMaps(Omega_h::Mesh & aMesh) :
+        mNodeCoordinate(&aMesh),
+        mControlOrdinalMap(&aMesh),
+        mVectorStateOrdinalMap(&aMesh),
+        mScalarStateOrdinalMap(&aMesh)
+    { return; }
 };
 
 
@@ -1273,7 +1280,7 @@ public:
         mFuncName(aName),
         mSpatialModel(aSpatialModel),
         mDataMap(aDataMap),
-        mLocalOrdinalMaps()
+        mLocalOrdinalMaps(aSpatialModel.Mesh)
     {
         this->initialize(aInputs);
     }
@@ -3207,7 +3214,7 @@ public:
            Teuchos::ParameterList & aInputs) :
         mSpatialModel(aSpatialModel),
         mDataMap(aDataMap),
-        mLocalOrdinalMaps()
+        mLocalOrdinalMaps(aSpatialModel.Mesh)
     {
         this->initialize(aName, aDataMap, aInputs);
     }
@@ -5232,6 +5239,30 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, WorkStes)
             TEST_EQUALITY("failed", tTag);
         }
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
+{
+    constexpr Plato::OrdinalType tNumSpaceDim = 3;
+    using PhysicsT = Plato::MomentumConservation<tNumSpaceDim>;
+    auto tMesh = PlatoUtestHelpers::build_3d_box_mesh(1.0, 1.0, 1.0, 1, 1, 1);
+    Plato::LocalOrdinalMaps<PhysicsT> tLocalOrdinalMaps(tMesh.operator*());
+
+    auto tNumCells = tMesh->nelems();
+    auto tNumCoords = tNumSpaceDim * tMesh->nverts();
+    Plato::ScalarVector tCoords("coordinates", tNumCoords);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
+        {
+            for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumSpatialDims; tDim++)
+            {
+                auto tMyVertexIndex = aCellOrdinal * PhysicsT::mNumNodesPerCell + tNode;
+                auto tMyCoordIndex = tMyVertexIndex * tNumSpaceDim + tDim;
+                tCoords(tMyCoordIndex) = tLocalOrdinalMaps.mNodeCoordinate(aCellOrdinal, tNode, tDim);
+            }
+        }
+    },"test");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
