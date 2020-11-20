@@ -5167,9 +5167,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseCriterion_Names_And_Weights)
     Teuchos::RCP<Teuchos::ParameterList> tParams =
         Teuchos::getParametersFromXmlString(
             "<ParameterList  name='Criteria'>"
-            "  <Parameter  name='Type'         type='string'         value='Weighted Sum'/>""
-            "  <Parameter  name='Functions'    type='Array(string)'  value='{My Inlet Pressure, My Outlet Pressure}'/>""
-            "  <Parameter  name='Weights'      type='Array(double)'  value='{1.0,-1.0}'/>""
+            "  <Parameter  name='Type'         type='string'         value='Weighted Sum'/>"
+            "  <Parameter  name='Functions'    type='Array(string)'  value='{My Inlet Pressure, My Outlet Pressure}'/>"
+            "  <Parameter  name='Weights'      type='Array(double)'  value='{1.0,-1.0}'/>"
             "  <ParameterList  name='My Inlet Pressure'>"
             "    <Parameter  name='Type'                   type='string'           value='Scalar Function'/>"
             "    <Parameter  name='Scalar Function Type'   type='string'           value='Average Surface Pressure'/>"
