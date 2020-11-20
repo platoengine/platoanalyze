@@ -5222,8 +5222,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, WorkStes)
     std::vector<std::string> tGoldTags = {"velocity", "pressure"};
     for(auto& tTag : tTags)
     {
-        auto tIndex = &tTag - &tTags[0];
-        TEST_EQUALITY(tGoldTags[tIndex], tTag);
+        auto tGoldItr = std::find(tGoldTags.begin(), tGoldTags.end(), tTag);
+        if(tGoldItr != tGoldTags.end())
+        {
+            TEST_EQUALITY(tGoldItr.operator*(), tTag);
+        }
+        else
+        {
+            TEST_EQUALITY("failed", tTag);
+        }
     }
 }
 
