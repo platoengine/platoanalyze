@@ -5302,7 +5302,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
 
     },"test");
 
-    Plato::print_array_1D_device(tCoordOrdinals, "coordinate ordinals");
+    Plato::print(tCoordOrdinals, "coordinate ordinals");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)

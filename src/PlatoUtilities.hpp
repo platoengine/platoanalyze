@@ -119,7 +119,7 @@ DEVICE_TYPE inline void print_array_3D_device
 **********************************************************************************/
 inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, std::string aName = "")
 {
-    std::cout << "PRINT " << aName << std::endl;
+    std::cout << "\n\n PRINT ARRAY WITH TAG '" << aName << "'" << std::endl;
 
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
@@ -130,7 +130,7 @@ inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, st
         printf("X[%d] = %d\n", aIndex + static_cast<Plato::OrdinalType>(1), aInput(aIndex));
 #endif
     }, "print array ordinals 1D");
-    std::cout << std::endl;
+    std::cout << "\nEND PRINT ARRAY WITH TAG '" << aName << "'" << std::endl;
 }
 // function print
 
@@ -142,7 +142,7 @@ inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, st
 template<typename ArrayT>
 inline void print(const ArrayT & aInput, std::string aName = "")
 {
-    std::cout << "PRINT " << aName << std::endl;
+    std::cout << "\n\n PRINT ARRAY WITH TAG '" << aName << "'" << std::endl;
 
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
@@ -153,7 +153,7 @@ inline void print(const ArrayT & aInput, std::string aName = "")
         printf("X[%d] = %e\n", aIndex + static_cast<Plato::OrdinalType>(1), aInput(aIndex));
 #endif
     }, "print 1D array");
-    std::cout << std::endl;
+    std::cout << "\nEND PRINT ARRAY WITH TAG '" << aName << "'" << std::endl;
 }
 // function print
 
