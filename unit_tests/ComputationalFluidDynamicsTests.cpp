@@ -35,42 +35,6 @@
 namespace Plato
 {
 
-inline std::vector<std::string>
-parse_criterion_names(Teuchos::ParameterList & aInputs)
-{
-    if(aInputs.isParameter("Functions") == false)
-    {
-        THROWERR(std::string("'Functions' keyword is not defined. ") +
-                 "The 'Functions' keyword is used to set the names of each weighted scalar function.")
-    }
-
-    std::vector<std::string> tOutput;
-    auto tNames = aInputs.get<Teuchos::Array<std::string>>("Functions").toVector();
-    for (Plato::OrdinalType tIndex = 0; tIndex < tNames.size(); tIndex++)
-    {
-        tOutput.push_back(tNames[tIndex]);
-    }
-    return tOutput;
-}
-
-inline std::vector<Plato::Scalar>
-parse_criterion_weights(Teuchos::ParameterList & aInputs)
-{
-    if(aInputs.isParameter("Weights") == false)
-    {
-        THROWERR(std::string("'Weights' keyword is not defined. ") +
-                 "The 'Weights' keyword is used to set the weight of each weighted scalar function.")
-    }
-
-    std::vector<Plato::Scalar> tOutput;
-    auto tWeights = aInputs.get<Teuchos::Array<Plato::Scalar>>("Weights").toVector();
-    for (Plato::OrdinalType tIndex = 0; tIndex < tWeights.size(); tIndex++)
-    {
-        tOutput.push_back(tWeights[tIndex]);
-    }
-    return tOutput;
-}
-
 inline Omega_h::LOs
 faces_on_non_prescribed_boundary
 (const std::vector<std::string> & aSideSetNames,
