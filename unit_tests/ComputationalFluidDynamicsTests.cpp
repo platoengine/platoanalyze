@@ -5445,7 +5445,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SolutionsStruct)
     auto tTolerance = 1e-6;
     auto tVel   = tSolution.get("velocity");
     auto tHostVel = Kokkos::create_mirror(tVel);
+    Kokkos::deep_copy(tHostVel, tVel);
     tHostGoldVel  = Kokkos::create_mirror(tGoldVel);
+    Kokkos::deep_copy(tHostGoldVel, tGoldVel);
     for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
     {
         for(auto tDof = 0; tDof < tNumVelDofs; tDof++)
@@ -5457,7 +5459,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SolutionsStruct)
     // ********** test pressure **********
     auto tPress = tSolution.get("pressure");
     auto tHostPress = Kokkos::create_mirror(tPress);
+    Kokkos::deep_copy(tHostPress, tPress);
     tHostGoldPress  = Kokkos::create_mirror(tGoldPress);
+    Kokkos::deep_copy(tHostGoldPress, tGoldPress);
     for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
     {
         for(auto tDof = 0; tDof < tNumPressDofs; tDof++)
@@ -5469,7 +5473,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SolutionsStruct)
     // ********** test temperature **********
     auto tTemp  = tSolution.get("temperature");
     auto tHostTemp = Kokkos::create_mirror(tTemp);
+    Kokkos::deep_copy(tHostTemp, tTemp);
     tHostGoldTemp  = Kokkos::create_mirror(tGoldTemp);
+    Kokkos::deep_copy(tHostGoldTemp, tGoldTemp);
     for(auto tStep = 0; tStep < tNumTimeSteps; tStep++)
     {
         for(auto tDof = 0; tDof < tNumTempDofs; tDof++)
