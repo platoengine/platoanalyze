@@ -5166,7 +5166,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
     for(auto& tName : tNames)
     {
         auto tIndex = &tName - &tNames[0];
-        TEST_EQUALITY(tName, tGoldNames[tIndex]);
+        TEST_EQUALITY(tGoldNames[tIndex], tName);
     }
 
     auto tWeights = Plato::parse_array<Plato::Scalar>("Weights", *tParams);
@@ -5174,7 +5174,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
     for(auto& tWeight : tWeights)
     {
         auto tIndex = &tWeight - &tWeights[0];
-        TEST_EQUALITY(tWeight, tGoldWeights[tIndex]);
+        TEST_EQUALITY(tGoldWeights[tIndex], tWeight);
     }
 }
 
@@ -5182,18 +5182,40 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, WorkStes)
 {
     Plato::WorkSets tWorkSets;
 
-    constexpr Plato::OrdinalType tNumCells = 1;
-    constexpr Plato::OrdinalType tNumVelDofs = 12;
+    Plato::OrdinalType tNumCells = 1;
+    Plato::OrdinalType tNumVelDofs = 12;
     Plato::ScalarMultiVector tVelWS("velocity", tNumCells, tNumVelDofs);
     Plato::blas2::fill(1.0, tVelWS);
     auto tVelPtr = std::make_shared<Plato::MetaData<Plato::ScalarMultiVector>>( tVelWS );
     tWorkSets.set("velocity", tVelPtr);
 
-    constexpr Plato::OrdinalType tNumPressDofs = 4;
+    Plato::OrdinalType tNumPressDofs = 4;
     Plato::ScalarMultiVector tPressWS("pressure", tNumCells, tNumPressDofs);
     Plato::blas2::fill(2.0, tPressWS);
     auto tPressPtr = std::make_shared<Plato::MetaData<Plato::ScalarMultiVector>>( tPressWS );
     tWorkSets.set("pressure", tPressPtr);
+
+    // TEST VALUES
+    tVelWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("velocity"));
+    TEST_EQUALITY(tNumCells, tVelWS.extent(0));
+    TEST_EQUALITY(tNumVelDofs, tVelWS.extent(1));
+    auto tHostVelWS = Kokkos::create_mirror(tVelWS);
+    Kokkos::deep_copy(tHostVelWS, tVelWS);
+    const Plato::Scalar tTol = 1e-6;
+    for(decltype(tNumVelDofs) tIndex = 0; tIndex < tNumVelDofs; tIndex++)
+    {
+        TEST_FLOATING_EQUALITY(1.0, tHostVelWS(0, tIndex), tTol);
+    }
+
+    tPressWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("pressure"));
+    TEST_EQUALITY(tNumCells, tPressWS.extent(0));
+    TEST_EQUALITY(tNumPressDofs, tPressWS.extent(1));
+    auto tHostPressWS = Kokkos::create_mirror(tPressWS);
+    Kokkos::deep_copy(tHostPressWS, tPressWS);
+    for(decltype(tNumPressDofs) tIndex = 0; tIndex < tNumPressDofs; tIndex++)
+    {
+        TEST_FLOATING_EQUALITY(2.0, tHostPressWS(0, tIndex), tTol);
+    }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
