@@ -254,7 +254,7 @@ template <typename PhysicsT>
 struct LocalOrdinalMaps
 {
     Plato::NodeCoordinate<PhysicsT::SimplexT::mNumSpatialDims> mNodeCoordinate;
-    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumControl>      mControlOrdinalMap;
+    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumControls>     mControlOrdinalMap;
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumSpatialDims>  mVectorStateOrdinalMap;
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumNodesPerCell> mScalarStateOrdinalMap;
 
