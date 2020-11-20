@@ -151,9 +151,6 @@ public:
 
     static constexpr Plato::OrdinalType mNumControls = NumControls; /*!< number of design variable fields */
 
-    static constexpr Plato::OrdinalType mNumVoigtTerms =                      /*!< number of fluid stress terms */
-        (SpaceDim == 3) ? 6 : ((SpaceDim == 2) ? 3 : (((SpaceDim == 1) ? 1 : 0)));
-
     static constexpr Plato::OrdinalType mNumMassDofsPerNode     = 1; /*!< number of continuity degrees of freedom per node */
     static constexpr Plato::OrdinalType mNumMassDofsPerCell     = mNumMassDofsPerNode * mNumNodesPerCell; /*!< number of continuity degrees of freedom per cell */
     static constexpr Plato::OrdinalType mNumEnergyDofsPerNode   = 1; /*!< number energy degrees of freedom per node */
@@ -256,7 +253,7 @@ struct LocalOrdinalMaps
     Plato::NodeCoordinate<PhysicsT::SimplexT::mNumSpatialDims> mNodeCoordinate;
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumControls>     mControlOrdinalMap;
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumSpatialDims>  mVectorStateOrdinalMap;
-    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumNodesPerCell> mScalarStateOrdinalMap;
+    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, 1 /*scalar dofs per node*/>           mScalarStateOrdinalMap;
 
     LocalOrdinalMaps(Omega_h::Mesh & aMesh) :
         mNodeCoordinate(&aMesh),
