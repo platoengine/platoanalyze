@@ -5162,7 +5162,7 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseCriterion_Names_And_Weights)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
 {
     Teuchos::RCP<Teuchos::ParameterList> tParams =
         Teuchos::getParametersFromXmlString(
@@ -5182,7 +5182,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseCriterion_Names_And_Weights)
             "  </ParameterList>"
             "</ParameterList>"
             );
-    auto tNames = Plato::parse_criterion_names(tParams.operator*());
+    auto tNames = Plato::parse_array("Functions", tParams.operator*());
 
     std::vector<std::string> tGoldNames = {"My Inlet Pressure", "My Outlet Pressure"};
     for(auto& tName : tNames)
@@ -5191,7 +5191,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseCriterion_Names_And_Weights)
         TEST_EQUALITY(tName, tGoldNames[tIndex]);
     }
 
-    auto tWeights = Plato::parse_criterion_weights(*tParams);
+    auto tWeights = Plato::parse_array("Weights", *tParams);
     std::vector<Plato::Scalar> tGoldWeights = {1.0, -1.};
     for(auto& tWeight : tWeights)
     {
