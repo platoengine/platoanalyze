@@ -131,7 +131,9 @@ sideset_names(Teuchos::ParameterList & aInputs)
     return tOutput;
 }
 
-inline std::vector<std::string> parse_array
+template <typename T>
+inline std::vector<T>
+parse_array
 (const std::string & aTag,
  const Teuchos::ParameterList & aInputs)
 {
@@ -139,10 +141,10 @@ inline std::vector<std::string> parse_array
     {
         THROWERR(std::string("Parameter with tag '") + aTag + "' in block '" + aInputs.name() + "' is not defined.")
     }
-    auto tSideSets = aInputs.get< Teuchos::Array<std::string> >(aTag);
+    auto tSideSets = aInputs.get< Teuchos::Array<T> >(aTag);
 
     auto tLength = tSideSets.size();
-    std::vector<std::string> tOutput(tLength);
+    std::vector<T> tOutput(tLength);
     for(auto & tName : tOutput)
     {
         auto tIndex = &tName - &tOutput[0];
@@ -980,7 +982,7 @@ public:
          mSpatialDomain(aDomain)
     {
         auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
-        mWallSets = Plato::parse_array("Wall", tMyCriteria);
+        mWallSets = Plato::parse_array<std::string>("Sides", tMyCriteria);
     }
 
     virtual ~AverageSurfacePressure(){}
@@ -1099,7 +1101,7 @@ public:
          mSpatialDomain(aDomain)
     {
         auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
-        mWallSets = Plato::parse_array("Wall", tMyCriteria);
+        mWallSets = Plato::parse_array<std::string>("Sides", tMyCriteria);
     }
 
     virtual ~AverageSurfaceTemperature(){}
@@ -5182,7 +5184,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
             "  </ParameterList>"
             "</ParameterList>"
             );
-    auto tNames = Plato::parse_array("Functions", tParams.operator*());
+    auto tNames = Plato::parse_array<std::string>("Functions", tParams.operator*());
 
     std::vector<std::string> tGoldNames = {"My Inlet Pressure", "My Outlet Pressure"};
     for(auto& tName : tNames)
@@ -5191,8 +5193,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
         TEST_EQUALITY(tName, tGoldNames[tIndex]);
     }
 
-    auto tWeights = Plato::parse_array("Weights", *tParams);
-    std::vector<Plato::Scalar> tGoldWeights = {1.0, -1.};
+    auto tWeights = Plato::parse_array<Plato::Scalar>("Weights", *tParams);
+    std::vector<Plato::Scalar> tGoldWeights = {1.0, -1.0};
     for(auto& tWeight : tWeights)
     {
         auto tIndex = &tWeight - &tWeights[0];
