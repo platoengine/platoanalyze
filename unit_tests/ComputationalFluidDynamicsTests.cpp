@@ -5319,11 +5319,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
             TEST_FLOATING_EQUALITY(tHostGoldScalarOrdinals(tNode, tDim), tHostScalarOrdinals(tNode, tDim), tTol);
         }
     }
-
-    /*Plato::print_array_3D(tCoords, "coordinate ordinals");
-    Plato::print_array_3D(tVectorOrdinals, "vector ordinals");
-    Plato::print_array_2D(tControlOrdinals, "control ordinals");
-    Plato::print_array_2D(tScalarOrdinals, "scalar ordinals");*/
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
