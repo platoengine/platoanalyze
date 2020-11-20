@@ -368,7 +368,7 @@ public:
         return mScalars.empty();
     }
 
-    bool defined(const std::string & aTag, std::string aMap = "vector") const
+    bool defined(const std::string & aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
         auto tScalarMapItr = mScalars.find(tLowerTag);
@@ -380,43 +380,6 @@ public:
         { return true; }
         else
         { return false; }
-
-        /*        auto tLowerMap = Plato::tolower(aMap);
-        if(tLowerMap == "vector")
-        {
-            return this->isVectorDefined(aTag);
-        }
-        else if(tLowerMap == "scalar")
-        {
-            return this->isScalarDefined(aTag);
-        }
-        else
-        {
-            THROWERR(std::string("Map '") + aMap + "' is not supported.")
-        }*/
-    }
-
-private:
-    bool isScalarDefined(const std::string & aTag) const
-    {
-        auto tLowerTag = Plato::tolower(aTag);
-        auto tItr = mScalars.find(tLowerTag);
-        if(tItr == mScalars.end())
-        {
-            return true;
-        }
-        return false;
-    }
-
-    bool isVectorDefined(const std::string & aTag) const
-    {
-        auto tLowerTag = Plato::tolower(aTag);
-        auto tItr = mVectors.find(tLowerTag);
-        if(tItr == mVectors.end())
-        {
-            return true;
-        }
-        return false;
     }
 };
 typedef States Dual;
@@ -5494,9 +5457,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     // test empty funciton
     TEST_COMPARE(tStates.defined("velocity"), ==, false);
     TEST_COMPARE(tStates.defined("temperature"), ==, true);
-    TEST_COMPARE(tStates.defined("pressure", "vector"), ==, false);
-    TEST_COMPARE(tStates.defined("step", "scalar"), ==, false);
-    TEST_COMPARE(tStates.defined("time steps", "scalar"), ==, true);
 
     // test metadata
     auto tTolerance = 1e-6;
