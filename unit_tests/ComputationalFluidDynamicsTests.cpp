@@ -174,6 +174,7 @@ public:
         auto tLowerTag = Plato::tolower(aTag);
         mSolution[tLowerTag] = aData;
     }
+
     Plato::ScalarMultiVector get(const std::string& aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
@@ -210,13 +211,14 @@ inline Type metadata(const std::shared_ptr<Plato::MetaDataBase> & aInput)
     return (dynamic_cast<Plato::MetaData<Type>&>(aInput.operator*()).mData);
 }
 
-class WorkSets
+struct WorkSets
 {
 private:
     std::unordered_map<std::string, std::shared_ptr<Plato::MetaDataBase>> mData;
 
 public:
-    WorkSets() {}
+    WorkSets(){}
+
     void set(const std::string & aName, const std::shared_ptr<Plato::MetaDataBase> & aData)
     {
         auto tLowerKey = Plato::tolower(aName);
@@ -235,6 +237,16 @@ public:
         {
             THROWERR(std::string("Did not find 'MetaData' with tag '") + aName + "'.")
         }
+    }
+
+    std::vector<std::string> tags() const
+    {
+        std::vector<std::string> tOutput;
+        for(auto& tPair : mData)
+        {
+            tOutput.push_back(tPair.first);
+        }
+        return tOutput;
     }
 };
 
@@ -5164,6 +5176,24 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
         auto tIndex = &tWeight - &tWeights[0];
         TEST_EQUALITY(tWeight, tGoldWeights[tIndex]);
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, WorkStes)
+{
+    Plato::WorkSets tWorkSets;
+
+    constexpr Plato::OrdinalType tNumCells = 1;
+    constexpr Plato::OrdinalType tNumVelDofs = 12;
+    Plato::ScalarMultiVector tVelWS("velocity", tNumCells, tNumVelDofs);
+    Plato::blas2::fill(1.0, tVelWS);
+    auto tVelPtr = std::make_shared<Plato::MetaData<Plato::ScalarMultiVector>>( tVelWS );
+    tWorkSets.set("velocity", tVelPtr);
+
+    constexpr Plato::OrdinalType tNumPressDofs = 4;
+    Plato::ScalarMultiVector tPressWS("pressure", tNumCells, tNumPressDofs);
+    Plato::blas2::fill(2.0, tPressWS);
+    auto tPressPtr = std::make_shared<Plato::MetaData<Plato::ScalarMultiVector>>( tPressWS );
+    tWorkSets.set("pressure", tPressPtr);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
