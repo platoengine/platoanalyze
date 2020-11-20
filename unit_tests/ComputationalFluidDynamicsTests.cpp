@@ -5216,6 +5216,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, WorkStes)
     {
         TEST_FLOATING_EQUALITY(2.0, tHostPressWS(0, tIndex), tTol);
     }
+
+    // TEST TAGS
+    auto tTags = tWorkSets.tags();
+    std::vector<std::string> tGoldTags = {"velocity", "pressure"};
+    for(auto& tTag : tTags)
+    {
+        auto tIndex = &tTag - &tTags[0];
+        TEST_EQUALITY(tGoldTags[tIndex], tTag);
+    }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
