@@ -320,21 +320,10 @@ template <typename PhysicsT, typename ...P> using fad_type_t = typename fad_type
 struct States
 {
 private:
-    std::string mType = "undefined";
     std::unordered_map<std::string, Plato::Scalar> mScalars;
     std::unordered_map<std::string, Plato::ScalarVector> mVectors;
 
 public:
-    decltype(mType) function() const
-    {
-        return mType;
-    }
-
-    void function(const decltype(mType)& aInput)
-    {
-        mType = aInput;
-    }
-
     Plato::Scalar scalar(const std::string& aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
@@ -379,9 +368,20 @@ public:
         return mScalars.empty();
     }
 
-    bool empty(const std::string & aTag, std::string aMap = "vector") const
+    bool defined(const std::string & aTag, std::string aMap = "vector") const
     {
-        auto tLowerMap = Plato::tolower(aMap);
+        auto tLowerTag = Plato::tolower(aTag);
+        auto tScalarMapItr = mScalars.find(tLowerTag);
+        auto tFoundScalarTag = tScalarMapItr != mScalars.end();
+        auto tVectorMapItr = mVectors.find(tLowerTag);
+        auto tFoundVectorTag = tVectorMapItr != mVectors.end();
+
+        if(!tFoundScalarTag && !tFoundVectorTag)
+        { return true; }
+        else
+        { return false; }
+
+        /*        auto tLowerMap = Plato::tolower(aMap);
         if(tLowerMap == "vector")
         {
             return this->isVectorDefined(aTag);
@@ -393,7 +393,7 @@ public:
         else
         {
             THROWERR(std::string("Map '") + aMap + "' is not supported.")
-        }
+        }*/
     }
 
 private:
@@ -810,7 +810,7 @@ vector_function_worksets
         (aDomain, aMaps.mScalarStateOrdinalMap, aState.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
 
-    if(!aState.empty("artificial compressibility"))
+    if(!aState.defined("artificial compressibility"))
     {
         auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
             ( Plato::ScalarMultiVector("artificial compressibility", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
@@ -900,7 +900,7 @@ vector_function_worksets
         (aNumCells, aMaps.mScalarStateOrdinalMap, aState.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
 
-    if(!aState.empty("artificial compressibility"))
+    if(!aState.defined("artificial compressibility"))
     {
         auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
             ( Plato::ScalarMultiVector("artificial compressibility", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
@@ -4841,8 +4841,6 @@ private:
     (const Plato::ScalarVector & aControl,
            PrimalStates        & aStates)
     {
-        aStates.function("vector function");
-
         // calculate current residual and jacobian matrix
         auto tResidualVelocity = mVelocityResidual.value(aStates);
         auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aStates);
@@ -4863,8 +4861,6 @@ private:
     (const Plato::ScalarVector & aControl,
            PrimalStates        & aStates)
     {
-        aStates.function("vector function");
-
         // calculate current residual and jacobian matrix
         auto tResidualPredictor = mPredictorResidual.value(aStates);
         auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aStates);
@@ -4885,8 +4881,6 @@ private:
     (const Plato::ScalarVector & aControl,
            PrimalStates        & aStates)
     {
-        aStates.function("scalar function");
-
         // calculate current residual and jacobian matrix
         auto tResidualPressure = mPressureResidual.value(aStates);
         auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aStates);
@@ -4907,8 +4901,6 @@ private:
     (const Plato::ScalarVector & aControl,
            PrimalStates        & aStates)
     {
-        aStates.function("scalar function");
-
         // calculate current residual and jacobian matrix
         auto tResidualTemperature = mTemperatureResidual.value(aStates);
         auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aStates);
@@ -5303,6 +5295,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     },"test");
 
     Plato::print(tCoordOrdinals, "coordinate ordinals");
+    Plato::print(tControlOrdinals, "control ordinals");
+    Plato::print(tScalarOrdinals, "scalar ordinals");
+    Plato::print(tVectorOrdinals, "vector ordinals");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
@@ -5469,11 +5464,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     TEST_COMPARE(tStates.isScalarMapEmpty(), ==, true);
     TEST_COMPARE(tStates.isVectorMapEmpty(), ==, true);
 
-    // set function type
-    tStates.function("vector function");
-    TEST_COMPARE(tStates.function(), ==, "vector function");
-    TEST_COMPARE(tStates.function(), !=, "scalar function");
-
     // set time step index
     tStates.scalar("step", 1);
     TEST_COMPARE(tStates.isScalarMapEmpty(), ==, false);
@@ -5502,11 +5492,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     tStates.vector("pressure", tGoldPress);
 
     // test empty funciton
-    TEST_COMPARE(tStates.empty("velocity"), ==, false);
-    TEST_COMPARE(tStates.empty("temperature"), ==, true);
-    TEST_COMPARE(tStates.empty("pressure", "vector"), ==, false);
-    TEST_COMPARE(tStates.empty("step", "scalar"), ==, false);
-    TEST_COMPARE(tStates.empty("time steps", "scalar"), ==, true);
+    TEST_COMPARE(tStates.defined("velocity"), ==, false);
+    TEST_COMPARE(tStates.defined("temperature"), ==, true);
+    TEST_COMPARE(tStates.defined("pressure", "vector"), ==, false);
+    TEST_COMPARE(tStates.defined("step", "scalar"), ==, false);
+    TEST_COMPARE(tStates.defined("time steps", "scalar"), ==, true);
 
     // test metadata
     auto tTolerance = 1e-6;
