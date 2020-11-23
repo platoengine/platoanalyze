@@ -250,6 +250,17 @@ public:
         }
         return tOutput;
     }
+
+    bool defined(const std::string & aTag) const
+    {
+        auto tLowerKey = Plato::tolower(aTag);
+        auto tItr = mData.find(tLowerKey);
+        auto tFound = tItr != mData.end();
+        if(!tFound)
+        { return true; }
+        else
+        { return false; }
+    }
 };
 
 template <typename PhysicsT>
@@ -5298,6 +5309,57 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
         }
     }
 }
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksetsTwo)
+{
+    constexpr Plato::OrdinalType tNumSpaceDim = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDim>;
+    using ResidualEvalT = Plato::FluidMechanics::Evaluation<PhysicsT::SimplexT>::Residual;
+
+    // set current state
+    Plato::Variables tPrimal;
+    auto tNumCells = 2;
+    auto tNumNodes = 4;
+    auto tNumVelDofs = tNumNodes * tNumSpaceDim;
+    Plato::ScalarVector tControls("controls", tNumNodes);
+    Plato::blas1::fill(0.5, tControls);
+    Plato::ScalarVector tCurPred("current predictor", tNumVelDofs);
+    Plato::blas1::fill(0.1, tCurPred);
+    tPrimal.vector("current predictor", tCurPred);
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    Plato::blas1::fill(1.0, tCurVel);
+    tPrimal.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    Plato::blas1::fill(2.0, tCurPress);
+    tPrimal.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    Plato::blas1::fill(3.0, tCurTemp);
+    tPrimal.vector("current temperature", tCurTemp);
+    Plato::ScalarVector tPrevVel("previous velocity", tNumVelDofs);
+    Plato::blas1::fill(0.8, tPrevVel);
+    tPrimal.vector("previous velocity", tPrevVel);
+    Plato::ScalarVector tPrevPress("previous pressure", tNumNodes);
+    Plato::blas1::fill(1.8, tPrevPress);
+    tPrimal.vector("previous pressure", tPrevPress);
+    Plato::ScalarVector tPrevTemp("previous temperature", tNumNodes);
+    Plato::blas1::fill(2.8, tPrevTemp);
+    tPrimal.vector("previous temperature", tPrevTemp);
+    Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
+    Plato::blas1::fill(4.0, tTimeSteps);
+    tPrimal.vector("time steps", tTimeSteps);
+
+    // set ordinal maps;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
+
+    // call build_scalar_function_worksets
+    Plato::WorkSets tWorkSets;
+    Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, ResidualEvalT>
+        (tNumCells, tControls, tPrimal, tOrdinalMaps, tWorkSets);
+    TEST_EQUALITY(tWorkSets.defined("artifical compressibility"), false);
+}
+
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
 {
