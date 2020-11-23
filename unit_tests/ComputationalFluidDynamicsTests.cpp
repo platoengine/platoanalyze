@@ -635,8 +635,8 @@ build_scalar_function_worksets
 
     using ConfigT = typename EvaluationT::ConfigScalarType;
     auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumSpatialDims) );
-    Plato::workset_config_scalar<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumNodesPerCell>
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumConfigDofsPerNode) );
+    Plato::workset_config_scalar<PhysicsT::SimplexT::mNumConfigDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
         (aDomain, aMaps.mNodeCoordinate, tConfig->mData);
     aWorkSets.set("configuration", tConfig);
 }
@@ -688,8 +688,8 @@ build_scalar_function_worksets
 
     using ConfigT = typename EvaluationT::ConfigScalarType;
     auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumSpatialDims) );
-    Plato::workset_config_scalar<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumNodesPerCell>
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumConfigDofsPerNode) );
+    Plato::workset_config_scalar<PhysicsT::SimplexT::mNumConfigDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
         (aNumCells, aMaps.mNodeCoordinate, tConfig->mData);
     aWorkSets.set("configuration", tConfig);
 }
@@ -765,8 +765,8 @@ build_vector_function_worksets
 
     using ConfigT = typename EvaluationT::ConfigScalarType;
     auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumSpatialDims) );
-    Plato::workset_config_scalar<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumNodesPerCell>
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumConfigDofsPerNode) );
+    Plato::workset_config_scalar<PhysicsT::SimplexT::mNumConfigDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
         (aDomain, aMaps.mNodeCoordinate, tConfig->mData);
     aWorkSets.set("configuration", tConfig);
 
@@ -855,8 +855,8 @@ build_vector_function_worksets
 
     using ConfigT = typename EvaluationT::ConfigScalarType;
     auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumSpatialDims) );
-    Plato::workset_config_scalar<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumNodesPerCell>
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell, PhysicsT::SimplexT::mNumConfigDofsPerNode) );
+    Plato::workset_config_scalar<PhysicsT::SimplexT::mNumConfigDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
         (aNumCells, aMaps.mNodeCoordinate, tConfig->mData);
     aWorkSets.set("configuration", tConfig);
 
