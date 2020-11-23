@@ -5171,12 +5171,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     // test time steps results
     auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("time steps"));
     TEST_EQUALITY(tNumCells, tTimeStepWS.extent(0));
-    TEST_EQUALITY(tNumNodes, tTimeStepWS.extent(1));
+    auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    TEST_EQUALITY(tNumNodesPerCell, tTimeStepWS.extent(1));
     auto tHostTimeStepWS = Kokkos::create_mirror(tTimeStepWS);
     Kokkos::deep_copy(tHostTimeStepWS, tTimeStepWS);
     for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
     {
-        for (decltype(tNumNodes) tDof = 0; tDof < tNumNodes; tDof++)
+        for (decltype(tNumNodesPerCell) tDof = 0; tDof < tNumNodesPerCell; tDof++)
         {
             TEST_FLOATING_EQUALITY(4.0, tHostTimeStepWS(tCell, tDof), tTol);
         }
@@ -5185,12 +5186,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     // test controls results
     auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ControlScalarType>>(tWorkSets.get("control"));
     TEST_EQUALITY(tNumCells, tControlWS.extent(0));
-    TEST_EQUALITY(tNumNodes, tControlWS.extent(1));
+    TEST_EQUALITY(tNumNodesPerCell, tControlWS.extent(1));
     auto tHostControlWS = Kokkos::create_mirror(tControlWS);
     Kokkos::deep_copy(tHostControlWS, tControlWS);
     for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
     {
-        for (decltype(tNumNodes) tDof = 0; tDof < tNumNodes; tDof++)
+        for (decltype(tNumNodesPerCell) tDof = 0; tDof < tNumNodesPerCell; tDof++)
         {
             TEST_FLOATING_EQUALITY(0.5, tHostControlWS(tCell, tDof), tTol);
         }
