@@ -183,7 +183,7 @@ public:
         auto tItr = mSolution.find(tLowerTag);
         if(tItr == mSolution.end())
         {
-            THROWERR(std::string("Did not find array with tag '") + aTag + "' in solution map.")
+            THROWERR(std::string("Solution with tag '") + aTag + "' is not defined in the solution map.")
         }
         return tItr->second;
     }
@@ -281,7 +281,7 @@ public:
         auto tItr = mScalars.find(tLowerTag);
         if(tItr == mScalars.end())
         {
-            THROWERR(std::string("State scalar with tag '") + aTag + "' is not defined in state map.")
+            THROWERR(std::string("Scalar with tag '") + aTag + "' is not defined in the variables map.")
         }
         return tItr->second;
     }
@@ -298,7 +298,7 @@ public:
         auto tItr = mVectors.find(tLowerTag);
         if(tItr == mVectors.end())
         {
-            THROWERR(std::string("State with tag '") + aTag + "' is not defined in state map.")
+            THROWERR(std::string("Vector with tag '") + aTag + "' is not defined in the variables map.")
         }
         return tItr->second;
     }
@@ -5116,6 +5116,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     tPrimal.vector("current pressure", tCurPress);
     Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
     Plato::blas1::fill(3.0, tCurTemp);
+    tPrimal.vector("current temperature", tCurTemp);
     Plato::ScalarVector tPrevVel("previous velocity", tNumVelDofs);
     Plato::blas1::fill(0.8, tPrevVel);
     tPrimal.vector("previous velocity", tPrevVel);
