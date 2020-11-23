@@ -787,7 +787,7 @@ build_vector_function_worksets
         (aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
 
-    if(!aVariables.defined("artificial compressibility"))
+    if(aVariables.defined("artificial compressibility"))
     {
         auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
             ( Plato::ScalarMultiVector("artificial compressibility", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
@@ -877,7 +877,7 @@ build_vector_function_worksets
         (aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
 
-    if(!aVariables.defined("artificial compressibility"))
+    if(aVariables.defined("artificial compressibility"))
     {
         auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
             ( Plato::ScalarMultiVector("artificial compressibility", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
