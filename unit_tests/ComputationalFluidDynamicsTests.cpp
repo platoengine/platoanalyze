@@ -5190,7 +5190,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     // test previous velocity results
     auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::PreviousMomentumScalarType>>(tWorkSets.get("previous velocity"));
     TEST_EQUALITY(tNumCells, tPrevVelWS.extent(0));
-    auto tNumVelDofsPerCell = PhysicsT::mNumMomentumDofsPerCell;
     TEST_EQUALITY(tNumVelDofsPerCell, tPrevVelWS.extent(1));
     auto tHostPrevVelWS = Kokkos::create_mirror(tPrevVelWS);
     Kokkos::deep_copy(tHostPrevVelWS, tPrevVelWS);
@@ -5205,7 +5204,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     // test previous pressure results
     auto tPrevPressWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::PreviousMassScalarType>>(tWorkSets.get("previous pressure"));
     TEST_EQUALITY(tNumCells, tPrevPressWS.extent(0));
-    auto tNumPressDofsPerCell = PhysicsT::mNumMassDofsPerCell;
     TEST_EQUALITY(tNumPressDofsPerCell, tPrevPressWS.extent(1));
     auto tHostPrevPressWS = Kokkos::create_mirror(tPrevPressWS);
     Kokkos::deep_copy(tHostPrevPressWS, tPrevPressWS);
@@ -5220,7 +5218,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     // test previous temperature results
     auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::PreviousEnergyScalarType>>(tWorkSets.get("previous temperature"));
     TEST_EQUALITY(tNumCells, tPrevTempWS.extent(0));
-    auto tNumTempDofsPerCell = PhysicsT::mNumEnergyDofsPerCell;
     TEST_EQUALITY(tNumTempDofsPerCell, tPrevTempWS.extent(1));
     auto tHostPrevTempWS = Kokkos::create_mirror(tPrevTempWS);
     Kokkos::deep_copy(tHostPrevTempWS, tPrevTempWS);
@@ -5250,7 +5247,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     // test artificial compressibility results
     auto tArtCompressWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("artificial compressibility"));
     TEST_EQUALITY(tNumCells, tArtCompressWS.extent(0));
-    auto tNumNodesPerCell = PhysicsT::mNumNodesPerCell;
     TEST_EQUALITY(tNumNodesPerCell, tArtCompressWS.extent(1));
     auto tHostArtCompressWS = Kokkos::create_mirror(tArtCompressWS);
     Kokkos::deep_copy(tHostArtCompressWS, tArtCompressWS);
