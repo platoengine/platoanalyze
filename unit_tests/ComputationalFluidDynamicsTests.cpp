@@ -5124,13 +5124,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     // test results
     auto tCurVelWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::CurrentMomentumScalarType>>(tWorkSets.get("current velocity"));
     TEST_EQUALITY(tNumCells, tCurVelWS.extent(0));
-    TEST_EQUALITY(PhysicsT::mNumMomentumDofsPerCell, tCurVelWS.extent(1));
+    auto tNumVelDofsPerCell = PhysicsT::mNumMomentumDofsPerCell;
+    TEST_EQUALITY(tNumVelDofsPerCell, tCurVelWS.extent(1));
     auto tHostCurVelWS = Kokkos::create_mirror(tCurVelWS);
     Kokkos::deep_copy(tHostCurVelWS, tCurVelWS);
     const Plato::Scalar tTol = 1e-6;
     for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
     {
-        for (decltype(tNumVelDofs) tDof = 0; tDof < tNumVelDofs; tDof++)
+        for (decltype(tNumVelDofsPerCell) tDof = 0; tDof < tNumVelDofsPerCell; tDof++)
         {
             TEST_FLOATING_EQUALITY(1.0, tHostCurVelWS(tCell, tDof), tTol);
         }
