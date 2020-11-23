@@ -5099,6 +5099,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     auto tNumNodes = 4;
     auto tNumVelDofs = tNumNodes * tNumSpaceDim;
     Plato::ScalarVector tControls("controls", tNumNodes);
+    Plato::blas1::fill(0.5, tControls);
     Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
     Plato::blas1::fill(1.0, tCurVel);
     tPrimal.vector("current velocity", tCurVel);
@@ -5121,7 +5122,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, ResidualEvalT>
         (tNumCells, tControls, tPrimal, tOrdinalMaps, tWorkSets);
 
-    // test results
+    // test current velocity results
     auto tCurVelWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::CurrentMomentumScalarType>>(tWorkSets.get("current velocity"));
     TEST_EQUALITY(tNumCells, tCurVelWS.extent(0));
     auto tNumVelDofsPerCell = PhysicsT::mNumMomentumDofsPerCell;
@@ -5136,6 +5137,80 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
             TEST_FLOATING_EQUALITY(1.0, tHostCurVelWS(tCell, tDof), tTol);
         }
     }
+
+    // test current pressure results
+    auto tCurPressWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::CurrentMassScalarType>>(tWorkSets.get("current pressure"));
+    TEST_EQUALITY(tNumCells, tCurPressWS.extent(0));
+    auto tNumPressDofsPerCell = PhysicsT::mNumMassDofsPerCell;
+    TEST_EQUALITY(tNumPressDofsPerCell, tCurPressWS.extent(1));
+    auto tHostCurPressWS = Kokkos::create_mirror(tCurPressWS);
+    Kokkos::deep_copy(tHostCurPressWS, tCurPressWS);
+    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (decltype(tNumPressDofsPerCell) tDof = 0; tDof < tNumPressDofsPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(2.0, tHostCurPressWS(tCell, tDof), tTol);
+        }
+    }
+
+    // test current temperature results
+    auto tCurTempWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::CurrentEnergyScalarType>>(tWorkSets.get("current temperature"));
+    TEST_EQUALITY(tNumCells, tCurTempWS.extent(0));
+    auto tNumTempDofsPerCell = PhysicsT::mNumEnergyDofsPerCell;
+    TEST_EQUALITY(tNumTempDofsPerCell, tCurTempWS.extent(1));
+    auto tHostCurTempWS = Kokkos::create_mirror(tCurTempWS);
+    Kokkos::deep_copy(tHostCurTempWS, tCurTempWS);
+    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (decltype(tNumTempDofsPerCell) tDof = 0; tDof < tNumTempDofsPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(3.0, tHostCurTempWS(tCell, tDof), tTol);
+        }
+    }
+
+    // test time steps results
+    auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("time steps"));
+    TEST_EQUALITY(tNumCells, tTimeStepWS.extent(0));
+    TEST_EQUALITY(tNumNodes, tTimeStepWS.extent(1));
+    auto tHostTimeStepWS = Kokkos::create_mirror(tTimeStepWS);
+    Kokkos::deep_copy(tHostTimeStepWS, tTimeStepWS);
+    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (decltype(tNumNodes) tDof = 0; tDof < tNumNodes; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(4.0, tHostTimeStepWS(tCell, tDof), tTol);
+        }
+    }
+
+    // test controls results
+    auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ControlScalarType>>(tWorkSets.get("control"));
+    TEST_EQUALITY(tNumCells, tControlWS.extent(0));
+    TEST_EQUALITY(tNumNodes, tControlWS.extent(1));
+    auto tHostControlWS = Kokkos::create_mirror(tControlWS);
+    Kokkos::deep_copy(tHostControlWS, tControlWS);
+    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (decltype(tNumNodes) tDof = 0; tDof < tNumNodes; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(0.5, tHostControlWS(tCell, tDof), tTol);
+        }
+    }
+
+    // test configuration results
+    auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ResidualEvalT::ConfigScalarType>>(tWorkSets.get("configuration"));
+    TEST_EQUALITY(tNumCells, tConfigWS.extent(0));
+    auto tNumConfigDofsPerCell = PhysicsT::mNumNodesPerCell * tNumSpaceDim;
+    TEST_EQUALITY(tNumConfigDofsPerCell, tConfigWS.extent(1));
+    auto tHostConfigWS = Kokkos::create_mirror(tConfigWS);
+    Kokkos::deep_copy(tHostConfigWS, tConfigWS);
+    Plato::print_array_3D(tConfigWS, "configuration");
+    /*for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (decltype(tNumConfigDofsPerCell) tDof = 0; tDof < tNumConfigDofsPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(0.5, tHostControlWS(tCell, tDof), tTol);
+        }
+    }*/
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
