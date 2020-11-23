@@ -338,7 +338,7 @@ public:
         auto tVectorMapItr = mVectors.find(tLowerTag);
         auto tFoundVectorTag = tVectorMapItr != mVectors.end();
 
-        if(!tFoundScalarTag && !tFoundVectorTag)
+        if(tFoundScalarTag || tFoundVectorTag)
         { return true; }
         else
         { return false; }
