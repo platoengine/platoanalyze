@@ -5205,7 +5205,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     // test configuration results
     auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ResidualEvalT::ConfigScalarType>>(tWorkSets.get("configuration"));
     TEST_EQUALITY(tNumCells, tConfigWS.extent(0));
-    auto tNumNodesPerNode = PhysicsT::mNumNodesPerCell;
     TEST_EQUALITY(tNumNodesPerCell, tConfigWS.extent(1));
     auto tNumConfigDofsPerNode = PhysicsT::mNumConfigDofsPerNode;
     TEST_EQUALITY(tNumConfigDofsPerNode, tConfigWS.extent(2));
