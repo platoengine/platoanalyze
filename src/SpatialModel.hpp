@@ -166,6 +166,18 @@ public:
 
     /******************************************************************************//**
      * \brief Constructor for Plato::SpatialModel base class
+     * \param [in] aMesh     Default mesh
+     * \param [in] aMeshSets mesh sets (nodesets, sidesets)
+     **********************************************************************************/
+    SpatialModel
+    (Omega_h::Mesh     & aMesh,
+     Omega_h::MeshSets & aMeshSets) :
+         Mesh(aMesh),
+         MeshSets(aMeshSets)
+    {}
+
+    /******************************************************************************//**
+     * \brief Constructor for Plato::SpatialModel base class
      * \param [in] aMesh Default mesh
      * \param [in] aMeshSets mesh sets (nodesets, sidesets)
      * \param [in] aInputParams Spatial model definition
@@ -204,6 +216,16 @@ public:
             THROWERR("Parsing 'Plato Problem'. Required 'Spatial Model' list not found");
         }
     }
+
+    /******************************************************************************//**
+     * \brief Append spatial domain to spatial model.
+     * \param [in] aDomain Spatial domain
+     **********************************************************************************/
+    void append(Plato::SpatialDomain & aDomain)
+    {
+        Domains.push_back(aDomain);
+    }
+
 };
 // class SpatialModel
 

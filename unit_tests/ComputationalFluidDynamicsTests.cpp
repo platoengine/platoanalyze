@@ -1245,14 +1245,14 @@ private:
 
 public:
     PhysicsScalarFunction
-    (const Plato::SpatialModel & aSpatialModel,
-     Plato::DataMap & aDataMap,
+    (Plato::SpatialModel    & aModel,
+     Plato::DataMap         & aDataMap,
      Teuchos::ParameterList & aInputs,
-     std::string & aName):
+     std::string            & aName):
         mFuncName(aName),
-        mSpatialModel(aSpatialModel),
+        mSpatialModel(aModel),
         mDataMap(aDataMap),
-        mLocalOrdinalMaps(aSpatialModel.Mesh)
+        mLocalOrdinalMaps(aModel.Mesh)
     {
         this->initialize(aInputs);
     }
@@ -1293,7 +1293,7 @@ public:
             Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, ResidualEvalT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
+            Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mResidualFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
 
             tReturnValue += Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
@@ -1333,7 +1333,7 @@ public:
             Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradConfigEvalT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
+            Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mGradConfigFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>
@@ -1374,7 +1374,7 @@ public:
             Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradControlEvalT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
+            Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mGradControlFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlsPerNode>
@@ -1415,7 +1415,7 @@ public:
             Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradCurPressEvalT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
+            Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mGradCurrentPressureFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMassDofsPerNode>
@@ -1456,7 +1456,7 @@ public:
             Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradCurTempEvalT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
+            Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mGradCurrentTemperatureFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumEnergyDofsPerNode>
@@ -1497,7 +1497,7 @@ public:
             Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradCurVelEvalT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
-            Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
+            Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mGradCurrentVelocityFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMomentumDofsPerNode>
@@ -5111,11 +5111,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
             "</ParameterList>"
             );
 
-    // build mesh and spatial domain
+    // build mesh, spatial domain, and spatial model
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
+    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
+    tModel.append(tDomain);
 
     // set current state
     Plato::Variables tPrimal;
@@ -5143,7 +5145,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
 
     // build criterion
     Plato::DataMap tDataMap;
-    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT> tCriterion(tDomain, tDataMap, tInputs, "My Criteria");
+    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT> tCriterion(tModel, tDataMap, tInputs, "My Criteria");
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
     // test criterion value
