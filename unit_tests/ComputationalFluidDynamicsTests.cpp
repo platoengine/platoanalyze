@@ -256,7 +256,7 @@ public:
         auto tLowerKey = Plato::tolower(aTag);
         auto tItr = mData.find(tLowerKey);
         auto tFound = tItr != mData.end();
-        if(!tFound)
+        if(tFound)
         { return true; }
         else
         { return false; }
