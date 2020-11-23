@@ -5116,10 +5116,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test)
     for(auto& tPair : tSideSets)
     {
         std::cout << "Side Set name '" << tPair.first << "'\n";
-        for(Plato::OrdinalType tOrdinal = 0; tOrdinal < tPair.second.size(); tOrdinal++)
+        auto tOrdinals = tPair.second;
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tOrdinals.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
         {
-            std::cout << "X(" << tOrdinal << ") = " << tPair.second[tOrdinal] << "\n";
-        }
+            printf("X(%d) = %d\n", aOrdinal, tOrdinals[aOrdinal]);
+        }, "print");
     }
 }
 
