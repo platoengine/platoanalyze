@@ -5143,9 +5143,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     Plato::blas1::fill(0.01, tTimeSteps);
     tPrimal.vector("time steps", tTimeSteps);
 
+    // set physics type
+    constexpr Plato::OrdinalType tNumSpaceDim = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDim>;
+
     // build criterion
     Plato::DataMap tDataMap;
-    Plato::FluidMechanics::PhysicsScalarFunction tCriterion(tDomain, tDataMap, tInputs, "My Criteria");
+    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT> tCriterion(tDomain, tDataMap, tInputs, "My Criteria");
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
     // test criterion value
