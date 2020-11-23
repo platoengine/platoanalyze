@@ -9,6 +9,7 @@
 #include <unordered_map>
 
 #include <Omega_h_mark.hpp>
+#include <Omega_h_assoc.hpp>
 #include <Omega_h_shape.hpp>
 #include <Omega_h_array_ops.hpp>
 
@@ -5102,6 +5103,25 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Test)
+{
+    Plato::OrdinalType tNumSpaceDim = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tAssoc = Omega_h::get_box_assoc(tNumSpaceDim);
+    const auto tMeshSets = Omega_h::invert(&tMesh.operator*(), tAssoc);
+    const auto tSideSets = tMeshSets[Omega_h::SIDE_SET];
+    const auto tElemSets = tMeshSets[Omega_h::ELEM_SET];
+
+    for(auto& tPair : tSideSets)
+    {
+        std::cout << "Side Set name '" << tPair.first << "'\n";
+        for(Plato::OrdinalType tOrdinal = 0; tOrdinal < tPair.second.size(); tOrdinal++)
+        {
+            std::cout << "X(" << tOrdinal << ") = " << tPair.second[tOrdinal] << "\n";
+        }
+    }
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
 {
