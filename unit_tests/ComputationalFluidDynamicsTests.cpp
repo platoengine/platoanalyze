@@ -5917,8 +5917,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StatesStruct)
     tStates.vector("pressure", tGoldPress);
 
     // test empty funciton
-    TEST_COMPARE(tStates.defined("velocity"), ==, false);
-    TEST_COMPARE(tStates.defined("temperature"), ==, true);
+    TEST_COMPARE(tStates.defined("velocity"), ==, true);
+    TEST_COMPARE(tStates.defined("temperature"), ==, false);
 
     // test metadata
     auto tTolerance = 1e-6;
