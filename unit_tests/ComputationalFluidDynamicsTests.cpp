@@ -5211,14 +5211,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     TEST_EQUALITY(tNumConfigDofsPerNode, tConfigWS.extent(2));
     auto tHostConfigWS = Kokkos::create_mirror(tConfigWS);
     Kokkos::deep_copy(tHostConfigWS, tConfigWS);
-    Plato::print_array_3D(tConfigWS, "configuration");
-    /*for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
+    Plato::ScalarArray3D tGoldConfigWS("gold configuration", tNumCells, tNumNodesPerCell, tNumConfigDofsPerNode);
+    auto tHostGoldConfigWS = Kokkos::create_mirror(tGoldConfigWS);
+    tHostGoldConfigWS(0,0,0) = 0; tHostGoldConfigWS(0,1,0) = 1; tHostGoldConfigWS(0,2,0) = 1;
+    tHostGoldConfigWS(1,0,0) = 1; tHostGoldConfigWS(1,1,0) = 0; tHostGoldConfigWS(1,2,0) = 0;
+    tHostGoldConfigWS(0,0,1) = 0; tHostGoldConfigWS(0,1,1) = 0; tHostGoldConfigWS(0,2,1) = 1;
+    tHostGoldConfigWS(1,0,1) = 1; tHostGoldConfigWS(1,1,1) = 1; tHostGoldConfigWS(1,2,1) = 0;
+    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
     {
-        for (decltype(tNumConfigDofsPerCell) tDof = 0; tDof < tNumConfigDofsPerCell; tDof++)
+        for (decltype(tNumNodesPerCell) tNode = 0; tNode < tNumNodesPerCell; tNode++)
         {
-            TEST_FLOATING_EQUALITY(0.5, tHostControlWS(tCell, tDof), tTol);
+            for (decltype(tNumConfigDofsPerNode) tDof = 0; tDof < tNumConfigDofsPerNode; tDof++)
+            {
+                TEST_FLOATING_EQUALITY(tHostGoldConfigWS(tCell, tNode, tDof), tHostConfigWS(tCell, tNode, tDof), tTol);
+            }
         }
-    }*/
+    }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
