@@ -5205,7 +5205,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     // test configuration results
     auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ResidualEvalT::ConfigScalarType>>(tWorkSets.get("configuration"));
     TEST_EQUALITY(tNumCells, tConfigWS.extent(0));
-    auto tNumConfigDofsPerCell = PhysicsT::mNumNodesPerCell * tNumSpaceDim;
+    auto tNumConfigDofsPerCell = PhysicsT::mNumConfigDofsPerCell;
     TEST_EQUALITY(tNumConfigDofsPerCell, tConfigWS.extent(1));
     auto tHostConfigWS = Kokkos::create_mirror(tConfigWS);
     Kokkos::deep_copy(tHostConfigWS, tConfigWS);
