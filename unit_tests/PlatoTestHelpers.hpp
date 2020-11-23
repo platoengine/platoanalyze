@@ -45,7 +45,7 @@ namespace PlatoUtestHelpers
  * \return collection of element, side, and node sets
 *******************************************************************************/
 Omega_h::MeshSets
-get_box_mesh_sets
+inline get_box_mesh_sets
 (Omega_h::Mesh & aMesh)
 {
     auto tNumSpaceDim = aMesh.dim();
@@ -69,7 +69,7 @@ get_box_mesh_sets
  * \return side set
 *******************************************************************************/
 Omega_h::MeshDimSets
-get_box_node_sets
+inline get_box_node_sets
 (Omega_h::Mesh & aMesh)
 {
     auto tNumSpaceDim = aMesh.dim();
@@ -94,7 +94,7 @@ get_box_node_sets
  * \return side set
 *******************************************************************************/
 Omega_h::MeshDimSets
-get_box_side_sets
+inline get_box_side_sets
 (Omega_h::Mesh & aMesh)
 {
     auto tNumSpaceDim = aMesh.dim();
@@ -119,7 +119,7 @@ get_box_side_sets
  * \return element set
 *******************************************************************************/
 Omega_h::MeshDimSets
-get_box_elem_sets
+inline get_box_elem_sets
 (Omega_h::Mesh & aMesh)
 {
     auto tNumSpaceDim = aMesh.dim();

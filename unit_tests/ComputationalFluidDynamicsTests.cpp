@@ -930,7 +930,7 @@ private:
     const Plato::SpatialDomain& mSpatialDomain;
 
     // member parameters
-    std::vector<std::string> mWallSets;
+    std::vector<std::string> mSideSets;
 
 public:
     AverageSurfacePressure
@@ -943,7 +943,7 @@ public:
          mSpatialDomain(aDomain)
     {
         auto tMyCriteria = aInputs.sublist("Criteria").sublist(aName);
-        mWallSets = Plato::parse_array<std::string>("Sides", tMyCriteria);
+        mSideSets = Plato::parse_array<std::string>("Sides", tMyCriteria);
     }
 
     virtual ~AverageSurfacePressure(){}
@@ -981,7 +981,7 @@ public:
         auto tConfigurationWS   = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tCurrentPressureWS = Plato::metadata<Plato::ScalarMultiVectorT<PressureT>>(aWorkSets.get("current pressure"));
 
-        for(auto& tName : mWallSets)
+        for(auto& tName : mSideSets)
         {
             // get faces on this side set
             auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
@@ -5103,6 +5103,57 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
+{
+    // set inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList  name='Criteria'>"
+            "  <ParameterList name='My Criteria'>"
+            "    <Parameter  name='Type'                 type='string'        value='Scalar Function'/>"
+            "    <Parameter  name='Sides'                type='Array(string)' value='{x+}'/>"
+            "    <Parameter  name='Scalar Function Type' type='string'        value='Average Surface Pressure'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh and spatial domain
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // set current state
+    Plato::Variables tPrimal;
+    auto tNumCells = tMesh->nelems();
+    auto tNumNodes = tMesh->nverts();
+    auto tNumVelDofs = tNumNodes * tMesh->dim();
+    Plato::ScalarVector tControl("controls", tNumNodes);
+    Plato::blas1::fill(0.5, tControl);
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    Plato::blas1::fill(1.0, tCurVel);
+    tPrimal.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    Plato::blas1::fill(0.1, tCurPress);
+    tPrimal.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    Plato::blas1::fill(1.5, tCurTemp);
+    tPrimal.vector("current temperature", tCurTemp);
+    Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
+    Plato::blas1::fill(0.01, tTimeSteps);
+    tPrimal.vector("time steps", tTimeSteps);
+
+    // build criterion
+    Plato::DataMap tDataMap;
+    Plato::FluidMechanics::PhysicsScalarFunction tCriterion(tDomain, tDataMap, tInputs, "My Criteria");
+    TEST_EQUALITY("My Criteria", tCriterion.name());
+
+    // test criterion value
+    auto tTol = 1e-6;
+    auto tValue = tCriterion.value(tControl, tPrimal);
+    TEST_FLOATING_EQUALITY(0., tValue, tTol);
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDomain)
 {
     // build mesh and spatial domain
@@ -5136,12 +5187,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDoma
     Plato::blas1::fill(4.0, tTimeSteps);
     tPrimal.vector("time steps", tTimeSteps);
 
-    // set ordinal maps;
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
-
     // call build_scalar_function_worksets
     Plato::WorkSets tWorkSets;
+    Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
     Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, ResidualEvalT>
         (tDomain, tControls, tPrimal, tOrdinalMaps, tWorkSets);
 
@@ -5294,12 +5342,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
     Plato::blas1::fill(5.0, tArtCompress);
     tPrimal.vector("artificial compressibility", tArtCompress);
 
-    // set ordinal maps;
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
-
     // call build_scalar_function_worksets
     Plato::WorkSets tWorkSets;
+    Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
     Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, ResidualEvalT>
         (tNumCells, tControls, tPrimal, tOrdinalMaps, tWorkSets);
 
