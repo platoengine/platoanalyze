@@ -1204,7 +1204,7 @@ class PhysicsScalarFunction : public Plato::FluidMechanics::CriterionBase
 private:
     std::string mFuncName;
 
-    static constexpr auto mNumControlsPerNode     = PhysicsT::SimplexT::mNumControl;             /*!< number of design variable fields */
+    static constexpr auto mNumControlsPerNode     = PhysicsT::SimplexT::mNumControls;            /*!< number of design variable fields */
     static constexpr auto mNumSpatialDims         = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerCell        = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
     static constexpr auto mNumMassDofsPerCell     = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of mass dofs per cell */
@@ -1269,8 +1269,7 @@ public:
      const Plato::Primal & aVariables) const
     {
         using ResultScalarT = typename ResidualEvalT::ResultScalarType;
-
-        ResidualEvalT tReturnValue(0.0);
+        ResultScalarT tReturnValue(0.0);
 
         // evaluate internal domain
         for(const auto& tDomain : mSpatialModel.Domains)
@@ -1308,7 +1307,6 @@ public:
      const Plato::Primal & aVariables) const
     {
         using ResultScalarT = typename GradConfigEvalT::ResultScalarType;
-
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradient("gradient wrt configuration", mNumSpatialDims * tNumNodes);
 
@@ -1350,7 +1348,6 @@ public:
      const Plato::Primal & aVariables) const
     {
         using ResultScalarT = typename GradControlEvalT::ResultScalarType;
-
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradient("gradient wrt control", mNumControlsPerNode * tNumNodes);
 
@@ -1392,7 +1389,6 @@ public:
      const Plato::Primal & aVariables) const
     {
         using ResultScalarT = typename GradCurPressEvalT::ResultScalarType;
-
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradient("gradient wrt current pressure state", mNumMassDofsPerNode * tNumNodes);
 
@@ -1434,7 +1430,6 @@ public:
      const Plato::Primal & aVariables) const
     {
         using ResultScalarT = typename GradCurTempEvalT::ResultScalarType;
-
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradient("gradient wrt current temperature state", mNumEnergyDofsPerNode * tNumNodes);
 
@@ -1476,7 +1471,6 @@ public:
      const Plato::Primal & aVariables) const
     {
         using ResultScalarT = typename GradCurVelEvalT::ResultScalarType;
-
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradient("gradient wrt current velocity state", mNumMomentumDofsPerNode * tNumNodes);
 
@@ -3113,8 +3107,8 @@ private:
 
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
-    static constexpr auto mNumControlsPerNode   = PhysicsT::SimplexT::mNumControl;             /*!< number of design variable fields */
-    static constexpr auto mNumControlsPerCell   = mNumControlsPerNode * mNumNodesPerCell;       /*!< number of design variable fields */
+    static constexpr auto mNumControlsPerNode   = PhysicsT::SimplexT::mNumControls;            /*!< number of design variable fields */
+    static constexpr auto mNumControlsPerCell   = mNumControlsPerNode * mNumNodesPerCell;      /*!< number of design variable fields */
     static constexpr auto mNumPressDofsPerCell  = PhysicsT::SimplexT::mNumMassDofsPerCell;     /*!< number of mass dofs per cell */
     static constexpr auto mNumTempDofsPerCell   = PhysicsT::SimplexT::mNumEnergyDofsPerCell;   /*!< number of energy dofs per cell */
     static constexpr auto mNumVelDofsPerCell    = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of momentum dofs per cell */
@@ -3902,7 +3896,7 @@ private:
     static constexpr auto mNumPressDofsPerNode = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
     static constexpr auto mNumTempDofsPerNode  = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
     static constexpr auto mNumVelDofsPerNode   = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
-    static constexpr auto mNumControlsPerNode  = PhysicsT::SimplexT::mNumControl;             /*!< number of design variables per node */
+    static constexpr auto mNumControlsPerNode  = PhysicsT::SimplexT::mNumControls;            /*!< number of design variables per node */
 
     // set local typenames
     using Criterion    = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
