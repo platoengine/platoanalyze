@@ -5105,12 +5105,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList  name='Criteria'>"
-            "  <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
-            "  <ParameterList name='My Criteria'>"
-            "    <Parameter  name='Type'                 type='string'        value='Scalar Function'/>"
-            "    <Parameter  name='Sides'                type='Array(string)' value='{x+}'/>"
-            "    <Parameter  name='Scalar Function Type' type='string'        value='Average Surface Pressure'/>"
+            "<ParameterList name='Problem'>"
+            "  <ParameterList  name='Criteria'>"
+            "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
+            "    <ParameterList name='My Criteria'>"
+            "      <Parameter  name='Type'                 type='string'        value='Scalar Function'/>"
+            "      <Parameter  name='Sides'                type='Array(string)' value='{x+}'/>"
+            "      <Parameter  name='Scalar Function Type' type='string'        value='Average Surface Pressure'/>"
+            "    </ParameterList>"
             "  </ParameterList>"
             "</ParameterList>"
             );
