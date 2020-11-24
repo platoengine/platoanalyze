@@ -5159,7 +5159,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     // test criterion value
     auto tTol = 1e-6;
     auto tValue = tCriterion.value(tControl, tPrimal);
-    TEST_FLOATING_EQUALITY(0., tValue, tTol);
+    TEST_FLOATING_EQUALITY(0.1, tValue, tTol);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDomain)
