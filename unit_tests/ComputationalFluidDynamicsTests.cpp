@@ -3859,7 +3859,7 @@ public:
             THROWERR(std::string("'Scalar Function Type' keyword is not defined in Criterion with name '") + aName + "'.")
         }
 
-        auto tTag = tCriterion.get<std::string>("Scalar Function Type");
+        auto tTag = tCriterion.get<std::string>("Scalar Function Type", "Not Defined");
         auto tLowerTag = Plato::tolower(tTag);
         if( tLowerTag == "average surface pressure" )
         {
