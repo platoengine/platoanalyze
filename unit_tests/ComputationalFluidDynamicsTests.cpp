@@ -1013,10 +1013,8 @@ public:
                     {
                         for( Plato::OrdinalType tDof=0; tDof < mNumPressDofsPerNode; tDof++)
                         {
-                            auto tDofOrdinal = tLocalNodeOrdinals[tNode] * mNumPressDofsPerNode + tDof;
-                            aResult(tCellOrdinal, tDofOrdinal) += tBasisFunctions(tNode) *
+                            aResult(tCellOrdinal) += tBasisFunctions(tNode) *
                                 tCurrentPressGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
-                            printf("aResult(%d,%d) = %f\n", tCellOrdinal, tDofOrdinal, aResult(tCellOrdinal, tDofOrdinal));
                         }
                     }
                 }
@@ -1133,8 +1131,7 @@ public:
                     {
                         for( Plato::OrdinalType tDof=0; tDof < mNumPressDofsPerNode; tDof++)
                         {
-                            auto tDofOrdinal = tLocalNodeOrd[tNode] * mNumPressDofsPerNode + tDof;
-                            aResult(tCellOrdinal, tDofOrdinal) += tBasisFunctions(tNode) *
+                            aResult(tCellOrdinal) += tBasisFunctions(tNode) *
                                 tCurrentTempGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
                         }
                     }
@@ -5227,7 +5224,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
 
     for(Plato::OrdinalType tIndex = 0; tIndex < tGradX.size(); tIndex++)
     {
-        std::cout << "tHostGradCurPress(" << tIndex << ") = " << tHostGradX(tIndex);
+        std::cout << "tHostGradCurPress(" << tIndex << ") = " << tHostGradX(tIndex) << "\n";
     }
 }
 
