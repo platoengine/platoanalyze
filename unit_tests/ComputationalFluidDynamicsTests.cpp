@@ -1439,7 +1439,7 @@ public:
         auto tNumCells = mSpatialModel.Mesh.nelems();
         using ControlT = typename GradControlEvalT::ControlScalarType;
         Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-        Plato::workset_state_scalar_scalar<mNumEnergyDofsPerNode, mNumNodesPerCell>
+        Plato::workset_state_scalar_fad<mNumEnergyDofsPerNode, mNumNodesPerCell, ControlT>
             (tNumCells, mLocalOrdinalMaps.mScalarStateOrdinalMap, aControls, tControlWS);
         Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
         mGradControlFuncs.begin()->second->evaluate(tControlWS, tResultWS);
