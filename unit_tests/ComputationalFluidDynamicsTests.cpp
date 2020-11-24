@@ -5445,7 +5445,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     TEST_FLOATING_EQUALITY(0.1, tValue, tTol);
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradControl)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradConfig)
 {
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
@@ -5503,7 +5503,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradControl)
 
     // test criterion value
     auto tTol = 1e-6;
-    auto tGradX = tCriterion.gradientControl(tControl, tPrimal);
+    auto tGradX = tCriterion.gradientConfig(tControl, tPrimal);
     auto tHostGradX = Kokkos::create_mirror(tGradX);
     Kokkos::deep_copy(tHostGradX, tGradX);
 }
