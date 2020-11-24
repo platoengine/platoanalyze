@@ -710,7 +710,7 @@ public:
      const Plato::ScalarVector               & aInput,
      Plato::ScalarMultiVectorT<EnergyFad>    & aOutput)
     {
-        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumEnergyDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, MomentumFad>
+        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumEnergyDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, EnergyFad>
             (aDomain, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
     }
 
@@ -720,7 +720,7 @@ public:
      const Plato::ScalarVector               & aInput,
      Plato::ScalarMultiVectorT<EnergyFad>    & aOutput)
     {
-        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumEnergyDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, MomentumFad>
+        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumEnergyDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, EnergyFad>
             (aNumCells, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
     }
 
@@ -730,7 +730,7 @@ public:
      const Plato::ScalarVector               & aInput,
      Plato::ScalarMultiVectorT<MassFad>      & aOutput)
     {
-        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumMassDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, MomentumFad>
+        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumMassDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, MassFad>
             (aDomain, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
     }
 
@@ -740,7 +740,7 @@ public:
      const Plato::ScalarVector               & aInput,
      Plato::ScalarMultiVectorT<MassFad>      & aOutput)
     {
-        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumMassDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, MomentumFad>
+        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumMassDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, MassFad>
             (aNumCells, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
     }
 
