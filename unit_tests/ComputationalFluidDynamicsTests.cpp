@@ -1113,13 +1113,13 @@ public:
                 for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal+1]; tElem++ )
                 {
                     // create a map from face local node index to elem local node index
-                    Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
+                    Plato::OrdinalType tLocalNodeOrdinals[mNumSpatialDims];
                     auto tCellOrdinal = tFace2Elems_elems[tElem];
-                    tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+                    tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrdinals);
 
                     // calculate surface Jacobian and surface integral weight
                     ConfigT tSurfaceAreaTimesCubWeight(0.0);
-                    tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigurationWS, tJacobians);
+                    tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigurationWS, tJacobians);
                     tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
                     // evaluate surface scalar function
