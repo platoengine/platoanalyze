@@ -976,11 +976,6 @@ public:
     AbstractScalarFunction(){}
     virtual ~AbstractScalarFunction(){}
 
-    // todo: removed - just used for debugging at the moment
-    virtual void evaluate(const Plato::ScalarMultiVectorT<ControlT> & aControl, Plato::ScalarVectorT<ResultT> & aResult) const {return;}
-
-
-
     virtual void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const = 0;
     virtual void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const = 0;
 };
@@ -1029,17 +1024,6 @@ public:
 
     void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
     { return; }
-
-    void evaluate(const Plato::ScalarMultiVectorT<ControlT> & aControl,
-                  Plato::ScalarVectorT<ResultT> & aResult) const override
-    {
-        auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-        {
-            ControlT tDensity = Plato::cell_density<PhysicsT::SimplexT::mNumNodesPerCell>(aCellOrdinal, aControl);
-            aResult(aCellOrdinal) += tDensity * tDensity;
-        }, "test");
-    }
 
     void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
     {
@@ -1438,7 +1422,6 @@ public:
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradient("gradient wrt control", mNumControlsPerNode * tNumNodes);
 
-        /*
         // evaluate internal domain
         for(const auto& tDomain : mSpatialModel.Domains)
         {
@@ -1454,9 +1437,7 @@ public:
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlsPerNode>
                 (tDomain, mLocalOrdinalMaps.mControlOrdinalMap, tResultWS, tGradient);
         }
-        */
 
-        /*
         // evaluate boundary
         {
             Plato::WorkSets tInputWorkSets;
@@ -1472,17 +1453,6 @@ public:
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mControlOrdinalMap, tResultWS, tGradient);
         }
-        */
-
-        auto tNumCells = mSpatialModel.Mesh.nelems();
-        using ControlT = typename GradControlEvalT::ControlScalarType;
-        Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, mNumNodesPerCell);
-        Plato::workset_state_scalar_fad<mNumEnergyDofsPerNode, mNumNodesPerCell, ControlT>
-            (tNumCells, mLocalOrdinalMaps.mScalarStateOrdinalMap, aControls, tControlWS);
-        Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
-        mGradControlFuncs.begin()->second->evaluate(tControlWS, tResultWS);
-        Plato::print_fad_val_values(tResultWS, "gradControl - val");
-        Plato::print_fad_dx_values<mNumNodesPerCell, mNumControlsPerNode>(tResultWS, "gradControl - dx");
 
         return tGradient;
     }
