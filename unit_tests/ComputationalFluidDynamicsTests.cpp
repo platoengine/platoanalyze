@@ -400,13 +400,13 @@ struct SimplexFadTypes
 
 // is_fad<TypesT, T>::value is true if T is of any AD type defined TypesT.
 //
-template <typename SimplexFadTypesT, typename T>
+template <typename SimplexFadTypesT, typename ScalarType>
 struct is_fad {
-  static constexpr bool value = std::is_same< T, typename SimplexFadTypesT::MassFad     >::value ||
-                                std::is_same< T, typename SimplexFadTypesT::ControlFad  >::value ||
-                                std::is_same< T, typename SimplexFadTypesT::ConfigFad   >::value ||
-                                std::is_same< T, typename SimplexFadTypesT::EnergyFad   >::value ||
-                                std::is_same< T, typename SimplexFadTypesT::MomentumFad >::value;
+  static constexpr bool value = std::is_same< ScalarType, typename SimplexFadTypesT::MassFad     >::value ||
+                                std::is_same< ScalarType, typename SimplexFadTypesT::ControlFad  >::value ||
+                                std::is_same< ScalarType, typename SimplexFadTypesT::ConfigFad   >::value ||
+                                std::is_same< ScalarType, typename SimplexFadTypesT::EnergyFad   >::value ||
+                                std::is_same< ScalarType, typename SimplexFadTypesT::MomentumFad >::value;
 };
 
 
@@ -631,12 +631,69 @@ struct Evaluation
    using GradPredictor    = GradMomentumPredictorTypes<SimplexPhysicsT>;
 };
 
+template
+<typename EvaluationT,
+ typename PhysicsT>
+inline void set_current_velocity_workset
+(const Plato::SpatialDomain              & aDomain,
+ const Plato::Variables                  & aVariables,
+ const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
+       Plato::WorkSets                   & aWorkSets)
+{
+    using FadTypes = Plato::FluidMechanics::SimplexFadTypes<PhysicsT>;
+    using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
 
+    auto tNumCells = aDomain.numCells();
+    auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
+        ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
+
+    if(Plato::FluidMechanics::is_fad<FadTypes, CurrentVelocityT>::value)
+    {
+        Plato::workset_state_scalar_fad<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
+            (aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
+    }
+    else
+    {
+        Plato::workset_state_scalar_scalar<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
+            (aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
+    }
+
+    aWorkSets.set("current velocity", tCurVelWS);
+}
+
+template
+<typename EvaluationT,
+ typename PhysicsT>
+inline void set_current_velocity_workset
+(const Plato::OrdinalType                & aNumCells,
+ const Plato::Variables                  & aVariables,
+ const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
+       Plato::WorkSets                   & aWorkSets)
+{
+    using FadTypes = Plato::FluidMechanics::SimplexFadTypes<PhysicsT>;
+    using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
+
+    auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
+        ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
+
+    if(Plato::FluidMechanics::is_fad<FadTypes, CurrentVelocityT>::value)
+    {
+        Plato::workset_state_scalar_fad<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
+            (aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
+    }
+    else
+    {
+        Plato::workset_state_scalar_scalar<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
+            (aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
+    }
+
+    aWorkSets.set("current velocity", tCurVelWS);
+}
 
 
 template
-<typename PhysicsT,
- typename EvaluationT>
+<typename EvaluationT,
+ typename PhysicsT>
 inline void
 build_scalar_function_worksets
 (const Plato::SpatialDomain              & aDomain,
@@ -647,12 +704,7 @@ build_scalar_function_worksets
 {
     auto tNumCells = aDomain.numCells();
 
-    using VelocityT = typename EvaluationT::CurrentMomentumScalarType;
-    auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<VelocityT> > >
-        ( Plato::ScalarMultiVectorT<VelocityT>("current velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    Plato::workset_state_scalar_scalar<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
-        (aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
-    aWorkSets.set("current velocity", tCurVelWS);
+    Plato::FluidMechanics::set_current_velocity_workset<EvaluationT, PhysicsT>(aDomain, aVariables, aMaps, aWorkSets);
 
     using PressureT = typename EvaluationT::CurrentMassScalarType;
     auto tCurPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PressureT> > >
@@ -690,8 +742,8 @@ build_scalar_function_worksets
 }
 
 template
-<typename PhysicsT,
- typename EvaluationT>
+<typename EvaluationT,
+ typename PhysicsT>
 inline void
 build_scalar_function_worksets
 (const Plato::OrdinalType                & aNumCells,
@@ -700,12 +752,7 @@ build_scalar_function_worksets
  const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
        Plato::WorkSets                   & aWorkSets)
 {
-    using VelocityT = typename EvaluationT::CurrentMomentumScalarType;
-    auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<VelocityT> > >
-        ( Plato::ScalarMultiVectorT<VelocityT>("current velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    Plato::workset_state_scalar_scalar<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
-        (aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
-    aWorkSets.set("current velocity", tCurVelWS);
+    Plato::FluidMechanics::set_current_velocity_workset<EvaluationT, PhysicsT>(aNumCells, aVariables, aMaps, aWorkSets);
 
     using PressureT = typename EvaluationT::CurrentMassScalarType;
     auto tCurPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PressureT> > >
@@ -743,8 +790,8 @@ build_scalar_function_worksets
 }
 
 template
-<typename PhysicsT,
- typename EvaluationT>
+<typename EvaluationT,
+ typename PhysicsT>
 inline void
 build_vector_function_worksets
 (const Plato::SpatialDomain              & aDomain,
@@ -752,7 +799,10 @@ build_vector_function_worksets
  const Plato::Variables                  & aVariables,
  const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
        Plato::WorkSets                   & aWorkSets)
+
 {
+    Plato::FluidMechanics::set_current_velocity_workset<EvaluationT, PhysicsT>(aDomain, aVariables, aMaps, aWorkSets);
+
     auto tNumCells = aDomain.numCells();
 
     using CurrentPredictorT = typename EvaluationT::MomentumPredictorScalarType;
@@ -761,13 +811,6 @@ build_vector_function_worksets
     Plato::workset_state_scalar_scalar<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
         (aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("current predictor"), tPredictorWS->mData);
     aWorkSets.set("current predictor", tPredictorWS);
-
-    using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
-    auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
-        ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    Plato::workset_state_scalar_scalar<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
-        (aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
-    aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
     auto tCurPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentPressureT> > >
@@ -835,8 +878,8 @@ build_vector_function_worksets
 }
 
 template
-<typename PhysicsT,
- typename EvaluationT>
+<typename EvaluationT,
+ typename PhysicsT>
 inline void
 build_vector_function_worksets
 (const Plato::OrdinalType                & aNumCells,
@@ -845,19 +888,14 @@ build_vector_function_worksets
  const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
        Plato::WorkSets                   & aWorkSets)
 {
+    Plato::FluidMechanics::set_current_velocity_workset<EvaluationT, PhysicsT>(aNumCells, aVariables, aMaps, aWorkSets);
+
     using CurrentPredictorT = typename EvaluationT::MomentumPredictorScalarType;
     auto tPredictorWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentPredictorT> > >
         ( Plato::ScalarMultiVectorT<CurrentPredictorT>("current predictor", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
     Plato::workset_state_scalar_scalar<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
         (aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("current predictor"), tPredictorWS->mData);
     aWorkSets.set("current predictor", tPredictorWS);
-
-    using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
-    auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
-        ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    Plato::workset_state_scalar_scalar<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
-        (aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
-    aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
     auto tCurPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentPressureT> > >
@@ -1325,7 +1363,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, ResidualEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<ResidualEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1339,7 +1377,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, ResidualEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<ResidualEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
@@ -1364,7 +1402,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradConfigEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradConfigEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1379,7 +1417,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradConfigEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradConfigEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
@@ -1406,7 +1444,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradControlEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradControlEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1423,7 +1461,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradControlEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradControlEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
@@ -1462,7 +1500,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradCurPressEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradCurPressEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1477,7 +1515,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradCurPressEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradCurPressEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
@@ -1503,7 +1541,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradCurTempEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradCurTempEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1518,7 +1556,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradCurTempEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradCurTempEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
@@ -1544,7 +1582,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradCurVelEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradCurVelEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             auto tName = tDomain.getDomainName();
@@ -1559,7 +1597,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, GradCurVelEvalT>
+            Plato::FluidMechanics::build_scalar_function_worksets<GradCurVelEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
@@ -3254,7 +3292,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, ResidualEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<ResidualEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3269,7 +3307,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, ResidualEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<ResidualEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
@@ -3305,7 +3343,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradConfigEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradConfigEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3321,7 +3359,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradConfigEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradConfigEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
@@ -3358,7 +3396,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradControlEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradControlEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3374,7 +3412,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradControlEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradControlEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
@@ -3411,7 +3449,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradPredictorEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradPredictorEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3427,7 +3465,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradPredictorEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradPredictorEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
@@ -3464,7 +3502,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradPrevVelEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradPrevVelEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3480,7 +3518,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradPrevVelEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradPrevVelEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
@@ -3517,7 +3555,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradPrevPressEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradPrevPressEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3533,7 +3571,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradPrevPressEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradPrevPressEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
@@ -3570,7 +3608,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradPrevTempEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradPrevTempEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3586,7 +3624,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradPrevTempEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradPrevTempEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
@@ -3623,7 +3661,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradCurVelEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradCurVelEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3639,7 +3677,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradCurVelEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradCurVelEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
@@ -3676,7 +3714,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradCurPressEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradCurPressEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3692,7 +3730,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradCurPressEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradCurPressEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate prescribed forces
@@ -3729,7 +3767,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = tDomain.numCells();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradCurTempEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradCurTempEvalT, PhysicsT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
@@ -3745,7 +3783,7 @@ public:
         {
             Plato::WorkSets tInputWorkSets;
             auto tNumCells = mSpatialModel.Mesh.nelems();
-            Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, GradCurTempEvalT>
+            Plato::FluidMechanics::build_vector_function_worksets<GradCurTempEvalT, PhysicsT>
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate boundary forces
@@ -5167,6 +5205,11 @@ namespace ComputationalFluidDynamicsTests
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
 {
+
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
+{
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
@@ -5288,11 +5331,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradControl)
     auto tGradX = tCriterion.gradientControl(tControl, tPrimal);
     auto tHostGradX = Kokkos::create_mirror(tGradX);
     Kokkos::deep_copy(tHostGradX, tGradX);
-
-    for(Plato::OrdinalType tIndex = 0; tIndex < tGradX.size(); tIndex++)
-    {
-        std::cout << "tHostGradControl(" << tIndex << ") = " << tHostGradX(tIndex) << "\n";
-    }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDomain)
@@ -5331,7 +5369,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDoma
     // call build_scalar_function_worksets
     Plato::WorkSets tWorkSets;
     Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
-    Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, ResidualEvalT>
+    Plato::FluidMechanics::build_scalar_function_worksets<ResidualEvalT>
         (tDomain, tControls, tPrimal, tOrdinalMaps, tWorkSets);
 
     // test current velocity results
@@ -5483,10 +5521,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
     Plato::blas1::fill(5.0, tArtCompress);
     tPrimal.vector("artificial compressibility", tArtCompress);
 
-    // call build_scalar_function_worksets
+    // call build_vector_function_worksets
     Plato::WorkSets tWorkSets;
     Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
-    Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, ResidualEvalT>
+    Plato::FluidMechanics::build_vector_function_worksets<ResidualEvalT>
         (tNumCells, tControls, tPrimal, tOrdinalMaps, tWorkSets);
 
     // test current velocity results
@@ -5691,9 +5729,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
     Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
 
-    // call build_scalar_function_worksets
+    // call build_vector_function_worksets
     Plato::WorkSets tWorkSets;
-    Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, ResidualEvalT>
+    Plato::FluidMechanics::build_vector_function_worksets<ResidualEvalT>
         (tNumCells, tControls, tPrimal, tOrdinalMaps, tWorkSets);
 
     // test current velocity results
@@ -5895,9 +5933,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksetsTwo)
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
     Plato::LocalOrdinalMaps<PhysicsT> tOrdinalMaps(*tMesh);
 
-    // call build_scalar_function_worksets
+    // call build_vector_function_worksets
     Plato::WorkSets tWorkSets;
-    Plato::FluidMechanics::build_vector_function_worksets<PhysicsT, ResidualEvalT>
+    Plato::FluidMechanics::build_vector_function_worksets<ResidualEvalT>
         (tNumCells, tControls, tPrimal, tOrdinalMaps, tWorkSets);
     TEST_EQUALITY(tWorkSets.defined("artifical compressibility"), false);
 }
@@ -5935,7 +5973,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
 
     // call build_scalar_function_worksets
     Plato::WorkSets tWorkSets;
-    Plato::FluidMechanics::build_scalar_function_worksets<PhysicsT, ResidualEvalT>
+    Plato::FluidMechanics::build_scalar_function_worksets<ResidualEvalT>
         (tNumCells, tControls, tPrimal, tOrdinalMaps, tWorkSets);
 
     // test current velocity results
