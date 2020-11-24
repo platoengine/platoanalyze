@@ -939,7 +939,7 @@ public:
     virtual ~AbstractScalarFunction(){}
 
     // todo: removed - just used for debugging at the moment
-    virtual void evaluate(const Plato::ScalarMultiVectorT<ControlT> & aResult, Plato::ScalarVectorT<ResultT> & aResult) const {return;}
+    virtual void evaluate(const Plato::ScalarMultiVectorT<ControlT> & aControl, Plato::ScalarVectorT<ResultT> & aResult) const {return;}
 
 
 
@@ -992,13 +992,13 @@ public:
     void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
     { return; }
 
-    void evaluate(const Plato::ScalarMultiVectorT<ControlT> & aControlWS,
+    void evaluate(const Plato::ScalarMultiVectorT<ControlT> & aControl,
                   Plato::ScalarVectorT<ResultT> & aResult) const override
     {
         auto tNumCells = mSpatialDomain.Mesh.nelems();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
         {
-            ControlT tDensity = Plato::cell_density<PhysicsT::SimplexT::mNumNodesPerCel>(aCellOrdinal, aControlWS);
+            ControlT tDensity = Plato::cell_density<PhysicsT::SimplexT::mNumNodesPerCell>(aCellOrdinal, aControl);
             aResult(aCellOrdinal) += tDensity * tDensity;
         }, "test");
     }
