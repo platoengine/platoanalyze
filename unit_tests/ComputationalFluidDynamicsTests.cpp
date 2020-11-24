@@ -649,7 +649,7 @@ inline void set_current_velocity_workset
 
     if(Plato::FluidMechanics::is_fad<FadTypes, CurrentVelocityT>::value)
     {
-        Plato::workset_state_scalar_fad<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
+        Plato::workset_state_scalar_fad<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell, CurrentVelocityT>
             (aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
     }
     else
@@ -678,7 +678,7 @@ inline void set_current_velocity_workset
 
     if(Plato::FluidMechanics::is_fad<FadTypes, CurrentVelocityT>::value)
     {
-        Plato::workset_state_scalar_fad<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell>
+        Plato::workset_state_scalar_fad<PhysicsT::SimplexT::mNumMomentumDofsPerNode, PhysicsT::SimplexT::mNumNodesPerCell, CurrentVelocityT>
             (aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
     }
     else
@@ -5172,11 +5172,6 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
-{
-
-}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
 {
