@@ -1015,8 +1015,15 @@ public:
 
         // set input worksets
         auto tConfigurationWS   = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
         auto tCurrentPressureWS = Plato::metadata<Plato::ScalarMultiVectorT<PressureT>>(aWorkSets.get("current pressure"));
 
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            ControlT tDensity = Plato::cell_density<PhysicsT::SimplexT::mNumNodesPerCel>(aCellOrdinal, tControlWS);
+            aResult(aCellOrdinal) += tDensity * tDensity;
+        }, "test");
+        /*
         for(auto& tName : mSideSets)
         {
             // get faces on this side set
@@ -1057,6 +1064,7 @@ public:
             }, "average surface pressure integral");
 
         }
+        */
     }
 };
 // class AverageSurfacePressure
@@ -1411,6 +1419,8 @@ public:
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mGradControlFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
+            Plato::print_fad_val_values(tResultWS, "gradControl - val");
+            Plato::print_fad_dx_values<mNumNodesPerCell, mNumControlsPerNode>(tResultWS, "gradControl - dx");
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mControlOrdinalMap, tResultWS, tGradient);
         }
@@ -5196,7 +5206,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     TEST_FLOATING_EQUALITY(0.1, tValue, tTol);
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradControl)
 {
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
@@ -5254,13 +5264,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
 
     // test criterion value
     auto tTol = 1e-6;
-    auto tGradX = tCriterion.gradientCurrentPress(tControl, tPrimal);
+    auto tGradX = tCriterion.gradientControl(tControl, tPrimal);
     auto tHostGradX = Kokkos::create_mirror(tGradX);
     Kokkos::deep_copy(tHostGradX, tGradX);
 
     for(Plato::OrdinalType tIndex = 0; tIndex < tGradX.size(); tIndex++)
     {
-        std::cout << "tHostGradCurPress(" << tIndex << ") = " << tHostGradX(tIndex) << "\n";
+        std::cout << "tHostGradControl(" << tIndex << ") = " << tHostGradX(tIndex) << "\n";
     }
 }
 
