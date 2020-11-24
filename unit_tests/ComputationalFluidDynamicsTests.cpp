@@ -355,11 +355,11 @@ namespace FluidMechanics
 template<typename SimplexPhysics>
 struct SimplexFadTypes
 {
-    using MassFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMassDofsPerCell>;
-    using ControlFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumNodesPerCell>;
-    using ConfigFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumSpatialDims *  SimplexPhysics::mNumNodesPerCell>;
-    using EnergyFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumEnergyDofsPerNode * SimplexPhysics::mNumNodesPerCell>;
-    using MomentumFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMomentumDofsPerNode * SimplexPhysics::mNumNodesPerCell>;
+    using ConfigFad   = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumConfigDofsPerCell>;
+    using ControlFad  = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumNodesPerCell>;
+    using MassFad     = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMassDofsPerCell>;
+    using EnergyFad   = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumEnergyDofsPerCell>;
+    using MomentumFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMomentumDofsPerCell>;
 };
 
 // is_fad<TypesT, T>::value is true if T is of any AD type defined TypesT.
@@ -995,13 +995,13 @@ public:
                 for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal+1]; tElem++ )
                 {
                     // create a map from face local node index to elem local node index
-                    Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
+                    Plato::OrdinalType tLocalNodeOrdinals[mNumSpatialDims];
                     auto tCellOrdinal = tFace2Elems_elems[tElem];
-                    tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+                    tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrdinals);
 
                     // calculate surface Jacobian and surface integral weight
                     ConfigT tSurfaceAreaTimesCubWeight(0.0);
-                    tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigurationWS, tJacobians);
+                    tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigurationWS, tJacobians);
                     tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
                     // evaluate surface scalar function
@@ -1013,9 +1013,10 @@ public:
                     {
                         for( Plato::OrdinalType tDof=0; tDof < mNumPressDofsPerNode; tDof++)
                         {
-                            auto tDofOrdinal = tLocalNodeOrd[tNode] * mNumPressDofsPerNode + tDof;
+                            auto tDofOrdinal = tLocalNodeOrdinals[tNode] * mNumPressDofsPerNode + tDof;
                             aResult(tCellOrdinal, tDofOrdinal) += tBasisFunctions(tNode) *
                                 tCurrentPressGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
+                            printf("aResult(%d,%d) = %f\n", tCellOrdinal, tDofOrdinal, aResult(tCellOrdinal, tDofOrdinal));
                         }
                     }
                 }
@@ -5162,7 +5163,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     TEST_FLOATING_EQUALITY(0.1, tValue, tTol);
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradConfig)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
 {
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
@@ -5220,13 +5221,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradConfig)
 
     // test criterion value
     auto tTol = 1e-6;
-    auto tGradX = tCriterion.gradientConfig(tControl, tPrimal);
+    auto tGradX = tCriterion.gradientCurrentPress(tControl, tPrimal);
     auto tHostGradX = Kokkos::create_mirror(tGradX);
     Kokkos::deep_copy(tHostGradX, tGradX);
 
     for(Plato::OrdinalType tIndex = 0; tIndex < tGradX.size(); tIndex++)
     {
-        std::cout << "tHostGradX(" << tIndex << ") = " << tHostGradX(tIndex);
+        std::cout << "tHostGradCurPress(" << tIndex << ") = " << tHostGradX(tIndex);
     }
 }
 
