@@ -3845,7 +3845,7 @@ public:
     {
         if( !aInputs.isSublist("Criteria") )
         {
-            THROWERR("Criteria block is not defined.")
+            THROWERR("'Criteria' block is not defined.")
         }
         auto tCriteriaList = aInputs.sublist("Criteria");
         if( !tCriteriaList.isSublist(aName) )
