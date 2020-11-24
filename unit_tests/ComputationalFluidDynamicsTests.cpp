@@ -1520,27 +1520,27 @@ private:
             auto tName = tDomain.getDomainName();
 
             mResidualFuncs[tName] =
-                tScalarFuncFactory.template createScalarFunction<ResidualEvalT>
+                tScalarFuncFactory.template createScalarFunction<PhysicsT, ResidualEvalT>
                     (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradConfigFuncs[tName] =
-                tScalarFuncFactory.template createScalarFunction<GradConfigEvalT>
+                tScalarFuncFactory.template createScalarFunction<PhysicsT, GradConfigEvalT>
                     (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradControlFuncs[tName] =
-                tScalarFuncFactory.template createScalarFunction<GradControlEvalT>
+                tScalarFuncFactory.template createScalarFunction<PhysicsT, GradControlEvalT>
                     (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradCurrentPressureFuncs[tName] =
-                tScalarFuncFactory.template createScalarFunction<GradCurPressEvalT>
+                tScalarFuncFactory.template createScalarFunction<PhysicsT, GradCurPressEvalT>
                     (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradCurrentTemperatureFuncs[tName] =
-                tScalarFuncFactory.template createScalarFunction<GradCurTempEvalT>
+                tScalarFuncFactory.template createScalarFunction<PhysicsT, GradCurTempEvalT>
                     (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
 
             mGradCurrentVelocityFuncs[tName] =
-                tScalarFuncFactory.template createScalarFunction<GradCurVelEvalT>
+                tScalarFuncFactory.template createScalarFunction<PhysicsT, GradCurVelEvalT>
                     (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
         }
     }
@@ -4088,7 +4088,9 @@ template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
 class MomentumConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
 {
 public:
+    typedef Plato::FluidMechanics::FunctionFactory FunctionFactory;
     using SimplexT = Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
+
     static constexpr auto mNumDofsPerNode = SimplexT::mNumMomentumDofsPerNode;
     static constexpr auto mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
 };
@@ -4097,7 +4099,9 @@ template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
 class MassConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
 {
 public:
+    typedef Plato::FluidMechanics::FunctionFactory FunctionFactory;
     using SimplexT = Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
+
     static constexpr auto mNumDofsPerNode = SimplexT::mNumMassDofsPerNode;
     static constexpr auto mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
 };
@@ -4106,7 +4110,9 @@ template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
 class EnergyConservation : public Plato::SimplexFluidMechanics<SpaceDim, NumControls>
 {
 public:
+    typedef Plato::FluidMechanics::FunctionFactory FunctionFactory;
     using SimplexT = Plato::SimplexFluidMechanics<SpaceDim, NumControls>;
+
     static constexpr auto mNumDofsPerNode = SimplexT::mNumEnergyDofsPerNode;
     static constexpr auto mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
 };
