@@ -36,6 +36,42 @@
 namespace Plato
 {
 
+template <typename Type>
+inline void print_fad_val_values
+(const Plato::ScalarVectorT<Type> & aInput,
+ const std::string & aName)
+{
+    std::cout << "\nStart: Print ScalarVector '" << aName << "'.\n";
+    const auto tLength = aInput.extent(0);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        printf("Input(%d) = %f\n", aOrdinal, aInput(aOrdinal).val());
+    }, "print_fad_val_values");
+    std::cout << "End: Print ScalarVector '" << aName << "'.\n";
+}
+
+template <Plato::OrdinalType NumNodesPerCell,
+          Plato::OrdinalType NumDofsPerNode,
+          typename Type>
+inline void print_fad_dx_values
+(const Plato::ScalarVectorT<Type> & aInput,
+ const std::string & aName)
+{
+    std::cout << "\nStart: Print ScalarVector '" << aName << "'.\n";
+    const auto tLength = aInput.extent(0);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        for(Plato::OrdinalType tNode=0; tNode < NumNodesPerCell; tNode++)
+        {
+            for(Plato::OrdinalType tDof=0; tDof < NumDofsPerNode; tDof++)
+            {
+                printf("Input(Cell=%d,Node=%d,Dof=%d) = %f\n", aOrdinal, tNode, tDof, aInput(aOrdinal).dx(tNode * NumDofsPerNode + tDof));
+            }
+        }
+    }, "print_fad_dx_values");
+    std::cout << "End: Print ScalarVector '" << aName << "'.\n";
+}
+
 inline Omega_h::LOs
 faces_on_non_prescribed_boundary
 (const std::vector<std::string> & aSideSetNames,
