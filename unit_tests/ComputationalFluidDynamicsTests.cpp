@@ -908,7 +908,7 @@ public:
 // class AbstractScalarFunction
 
 template<typename PhysicsT, typename EvaluationT>
-class AverageSurfacePressure : Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>
+class AverageSurfacePressure : public Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -1027,7 +1027,7 @@ public:
 // class AverageSurfacePressure
 
 template<typename PhysicsT, typename EvaluationT>
-class AverageSurfaceTemperature : Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>
+class AverageSurfaceTemperature : public Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -1897,8 +1897,7 @@ public:
 // class AbstractVectorFunction
 
 template<typename PhysicsT, typename EvaluationT>
-class VelocityPredictorResidual :
-    public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
+class VelocityPredictorResidual : public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
@@ -2325,8 +2324,7 @@ private:
 // class VelocityPredictorResidual
 
 template<typename PhysicsT, typename EvaluationT>
-class VelocityIncrementResidual :
-    public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
+class VelocityIncrementResidual : public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -2488,8 +2486,7 @@ public:
 // class VelocityIncrementResidual
 
 template<typename PhysicsT, typename EvaluationT>
-class TemperatureIncrementResidual :
-    public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
+class TemperatureIncrementResidual : public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
@@ -2829,8 +2826,7 @@ public:
 
 
 template<typename PhysicsT, typename EvaluationT>
-class PressureIncrementResidual :
-    public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
+class PressureIncrementResidual : public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
