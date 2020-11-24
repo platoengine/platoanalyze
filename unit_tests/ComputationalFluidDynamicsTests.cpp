@@ -938,7 +938,7 @@ build_scalar_function_worksets
     using ControlT = typename EvaluationT::ControlScalarType;
     auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
         ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
-    tWorkSetBuilder.buildControlWorkSet(aDomain, aMaps.mControlOrdinalMap, aControls, tControlWS->mData)
+    tWorkSetBuilder.buildControlWorkSet(aDomain, aMaps.mControlOrdinalMap, aControls, tControlWS->mData);
     aWorkSets.set("control", tControlWS);
 
     auto tTimeStepsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
