@@ -1517,27 +1517,27 @@ private:
 
             mResidualFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, ResidualEvalT>
-                    (tDomain, mDataMap, aInputs, mFuncName);
+                    (mFuncName, tDomain, mDataMap, aInputs);
 
             mGradConfigFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradConfigEvalT>
-                    (tDomain, mDataMap, aInputs, mFuncName);
+                    (mFuncName, tDomain, mDataMap, aInputs);
 
             mGradControlFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradControlEvalT>
-                    (tDomain, mDataMap, aInputs, mFuncName);
+                    (mFuncName, tDomain, mDataMap, aInputs);
 
             mGradCurrentPressureFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradCurPressEvalT>
-                    (tDomain, mDataMap, aInputs, mFuncName);
+                    (mFuncName, tDomain, mDataMap, aInputs);
 
             mGradCurrentTemperatureFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradCurTempEvalT>
-                    (tDomain, mDataMap, aInputs, mFuncName);
+                    (mFuncName, tDomain, mDataMap, aInputs);
 
             mGradCurrentVelocityFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradCurVelEvalT>
-                    (tDomain, mDataMap, aInputs, mFuncName);
+                    (mFuncName, tDomain, mDataMap, aInputs);
         }
     }
 };
@@ -3838,10 +3838,10 @@ public:
     template <typename PhysicsT, typename EvaluationT>
     std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>>
     createScalarFunction
-    (const Plato::SpatialDomain & aDomain,
+    (const std::string          & aName,
+     const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
-     Teuchos::ParameterList     & aInputs,
-     const std::string          & aName)
+     Teuchos::ParameterList     & aInputs)
     {
         if( !aInputs.isSublist("Criteria") )
         {
@@ -3850,7 +3850,7 @@ public:
         auto tCriteriaList = aInputs.sublist("Criteria");
         if( !tCriteriaList.isSublist(aName) )
         {
-            THROWERR(std::string("Criteria with name '") + aName + "' is not defined.")
+            THROWERR(std::string("Criteria Block with name '") + aName + "' is not defined.")
         }
         auto tCriterion = tCriteriaList.sublist(aName);
 
@@ -3864,12 +3864,12 @@ public:
         if( tLowerTag == "average surface pressure" )
         {
             return ( std::make_shared<Plato::FluidMechanics::AverageSurfacePressure<PhysicsT, EvaluationT>>
-                (tLowerTag, aDomain, aDataMap, aInputs) );
+                (aName, aDomain, aDataMap, tCriterion) );
         }
         else if( tLowerTag == "average surface temperature" )
         {
             return ( std::make_shared<Plato::FluidMechanics::AverageSurfaceTemperature<PhysicsT, EvaluationT>>
-                (tLowerTag, aDomain, aDataMap, aInputs) );
+                (aName, aDomain, aDataMap, tCriterion) );
         }
         else
         {
