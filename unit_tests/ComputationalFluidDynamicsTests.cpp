@@ -1511,37 +1511,33 @@ private:
     void initialize(Teuchos::ParameterList & aInputs)
     {
         typename PhysicsT::FunctionFactory tScalarFuncFactory;
-
-        auto tInputs = aInputs.sublist("Criteria").sublist(mFuncName);
-        auto tFuncType = tInputs.get<std::string>("Scalar Function Type", "not defined");
-
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             auto tName = tDomain.getDomainName();
 
             mResidualFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, ResidualEvalT>
-                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
+                    (tDomain, mDataMap, aInputs, mFuncName);
 
             mGradConfigFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradConfigEvalT>
-                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
+                    (tDomain, mDataMap, aInputs, mFuncName);
 
             mGradControlFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradControlEvalT>
-                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
+                    (tDomain, mDataMap, aInputs, mFuncName);
 
             mGradCurrentPressureFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradCurPressEvalT>
-                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
+                    (tDomain, mDataMap, aInputs, mFuncName);
 
             mGradCurrentTemperatureFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradCurTempEvalT>
-                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
+                    (tDomain, mDataMap, aInputs, mFuncName);
 
             mGradCurrentVelocityFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, GradCurVelEvalT>
-                    (tFuncType, mFuncName, tDomain, mDataMap, aInputs);
+                    (tDomain, mDataMap, aInputs, mFuncName);
         }
     }
 };
@@ -3131,16 +3127,16 @@ private:
     using GradPredictorEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradPredictor;
 
     // element residual vector function types
-    using ResidualFuncT      = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, ResidualEvalT>>;
-    using GradConfigFuncT    = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradConfigEvalT>>;
-    using GradControlFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradControlEvalT>>;
-    using GradCurVelFuncT    = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurVelEvalT>>;
-    using GradPrevVelFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPrevVelEvalT>>;
-    using GradCurTempFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurTempEvalT>>;
-    using GradPrevTempFuncT  = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPrevTempEvalT>>;
-    using GradCurPressFuncT  = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradCurPressEvalT>>;
-    using GradPrevPressFuncT = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPrevPressEvalT>>;
-    using GradPredictorFuncT = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<typename PhysicsT::SimplexT, GradPredictorEvalT>>;
+    using ResidualFuncT      = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, ResidualEvalT>>;
+    using GradConfigFuncT    = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, GradConfigEvalT>>;
+    using GradControlFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, GradControlEvalT>>;
+    using GradCurVelFuncT    = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, GradCurVelEvalT>>;
+    using GradPrevVelFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, GradPrevVelEvalT>>;
+    using GradCurTempFuncT   = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, GradCurTempEvalT>>;
+    using GradPrevTempFuncT  = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, GradPrevTempEvalT>>;
+    using GradCurPressFuncT  = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, GradCurPressEvalT>>;
+    using GradPrevPressFuncT = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, GradPrevPressEvalT>>;
+    using GradPredictorFuncT = std::shared_ptr<Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, GradPredictorEvalT>>;
 
     // element vector functions per element block, i.e. domain
     std::unordered_map<std::string, ResidualFuncT>      mResidualFuncs;
@@ -3213,13 +3209,13 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mResidualFuncs.begin()->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mResidualFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
             Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tReturnValue);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mResidualFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mResidualFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tReturnValue);
         }
@@ -3265,14 +3261,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradConfigFuncs.begin()->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradConfigFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumConfigDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumConfigDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradConfigFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradConfigFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumConfigDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -3318,14 +3314,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradControlFuncs.begin()->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradControlFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControlsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumControlsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradControlFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradControlFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumControlsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -3371,14 +3367,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradPredictorFuncs.begin()->evaluatePrescribed(tInputWorkSets);
+            mGradPredictorFuncs.begin()->second->evaluatePrescribed(tInputWorkSets);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradPredictorFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradPredictorFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -3424,14 +3420,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradPrevVelFuncs.begin()->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradPrevVelFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradPrevVelFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradPrevVelFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -3477,14 +3473,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradPrevPressFuncs.begin()->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradPrevPressFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradPrevPressFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradPrevPressFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -3530,14 +3526,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradPrevTempFuncs.begin()->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradPrevTempFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradPrevTempFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradPrevTempFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -3583,14 +3579,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradCurVelFuncs.begin()->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradCurVelFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradCurVelFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradCurVelFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -3636,14 +3632,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradCurPressFuncs.begin()->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradCurPressFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradCurPressFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradCurPressFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -3689,14 +3685,14 @@ public:
 
             // evaluate boundary forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradCurTempFuncs.begin()->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradCurTempFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradCurTempFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradCurTempFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -3842,24 +3838,29 @@ public:
     template <typename PhysicsT, typename EvaluationT>
     std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, EvaluationT>>
     createScalarFunction
-    (const std::string          & aType,
-     const std::string          & aTag,
-     const Plato::SpatialDomain & aDomain,
+    (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
-     Teuchos::ParameterList     & aInputs)
+     Teuchos::ParameterList     & aInputs,
+     const std::string          & aName)
     {
         if( !aInputs.isSublist("Criteria") )
         {
             THROWERR("Criteria block is not defined.")
         }
         auto tCriteriaList = aInputs.sublist("Criteria");
-        if( tCriteriaList.isSublist(aType) == false )
+        if( !tCriteriaList.isSublist(aName) )
         {
-            THROWERR(std::string("Scalar function with type '") + aType + "' is not defined.")
+            THROWERR(std::string("Criteria with name '") + aName + "' is not defined.")
         }
-        auto tFuncTypeList = tCriteriaList.sublist(aType);
+        auto tCriterion = tCriteriaList.sublist(aName);
 
-        auto tLowerTag = Plato::tolower(aTag);
+        if(!tCriterion.isParameter("Scalar Function Type"))
+        {
+            THROWERR(std::string("'Scalar Function Type' keyword is not defined in Criterion with name '") + aName + "'.")
+        }
+
+        auto tTag = tCriterion.get<std::string>("Scalar Function Type");
+        auto tLowerTag = Plato::tolower(tTag);
         if( tLowerTag == "average surface pressure" )
         {
             return ( std::make_shared<Plato::FluidMechanics::AverageSurfacePressure<PhysicsT, EvaluationT>>
@@ -3872,7 +3873,7 @@ public:
         }
         else
         {
-            THROWERR(std::string("Scalar function of type '") + aType + "' with tag ' " + aTag + "' is not supported.")
+            THROWERR(std::string("'Scalar Function Type' with tag '") + tTag + "' in Criterion Block '" + aName + "' is not supported.")
         }
     }
 };
@@ -5105,6 +5106,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList  name='Criteria'>"
+            "  <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
             "  <ParameterList name='My Criteria'>"
             "    <Parameter  name='Type'                 type='string'        value='Scalar Function'/>"
             "    <Parameter  name='Sides'                type='Array(string)' value='{x+}'/>"
