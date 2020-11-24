@@ -932,13 +932,18 @@ class AbstractScalarFunction
 {
 private:
     using ResultT = typename EvaluationT::ResultScalarType;
+    using ControlT = typename EvaluationT::ControlScalarType;
 
 public:
     AbstractScalarFunction(){}
     virtual ~AbstractScalarFunction(){}
 
-    virtual void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const = 0;
+    // todo: removed - just used for debugging at the moment
+    virtual void evaluate(const Plato::ScalarMultiVectorT<ControlT> & aResult, Plato::ScalarVectorT<ResultT> & aResult) const {return;}
 
+
+
+    virtual void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const = 0;
     virtual void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const = 0;
 };
 // class AbstractScalarFunction
@@ -987,6 +992,17 @@ public:
     void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
     { return; }
 
+    void evaluate(const Plato::ScalarMultiVectorT<ControlT> & aControlWS,
+                  Plato::ScalarVectorT<ResultT> & aResult) const override
+    {
+        auto tNumCells = mSpatialDomain.Mesh.nelems();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            ControlT tDensity = Plato::cell_density<PhysicsT::SimplexT::mNumNodesPerCel>(aCellOrdinal, aControlWS);
+            aResult(aCellOrdinal) += tDensity * tDensity;
+        }, "test");
+    }
+
     void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const
     {
         // set face to element graph
@@ -1015,15 +1031,7 @@ public:
 
         // set input worksets
         auto tConfigurationWS   = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
         auto tCurrentPressureWS = Plato::metadata<Plato::ScalarMultiVectorT<PressureT>>(aWorkSets.get("current pressure"));
-
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-        {
-            ControlT tDensity = Plato::cell_density<PhysicsT::SimplexT::mNumNodesPerCel>(aCellOrdinal, tControlWS);
-            aResult(aCellOrdinal) += tDensity * tDensity;
-        }, "test");
-        /*
         for(auto& tName : mSideSets)
         {
             // get faces on this side set
@@ -1064,7 +1072,6 @@ public:
             }, "average surface pressure integral");
 
         }
-        */
     }
 };
 // class AverageSurfacePressure
@@ -1393,6 +1400,7 @@ public:
         const auto tNumNodes = mSpatialModel.Mesh.nverts();
         Plato::ScalarVector tGradient("gradient wrt control", mNumControlsPerNode * tNumNodes);
 
+        /*
         // evaluate internal domain
         for(const auto& tDomain : mSpatialModel.Domains)
         {
@@ -1408,7 +1416,9 @@ public:
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlsPerNode>
                 (tDomain, mLocalOrdinalMaps.mControlOrdinalMap, tResultWS, tGradient);
         }
+        */
 
+        /*
         // evaluate boundary
         {
             Plato::WorkSets tInputWorkSets;
@@ -1424,6 +1434,17 @@ public:
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mControlOrdinalMap, tResultWS, tGradient);
         }
+        */
+
+        auto tNumCells = mSpatialModel.Mesh.nelems();
+        using ControlT = typename GradControlEvalT::ControlScalarType;
+        Plato::ScalarMultiVectorT<ControlT> tControlWS("control workset", tNumCells, mNumNodesPerCell);
+        Plato::workset_state_scalar_scalar<mNumEnergyDofsPerNode, mNumNodesPerCell>
+            (tNumCells, mLocalOrdinalMaps.mScalarStateOrdinalMap, aVariables.vector("control"), tControlWS);
+        Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
+        mGradControlFuncs.begin()->second->evaluate(tControlWS, tResultWS);
+        Plato::print_fad_val_values(tResultWS, "gradControl - val");
+        Plato::print_fad_dx_values<mNumNodesPerCell, mNumControlsPerNode>(tResultWS, "gradControl - dx");
 
         return tGradient;
     }
