@@ -5145,7 +5145,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
 
     // build criterion
     Plato::DataMap tDataMap;
-    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT> tCriterion(tModel, tDataMap, tInputs, "My Criteria");
+    std::string tFuncName("My Criteria");
+    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>
+        tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
     // test criterion value
