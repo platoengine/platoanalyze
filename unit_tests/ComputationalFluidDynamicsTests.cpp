@@ -3864,12 +3864,12 @@ public:
         if( tLowerTag == "average surface pressure" )
         {
             return ( std::make_shared<Plato::FluidMechanics::AverageSurfacePressure<PhysicsT, EvaluationT>>
-                (aName, aDomain, aDataMap, tCriterion) );
+                (aName, aDomain, aDataMap, aInputs) );
         }
         else if( tLowerTag == "average surface temperature" )
         {
             return ( std::make_shared<Plato::FluidMechanics::AverageSurfaceTemperature<PhysicsT, EvaluationT>>
-                (aName, aDomain, aDataMap, tCriterion) );
+                (aName, aDomain, aDataMap, aInputs) );
         }
         else
         {
