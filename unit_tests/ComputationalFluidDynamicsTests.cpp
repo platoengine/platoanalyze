@@ -1224,12 +1224,12 @@ private:
     using GradCurPressEvalT = typename Plato::FluidMechanics::Evaluation<typename PhysicsT::SimplexT>::GradCurMass;
 
     // element scalar functions types
-    using ResidualFunc     = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT, ResidualEvalT>>;
-    using GradConfigFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT, GradConfigEvalT>>;
-    using GradControlFunc  = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT, GradControlEvalT>>;
-    using GradCurVelFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT, GradCurVelEvalT>>;
-    using GradCurTempFunc  = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT, GradCurTempEvalT>>;
-    using GradCurPressFunc = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<typename PhysicsT, GradCurPressEvalT>>;
+    using ResidualFunc     = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, ResidualEvalT>>;
+    using GradConfigFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, GradConfigEvalT>>;
+    using GradControlFunc  = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, GradControlEvalT>>;
+    using GradCurVelFunc   = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, GradCurVelEvalT>>;
+    using GradCurTempFunc  = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, GradCurTempEvalT>>;
+    using GradCurPressFunc = std::shared_ptr<Plato::FluidMechanics::AbstractScalarFunction<PhysicsT, GradCurPressEvalT>>;
 
     // element scalar functions per element block, i.e. domain
     std::unordered_map<std::string, ResidualFunc>     mResidualFuncs;
