@@ -646,7 +646,7 @@ private:
     using MomentumFad = typename Plato::FluidMechanics::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
 
 public:
-    void build
+    void buildMomentumWorkSet
     (const Plato::SpatialDomain               & aDomain,
      const Plato::LocalOrdinalMaps<PhysicsT>  & aMaps,
      const Plato::ScalarVector                & aInput,
@@ -656,7 +656,7 @@ public:
             (aDomain, aMaps.mVectorStateOrdinalMap, aInput, aOutput);
     }
 
-    void build
+    void buildMomentumWorkSet
     (const Plato::OrdinalType                 & aNumCells,
      const Plato::LocalOrdinalMaps<PhysicsT>  & aMaps,
      const Plato::ScalarVector                & aInput,
@@ -666,25 +666,7 @@ public:
             (aNumCells, aMaps.mVectorStateOrdinalMap, aInput, aOutput);
     }
 
-    void build
-    (const Plato::SpatialDomain              & aDomain,
-     const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
-     Plato::ScalarArray3DT<Plato::Scalar>    & aOutput)
-    {
-        Plato::workset_config_scalar<SimplexPhysicsT::mNumConfigDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
-            (aDomain, aMaps.mNodeCoordinate, aOutput);
-    }
-
-    void build
-    (const Plato::OrdinalType                & aNumCells,
-     const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
-     Plato::ScalarArray3DT<Plato::Scalar>    & aOutput)
-    {
-        Plato::workset_config_scalar<SimplexPhysicsT::mNumConfigDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
-            (aNumCells, aMaps.mNodeCoordinate, aOutput);
-    }
-
-    void build
+    void buildMomentumWorkSet
     (const Plato::SpatialDomain              & aDomain,
      const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
      const Plato::ScalarVector               & aInput,
@@ -694,7 +676,7 @@ public:
             (aDomain, aMaps.mVectorStateOrdinalMap, aInput, aOutput);
     }
 
-    void build
+    void buildMomentumWorkSet
     (const Plato::OrdinalType                & aNumCells,
      const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
      const Plato::ScalarVector               & aInput,
@@ -704,7 +686,27 @@ public:
             (aNumCells, aMaps.mVectorStateOrdinalMap, aInput, aOutput);
     }
 
-    void build
+    void buildEnergyWorkSet
+    (const Plato::SpatialDomain               & aDomain,
+     const Plato::LocalOrdinalMaps<PhysicsT>  & aMaps,
+     const Plato::ScalarVector                & aInput,
+     Plato::ScalarMultiVectorT<Plato::Scalar> & aOutput)
+    {
+        Plato::workset_state_scalar_scalar<SimplexPhysicsT::mNumEnergyDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
+            (aDomain, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
+    }
+
+    void buildEnergyWorkSet
+    (const Plato::OrdinalType                 & aNumCells,
+     const Plato::LocalOrdinalMaps<PhysicsT>  & aMaps,
+     const Plato::ScalarVector                & aInput,
+     Plato::ScalarMultiVectorT<Plato::Scalar> & aOutput)
+    {
+        Plato::workset_state_scalar_scalar<SimplexPhysicsT::mNumEnergyDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
+            (aNumCells, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
+    }
+
+    void buildEnergyWorkSet
     (const Plato::SpatialDomain              & aDomain,
      const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
      const Plato::ScalarVector               & aInput,
@@ -714,7 +716,7 @@ public:
             (aDomain, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
     }
 
-    void build
+    void buildEnergyWorkSet
     (const Plato::OrdinalType                & aNumCells,
      const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
      const Plato::ScalarVector               & aInput,
@@ -724,7 +726,27 @@ public:
             (aNumCells, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
     }
 
-    void build
+    void buildMassWorkSet
+    (const Plato::SpatialDomain               & aDomain,
+     const Plato::LocalOrdinalMaps<PhysicsT>  & aMaps,
+     const Plato::ScalarVector                & aInput,
+     Plato::ScalarMultiVectorT<Plato::Scalar> & aOutput)
+    {
+        Plato::workset_state_scalar_scalar<SimplexPhysicsT::mNumMassDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
+            (aDomain, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
+    }
+
+    void buildMassWorkSet
+    (const Plato::OrdinalType                 & aNumCells,
+     const Plato::LocalOrdinalMaps<PhysicsT>  & aMaps,
+     const Plato::ScalarVector                & aInput,
+     Plato::ScalarMultiVectorT<Plato::Scalar> & aOutput)
+    {
+        Plato::workset_state_scalar_scalar<SimplexPhysicsT::mNumMassDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
+            (aNumCells, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
+    }
+
+    void buildMassWorkSet
     (const Plato::SpatialDomain              & aDomain,
      const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
      const Plato::ScalarVector               & aInput,
@@ -734,7 +756,7 @@ public:
             (aDomain, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
     }
 
-    void build
+    void buildMassWorkSet
     (const Plato::OrdinalType                & aNumCells,
      const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
      const Plato::ScalarVector               & aInput,
@@ -744,27 +766,65 @@ public:
             (aNumCells, aMaps.mScalarStateOrdinalMap, aInput, aOutput);
     }
 
-    void build
-    (const Plato::SpatialDomain              & aDomain,
-     const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
-     const Plato::ScalarVector               & aInput,
-     Plato::ScalarMultiVectorT<ControlFad>   & aOutput)
+    void buildControlWorkSet
+    (const Plato::SpatialDomain               & aDomain,
+     const Plato::LocalOrdinalMaps<PhysicsT>  & aMaps,
+     const Plato::ScalarVector                & aInput,
+     Plato::ScalarMultiVectorT<Plato::Scalar> & aOutput)
     {
-        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumControlDofsPerCell, ControlFad>
+        Plato::workset_state_scalar_scalar<SimplexPhysicsT::mNumControlDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
             (aDomain, aMaps.mControlOrdinalMap, aInput, aOutput);
     }
 
-    void build
+    void buildControlWorkSet
+    (const Plato::OrdinalType                 & aNumCells,
+     const Plato::LocalOrdinalMaps<PhysicsT>  & aMaps,
+     const Plato::ScalarVector                & aInput,
+     Plato::ScalarMultiVectorT<Plato::Scalar> & aOutput)
+    {
+        Plato::workset_state_scalar_scalar<SimplexPhysicsT::mNumControlDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
+            (aNumCells, aMaps.mControlOrdinalMap, aInput, aOutput);
+    }
+
+    void buildControlWorkSet
+    (const Plato::SpatialDomain              & aDomain,
+     const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
+     const Plato::ScalarVector               & aInput,
+     Plato::ScalarMultiVectorT<ControlFad>   & aOutput)
+    {
+        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumControlDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, ControlFad>
+            (aDomain, aMaps.mControlOrdinalMap, aInput, aOutput);
+    }
+
+    void buildControlWorkSet
     (const Plato::OrdinalType                & aNumCells,
      const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
      const Plato::ScalarVector               & aInput,
      Plato::ScalarMultiVectorT<ControlFad>   & aOutput)
     {
-        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumControlDofsPerCell, ControlFad>
+        Plato::workset_state_scalar_fad<SimplexPhysicsT::mNumControlDofsPerNode, SimplexPhysicsT::mNumNodesPerCell, ControlFad>
             (aNumCells, aMaps.mControlOrdinalMap, aInput, aOutput);
     }
 
-    void build
+    void buildConfigWorkSet
+    (const Plato::SpatialDomain              & aDomain,
+     const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
+     Plato::ScalarArray3DT<Plato::Scalar>    & aOutput)
+    {
+        Plato::workset_config_scalar<SimplexPhysicsT::mNumConfigDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
+            (aDomain, aMaps.mNodeCoordinate, aOutput);
+    }
+
+    void buildConfigWorkSet
+    (const Plato::OrdinalType                & aNumCells,
+     const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
+     Plato::ScalarArray3DT<Plato::Scalar>    & aOutput)
+    {
+        Plato::workset_config_scalar<SimplexPhysicsT::mNumConfigDofsPerNode, SimplexPhysicsT::mNumNodesPerCell>
+            (aNumCells, aMaps.mNodeCoordinate, aOutput);
+    }
+
+    void buildConfigWorkSet
     (const Plato::SpatialDomain              & aDomain,
      const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
      Plato::ScalarArray3DT<ConfigFad>        & aOutput)
@@ -777,7 +837,7 @@ public:
         (aDomain, aMaps.mNodeCoordinate, aOutput);
     }
 
-    void build
+    void buildConfigWorkSet
     (const Plato::OrdinalType                & aNumCells,
      const Plato::LocalOrdinalMaps<PhysicsT> & aMaps,
      Plato::ScalarArray3DT<ConfigFad>        & aOutput)
@@ -809,7 +869,7 @@ build_scalar_function_worksets
     using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
     auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
         ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.build(aDomain, aMaps, aVariables.vector("current velocity"), tCurVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps, aVariables.vector("current velocity"), tCurVelWS->mData);
     aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
@@ -863,7 +923,7 @@ build_scalar_function_worksets
     using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
     auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
         ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.build(aNumCells, aMaps, aVariables.vector("current velocity"), tCurVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps, aVariables.vector("current velocity"), tCurVelWS->mData);
     aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
@@ -926,7 +986,7 @@ build_vector_function_worksets
     using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
     auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
         ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.build(aDomain, aMaps, aVariables.vector("current velocity"), tCurVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps, aVariables.vector("current velocity"), tCurVelWS->mData);
     aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
@@ -1017,7 +1077,7 @@ build_vector_function_worksets
     using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
     auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
         ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.build(aNumCells, aMaps, aVariables.vector("current velocity"), tCurVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps, aVariables.vector("current velocity"), tCurVelWS->mData);
     aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
