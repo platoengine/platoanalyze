@@ -1334,7 +1334,7 @@ public:
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
-            mGradConfigFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradConfigFuncs.begin()->second.evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>
                 (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tGradient);
@@ -1375,7 +1375,7 @@ public:
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
-            mGradControlFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradControlFuncs.begin()->second.evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mControlOrdinalMap, tResultWS, tGradient);
@@ -1416,7 +1416,7 @@ public:
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
-            mGradCurrentPressureFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradCurrentPressureFuncs.begin()->second.evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMassDofsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mScalarStateOrdinalMap, tResultWS, tGradient);
@@ -1457,7 +1457,7 @@ public:
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
-            mGradCurrentTemperatureFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradCurrentTemperatureFuncs.begin()->second.evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumEnergyDofsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mScalarStateOrdinalMap, tResultWS, tGradient);
@@ -1498,7 +1498,7 @@ public:
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
-            mGradCurrentVelocityFuncs.begin()->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradCurrentVelocityFuncs.begin()->second.evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMomentumDofsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tGradient);
