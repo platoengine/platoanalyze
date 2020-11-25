@@ -5803,6 +5803,137 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
     }
 }
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_Value)
+{
+    // set inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList  name='Criteria'>"
+            "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
+            "    <ParameterList name='My Criteria'>"
+            "      <Parameter  name='Type'                 type='string'        value='Scalar Function'/>"
+            "      <Parameter  name='Sides'                type='Array(string)' value='{x+}'/>"
+            "      <Parameter  name='Scalar Function Type' type='string'        value='Average Surface Temperature'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
+    tModel.append(tDomain);
+
+    // set current state
+    Plato::Variables tPrimal;
+    auto tNumCells = tMesh->nelems();
+    auto tNumNodes = tMesh->nverts();
+    auto tNumVelDofs = tNumNodes * tMesh->dim();
+    Plato::ScalarVector tControl("controls", tNumNodes);
+    Plato::blas1::fill(0.5, tControl);
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    Plato::blas1::fill(1.0, tCurVel);
+    tPrimal.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    Plato::blas1::fill(0.1, tCurPress);
+    tPrimal.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    Plato::blas1::fill(1.5, tCurTemp);
+    tPrimal.vector("current temperature", tCurTemp);
+    Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
+    Plato::blas1::fill(0.01, tTimeSteps);
+    tPrimal.vector("time steps", tTimeSteps);
+
+    // set physics type
+    constexpr Plato::OrdinalType tNumSpaceDim = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDim>;
+
+    // build criterion
+    Plato::DataMap tDataMap;
+    std::string tFuncName("My Criteria");
+    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>
+        tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
+    TEST_EQUALITY("My Criteria", tCriterion.name());
+
+    // test criterion value
+    auto tTol = 1e-6;
+    auto tValue = tCriterion.value(tControl, tPrimal);
+    TEST_FLOATING_EQUALITY(0.1, tValue, tTol);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_GradCurTemp)
+{
+    // set inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList  name='Criteria'>"
+            "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
+            "    <ParameterList name='My Criteria'>"
+            "      <Parameter  name='Type'                 type='string'        value='Scalar Function'/>"
+            "      <Parameter  name='Sides'                type='Array(string)' value='{x+}'/>"
+            "      <Parameter  name='Scalar Function Type' type='string'        value='Average Surface Temperature'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
+    tModel.append(tDomain);
+
+    // set current state
+    Plato::Variables tPrimal;
+    auto tNumCells = tMesh->nelems();
+    auto tNumNodes = tMesh->nverts();
+    auto tNumVelDofs = tNumNodes * tMesh->dim();
+    Plato::ScalarVector tControl("controls", tNumNodes);
+    Plato::blas1::fill(0.5, tControl);
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    Plato::blas1::fill(1.0, tCurVel);
+    tPrimal.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    Plato::blas1::fill(0.1, tCurPress);
+    tPrimal.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    Plato::blas1::fill(1.5, tCurTemp);
+    tPrimal.vector("current temperature", tCurTemp);
+    Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
+    Plato::blas1::fill(0.01, tTimeSteps);
+    tPrimal.vector("time steps", tTimeSteps);
+
+    // set physics type
+    constexpr Plato::OrdinalType tNumSpaceDim = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDim>;
+
+    // build criterion
+    Plato::DataMap tDataMap;
+    std::string tFuncName("My Criteria");
+    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>
+        tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
+    TEST_EQUALITY("My Criteria", tCriterion.name());
+
+    // test criterion value
+    auto tGradCurTemp = tCriterion.gradientCurrentTemp(tControl, tPrimal);
+    auto tHostGradCurTemp = Kokkos::create_mirror(tGradCurTemp);
+    Kokkos::deep_copy(tHostGradCurTemp, tGradCurTemp);
+
+    auto tTol = 1e-6;
+    std::vector<Plato::Scalar> tGold = {0.5, 0.0, 0.0, 0.5};
+    for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostGradCurTemp(tNode), tTol);
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDomain)
 {
     // build mesh and spatial domain
