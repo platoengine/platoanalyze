@@ -859,7 +859,6 @@ public:
      const ConfigLocalOridnalMap          & aMap,
      Plato::ScalarArray3DT<Plato::Scalar> & aOutput)
     {
-        std::cout << "Scalar workset builder - spatial domain\n";
         Plato::workset_config_scalar<
             SimplexPhysicsT::mNumConfigDofsPerNode,
             SimplexPhysicsT::mNumNodesPerCell>
@@ -871,7 +870,6 @@ public:
      const ConfigLocalOridnalMap          & aMap,
      Plato::ScalarArray3DT<Plato::Scalar> & aOutput)
     {
-        std::cout << "Scalar workset builder - numcells\n";
         Plato::workset_config_scalar<
             SimplexPhysicsT::mNumConfigDofsPerNode,
             SimplexPhysicsT::mNumNodesPerCell>
@@ -883,7 +881,6 @@ public:
      const ConfigLocalOridnalMap      & aMap,
      Plato::ScalarArray3DT<ConfigFad> & aOutput)
     {
-        std::cout << "ConfigFAD workset builder - spatial domain\n";
         Plato::workset_config_fad<
             SimplexPhysicsT::mNumSpatialDims,
             SimplexPhysicsT::mNumNodesPerCell,
@@ -897,7 +894,6 @@ public:
      const ConfigLocalOridnalMap      & aMap,
      Plato::ScalarArray3DT<ConfigFad> & aOutput)
     {
-        std::cout << "ConfigFAD workset builder - numcells\n";
         Plato::workset_config_fad<
             SimplexPhysicsT::mNumSpatialDims,
             SimplexPhysicsT::mNumNodesPerCell,
@@ -1702,8 +1698,6 @@ public:
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mGradCurrentPressureFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
-            Plato::print_fad_val_values(tResultWS, "gradPress - val");
-            Plato::print_fad_dx_values<mNumNodesPerCell, mNumControlDofsPerNode>(tResultWS, "gradPress - dx");
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMassDofsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mScalarStateOrdinalMap, tResultWS, tGradient);
         }
@@ -5802,9 +5796,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
     Kokkos::deep_copy(tHostGradCurPress, tGradCurPress);
 
     auto tTol = 1e-6;
+    std::vector<Plato::Scalar> tGold = {0.5, 0.0, 0.0, 0.5};
     for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
-        TEST_FLOATING_EQUALITY(0.0, tHostGradCurPress(tNode), tTol);
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostGradCurPress(tNode), tTol);
     }
 }
 
