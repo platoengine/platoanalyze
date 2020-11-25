@@ -1505,7 +1505,7 @@ strain_rate
 (const Plato::OrdinalType & aCellOrdinal,
  const AViewTypeT & aStateWS,
  const BViewTypeT & aGradient,
-       CViewTypeT & aStrainRate)
+ const CViewTypeT & aStrainRate)
 {
     // calculate strain rate for incompressible flows, which is defined as
     // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
@@ -1532,7 +1532,7 @@ scale
 (const Plato::OrdinalType & aCellOrdinal,
  const ScalarT & aScalar,
  const Plato::ScalarArray3DT<AViewTypeT> & aInputWS,
-       Plato::ScalarArray3DT<BViewTypeT> & aOutputWS)
+ const Plato::ScalarArray3DT<BViewTypeT> & aOutputWS)
 {
     for(Plato::OrdinalType tDimI = 0; tDimI < NumSpaceDim; tDimI++)
     {
@@ -1552,7 +1552,7 @@ scale
 (const Plato::OrdinalType & aCellOrdinal,
  const ScalarT & aScalar,
  const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
-       Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
+ const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
 {
     for(Plato::OrdinalType tDim = 0; tDim < NumSpaceDim; tDim++)
     {
@@ -1680,8 +1680,8 @@ public:
         auto tPrConvexParam = mPrNumConvexityParam;
         auto tBrinkConvexParam = mBrinkmanConvexityParam;
 
-        auto tCubWeight = mCubatureRule->getCubWeight();
-        auto tBasisFunctions = mCubatureRule->getBasisFunctions();
+        auto tCubWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
         {
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tVolumeTimesWeight);
@@ -1701,7 +1701,7 @@ public:
                 Plato::FluidMechanics::brinkman_penalization<mNumNodesPerCell>(aCellOrdinal, tPermeability, tBrinkConvexParam, tControlWS);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
             Plato::FluidMechanics::dot_product<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelTimesCurVel);
-            Plato::FluidMechanics::scale<mNumSpatialDims>(aCellOrdinal, tPenalizedPermeability, tCurVelTimesCurVel, aResult);
+            aResult(aCellOrdinal) += tPenalizedPermeability * tCurVelTimesCurVel(aCellOrdinal);
 
             // apply gauss weight times volume multiplier
             aResult(aCellOrdinal) *= tVolumeTimesWeight(aCellOrdinal);
