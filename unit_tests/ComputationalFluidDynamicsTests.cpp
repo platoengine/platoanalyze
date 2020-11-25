@@ -5797,9 +5797,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
     // test criterion value
-    auto tGradX = tCriterion.gradientCurrentPress(tControl, tPrimal);
-    auto tHostGradX = Kokkos::create_mirror(tGradX);
-    Kokkos::deep_copy(tHostGradX, tGradX);
+    auto tGradCurPress = tCriterion.gradientCurrentPress(tControl, tPrimal);
+    auto tHostGradCurPress = Kokkos::create_mirror(tGradCurPress);
+    Kokkos::deep_copy(tHostGradCurPress, tGradCurPress);
+
+    auto tTol = 1e-6;
+    for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
+    {
+        TEST_FLOATING_EQUALITY(0.0, tHostGradCurPress(tNode), tTol);
+    }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets_SpatialDomain)
@@ -6546,7 +6552,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LeastSquares)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LeastSquaresScalarFunction)
 {
     Teuchos::RCP<Teuchos::ParameterList> tParams =
         Teuchos::getParametersFromXmlString(
