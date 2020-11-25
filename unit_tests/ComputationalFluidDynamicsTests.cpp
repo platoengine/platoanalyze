@@ -4406,7 +4406,7 @@ private:
 
 // todo: least squares scalar function
 template<typename PhysicsT>
-class LeastSquares : public Plato::FluidMechanics::CriterionBase
+class LeastSquaresScalarFunction : public Plato::FluidMechanics::CriterionBase
 {
 private:
     // static metadata
@@ -4432,7 +4432,7 @@ private:
     std::vector<Plato::Scalar> mCriterionNormalizations; /*!< list of criterion normalization */
 
 public:
-    LeastSquares
+    LeastSquaresScalarFunction
     (const Plato::SpatialModel & aSpatialModel,
      Plato::DataMap & aDataMap,
      Teuchos::ParameterList & aInputs,
