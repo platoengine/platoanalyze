@@ -5969,7 +5969,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Dimensionless Properties'>"
-            "    <Parameter  name='DarcyNumber'    type='double'    value='1.0'/>"
+            "    <Parameter  name='Darcy Number'    type='double'    value='1.0'/>"
             "    <Parameter  name='Prandtl Number' type='double'    value='1.0'/>"
             "  </ParameterList>"
             "</ParameterList>"
