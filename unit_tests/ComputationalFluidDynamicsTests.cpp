@@ -140,7 +140,8 @@ parse_array
 {
     if(!aInputs.isParameter(aTag))
     {
-        THROWERR(std::string("Parameter with tag '") + aTag + "' in block '" + aInputs.name() + "' is not defined.")
+        std::vector<T> tOutput;
+        return tOutput;
     }
     auto tSideSets = aInputs.get< Teuchos::Array<T> >(aTag);
 
@@ -1206,7 +1207,6 @@ private:
 
     using ResultT   = typename EvaluationT::ResultScalarType;
     using ConfigT   = typename EvaluationT::ConfigScalarType;
-    using ControlT  = typename EvaluationT::ControlScalarType;
     using PressureT = typename EvaluationT::CurrentMassScalarType;
 
     // set local typenames
@@ -1324,7 +1324,6 @@ private:
     using TempT    = typename EvaluationT::CurrentEnergyScalarType;
     using ResultT  = typename EvaluationT::ResultScalarType;
     using ConfigT  = typename EvaluationT::ConfigScalarType;
-    using ControlT = typename EvaluationT::ControlScalarType;
 
     // set local typenames
     using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
@@ -4032,55 +4031,6 @@ private:
 };
 // class VectorFunction
 
-template<typename PhysicsT>
-class CriterionFactory
-{
-private:
-    using ScalarFunctionType = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
-
-public:
-    /******************************************************************************//**
-     * \brief Constructor
-     **********************************************************************************/
-    CriterionFactory () {}
-
-    /******************************************************************************//**
-     * \brief Destructor
-     **********************************************************************************/
-    ~CriterionFactory() {}
-
-    /******************************************************************************//**
-     * \brief Creates criterion interface, which allows evaluations.
-     * \param [in] aSpatialModel  C++ structure with volume and surface mesh databases
-     * \param [in] aDataMap       Plato Analyze data map
-     * \param [in] aInputs        input parameters from Analyze's input file
-     * \param [in] aName          scalar function name
-     **********************************************************************************/
-    ScalarFunctionType
-    createCriterion
-    (Plato::SpatialModel & aSpatialModel,
-     Plato::DataMap & aDataMap,
-     Teuchos::ParameterList & aInputs,
-     std::string & aName)
-     {
-        auto tFunctionTag = aInputs.sublist("Criteria").sublist(aName);
-        auto tType = tFunctionTag.get<std::string>("Type", "Not Defined");
-        auto tLowerType = Plato::tolower(tType);
-
-        if(tLowerType == "scalar function")
-        {
-            auto tCriterion =
-                std::make_shared<Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>>
-                    (aSpatialModel, aDataMap, aInputs, aName);
-            return tCriterion;
-        }
-        else
-        {
-            THROWERR(std::string("Scalar function in block '") + aName + "' with type '" + tType + "' is not supported.")
-        }
-     }
-};
-
 struct FunctionFactory
 {
 public:
@@ -4167,7 +4117,69 @@ public:
 // struct FunctionFactory
 
 
+// todo: criterion factory
+template<typename PhysicsT>
+class CriterionFactory
+{
+private:
+    using ScalarFunctionType = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
 
+public:
+    /******************************************************************************//**
+     * \brief Constructor
+     **********************************************************************************/
+    CriterionFactory () {}
+
+    /******************************************************************************//**
+     * \brief Destructor
+     **********************************************************************************/
+    ~CriterionFactory() {}
+
+    /******************************************************************************//**
+     * \brief Creates criterion interface, which allows evaluations.
+     * \param [in] aSpatialModel  C++ structure with volume and surface mesh databases
+     * \param [in] aDataMap       Plato Analyze data map
+     * \param [in] aInputs        input parameters from Analyze's input file
+     * \param [in] aName          scalar function name
+     **********************************************************************************/
+    ScalarFunctionType
+    createCriterion
+    (Plato::SpatialModel & aSpatialModel,
+     Plato::DataMap & aDataMap,
+     Teuchos::ParameterList & aInputs,
+     std::string & aName)
+     {
+        auto tFunctionTag = aInputs.sublist("Criteria").sublist(aName);
+        auto tType = tFunctionTag.get<std::string>("Type", "Not Defined");
+        auto tLowerType = Plato::tolower(tType);
+
+        if(tLowerType == "scalar function")
+        {
+            auto tCriterion =
+                std::make_shared<Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>>
+                    (aSpatialModel, aDataMap, aInputs, aName);
+            return tCriterion;
+        }
+        /*else if(tLowerType == "weighted sum")
+        {
+            auto tCriterion =
+                std::make_shared<Plato::FluidMechanics::WeightedScalarFunction<PhysicsT>>
+                    (aSpatialModel, aDataMap, aInputs, aName);
+            return tCriterion;
+        }
+        else if(tLowerType == "least squares")
+        {
+            auto tCriterion =
+                std::make_shared<Plato::FluidMechanics::LeastSquares<PhysicsT>>
+                    (aSpatialModel, aDataMap, aInputs, aName);
+            return tCriterion;
+        }*/
+        else
+        {
+            THROWERR(std::string("Scalar function in block '") + aName + "' with type '" + tType + "' is not supported.")
+        }
+     }
+};
 
 
 // todo: finish weighted scalar function
@@ -4337,21 +4349,26 @@ public:
     }
 
 private:
+    void checkInputs()
+    {
+        if (mCriterionNames.size() != mCriterionWeights.size())
+        {
+            THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Weights' do not match. ") +
+                     "Check scalar function with name '" + mFuncName + "'.")
+        }
+    }
+
     void initialize(Teuchos::ParameterList & aInputs)
     {
         if(aInputs.sublist("Criteria").isSublist(mFuncName) == false)
         {
             THROWERR(std::string("Scalar function with tag '") + mFuncName + "' is not defined in the input file.")
         }
-        auto tCriteriaInputs = aInputs.sublist("Criteria").sublist(mFuncName);
 
-        mCriterionNames   = Plato::parse_array<std::string>("Functions", tCriteriaInputs);
-        mCriterionWeights = Plato::parse_array<Plato::Scalar>("Weights", tCriteriaInputs);
-        if (mCriterionNames.size() != mCriterionWeights.size())
-        {
-            THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Weights' do not match. ") +
-                     "Check scalar function with name '" + mFuncName + "'.")
-        }
+        auto tCriteriaInputs = aInputs.sublist("Criteria").sublist(mFuncName);
+        this->parseFunctions(tCriteriaInputs);
+        this->parseWeights(tCriteriaInputs);
+        this->checkInputs();
 
         Plato::FluidMechanics::CriterionFactory<PhysicsT> tFactory;
         for(auto& tName : mCriterionNames)
@@ -4360,8 +4377,275 @@ private:
             mCriteria.push_back(tScalarFunction);
         }
     }
+
+    void parseFunctions(Teuchos::ParameterList & aInputs)
+    {
+        mCriterionNames = Plato::parse_array<std::string>("Functions", aInputs);
+        if(mCriterionNames.empty())
+        {
+            THROWERR(std::string("'Functions' keyword was not defined in function block with name '") + mFuncName
+                + "'. User must define 'functions' used in a 'Weighted Sum' criterion.")
+        }
+    }
+
+    void parseWeights(Teuchos::ParameterList & aInputs)
+    {
+        mCriterionWeights = Plato::parse_array<Plato::Scalar>("Weights", aInputs);
+        if(mCriterionNames.empty())
+        {
+            THROWERR(std::string("'Weights' keyword was not defined in function block with name '") + mFuncName
+                + "'. User must define 'weights' used in a 'Weighted Sum' criterion.")
+        }
+    }
 };
 // class WeightedScalarFunction
+
+
+
+
+
+// todo: least squares scalar function
+template<typename PhysicsT>
+class LeastSquares : public Plato::FluidMechanics::CriterionBase
+{
+private:
+    // static metadata
+    static constexpr auto mNumSpatialDims        = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumPressDofsPerNode   = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
+    static constexpr auto mNumTempDofsPerNode    = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumVelDofsPerNode     = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumControlDofsPerNode = PhysicsT::SimplexT::mNumControlDofsPerNode;  /*!< number of control dofs per node */
+    static constexpr auto mNumConfigDofsPerNode  = PhysicsT::SimplexT::mNumConfigDofsPerNode;   /*!< number of configuration dofs per node */
+
+    // set local typenames
+    using Criterion = std::shared_ptr<Plato::FluidMechanics::CriterionBase>;
+
+    bool mDiagnostics; /*!< write diagnostics to terminal */
+    Plato::DataMap& mDataMap; /*!< output database */
+    const Plato::SpatialModel& mSpatialModel; /*!< mesh database */
+
+    std::string mFuncName; /*!< weighted scalar function name */
+
+    std::vector<Criterion>     mCriteria;                /*!< list of scalar function criteria */
+    std::vector<std::string>   mCriterionNames;          /*!< list of criterion names */
+    std::vector<Plato::Scalar> mCriterionWeights;        /*!< list of criterion weights */
+    std::vector<Plato::Scalar> mCriterionNormalizations; /*!< list of criterion normalization */
+
+public:
+    LeastSquares
+    (const Plato::SpatialModel & aSpatialModel,
+     Plato::DataMap & aDataMap,
+     Teuchos::ParameterList & aInputs,
+     std::string & aName) :
+         mDiagnostics(false),
+         mDataMap     (aDataMap),
+         mSpatialModel(aSpatialModel),
+         mFuncName    (aName)
+    {
+        this->initialize(aInputs);
+    }
+
+    std::string name() const override
+    {
+        return mFuncName;
+    }
+
+    Plato::Scalar value
+    (const Plato::ScalarVector & aControls,
+     const Plato::Primal & aVariables) const override
+    {
+        Plato::Scalar tResult = 0.0;
+        for(auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tWeight = mCriterionWeights[tIndex];
+            const auto tNormalization = mCriterionNormalizations[tIndex];
+            auto tCriterionValue = tCriterion->value(aControls, aVariables);
+
+            auto tValue = tCriterionValue / tNormalization;
+            tResult += tWeight * (tValue * tValue);
+        }
+        return tResult;
+    }
+
+    Plato::ScalarVector gradientConfig
+    (const Plato::ScalarVector & aControls,
+     const Plato::Primal & aVariables) const override
+    {
+        const auto tNumDofs = mNumConfigDofsPerNode * mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tGradConfig("gradient configuration", tNumDofs);
+        Plato::blas1::fill(0.0, tGradConfig);
+        for(auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tWeight = mCriterionWeights[tIndex];
+            const auto tNormalization = mCriterionNormalizations[tIndex];
+            auto tCriterionValue = tCriterion->value(aControls, aVariables);
+            auto tCriterionGrad  = tCriterion->gradientConfig(aControls, aVariables);
+
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
+                               / ( tNormalization * tNormalization );
+            Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradConfig);
+        }
+        return tGradConfig;
+    }
+
+    Plato::ScalarVector gradientControl
+    (const Plato::ScalarVector & aControls,
+     const Plato::Primal & aVariables) const override
+    {
+        const auto tNumDofs = mNumControlDofsPerNode * mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tGradControl("gradient control", tNumDofs);
+        Plato::blas1::fill(0.0, tGradControl);
+        for(auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tWeight = mCriterionWeights[tIndex];
+            const auto tNormalization = mCriterionNormalizations[tIndex];
+            auto tCriterionValue = tCriterion->value(aControls, aVariables);
+            auto tCriterionGrad  = tCriterion->gradientControl(aControls, aVariables);
+
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
+                               / ( tNormalization * tNormalization );
+            Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradControl);
+        }
+        return tGradControl;
+    }
+
+    Plato::ScalarVector gradientCurrentPress
+    (const Plato::ScalarVector & aControls,
+     const Plato::Primal & aVariables) const override
+    {
+        const auto tNumDofs = mNumPressDofsPerNode * mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tGradCurPress("gradient current pressure", tNumDofs);
+        Plato::blas1::fill(0.0, tGradCurPress);
+        for(auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tWeight = mCriterionWeights[tIndex];
+            const auto tNormalization = mCriterionNormalizations[tIndex];
+            auto tCriterionValue = tCriterion->value(aControls, aVariables);
+            auto tCriterionGrad  = tCriterion->gradientCurrentPress(aControls, aVariables);
+
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
+                               / ( tNormalization * tNormalization );
+            Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradCurPress);
+        }
+        return tGradCurPress;
+    }
+
+    Plato::ScalarVector gradientCurrentTemp
+    (const Plato::ScalarVector & aControls,
+     const Plato::Primal & aVariables) const override
+    {
+        const auto tNumDofs = mNumTempDofsPerNode * mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tGradCurTemp("gradient current temperature", tNumDofs);
+        Plato::blas1::fill(0.0, tGradCurTemp);
+        for(auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tWeight = mCriterionWeights[tIndex];
+            const auto tNormalization = mCriterionNormalizations[tIndex];
+            auto tCriterionValue = tCriterion->value(aControls, aVariables);
+            auto tCriterionGrad  = tCriterion->gradientCurrentTemp(aControls, aVariables);
+
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
+                               / ( tNormalization * tNormalization );
+            Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradCurTemp);
+        }
+        return tGradCurTemp;
+    }
+
+    Plato::ScalarVector gradientCurrentVel
+    (const Plato::ScalarVector & aControls,
+     const Plato::Primal & aVariables) const override
+    {
+        const auto tNumDofs = mNumVelDofsPerNode * mSpatialModel.Mesh.nverts();
+        Plato::ScalarVector tGradCurVel("gradient current velocity", tNumDofs);
+        Plato::blas1::fill(0.0, tGradCurVel);
+        for(auto& tCriterion : mCriteria)
+        {
+            auto tIndex = &tCriterion - &mCriteria[0];
+            const auto tWeight = mCriterionWeights[tIndex];
+            const auto tNormalization = mCriterionNormalizations[tIndex];
+            auto tCriterionValue = tCriterion->value(aControls, aVariables);
+            auto tCriterionGrad  = tCriterion->gradientCurrentVel(aControls, aVariables);
+
+            auto tMultiplier = ( static_cast<Plato::Scalar>(2.0) * tWeight * tCriterionValue )
+                               / ( tNormalization * tNormalization );
+            Plato::blas1::update(tMultiplier, tCriterionGrad, 1.0, tGradCurVel);
+        }
+        return tGradCurVel;
+    }
+
+private:
+    void checkInputs()
+    {
+        if (mCriterionNames.size() != mCriterionWeights.size())
+        {
+            THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Weights' do not match. ") +
+                     "Check scalar function with name '" + mFuncName + "'.")
+        }
+
+        if(mCriterionNames.size() != mCriterionNormalizations.size())
+        {
+            THROWERR(std::string("Dimensions mismatch.  Number of 'Functions' and 'Normalizations' do not match. ") +
+                     "Check scalar function with name '" + mFuncName + "'.")
+        }
+    }
+
+    void initialize(Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.sublist("Criteria").isSublist(mFuncName) == false)
+        {
+            THROWERR(std::string("Scalar function with tag '") + mFuncName + "' is not defined in the input file.")
+        }
+
+        auto tCriteriaInputs = aInputs.sublist("Criteria").sublist(mFuncName);
+        this->parseFunctions(tCriteriaInputs);
+        this->parseWeights(tCriteriaInputs);
+        this->parseNormalization(tCriteriaInputs);
+        this->checkInputs();
+
+        Plato::FluidMechanics::CriterionFactory<PhysicsT> tFactory;
+        for(auto& tName : mCriterionNames)
+        {
+            auto tScalarFunction = tFactory.createCriterion(mSpatialModel, mDataMap, aInputs, tName);
+            mCriteria.push_back(tScalarFunction);
+        }
+    }
+
+    void parseFunctions(Teuchos::ParameterList & aInputs)
+    {
+        mCriterionNames = Plato::parse_array<std::string>("Functions", aInputs);
+        if(mCriterionNames.empty())
+        {
+            THROWERR(std::string("'Functions' keyword was not defined in function block with name '") + mFuncName
+                + "'. User must define 'functions' used in a 'Weighted Sum' criterion.")
+        }
+    }
+
+    void parseWeights(Teuchos::ParameterList & aInputs)
+    {
+        mCriterionWeights = Plato::parse_array<Plato::Scalar>("Weights", aInputs);
+        if(mCriterionNames.empty())
+        {
+            THROWERR(std::string("'Weights' keyword was not defined in function block with name '") + mFuncName
+                + "'. User must define 'weights' used in a 'Weighted Sum' criterion.")
+        }
+    }
+
+    void parseNormalization(Teuchos::ParameterList & aInputs)
+    {
+        mCriterionNormalizations = Plato::parse_array<Plato::Scalar>("Normalizations", aInputs);
+        if(mCriterionNormalizations.empty())
+        {
+            mCriterionNormalizations.resize(mCriterionNames.size());
+            std::fill(mCriterionNormalizations.begin(), mCriterionNormalizations.end(), 1.0);
+        }
+    }
+};
+// class LeastSquares
 
 }
 // namespace FluidMechanics
@@ -4414,6 +4698,13 @@ public:
     using EnergyPhysicsT   = typename Plato::EnergyConservation<SpaceDim, NumControls>;
     using MomentumPhysicsT = typename Plato::MomentumConservation<SpaceDim, NumControls>;
 };
+
+
+
+
+
+
+
 
 
 namespace cbs
@@ -6254,6 +6545,34 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
             }
         }
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LeastSquares)
+{
+    Teuchos::RCP<Teuchos::ParameterList> tParams =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList  name='Criteria'>"
+            "  <Parameter  name='Type'             type='string'         value='Least Squares'/>"
+            "  <Parameter  name='Functions'        type='Array(string)'  value='{My Pressure Drop}'/>"
+            "  <Parameter  name='Weights'          type='Array(double)'  value='{1.0}'/>"
+            "  <Parameter  name='Normalization'    type='Array(double)'  value='{1.0}'/>"
+            "  <ParameterList  name='My Pressure Drop'>"
+            "    <Parameter  name='Type'         type='string'         value='Weighted Sum'/>"
+            "    <Parameter  name='Functions'    type='Array(string)'  value='{My Inlet Pressure, My Outlet Pressure}'/>"
+            "    <Parameter  name='Weights'      type='Array(double)'  value='{1.0,-1.0}'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='My Inlet Pressure'>"
+            "    <Parameter  name='Type'                   type='string'           value='Scalar Function'/>"
+            "    <Parameter  name='Scalar Function Type'   type='string'           value='Average Surface Pressure'/>"
+            "    <Parameter  name='Sides'                  type='Array(string)'    value='{ss_1}'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='My Outlet Pressure'>"
+            "    <Parameter  name='Type'                   type='string'           value='Scalar Function'/>"
+            "    <Parameter  name='Scalar Function Type'   type='string'           value='Average Surface Pressure'/>"
+            "    <Parameter  name='Sides'                  type='Array(string)'    value='{ss_2}'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
