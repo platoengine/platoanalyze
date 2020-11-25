@@ -5862,7 +5862,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_Value)
     // test criterion value
     auto tTol = 1e-6;
     auto tValue = tCriterion.value(tControl, tPrimal);
-    TEST_FLOATING_EQUALITY(0.1, tValue, tTol);
+    TEST_FLOATING_EQUALITY(1.5, tValue, tTol);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_GradCurTemp)
