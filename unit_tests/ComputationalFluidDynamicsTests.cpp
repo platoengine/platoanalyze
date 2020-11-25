@@ -1620,8 +1620,6 @@ public:
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mGradConfigFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
-            Plato::print_fad_val_values(tResultWS, "gradConfig - val");
-            Plato::print_fad_dx_values<mNumNodesPerCell, mNumControlDofsPerNode>(tResultWS, "gradConfig - dx");
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>
                 (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tGradient);
         }
@@ -1704,6 +1702,8 @@ public:
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
             mGradCurrentPressureFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
+            Plato::print_fad_val_values(tResultWS, "gradPress - val");
+            Plato::print_fad_dx_values<mNumNodesPerCell, mNumControlDofsPerNode>(tResultWS, "gradPress - dx");
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMassDofsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mScalarStateOrdinalMap, tResultWS, tGradient);
         }
@@ -5740,7 +5740,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     TEST_FLOATING_EQUALITY(0.1, tValue, tTol);
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradConfig)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
 {
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
@@ -5797,8 +5797,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradConfig)
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
     // test criterion value
-    auto tTol = 1e-6;
-    auto tGradX = tCriterion.gradientConfig(tControl, tPrimal);
+    auto tGradX = tCriterion.gradientCurrentPress(tControl, tPrimal);
     auto tHostGradX = Kokkos::create_mirror(tGradX);
     Kokkos::deep_copy(tHostGradX, tGradX);
 }
