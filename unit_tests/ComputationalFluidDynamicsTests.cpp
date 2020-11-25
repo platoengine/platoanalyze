@@ -5975,7 +5975,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, RampPenalization)
     Kokkos::deep_copy(tHostOutput, tOutput);
     for(Plato::OrdinalType tIndex = 0; tIndex < tOutput.size(); tIndex++)
     {
-        TEST_FLOATING_EQUALITY(0.0, tHostOutput(tIndex), tTol);
+        TEST_FLOATING_EQUALITY(0.6, tHostOutput(tIndex), tTol);
     }
 }
 
