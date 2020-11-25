@@ -16,8 +16,8 @@
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
 #include "Simplex.hpp"
+#include "Assembly.hpp"
 #include "NaturalBCs.hpp"
-#include "WorksetBase.hpp"
 #include "SpatialModel.hpp"
 #include "EssentialBCs.hpp"
 #include "ProjectToNode.hpp"
@@ -5953,6 +5953,16 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
+{
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    constexpr Plato::OrdinalType tNumNodesPerCell = 3;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    Plato::ScalarArray3D tConfig("configuration", tMesh->nelems(), tNumNodesPerCell, tNumSpaceDims);
+    Plato::workset_config_scalar<tNumSpaceDims,tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig);
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BrinkmanPenalization)
 {
