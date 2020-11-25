@@ -5954,6 +5954,31 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BrinkmanPenalization)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tNumNodesPerCell = 4;
+    Plato::Scalar tPhysicalNum = 1.0;
+    Plato::Scalar tConvexityParam = 0.5;
+    Plato::ScalarVector tOutput("output", tNumCells);
+    Plato::ScalarMultiVector tControlWS("control", tNumCells, tNumNodesPerCell);
+    Plato::blas2::fill(0.5, tControlWS);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tOutput(aCellOrdinal) =
+            Plato::FluidMechanics::brinkman_penalization<tNumNodesPerCell>(aCellOrdinal, tPhysicalNum, tConvexityParam, tControlWS);
+    }, "brinkman_penalization unit test");
+
+    auto tTol = 1e-6;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    for(Plato::OrdinalType tIndex = 0; tIndex < tOutput.size(); tIndex++)
+    {
+        TEST_FLOATING_EQUALITY(0.4, tHostOutput(tIndex), tTol);
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, RampPenalization)
 {
     constexpr Plato::OrdinalType tNumCells = 2;
