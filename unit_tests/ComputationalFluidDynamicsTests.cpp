@@ -4363,26 +4363,30 @@ public:
             THROWERR(std::string("'Scalar Function Type' keyword is not defined in Criterion with name '") + aName + "'.")
         }
 
-        auto tTag = tCriterion.get<std::string>("Scalar Function Type", "Not Defined");
-        auto tLowerTag = Plato::tolower(tTag);
-        if( tLowerTag == "average surface pressure" )
+        auto tFlowTag = tCriterion.get<std::string>("Flow", "Not Defined");
+        auto tFlowLowerTag = Plato::tolower(tFlowTag);
+        auto tCriterionTag = tCriterion.get<std::string>("Scalar Function Type", "Not Defined");
+        auto tCriterionLowerTag = Plato::tolower(tCriterionTag);
+
+        if( tCriterionLowerTag == "average surface pressure" )
         {
             return ( std::make_shared<Plato::FluidMechanics::AverageSurfacePressure<PhysicsT, EvaluationT>>
                 (aName, aDomain, aDataMap, aInputs) );
         }
-        else if( tLowerTag == "average surface temperature" )
+        else if( tCriterionLowerTag == "average surface temperature" )
         {
             return ( std::make_shared<Plato::FluidMechanics::AverageSurfaceTemperature<PhysicsT, EvaluationT>>
                 (aName, aDomain, aDataMap, aInputs) );
         }
-        else if( tLowerTag == "internal dissipation energy incompressible" )
+        else if( tCriterionLowerTag == "internal dissipation energy" && tFlowLowerTag == "incompressible")
         {
             return ( std::make_shared<Plato::FluidMechanics::InternalDissipationEnergyIncompressible<PhysicsT, EvaluationT>>
                 (aName, aDomain, aDataMap, aInputs) );
         }
         else
         {
-            THROWERR(std::string("'Scalar Function Type' with tag '") + tTag + "' in Criterion Block '" + aName + "' is not supported.")
+            THROWERR(std::string("'Scalar Function Type' with tag '") + tCriterionTag
+                + "' in Criterion Block '" + aName + "' is not supported.")
         }
     }
 };
@@ -5950,6 +5954,72 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible_Value)
+{
+    // set inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList  name='Criteria'>"
+            "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
+            "    <ParameterList name='My Criteria'>"
+            "      <Parameter  name='Flow'                 type='string'    value='Incompressible'/>"
+            "      <Parameter  name='Type'                 type='string'    value='Scalar Function'/>"
+            "      <Parameter  name='Scalar Function Type' type='string'    value='Internal Dissipation Energy'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Dimensionless Properties'>"
+            "    <Parameter  name='DarcyNumber'    type='double'    value='1.0'/>"
+            "    <Parameter  name='Prandtl Number' type='double'    value='1.0'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
+    tModel.append(tDomain);
+
+    // set current state
+    Plato::Variables tPrimal;
+    auto tNumCells = tMesh->nelems();
+    auto tNumNodes = tMesh->nverts();
+    auto tNumVelDofs = tNumNodes * tMesh->dim();
+    Plato::ScalarVector tControl("controls", tNumNodes);
+    Plato::blas1::fill(0.5, tControl);
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    Plato::blas1::fill(1.0, tCurVel);
+    tPrimal.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    Plato::blas1::fill(0.1, tCurPress);
+    tPrimal.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    Plato::blas1::fill(1.5, tCurTemp);
+    tPrimal.vector("current temperature", tCurTemp);
+    Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
+    Plato::blas1::fill(0.01, tTimeSteps);
+    tPrimal.vector("time steps", tTimeSteps);
+
+    // set physics type
+    constexpr Plato::OrdinalType tNumSpaceDim = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDim>;
+
+    // build criterion
+    Plato::DataMap tDataMap;
+    std::string tFuncName("My Criteria");
+    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>
+        tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
+    TEST_EQUALITY("My Criteria", tCriterion.name());
+
+    // test criterion value
+    auto tTol = 1e-6;
+    auto tValue = tCriterion.value(tControl, tPrimal);
+    TEST_FLOATING_EQUALITY(0.1, tValue, tTol);
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
 {
     // set inputs
@@ -5961,7 +6031,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
             "    <ParameterList name='My Criteria'>"
             "      <Parameter  name='Type'                 type='string'        value='Scalar Function'/>"
             "      <Parameter  name='Sides'                type='Array(string)' value='{x+}'/>"
-            "      <Parameter  name='Scalar Function Type' type='string'        value='Average Surface Pressure'/>"
+            "      <Parameter  name='Scalar Function Type' type='string'        value='Internal Dissipation Energy'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "</ParameterList>"
