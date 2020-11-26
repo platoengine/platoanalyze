@@ -6014,28 +6014,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRateNonZero)
 {
+    Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
     constexpr Plato::OrdinalType tNumNodesPerCell = 3;
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    TEST_EQUALITY(2, tMesh->nelems());
-
-    auto const tNumCells = tMesh->nelems();
-    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
     Plato::ScalarArray3D tConfig("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims);
-    Plato::workset_config_scalar<tNumSpaceDims,tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig);
-
     auto tHostConfig = Kokkos::create_mirror(tConfig);
-    Kokkos::deep_copy(tHostConfig, tConfig);
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (Plato::OrdinalType tDimI = 0; tDimI < tNumSpaceDims; tDimI++)
-        {
-            for (Plato::OrdinalType tDimJ = 0; tDimJ < tNumSpaceDims; tDimJ++)
-            {
-                printf("Config(Cell=%d,DimI=%d,DimJ=%d)=%f\n", tCell, tDimI, tDimJ, tHostConfig(tCell, tDimI, tDimJ));
-            }
-        }
-    }
+    tHostConfig(0,0,0) = 0.01; tHostConfig(0,0,1) = 0.0;
+    tHostConfig(0,1,0) = 1.0; tHostConfig(0,1,1) = 0.0;
+    tHostConfig(0,2,0) = 1.0; tHostConfig(0,2,1) = 1.0;
+    tHostConfig(1,0,0) = 1.0; tHostConfig(1,0,1) = 1.0;
+    tHostConfig(1,1,0) = 0.01; tHostConfig(1,1,1) = 1.0;
+    tHostConfig(1,2,0) = 0.01; tHostConfig(1,2,1) = 0.0;
+    Kokkos::deep_copy(tConfig, tHostConfig);
 
     Plato::ScalarVector tVolume("volume", tNumCells);
     Plato::ScalarArray3D tGradient("gradient", tNumCells, tNumNodesPerCell, tNumSpaceDims);
@@ -6052,6 +6042,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRateNonZero)
     {
         tComputeGradient(aCellOrdinal, tGradient, tConfig, tVolume);
         Plato::FluidMechanics::strain_rate<tNumNodesPerCell, tNumSpaceDims>(aCellOrdinal, tVelocity, tGradient, tStrainRate);
+
+        for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+        {
+            for (Plato::OrdinalType tNode = 0; tNode < tNumNodesPerCell; tNode++)
+            {
+                for (Plato::OrdinalType tDim = 0; tDim < tNumSpaceDims; tDim++)
+                {
+                    printf("Gradient(Cell=%d,Node=%d,Dim=%d)=%f\n", tCell, tNode, tDim, tGradient);
+                }
+            }
+        }
+
     }, "strain_rate unit test");
 
     /*auto tTol = 1e-6;
@@ -6066,7 +6068,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRateNonZero)
                 TEST_FLOATING_EQUALITY(0.0, tHostStrainRate(tCell, tDimI, tDimJ), tTol);
             }
         }
-    }/*
+    }*/
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale)
