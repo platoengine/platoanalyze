@@ -15,6 +15,7 @@
 
 #include "BLAS1.hpp"
 #include "BLAS2.hpp"
+#include "BLAS3.hpp"
 #include "Simplex.hpp"
 #include "Assembly.hpp"
 #include "NaturalBCs.hpp"
@@ -35,6 +36,91 @@
 
 namespace Plato
 {
+
+namespace blas2
+{
+
+template<Plato::OrdinalType LengthI,
+         Plato::OrdinalType LengthJ,
+         typename ScalarT,
+         typename AViewTypeT,
+         typename BViewTypeT>
+DEVICE_TYPE inline void
+scale(const Plato::OrdinalType & aCellOrdinal,
+      const ScalarT & aScalar,
+      const Plato::ScalarArray3DT<AViewTypeT> & aInputWS,
+      const Plato::ScalarArray3DT<BViewTypeT> & aOutputWS)
+{
+    for(Plato::OrdinalType tDimI = 0; tDimI < LengthI; tDimI++)
+    {
+        for(Plato::OrdinalType tDimJ = 0; tDimJ < LengthJ; tDimJ++)
+        {
+            aOutputWS(aCellOrdinal, tDimI, tDimJ) = aScalar * aInputWS(aCellOrdinal, tDimI, tDimJ);
+        }
+    }
+}
+
+template<Plato::OrdinalType LengthI,
+         Plato::OrdinalType LengthJ,
+         typename AViewType,
+         typename BViewType,
+         typename CViewType>
+DEVICE_TYPE inline void
+dot(const Plato::OrdinalType & aCellOrdinal,
+    const Plato::ScalarArray3DT<AViewType> & aTensorA,
+    const Plato::ScalarArray3DT<BViewType> & aTensorB,
+    const Plato::ScalarVectorT <CViewType> & aOutput)
+{
+    for(Plato::OrdinalType tDimI = 0; tDimI < LengthI; tDimI++)
+    {
+        for(Plato::OrdinalType tDimJ = 0; tDimJ < LengthJ; tDimJ++)
+        {
+            aOutput(aCellOrdinal) += aTensorA(aCellOrdinal, tDimI, tDimJ) * aTensorB(aCellOrdinal, tDimI, tDimJ);
+        }
+    }
+}
+
+}
+// namespace blas3
+
+namespace blas1
+{
+
+template<Plato::OrdinalType Length,
+         typename ScalarT,
+         typename AViewTypeT,
+         typename BViewTypeT>
+DEVICE_TYPE inline void
+scale(const Plato::OrdinalType & aCellOrdinal,
+      const ScalarT & aScalar,
+      const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
+      const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
+{
+    for(Plato::OrdinalType tDim = 0; tDim < Length; tDim++)
+    {
+        aOutputWS(aCellOrdinal, tDim) = aScalar * aInputWS(aCellOrdinal, tDim);
+    }
+}
+
+template<Plato::OrdinalType Length,
+         typename AViewType,
+         typename BViewType,
+         typename CViewType>
+DEVICE_TYPE inline void
+dot(const Plato::OrdinalType & aCellOrdinal,
+    const Plato::ScalarMultiVectorT<AViewType> & aVectorA,
+    const Plato::ScalarMultiVectorT<BViewType> & aVectorB,
+    const Plato::ScalarVectorT<CViewType>      & aOutput)
+{
+    for(Plato::OrdinalType tDim = 0; tDim < Length; tDim++)
+    {
+        aOutput(aCellOrdinal) += aVectorA(aCellOrdinal, tDim) * aVectorB(aCellOrdinal, tDim);
+    }
+}
+
+}
+// namespace blas1
+
 
 template <typename Type>
 inline void print_fad_val_values
@@ -1523,79 +1609,6 @@ strain_rate
     }
 }
 
-template<Plato::OrdinalType NumSpaceDim,
-         typename ScalarT,
-         typename AViewTypeT,
-         typename BViewTypeT>
-DEVICE_TYPE inline void
-scale
-(const Plato::OrdinalType & aCellOrdinal,
- const ScalarT & aScalar,
- const Plato::ScalarArray3DT<AViewTypeT> & aInputWS,
- const Plato::ScalarArray3DT<BViewTypeT> & aOutputWS)
-{
-    for(Plato::OrdinalType tDimI = 0; tDimI < NumSpaceDim; tDimI++)
-    {
-        for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpaceDim; tDimJ++)
-        {
-            aOutputWS(aCellOrdinal, tDimI, tDimJ) = aScalar * aInputWS(aCellOrdinal, tDimI, tDimJ);
-        }
-    }
-}
-
-template<Plato::OrdinalType NumSpaceDim,
-         typename ScalarT,
-         typename AViewTypeT,
-         typename BViewTypeT>
-DEVICE_TYPE inline void
-scale
-(const Plato::OrdinalType & aCellOrdinal,
- const ScalarT & aScalar,
- const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
- const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
-{
-    for(Plato::OrdinalType tDim = 0; tDim < NumSpaceDim; tDim++)
-    {
-        aOutputWS(aCellOrdinal, tDim) = aScalar * aInputWS(aCellOrdinal, tDim);
-    }
-}
-
-template<Plato::OrdinalType NumSpaceDim,
-         typename AViewType,
-         typename BViewType,
-         typename CViewType>
-DEVICE_TYPE inline void
-dot_product
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarMultiVectorT<AViewType> & aVectorA,
- const Plato::ScalarMultiVectorT<BViewType> & aVectorB,
- const Plato::ScalarVectorT<CViewType>      & aOutput)
-{
-    for(Plato::OrdinalType tDimI = 0; tDimI < NumSpaceDim; tDimI++)
-    {
-        aOutput(aCellOrdinal) += aVectorA(aCellOrdinal, tDimI) * aVectorB(aCellOrdinal, tDimI);
-    }
-}
-
-template<Plato::OrdinalType NumSpaceDim,
-         typename AViewType,
-         typename BViewType,
-         typename CViewType>
-DEVICE_TYPE inline void
-double_dot_product
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarArray3DT<AViewType> & aTensorA,
- const Plato::ScalarArray3DT<BViewType> & aTensorB,
- const Plato::ScalarVectorT <CViewType> & aOutput)
-{
-    for(Plato::OrdinalType tDimI = 0; tDimI < NumSpaceDim; tDimI++)
-    {
-        for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpaceDim; tDimJ++)
-        {
-            aOutput(aCellOrdinal) += aTensorA(aCellOrdinal, tDimI, tDimJ) * aTensorB(aCellOrdinal, tDimI, tDimJ);
-        }
-    }
-}
 
 
 
@@ -1692,15 +1705,15 @@ public:
             ControlT tPenalizedPrNum =
                 Plato::FluidMechanics::ramp_penalization<mNumNodesPerCell>(aCellOrdinal, tPrNum, tPrConvexParam, tControlWS);
             ControlT tTwoTimesPenalizedPrNum = static_cast<Plato::Scalar>(2.0) * tPenalizedPrNum;
-            Plato::FluidMechanics::scale<mNumSpatialDims>(aCellOrdinal, tTwoTimesPenalizedPrNum, tStrainRate, tDevStress);
-            Plato::FluidMechanics::double_dot_product<mNumSpatialDims>(aCellOrdinal, tDevStress, tDevStress, aResult);
+            Plato::blas2::scale<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tTwoTimesPenalizedPrNum, tStrainRate, tDevStress);
+            Plato::blas2::dot<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tDevStress, tDevStress, aResult);
 
             // calculate fictitious material model (i.e. brinkman model) contribution to internal energy
             auto tPermeability = tPrNum / tDaNum;
             ControlT tPenalizedPermeability =
                 Plato::FluidMechanics::brinkman_penalization<mNumNodesPerCell>(aCellOrdinal, tPermeability, tBrinkConvexParam, tControlWS);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
-            Plato::FluidMechanics::dot_product<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelDotCurVel);
+            Plato::blas1::dot<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelDotCurVel);
             aResult(aCellOrdinal) += tPenalizedPermeability * tCurVelDotCurVel(aCellOrdinal);
 
             // apply gauss weight times volume multiplier
@@ -5996,6 +6009,108 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
                 //TEST_FLOATING_EQUALITY(0.4, tHostStrainRate(tCell, tDimI, tDimJ), tTol);
             }
         }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    Plato::ScalarMultiVector tInput("input", tNumCells, tNumSpaceDims);
+    Plato::blas2::fill(tNumCells, 1.0, tInput);
+    Plato::ScalarMultiVector tOutput("output", tNumCells, tNumSpaceDims);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::blas1::scale<tNumSpaceDims>(aCellOrdinal, 4.0, tInput, tOutput);
+    }, "device blas1::scale");
+
+    auto tTol = 1e-6;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDim = 0; tDim < tNumSpaceDims; tDim++)
+        {
+            TEST_FLOATING_EQUALITY(4.0, tHostOutput(tCell, tDim), tTol);
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_Dot)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    Plato::ScalarMultiVector tInputA("input", tNumCells, tNumSpaceDims);
+    Plato::blas2::fill(tNumCells, 1.0, tInputA);
+    Plato::ScalarMultiVector tInputB("input", tNumCells, tNumSpaceDims);
+    Plato::blas2::fill(tNumCells, 4.0, tInputB);
+    Plato::ScalarVector tOutput("output", tNumCells, tNumSpaceDims, tNumSpaceDims);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::blas1::dot<tNumSpaceDims>(aCellOrdinal, tInputA, tInputB, tOutput);
+    }, "device blas1::dot");
+
+    auto tTol = 1e-6;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        TEST_FLOATING_EQUALITY(8.0, tHostOutput(tCell), tTol);
+    }
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_DeviceScale)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    Plato::ScalarArray3D tInput("input", tNumCells, tNumSpaceDims, tNumSpaceDims);
+    Plato::blas3::fill(tNumCells, 1.0, tInput);
+    Plato::ScalarArray3D tOutput("output", tNumCells, tNumSpaceDims, tNumSpaceDims);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::blas2::scale<tNumSpaceDims, tNumSpaceDims>(aCellOrdinal, 4.0, tInput, tOutput);
+    }, "device blas2::scale");
+
+    auto tTol = 1e-6;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDimI = 0; tDimI < tNumSpaceDims; tDimI++)
+        {
+            for (Plato::OrdinalType tDimJ = 0; tDimJ < tNumSpaceDims; tDimJ++)
+            {
+                TEST_FLOATING_EQUALITY(4.0, tHostOutput(tCell, tDimI, tDimJ), tTol);
+            }
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_Dot)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    Plato::ScalarArray3D tInputA("input", tNumCells, tNumSpaceDims, tNumSpaceDims);
+    Plato::blas3::fill(tNumCells, 1.0, tInputA);
+    Plato::ScalarArray3D tInputB("input", tNumCells, tNumSpaceDims, tNumSpaceDims);
+    Plato::blas3::fill(tNumCells, 4.0, tInputB);
+    Plato::ScalarVector tOutput("output", tNumCells, tNumSpaceDims, tNumSpaceDims);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::blas2::dot<tNumSpaceDims, tNumSpaceDims>(aCellOrdinal, tInputA, tInputB, tOutput);
+    }, "device blas2::dot");
+
+    auto tTol = 1e-6;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        TEST_FLOATING_EQUALITY(16.0, tHostOutput(tCell), tTol);
     }
 }
 
