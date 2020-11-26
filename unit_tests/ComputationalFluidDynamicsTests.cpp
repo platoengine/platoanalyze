@@ -5967,6 +5967,53 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureSurfaceForces)
+{
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::MomentumConservation<tNumSpaceDims>;
+    using ResidualEvalT = Plato::FluidMechanics::Evaluation<PhysicsT::SimplexT>::Residual;
+
+    // build mesh, mesh sets, and spatial domain
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // set workset
+    Plato::WorkSets tWorkSets;
+    auto tNumCells = tMesh->nelems();
+    constexpr Plato::OrdinalType tNumNodesPerCell = 3;
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    Plato::ScalarArray3DT<ResidualEvalT::ConfigScalarType>
+        tConfig("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims);
+    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig);
+    tWorkSets.set("congiguration", tConfig);
+
+    Plato::ScalarMultiVectorT<ResidualEvalT::PreviousMomentumScalarType>
+        tPrevVel("revious velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
+    Plato::blas2::fill(1, tPrevVel);
+    tWorkSets.set("previous velocity", tPrevVel);
+
+    // build criterion
+    Plato::ScalarMultiVectorT<ResidualEvalT::ResultScalarType>
+        tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
+    Plato::FluidMechanics::PressureSurfaceForces<PhysicsT, ResidualEvalT>
+        tPressureSurfaceForces(tDomain, "x+");
+
+    // test function
+    tPressureSurfaceForces(tWorkSets, tResult);
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
+        {
+            printf("Results(Cell=%d,Dof=%d)=%f/n", tCell, tDof, tResult(tCell, tDof));
+        }
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
 {
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
