@@ -6067,7 +6067,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_DeviceScale)
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
     Plato::ScalarArray3D tInput("input", tNumCells, tNumSpaceDims, tNumSpaceDims);
-    Plato::blas3::fill(tNumCells, 1.0, tInput);
+    Plato::blas3::fill<tNumSpaceDims, tNumSpaceDims>(tNumCells, 1.0, tInput);
     Plato::ScalarArray3D tOutput("output", tNumCells, tNumSpaceDims, tNumSpaceDims);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -6095,9 +6095,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS2_Dot)
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
     Plato::ScalarArray3D tInputA("input", tNumCells, tNumSpaceDims, tNumSpaceDims);
-    Plato::blas3::fill(tNumCells, 1.0, tInputA);
+    Plato::blas3::fill<tNumSpaceDims, tNumSpaceDims>(tNumCells, 1.0, tInputA);
     Plato::ScalarArray3D tInputB("input", tNumCells, tNumSpaceDims, tNumSpaceDims);
-    Plato::blas3::fill(tNumCells, 4.0, tInputB);
+    Plato::blas3::fill<tNumSpaceDims, tNumSpaceDims>(tNumCells, 4.0, tInputB);
     Plato::ScalarVector tOutput("output", tNumCells, tNumSpaceDims, tNumSpaceDims);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
