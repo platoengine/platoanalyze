@@ -6017,7 +6017,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale)
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
     Plato::ScalarMultiVector tInput("input", tNumCells, tNumSpaceDims);
-    Plato::blas2::fill(tNumCells, 1.0, tInput);
+    Plato::blas2::fill(1.0, tInput);
     Plato::ScalarMultiVector tOutput("output", tNumCells, tNumSpaceDims);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -6042,9 +6042,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_Dot)
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
     Plato::ScalarMultiVector tInputA("input", tNumCells, tNumSpaceDims);
-    Plato::blas2::fill(tNumCells, 1.0, tInputA);
+    Plato::blas2::fill(1.0, tInputA);
     Plato::ScalarMultiVector tInputB("input", tNumCells, tNumSpaceDims);
-    Plato::blas2::fill(tNumCells, 4.0, tInputB);
+    Plato::blas2::fill(4.0, tInputB);
     Plato::ScalarVector tOutput("output", tNumCells, tNumSpaceDims, tNumSpaceDims);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
