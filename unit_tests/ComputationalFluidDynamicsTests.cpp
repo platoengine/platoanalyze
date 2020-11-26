@@ -6126,7 +6126,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
             "    <ParameterList name='My Criteria'>"
             "      <Parameter  name='Type'                 type='string'        value='Scalar Function'/>"
             "      <Parameter  name='Sides'                type='Array(string)' value='{x+}'/>"
-            "      <Parameter  name='Scalar Function Type' type='string'        value='Internal Dissipation Energy'/>"
+            "      <Parameter  name='Scalar Function Type' type='string'        value='Average Surface Pressure'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "</ParameterList>"
