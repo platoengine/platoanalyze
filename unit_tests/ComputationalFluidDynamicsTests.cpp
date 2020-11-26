@@ -5993,6 +5993,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         tComputeGradient(aCellOrdinal, tGradient, tConfig, tVolume);
+        for (Plato::OrdinalType tDimI = 0; tDimI < tNumSpaceDims; tDimI++)
+        {
+            for (Plato::OrdinalType tDimJ = 0; tDimJ < tNumSpaceDims; tDimJ++)
+            {
+                printf("Gradient(Cell=%d,DimI=%d,DimJ=%d)=%f\n",aCellOrdinal, tDimI, tDimJ,tGradient(aCellOrdinal, tDimI, tDimJ));
+            }
+        }
         Plato::FluidMechanics::strain_rate<tNumNodesPerCell, tNumSpaceDims>(aCellOrdinal, tVelocity, tGradient, tStrainRate);
     }, "strain_rate unit test");
 
