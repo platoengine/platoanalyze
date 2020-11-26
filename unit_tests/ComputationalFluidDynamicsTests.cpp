@@ -6010,6 +6010,64 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
         }
     }
 }
+// todo
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRateNonZero)
+{
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    constexpr Plato::OrdinalType tNumNodesPerCell = 3;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    TEST_EQUALITY(2, tMesh->nelems());
+
+    auto const tNumCells = tMesh->nelems();
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    Plato::ScalarArray3D tConfig("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims);
+    Plato::workset_config_scalar<tNumSpaceDims,tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig);
+
+    auto tHostConfig = Kokkos::create_mirror(tConfig);
+    Kokkos::deep_copy(tHostConfig, tConfig);
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDimI = 0; tDimI < tNumSpaceDims; tDimI++)
+        {
+            for (Plato::OrdinalType tDimJ = 0; tDimJ < tNumSpaceDims; tDimJ++)
+            {
+                printf("Config(Cell=%d,DimI=%d,DimJ=%d)=%f\n", tCell, tDimI, tDimJ, tHostConfig(tCell, tDimI, tDimJ));
+            }
+        }
+    }
+
+    Plato::ScalarVector tVolume("volume", tNumCells);
+    Plato::ScalarArray3D tGradient("gradient", tNumCells, tNumNodesPerCell, tNumSpaceDims);
+    Plato::ScalarArray3D tStrainRate("strain rate", tNumCells, tNumNodesPerCell, tNumSpaceDims);
+    Plato::ComputeGradientWorkset<tNumSpaceDims> tComputeGradient;
+
+    Plato::ScalarMultiVector tVelocity("velocity", tNumCells, tNumSpaceDims);
+    auto tHostVelocity = Kokkos::create_mirror(tVelocity);
+    tHostVelocity(0, 0) = 1.0; tHostVelocity(1, 0) = 3.0;
+    tHostVelocity(0, 1) = 2.0; tHostVelocity(1, 1) = 4.0;
+    Kokkos::deep_copy(tVelocity, tHostVelocity);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfig, tVolume);
+        Plato::FluidMechanics::strain_rate<tNumNodesPerCell, tNumSpaceDims>(aCellOrdinal, tVelocity, tGradient, tStrainRate);
+    }, "strain_rate unit test");
+
+    /*auto tTol = 1e-6;
+    auto tHostStrainRate = Kokkos::create_mirror(tStrainRate);
+    Kokkos::deep_copy(tHostStrainRate, tStrainRate);
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDimI = 0; tDimI < tNumSpaceDims; tDimI++)
+        {
+            for (Plato::OrdinalType tDimJ = 0; tDimJ < tNumSpaceDims; tDimJ++)
+            {
+                TEST_FLOATING_EQUALITY(0.0, tHostStrainRate(tCell, tDimI, tDimJ), tTol);
+            }
+        }
+    }/*
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale)
 {
