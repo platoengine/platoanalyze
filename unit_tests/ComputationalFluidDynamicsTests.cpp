@@ -1663,7 +1663,7 @@ public:
         // set local worksets
         auto tNumCells = mSpatialDomain.numCells();
         Plato::ScalarVectorT<ConfigT> tVolumeTimesWeight("volume times gauss weight", tNumCells);
-        Plato::ScalarVectorT<CurVelT> tCurVelTimesCurVel("current velocity times current velocity", tNumCells);
+        Plato::ScalarVectorT<CurVelT> tCurVelDotCurVel("current velocity dot current velocity", tNumCells);
         Plato::ScalarArray3DT<ConfigT> tGradient("gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::ScalarArray3DT<StrainT> tStrainRate("strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
         Plato::ScalarArray3DT<ResultT> tDevStress("deviatoric stress", tNumCells, mNumSpatialDims, mNumSpatialDims);
@@ -1688,7 +1688,7 @@ public:
             tVolumeTimesWeight(aCellOrdinal) *= tCubWeight;
 
             // calculate deviatoric stress contribution to internal energy
-            Plato::FluidMechanics::strain_rate<mNumNodesPerCell, mNumSpatialDims>(aCellOrdinal, tCurVelWS, tConfigWS, tStrainRate);
+            Plato::FluidMechanics::strain_rate<mNumNodesPerCell, mNumSpatialDims>(aCellOrdinal, tCurVelWS, tGradient, tStrainRate);
             ControlT tPenalizedPrNum =
                 Plato::FluidMechanics::ramp_penalization<mNumNodesPerCell>(aCellOrdinal, tPrNum, tPrConvexParam, tControlWS);
             ControlT tTwoTimesPenalizedPrNum = static_cast<Plato::Scalar>(2.0) * tPenalizedPrNum;
@@ -1700,8 +1700,8 @@ public:
             ControlT tPenalizedPermeability =
                 Plato::FluidMechanics::brinkman_penalization<mNumNodesPerCell>(aCellOrdinal, tPermeability, tBrinkConvexParam, tControlWS);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
-            Plato::FluidMechanics::dot_product<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelTimesCurVel);
-            aResult(aCellOrdinal) += tPenalizedPermeability * tCurVelTimesCurVel(aCellOrdinal);
+            Plato::FluidMechanics::dot_product<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelDotCurVel);
+            aResult(aCellOrdinal) += tPenalizedPermeability * tCurVelDotCurVel(aCellOrdinal);
 
             // apply gauss weight times volume multiplier
             aResult(aCellOrdinal) *= tVolumeTimesWeight(aCellOrdinal);
@@ -5959,9 +5959,44 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
     constexpr Plato::OrdinalType tNumNodesPerCell = 3;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    TEST_EQUALITY(2, tMesh->nelems());
+
+    auto const tNumCells = tMesh->nelems();
     Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-    Plato::ScalarArray3D tConfig("configuration", tMesh->nelems(), tNumNodesPerCell, tNumSpaceDims);
+    Plato::ScalarArray3D tConfig("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims);
     Plato::workset_config_scalar<tNumSpaceDims,tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig);
+
+    Plato::ScalarVector tVolume("volume", tNumCells);
+    Plato::ScalarArray3D tGradient("gradient", tNumCells, tNumNodesPerCell, tNumSpaceDims);
+    Plato::ScalarArray3D tStrainRate("strain rate", tNumCells, tNumNodesPerCell, tNumSpaceDims);
+    Plato::ComputeGradientWorkset<tNumSpaceDims> tComputeGradient;
+
+    Plato::ScalarMultiVector tVelocity("velocity", tNumCells, tNumSpaceDims);
+    auto tHostVelocity = Kokkos::create_mirror(tVelocity);
+    tHostVelocity(0, 0) = 1.0; tHostVelocity(1, 0) = 3.0;
+    tHostVelocity(0, 1) = 2.0; tHostVelocity(1, 1) = 4.0;
+    Kokkos::deep_copy(tVelocity, tHostVelocity);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfig, tVolume);
+        Plato::FluidMechanics::strain_rate<tNumNodesPerCell, tNumSpaceDims>(aCellOrdinal, tVelocity, tGradient, tStrainRate);
+    }, "strain_rate unit test");
+
+    auto tTol = 1e-6;
+    auto tHostStrainRate = Kokkos::create_mirror(tStrainRate);
+    Kokkos::deep_copy(tHostStrainRate, tStrainRate);
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDimI = 0; tDimI < tNumSpaceDims; tDimI++)
+        {
+            for (Plato::OrdinalType tDimJ = 0; tDimJ < tNumSpaceDims; tDimJ++)
+            {
+                printf("StrainRate(Cell=%d,DimI=%d,DimJ=%d)=%f\n",tCell, tDimI, tDimJ,tHostStrainRate(tCell, tDimI, tDimJ));
+                //TEST_FLOATING_EQUALITY(0.4, tHostStrainRate(tCell, tDimI, tDimJ), tTol);
+            }
+        }
+    }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BrinkmanPenalization)
