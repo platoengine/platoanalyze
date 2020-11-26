@@ -6354,7 +6354,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
     Kokkos::deep_copy(tHostGradCurPress, tGradCurPress);
 
     auto tTol = 1e-6;
-    std::vector<Plato::Scalar> tGold = {0.5, 0.0, 0.0, 0.5};
+    std::vector<Plato::Scalar> tGold = {0.5, 0.0, 0.333333333, 0.5};
     for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostGradCurPress(tNode), tTol);
@@ -6420,7 +6420,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_Value)
     // test criterion value
     auto tTol = 1e-6;
     auto tValue = tCriterion.value(tControl, tPrimal);
-    TEST_FLOATING_EQUALITY(1.5, tValue, tTol);
+    TEST_FLOATING_EQUALITY(2.0, tValue, tTol);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_GradCurTemp)
@@ -6485,7 +6485,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_GradCurTemp)
     Kokkos::deep_copy(tHostGradCurTemp, tGradCurTemp);
 
     auto tTol = 1e-6;
-    std::vector<Plato::Scalar> tGold = {0.5, 0.0, 0.0, 0.5};
+    std::vector<Plato::Scalar> tGold = {0.5, 0.0, 0.333333333, 0.5};
     for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostGradCurTemp(tNode), tTol);
