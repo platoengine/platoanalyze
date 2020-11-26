@@ -6049,7 +6049,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRateNonZero)
             {
                 for (Plato::OrdinalType tDim = 0; tDim < tNumSpaceDims; tDim++)
                 {
-                    printf("Gradient(Cell=%d,Node=%d,Dim=%d)=%f\n", tCell, tNode, tDim, tGradient);
+                    printf("Gradient(Cell=%d,Node=%d,Dim=%d)=%f\n", tCell, tNode, tDim, tGradient(tCell, tNode, tDim));
                 }
             }
         }
