@@ -5985,14 +5985,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureSurfaceForces)
     auto tNumCells = tMesh->nelems();
     constexpr Plato::OrdinalType tNumNodesPerCell = 3;
     Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-    Plato::ScalarArray3DT<ResidualEvalT::ConfigScalarType>
-        tConfig("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims);
-    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig);
+
+    using ConfigT = ResidualEvalT::ConfigScalarType;
+    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
+    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
     tWorkSets.set("congiguration", tConfig);
 
-    Plato::ScalarMultiVectorT<ResidualEvalT::PreviousMomentumScalarType>
-        tPrevVel("revious velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::blas2::fill(1, tPrevVel);
+    using PrevVelT = ResidualEvalT::PreviousMomentumScalarType;
+    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
+        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+    Plato::blas2::fill(1, tPrevVel->mData);
     tWorkSets.set("previous velocity", tPrevVel);
 
     // build criterion
