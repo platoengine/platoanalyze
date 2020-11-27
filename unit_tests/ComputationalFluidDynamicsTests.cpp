@@ -1732,7 +1732,7 @@ private:
         if(tMyCriterionInputs.isSublist("Penalty Function"))
         {
             auto tPenaltyFuncInputs = tMyCriterionInputs.sublist("Penalty Function");
-            mPrNumConvexityParam = tPenaltyFuncInputs.get<Plato::Scalar>("Prandtl Number Convexity Parameter", 0.5);
+            mPrNumConvexityParam = tPenaltyFuncInputs.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
             mBrinkmanConvexityParam = tPenaltyFuncInputs.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
         }
     }
@@ -2162,18 +2162,27 @@ private:
     using ConfigT    = typename EvaluationT::ConfigScalarType;
     using PrevPressT = typename EvaluationT::PreviousMassScalarType;
 
-    const std::string mSideSetName; /*!< side set name */
+    // set local type names
+    using CubatureRule = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
 
+    const std::string mSideSetName = "not defined"; /*!< side set name */
+
+    CubatureRule mCubatureRule;  /*!< integration rule */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mCubatureRule;  /*!< integration rule */
 
 public:
     PressureSurfaceForces
     (const Plato::SpatialDomain & aSpatialDomain,
-     std::string aSideSetName = "empty") :
+     std::string aSideSetName = "not defined") :
          mSideSetName(aSideSetName),
+         mCubatureRule(CubatureRule()),
          mSpatialDomain(aSpatialDomain)
     {
+        auto tLowerTag = Plato::tolower(mSideSetName);
+        if(tLowerTag == "not defined")
+        {
+            THROWERR("Side set with name '" + mSideSetName + "' is not defined.")
+        }
     }
 
     void operator()
@@ -2256,7 +2265,7 @@ public:
 
 
 
-
+// todo DeviatoricSurfaceForces
 template<typename PhysicsT, typename EvaluationT>
 class DeviatoricSurfaceForces
 {
@@ -2274,29 +2283,31 @@ private:
     using ConfigT  = typename EvaluationT::ConfigScalarType;
     using ControlT = typename EvaluationT::ControlScalarType;
     using PrevVelT = typename EvaluationT::PreviousMomentumScalarType;
+    using StrainT  = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
 
-    using StrainT = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
+    // set local typenames
+    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
 
+    std::string   mSideSetName; /*!< side set name */
     Plato::Scalar mPrNum = 1.0;
     Plato::Scalar mPrNumConvexityParam = 0.5;
-    std::string mSideSetName = ""; /*!< side set name */
 
-    Omega_h::LOs mBoundaryFaceOrdinals;
+    CubatureRule mCubatureRule;  /*!< integration rule */
+    Omega_h::LOs mFaceOrdinalsOnBoundary;
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;  /*!< integration rule */
 
 public:
     DeviatoricSurfaceForces
     (const Plato::SpatialDomain & aSpatialDomain,
      Teuchos::ParameterList & aInputs,
      std::string aSideSetName = "") :
-         mPrNum(Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs)),
          mSideSetName(aSideSetName),
+         mCubatureRule(CubatureRule()),
          mSpatialDomain(aSpatialDomain)
     {
         this->setPenaltyModel(aInputs);
         this->setFacesOnNonPrescribedBoundary(aInputs);
-        // todo parse all parameters
+        mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs);
     }
 
     void operator()
@@ -2326,14 +2337,14 @@ public:
         // transfer member data to device
         auto tPrNum = mPrNum;
         auto tPrNumConvexityParam = mPrNumConvexityParam;
-        auto tBoundaryFaceOrdinals = mBoundaryFaceOrdinals;
+        auto tFaceOrdinalsOnBoundary = mFaceOrdinalsOnBoundary;
 
         // set local data structures
         auto tNumCells = mSpatialDomain.Mesh.nelems();
         Plato::ScalarVectorT<ConfigT>  tCellVolume("cell weight", tNumCells);
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
-        auto tNumFaces = tBoundaryFaceOrdinals.size();
+        auto tNumFaces = tFaceOrdinalsOnBoundary.size();
         Plato::ScalarArray3DT<ConfigT> tJacobians("cell jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
         // set input state worksets
@@ -2346,7 +2357,7 @@ public:
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
         {
-            auto tFaceOrdinal = tBoundaryFaceOrdinals[aFaceI];
+            auto tFaceOrdinal = tFaceOrdinalsOnBoundary[aFaceI];
             // for each element that the face is connected to: (either 1 or 2 elements)
             for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal + 1]; tElem++ )
             {
@@ -2404,7 +2415,7 @@ private:
             if(tHyperbolicList.isSublist("Penalty Function"))
             {
                 auto tPenaltyFuncList = tHyperbolicList.sublist("Penalty Function");
-                mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Number Convexity Parameter", 0.5);
+                mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
             }
         }
         else
@@ -2421,7 +2432,7 @@ private:
             {
                 auto tNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
                 auto tNames = Plato::sideset_names(tNaturalBCs);
-                mBoundaryFaceOrdinals =
+                mFaceOrdinalsOnBoundary =
                     Plato::faces_on_non_prescribed_boundary(tNames, mSpatialDomain.Mesh, mSpatialDomain.MeshSets);
             }
             else
@@ -2433,7 +2444,7 @@ private:
         }
         else
         {
-            mBoundaryFaceOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+            mFaceOrdinalsOnBoundary = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
         }
     }
 };
@@ -2767,8 +2778,8 @@ private:
            if(tHyperbolicList.isSublist("Penalty Function"))
            {
                auto tPenaltyFuncList = tHyperbolicList.sublist("Penalty Function");
-               mGrNumExponent = tPenaltyFuncList.get<Plato::Scalar>("Grashof Number Penalty Exponent", 3.0);
-               mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Number Convexity Parameter", 0.5);
+               mGrNumExponent = tPenaltyFuncList.get<Plato::Scalar>("Grashof Penalty Exponent", 3.0);
+               mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
                mBrinkmanConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
            }
        }
@@ -5966,6 +5977,87 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
+{
+    // build mesh, mesh sets, and spatial domain
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    std::vector<std::string> tNames = {"x-","x+","y+","y-"};
+    auto tFaceOrdinalsOnBoundary = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
+    TEST_EQUALITY(0, tFaceOrdinalsOnBoundary.size());
+
+    auto tLength = tFaceOrdinalsOnBoundary.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        printf("FaceOrdinalsOnBoundary(%d)=%f\n",aOrdinal,tFaceOrdinalsOnBoundary(aOrdinal));
+    }, "faces_on_non_prescribed_boundary unit test");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
+{
+    // set inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <ParameterList name='Penalty Function'>"
+            "      <Parameter name='Prandtl Convexity Parameter' type='double' value='0.5'/>"
+            "    </ParameterList>"
+            "  </ParameterList>
+            "  <ParameterList  name='Dimensionless Properties'>"
+            "    <Parameter  name='Prandtl Number' type='double'    value='1.0'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
+            "    <Parameter  name='Sides' type='Array(string)' value='{x+}'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::MomentumConservation<tNumSpaceDims>;
+    using ResidualEvalT = Plato::FluidMechanics::Evaluation<PhysicsT::SimplexT>::Residual;
+
+    // build mesh, mesh sets, and spatial domain
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // set workset
+    Plato::WorkSets tWorkSets;
+    auto tNumCells = tMesh->nelems();
+    constexpr Plato::OrdinalType tNumNodesPerCell = 3;
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+
+    using ConfigT = ResidualEvalT::ConfigScalarType;
+    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
+    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
+    tWorkSets.set("configuration", tConfig);
+
+    using PrevVelT = ResidualEvalT::PreviousMomentumScalarType;
+    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
+        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+    Plato::blas2::fill(1, tPrevVel->mData);
+    tWorkSets.set("previous velocity", tPrevVel);
+
+    using ControlT = ResidualEvalT::ControlScalarType;
+    auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
+        ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
+    Plato::blas2::fill(0.5, tControl->mData);
+    tWorkSets.set("control", tControl);
+
+    // build criterion
+    Plato::ScalarMultiVectorT<ResidualEvalT::ResultScalarType>
+        tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
+    Plato::FluidMechanics::DeviatoricSurfaceForces<PhysicsT, ResidualEvalT>
+        tDeviatoricSurfaceForces(tDomain, tInputs.operator*());
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureSurfaceForces)
 {
