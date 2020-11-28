@@ -206,27 +206,24 @@ entities_on_non_prescribed_boundary
        Omega_h::Mesh            & aMesh,
        Omega_h::MeshSets        & aMeshSets)
 {
-    // returns all the faces, including domain and boundary faces
-    auto tFacesAreOnNonPrescribedBoundary = Omega_h::mark_by_class_dim(&aMesh, EntityDim, EntityDim);
-    Plato::omega_h::print(tFacesAreOnNonPrescribedBoundary, "FacesAreOnNonPrescribedBoundary");
+    // returns all the boundary faces, excluding faces within the domain
+    auto tEntitiesAreOnNonPrescribedBoundary = Omega_h::mark_by_class_dim(&aMesh, EntityDim, EntityDim);
     // loop over all the side sets to get non-prescribed boundary faces
     auto tNumEntities = Plato::get_num_entities<EntityDim>(aMesh);
     for(auto& tName : aSideSetNames)
     {
-        auto tFacesOnPrescribedBoundary = Plato::side_set_face_ordinals(aMeshSets, tName);
-        Plato::omega_h::print(tFacesOnPrescribedBoundary, std::string("tFacesOnPrescribedBoundary ") + tName);
-        auto tFacesAreOnPrescribedBoundary = Omega_h::mark_image(tFacesOnPrescribedBoundary, tNumEntities);
-        Plato::omega_h::print(tFacesAreOnPrescribedBoundary, std::string("tFacesAreOnPrescribedBoundary ") + tName);
-        auto tFacesAreNotOnPrescribedBoundary = Omega_h::invert_marks(tFacesAreOnPrescribedBoundary);
-        Plato::omega_h::print(tFacesAreNotOnPrescribedBoundary, std::string("tFacesAreNotOnPrescribedBoundary ") + tName);
-        tFacesAreOnNonPrescribedBoundary = Omega_h::land_each(tFacesAreOnNonPrescribedBoundary, tFacesAreNotOnPrescribedBoundary);
-        Plato::omega_h::print(tFacesAreOnNonPrescribedBoundary, std::string("tFacesAreOnNonPrescribedBoundary ") + tName);
+        // return entity ids on prescribed side set
+        auto tEntitiesOnPrescribedBoundary = Plato::side_set_face_ordinals(aMeshSets, tName);
+        // return boolean array (entity on prescribed side set=1, entity not on prescribed side set=0)
+        auto tEntitiesAreOnPrescribedBoundary = Omega_h::mark_image(tEntitiesOnPrescribedBoundary, tNumEntities);
+        // return boolean array with 1's for all entities not on prescribed side set and 0's otherwise
+        auto tEntitiesAreNotOnPrescribedBoundary = Omega_h::invert_marks(tEntitiesAreOnPrescribedBoundary);
+        // return boolean array (entity on the non-prescribed boundary=1, entity not on the non-prescribed boundary=0)
+        tEntitiesAreOnNonPrescribedBoundary = Omega_h::land_each(tEntitiesAreOnNonPrescribedBoundary, tEntitiesAreNotOnPrescribedBoundary);
     }
-    // this last array has one entry for every non-traction boundary mesh face, and that entry is the face number
-    Plato::omega_h::print(tFacesAreOnNonPrescribedBoundary, "tFacesAreOnNonPrescribedBoundary Final");
-    auto tFacesOnNonPrescribedBoundary = Omega_h::collect_marked(tFacesAreOnNonPrescribedBoundary);
-    Plato::omega_h::print(tFacesOnNonPrescribedBoundary, "tFacesOnNonPrescribedBoundary Final");
-    return tFacesOnNonPrescribedBoundary;
+    // return identification numbers of all the entities on the non-prescribed boundary
+    auto tIDsOfEntitiesOnNonPrescribedBoundary = Omega_h::collect_marked(tEntitiesAreOnNonPrescribedBoundary);
+    return tIDsOfEntitiesOnNonPrescribedBoundary;
 }
 
 inline std::string is_valid_function(const std::string& aInput)
@@ -6050,18 +6047,70 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
 
-    std::cout << "ONE\n"; 
+    // test 1
     std::vector<std::string> tNames = {"x-","x+","y+","y-"};
     auto tFaceOrdinalsOnBoundaryOne = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
-    std::cout << "TWO\n"; 
+    TEST_EQUALITY(0, tFaceOrdinalsOnBoundaryOne.size());
+
+    // test 2
     tNames = {"x+","y+","y-"};
     auto tFaceOrdinalsOnBoundaryTwo = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
-    std::cout << "THREE\n"; 
+    auto tLength = tFaceOrdinalsOnBoundaryTwo.size();
+    TEST_EQUALITY(1, tLength);
+    Plato::ScalarVector tValuesUseCaseTwo("use case two", tLength);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tValuesUseCaseTwo(aOrdinal) = tFaceOrdinalsOnBoundaryTwo[aOrdinal];
+    },"data");
+    auto tHostValuesUseCaseTwo = Kokkos::create_mirror(tValuesUseCaseTwo);
+    Kokkos::deep_copy(tHostValuesUseCaseTwo, tValuesUseCaseTwo);
+    TEST_EQUALITY(2, static_cast<Plato::OrdinalType>(tHostValuesUseCaseTwo(0)));
+
+    // test 3
     tNames = {"y+","y-"};
     auto tFaceOrdinalsOnBoundaryThree = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
-    std::cout << "FOUR\n"; 
+    tLength = tFaceOrdinalsOnBoundaryThree.size();
+    TEST_EQUALITY(2, tLength);
+    Plato::ScalarVector tValuesUseCaseThree("use case three", tLength);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tValuesUseCaseThree(aOrdinal) = tFaceOrdinalsOnBoundaryThree[aOrdinal];
+    },"data");
+    auto tHostValuesUseCaseThree = Kokkos::create_mirror(tValuesUseCaseThree);
+    Kokkos::deep_copy(tHostValuesUseCaseThree, tValuesUseCaseThree);
+    TEST_EQUALITY(2, static_cast<Plato::OrdinalType>(tHostValuesUseCaseThree(0)));
+    TEST_EQUALITY(4, static_cast<Plato::OrdinalType>(tHostValuesUseCaseThree(1)));
+
     tNames = {"y-"};
     auto tFaceOrdinalsOnBoundaryFour = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
+    tLength = tFaceOrdinalsOnBoundaryFour.size();
+    TEST_EQUALITY(3, tLength);
+    Plato::ScalarVector tValuesUseCaseFour("use case four", tLength);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tValuesUseCaseFour(aOrdinal) = tFaceOrdinalsOnBoundaryFour[aOrdinal];
+    },"data");
+    auto tHostValuesUseCaseFour = Kokkos::create_mirror(tValuesUseCaseFour);
+    Kokkos::deep_copy(tHostValuesUseCaseFour, tValuesUseCaseFour);
+    TEST_EQUALITY(2, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFour(0)));
+    TEST_EQUALITY(3, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFour(1)));
+    TEST_EQUALITY(4, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFour(2)));
+
+    tNames = {};
+    auto tFaceOrdinalsOnBoundaryFive = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
+    tLength = tFaceOrdinalsOnBoundaryFive.size();
+    TEST_EQUALITY(4, tLength);
+    Plato::ScalarVector tValuesUseCaseFive("use case five", tLength);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tValuesUseCaseFive(aOrdinal) = tFaceOrdinalsOnBoundaryFive[aOrdinal];
+    },"data");
+    auto tHostValuesUseCaseFive = Kokkos::create_mirror(tValuesUseCaseFive);
+    Kokkos::deep_copy(tHostValuesUseCaseFive, tValuesUseCaseFive);
+    TEST_EQUALITY(0, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFive(0)));
+    TEST_EQUALITY(2, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFive(1)));
+    TEST_EQUALITY(3, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFive(2)));
+    TEST_EQUALITY(4, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFive(3)));
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
