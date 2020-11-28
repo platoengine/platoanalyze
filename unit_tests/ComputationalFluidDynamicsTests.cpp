@@ -246,7 +246,7 @@ sideset_names(Teuchos::ParameterList & aInputs)
         const Teuchos::ParameterEntry &tEntry = aInputs.entry(tItr);
         if (!tEntry.isList())
         {
-            THROWERR("Get Side Set Names: Parameter list block is not valid.  Expect lists only.")
+            THROWERR("sideset_names: Parameter list block is not valid.  Expect lists only.")
         }
 
         const std::string &tName = aInputs.name(tItr);
@@ -2429,9 +2429,8 @@ public:
                     (tCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
 
                 // calculate penalized prandtl number
-                ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(tCellOrdinal, tControlWS);
-                ControlT tPenalizedPrandtlNum = ( tDensity * ( tPrNum * (1.0 - tPrNumConvexityParam) - 1.0 ) + 1.0 )
-                    / ( tPrNum * (1.0 + tPrNumConvexityParam * tDensity) );
+                ControlT tPenalizedPrandtlNum =
+                    Plato::FluidMechanics::ramp_penalization<mNumNodesPerCell>(tCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
 
                 // calculate deviatoric traction forces, which are defined as,
                 // \int_{\Gamma_e} N_u^a \left( \tau^h_{ij}n_j \right) d\Gamma_e
@@ -6152,7 +6151,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
     // set workset
     Plato::WorkSets tWorkSets;
     auto tNumCells = tMesh->nelems();
-    constexpr Plato::OrdinalType tNumNodesPerCell = 3;
+    constexpr Plato::OrdinalType tNumNodesPerCell = tNumSpaceDims + 1;
     Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
 
     using ConfigT = ResidualEvalT::ConfigScalarType;
