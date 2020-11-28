@@ -6081,6 +6081,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
     TEST_EQUALITY(2, static_cast<Plato::OrdinalType>(tHostValuesUseCaseThree(0)));
     TEST_EQUALITY(4, static_cast<Plato::OrdinalType>(tHostValuesUseCaseThree(1)));
 
+    // test 4
     tNames = {"y-"};
     auto tFaceOrdinalsOnBoundaryFour = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
     tLength = tFaceOrdinalsOnBoundaryFour.size();
@@ -6096,6 +6097,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
     TEST_EQUALITY(3, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFour(1)));
     TEST_EQUALITY(4, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFour(2)));
 
+    // test 5
     tNames = {};
     auto tFaceOrdinalsOnBoundaryFive = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
     tLength = tFaceOrdinalsOnBoundaryFive.size();
