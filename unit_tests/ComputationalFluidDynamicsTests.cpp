@@ -158,25 +158,55 @@ inline void print_fad_dx_values
     std::cout << "End: Print ScalarVector '" << aName << "'.\n";
 }
 
+namespace omega_h
+{
+template<typename ArrayT>
+void print(const ArrayT & aInput, const std::string & aName)
+{
+    std::cout << "Start Printing Array with Name '" << aName << "'\n";
+    auto tLength = aInput.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        printf("Array(%d)=%d\n",aOrdinal,aInput[aOrdinal]);
+    }, "print");
+    std::cout << "Finished Printing Array with Name '" << aName << "'\n";
+}
+}
+
+template<Omega_h::Omega_h_EntDim Entity>
+inline Plato::Ordinal 
+get_num_entities(const Omega_h::Mesh & aMesh)
+{
+    if(Entity)
+}
+
+template<Plato::OrdinalType EntityDim, 
+         Plato::OrdinalType NumEntities>
 inline Omega_h::LOs
 faces_on_non_prescribed_boundary
 (const std::vector<std::string> & aSideSetNames,
        Omega_h::Mesh            & aMesh,
        Omega_h::MeshSets        & aMeshSets)
 {
-    auto tNumFaces = aMesh.nfaces();
     // returns all the faces, including domain and boundary faces
     auto tFacesAreOnNonPrescribedBoundary = Omega_h::mark_by_class_dim(&aMesh, Omega_h::FACE, Omega_h::FACE);
+    Plato::omega_h::print(tFacesAreOnNonPrescribedBoundary, "FacesAreOnNonPrescribedBoundary");
     // loop over all the side sets to get non-prescribed boundary faces
     for(auto& tName : aSideSetNames)
     {
         auto tFacesOnPrescribedBoundary = Plato::side_set_face_ordinals(aMeshSets, tName);
-        auto tFacesAreOnPrescribedBoundary = Omega_h::mark_image(tFacesOnPrescribedBoundary, tNumFaces);
+        Plato::omega_h::print(tFacesOnPrescribedBoundary, std::string("tFacesOnPrescribedBoundary ") + tName);
+        auto tFacesAreOnPrescribedBoundary = Omega_h::mark_image(tFacesOnPrescribedBoundary, NumEntities);
+        Plato::omega_h::print(tFacesAreOnPrescribedBoundary, std::string("tFacesAreOnPrescribedBoundary ") + tName);
         auto tFacesAreNotOnPrescribedBoundary = Omega_h::invert_marks(tFacesAreOnPrescribedBoundary);
+        Plato::omega_h::print(tFacesAreNotOnPrescribedBoundary, std::string("tFacesAreNotOnPrescribedBoundary ") + tName);
         tFacesAreOnNonPrescribedBoundary = Omega_h::land_each(tFacesAreOnNonPrescribedBoundary, tFacesAreNotOnPrescribedBoundary);
+        Plato::omega_h::print(tFacesAreOnNonPrescribedBoundary, std::string("tFacesAreOnNonPrescribedBoundary ") + tName);
     }
     // this last array has one entry for every non-traction boundary mesh face, and that entry is the face number
+    Plato::omega_h::print(tFacesAreOnNonPrescribedBoundary, "tFacesAreOnNonPrescribedBoundary Final");
     auto tFacesOnNonPrescribedBoundary = Omega_h::collect_marked(tFacesAreOnNonPrescribedBoundary);
+    Plato::omega_h::print(tFacesOnNonPrescribedBoundary, "tFacesOnNonPrescribedBoundary Final");
     return tFacesOnNonPrescribedBoundary;
 }
 
@@ -5988,15 +6018,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
 
+    std::cout << "ONE\n"; 
     std::vector<std::string> tNames = {"x-","x+","y+","y-"};
-    auto tFaceOrdinalsOnBoundary = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
-    TEST_EQUALITY(0, tFaceOrdinalsOnBoundary.size());
-
-    auto tLength = tFaceOrdinalsOnBoundary.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
-    {
-        printf("FaceOrdinalsOnBoundary(%d)=%f\n",aOrdinal,tFaceOrdinalsOnBoundary(aOrdinal));
-    }, "faces_on_non_prescribed_boundary unit test");
+    auto tFaceOrdinalsOnBoundaryOne = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
+    std::cout << "TWO\n"; 
+    tNames = {"x+","y+","y-"};
+    auto tFaceOrdinalsOnBoundaryTwo = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
+    std::cout << "THREE\n"; 
+    tNames = {"y+","y-"};
+    auto tFaceOrdinalsOnBoundaryThree = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
+    std::cout << "FOUR\n"; 
+    tNames = {"y-"};
+    auto tFaceOrdinalsOnBoundaryFour = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
@@ -6009,7 +6042,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
             "    <ParameterList name='Penalty Function'>"
             "      <Parameter name='Prandtl Convexity Parameter' type='double' value='0.5'/>"
             "    </ParameterList>"
-            "  </ParameterList>
+            "  </ParameterList>"
             "  <ParameterList  name='Dimensionless Properties'>"
             "    <Parameter  name='Prandtl Number' type='double'    value='1.0'/>"
             "  </ParameterList>"
