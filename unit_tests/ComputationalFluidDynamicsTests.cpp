@@ -173,30 +173,49 @@ void print(const ArrayT & aInput, const std::string & aName)
 }
 }
 
-template<Omega_h::Omega_h_EntDim Entity>
-inline Plato::Ordinal 
+template<Omega_h::Int Entity>
+inline Plato::OrdinalType
 get_num_entities(const Omega_h::Mesh & aMesh)
 {
-    if(Entity)
+    if(Entity == Omega_h::VERT)
+    {
+        return aMesh.nverts();
+    }
+    else if(Entity == Omega_h::EDGE)
+    {
+        return aMesh.nedges();
+    }
+    else if(Entity == Omega_h::FACE)
+    {
+        return aMesh.nfaces();
+    }
+    else if(Entity == Omega_h::REGION)
+    {
+        return aMesh.nelems();
+    }
+    else
+    {
+        THROWERR("Entity is not supported. Supported entities: Omega_h::VERT, Omega_h::EDGE, Omega_h::FACE, and Omega_h::REGION")
+    }
 }
 
-template<Plato::OrdinalType EntityDim, 
-         Plato::OrdinalType NumEntities>
+template<Omega_h::Int EntityDim>
 inline Omega_h::LOs
-faces_on_non_prescribed_boundary
+entities_on_non_prescribed_boundary
 (const std::vector<std::string> & aSideSetNames,
        Omega_h::Mesh            & aMesh,
        Omega_h::MeshSets        & aMeshSets)
 {
     // returns all the faces, including domain and boundary faces
-    auto tFacesAreOnNonPrescribedBoundary = Omega_h::mark_by_class_dim(&aMesh, Omega_h::FACE, Omega_h::FACE);
+    auto tFacesAreOnNonPrescribedBoundary = Omega_h::mark_by_class_dim(&aMesh, EntityDim, EntityDim);
     Plato::omega_h::print(tFacesAreOnNonPrescribedBoundary, "FacesAreOnNonPrescribedBoundary");
     // loop over all the side sets to get non-prescribed boundary faces
+    auto tNumEntities = Plato::get_num_entities<EntityDim>(aMesh);
     for(auto& tName : aSideSetNames)
     {
         auto tFacesOnPrescribedBoundary = Plato::side_set_face_ordinals(aMeshSets, tName);
         Plato::omega_h::print(tFacesOnPrescribedBoundary, std::string("tFacesOnPrescribedBoundary ") + tName);
-        auto tFacesAreOnPrescribedBoundary = Omega_h::mark_image(tFacesOnPrescribedBoundary, NumEntities);
+        auto tFacesAreOnPrescribedBoundary = Omega_h::mark_image(tFacesOnPrescribedBoundary, tNumEntities);
         Plato::omega_h::print(tFacesAreOnPrescribedBoundary, std::string("tFacesAreOnPrescribedBoundary ") + tName);
         auto tFacesAreNotOnPrescribedBoundary = Omega_h::invert_marks(tFacesAreOnPrescribedBoundary);
         Plato::omega_h::print(tFacesAreNotOnPrescribedBoundary, std::string("tFacesAreNotOnPrescribedBoundary ") + tName);
@@ -2465,7 +2484,7 @@ private:
                 auto tNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
                 auto tNames = Plato::sideset_names(tNaturalBCs);
                 mFaceOrdinalsOnBoundary =
-                    Plato::faces_on_non_prescribed_boundary(tNames, mSpatialDomain.Mesh, mSpatialDomain.MeshSets);
+                    Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, mSpatialDomain.Mesh, mSpatialDomain.MeshSets);
             }
             else
             {
@@ -6010,6 +6029,19 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, GetNumEntities)
+{
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tNumEntities = Plato::get_num_entities<Omega_h::VERT>(tMesh.operator*());
+    TEST_EQUALITY(4, tNumEntities);
+    tNumEntities = Plato::get_num_entities<Omega_h::EDGE>(tMesh.operator*());
+    TEST_EQUALITY(5, tNumEntities);
+    tNumEntities = Plato::get_num_entities<Omega_h::FACE>(tMesh.operator*());
+    TEST_EQUALITY(2, tNumEntities);
+    tNumEntities = Plato::get_num_entities<Omega_h::REGION>(tMesh.operator*());
+    TEST_EQUALITY(2, tNumEntities);
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
 {
     // build mesh, mesh sets, and spatial domain
@@ -6020,16 +6052,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
 
     std::cout << "ONE\n"; 
     std::vector<std::string> tNames = {"x-","x+","y+","y-"};
-    auto tFaceOrdinalsOnBoundaryOne = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
+    auto tFaceOrdinalsOnBoundaryOne = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
     std::cout << "TWO\n"; 
     tNames = {"x+","y+","y-"};
-    auto tFaceOrdinalsOnBoundaryTwo = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
+    auto tFaceOrdinalsOnBoundaryTwo = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
     std::cout << "THREE\n"; 
     tNames = {"y+","y-"};
-    auto tFaceOrdinalsOnBoundaryThree = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
+    auto tFaceOrdinalsOnBoundaryThree = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
     std::cout << "FOUR\n"; 
     tNames = {"y-"};
-    auto tFaceOrdinalsOnBoundaryFour = Plato::faces_on_non_prescribed_boundary(tNames, tDomain.Mesh, tDomain.MeshSets);
+    auto tFaceOrdinalsOnBoundaryFour = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, tDomain.Mesh, tDomain.MeshSets);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
