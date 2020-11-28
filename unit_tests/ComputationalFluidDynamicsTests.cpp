@@ -165,7 +165,9 @@ faces_on_non_prescribed_boundary
        Omega_h::MeshSets        & aMeshSets)
 {
     auto tNumFaces = aMesh.nfaces();
+    // returns all the faces, including domain and boundary faces
     auto tFacesAreOnNonPrescribedBoundary = Omega_h::mark_by_class_dim(&aMesh, Omega_h::FACE, Omega_h::FACE);
+    // loop over all the side sets to get non-prescribed boundary faces
     for(auto& tName : aSideSetNames)
     {
         auto tFacesOnPrescribedBoundary = Plato::side_set_face_ordinals(aMeshSets, tName);
