@@ -2480,8 +2480,7 @@ private:
             {
                 auto tNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
                 auto tPrescribedSideSetNames = Plato::sideset_names(tNaturalBCs);
-                mFaceOrdinalsOnBoundary = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tPrescribedSideSetNames, mSpatialDomain.Mesh,
-                    mSpatialDomain.MeshSets);
+                mFaceOrdinalsOnBoundary = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tPrescribedSideSetNames, mSpatialDomain.Mesh, mSpatialDomain.MeshSets);
             }
             else
             {
@@ -6131,7 +6130,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
             "    <Parameter  name='Prandtl Number' type='double'    value='1.0'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
-            "    <Parameter  name='Sides' type='Array(string)' value='{x+}'/>"
+            "    <ParameterList  name='Traction Vector Boundary Condition'>"
+            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
+            "      <Parameter  name='Values' type='Array(double)' value='{0,-1,0}'/>"
+            "    </ParameterList>"
             "  </ParameterList>"
             "</ParameterList>"
             );
