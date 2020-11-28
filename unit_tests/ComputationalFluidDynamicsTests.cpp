@@ -2474,25 +2474,27 @@ private:
 
     void setFacesOnNonPrescribedBoundary(Teuchos::ParameterList& aInputs)
     {
-        if(mSideSetName.empty())
+        if (mSideSetName.empty())
         {
-            if(aInputs.isSublist("Momentum Natural Boundary Conditions"))
+            if (aInputs.isSublist("Momentum Natural Boundary Conditions"))
             {
                 auto tNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
-                auto tNames = Plato::sideset_names(tNaturalBCs);
-                mFaceOrdinalsOnBoundary =
-                    Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tNames, mSpatialDomain.Mesh, mSpatialDomain.MeshSets);
+                auto tPrescribedSideSetNames = Plato::sideset_names(tNaturalBCs);
+                mFaceOrdinalsOnBoundary = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tPrescribedSideSetNames, mSpatialDomain.Mesh,
+                    mSpatialDomain.MeshSets);
             }
             else
             {
-                THROWERR(std::string("Expected to deduce stabilized momentum residual boundary surfaces from the ")
-                    + "'Momentum Natural Boundary Conditions' block defined in the input file.  However, this block "
-                    + "is not defined in the input file.")
+                // integral is performed along all the fluid surfaces
+                std::vector<std::string> tEmptyPrescribedBCs;
+                mFaceOrdinalsOnBoundary = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE>(tEmptyPrescribedBCs, mSpatialDomain.Mesh,
+                    mSpatialDomain.MeshSets);
             }
         }
         else
         {
             mFaceOrdinalsOnBoundary = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+            Plato::omega_h::print(mFaceOrdinalsOnBoundary, "non-prescribed boundary ordinals");
         }
     }
 };
@@ -2923,9 +2925,8 @@ private:
         }
         else
         {
-            std::string tSideSetName = "Will be Deduced From Prescribed Natural Boundary Conditions";
-            auto tNaturalBC = std::make_shared<DeviatoricForces>(mSpatialDomain, tSideSetName);
-            mDeviatoricBCs.insert(std::make_pair<std::string, std::shared_ptr<DeviatoricForces>>(tSideSetName, tNaturalBC));
+            auto tNaturalBC = std::make_shared<DeviatoricForces>(mSpatialDomain);
+            mDeviatoricBCs.insert(std::make_pair<std::string, std::shared_ptr<DeviatoricForces>>("automated", tNaturalBC));
         }
     }
 
@@ -6175,6 +6176,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
         tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
     Plato::FluidMechanics::DeviatoricSurfaceForces<PhysicsT, ResidualEvalT>
         tDeviatoricSurfaceForces(tDomain, tInputs.operator*());
+
+    // test function
+    tDeviatoricSurfaceForces(tWorkSets, tResult);
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{0,0,0.0,0,0.0,0},{0,0,0,0,0,0}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
+        {
+            //TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+            printf("Results(Cell=%d,Dof=%d)=%f\n", tCell, tDof, tHostResult(tCell, tDof));
+        }
+    }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureSurfaceForces)
