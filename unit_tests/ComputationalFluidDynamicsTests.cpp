@@ -6624,7 +6624,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     TEST_FLOATING_EQUALITY(0.222222, tValue, tTol);
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible_Value)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible_GradControl)
 {
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
