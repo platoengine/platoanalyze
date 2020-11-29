@@ -1650,7 +1650,7 @@ strain_rate
             for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpaceDim; tDimJ++)
             {
                 auto tLocalDimI = tNode * NumSpaceDim + tDimI;
-                auto tLocalDimJ = tNode * NumSpaceDim + tDimJ
+                auto tLocalDimJ = tNode * NumSpaceDim + tDimJ;
                 aStrainRate(aCellOrdinal, tDimI, tDimJ) += static_cast<Plato::Scalar>(0.5) *
                     ( ( aGradient(aCellOrdinal, tNode, tDimJ) * aStateWS(aCellOrdinal, tLocalDimI) )
                     + ( aGradient(aCellOrdinal, tNode, tDimI) * aStateWS(aCellOrdinal, tLocalDimJ) ) );
