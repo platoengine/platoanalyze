@@ -1649,9 +1649,11 @@ strain_rate
         {
             for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpaceDim; tDimJ++)
             {
+                auto tLocalDimI = tNode * NumSpaceDim + tDimI;
+                auto tLocalDimJ = tNode * NumSpaceDim + tDimJ
                 aStrainRate(aCellOrdinal, tDimI, tDimJ) += static_cast<Plato::Scalar>(0.5) *
-                    ( ( aGradient(aCellOrdinal, tNode, tDimJ) * aStateWS(aCellOrdinal, tDimI) )
-                    + ( aGradient(aCellOrdinal, tNode, tDimI) * aStateWS(aCellOrdinal, tDimJ) ) );
+                    ( ( aGradient(aCellOrdinal, tNode, tDimJ) * aStateWS(aCellOrdinal, tLocalDimI) )
+                    + ( aGradient(aCellOrdinal, tNode, tDimI) * aStateWS(aCellOrdinal, tLocalDimJ) ) );
             }
         }
     }
@@ -6249,7 +6251,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureSurfaceForces)
     }
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRateOne)
 {
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
     constexpr Plato::OrdinalType tNumNodesPerCell = 3;
@@ -6266,10 +6268,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
     Plato::ScalarArray3D tStrainRate("strain rate", tNumCells, tNumNodesPerCell, tNumSpaceDims);
     Plato::ComputeGradientWorkset<tNumSpaceDims> tComputeGradient;
 
-    Plato::ScalarMultiVector tVelocity("velocity", tNumCells, tNumSpaceDims);
+    auto tNumDofsPerCell = tNumSpaceDims * tNumNodesPerCell;
+    Plato::ScalarMultiVector tVelocity("velocity", tNumCells, tNumDofsPerCell);
     auto tHostVelocity = Kokkos::create_mirror(tVelocity);
-    tHostVelocity(0, 0) = 1.0; tHostVelocity(1, 0) = 3.0;
-    tHostVelocity(0, 1) = 2.0; tHostVelocity(1, 1) = 4.0;
+    tHostVelocity(0, 0) = 1.0; tHostVelocity(1, 0) = 7.0;
+    tHostVelocity(0, 1) = 2.0; tHostVelocity(1, 1) = 8.0;
+    tHostVelocity(0, 2) = 3.0; tHostVelocity(1, 2) = 9.0;
+    tHostVelocity(0, 3) = 4.0; tHostVelocity(1, 3) = 10.0;
+    tHostVelocity(0, 4) = 5.0; tHostVelocity(1, 4) = 11.0;
+    tHostVelocity(0, 5) = 6.0; tHostVelocity(1, 5) = 12.0;
     Kokkos::deep_copy(tVelocity, tHostVelocity);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -6291,6 +6298,55 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
             }
         }
     }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRateTwo)
+{
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    constexpr Plato::OrdinalType tNumNodesPerCell = 3;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    TEST_EQUALITY(2, tMesh->nelems());
+
+    auto const tNumCells = tMesh->nelems();
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    Plato::ScalarArray3D tConfig("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims);
+    Plato::workset_config_scalar<tNumSpaceDims,tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig);
+
+    Plato::ScalarVector tVolume("volume", tNumCells);
+    Plato::ScalarArray3D tGradient("gradient", tNumCells, tNumNodesPerCell, tNumSpaceDims);
+    Plato::ScalarArray3D tStrainRate("strain rate", tNumCells, tNumNodesPerCell, tNumSpaceDims);
+    Plato::ComputeGradientWorkset<tNumSpaceDims> tComputeGradient;
+
+    auto tNumDofsPerCell = tNumSpaceDims * tNumNodesPerCell;
+    Plato::ScalarMultiVector tVelocity("velocity", tNumCells, tNumDofsPerCell);
+    auto tHostVelocity = Kokkos::create_mirror(tVelocity);
+    tHostVelocity(0, 0) = 0.12; tHostVelocity(1, 0) = 0.22;
+    tHostVelocity(0, 1) = 0.41; tHostVelocity(1, 1) = 0.47;
+    tHostVelocity(0, 2) = 0.25; tHostVelocity(1, 2) = 0.86;
+    tHostVelocity(0, 3) = 0.15; tHostVelocity(1, 3) = 0.57;
+    tHostVelocity(0, 4) = 0.12; tHostVelocity(1, 4) = 0.18;
+    tHostVelocity(0, 5) = 0.43; tHostVelocity(1, 5) = 0.11;
+    Kokkos::deep_copy(tVelocity, tHostVelocity);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfig, tVolume);
+        Plato::FluidMechanics::strain_rate<tNumNodesPerCell, tNumSpaceDims>(aCellOrdinal, tVelocity, tGradient, tStrainRate);
+    }, "strain_rate unit test");
+
+    auto tTol = 1e-6;
+    auto tHostStrainRate = Kokkos::create_mirror(tStrainRate);
+    Kokkos::deep_copy(tHostStrainRate, tStrainRate);
+    // cell 1
+    TEST_FLOATING_EQUALITY(0.13,   tHostStrainRate(0, 0, 0), tTol);
+    TEST_FLOATING_EQUALITY(-0.195, tHostStrainRate(0, 0, 1), tTol);
+    TEST_FLOATING_EQUALITY(-0.195, tHostStrainRate(0, 1, 0), tTol);
+    TEST_FLOATING_EQUALITY(0.28,   tHostStrainRate(0, 1, 1), tTol);
+    // cell 2
+    TEST_FLOATING_EQUALITY(-0.64, tHostStrainRate(1, 0, 0), tTol);
+    TEST_FLOATING_EQUALITY(0.29,  tHostStrainRate(1, 0, 1), tTol);
+    TEST_FLOATING_EQUALITY(0.29,  tHostStrainRate(1, 1, 0), tTol);
+    TEST_FLOATING_EQUALITY(0.46,  tHostStrainRate(1, 1, 1), tTol);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale)
