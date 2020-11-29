@@ -6697,11 +6697,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     auto tHostGradient = Kokkos::create_mirror(tGradient);
     Kokkos::deep_copy(tHostGradient, tGradient);
 
-    std::vector<Plato::Scalar> tGold = {0.0, 0.0, 0.0, 0.0};
+    std::vector<Plato::Scalar> tGold = {-0.154798, -0.053530, -0.154798, -0.101269};
     for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
-        //TEST_FLOATING_EQUALITY(tGold[tNode], tHostGradient(tNode), tTol);
-        printf("Results(Node=%d)=%f\n", tNode, tHostGradient(tNode));
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostGradient(tNode), tTol);
+        //printf("Results(Node=%d)=%f\n", tNode, tHostGradient(tNode));
     }
 }
 
