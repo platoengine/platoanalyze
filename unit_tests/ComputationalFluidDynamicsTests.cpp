@@ -6705,6 +6705,87 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     }
 }
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible_GradConfig)
+{
+    // set inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList  name='Criteria'>"
+            "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
+            "    <ParameterList name='My Criteria'>"
+            "      <Parameter  name='Flow'                 type='string'    value='Incompressible'/>"
+            "      <Parameter  name='Type'                 type='string'    value='Scalar Function'/>"
+            "      <Parameter  name='Scalar Function Type' type='string'    value='Internal Dissipation Energy'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Dimensionless Properties'>"
+            "    <Parameter  name='Darcy Number'    type='double'    value='1.0'/>"
+            "    <Parameter  name='Prandtl Number'  type='double'    value='1.0'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
+    tModel.append(tDomain);
+
+    // set current state
+    Plato::Variables tPrimal;
+    auto tNumCells = tMesh->nelems();
+    auto tNumNodes = tMesh->nverts();
+    auto tNumVelDofs = tNumNodes * tMesh->dim();
+    Plato::ScalarVector tControl("controls", tNumNodes);
+    Plato::blas1::fill(0.5, tControl);
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    auto tHostCurVel = Kokkos::create_mirror(tCurVel);
+    tHostCurVel(0, 0) = 0.12; tHostCurVel(1, 0) = 0.22;
+    tHostCurVel(0, 1) = 0.41; tHostCurVel(1, 1) = 0.47;
+    tHostCurVel(0, 2) = 0.25; tHostCurVel(1, 2) = 0.86;
+    tHostCurVel(0, 3) = 0.15; tHostCurVel(1, 3) = 0.57;
+    tHostCurVel(0, 4) = 0.12; tHostCurVel(1, 4) = 0.18;
+    tHostCurVel(0, 5) = 0.43; tHostCurVel(1, 5) = 0.11;
+    Kokkos::deep_copy(tCurVel, tHostCurVel);
+    tPrimal.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    Plato::blas1::fill(0.1, tCurPress);
+    tPrimal.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    Plato::blas1::fill(1.5, tCurTemp);
+    tPrimal.vector("current temperature", tCurTemp);
+    Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
+    Plato::blas1::fill(0.01, tTimeSteps);
+    tPrimal.vector("time steps", tTimeSteps);
+
+    // set physics type
+    constexpr Plato::OrdinalType tNumSpaceDim = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDim>;
+
+    // build criterion
+    Plato::DataMap tDataMap;
+    std::string tFuncName("My Criteria");
+    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>
+        tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
+    TEST_EQUALITY("My Criteria", tCriterion.name());
+
+    // test criterion value
+    auto tTol = 1e-4;
+    auto tGradient = tCriterion.gradientConfig(tControl, tPrimal);
+    auto tHostGradient = Kokkos::create_mirror(tGradient);
+    Kokkos::deep_copy(tHostGradient, tGradient);
+
+    std::vector<Plato::Scalar> tGold = {-0.154798, -0.053530, -0.154798, -0.101269};
+    for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
+    {
+        //TEST_FLOATING_EQUALITY(tGold[tNode], tHostGradient(tNode), tTol);
+        printf("Results(Node=%d)=%f\n", tNode, tHostGradient(tNode));
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
 {
     // set inputs
