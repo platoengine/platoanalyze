@@ -6204,6 +6204,106 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
     }
 }
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces_Zeros)
+{
+    // set inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <ParameterList name='Penalty Function'>"
+            "      <Parameter name='Prandtl Convexity Parameter' type='double' value='0.5'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Dimensionless Properties'>"
+            "    <Parameter  name='Prandtl Number' type='double'    value='1.0'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
+            "    <ParameterList  name='Traction Vector Boundary Condition - X+'>"
+            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
+            "      <Parameter  name='Values' type='Array(double)' value='{0,-1,0}'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Traction Vector Boundary Condition - X-'>"
+            "      <Parameter  name='Sides'  type='string'        value='x-'/>"
+            "      <Parameter  name='Values' type='Array(double)' value='{0,-1,0}'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Traction Vector Boundary Condition - Y-'>"
+            "      <Parameter  name='Sides'  type='string'        value='y-'/>"
+            "      <Parameter  name='Values' type='Array(double)' value='{0,-1,0}'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Traction Vector Boundary Condition - Y+'>"
+            "      <Parameter  name='Sides'  type='string'        value='y+'/>"
+            "      <Parameter  name='Values' type='Array(double)' value='{0,-1,0}'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::MomentumConservation<tNumSpaceDims>;
+    using ResidualEvalT = Plato::FluidMechanics::Evaluation<PhysicsT::SimplexT>::Residual;
+
+    // build mesh, mesh sets, and spatial domain
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // set workset
+    Plato::WorkSets tWorkSets;
+    auto tNumCells = tMesh->nelems();
+    constexpr Plato::OrdinalType tNumNodesPerCell = tNumSpaceDims + 1;
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+
+    using ConfigT = ResidualEvalT::ConfigScalarType;
+    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
+    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
+    tWorkSets.set("configuration", tConfig);
+
+    using PrevVelT = ResidualEvalT::PreviousMomentumScalarType;
+    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
+        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
+    tHostVelocity(0, 0) = 0.12; tHostVelocity(1, 0) = 0.22;
+    tHostVelocity(0, 1) = 0.41; tHostVelocity(1, 1) = 0.47;
+    tHostVelocity(0, 2) = 0.25; tHostVelocity(1, 2) = 0.86;
+    tHostVelocity(0, 3) = 0.15; tHostVelocity(1, 3) = 0.57;
+    tHostVelocity(0, 4) = 0.12; tHostVelocity(1, 4) = 0.18;
+    tHostVelocity(0, 5) = 0.43; tHostVelocity(1, 5) = 0.11;
+    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
+    tWorkSets.set("previous velocity", tPrevVel);
+
+    using ControlT = ResidualEvalT::ControlScalarType;
+    auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
+        ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
+    Plato::blas2::fill(0.5, tControl->mData);
+    tWorkSets.set("control", tControl);
+
+    // build criterion
+    Plato::ScalarMultiVectorT<ResidualEvalT::ResultScalarType>
+        tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
+    Plato::FluidMechanics::DeviatoricSurfaceForces<PhysicsT, ResidualEvalT>
+        tDeviatoricSurfaceForces(tDomain, tInputs.operator*());
+
+    // test function
+    tDeviatoricSurfaceForces(tWorkSets, tResult);
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+
+    //auto tTol = 1e-4;
+    //std::vector<std::vector<Plato::Scalar>> tGold = {{0.117,-0.168,0.117,-0.168,0,0},{0.384,-0.174,0.384,-0.174,0,0}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
+        {
+            //TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+            printf("Results(Cell=%d,Dof=%d)=%f\n", tCell, tDof, tHostResult(tCell, tDof));
+        }
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureSurfaceForces)
 {
     // set physics and evaluation type
