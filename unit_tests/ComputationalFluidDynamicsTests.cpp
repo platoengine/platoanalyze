@@ -6165,7 +6165,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
     using PrevVelT = ResidualEvalT::PreviousMomentumScalarType;
     auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
         ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
-    Plato::blas2::fill(1, tPrevVel->mData);
+    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
+    tHostVelocity(0, 0) = 0.12; tHostVelocity(1, 0) = 0.22;
+    tHostVelocity(0, 1) = 0.41; tHostVelocity(1, 1) = 0.47;
+    tHostVelocity(0, 2) = 0.25; tHostVelocity(1, 2) = 0.86;
+    tHostVelocity(0, 3) = 0.15; tHostVelocity(1, 3) = 0.57;
+    tHostVelocity(0, 4) = 0.12; tHostVelocity(1, 4) = 0.18;
+    tHostVelocity(0, 5) = 0.43; tHostVelocity(1, 5) = 0.11;
+    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
     tWorkSets.set("previous velocity", tPrevVel);
 
     using ControlT = ResidualEvalT::ControlScalarType;
@@ -6186,13 +6193,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
     Kokkos::deep_copy(tHostResult, tResult);
 
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0,0,0.0,0,0.0,0},{0,0,0,0,0,0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{0.117,-0.168,0.117,-0.168,0,0},{0.384,-0.174,0.384,-0.174,0,0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
         {
-            //TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
-            printf("Results(Cell=%d,Dof=%d)=%f\n", tCell, tDof, tHostResult(tCell, tDof));
+            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+            //printf("Results(Cell=%d,Dof=%d)=%f\n", tCell, tDof, tHostResult(tCell, tDof));
         }
     }
 }
