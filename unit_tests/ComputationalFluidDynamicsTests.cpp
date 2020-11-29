@@ -6670,6 +6670,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     tHostCurVel(0, 5) = 0.43; tHostCurVel(1, 5) = 0.11;
     Kokkos::deep_copy(tCurVel, tHostCurVel);
     tPrimal.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    Plato::blas1::fill(0.1, tCurPress);
+    tPrimal.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    Plato::blas1::fill(1.5, tCurTemp);
+    tPrimal.vector("current temperature", tCurTemp);
+    Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
+    Plato::blas1::fill(0.01, tTimeSteps);
+    tPrimal.vector("time steps", tTimeSteps);
 
     // set physics type
     constexpr Plato::OrdinalType tNumSpaceDim = 2;
