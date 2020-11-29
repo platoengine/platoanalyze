@@ -6292,14 +6292,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces_Zeros)
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
 
-    //auto tTol = 1e-4;
-    //std::vector<std::vector<Plato::Scalar>> tGold = {{0.117,-0.168,0.117,-0.168,0,0},{0.384,-0.174,0.384,-0.174,0,0}};
+    auto tTol = 1e-4;
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
         {
-            //TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
-            printf("Results(Cell=%d,Dof=%d)=%f\n", tCell, tDof, tHostResult(tCell, tDof));
+            TEST_FLOATING_EQUALITY(0.0, tHostResult(tCell, tDof), tTol);
+            //printf("Results(Cell=%d,Dof=%d)=%f\n", tCell, tDof, tHostResult(tCell, tDof));
         }
     }
 }
