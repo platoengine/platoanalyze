@@ -2575,7 +2575,6 @@ public:
         this->setPenaltyModel(aInputs);
         this->setDimensionlessProperties(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
-        this->checkNaturalBoundaryConditions(aInputs);
     }
 
     virtual ~VelocityPredictorResidual(){}
@@ -2647,23 +2646,11 @@ public:
 
             // calculate strain rate for incompressible flows, which is defined as
             // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
-            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-            {
-                for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
-                {
-                    for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
-                    {
-                        tStrainRate(aCellOrdinal, tDimI, tDimJ) += static_cast<Plato::Scalar>(0.5) *
-                            ( ( tGradient(aCellOrdinal, tNode, tDimJ) * tPrevVelWS(aCellOrdinal, tDimI) )
-                            + ( tGradient(aCellOrdinal, tNode, tDimI) * tPrevVelWS(aCellOrdinal, tDimJ) ) );
-                    }
-                }
-            }
+            Plato::FluidMechanics::strain_rate<mNumNodesPerCell, mNumSpatialDims>(aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
 
             // calculate penalized prandtl number
-            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, tControlWS);
-            ControlT tPenalizedPrandtlNum = ( tDensity * ( tPrNum * (1.0 - tPrNumConvexityParam) - 1.0 ) + 1.0 )
-                / ( tPrNum * (1.0 + tPrNumConvexityParam * tDensity) );
+            ControlT tPenalizedPrandtlNum =
+                Plato::FluidMechanics::ramp_penalization<mNumNodesPerCell>(aCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
 
             // calculate viscous force integral, which are defined as,
             // \int_{\Omega_e}\frac{\partial N_u^a}{\partial x_j}\tau^h_{ij} d\Omega_e
@@ -2684,6 +2671,7 @@ public:
             // \int_{\Omega_e} N_u^a \left(Gr_i Pr^2 T^h \right) d\Omega_e,
             // where e_i is the unit vector in the gravitational direction
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
+            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, tControlWS);
             ControlT tPenalizedPrNumSquared = pow(tDensity, tPowerPenaltySIMP) * tPrNum * tPrNum;
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
@@ -2927,19 +2915,6 @@ private:
         {
             auto tNaturalBC = std::make_shared<DeviatoricForces>(mSpatialDomain);
             mDeviatoricBCs.insert(std::make_pair<std::string, std::shared_ptr<DeviatoricForces>>("automated", tNaturalBC));
-        }
-    }
-
-
-    void checkNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        auto tPrescribedNaturalBCsDefined = aInputs.isSublist("Momentum Natural Boundary Conditions");
-        auto tStabilizedNaturalBCsDefined = aInputs.isSublist("Balancing Momentum Natural Boundary Conditions");
-        if(!tPrescribedNaturalBCsDefined && !tStabilizedNaturalBCsDefined)
-        {
-            THROWERR(std::string("Balancing momentum forces side sets should be defined inside the 'Balancing Momentum ")
-                + "Natural Boundary Conditions' block if prescribed momentum natural boundary conditions side sets are "
-                + "not defined, i.e. the 'Momentum Natural Boundary Conditions' block is not defined.")
         }
     }
 };
@@ -5274,9 +5249,9 @@ private:
     using MassConservationT     = typename Plato::MassConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
     using EnergyConservationT   = typename Plato::EnergyConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
     using MomentumConservationT = typename Plato::MomentumConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
-    Plato::EssentialBCs<MassConservationT>     mPressureStateBoundaryConditions;
-    Plato::EssentialBCs<MomentumConservationT> mVelocityStateBoundaryConditions;
-    Plato::EssentialBCs<EnergyConservationT>   mTemperatureStateBoundaryConditions;
+    Plato::EssentialBCs<MassConservationT>     mPressureEssentialBCs;
+    Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs;
+    Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
 
     std::shared_ptr<Plato::AbstractSolver> mVectorFieldSolver;
     std::shared_ptr<Plato::AbstractSolver> mScalarFieldSolver;
@@ -5604,11 +5579,11 @@ private:
         if(mIsTransientProblem)
         {
             auto tCurrentTime = aVariables.scalar("current time");
-            mVelocityStateBoundaryConditions.get(tBcDofs, tBcValues, tCurrentTime);
+            mVelocityEssentialBCs.get(tBcDofs, tBcValues, tCurrentTime);
         }
         else
         {
-            mVelocityStateBoundaryConditions.get(tBcDofs, tBcValues);
+            mVelocityEssentialBCs.get(tBcDofs, tBcValues);
         }
         auto tCurrentVelocity = aVariables.vector("current velocity");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
@@ -5621,11 +5596,11 @@ private:
         if(mIsTransientProblem)
         {
             auto tCurrentTime = aVariables.scalar("current time");
-            mPressureStateBoundaryConditions.get(tBcDofs, tBcValues, tCurrentTime);
+            mPressureEssentialBCs.get(tBcDofs, tBcValues, tCurrentTime);
         }
         else
         {
-            mPressureStateBoundaryConditions.get(tBcDofs, tBcValues);
+            mPressureEssentialBCs.get(tBcDofs, tBcValues);
         }
         auto tCurrentPressure = aVariables.vector("current pressure");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
@@ -5638,11 +5613,11 @@ private:
         if(mIsTransientProblem)
         {
             auto tCurrentTime = aVariables.scalar("current time");
-            mTemperatureStateBoundaryConditions.get(tBcDofs, tBcValues, tCurrentTime);
+            mTemperatureEssentialBCs.get(tBcDofs, tBcValues, tCurrentTime);
         }
         else
         {
-            mTemperatureStateBoundaryConditions.get(tBcDofs, tBcValues);
+            mTemperatureEssentialBCs.get(tBcDofs, tBcValues);
         }
         auto tCurrentTemperature = aVariables.vector("current temperature");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
@@ -5979,7 +5954,7 @@ private:
         if(aInputs.isSublist("Temperature Boundary Conditions"))
         {
             auto tTempBCs = aInputs.sublist("Temperature Boundary Conditions");
-            mTemperatureStateBoundaryConditions = Plato::EssentialBCs<EnergyConservationT>(tTempBCs, mSpatialModel.MeshSets);
+            mTemperatureEssentialBCs = Plato::EssentialBCs<EnergyConservationT>(tTempBCs, mSpatialModel.MeshSets);
         }
         else
         {
@@ -5994,7 +5969,7 @@ private:
         if(aInputs.isSublist("Pressure Boundary Conditions"))
         {
             auto tPressBCs = aInputs.sublist("Pressure Boundary Conditions");
-            mPressureStateBoundaryConditions = Plato::EssentialBCs<MassConservationT>(tPressBCs, mSpatialModel.MeshSets);
+            mPressureEssentialBCs = Plato::EssentialBCs<MassConservationT>(tPressBCs, mSpatialModel.MeshSets);
         }
         else
         {
@@ -6009,7 +5984,7 @@ private:
         if(aInputs.isSublist("Velocity Boundary Conditions"))
         {
             auto tVelBCs = aInputs.sublist("Velocity Boundary Conditions");
-            mVelocityStateBoundaryConditions = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
+            mVelocityEssentialBCs = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
         }
         else
         {
@@ -6026,6 +6001,88 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList  name='Dimensionless Properties'>"
+            "    <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
+            "    <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
+            "    <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0,0.0}'/>"
+            "  </ParameterList>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <ParameterList name='Penalty Function'>"
+            "      <Parameter name='Grashof Penalty Exponent'     type='double' value='3.0'/>"
+            "      <Parameter name='Prandtl Convexity Parameter'  type='double' value='0.5'/>"
+            "      <Parameter name='Brinkman Convexity Parameter' type='double' value='0.5'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
+            "    <ParameterList  name='Traction Vector Boundary Condition'>"
+            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
+            "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0,0}'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
+    tModel.append(tDomain);
+
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+
+    // set control variables
+    auto tNumNodes = tMesh->nverts();
+    Plato::ScalarVector tControls("control", tNumNodes);
+    Plato::blas1::fill(1.0, tControls);
+
+    // set state variables
+    Plato::Primal tVariables;
+    Plato::ScalarVector tTimeSteps("time step", tNumNodes);
+    Plato::blas1::fill(0.1, tTimeSteps);
+    tVariables.vector("time steps", tTimeSteps);
+    auto tNumVelDofs = tNumNodes * tNumSpaceDims;
+    Plato::ScalarVector tPrevVel("previous velocity", tNumVelDofs);
+    auto tHostPrevVel = Kokkos::create_mirror(tPrevVel);
+    tPrevVel(0) = 1.0; tPrevVel(1) = 1.1; tPrevVel(2) = 1.2;
+    tPrevVel(3) = 1.3; tPrevVel(4) = 1.4; tPrevVel(5) = 1.5;
+    Kokkos::deep_copy(tPrevVel, tHostPrevVel);
+    tVariables.vector("previous velocity", tPrevVel);
+    Plato::ScalarVector tPrevPress("previous pressure", tNumNodes);
+    Plato::blas1::fill(1.0, tPrevPress);
+    tVariables.vector("previous pressure", tPrevPress);
+    Plato::ScalarVector tPrevTemp("previous temperature", tNumNodes);
+    Plato::blas1::fill(1.0, tPrevTemp);
+    tVariables.vector("previous temperature", tPrevTemp);
+
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    tVariables.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPred("current predictor", tNumVelDofs);
+    tVariables.vector("current predictor", tCurPred);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    tVariables.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    tVariables.vector("current temperature", tCurTemp);
+
+    // allocate vector function
+    Plato::DataMap tDataMap;
+    std::string tFuncName("Velocity Predictor");
+    Plato::FluidMechanics::VectorFunction<PhysicsT> tVectorFunction(tFuncName, tModel, tDataMap, tInputs.operator*());
+
+    // test vector function value
+    auto tResidual = tVectorFunction.value(tControls, tVariables);
+    Plato::print(tResidual, "residual");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, GetNumEntities)
 {
@@ -6575,6 +6632,86 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
             "  <ParameterList  name='Dimensionless Properties'>"
             "    <Parameter  name='Darcy Number'    type='double'    value='1.0'/>"
             "    <Parameter  name='Prandtl Number' type='double'    value='1.0'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
+    tModel.append(tDomain);
+
+    // set current state
+    Plato::Variables tPrimal;
+    auto tNumCells = tMesh->nelems();
+    auto tNumNodes = tMesh->nverts();
+    auto tNumVelDofs = tNumNodes * tMesh->dim();
+    Plato::ScalarVector tControl("controls", tNumNodes);
+    Plato::blas1::fill(0.5, tControl);
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    Plato::blas1::fill(1.0, tCurVel);
+    tPrimal.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    Plato::blas1::fill(0.1, tCurPress);
+    tPrimal.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    Plato::blas1::fill(1.5, tCurTemp);
+    tPrimal.vector("current temperature", tCurTemp);
+    Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
+    Plato::blas1::fill(0.01, tTimeSteps);
+    tPrimal.vector("time steps", tTimeSteps);
+
+    // set physics type
+    constexpr Plato::OrdinalType tNumSpaceDim = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDim>;
+
+    // build criterion
+    Plato::DataMap tDataMap;
+    std::string tFuncName("My Criteria");
+    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>
+        tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
+    TEST_EQUALITY("My Criteria", tCriterion.name());
+
+    // test criterion value
+    auto tTol = 1e-4;
+    auto tValue = tCriterion.value(tControl, tPrimal);
+    TEST_FLOATING_EQUALITY(0.222222, tValue, tTol);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible_Value)
+{
+    // set inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList  name='Criteria'>"
+            "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
+            "    <ParameterList name='My Criteria'>"
+            "      <Parameter  name='Flow'                 type='string'    value='Incompressible'/>"
+            "      <Parameter  name='Type'                 type='string'    value='Scalar Function'/>"
+            "      <Parameter  name='Scalar Function Type' type='string'    value='Internal Dissipation Energy'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Dimensionless Properties'>"
+            "    <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
+            "    <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
+            "    <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0,0.0}'/>"
+            "  </ParameterList>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <ParameterList name='Penalty Function'>"
+            "      <Parameter name='Grashof Penalty Exponent'     type='double' value='3.0'/>"
+            "      <Parameter name='Prandtl Convexity Parameter'  type='double' value='0.5'/>"
+            "      <Parameter name='Brinkman Convexity Parameter' type='double' value='0.5'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
+            "    <ParameterList  name='Traction Vector Boundary Condition'>"
+            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
+            "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0,0}'/>"
+            "    </ParameterList>"
             "  </ParameterList>"
             "</ParameterList>"
             );
@@ -7790,34 +7927,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildScalarFunctionWorksets)
             }
         }
     }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LeastSquaresScalarFunction)
-{
-    Teuchos::RCP<Teuchos::ParameterList> tParams =
-        Teuchos::getParametersFromXmlString(
-            "<ParameterList  name='Criteria'>"
-            "  <Parameter  name='Type'             type='string'         value='Least Squares'/>"
-            "  <Parameter  name='Functions'        type='Array(string)'  value='{My Pressure Drop}'/>"
-            "  <Parameter  name='Weights'          type='Array(double)'  value='{1.0}'/>"
-            "  <Parameter  name='Normalization'    type='Array(double)'  value='{1.0}'/>"
-            "  <ParameterList  name='My Pressure Drop'>"
-            "    <Parameter  name='Type'         type='string'         value='Weighted Sum'/>"
-            "    <Parameter  name='Functions'    type='Array(string)'  value='{My Inlet Pressure, My Outlet Pressure}'/>"
-            "    <Parameter  name='Weights'      type='Array(double)'  value='{1.0,-1.0}'/>"
-            "  </ParameterList>"
-            "  <ParameterList  name='My Inlet Pressure'>"
-            "    <Parameter  name='Type'                   type='string'           value='Scalar Function'/>"
-            "    <Parameter  name='Scalar Function Type'   type='string'           value='Average Surface Pressure'/>"
-            "    <Parameter  name='Sides'                  type='Array(string)'    value='{ss_1}'/>"
-            "  </ParameterList>"
-            "  <ParameterList  name='My Outlet Pressure'>"
-            "    <Parameter  name='Type'                   type='string'           value='Scalar Function'/>"
-            "    <Parameter  name='Scalar Function Type'   type='string'           value='Average Surface Pressure'/>"
-            "    <Parameter  name='Sides'                  type='Array(string)'    value='{ss_2}'/>"
-            "  </ParameterList>"
-            "</ParameterList>"
-            );
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ParseArray)
