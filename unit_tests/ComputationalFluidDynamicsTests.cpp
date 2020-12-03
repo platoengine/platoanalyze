@@ -2896,13 +2896,10 @@ public:
            // \int_{\Gamma_t} N_u^a\left(t_i + p^{n-1}n_i\right) d\Gamma
            auto tNumCells = aResult.extent(0);
            Plato::ScalarMultiVectorT<ResultT> tResultWS("traction forces", tNumCells, mNumDofsPerCell);
-           // todo: fix build error -> THE PROBLEM IS THAT I AM PASSING THE SPATIAL DOMAIN WHEN
-           // IT SHOULD BE THE SPATIAL MODEL. I SHOULD RECONSIDER THE BOUNDARY SCALAR FUNCTIONS TOO.
-           // I AM USING THE SPATIAL DOMAIN WHEN IT SHOULD BE THE SPATIAL MODEL.
-           //mPrescribedBCs->get( aSpatialModel, tPrevVelWS, tControlWS, tConfigWS, tResultWS);
+           mPrescribedBCs->get( aSpatialModel, tPrevVelWS, tControlWS, tConfigWS, tResultWS); // traction forces
            for(auto& tPair : mPressureBCs)
            {
-               tPair.second->operator()(aWorkSets, tResultWS);
+               tPair.second->operator()(aWorkSets, tResultWS); // pressure forces on traction side sets
            }
 
            // multiply force vector by the corresponding nodal time steps
@@ -3451,8 +3448,7 @@ public:
             // evaluate prescribed flux
             auto tNumCells = aResult.extent(0);
             Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumDofsPerCell);
-            // todo: fix build error
-            //mHeatFlux->get( aSpatialModel, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
+            mHeatFlux->get( aSpatialModel, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
 
             auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("time steps"));
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
