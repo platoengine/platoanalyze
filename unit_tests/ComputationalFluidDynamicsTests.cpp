@@ -2704,8 +2704,8 @@ public:
         auto tPrNumConvexityParam = mPrNumConvexityParam;
         auto tBrinkmanConvexityParam = mBrinkmanConvexityParam;
 
-        auto tCubWeight = mCubatureRule->getCubWeight();
-        auto tBasisFunctions = mCubatureRule->getBasisFunctions();
+        auto tCubWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
         {
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
@@ -2766,8 +2766,8 @@ public:
                 {
                     auto tDofIndex = (mNumSpatialDims * tNode) + tDim;
                     aResult(aCellOrdinal, tDofIndex) += tCellVolume(aCellOrdinal) * tBasisFunctions(tNode)
-                        * (tGrNum(tDim) * tPenalizedPrNumSquared * tPrevTempGP);
-                    tStabForce(aCellOrdinal, tDim) += tGrNum(tDim) * tPenalizedPrNumSquared * tPrevTempGP;
+                        * ( tGrNum(tDim) * tPenalizedPrNumSquared * tPrevTempGP(aCellOrdinal) );
+                    tStabForce(aCellOrdinal, tDim) += tGrNum(tDim) * tPenalizedPrNumSquared * tPrevTempGP(aCellOrdinal);
                 }
             }
 
@@ -3753,8 +3753,7 @@ private:
                 THROWERR(std::string("Keyword 'Sides' is not define in Parameter List '") + tParamListName + "'.")
             }
             const auto tEntitySetName = tSublist.get<std::string>("Sides");
-            auto tMomentumBC = std::make_shared<MomentumForces>(mSpatialDomain, tEntitySetName);
-            mMomentumBCs.insert(std::make_pair<std::string, std::shared_ptr<MomentumForces>>(tEntitySetName, tMomentumBC));
+            mMomentumBCs[tEntitySetName] = std::make_shared<MomentumForces>(mSpatialDomain, tEntitySetName);
         }
     }
 };
