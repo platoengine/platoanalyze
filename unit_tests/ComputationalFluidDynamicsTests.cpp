@@ -7932,6 +7932,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksetsTwo)
     Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
     Plato::blas1::fill(4.0, tTimeSteps);
     tPrimal.vector("time steps", tTimeSteps);
+    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::blas1::fill(6.0, tVelBCs);
+    tPrimal.vector("prescribed velocity", tVelBCs);
 
     // set ordinal maps;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
