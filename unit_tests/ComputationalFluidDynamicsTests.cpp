@@ -6104,6 +6104,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EntityFaceOrdinals)
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     auto tOrdinals = Plato::entity_face_ordinals(tMeshSets, "x+");
     Plato::omega_h::print(tOrdinals, "side set ordinals");
+    auto tSideOrdinals = Plato::sid
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsNodeSetDefined)
@@ -6752,86 +6753,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
             "  <ParameterList  name='Dimensionless Properties'>"
             "    <Parameter  name='Darcy Number'    type='double'    value='1.0'/>"
             "    <Parameter  name='Prandtl Number' type='double'    value='1.0'/>"
-            "  </ParameterList>"
-            "</ParameterList>"
-            );
-
-    // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
-    tDomain.cellOrdinals("body");
-    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
-    tModel.append(tDomain);
-
-    // set current state
-    Plato::Variables tPrimal;
-    auto tNumCells = tMesh->nelems();
-    auto tNumNodes = tMesh->nverts();
-    auto tNumVelDofs = tNumNodes * tMesh->dim();
-    Plato::ScalarVector tControl("controls", tNumNodes);
-    Plato::blas1::fill(0.5, tControl);
-    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
-    Plato::blas1::fill(1.0, tCurVel);
-    tPrimal.vector("current velocity", tCurVel);
-    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
-    Plato::blas1::fill(0.1, tCurPress);
-    tPrimal.vector("current pressure", tCurPress);
-    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
-    Plato::blas1::fill(1.5, tCurTemp);
-    tPrimal.vector("current temperature", tCurTemp);
-    Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
-    Plato::blas1::fill(0.01, tTimeSteps);
-    tPrimal.vector("time steps", tTimeSteps);
-
-    // set physics type
-    constexpr Plato::OrdinalType tNumSpaceDim = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDim>;
-
-    // build criterion
-    Plato::DataMap tDataMap;
-    std::string tFuncName("My Criteria");
-    Plato::FluidMechanics::PhysicsScalarFunction<PhysicsT>
-        tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
-    TEST_EQUALITY("My Criteria", tCriterion.name());
-
-    // test criterion value
-    auto tTol = 1e-4;
-    auto tValue = tCriterion.value(tControl, tPrimal);
-    TEST_FLOATING_EQUALITY(0.222222, tValue, tTol);
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible_Value)
-{
-    // set inputs
-    Teuchos::RCP<Teuchos::ParameterList> tInputs =
-        Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
-            "  <ParameterList  name='Criteria'>"
-            "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
-            "    <ParameterList name='My Criteria'>"
-            "      <Parameter  name='Flow'                 type='string'    value='Incompressible'/>"
-            "      <Parameter  name='Type'                 type='string'    value='Scalar Function'/>"
-            "      <Parameter  name='Scalar Function Type' type='string'    value='Internal Dissipation Energy'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Dimensionless Properties'>"
-            "    <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
-            "    <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
-            "    <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0,0.0}'/>"
-            "  </ParameterList>"
-            "  <ParameterList name='Hyperbolic'>"
-            "    <ParameterList name='Penalty Function'>"
-            "      <Parameter name='Grashof Penalty Exponent'     type='double' value='3.0'/>"
-            "      <Parameter name='Prandtl Convexity Parameter'  type='double' value='0.5'/>"
-            "      <Parameter name='Brinkman Convexity Parameter' type='double' value='0.5'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
-            "    <ParameterList  name='Traction Vector Boundary Condition'>"
-            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
-            "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0,0}'/>"
-            "    </ParameterList>"
             "  </ParameterList>"
             "</ParameterList>"
             );
