@@ -173,6 +173,83 @@ void print(const ArrayT & aInput, const std::string & aName)
 }
 }
 
+
+/***************************************************************************//**
+ * \brief Return face local identifiers/ordinals for each element on the requested
+ * side set. Here, local is used in the context of domain decomposition.  Therefore,
+ * the identifiers/ordinals are local to the subdomain.
+ *
+ * \param [in] aMeshSets Omega_h side set database
+ * \param [in] aSetName  Exodus side set name
+ * \param [in] aThrow    throw error, true = throws; false = no throw (default = true)
+ *
+ * \return face local ordinals
+ *
+*******************************************************************************/
+inline Omega_h::LOs
+node_set_face_ordinals
+(const Omega_h::MeshSets& aMeshSets,
+ const std::string& aSetName,
+ bool aThrow = true)
+{
+    auto& tEntitySets = aMeshSets[Omega_h::NODE_SET];
+    auto tEntitySetMapIterator = tEntitySets.find(aSetName);
+    if( (tEntitySetMapIterator == tEntitySets.end()) && (aThrow) )
+    {
+        THROWERR(std::string("DID NOT FIND NODE SET WITH NAME '") + aSetName + "'. NODE SET '"
+                 + aSetName + "' IS NOT DEFINED IN INPUT MESH FILE, I.E. INPUT EXODUS FILE");
+    }
+    auto tFaceLids = (tEntitySetMapIterator->second);
+    return tFaceLids;
+}
+// function node_set_face_ordinals
+
+inline bool
+is_node_set_defined
+(const Omega_h::MeshSets& aMeshSets,
+ const std::string& aSetName)
+{
+    auto& tNodeSets = aMeshSets[Omega_h::NODE_SET];
+    auto tNodeSetMapItr = tNodeSets.find(aSetName);
+    auto tIsNodeSetDefined = tNodeSetMapItr != tNodeSets.end() ? true : false;
+    return tIsNodeSetDefined;
+}
+
+inline bool
+is_side_set_defined
+(const Omega_h::MeshSets& aMeshSets,
+ const std::string& aSetName)
+{
+    auto& tSideSets = aMeshSets[Omega_h::SIDE_SET];
+    auto tSideSetMapItr = tSideSets.find(aSetName);
+    auto tIsSideSetDefined = tSideSetMapItr != tSideSets.end() ? true : false;
+    return tIsSideSetDefined;
+}
+
+inline Omega_h::LOs
+entity_face_ordinals
+(const Omega_h::MeshSets& aMeshSets,
+ const std::string& aSetName,
+ bool aThrow = true)
+{
+    auto tIsNodeSet = Plato::is_node_set_defined(aMeshSets, aSetName);
+    auto tIsSideSet = Plato::is_side_set_defined(aMeshSets, aSetName);
+    if(tIsNodeSet)
+    {
+        auto tEntityFaceOrdinals = Plato::node_set_face_ordinals(aMeshSets, aSetName);
+        return tEntityFaceOrdinals;
+    }
+    else if(tIsSideSet)
+    {
+        auto tEntityFaceOrdinals = Plato::side_set_face_ordinals(aMeshSets, aSetName);
+        return tEntityFaceOrdinals;
+    }
+    else
+    {
+        THROWERR(std::string("Entity set, i.e. side or node set, with name '") + aSetName + "' is not defined.")
+    }
+}
+
 template<Omega_h::Int Entity>
 inline Plato::OrdinalType
 get_num_entities(const Omega_h::Mesh & aMesh)
@@ -213,7 +290,7 @@ entities_on_non_prescribed_boundary
     for(auto& tName : aSideSetNames)
     {
         // return entity ids on prescribed side set
-        auto tEntitiesOnPrescribedBoundary = Plato::side_set_face_ordinals(aMeshSets, tName);
+        auto tEntitiesOnPrescribedBoundary = Plato::entity_face_ordinals(aMeshSets, tName);
         // return boolean array (entity on prescribed side set=1, entity not on prescribed side set=0)
         auto tEntitiesAreOnPrescribedBoundary = Omega_h::mark_image(tEntitiesOnPrescribedBoundary, tNumEntities);
         // return boolean array with 1's for all entities not on prescribed side set and 0's otherwise
@@ -1247,6 +1324,11 @@ build_vector_function_worksets
         (aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
 
+    auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
+        ( Plato::ScalarMultiVector("previous velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
+    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("prescribed velocity"), tVelBCsWS->mData);
+    aWorkSets.set("prescribed velocity", tVelBCsWS);
+
     if(aVariables.defined("artificial compressibility"))
     {
         auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
@@ -1329,6 +1411,11 @@ build_vector_function_worksets
     Plato::workset_control_scalar_scalar<PhysicsT::SimplexT::mNumNodesPerCell>
         (aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
+
+    auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
+        ( Plato::ScalarMultiVector("previous velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
+    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("prescribed velocity"), tVelBCsWS->mData);
+    aWorkSets.set("prescribed velocity", tVelBCsWS);
 
     if(aVariables.defined("artificial compressibility"))
     {
@@ -1438,7 +1525,7 @@ public:
         for(auto& tName : mSideSets)
         {
             // get faces on this side set
-            auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
+            auto tFaceOrdinalsOnSideSet = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, tName);
             auto tNumFaces = tFaceOrdinalsOnSideSet.size();
             Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
@@ -1559,7 +1646,7 @@ public:
         for(auto& tName : mWallSets)
         {
             // get faces on this side set
-            auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
+            auto tFaceOrdinalsOnSideSet = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, tName);
             auto tNumFaces = tFaceOrdinalsOnSideSet.size();
             Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
@@ -2260,7 +2347,7 @@ public:
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // get sideset faces
-        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+        auto tFaceLocalOrdinals = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tSurfaceJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
@@ -2493,7 +2580,7 @@ private:
         }
         else
         {
-            mFaceOrdinalsOnBoundary = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+            mFaceOrdinalsOnBoundary = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
             Plato::omega_h::print(mFaceOrdinalsOnBoundary, "non-prescribed boundary ordinals");
         }
     }
@@ -2572,9 +2659,9 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
-        this->setPenaltyModel(aInputs);
-        this->setDimensionlessProperties(aInputs);
+        this->setParameters(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
+        this->setStabilizedNaturalBoundaryConditions(aInputs);
     }
 
     virtual ~VelocityPredictorResidual(){}
@@ -2807,24 +2894,35 @@ public:
    }
 
 private:
+   void setParameters
+   (Teuchos::ParameterList & aInputs)
+   {
+       if(aInputs.isSublist("Hyperbolic") == false)
+       {
+           THROWERR("'Hyperbolic' Parameter List is not defined.")
+       }
+       auto tHyperParamList = aInputs.sublist("Hyperbolic");
+       this->setDimensionlessProperties(tHyperParamList);
+
+       if(tHyperParamList.isSublist("Momentum Conservation") == false)
+       {
+           THROWERR("'Momentum Conservation' Parameter List is not defined.")
+       }
+       auto tMomentumParamList = tHyperParamList.sublist("Momentum Conservation");
+
+       this->setPenaltyModel(tMomentumParamList);
+   }
+
    void setPenaltyModel
    (Teuchos::ParameterList & aInputs)
    {
-       if(aInputs.isSublist("Hyperbolic"))
-       {
-           auto tHyperbolicList = aInputs.sublist("Hyperbolic");
-           if(tHyperbolicList.isSublist("Penalty Function"))
-           {
-               auto tPenaltyFuncList = tHyperbolicList.sublist("Penalty Function");
-               mGrNumExponent = tPenaltyFuncList.get<Plato::Scalar>("Grashof Penalty Exponent", 3.0);
-               mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
-               mBrinkmanConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
-           }
-       }
-       else
-       {
-           THROWERR("'Hyperbolic' sublist is not defined.")
-       }
+        if (aInputs.isSublist("Penalty Function"))
+        {
+            auto tPenaltyFuncList = tHyperbolicList.sublist("Penalty Function");
+            mGrNumExponent = tPenaltyFuncList.get<Plato::Scalar>("Grashof Penalty Exponent", 3.0);
+            mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
+            mBrinkmanConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
+        }
    }
 
     void setDimensionlessProperties
@@ -3108,7 +3206,6 @@ private:
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
 
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< integration rule */
-
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mHeatFlux; /*!< heat flux evaluator */
 
     Plato::Scalar mHeatSource                = 0.0;
@@ -3120,7 +3217,6 @@ private:
     Plato::Scalar mFluidThermalConductivity  = 1.0;
     Plato::Scalar mDiffusivityConvexityParam = 0.5;
 
-
 public:
     TemperatureIncrementResidual
     (const Plato::SpatialDomain & aDomain,
@@ -3131,12 +3227,9 @@ public:
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>()),
          mHeatSource(0.0)
     {
-        // todo: read thermal source scalar
-        if(aInputs.isSublist("Thermal Natural Boundary Conditions"))
-        {
-            auto tSublist = aInputs.sublist("Thermal Natural Boundary Conditions");
-            mHeatFlux = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tSublist);
-        }
+        // todo add parsing for penalty and input parameters
+        this->setSourceTerm(aInputs);
+        this->setNaturalBoundaryConditions(aInputs);
     }
 
     virtual ~TemperatureIncrementResidual(){}
@@ -3307,9 +3400,29 @@ public:
             }, "heat flux contribution");
         }
     }
+
+private:
+    void setSourceTerm
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Thermal Source Term"))
+        {
+            auto tSublist = aInputs.sublist("Thermal Source Term");
+            mHeatSource = tSublist.get<Plato::Scalar>("Source Term", 0.0);
+        }
+    }
+
+    void setNaturalBoundaryConditions
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Thermal Natural Boundary Conditions"))
+        {
+            auto tSublist = aInputs.sublist("Thermal Natural Boundary Conditions");
+            mHeatFlux = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tSublist);
+        }
+    }
 };
 // class TemperatureIncrementResidual
-
 
 
 template<typename PhysicsT, typename EvaluationT>
@@ -3327,22 +3440,20 @@ private:
     using ConfigT    = typename EvaluationT::ConfigScalarType;
     using PrevVelT   = typename EvaluationT::PreviousMomentumScalarType;
 
-    const std::string mSideSetName; /*!< side set name */
-
+    const std::string mEntityName; /*!< side set name */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;  /*!< integration rule */
 
 public:
     MomentumSurfaceForces
     (const Plato::SpatialDomain & aSpatialDomain,
-     std::string aSideSetName = "empty") :
-         mSideSetName(aSideSetName),
+     const std::string & aEntityName) :
+         mEntityName(aEntityName),
          mSpatialDomain(aSpatialDomain)
     {
     }
 
-    void
-    operator()
+    void operator()
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult,
      Plato::Scalar aMultiplier = 1.0) const
@@ -3367,15 +3478,17 @@ public:
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // get sideset faces
-        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+        auto tFaceLocalOrdinals = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, mEntityName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
         // set previous pressure at Gauss points container
         auto tNumCells = mSpatialDomain.Mesh.nelems();
+        Plato::ScalarVector tVelBCsGP("prescribed velocities at Gauss point", tNumCells, mNumDofsPerNode);
         Plato::ScalarVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumDofsPerNode);
 
         // set input state worksets
+        auto tVelBCsWS  = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("prescribed velocity"));
         auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
 
@@ -3404,6 +3517,7 @@ public:
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project into aResult workset
+              tIntrplVectorField(tCellOrdinal, tBasisFunctions, tVelBCsWS, tVelBCsGP);
               tIntrplVectorField(tCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
@@ -3411,7 +3525,7 @@ public:
                   {
                       auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * mNumDofsPerNode) + tDof;
                       aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode) *
-                          tUnitNormalVec(tDof) * tPrevVelGP(tCellOrdinal, tDof) * tWeight;
+                          tUnitNormalVec(tDof) * ( tVelBCsGP(tDof) - tPrevVelGP(tDof) )* tWeight;
                   }
               }
           }
@@ -3453,10 +3567,7 @@ private:
     Plato::Scalar mThetaTwo = 0.0;
 
     using MomentumForces = Plato::FluidMechanics::MomentumSurfaceForces<PhysicsT, EvaluationT>;
-    std::unordered_map<std::string, std::shared_ptr<MomentumForces>> mMomentumNaturalBCs;
-
-    using PrescribedForces = Plato::NaturalBC<mNumSpatialDims, mNumDofsPerNode>;
-    std::unordered_map<std::string, std::shared_ptr<PrescribedForces>> mPrescribedNaturalBCs;
+    std::unordered_map<std::string, std::shared_ptr<MomentumForces>> mMomentumBCs;
 
 public:
     PressureIncrementResidual
@@ -3467,12 +3578,8 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
-        if(aInputs.isSublist("Time Integration"))
-        {
-            auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Time Step Multiplier Theta 1", 0.5);
-            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Time Step Multiplier Theta 2", 0.0);
-        }
+        this->setParameters(aInputs);
+        this->setNaturalBoundaryConditions(aInputs);
     }
 
     virtual ~PressureIncrementResidual(){}
@@ -3581,16 +3688,17 @@ public:
         }, "conservation of mass internal forces");
     }
 
-    // todo: verify implementation with formulation
+    // todo: verify implementation with formulation - checked!
     void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         // calculate previous momentum forces, which are defined as
-        // -\theta_1\Delta{t} \int_{\Gamma_u} N_u^a\left( -u_i^{n-1}n_i \right) d\Gamma
+        // -\theta_1\Delta{t} \int_{\Gamma_u} N_u^a n_i( \hat{u}_i^n - u_i^{n-1} ) d\Gamma_u,
+        // where \hat{u}_i^n denote the prescribed velocities.
         auto tNumCells = aResult.extent(0);
         Plato::ScalarMultiVectorT<ResultT> tResultWS("previous momentum forces", tNumCells, mNumDofsPerCell);
-        for(auto& tPair : mMomentumNaturalBCs)
+        for(auto& tPair : mMomentumBCs)
         {
-            tPair.second->operator()(aWorkSets, tResultWS, -1.0);
+            tPair.second->operator()(aWorkSets, tResultWS);
         }
 
         // multiply force vector by the corresponding nodal time steps
@@ -3607,68 +3715,48 @@ public:
     }
 
     void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
-    {
-        // set input worksets
-        auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
-        auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
-
-        // calculate prescribed momentum forces, which are defined as
-        // -\theta_1\Delta{t} \int_{\Gamma_u} N_u^a\left(u_i^{0}n_i\right) d\Gamma
-        auto tNumCells = aResult.extent(0);
-        Plato::ScalarMultiVectorT<ResultT> tResultWS("prescribed momentum forces", tNumCells, mNumDofsPerCell);
-        for(auto& tPair : mPrescribedNaturalBCs)
-        {
-            tPair.second->get( mSpatialDomain, tPrevVelWS, tControlWS, tConfigWS, tResultWS);
-        }
-
-        // multiply force vector by the corresponding nodal time steps
-        auto tThetaOne = mThetaOne;
-        auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("time steps"));
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-        {
-            for(Plato::OrdinalType tDof = 0; tDof < mNumPressDofsPerCell; tDof++)
-            {
-                aResult(aCellOrdinal, tDof) += tTimeStepWS(aCellOrdinal, tDof) * tThetaOne *
-                    static_cast<Plato::Scalar>(-1.0) * tResultWS(aCellOrdinal, tDof);
-            }
-        }, "prescribed momentum forces");
-    }
+    { return; }
 
 private:
-    void readNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
+    void setParameters(Teuchos::ParameterList& aInputs)
     {
-        if(aInputs.isSublist("Pressure Increment Natural Boundary Conditions"))
+        if(aInputs.isSublist("Time Integration"))
         {
-            auto tSublist = aInputs.sublist("Pressure Increment Natural Boundary Conditions");
+            auto tTimeIntegration = aInputs.sublist("Time Integration");
+            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Time Step Multiplier Theta 1", 0.5);
+            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Time Step Multiplier Theta 2", 0.0);
+        }
+    }
 
-            for (Teuchos::ParameterList::ConstIterator tItr = tSublist.begin(); tItr != tSublist.end(); ++tItr)
+    void setNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        // the natural bcs are applied on the side sets where velocity essential
+        // bcs are enforced. therefore, these side sets should be read by this function.
+        std::unordered_map<std::string, std::vector<std::pair<Plato::OrdinalType, Plato::Scalar>>> tMap;
+        if(aInputs.isSublist("Velocity Boundary Conditions") == false)
+        {
+            THROWERR("Velocity boundary conditions must be defined for fluid flow problems.")
+        }
+        auto tSublist = aInputs.sublist("Velocity Boundary Conditions");
+
+        for (Teuchos::ParameterList::ConstIterator tItr = tSublist.begin(); tItr != tSublist.end(); ++tItr)
+        {
+            const Teuchos::ParameterEntry &tEntry = tSublist.entry(tItr);
+            if (!tEntry.isList())
             {
-                const Teuchos::ParameterEntry &tEntry = tSublist.entry(tItr);
-                if (!tEntry.isList())
-                {
-                    THROWERR("Get Side Set Names: Parameter list block is not valid.  Expect lists only.")
-                }
-
-                const std::string &tParamListName = tSublist.name(tItr);
-                if(tSublist.isSublist(tParamListName) == false)
-                {
-                    THROWERR(std::string("Parameter sublist with name '") + tParamListName.c_str() + "' is not defined.")
-                }
-                Teuchos::ParameterList &tParamList = tSublist.sublist(tParamListName);
-
-                if(tSublist.isParameter("Sides") == false)
-                {
-                    THROWERR(std::string("Keyword 'Sides' is not define in Parameter Sublist with name '") + tParamListName + "'.")
-                }
-                const auto tSideSetName = tSublist.get<std::string>("Sides");
-
-                auto tPrescribedBC = std::make_shared<PrescribedForces>(tParamListName, tParamList);
-                mPrescribedNaturalBCs.insert(std::make_pair<std::string, std::shared_ptr<PrescribedForces>>(tSideSetName, tPrescribedBC));
-
-                auto tMomentumBC = std::make_shared<MomentumForces>(mSpatialDomain, tSideSetName);
-                mMomentumNaturalBCs.insert(std::make_pair<std::string, std::shared_ptr<MomentumForces>>(tSideSetName, tMomentumBC));
+                THROWERR(std::string("Error reading 'Velocity Boundary Conditions' block: Expects a parameter ")
+                    + "list input with information pertaining to the velocity boundary conditions .")
             }
+            const std::string& tParamListName = tSublist.name(tItr);
+            Teuchos::ParameterList & tParamList = tSublist.sublist(tParamListName);
+
+            if (tSublist.isParameter("Sides") == false)
+            {
+                THROWERR(std::string("Keyword 'Sides' is not define in Parameter List '") + tParamListName + "'.")
+            }
+            const auto tEntitySetName = tSublist.get<std::string>("Sides");
+            auto tMomentumBC = std::make_shared<MomentumForces>(mSpatialDomain, tEntitySetName);
+            mMomentumBCs.insert(std::make_pair<std::string, std::shared_ptr<MomentumForces>>(tEntitySetName, tMomentumBC));
         }
     }
 };
@@ -5585,8 +5673,14 @@ private:
         {
             mVelocityEssentialBCs.get(tBcDofs, tBcValues);
         }
+
         auto tCurrentVelocity = aVariables.vector("current velocity");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
+
+        auto tLength = tCurrentVelocity.size();
+        Plato::ScalarVector tCurrentPrescribedVelocities("prescribed velocity", tLength);
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPrescribedVelocities);
+        aVariables.vector("prescribed velocity", tCurrentPrescribedVelocities);
     }
 
     void enforcePressureBoundaryConditions(Plato::Primal& aVariables)
@@ -5659,6 +5753,8 @@ private:
             }
         }
     }
+
+
 
     void setPrimalVariables(Plato::Primal & aVariables)
     {
@@ -6001,6 +6097,30 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EntityFaceOrdinals)
+{
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    auto tOrdinals = Plato::entity_face_ordinals(tMeshSets, "x+");
+    Plato::omega_h::print(tOrdinals, "side set ordinals");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsNodeSetDefined)
+{
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    TEST_EQUALITY(true, Plato::is_node_set_defined(tMeshSets, "x+"));
+    TEST_EQUALITY(false, Plato::is_node_set_defined(tMeshSets, "dog"));
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsSideSetDefined)
+{
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    TEST_EQUALITY(true, Plato::is_side_set_defined(tMeshSets, "x+"));
+    TEST_EQUALITY(false, Plato::is_side_set_defined(tMeshSets, "dog"));
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 {
@@ -7372,6 +7492,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
     Plato::ScalarVector tArtCompress("artificial compressibility", tNumNodes);
     Plato::blas1::fill(5.0, tArtCompress);
     tPrimal.vector("artificial compressibility", tArtCompress);
+    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::blas1::fill(6.0, tVelBCs);
+    tPrimal.vector("prescribed velocity", tVelBCs);
 
     // call build_vector_function_worksets
     Plato::WorkSets tWorkSets;
@@ -7496,6 +7619,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
         }
     }
 
+    // test prescribed velocity results
+    auto tVelBCsWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("prescribed velocity"));
+    TEST_EQUALITY(tNumCells, tVelBCsWS.extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tVelBCsWS.extent(1));
+    auto tHostVelBCsWS = Kokkos::create_mirror(tVelBCsWS);
+    Kokkos::deep_copy(tHostVelBCsWS, tVelBCsWS);
+    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (decltype(tNumVelDofsPerCell) tDof = 0; tDof < tNumVelDofsPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(6.0, tHostVelBCsWS(tCell, tDof), tTol);
+        }
+    }
+
     // test controls results
     auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ControlScalarType>>(tWorkSets.get("control"));
     TEST_EQUALITY(tNumCells, tControlWS.extent(0));
@@ -7576,6 +7713,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     Plato::ScalarVector tArtCompress("artificial compressibility", tNumNodes);
     Plato::blas1::fill(5.0, tArtCompress);
     tPrimal.vector("artificial compressibility", tArtCompress);
+    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::blas1::fill(6.0, tVelBCs);
+    tPrimal.vector("prescribed velocity", tVelBCs);
 
     // set ordinal maps;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
@@ -7714,6 +7854,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
         for (decltype(tNumNodesPerCell) tDof = 0; tDof < tNumNodesPerCell; tDof++)
         {
             TEST_FLOATING_EQUALITY(0.5, tHostControlWS(tCell, tDof), tTol);
+        }
+    }
+
+    // test prescribed velocity results
+    auto tVelBCsWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("prescribed velocity"));
+    TEST_EQUALITY(tNumCells, tVelBCsWS.extent(0));
+    TEST_EQUALITY(tNumVelDofsPerCell, tVelBCsWS.extent(1));
+    auto tHostVelBCsWS = Kokkos::create_mirror(tVelBCsWS);
+    Kokkos::deep_copy(tHostVelBCsWS, tVelBCsWS);
+    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (decltype(tNumVelDofsPerCell) tDof = 0; tDof < tNumVelDofsPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(6.0, tHostVelBCsWS(tCell, tDof), tTol);
         }
     }
 
