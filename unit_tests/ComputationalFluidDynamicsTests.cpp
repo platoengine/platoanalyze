@@ -3978,13 +3978,13 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mResidualFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mResidualFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tReturnValue);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mResidualFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mResidualFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
                 (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tReturnValue);
         }
@@ -4030,14 +4030,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradConfigFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradConfigFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumConfigDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumConfigDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradConfigFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradConfigFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumConfigDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -4083,14 +4083,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradControlFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradControlFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControlDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumControlDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradControlFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradControlFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumControlDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -4136,14 +4136,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradPredictorFuncs.begin()->second->evaluatePrescribed(tInputWorkSets);
+            mGradPredictorFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradPredictorFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradPredictorFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -4189,14 +4189,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradPrevVelFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradPrevVelFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradPrevVelFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradPrevVelFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -4242,14 +4242,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradPrevPressFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradPrevPressFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradPrevPressFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradPrevPressFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -4295,14 +4295,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradPrevTempFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradPrevTempFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradPrevTempFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradPrevTempFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -4348,14 +4348,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradCurVelFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradCurVelFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradCurVelFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradCurVelFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -4401,14 +4401,14 @@ public:
 
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradCurPressFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradCurPressFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradCurPressFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradCurPressFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
@@ -4454,14 +4454,14 @@ public:
 
             // evaluate boundary forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
-            mGradCurTempFuncs.begin()->second->evaluatePrescribed(tInputWorkSets, tResultWS);
+            mGradCurTempFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
-            mGradCurTempFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mGradCurTempFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
                                                tJacEntryOrdinal, tResultWS, tJacobian->entries());
         }
