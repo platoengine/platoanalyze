@@ -223,23 +223,24 @@ get_entity_ordinals
     }
 }
 
-template<Omega_h::Int Entity>
 inline Plato::OrdinalType
-get_num_entities(const Omega_h::Mesh & aMesh)
+get_num_entities
+(const Omega_h::Int aEntityDim,
+ const Omega_h::Mesh & aMesh)
 {
-    if(Entity == Omega_h::VERT)
+    if(aEntityDim == Omega_h::VERT)
     {
         return aMesh.nverts();
     }
-    else if(Entity == Omega_h::EDGE)
+    else if(aEntityDim == Omega_h::EDGE)
     {
         return aMesh.nedges();
     }
-    else if(Entity == Omega_h::FACE)
+    else if(aEntityDim == Omega_h::FACE)
     {
         return aMesh.nfaces();
     }
-    else if(Entity == Omega_h::REGION)
+    else if(aEntityDim == Omega_h::REGION)
     {
         return aMesh.nelems();
     }
@@ -261,7 +262,7 @@ entities_on_non_prescribed_boundary
     // returns all the boundary faces, excluding faces within the domain
     auto tEntitiesAreOnNonPrescribedBoundary = Omega_h::mark_by_class_dim(&aMesh, EntityDim, EntityDim);
     // loop over all the side sets to get non-prescribed boundary faces
-    auto tNumEntities = Plato::get_num_entities<EntityDim>(aMesh);
+    auto tNumEntities = Plato::get_num_entities(EntityDim, aMesh);
     for(auto& tEntitySetName : aEntitySetNames)
     {
         // return entity ids on prescribed side set
@@ -6282,13 +6283,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, GetNumEntities)
 {
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tNumEntities = Plato::get_num_entities<Omega_h::VERT>(tMesh.operator*());
+    auto tNumEntities = Plato::get_num_entities(Omega_h::VERT, tMesh.operator*());
     TEST_EQUALITY(4, tNumEntities);
-    tNumEntities = Plato::get_num_entities<Omega_h::EDGE>(tMesh.operator*());
+    tNumEntities = Plato::get_num_entities(Omega_h::EDGE, tMesh.operator*());
     TEST_EQUALITY(5, tNumEntities);
-    tNumEntities = Plato::get_num_entities<Omega_h::FACE>(tMesh.operator*());
+    tNumEntities = Plato::get_num_entities(Omega_h::FACE, tMesh.operator*());
     TEST_EQUALITY(2, tNumEntities);
-    tNumEntities = Plato::get_num_entities<Omega_h::REGION>(tMesh.operator*());
+    tNumEntities = Plato::get_num_entities(Omega_h::REGION, tMesh.operator*());
     TEST_EQUALITY(2, tNumEntities);
 }
 
