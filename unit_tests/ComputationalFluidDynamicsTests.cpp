@@ -4478,8 +4478,7 @@ private:
 
             mResidualFuncs[tName]  = tVecFuncFactory.template createVectorFunction<PhysicsT, ResidualEvalT>
                 (aName, tDomain, aDataMap, aInputs);
-            // todo remove comments
-/*
+
             mGradControlFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradControlEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
@@ -4506,7 +4505,6 @@ private:
 
             mGradPredictorFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPredictorEvalT>
                 (aName, tDomain, aDataMap, aInputs);
-*/
         }
     }
 };
