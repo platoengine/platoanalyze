@@ -2870,7 +2870,7 @@ public:
            // \int_{\Gamma_t} N_u^a\left(t_i + p^{n-1}n_i\right) d\Gamma
            auto tNumCells = aResult.extent(0);
            Plato::ScalarMultiVectorT<ResultT> tResultWS("traction forces", tNumCells, mNumDofsPerCell);
-           mPrescribedBCs->get( mSpatialDomain, tPrevVelWS, tControlWS, tConfigWS, tResultWS);
+           //mPrescribedBCs->get( mSpatialDomain, tPrevVelWS, tControlWS, tConfigWS, tResultWS);
            for(auto& tPair : mPressureBCs)
            {
                tPair.second->operator()(aWorkSets, tResultWS);
@@ -3005,12 +3005,12 @@ private:
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
 
-                mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, tSideSetName);
+                mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs, tSideSetName);
             }
         }
         else
         {
-            mDeviatoricBCs["automated"] = std::make_shared<DeviatoricForces>(mSpatialDomain);
+            mDeviatoricBCs["automated"] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs);
         }
     }
 };
@@ -3386,7 +3386,7 @@ public:
             // evaluate prescribed flux
             auto tNumCells = aResult.extent(0);
             Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumDofsPerCell);
-            mHeatFlux->get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
+            //mHeatFlux->get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
 
             auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("time steps"));
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -4399,7 +4399,7 @@ private:
 
             mResidualFuncs[tName]  = tVecFuncFactory.template createVectorFunction<PhysicsT, ResidualEvalT>
                 (aName, tDomain, aDataMap, aInputs);
-
+/*
             mGradControlFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradControlEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
@@ -4426,6 +4426,7 @@ private:
 
             mGradPredictorFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPredictorEvalT>
                 (aName, tDomain, aDataMap, aInputs);
+*/
         }
     }
 };
