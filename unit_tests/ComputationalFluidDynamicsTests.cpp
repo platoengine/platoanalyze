@@ -6199,7 +6199,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsSideSetDefined)
     TEST_EQUALITY(true, Plato::is_side_set_defined(tMeshSets, "x+"));
     TEST_EQUALITY(false, Plato::is_side_set_defined(tMeshSets, "dog"));
 }
-
+/*
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 {
     // set xml file inputs
@@ -6281,7 +6281,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
     auto tResidual = tVectorFunction.value(tControls, tVariables);
     Plato::print(tResidual, "residual");
 }
-
+*/
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, GetNumEntities)
 {
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
