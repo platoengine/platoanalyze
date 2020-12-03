@@ -2598,11 +2598,11 @@ public:
     AbstractVectorFunction(){}
     virtual ~AbstractVectorFunction(){}
 
-    virtual void evaluate(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
+    virtual void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
 
-    virtual void evaluateBoundary(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
+    virtual void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
 
-    virtual void evaluatePrescribed(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
+    virtual void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
 };
 // class AbstractVectorFunction
 
@@ -2666,7 +2666,7 @@ public:
 
     virtual ~VelocityPredictorResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         using StrainT =
             typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
@@ -2830,7 +2830,7 @@ public:
         }, "velocity predictor residual");
     }
 
-   void evaluateBoundary(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+   void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
    {
        // calculate boundary integral, which is defined as
        // \int_{\Gamma-\Gamma_t} N_u^a\left(\tau_{ij}n_j\right) d\Gamma
@@ -2857,7 +2857,7 @@ public:
        }, "deviatoric traction forces");
    }
 
-   void evaluatePrescribed(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+   void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
    {
        if( mPrescribedBCs != nullptr )
        {
@@ -2870,6 +2870,7 @@ public:
            // \int_{\Gamma_t} N_u^a\left(t_i + p^{n-1}n_i\right) d\Gamma
            auto tNumCells = aResult.extent(0);
            Plato::ScalarMultiVectorT<ResultT> tResultWS("traction forces", tNumCells, mNumDofsPerCell);
+           // todo: fix build error
            //mPrescribedBCs->get( mSpatialDomain, tPrevVelWS, tControlWS, tConfigWS, tResultWS);
            for(auto& tPair : mPressureBCs)
            {
@@ -3060,7 +3061,7 @@ public:
 
     virtual ~VelocityIncrementResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         auto tNumCells = aResult.extent(0);
         Plato::ScalarVectorT<ConfigT>    tCellVolume("cell weight", tNumCells);
@@ -3170,10 +3171,10 @@ public:
         }, "velocity corrector residual");
     }
 
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     { return; /* boundary integral equates zero */ }
 
-    void evaluatePrescribed(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     { return; /* prescribed force integral equates zero */ }
 };
 // class VelocityIncrementResidual
@@ -3232,7 +3233,7 @@ public:
 
     virtual ~TemperatureIncrementResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         // set local forward ad type
         using StabForceT = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT, PrevTempT>;
@@ -3371,10 +3372,10 @@ public:
         }, "conservation of energy internal forces");
     }
 
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     { return; /* boundary integral equates zero */ }
 
-    void evaluatePrescribed(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         if( mHeatFlux != nullptr )
         {
@@ -3386,6 +3387,7 @@ public:
             // evaluate prescribed flux
             auto tNumCells = aResult.extent(0);
             Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumDofsPerCell);
+            // todo: fix build error
             //mHeatFlux->get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
 
             auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("time steps"));
@@ -3582,7 +3584,7 @@ public:
 
     virtual ~PressureIncrementResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         auto tNumCells = aResult.extent(0);
 
@@ -3687,7 +3689,7 @@ public:
     }
 
     // todo: verify implementation with formulation - checked!
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         // calculate previous momentum forces, which are defined as
         // -\theta_1\Delta{t} \int_{\Gamma_u} N_u^a n_i( \hat{u}_i^n - u_i^{n-1} ) d\Gamma_u,
@@ -3712,7 +3714,7 @@ public:
         }, "previous momentum forces");
     }
 
-    void evaluatePrescribed(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
     { return; }
 
 private:
@@ -4399,6 +4401,7 @@ private:
 
             mResidualFuncs[tName]  = tVecFuncFactory.template createVectorFunction<PhysicsT, ResidualEvalT>
                 (aName, tDomain, aDataMap, aInputs);
+            // todo remove comments
 /*
             mGradControlFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradControlEvalT>
                 (aName, tDomain, aDataMap, aInputs);
