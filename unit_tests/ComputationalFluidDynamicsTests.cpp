@@ -173,26 +173,14 @@ void print(const ArrayT & aInput, const std::string & aName)
 }
 }
 
-
-/***************************************************************************//**
- * \brief Return face local identifiers/ordinals for each element on the requested
- * side set. Here, local is used in the context of domain decomposition.  Therefore,
- * the identifiers/ordinals are local to the subdomain.
- *
- * \param [in] aMeshSets Omega_h side set database
- * \param [in] aSetName  Exodus side set name
- * \param [in] aThrow    throw error, true = throws; false = no throw (default = true)
- *
- * \return face local ordinals
- *
-*******************************************************************************/
+template<Omega_h::SetType EntitySet>
 inline Omega_h::LOs
-node_set_face_ordinals
+entity_ordinals
 (const Omega_h::MeshSets& aMeshSets,
  const std::string& aSetName,
  bool aThrow = true)
 {
-    auto& tEntitySets = aMeshSets[Omega_h::NODE_SET];
+    auto& tEntitySets = aMeshSets[EntitySet];
     auto tEntitySetMapIterator = tEntitySets.find(aSetName);
     if( (tEntitySetMapIterator == tEntitySets.end()) && (aThrow) )
     {
@@ -204,44 +192,29 @@ node_set_face_ordinals
 }
 // function node_set_face_ordinals
 
+template<Omega_h::SetType EntitySet>
 inline bool
-is_node_set_defined
+is_entity_set_defined
 (const Omega_h::MeshSets& aMeshSets,
  const std::string& aSetName)
 {
-    auto& tNodeSets = aMeshSets[Omega_h::NODE_SET];
+    auto& tNodeSets = aMeshSets[EntitySet];
     auto tNodeSetMapItr = tNodeSets.find(aSetName);
     auto tIsNodeSetDefined = tNodeSetMapItr != tNodeSets.end() ? true : false;
     return tIsNodeSetDefined;
 }
 
-inline bool
-is_side_set_defined
-(const Omega_h::MeshSets& aMeshSets,
- const std::string& aSetName)
-{
-    auto& tSideSets = aMeshSets[Omega_h::SIDE_SET];
-    auto tSideSetMapItr = tSideSets.find(aSetName);
-    auto tIsSideSetDefined = tSideSetMapItr != tSideSets.end() ? true : false;
-    return tIsSideSetDefined;
-}
-
+template<Omega_h::SetType EntitySet>
 inline Omega_h::LOs
-entity_face_ordinals
+get_entity_ordinals
 (const Omega_h::MeshSets& aMeshSets,
  const std::string& aSetName,
  bool aThrow = true)
 {
-    auto tIsNodeSet = Plato::is_node_set_defined(aMeshSets, aSetName);
-    auto tIsSideSet = Plato::is_side_set_defined(aMeshSets, aSetName);
-    if(tIsNodeSet)
+
+    if( Plato::is_entity_set_defined<EntitySet>(aMeshSets, aSetName) )
     {
-        auto tEntityFaceOrdinals = Plato::node_set_face_ordinals(aMeshSets, aSetName);
-        return tEntityFaceOrdinals;
-    }
-    else if(tIsSideSet)
-    {
-        auto tEntityFaceOrdinals = Plato::side_set_face_ordinals(aMeshSets, aSetName);
+        auto tEntityFaceOrdinals = Plato::entity_ordinals<EntitySet>(aMeshSets, aSetName);
         return tEntityFaceOrdinals;
     }
     else
@@ -6178,27 +6151,46 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EntityFaceOrdinals)
 {
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    auto tOrdinals = Plato::entity_face_ordinals(tMeshSets, "x+");
-    Plato::omega_h::print(tOrdinals, "ordinals");
-    auto tSideOrdinals = Plato::side_set_face_ordinals(tMeshSets, "x+");
-    Plato::omega_h::print(tSideOrdinals, "side set ordinals");
+
+    // test: node sets
+    auto tMyNodeSetOrdinals = Plato::get_entity_ordinals<Omega_h::NODE_SET>(tMeshSets, "x+");
+    auto tLength = tMyNodeSetOrdinals.size();
+    Plato::LocalOrdinalVector tNodeSetOrdinals("node set ordinals", tLength);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tNodeSetOrdinals(aOrdinal) = tMyNodeSetOrdinals[aOrdinal];
+    }, "copy");
+    auto tHostNodeSetOrdinals = Kokkos::create_mirror(tNodeSetOrdinals);
+    Kokkos::deep_copy(tHostNodeSetOrdinals, tNodeSetOrdinals);
+    TEST_EQUALITY(2, tHostNodeSetOrdinals(0));
+    TEST_EQUALITY(3, tHostNodeSetOrdinals(1));
+    Plato::omega_h::print(tMyNodeSetOrdinals, "ordinals");
+
+    // test: side sets
+    auto tMySideSetOrdinals = Plato::get_entity_ordinals<Omega_h::SIDE_SET>(tMeshSets, "x+");
+    tLength = tMySideSetOrdinals.size();
+    Plato::LocalOrdinalVector tSideSetOrdinals("side set ordinals", tLength);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tSideSetOrdinals(aOrdinal) = tMySideSetOrdinals[aOrdinal];
+    }, "copy");
+    auto tHostSideSetOrdinals = Kokkos::create_mirror(tSideSetOrdinals);
+    Kokkos::deep_copy(tHostSideSetOrdinals, tSideSetOrdinals);
+    TEST_EQUALITY(4, tHostSideSetOrdinals(0));
+    Plato::omega_h::print(tMySideSetOrdinals, "ordinals");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsNodeSetDefined)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsEntitySetDefined)
 {
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    TEST_EQUALITY(true, Plato::is_node_set_defined(tMeshSets, "x+"));
-    TEST_EQUALITY(false, Plato::is_node_set_defined(tMeshSets, "dog"));
+    TEST_EQUALITY(true, Plato::is_entity_set_defined<Omega_h::NODE_SET>(tMeshSets, "x+"));
+    TEST_EQUALITY(false, Plato::is_entity_set_defined<Omega_h::NODE_SET>(tMeshSets, "dog"));
+
+    TEST_EQUALITY(true, Plato::is_entity_set_defined<Omega_h::SIDE_SET>(tMeshSets, "x+"));
+    TEST_EQUALITY(false, Plato::is_entity_set_defined<Omega_h::SIDE_SET>(tMeshSets, "dog"));
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsSideSetDefined)
-{
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    TEST_EQUALITY(true, Plato::is_side_set_defined(tMeshSets, "x+"));
-    TEST_EQUALITY(false, Plato::is_side_set_defined(tMeshSets, "dog"));
-}
 /*
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 {
