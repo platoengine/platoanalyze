@@ -6197,7 +6197,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsEntitySetDefined)
     TEST_EQUALITY(false, Plato::is_entity_set_defined<Omega_h::SIDE_SET>(tMeshSets, "dog"));
 }
 
-/*
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 {
     // set xml file inputs
@@ -6244,9 +6243,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 
     // set state variables
     Plato::Primal tVariables;
-    Plato::ScalarVector tTimeSteps("time step", tNumNodes);
-    Plato::blas1::fill(0.1, tTimeSteps);
-    tVariables.vector("time steps", tTimeSteps);
     auto tNumVelDofs = tNumNodes * tNumSpaceDims;
     Plato::ScalarVector tPrevVel("previous velocity", tNumVelDofs);
     auto tHostPrevVel = Kokkos::create_mirror(tPrevVel);
@@ -6270,6 +6266,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
     Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
     tVariables.vector("current temperature", tCurTemp);
 
+    Plato::ScalarVector tTimeSteps("time step", tNumNodes);
+    Plato::blas1::fill(0.1, tTimeSteps);
+    tVariables.vector("time steps", tTimeSteps);
+    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::blas1::fill(1.0, tVelBCs);
+    tVariables.vector("prescribed velocity", tVelBCs);
+
     // allocate vector function
     Plato::DataMap tDataMap;
     std::string tFuncName("Velocity Predictor");
@@ -6279,7 +6282,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
     auto tResidual = tVectorFunction.value(tControls, tVariables);
     Plato::print(tResidual, "residual");
 }
-*/
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, GetNumEntities)
 {
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
