@@ -2598,11 +2598,19 @@ public:
     AbstractVectorFunction(){}
     virtual ~AbstractVectorFunction(){}
 
-    virtual void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
+    virtual void evaluate
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
 
-    virtual void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
+    virtual void evaluateBoundary
+    (const Plato::SpatialModel & aSpatialModel,
+     const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
 
-    virtual void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
+    virtual void evaluatePrescribed
+    (const Plato::SpatialModel & aSpatialModel,
+     const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult) const = 0;
 };
 // class AbstractVectorFunction
 
@@ -2621,12 +2629,15 @@ private:
     static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
     static constexpr auto mNumConfigDofsPerCell = PhysicsT::SimplexT::mNumConfigDofsPerCell;   /*!< number of configuration degrees of freedom per cell */
 
+    // set local ad types
     using ResultT    = typename EvaluationT::ResultScalarType;
     using ConfigT    = typename EvaluationT::ConfigScalarType;
     using ControlT   = typename EvaluationT::ControlScalarType;
     using PrevVelT   = typename EvaluationT::PreviousMomentumScalarType;
     using PrevTempT  = typename EvaluationT::PreviousEnergyScalarType;
     using PredictorT = typename EvaluationT::MomentumPredictorScalarType;
+    using StrainT    = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
+
 
     Plato::DataMap& mDataMap; /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
@@ -2666,12 +2677,19 @@ public:
 
     virtual ~VelocityPredictorResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     {
-        using StrainT =
-            typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
+        auto tNumCells = mSpatialDomain.numCells();
+        if( tNumCells != static_cast<Plato::OrdinalType>(aResult.extent(0)) )
+        {
+            THROWERR(std::string("Number of elements mismatch. Spatial domain and output/result workset ")
+                + "have different number of cells. " + "Spatial domain has '" + std::to_string(tNumCells)
+                + "' elements and output workset has '" + std::to_string(aResult.extent(0)) + "' elements.")
+        }
 
-        auto tNumCells = aResult.extent(0);
         Plato::ScalarVectorT<ConfigT>   tCellVolume("cell weight", tNumCells);
         Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
 
@@ -2830,7 +2848,11 @@ public:
         }, "velocity predictor residual");
     }
 
-   void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+   void evaluateBoundary
+   (const Plato::SpatialModel & aSpatialModel,
+    const Plato::WorkSets & aWorkSets,
+    Plato::ScalarMultiVectorT<ResultT> & aResult)
+   const override
    {
        // calculate boundary integral, which is defined as
        // \int_{\Gamma-\Gamma_t} N_u^a\left(\tau_{ij}n_j\right) d\Gamma
@@ -2857,7 +2879,11 @@ public:
        }, "deviatoric traction forces");
    }
 
-   void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+   void evaluatePrescribed
+   (const Plato::SpatialModel & aSpatialModel,
+    const Plato::WorkSets & aWorkSets,
+    Plato::ScalarMultiVectorT<ResultT> & aResult)
+   const override
    {
        if( mPrescribedBCs != nullptr )
        {
@@ -2870,8 +2896,10 @@ public:
            // \int_{\Gamma_t} N_u^a\left(t_i + p^{n-1}n_i\right) d\Gamma
            auto tNumCells = aResult.extent(0);
            Plato::ScalarMultiVectorT<ResultT> tResultWS("traction forces", tNumCells, mNumDofsPerCell);
-           // todo: fix build error
-           //mPrescribedBCs->get( mSpatialDomain, tPrevVelWS, tControlWS, tConfigWS, tResultWS);
+           // todo: fix build error -> THE PROBLEM IS THAT I AM PASSING THE SPATIAL DOMAIN WHEN
+           // IT SHOULD BE THE SPATIAL MODEL. I SHOULD RECONSIDER THE BOUNDARY SCALAR FUNCTIONS TOO.
+           // I AM USING THE SPATIAL DOMAIN WHEN IT SHOULD BE THE SPATIAL MODEL.
+           //mPrescribedBCs->get( aSpatialModel, tPrevVelWS, tControlWS, tConfigWS, tResultWS);
            for(auto& tPair : mPressureBCs)
            {
                tPair.second->operator()(aWorkSets, tResultWS);
@@ -3061,9 +3089,19 @@ public:
 
     virtual ~VelocityIncrementResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     {
-        auto tNumCells = aResult.extent(0);
+        auto tNumCells = mSpatialDomain.numCells();
+        if( tNumCells != static_cast<Plato::OrdinalType>(aResult.extent(0)) )
+        {
+            THROWERR(std::string("Number of elements mismatch. Spatial domain and output/result workset ")
+                + "have different number of cells. " + "Spatial domain has '" + std::to_string(tNumCells)
+                + "' elements and output workset has '" + std::to_string(aResult.extent(0)) + "' elements.")
+        }
+
         Plato::ScalarVectorT<ConfigT>    tCellVolume("cell weight", tNumCells);
         Plato::ScalarVectorT<CurPressT>  tCurPressGP("current pressure at Gauss point", tNumCells);
         Plato::ScalarVectorT<PrevPressT> tPrevPressGP("previous pressure at Gauss point", tNumCells);
@@ -3171,10 +3209,18 @@ public:
         }, "velocity corrector residual");
     }
 
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluateBoundary
+    (const Plato::SpatialModel & aSpatialModel,
+     const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     { return; /* boundary integral equates zero */ }
 
-    void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluatePrescribed
+    (const Plato::SpatialModel & aSpatialModel,
+     const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     { return; /* prescribed force integral equates zero */ }
 };
 // class VelocityIncrementResidual
@@ -3194,12 +3240,15 @@ private:
     static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
     static constexpr auto mNumConfigDofsPerCell = PhysicsT::SimplexT::mNumConfigDofsPerCell;   /*!< number of configuration degrees of freedom per cell */
 
+    // set local ad type
     using ResultT   = typename EvaluationT::ResultScalarType;
     using ConfigT   = typename EvaluationT::ConfigScalarType;
     using ControlT  = typename EvaluationT::ControlScalarType;
     using CurTempT  = typename EvaluationT::CurrentEnergyScalarType;
     using PrevVelT  = typename EvaluationT::PreviousMomentumScalarType;
     using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;
+
+    using StabForceT = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT, PrevTempT>;
 
     Plato::DataMap& mDataMap;                   /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
@@ -3233,13 +3282,20 @@ public:
 
     virtual ~TemperatureIncrementResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     {
-        // set local forward ad type
-        using StabForceT = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT, PrevTempT>;
+        auto tNumCells = mSpatialDomain.numCells();
+        if( tNumCells != static_cast<Plato::OrdinalType>(aResult.extent(0)) )
+        {
+            THROWERR(std::string("Number of elements mismatch. Spatial domain and output/result workset ")
+                + "have different number of cells. " + "Spatial domain has '" + std::to_string(tNumCells)
+                + "' elements and output workset has '" + std::to_string(aResult.extent(0)) + "' elements.")
+        }
 
         // set local data
-        auto tNumCells = aResult.extent(0);
         Plato::ScalarVectorT<ConfigT>   tCellVolume("cell weight", tNumCells);
         Plato::ScalarVectorT<CurTempT>  tCurTempGP("current temperature at Gauss point", tNumCells);
         Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
@@ -3372,10 +3428,18 @@ public:
         }, "conservation of energy internal forces");
     }
 
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluateBoundary
+    (const Plato::SpatialModel & aSpatialModel,
+     const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     { return; /* boundary integral equates zero */ }
 
-    void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluatePrescribed
+    (const Plato::SpatialModel & aSpatialModel,
+     const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     {
         if( mHeatFlux != nullptr )
         {
@@ -3388,7 +3452,7 @@ public:
             auto tNumCells = aResult.extent(0);
             Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumDofsPerCell);
             // todo: fix build error
-            //mHeatFlux->get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
+            //mHeatFlux->get( aSpatialModel, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
 
             auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("time steps"));
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -3584,9 +3648,18 @@ public:
 
     virtual ~PressureIncrementResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     {
-        auto tNumCells = aResult.extent(0);
+        auto tNumCells = mSpatialDomain.numCells();
+        if( tNumCells != static_cast<Plato::OrdinalType>(aResult.extent(0)) )
+        {
+            THROWERR(std::string("Number of elements mismatch. Spatial domain and output/result workset ")
+                + "have different number of cells. " + "Spatial domain has '" + std::to_string(tNumCells)
+                + "' elements and output workset has '" + std::to_string(aResult.extent(0)) + "' elements.")
+        }
 
         // set local data
         Plato::ScalarVectorT<ConfigT>    tCellVolume("cell weight", tNumCells);
@@ -3689,7 +3762,11 @@ public:
     }
 
     // todo: verify implementation with formulation - checked!
-    void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluateBoundary
+    (const Plato::SpatialModel & aSpatialModel,
+     const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     {
         // calculate previous momentum forces, which are defined as
         // -\theta_1\Delta{t} \int_{\Gamma_u} N_u^a n_i( \hat{u}_i^n - u_i^{n-1} ) d\Gamma_u,
@@ -3714,7 +3791,11 @@ public:
         }, "previous momentum forces");
     }
 
-    void evaluatePrescribed(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluatePrescribed
+    (const Plato::SpatialModel & aSpatialModel,
+     const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
     { return; }
 
 private:
