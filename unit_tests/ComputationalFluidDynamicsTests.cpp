@@ -2918,7 +2918,7 @@ private:
    {
         if (aInputs.isSublist("Penalty Function"))
         {
-            auto tPenaltyFuncList = tHyperbolicList.sublist("Penalty Function");
+            auto tPenaltyFuncList = aInputs.sublist("Penalty Function");
             mGrNumExponent = tPenaltyFuncList.get<Plato::Scalar>("Grashof Penalty Exponent", 3.0);
             mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
             mBrinkmanConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
@@ -2937,8 +2937,9 @@ private:
             THROWERR("Grashof Number array length should match the number of spatial dimensions.")
         }
 
+        auto tLength = mGrNum.size();
         auto tHostGrNum = Kokkos::create_mirror(mGrNum);
-        for(decltype(mNumSpatialDims) tDim = 0; tDim < mNumSpatialDims; tDim++)
+        for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
         {
             tHostGrNum(tDim) = tGrNum[tDim];
         }
@@ -2973,8 +2974,7 @@ private:
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
 
-                auto tNaturalBC = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
-                mPressureBCs.insert(std::make_pair<std::string, std::shared_ptr<PressureForces>>(tSideSetName, tNaturalBC));
+                mPressureBCs[tSideSetName] = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
             }
         }
     }
@@ -3005,14 +3005,12 @@ private:
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
 
-                auto tNaturalBC = std::make_shared<DeviatoricForces>(mSpatialDomain, tSideSetName);
-                mDeviatoricBCs.insert(std::make_pair<std::string, std::shared_ptr<DeviatoricForces>>(tSideSetName, tNaturalBC));
+                mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, tSideSetName);
             }
         }
         else
         {
-            auto tNaturalBC = std::make_shared<DeviatoricForces>(mSpatialDomain);
-            mDeviatoricBCs.insert(std::make_pair<std::string, std::shared_ptr<DeviatoricForces>>("automated", tNaturalBC));
+            mDeviatoricBCs["automated"] = std::make_shared<DeviatoricForces>(mSpatialDomain);
         }
     }
 };
@@ -3093,8 +3091,8 @@ public:
         // transfer member data to device
         auto tThetaTwo = mThetaTwo;
 
-        auto tCubWeight = mCubatureRule->getCubWeight();
-        auto tBasisFunctions = mCubatureRule->getBasisFunctions();
+        auto tCubWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
         {
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
@@ -3274,8 +3272,8 @@ public:
         auto tFluidThermalConductivity  = mFluidThermalConductivity;
         auto tDiffusivityConvexityParam = mDiffusivityConvexityParam;
 
-        auto tCubWeight = mCubatureRule->getCubWeight();
-        auto tBasisFunctions = mCubatureRule->getBasisFunctions();
+        auto tCubWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
         {
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
@@ -3388,7 +3386,7 @@ public:
             // evaluate prescribed flux
             auto tNumCells = aResult.extent(0);
             Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumDofsPerCell);
-            mHeatFlux.get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
+            mHeatFlux->get( mSpatialDomain, tPrevTempWS, tControlWS, tConfigWS, tResultWS, -1.0 );
 
             auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("time steps"));
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -3617,8 +3615,8 @@ public:
         auto tThetaOne = mThetaOne;
         auto tThetaTwo = mThetaTwo;
 
-        auto tCubWeight = mCubatureRule->getCubWeight();
-        auto tBasisFunctions = mCubatureRule->getBasisFunctions();
+        auto tCubWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
         {
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
