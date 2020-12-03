@@ -2666,7 +2666,7 @@ public:
 
     virtual ~VelocityPredictorResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         using StrainT =
             typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
@@ -3060,7 +3060,7 @@ public:
 
     virtual ~VelocityIncrementResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         auto tNumCells = aResult.extent(0);
         Plato::ScalarVectorT<ConfigT>    tCellVolume("cell weight", tNumCells);
@@ -3232,7 +3232,7 @@ public:
 
     virtual ~TemperatureIncrementResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         // set local forward ad type
         using StabForceT = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT, PrevTempT>;
@@ -3582,7 +3582,7 @@ public:
 
     virtual ~PressureIncrementResidual(){}
 
-    void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarMultiVectorT<ResultT> & aResult) const
+    void evaluate(const Plato::WorkSets & aWorkSets, const Plato::ScalarMultiVectorT<ResultT> & aResult) const
     {
         auto tNumCells = aResult.extent(0);
 
