@@ -6171,7 +6171,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EntityFaceOrdinals)
     Kokkos::deep_copy(tHostNodeSetOrdinals, tNodeSetOrdinals);
     TEST_EQUALITY(2, tHostNodeSetOrdinals(0));
     TEST_EQUALITY(3, tHostNodeSetOrdinals(1));
-    Plato::omega_h::print(tMyNodeSetOrdinals, "ordinals");
+    //Plato::omega_h::print(tMyNodeSetOrdinals, "ordinals");
 
     // test: side sets
     auto tMySideSetOrdinals = Plato::get_entity_ordinals<Omega_h::SIDE_SET>(tMeshSets, "x+");
@@ -6184,7 +6184,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EntityFaceOrdinals)
     auto tHostSideSetOrdinals = Kokkos::create_mirror(tSideSetOrdinals);
     Kokkos::deep_copy(tHostSideSetOrdinals, tSideSetOrdinals);
     TEST_EQUALITY(4, tHostSideSetOrdinals(0));
-    Plato::omega_h::print(tMySideSetOrdinals, "ordinals");
+    //Plato::omega_h::print(tMySideSetOrdinals, "ordinals");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsEntitySetDefined)
