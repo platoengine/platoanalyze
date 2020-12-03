@@ -6103,8 +6103,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EntityFaceOrdinals)
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     auto tOrdinals = Plato::entity_face_ordinals(tMeshSets, "x+");
-    Plato::omega_h::print(tOrdinals, "side set ordinals");
-    auto tSideOrdinals = Plato::sid
+    Plato::omega_h::print(tOrdinals, "ordinals");
+    auto tSideOrdinals = Plato::side_set_face_ordinals(tMeshSets, "x+");
+    Plato::omega_h::print(tSideOrdinals, "side set ordinals");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsNodeSetDefined)
