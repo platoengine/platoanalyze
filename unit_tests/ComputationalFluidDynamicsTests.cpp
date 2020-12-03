@@ -290,7 +290,7 @@ entities_on_non_prescribed_boundary
     for(auto& tName : aSideSetNames)
     {
         // return entity ids on prescribed side set
-        auto tEntitiesOnPrescribedBoundary = Plato::entity_face_ordinals(aMeshSets, tName);
+        auto tEntitiesOnPrescribedBoundary = Plato::side_set_face_ordinals(aMeshSets, tName);
         // return boolean array (entity on prescribed side set=1, entity not on prescribed side set=0)
         auto tEntitiesAreOnPrescribedBoundary = Omega_h::mark_image(tEntitiesOnPrescribedBoundary, tNumEntities);
         // return boolean array with 1's for all entities not on prescribed side set and 0's otherwise
@@ -1525,7 +1525,7 @@ public:
         for(auto& tName : mSideSets)
         {
             // get faces on this side set
-            auto tFaceOrdinalsOnSideSet = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, tName);
+            auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
             auto tNumFaces = tFaceOrdinalsOnSideSet.size();
             Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
@@ -1646,7 +1646,7 @@ public:
         for(auto& tName : mWallSets)
         {
             // get faces on this side set
-            auto tFaceOrdinalsOnSideSet = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, tName);
+            auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
             auto tNumFaces = tFaceOrdinalsOnSideSet.size();
             Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
@@ -2347,7 +2347,7 @@ public:
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // get sideset faces
-        auto tFaceLocalOrdinals = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tSurfaceJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
@@ -2580,7 +2580,7 @@ private:
         }
         else
         {
-            mFaceOrdinalsOnBoundary = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
+            mFaceOrdinalsOnBoundary = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
             Plato::omega_h::print(mFaceOrdinalsOnBoundary, "non-prescribed boundary ordinals");
         }
     }
@@ -3538,7 +3538,7 @@ public:
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // get sideset faces
-        auto tFaceLocalOrdinals = Plato::entity_face_ordinals(mSpatialDomain.MeshSets, mEntityName);
+        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mEntityName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
