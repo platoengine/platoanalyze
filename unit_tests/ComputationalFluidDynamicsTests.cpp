@@ -4400,34 +4400,34 @@ private:
         {
             auto tName = tDomain.getDomainName();
 
-            mResidualFuncs[tName]  = tVecFuncFactory.template createVectorFunction<ResidualEvalT>
+            mResidualFuncs[tName]  = tVecFuncFactory.template createVectorFunction<PhysicsT, ResidualEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
-            mGradControlFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradControlEvalT>
+            mGradControlFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradControlEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
-            mGradConfigFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradConfigEvalT>
+            mGradConfigFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradConfigEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
-            mGradCurPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurPressEvalT>
+            mGradCurPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradCurPressEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
-            mGradPrevPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPrevPressEvalT>
+            mGradPrevPressFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPrevPressEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
-            mGradCurTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurTempEvalT>
+            mGradCurTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradCurTempEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
-            mGradPrevTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPrevTempEvalT>
+            mGradPrevTempFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPrevTempEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
-            mGradCurVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradCurVelEvalT>
+            mGradCurVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradCurVelEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
-            mGradPrevVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPrevVelEvalT>
+            mGradPrevVelFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPrevVelEvalT>
                 (aName, tDomain, aDataMap, aInputs);
 
-            mGradPredictorFuncs[tName] = tVecFuncFactory.template createVectorFunction<GradPredictorEvalT>
+            mGradPredictorFuncs[tName] = tVecFuncFactory.template createVectorFunction<PhysicsT, GradPredictorEvalT>
                 (aName, tDomain, aDataMap, aInputs);
         }
     }
