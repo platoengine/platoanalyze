@@ -2759,7 +2759,7 @@ private:
     Plato::Scalar mGrNumExponent = 3.0;
     Plato::Scalar mPrNumConvexityParam = 0.5;
     Plato::Scalar mBrinkmanConvexityParam = 0.5;
-    Plato::Scalar mGrNumMinErsatzMaterial = 1e-9;
+    Plato::Scalar mGrNumMinErsatzMaterial = 0.0;
 
     Plato::ScalarVector mGrNum;
 
@@ -2882,6 +2882,7 @@ public:
 
             // calculate brinkman force integral, which are defined as
             // \int_{\Omega_e} N_u^a (\frac{Pr}{Da} u^{n-1}_i) d\Omega
+            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, tControlWS);
             ControlT tPenalizedBrinkmanCoeff = (tPrNum / tDaNum) * (1.0 - tDensity) / (1.0 + (tBrinkmanConvexityParam * tDensity));
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
