@@ -350,13 +350,14 @@ inline T parse_parameter
 {
     if( !aInputs.isSublist(aBlock) )
     {
-        THROWERR(std::string("Sublist with name '") + aBlock + "' is not defined.")
+        THROWERR(std::string("Parameter Sublist with name '") + aBlock
+            + "' within Paramater List '" + aInputs.name() + "' is not defined.")
     }
     auto tSublist = aInputs.sublist(aBlock);
 
     if( !tSublist.isParameter(aTag) )
     {
-        THROWERR(std::string("Parameter with '") + aTag + "' is not defined in sublist with name '" + aBlock + "'.")
+        THROWERR(std::string("Parameter with '") + aTag + "' is not defined in Parameter Sublist with name '" + aBlock + "'.")
     }
     auto tOutput = tSublist.get<T>(aTag);
     return tOutput;
