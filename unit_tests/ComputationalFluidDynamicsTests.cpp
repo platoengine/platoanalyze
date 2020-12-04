@@ -3002,19 +3002,23 @@ private:
                 const Teuchos::ParameterEntry &tEntry = tInputsNaturalBCs.entry(tItr);
                 if (!tEntry.isList())
                 {
-                    THROWERR("Get Side Set Names: Parameter list block is not valid.  Expect lists only.")
+                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
+                        + "'. Parameter List block is not valid. Expects Parameter Lists only.")
                 }
 
                 const std::string &tName = tInputsNaturalBCs.name(tItr);
                 if(tInputsNaturalBCs.isSublist(tName) == false)
                 {
-                    THROWERR(std::string("Parameter sublist with name '") + tName.c_str() + "' is not defined.")
+                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
+                        + "'. Parameter Sublist '" + tName.c_str() + "' is not defined.")
                 }
 
                 Teuchos::ParameterList &tSubList = tInputsNaturalBCs.sublist(tName);
                 if(tSubList.isParameter("Sides") == false)
                 {
-                    THROWERR(std::string("Keyword 'Sides' is not define in Parameter Sublist with name '") + tName.c_str() + "'.")
+                    THROWERR(std::string("Error parsing Parameter List '") + tSubList.name() + "'. 'Sides' keyword "
+                        +"is not define in Parameter Sublist '" + tName.c_str() + "'. The 'Sides' keyword is used "
+                        + "to define the 'side set' names where 'Natural Boundary Conditions' are applied.")
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
 
