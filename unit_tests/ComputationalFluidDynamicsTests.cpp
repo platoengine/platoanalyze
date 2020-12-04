@@ -2659,7 +2659,8 @@ public:
      Teuchos::ParameterList     & aInputs) :
          mDataMap(aDataMap),
          mSpatialDomain(aDomain),
-         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
+         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>()),
+         mGrNum("grashof number", mNumSpatialDims)
     {
         this->setParameters(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
