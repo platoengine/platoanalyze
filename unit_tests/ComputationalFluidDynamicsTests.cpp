@@ -1667,6 +1667,22 @@ public:
 
 template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
 DEVICE_TYPE inline ControlT
+simp_penalization
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::Scalar      & aPhysicalParam,
+ const Plato::Scalar      & aPenaltyParam,
+ const Plato::Scalar      & aMinErsatzParam,
+ const Plato::ScalarMultiVectorT<ControlT> & aControlWS)
+{
+    ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControlWS);
+    ControlT tPenalizedDensity = aMinErsatzParam +
+        ( (static_cast<Plato::Scalar>(1.0) - aMinErsatzParam) * pow(tDensity, aPenaltyParam) );
+    ControlT tPenalizedParam = tPenalizedDensity * aPhysicalParam;
+    return tPenalizedParam;
+}
+
+template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
+DEVICE_TYPE inline ControlT
 ramp_penalization
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::Scalar      & aPhysicalParam,
@@ -1674,8 +1690,10 @@ ramp_penalization
  const Plato::ScalarMultiVectorT<ControlT> & aControlWS)
 {
     ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControlWS);
-    ControlT tPenalizedPhysicalParam = ( tDensity * ( aPhysicalParam * (1.0 - aConvexityParam) - 1.0 ) + 1.0 )
-        / ( aPhysicalParam * (1.0 + aConvexityParam * tDensity) );
+    ControlT tPenalizedPhysicalParam =
+        ( tDensity * ( aPhysicalParam * (static_cast<Plato::Scalar>(1.0) - aConvexityParam)
+            - static_cast<Plato::Scalar>(1.0) ) + static_cast<Plato::Scalar>(1.0) )
+            / ( aPhysicalParam * (static_cast<Plato::Scalar>(1.0) + aConvexityParam * tDensity) );
     return tPenalizedPhysicalParam;
 }
 
@@ -1688,8 +1706,8 @@ brinkman_penalization
  const Plato::ScalarMultiVectorT<ControlT> & aControlWS)
 {
     ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControlWS);
-    ControlT tPenalizedPhysicalParam = aPhysicalParam * (1.0 - tDensity)
-        / (1.0 + (aConvexityParam * tDensity));
+    ControlT tPenalizedPhysicalParam = aPhysicalParam * (static_cast<Plato::Scalar>(1.0) - tDensity)
+        / (static_cast<Plato::Scalar>(1.0) + (aConvexityParam * tDensity));
     return tPenalizedPhysicalParam;
 }
 
@@ -2741,6 +2759,7 @@ private:
     Plato::Scalar mGrNumExponent = 3.0;
     Plato::Scalar mPrNumConvexityParam = 0.5;
     Plato::Scalar mBrinkmanConvexityParam = 0.5;
+    Plato::Scalar mGrNumMinErsatzMaterial = 1e-9;
 
     Plato::ScalarVector mGrNum;
 
@@ -2805,6 +2824,7 @@ public:
         auto tPowerPenaltySIMP = mGrNumExponent;
         auto tPrNumConvexityParam = mPrNumConvexityParam;
         auto tBrinkmanConvexityParam = mBrinkmanConvexityParam;
+        auto tMinErsatzMatSIMP = mGrNumMinErsatzMaterial;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -2836,27 +2856,19 @@ public:
             // \int_{\Omega_e}\frac{\partial N_u^a}{\partial x_j}\tau^h_{ij} d\Omega_e
             Plato::FluidMechanics::calculate_vicous_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPenalizedPrandtlNum, tCellVolume, tGradient, tStrainRate, aResult);
-            /*
-            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-            {
-                for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
-                {
-                    auto tDofIndex = (mNumSpatialDims * tNode) + tDimI;
-                    for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
-                    {
-                        aResult(aCellOrdinal, tDofIndex) += tCellVolume(aCellOrdinal) * tGradient(aCellOrdinal, tNode, tDimJ)
-                            * ( static_cast<Plato::Scalar>(2.0) * tPenalizedPrandtlNum * tStrainRate(aCellOrdinal, tDimI, tDimJ) );
-                    }
-                }
-            }
-            */
 
             // calculate natural convective force integral, which are defined as
             // \int_{\Omega_e} N_u^a \left(Gr_i Pr^2 T^h \right) d\Omega_e,
             // where e_i is the unit vector in the gravitational direction
+            auto tPrNumTimesPrNum = tPrNum * tPrNum;
+            ControlT tPenalizedPrNumSquared = Plato::FluidMechanics::simp_penalization<mNumNodesPerCell>
+                (aCellOrdinal, tPrNumTimesPrNum, tPowerPenaltySIMP, tMinErsatzMatSIMP, tControlWS);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
-            ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, tControlWS);
-            ControlT tPenalizedPrNumSquared = pow(tDensity, tPowerPenaltySIMP) * tPrNum * tPrNum;
+            /*ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, tControlWS);
+            ControlT tPenalizedDensity = tMinErsatzMatSIMP +
+                ( (static_cast<Plato::Scalar>(1.0) - tMinErsatzMatSIMP) * pow(tDensity, tPowerPenaltySIMP) );
+            ControlT tPenalizedPrNumSquared = tPenalizedDensity * tPrNum * tPrNum;
+            */
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
@@ -3028,6 +3040,7 @@ private:
             mGrNumExponent = tPenaltyFuncList.get<Plato::Scalar>("Grashof Penalty Exponent", 3.0);
             mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
             mBrinkmanConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
+            mGrNumMinErsatzMaterial = tPenaltyFuncList.get<Plato::Scalar>("Grashof Minimum Ersatz Material Value", 0.0);
         }
    }
 
