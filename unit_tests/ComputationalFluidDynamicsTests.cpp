@@ -2419,9 +2419,8 @@ public:
          mCubatureRule(CubatureRule()),
          mSpatialDomain(aSpatialDomain)
     {
-        this->setPenaltyModel(aInputs);
+        this->setParameters(aInputs);
         this->setFacesOnNonPrescribedBoundary(aInputs);
-        mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs);
     }
 
     void operator()
@@ -2519,21 +2518,33 @@ public:
     }
 
 private:
+    void setParameters
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Hyperbolic") == false)
+        {
+            THROWERR("'Hyperbolic' Parameter List is not defined.")
+        }
+        auto tHyperParamList = aInputs.sublist("Hyperbolic");
+
+        mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperParamList);
+        this->setPenaltyModel(tHyperParamList);
+    }
+
     void setPenaltyModel
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Hyperbolic"))
+        if(aInputs.isSublist("Momentum Conservation") == false)
         {
-            auto tHyperbolicList = aInputs.sublist("Hyperbolic");
-            if(tHyperbolicList.isSublist("Penalty Function"))
-            {
-                auto tPenaltyFuncList = tHyperbolicList.sublist("Penalty Function");
-                mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
-            }
+            THROWERR(std::string("Parameter List 'Momentum Conservation' is not defined within Parameter List '")
+                + aInputs.name() + "'.")
         }
-        else
+        auto tMomentumParamList = aInputs.sublist("Momentum Conservation");
+
+        if (tMomentumParamList.isSublist("Penalty Function"))
         {
-            THROWERR("'Hyperbolic' sublist is not defined.")
+            auto tPenaltyFuncList = tMomentumParamList.sublist("Penalty Function");
+            mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
         }
     }
 
