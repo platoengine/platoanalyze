@@ -2605,9 +2605,15 @@ public:
 };
 // class AbstractVectorFunction
 
+
+
+
+
+
+
 template
-<Plato::OrdinalType NumSpatialDims,
- Plato::OrdinalType NumNodesPerCell,
+<Plato::OrdinalType NumNodesPerCell,
+ Plato::OrdinalType NumSpatialDims,
  typename ResultT,
  typename ConfigT,
  typename PrevVelT>
@@ -2636,8 +2642,8 @@ calculate_convective_forces
 }
 
 template
-<Plato::OrdinalType NumSpatialDims,
- Plato::OrdinalType NumNodesPerCell,
+<Plato::OrdinalType NumNodesPerCell,
+ Plato::OrdinalType NumSpatialDims,
  typename ResultT,
  typename ConfigT,
  typename PrevVelT>
@@ -2656,6 +2662,36 @@ calculate_stabilized_convective_forces
             {
                 aResult(aCellOrdinal, tDimI) += aGradient(aCellOrdinal, tNode, tDimJ) *
                     ( aPrevVelGP(aCellOrdinal, tDimJ) * aPrevVelGP(aCellOrdinal, tDimI) );
+            }
+        }
+    }
+}
+
+template
+<Plato::OrdinalType NumNodesPerCell,
+ Plato::OrdinalType NumSpatialDims,
+ typename ResultT,
+ typename ConfigT,
+ typename ControlT,
+ typename StrainT>
+DEVICE_TYPE inline void
+calculate_vicous_forces
+(const Plato::OrdinalType & aCellOrdinal,
+ const ControlT & aPenalizedPrandtlNum,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarArray3DT<StrainT> & aStrainRate,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < NumSpatialDims; tDimI++)
+        {
+            auto tDofIndex = (NumSpatialDims * tNode) + tDimI;
+            for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpatialDims; tDimJ++)
+            {
+                aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) * aGradient(aCellOrdinal, tNode, tDimJ)
+                    * ( static_cast<Plato::Scalar>(2.0) * aPenalizedPrandtlNum * aStrainRate(aCellOrdinal, tDimI, tDimJ) );
             }
         }
     }
@@ -2780,12 +2816,12 @@ public:
             // calculate convective force integral, which are defined as
             // \int_{\Omega_e} N_u^a \left( \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) \right) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
-            Plato::FluidMechanics::calculate_convective_forces<mNumSpatialDims, mNumNodesPerCell>
+            Plato::FluidMechanics::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, aResult);
             
             // calculate stabilized convective force integral, which are defined as
             // \frac{\partial}{\partial x_j}\left(u^{n-1}_j u^{n-1}_i\right)
-            Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumSpatialDims, mNumNodesPerCell>
+            Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelGP, tStabForce);
 
             // calculate strain rate for incompressible flows, which is defined as
@@ -2798,6 +2834,9 @@ public:
 
             // calculate viscous force integral, which are defined as,
             // \int_{\Omega_e}\frac{\partial N_u^a}{\partial x_j}\tau^h_{ij} d\Omega_e
+            Plato::FluidMechanics::calculate_vicous_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tPenalizedPrandtlNum, tCellVolume, tGradient, tStrainRate, aResult);
+            /*
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
@@ -2810,6 +2849,7 @@ public:
                     }
                 }
             }
+            */
 
             // calculate natural convective force integral, which are defined as
             // \int_{\Omega_e} N_u^a \left(Gr_i Pr^2 T^h \right) d\Omega_e,
