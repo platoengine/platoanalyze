@@ -4525,7 +4525,7 @@ public:
     {
         if( !aInputs.isSublist(aTag) == false )
         {
-            THROWERR(std::string("Vector function with tag '") + aTag + "' is not supported.")
+            THROWERR(std::string("Vector function with tag '") + aTag + "' in Parameter List '" + aInputs.name() + "' is not supported.")
         }
 
         auto tFunParams = aInputs.sublist(aTag);
