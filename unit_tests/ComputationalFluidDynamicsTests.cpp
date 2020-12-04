@@ -4523,14 +4523,8 @@ public:
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs)
     {
-        if( !aInputs.isSublist(aTag) == false )
-        {
-            THROWERR(std::string("Vector function with tag '") + aTag + "' in Parameter List '" + aInputs.name() + "' is not supported.")
-        }
-
-        auto tFunParams = aInputs.sublist(aTag);
         auto tLowerTag = Plato::tolower(aTag);
-        // TODO: Add pressure, velocity, temperature, and predictor element residuals. explore function interface
+        // TODO: explore function interface for constructor, similar to how it is done in the xml generator
         if( tLowerTag == "pressure" )
         {
             return ( std::make_shared<Plato::FluidMechanics::PressureIncrementResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
@@ -6301,8 +6295,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 
     // allocate vector function
     Plato::DataMap tDataMap;
-    std::string tFuncParamListName("Hyperbolic");
-    Plato::FluidMechanics::VectorFunction<PhysicsT> tVectorFunction(tFuncParamListName, tModel, tDataMap, tInputs.operator*());
+    std::string tFuncName("Velocity Predictor");
+    Plato::FluidMechanics::VectorFunction<PhysicsT> tVectorFunction(tFuncName, tModel, tDataMap, tInputs.operator*());
 
     // test vector function value
     auto tResidual = tVectorFunction.value(tControls, tVariables);
