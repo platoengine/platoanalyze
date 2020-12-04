@@ -6301,8 +6301,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 
     // allocate vector function
     Plato::DataMap tDataMap;
-    std::string tFuncName("Velocity Predictor");
-    Plato::FluidMechanics::VectorFunction<PhysicsT> tVectorFunction(tFuncName, tModel, tDataMap, tInputs.operator*());
+    std::string tFuncParamListName("Hyperbolic");
+    Plato::FluidMechanics::VectorFunction<PhysicsT> tVectorFunction(tFuncParamListName, tModel, tDataMap, tInputs.operator*());
 
     // test vector function value
     auto tResidual = tVectorFunction.value(tControls, tVariables);
