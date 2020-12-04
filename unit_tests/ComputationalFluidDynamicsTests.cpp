@@ -350,8 +350,8 @@ inline T parse_parameter
 {
     if( !aInputs.isSublist(aBlock) )
     {
-        THROWERR(std::string("Parameter Sublist with name '") + aBlock
-            + "' within Paramater List '" + aInputs.name() + "' is not defined.")
+        THROWERR(std::string("Parameter Sublist '") + aBlock + "' within Paramater List '" 
+            + aInputs.name() + "' is not defined.")
     }
     auto tSublist = aInputs.sublist(aBlock);
 
@@ -2912,7 +2912,8 @@ private:
 
        if(tHyperParamList.isSublist("Momentum Conservation") == false)
        {
-           THROWERR("'Momentum Conservation' Parameter List is not defined.")
+           THROWERR(std::string("Parameter List 'Momentum Conservation' is not defined within Parameter List '") 
+               + tHyperParamList.name() + "'.")
        }
        auto tMomentumParamList = tHyperParamList.sublist("Momentum Conservation");
 
@@ -2940,7 +2941,9 @@ private:
         auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", aInputs);
         if(tGrNum.size() != mNumSpatialDims)
         {
-            THROWERR("Grashof Number array length should match the number of spatial dimensions.")
+            THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ") 
+                + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '" 
+                + std::to_string(mNumSpatialDims)  + "'.")
         }
 
         auto tLength = mGrNum.size();
@@ -2964,19 +2967,23 @@ private:
                 const Teuchos::ParameterEntry &tEntry = tInputsNaturalBCs.entry(tItr);
                 if (!tEntry.isList())
                 {
-                    THROWERR("Get Side Set Names: Parameter list block is not valid.  Expect lists only.")
+                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name() 
+                        + "'. Parameter List block is not valid. Expects Parameter Lists only.")
                 }
 
                 const std::string &tName = tInputsNaturalBCs.name(tItr);
                 if(tInputsNaturalBCs.isSublist(tName) == false)
                 {
-                    THROWERR(std::string("Parameter sublist with name '") + tName.c_str() + "' is not defined.")
+                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name() 
+                        + "'. Parameter Sublist '" + tName.c_str() + "' is not defined.")
                 }
 
                 Teuchos::ParameterList &tSubList = tInputsNaturalBCs.sublist(tName);
                 if(tSubList.isParameter("Sides") == false)
                 {
-                    THROWERR(std::string("Keyword 'Sides' is not define in Parameter Sublist with name '") + tName.c_str() + "'.")
+                    THROWERR(std::string("Error parsing Parameter List '") + tSubList.name() + "'. 'Sides' keyword " 
+                        +"is not define in Parameter Sublist '" + tName.c_str() + "'. The 'Sides' keyword is used " 
+                        + "to define the 'side set' names where 'Natrual Boundary Conditions' are applied.")
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
 
@@ -6204,20 +6211,23 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Problem'>"
-            "  <ParameterList  name='Dimensionless Properties'>"
-            "    <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
-            "    <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
-            "    <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0,0.0}'/>"
-            "  </ParameterList>"
             "  <ParameterList name='Hyperbolic'>"
-            "    <ParameterList name='Penalty Function'>"
-            "      <Parameter name='Grashof Penalty Exponent'     type='double' value='3.0'/>"
-            "      <Parameter name='Prandtl Convexity Parameter'  type='double' value='0.5'/>"
-            "      <Parameter name='Brinkman Convexity Parameter' type='double' value='0.5'/>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
+            "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
+            "      <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
+            "    </ParameterList>"
+            "    <ParameterList name='Momentum Conservation'>"
+            "      <ParameterList name='Penalty Function'>"
+            "        <Parameter name='Grashof Penalty Exponent'     type='double' value='3.0'/>"
+            "        <Parameter name='Prandtl Convexity Parameter'  type='double' value='0.5'/>"
+            "        <Parameter name='Brinkman Convexity Parameter' type='double' value='0.5'/>"
+            "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
             "    <ParameterList  name='Traction Vector Boundary Condition'>"
+            "      <Parameter  name='Type'   type='string'        value='Uniform'/>"
             "      <Parameter  name='Sides'  type='string'        value='x+'/>"
             "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0,0}'/>"
             "    </ParameterList>"
