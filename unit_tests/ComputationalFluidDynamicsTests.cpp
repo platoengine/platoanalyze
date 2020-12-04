@@ -2759,7 +2759,7 @@ private:
     Plato::Scalar mGrNumExponent = 3.0;
     Plato::Scalar mPrNumConvexityParam = 0.5;
     Plato::Scalar mBrinkmanConvexityParam = 0.5;
-    Plato::Scalar mGrNumMinErsatzMaterial = 0.0;
+    Plato::Scalar mGrNumMinErsatzMaterial = 1e-9;
 
     Plato::ScalarVector mGrNum;
 
@@ -2864,11 +2864,6 @@ public:
             ControlT tPenalizedPrNumSquared = Plato::FluidMechanics::simp_penalization<mNumNodesPerCell>
                 (aCellOrdinal, tPrNumTimesPrNum, tPowerPenaltySIMP, tMinErsatzMatSIMP, tControlWS);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
-            /*ControlT tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, tControlWS);
-            ControlT tPenalizedDensity = tMinErsatzMatSIMP +
-                ( (static_cast<Plato::Scalar>(1.0) - tMinErsatzMatSIMP) * pow(tDensity, tPowerPenaltySIMP) );
-            ControlT tPenalizedPrNumSquared = tPenalizedDensity * tPrNum * tPrNum;
-            */
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
@@ -3041,7 +3036,7 @@ private:
             mGrNumExponent = tPenaltyFuncList.get<Plato::Scalar>("Grashof Penalty Exponent", 3.0);
             mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
             mBrinkmanConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
-            mGrNumMinErsatzMaterial = tPenaltyFuncList.get<Plato::Scalar>("Grashof Minimum Ersatz Material Value", 0.0);
+            mGrNumMinErsatzMaterial = tPenaltyFuncList.get<Plato::Scalar>("Grashof Minimum Ersatz Material Value", 1e-9);
         }
    }
 
