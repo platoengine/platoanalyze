@@ -3949,7 +3949,7 @@ public:
         using ResultScalarT = typename ResidualEvalT::ResultScalarType;
 
         auto tNumNodes = mSpatialModel.Mesh.nverts();
-        auto tLength = tNumNodes * mNumVelDofsPerCell;
+        auto tLength = tNumNodes * mNumDofsPerNode;
         Plato::ScalarVector tReturnValue("Assembled Residual", tLength);
 
         // evaluate internal forces
@@ -6301,7 +6301,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 
     // test vector function value
     auto tResidual = tVectorFunction.value(tControls, tVariables);
-    Plato::print(tResidual, "residual");
+
+    auto tHostResidual = Kokkos::create_mirror(tResidual);
+    Kokkos::deep_copy(tHostResidual, tResidual);
+    std::vector<Plato::Scalar> tGold = {-3.383333e-01, -3.344167e-01, -1.913333e-01, -1.909167e-01, -3.294444e-01, -1.707593e-01, -2.175556e-01, -7.390741e-02};
+    auto tTol = 1e-4;
+    for(auto& tValue : tGold)
+    {
+        auto tIndex = &tValue - &tGold[0];
+        TEST_FLOATING_EQUALITY(tValue,tHostResidual(tIndex),tTol);
+    } 
+    //Plato::print(tResidual, "residual");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, GetNumEntities)
