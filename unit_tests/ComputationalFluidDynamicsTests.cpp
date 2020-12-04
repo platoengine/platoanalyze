@@ -2618,7 +2618,7 @@ calculate_convective_forces
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
@@ -2646,13 +2646,12 @@ calculate_stabilized_convective_forces
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
         for(Plato::OrdinalType tDimI = 0; tDimI < NumSpatialDims; tDimI++)
         {
-            auto tDofIndex = (NumSpatialDims * tNode) + tDimI;
             for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpatialDims; tDimJ++)
             {
                 aResult(aCellOrdinal, tDimI) += aGradient(aCellOrdinal, tNode, tDimJ) *
@@ -2783,26 +2782,11 @@ public:
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::FluidMechanics::calculate_convective_forces<mNumSpatialDims, mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, aResult);
+            
+            // calculate stabilized convective force integral, which are defined as
+            // \frac{\partial}{\partial x_j}\left(u^{n-1}_j u^{n-1}_i\right)
             Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumSpatialDims, mNumNodesPerCell>
                 (aCellOrdinal, tGradient, tPrevVelGP, tStabForce);
-            /*
-            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-            {
-                for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
-                {
-                    auto tDofIndex = (mNumSpatialDims * tNode) + tDimI;
-                    for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
-                    {
-                        aResult(aCellOrdinal, tDofIndex) += tCellVolume(aCellOrdinal) * tBasisFunctions(tNode) *
-                            ( tGradient(aCellOrdinal, tNode, tDimJ) *  ( tPrevVelGP(aCellOrdinal, tDimJ) *
-                                tPrevVelGP(aCellOrdinal, tDimI) ) );
-
-                        tStabForce(aCellOrdinal, tDimI) += tGradient(aCellOrdinal, tNode, tDimJ) *
-                            ( tPrevVelGP(aCellOrdinal, tDimJ) * tPrevVelGP(aCellOrdinal, tDimI) );
-                    }
-                }
-            }
-            */
 
             // calculate strain rate for incompressible flows, which is defined as
             // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
