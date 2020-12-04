@@ -6247,8 +6247,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
     auto tNumVelDofs = tNumNodes * tNumSpaceDims;
     Plato::ScalarVector tPrevVel("previous velocity", tNumVelDofs);
     auto tHostPrevVel = Kokkos::create_mirror(tPrevVel);
-    tPrevVel(0) = 1.0; tPrevVel(1) = 1.1; tPrevVel(2) = 1.2;
-    tPrevVel(3) = 1.3; tPrevVel(4) = 1.4; tPrevVel(5) = 1.5;
+    tHostPrevVel(0) = 1.0; tHostPrevVel(1) = 1.1; tHostPrevVel(2) = 1.2;
+    tHostPrevVel(3) = 1.3; tHostPrevVel(4) = 1.4; tHostPrevVel(5) = 1.5;
     Kokkos::deep_copy(tPrevVel, tHostPrevVel);
     tVariables.vector("previous velocity", tPrevVel);
     Plato::ScalarVector tPrevPress("previous pressure", tNumNodes);
