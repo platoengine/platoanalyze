@@ -2605,6 +2605,63 @@ public:
 };
 // class AbstractVectorFunction
 
+template
+<Plato::OrdinalType NumSpatialDims,
+ Plato::OrdinalType NumNodesPerCell,
+ typename ResultT,
+ typename ConfigT,
+ typename PrevVelT>
+DEVICE_TYPE inline void
+calculate_convective_forces
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
+ Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < NumSpatialDims; tDimI++)
+        {
+            auto tDofIndex = (NumSpatialDims * tNode) + tDimI;
+            for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpatialDims; tDimJ++)
+            {
+                aResult(aCellOrdinal, tDofIndex) +=
+                    aCellVolume(aCellOrdinal) * aBasisFunctions(tNode) * ( aGradient(aCellOrdinal, tNode, tDimJ)
+                        *  ( aPrevVelGP(aCellOrdinal, tDimJ) * aPrevVelGP(aCellOrdinal, tDimI) ) );
+            }
+        }
+    }
+}
+
+template
+<Plato::OrdinalType NumSpatialDims,
+ Plato::OrdinalType NumNodesPerCell,
+ typename ResultT,
+ typename ConfigT,
+ typename PrevVelT>
+DEVICE_TYPE inline void
+calculate_stabilized_convective_forces
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
+ Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < NumSpatialDims; tDimI++)
+        {
+            auto tDofIndex = (NumSpatialDims * tNode) + tDimI;
+            for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpatialDims; tDimJ++)
+            {
+                aResult(aCellOrdinal, tDimI) += aGradient(aCellOrdinal, tNode, tDimJ) *
+                    ( aPrevVelGP(aCellOrdinal, tDimJ) * aPrevVelGP(aCellOrdinal, tDimI) );
+            }
+        }
+    }
+}
+
 template<typename PhysicsT, typename EvaluationT>
 class VelocityPredictorResidual : public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -2724,6 +2781,11 @@ public:
             // calculate convective force integral, which are defined as
             // \int_{\Omega_e} N_u^a \left( \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) \right) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
+            Plato::FluidMechanics::calculate_convective_forces<mNumSpatialDims, mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, aResult);
+            Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumSpatialDims, mNumNodesPerCell>
+                (aCellOrdinal, tGradient, tPrevVelGP, tStabForce);
+            /*
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
@@ -2740,6 +2802,7 @@ public:
                     }
                 }
             }
+            */
 
             // calculate strain rate for incompressible flows, which is defined as
             // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
@@ -6304,7 +6367,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
 
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {-3.383333e-01, -3.344167e-01, -1.913333e-01, -1.909167e-01, -3.294444e-01, -1.707593e-01, -2.175556e-01, -7.390741e-02};
+    std::vector<Plato::Scalar> tGold =
+        {-3.383333e-01, -3.344167e-01, -1.913333e-01, -1.909167e-01, -3.294444e-01, -1.707593e-01, -2.175556e-01, -7.390741e-02};
     auto tTol = 1e-4;
     for(auto& tValue : tGold)
     {
