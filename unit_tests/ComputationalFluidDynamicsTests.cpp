@@ -6447,7 +6447,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_update)
     auto tTol = 1e-4;
     auto tHostVec2 = Kokkos::create_mirror(tVec2);
     Kokkos::deep_copy(tHostVec2, tVec2);
-    std::vector<std::vector<Plato::Scalar>> tGold = { {5.0, 5.0, 5.0, 5.0, 5.0, 5.0}, {6.0, 6.0, 6.0, 6.0, 6.0, 6.0} };
+    std::vector<std::vector<Plato::Scalar>> tGold = { {8.0, 8.0, 8.0, 8.0, 8.0, 8.0}, {10.0, 10.0, 10.0, 10.0, 10.0, 10.0} };
     for(auto& tVector : tGold)
     {
         auto tCell = &tVector - &tGold[0];
