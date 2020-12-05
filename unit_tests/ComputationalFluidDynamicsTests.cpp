@@ -2647,7 +2647,7 @@ public:
 
 
 
-
+// todo: unit test inline device functions used in velocity predictor residual calculations
 // calculate convective force integral, which is defined as
 // \int_{\Omega_e} N_u^a \left( \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) \right) d\Omega_e
 template
@@ -6428,6 +6428,36 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_update)
+{
+    constexpr auto tNumCells = 2;
+    constexpr auto tNumDofsPerCell = 6;
+    Plato::ScalarMultiVector tVec1("vector one", tNumCells, tNumDofsPerCell);
+    Plato::blas2::fill(1.0, tVec1);
+    Plato::ScalarMultiVector tVec2("vector two", tNumCells, tNumDofsPerCell);
+    Plato::blas2::fill(2.0, tVec2);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        auto tConstant = static_cast<Plato::Scalar>(aCellOrdinal);
+        Plato::blas1::update<tNumDofsPerCell>(aCellOrdinal, 2.0, tVec1, 3.0 + tConstant, tVec2);
+    },"device_blas1_update");
+
+    auto tTol = 1e-4;
+    auto tHostVec2 = Kokkos::create_mirror(tVec2);
+    Kokkos::deep_copy(tHostVec2, tVec2);
+    std::vector<std::vector<Plato::Scalar>> tGold = { {5.0, 5.0, 5.0, 5.0, 5.0, 5.0}, {6.0, 6.0, 6.0, 6.0, 6.0, 6.0} };
+    for(auto& tVector : tGold)
+    {
+        auto tCell = &tValue - &tGold[0];
+        for(auto& tValue : tVector)
+        {
+            tDim = &tValue - &tVector[0];
+            TEST_FLOATING_EQUALITY(tValue, tHostVec2(tCell, tDim), tTol);
+        }
+    }
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, EntityFaceOrdinals)
 {
