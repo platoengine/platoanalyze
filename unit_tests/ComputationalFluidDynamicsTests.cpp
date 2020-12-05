@@ -2916,18 +2916,6 @@ public:
             // calculate stabilized natural convective force integral, which are defined as F_i = Gr_i Pr^2 T^h
             Plato::FluidMechanics::calculate_stabilized_natural_convective_forces<mNumSpatialDims>
                 (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tStabForce);
-            /*
-            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-            {
-                for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
-                {
-                    auto tDofIndex = (mNumSpatialDims * tNode) + tDim;
-                    aResult(aCellOrdinal, tDofIndex) += tCellVolume(aCellOrdinal) * tBasisFunctions(tNode)
-                        * ( tGrNum(tDim) * tPenalizedPrNumSquared * tPrevTempGP(aCellOrdinal) );
-                    tStabForce(aCellOrdinal, tDim) += tGrNum(tDim) * tPenalizedPrNumSquared * tPrevTempGP(aCellOrdinal);
-                }
-            }
-            */
 
             // calculate brinkman force integral, which are defined as
             // \int_{\Omega_e} N_u^a (\frac{Pr}{Da} u^{n-1}_i) d\Omega
@@ -6455,7 +6443,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
     std::vector<Plato::Scalar> tGold =
-        {-3.383333e-01, -3.344167e-01, -1.913333e-01, -1.909167e-01, -3.294444e-01, -1.707593e-01, -2.175556e-01, -7.390741e-02};
+        {-3.383333e-01, -3.309167e-01, -1.913333e-01, -1.910833e-01, -3.294444e-01, -1.742037e-01, -2.175556e-01, -7.379630e-02};
     auto tTol = 1e-4;
     for(auto& tValue : tGold)
     {
