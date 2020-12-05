@@ -91,14 +91,32 @@ template<Plato::OrdinalType Length,
          typename AViewTypeT,
          typename BViewTypeT>
 DEVICE_TYPE inline void
+update(const Plato::OrdinalType & aCellOrdinal,
+      const ScalarT & aAlpha,
+      const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
+      const ScalarT & aBeta,
+      const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
+{
+    for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
+    {
+        aOutputWS(aCellOrdinal, tIndex) =
+            aBeta * aOutputWS(aCellOrdinal, tIndex) + aAlpha * aInputWS(aCellOrdinal, tIndex);
+    }
+}
+
+template<Plato::OrdinalType Length,
+         typename ScalarT,
+         typename AViewTypeT,
+         typename BViewTypeT>
+DEVICE_TYPE inline void
 scale(const Plato::OrdinalType & aCellOrdinal,
       const ScalarT & aScalar,
       const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
       const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
 {
-    for(Plato::OrdinalType tDim = 0; tDim < Length; tDim++)
+    for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
     {
-        aOutputWS(aCellOrdinal, tDim) = aScalar * aInputWS(aCellOrdinal, tDim);
+        aOutputWS(aCellOrdinal, tIndex) = aScalar * aInputWS(aCellOrdinal, tIndex);
     }
 }
 
@@ -112,9 +130,9 @@ dot(const Plato::OrdinalType & aCellOrdinal,
     const Plato::ScalarMultiVectorT<BViewType> & aVectorB,
     const Plato::ScalarVectorT<CViewType>      & aOutput)
 {
-    for(Plato::OrdinalType tDim = 0; tDim < Length; tDim++)
+    for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
     {
-        aOutput(aCellOrdinal) += aVectorA(aCellOrdinal, tDim) * aVectorB(aCellOrdinal, tDim);
+        aOutput(aCellOrdinal) += aVectorA(aCellOrdinal, tIndex) * aVectorB(aCellOrdinal, tIndex);
     }
 }
 
@@ -2831,6 +2849,7 @@ integrate_stabilized_forces
             auto tDofIndex = (SpaceDim * tNode) + tDimI;
             for(Plato::OrdinalType tDimJ = 0; tDimJ < SpaceDim; tDimJ++)
             {
+                // todo: unit test this code to understand application
                 aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) * aBasisFunctions(tNode)
                     * ( aGradient(aCellOrdinal, tNode, tDimJ) * aPrevVelGP(aCellOrdinal, tDimJ) ) * aStabForce(aCellOrdinal, tDimI);
             }
@@ -2843,7 +2862,7 @@ template
  Plato::OrdinalType SpaceDim,
  typename ResultT>
 DEVICE_TYPE inline void
-apply_time_step
+multiply_time_step
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::Scalar & aMultiplier,
  const Plato::ScalarMultiVector & aTimeStepWS,
@@ -2880,7 +2899,7 @@ private:
     using ControlT   = typename EvaluationT::ControlScalarType;
     using PrevVelT   = typename EvaluationT::PreviousMomentumScalarType;
     using PrevTempT  = typename EvaluationT::PreviousEnergyScalarType;
-    using PredictorT = typename EvaluationT::MomentumPredictorScalarType;
+    using PredVelT = typename EvaluationT::MomentumPredictorScalarType;
     using StrainT    = typename Plato::FluidMechanics::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
 
 
@@ -2943,10 +2962,11 @@ public:
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
 
-        Plato::ScalarMultiVectorT<ResultT>    tStabForce("stabilized force", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PrevVelT>   tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PrevVelT>   tVelGrad("velocity gradient", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PredictorT> tPredictorGP("predictor at Gauss point", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PrevVelT> tVelGrad("velocity gradient", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<ResultT>  tStabForce("stabilized force", tNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<ResultT>  tStabForceGP("stabilized force at Gauss point", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PredVelT> tPredictorGP("predicted velocity at Gauss point", tNumCells, mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
@@ -2959,7 +2979,7 @@ public:
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
         auto tPrevTempWS  = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
-        auto tPredictorWS = Plato::metadata<Plato::ScalarMultiVectorT<PredictorT>>(aWorkSets.get("current predictor"));
+        auto tPredictorWS = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
 
         // transfer member data to device
         auto tDaNum = mDaNum;
@@ -2986,15 +3006,16 @@ public:
             // calculate stabilized convective force integral, which is defined as
             // F_i = \frac{\partial}{\partial x_j}\left(u^{n-1}_j u^{n-1}_i\right)
             Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tPrevVelGP, tStabForce);
+                (aCellOrdinal, tGradient, tPrevVelGP, tStabForceGP);
 
             // calculate strain rate for incompressible flows, which is defined as
             // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
-            Plato::FluidMechanics::strain_rate<mNumNodesPerCell, mNumSpatialDims>(aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
+            Plato::FluidMechanics::strain_rate<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
 
             // calculate penalized prandtl number
-            ControlT tPenalizedPrandtlNum =
-                Plato::FluidMechanics::ramp_penalization<mNumNodesPerCell>(aCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
+            ControlT tPenalizedPrandtlNum = Plato::FluidMechanics::ramp_penalization<mNumNodesPerCell>
+                (aCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
 
             // calculate viscous force integral, which is defined as,
             // \int_{\Omega_e}\frac{\partial N_u^a}{\partial x_j}\tau^h_{ij} d\Omega_e
@@ -3012,7 +3033,7 @@ public:
 
             // calculate stabilized natural convective force integral, which is defined as F_i = Gr_i Pr^2 T^h
             Plato::FluidMechanics::calculate_stabilized_natural_convective_forces<mNumSpatialDims>
-                (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tStabForce);
+                (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tStabForceGP);
 
             // calculate brinkman force integral, which is defined as \int_{\Omega_e} N_u^a (\frac{Pr}{Da} u^{n-1}_i) d\Omega
             auto tPrNumOverDaNum = tPrNum / tDaNum;
@@ -3023,16 +3044,17 @@ public:
 
             // calculate stabilized brinkman force, which is defined as F_i = \frac{Pr}{Da} u^{n-1}_i
             Plato::FluidMechanics::calculate_stabilized_brinkman_forces<mNumSpatialDims>
-                (aCellOrdinal, tPenalizedBrinkmanCoeff, tPrevVelGP, tStabForce);
+                (aCellOrdinal, tPenalizedBrinkmanCoeff, tPrevVelGP, tStabForceGP);
 
             // calculate stabilizing force integral, which are defined as
             // \int_{\Omega_e} \left( \frac{\partial N_u^a}{\partial x_k} u^{n-1}_k \right) F_i^{stab} d\Omega_e
             // where the stanilized force, F_i^{stab}, is defined as
             // F_i^{stab} = \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) + Gr_i Pr^2 T^h + \frac{Pr}{Da} u^{n-1}_i
             Plato::FluidMechanics::integrate_stabilized_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, tStabForce, tGradient, aResult);
-            Plato::FluidMechanics::apply_time_step<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, 0.5, tTimeStepWS, aResult);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, tStabForceGP, tGradient, tStabForce);
+            Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, 0.5, tTimeStepWS, tStabForce);
+            Plato::blas1::update(aCellOrdinal, 1.0, tStabForce, 1.0, aResult);
 
             /*
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
