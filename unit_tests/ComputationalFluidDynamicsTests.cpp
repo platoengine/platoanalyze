@@ -2715,6 +2715,54 @@ calculate_vicous_forces
     }
 }
 
+template
+<Plato::OrdinalType NumNodesPerCell,
+ Plato::OrdinalType NumSpatialDims,
+ typename ResultT,
+ typename ConfigT,
+ typename ControlT,
+ typename PrevTempT>
+DEVICE_TYPE inline void
+calculate_natural_convective_forces
+(const Plato::OrdinalType & aCellOrdinal,
+ const ControlT & aPenalizedPrNumSquared,
+ const Plato::ScalarVector & aGrashofNum,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarVectorT<PrevTempT> & aPrevTempGP,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
+    {
+        for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
+        {
+            auto tDofIndex = (NumSpatialDims * tNode) + tDim;
+            aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) * aBasisFunctions(tNode)
+                * ( aGrashofNum(tDim) * aPenalizedPrNumSquared * aPrevTempGP(aCellOrdinal) );
+        }
+    }
+}
+
+template
+<Plato::OrdinalType NumSpatialDims,
+ typename ResultT,
+ typename ConfigT,
+ typename ControlT,
+ typename PrevTempT>
+DEVICE_TYPE inline void
+calculate_stabilized_natural_convective_forces
+(const Plato::OrdinalType & aCellOrdinal,
+ const ControlT & aPenalizedPrNumSquared,
+ const Plato::ScalarVector & aGrashofNum,
+ const Plato::ScalarVectorT<PrevTempT> & aPrevTempGP,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for (Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
+    {
+        aResult(aCellOrdinal, tDim) += aGrashofNum(tDim) * aPenalizedPrNumSquared * aPrevTempGP(aCellOrdinal);
+    }
+}
+
 template<typename PhysicsT, typename EvaluationT>
 class VelocityPredictorResidual : public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -2859,11 +2907,17 @@ public:
 
             // calculate natural convective force integral, which are defined as
             // \int_{\Omega_e} N_u^a \left(Gr_i Pr^2 T^h \right) d\Omega_e,
-            // where e_i is the unit vector in the gravitational direction
             auto tPrNumTimesPrNum = tPrNum * tPrNum;
             ControlT tPenalizedPrNumSquared = Plato::FluidMechanics::simp_penalization<mNumNodesPerCell>
                 (aCellOrdinal, tPrNumTimesPrNum, tPowerPenaltySIMP, tMinErsatzMatSIMP, tControlWS);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
+            Plato::FluidMechanics::calculate_natural_convective_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tBasisFunctions, tCellVolume, tPrevTempGP, aResult);
+
+            // calculate stabilized natural convective force integral, which are defined as F_i = Gr_i Pr^2 T^h
+            Plato::FluidMechanics::calculate_stabilized_natural_convective_forces<mNumSpatialDims>
+                (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tStabForce);
+            /*
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
@@ -2874,6 +2928,7 @@ public:
                     tStabForce(aCellOrdinal, tDim) += tGrNum(tDim) * tPenalizedPrNumSquared * tPrevTempGP(aCellOrdinal);
                 }
             }
+            */
 
             // calculate brinkman force integral, which are defined as
             // \int_{\Omega_e} N_u^a (\frac{Pr}{Da} u^{n-1}_i) d\Omega
