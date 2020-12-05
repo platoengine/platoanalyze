@@ -2746,7 +2746,6 @@ calculate_natural_convective_forces
 template
 <Plato::OrdinalType NumSpatialDims,
  typename ResultT,
- typename ConfigT,
  typename ControlT,
  typename PrevTempT>
 DEVICE_TYPE inline void
@@ -2888,7 +2887,7 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, aResult);
             
             // calculate stabilized convective force integral, which are defined as
-            // \frac{\partial}{\partial x_j}\left(u^{n-1}_j u^{n-1}_i\right)
+            // F_i = \frac{\partial}{\partial x_j}\left(u^{n-1}_j u^{n-1}_i\right)
             Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelGP, tStabForce);
 
