@@ -3056,24 +3056,11 @@ public:
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForce);
             Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForce, 1.0, aResult);
 
-            /*
-            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-            {
-                for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
-                {
-                    auto tDofIndex = (mNumSpatialDims * tNode) + tDimI;
-                    for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
-                    {
-                        aResult(aCellOrdinal, tDofIndex) += static_cast<Plato::Scalar>(0.5) * tTimeStepWS(aCellOrdinal, tNode) *
-                            tCellVolume(aCellOrdinal) * tBasisFunctions(tNode) * ( tGradient(aCellOrdinal, tNode, tDimJ) *
-                                tPrevVelGP(aCellOrdinal, tDimJ) ) * tStabForce(aCellOrdinal, tDimI);
-                    }
-                }
-            }
-            */
-
             // apply time step multiplier to internal force plus stabilized force vector,
             // i.e. F = \Delta{t} * \left( F_i^{int} + F_i^{stab} \right)
+            Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, 1.0, tTimeStepWS, aResult);
+            /*
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
@@ -3082,6 +3069,7 @@ public:
                         aResult(aCellOrdinal, tDofIndex) *= tTimeStepWS(aCellOrdinal, tNode);
                 }
             }
+            */
 
             // calculate inertial force integral, which are defined as
             // \int_{Omega_e} N_u^a \left( u^\ast_i - u^{n-1}_i \right) d\Omega_e
