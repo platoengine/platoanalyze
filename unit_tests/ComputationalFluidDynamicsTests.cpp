@@ -3098,18 +3098,6 @@ public:
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredictorGP);
             Plato::FluidMechanics::calculate_inertial_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPredictorGP, tPrevVelGP, aResult);
-            /*
-            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-            {
-                for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
-                {
-                    auto tDofIndex = (mNumSpatialDims * tNode) + tDimI;
-                    aResult(aCellOrdinal, tDofIndex) += tCellVolume(aCellOrdinal) * tBasisFunctions(tNode) *
-                        ( tPredictorGP(aCellOrdinal, tDimI) - tPrevVelGP(aCellOrdinal, tDimI) );
-                }
-            }
-            */
-
         }, "velocity predictor residual");
     }
 
