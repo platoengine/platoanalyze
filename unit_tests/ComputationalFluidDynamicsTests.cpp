@@ -1729,6 +1729,8 @@ brinkman_penalization
     return tPenalizedPhysicalParam;
 }
 
+// calculate strain rate for incompressible flows, which is defined as
+// \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
 template<Plato::OrdinalType NumNodesPerCell,
          Plato::OrdinalType NumSpaceDim,
          typename AViewTypeT,
@@ -2646,7 +2648,8 @@ public:
 
 
 
-
+// calculate convective force integral, which is defined as
+// \int_{\Omega_e} N_u^a \left( \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) \right) d\Omega_e
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -2677,6 +2680,8 @@ calculate_convective_forces
     }
 }
 
+// calculate stabilized convective force integral, which is defined as
+// F_i = \frac{\partial}{\partial x_j}\left(u^{n-1}_j u^{n-1}_i\right)
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -2703,6 +2708,8 @@ calculate_stabilized_convective_forces
     }
 }
 
+// calculate viscous force integral, which is defined as,
+// \int_{\Omega_e}\frac{\partial N_u^a}{\partial x_j}\tau^h_{ij} d\Omega_e
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -2733,6 +2740,8 @@ calculate_vicous_forces
     }
 }
 
+// calculate natural convective force integral, which is defined as
+// \int_{\Omega_e} N_u^a \left(Gr_i Pr^2 T^h \right) d\Omega_e,
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -2761,6 +2770,7 @@ calculate_natural_convective_forces
     }
 }
 
+// calculate stabilized natural convective force integral, which is defined as F_i = Gr_i Pr^2 T^h
 template
 <Plato::OrdinalType SpaceDim,
  typename ResultT,
@@ -2780,6 +2790,7 @@ calculate_stabilized_natural_convective_forces
     }
 }
 
+// calculate brinkman force integral, which is defined as \int_{\Omega_e} N_u^a (\frac{Pr}{Da} u^{n-1}_i) d\Omega
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -2807,6 +2818,7 @@ calculate_brinkman_forces
     }
  }
 
+// calculate stabilized brinkman force, which is defined as F_i = \frac{Pr}{Da} u^{n-1}_i
 template
 <Plato::OrdinalType SpaceDim,
  typename ResultT,
@@ -2825,6 +2837,10 @@ calculate_stabilized_brinkman_forces
     }
 }
 
+// calculate stabilizing force integral, which are defined as
+// \int_{\Omega_e} \left( \frac{\partial N_u^a}{\partial x_k} u^{n-1}_k \right) F_i^{stab} d\Omega_e
+// where the stanilized force, F_i^{stab}, is defined as
+// F_i^{stab} = \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) + Gr_i Pr^2 T^h + \frac{Pr}{Da} u^{n-1}_i
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -2878,6 +2894,8 @@ multiply_time_step
     }
 }
 
+// calculate inertial force integral, which are defined as
+// \int_{Omega_e} N_u^a \left( u^\ast_i - u^{n-1}_i \right) d\Omega_e
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -3030,18 +3048,15 @@ public:
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
             // calculate convective force integral, which is defined as
-            // \int_{\Omega_e} N_u^a \left( \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) \right) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::FluidMechanics::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, aResult);
             
             // calculate stabilized convective force integral, which is defined as
-            // F_i = \frac{\partial}{\partial x_j}\left(u^{n-1}_j u^{n-1}_i\right)
             Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelGP, tStabForceGP);
 
             // calculate strain rate for incompressible flows, which is defined as
-            // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
             Plato::FluidMechanics::strain_rate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
 
@@ -3050,12 +3065,10 @@ public:
                 (aCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
 
             // calculate viscous force integral, which is defined as,
-            // \int_{\Omega_e}\frac{\partial N_u^a}{\partial x_j}\tau^h_{ij} d\Omega_e
             Plato::FluidMechanics::calculate_vicous_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPenalizedPrandtlNum, tCellVolume, tGradient, tStrainRate, aResult);
 
             // calculate natural convective force integral, which is defined as
-            // \int_{\Omega_e} N_u^a \left(Gr_i Pr^2 T^h \right) d\Omega_e,
             auto tPrNumTimesPrNum = tPrNum * tPrNum;
             ControlT tPenalizedPrNumSquared = Plato::FluidMechanics::simp_penalization<mNumNodesPerCell>
                 (aCellOrdinal, tPrNumTimesPrNum, tPowerPenaltySIMP, tMinErsatzMatSIMP, tControlWS);
@@ -3063,25 +3076,22 @@ public:
             Plato::FluidMechanics::calculate_natural_convective_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tBasisFunctions, tCellVolume, tPrevTempGP, aResult);
 
-            // calculate stabilized natural convective force integral, which is defined as F_i = Gr_i Pr^2 T^h
+            // calculate stabilized natural convective force integral, which is defined as
             Plato::FluidMechanics::calculate_stabilized_natural_convective_forces<mNumSpatialDims>
                 (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tStabForceGP);
 
-            // calculate brinkman force integral, which is defined as \int_{\Omega_e} N_u^a (\frac{Pr}{Da} u^{n-1}_i) d\Omega
+            // calculate brinkman force integral, which is defined as
             auto tPrNumOverDaNum = tPrNum / tDaNum;
             ControlT tPenalizedBrinkmanCoeff = Plato::FluidMechanics::brinkman_penalization<mNumNodesPerCell>
                 (aCellOrdinal, tPrNumOverDaNum, tBrinkmanConvexityParam, tControlWS);
             Plato::FluidMechanics::calculate_brinkman_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPenalizedBrinkmanCoeff, tBasisFunctions, tCellVolume, tPrevVelGP, aResult);
 
-            // calculate stabilized brinkman force, which is defined as F_i = \frac{Pr}{Da} u^{n-1}_i
+            // calculate stabilized brinkman force, which is defined as
             Plato::FluidMechanics::calculate_stabilized_brinkman_forces<mNumSpatialDims>
                 (aCellOrdinal, tPenalizedBrinkmanCoeff, tPrevVelGP, tStabForceGP);
 
             // calculate stabilizing force integral, which are defined as
-            // \int_{\Omega_e} \left( \frac{\partial N_u^a}{\partial x_k} u^{n-1}_k \right) F_i^{stab} d\Omega_e
-            // where the stanilized force, F_i^{stab}, is defined as
-            // F_i^{stab} = \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) + Gr_i Pr^2 T^h + \frac{Pr}{Da} u^{n-1}_i
             Plato::FluidMechanics::integrate_stabilized_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, tStabForceGP, tGradient, tStabForce);
             Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
@@ -3094,7 +3104,6 @@ public:
                 (aCellOrdinal, 1.0, tTimeStepWS, aResult);
 
             // calculate inertial force integral, which are defined as
-            // \int_{Omega_e} N_u^a \left( u^\ast_i - u^{n-1}_i \right) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredictorGP);
             Plato::FluidMechanics::calculate_inertial_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPredictorGP, tPrevVelGP, aResult);
