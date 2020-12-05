@@ -6450,10 +6450,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_update)
     std::vector<std::vector<Plato::Scalar>> tGold = { {5.0, 5.0, 5.0, 5.0, 5.0, 5.0}, {6.0, 6.0, 6.0, 6.0, 6.0, 6.0} };
     for(auto& tVector : tGold)
     {
-        auto tCell = &tValue - &tGold[0];
+        auto tCell = &tVector - &tGold[0];
         for(auto& tValue : tVector)
         {
-            tDim = &tValue - &tVector[0];
+            auto tDim = &tValue - &tVector[0];
             TEST_FLOATING_EQUALITY(tValue, tHostVec2(tCell, tDim), tTol);
         }
     }
