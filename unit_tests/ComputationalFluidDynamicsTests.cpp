@@ -3054,7 +3054,7 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, tStabForceGP, tGradient, tStabForce);
             Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForce);
-            Plato::blas1::update(aCellOrdinal, 1.0, tStabForce, 1.0, aResult);
+            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForce, 1.0, aResult);
 
             /*
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
