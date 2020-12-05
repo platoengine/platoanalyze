@@ -2807,6 +2807,59 @@ calculate_stabilized_brinkman_forces
     }
 }
 
+template
+<Plato::OrdinalType NumNodes,
+ Plato::OrdinalType SpaceDim,
+ typename ResultT,
+ typename ConfigT,
+ typename ControlT,
+ typename StabForceT,
+ typename PrevVelT>
+DEVICE_TYPE inline void
+integrate_stabilized_forces
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
+ const Plato::ScalarMultiVectorT<StabForceT> & aStabForce,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ {
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
+        {
+            auto tDofIndex = (SpaceDim * tNode) + tDimI;
+            for(Plato::OrdinalType tDimJ = 0; tDimJ < SpaceDim; tDimJ++)
+            {
+                aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) * aBasisFunctions(tNode)
+                    * ( aGradient(aCellOrdinal, tNode, tDimJ) * aPrevVelGP(aCellOrdinal, tDimJ) ) * aStabForce(aCellOrdinal, tDimI);
+            }
+        }
+    }
+ }
+
+template
+<Plato::OrdinalType NumNodes,
+ Plato::OrdinalType SpaceDim,
+ typename ResultT>
+DEVICE_TYPE inline void
+apply_time_step
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::Scalar & aMultiplier,
+ const Plato::ScalarMultiVector & aTimeStepWS,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
+        {
+            auto tDofIndex = (SpaceDim * tNode) + tDimI;
+            aResult(aCellOrdinal, tDofIndex) *= aTimeStepWS(aCellOrdinal, tNode) * aMultiplier;
+        }
+    }
+}
+
 template<typename PhysicsT, typename EvaluationT>
 class VelocityPredictorResidual : public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -2973,23 +3026,16 @@ public:
             Plato::FluidMechanics::calculate_stabilized_brinkman_forces<mNumSpatialDims>
                 (aCellOrdinal, tPenalizedBrinkmanCoeff, tPrevVelGP, tStabForce);
 
-            /*
-            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-            {
-                for(Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
-                {
-                    auto tDofIndex = (mNumSpatialDims * tNode) + tDim;
-                    aResult(aCellOrdinal, tDofIndex) += tCellVolume(aCellOrdinal) *
-                        tBasisFunctions(tNode) * (tPenalizedBrinkmanCoeff * tPrevVelGP(aCellOrdinal, tDim));
-                    tStabForce(aCellOrdinal, tDim) += tPenalizedBrinkmanCoeff * tPrevVelGP(aCellOrdinal, tDim);
-                }
-            }
-            */
-
             // calculate stabilizing force integral, which are defined as
             // \int_{\Omega_e} \left( \frac{\partial N_u^a}{\partial x_k} u^{n-1}_k \right) F_i^{stab} d\Omega_e
-            // where the stabilizing force, F_i^{stab}, is defined as
+            // where the stanilized force, F_i^{stab}, is defined as
             // F_i^{stab} = \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) + Gr_i Pr^2 T^h + \frac{Pr}{Da} u^{n-1}_i
+            Plato::FluidMechanics::integrate_stabilized_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, tStabForce, tGradient, aResult);
+            Plato::FluidMechanics::apply_time_step<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, 0.5, tTimeStepWS, aResult);
+
+            /*
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
@@ -3003,6 +3049,7 @@ public:
                     }
                 }
             }
+            */
 
             // apply time step multiplier to internal force plus stabilized force vector,
             // i.e. F = \Delta{t} * \left( F_i^{int} + F_i^{stab} \right)
