@@ -3094,69 +3094,6 @@ public:
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredictorGP);
             Plato::FluidMechanics::calculate_inertial_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPredictorGP, tPrevVelGP, aResult);
-
-            /*
-            // calculate convective force integral, which is defined as
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
-            Plato::FluidMechanics::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, aResult);
-            
-            // calculate stabilized convective force integral, which is defined as
-            Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tPrevVelGP, tStabForceGP);
-
-            // calculate strain rate for incompressible flows, which is defined as
-            Plato::FluidMechanics::strain_rate<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
-
-            // calculate penalized prandtl number
-            ControlT tPenalizedPrandtlNum = Plato::FluidMechanics::ramp_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
-
-            // calculate viscous force integral, which is defined as,
-            Plato::FluidMechanics::calculate_vicous_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tPenalizedPrandtlNum, tCellVolume, tGradient, tStrainRate, aResult);
-
-            // calculate natural convective force integral, which is defined as
-            auto tPrNumTimesPrNum = tPrNum * tPrNum;
-            ControlT tPenalizedPrNumSquared = Plato::FluidMechanics::simp_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tPrNumTimesPrNum, tPowerPenaltySIMP, tMinErsatzMatSIMP, tControlWS);
-            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
-            Plato::FluidMechanics::calculate_natural_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tBasisFunctions, tCellVolume, tPrevTempGP, aResult);
-
-            // calculate stabilized natural convective force integral, which is defined as
-            Plato::FluidMechanics::calculate_stabilized_natural_convective_forces<mNumSpatialDims>
-                (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tStabForceGP);
-
-            // calculate brinkman force integral, which is defined as
-            auto tPrNumOverDaNum = tPrNum / tDaNum;
-            ControlT tPenalizedBrinkmanCoeff = Plato::FluidMechanics::brinkman_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tPrNumOverDaNum, tBrinkmanConvexityParam, tControlWS);
-            Plato::FluidMechanics::calculate_brinkman_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tPenalizedBrinkmanCoeff, tBasisFunctions, tCellVolume, tPrevVelGP, aResult);
-
-            // calculate stabilized brinkman force, which is defined as
-            Plato::FluidMechanics::calculate_stabilized_brinkman_forces<mNumSpatialDims>
-                (aCellOrdinal, tPenalizedBrinkmanCoeff, tPrevVelGP, tStabForceGP);
-
-            // calculate stabilizing force integral, which are defined as
-            Plato::FluidMechanics::integrate_stabilized_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, tStabForceGP, tGradient, tStabForce);
-            Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, 0.5, tTimeStepWS, tStabForce);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForce, 1.0, aResult);
-
-            // apply time step multiplier to internal force plus stabilized force vector,
-            // i.e. F = \Delta{t} * \left( F_i^{int} + F_i^{stab} \right)
-            Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, 1.0, tTimeStepWS, aResult);
-
-            // calculate inertial force integral, which are defined as
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredictorGP);
-            Plato::FluidMechanics::calculate_inertial_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tPredictorGP, tPrevVelGP, aResult);
-                */
         }, "velocity predictor residual");
     }
 
