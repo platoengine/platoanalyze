@@ -3047,6 +3047,55 @@ public:
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
+            // 1. calculate internal forces
+            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
+            Plato::FluidMechanics::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, aResult);
+
+            Plato::FluidMechanics::strain_rate<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
+            ControlT tPenalizedPrandtlNum = Plato::FluidMechanics::ramp_penalization<mNumNodesPerCell>
+                (aCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
+            Plato::FluidMechanics::calculate_vicous_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tPenalizedPrandtlNum, tCellVolume, tGradient, tStrainRate, aResult);
+
+            auto tPrNumTimesPrNum = tPrNum * tPrNum;
+            ControlT tPenalizedPrNumSquared = Plato::FluidMechanics::simp_penalization<mNumNodesPerCell>
+                (aCellOrdinal, tPrNumTimesPrNum, tPowerPenaltySIMP, tMinErsatzMatSIMP, tControlWS);
+            tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
+            Plato::FluidMechanics::calculate_natural_convective_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tBasisFunctions, tCellVolume, tPrevTempGP, aResult);
+
+            auto tPrNumOverDaNum = tPrNum / tDaNum;
+            ControlT tPenalizedBrinkmanCoeff = Plato::FluidMechanics::brinkman_penalization<mNumNodesPerCell>
+                (aCellOrdinal, tPrNumOverDaNum, tBrinkmanConvexityParam, tControlWS);
+            Plato::FluidMechanics::calculate_brinkman_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tPenalizedBrinkmanCoeff, tBasisFunctions, tCellVolume, tPrevVelGP, aResult);
+
+            // 2. calculate stabilized internal forces
+            Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tGradient, tPrevVelGP, tStabForceGP);
+            Plato::FluidMechanics::calculate_stabilized_natural_convective_forces<mNumSpatialDims>
+                (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tStabForceGP);
+            Plato::FluidMechanics::calculate_stabilized_brinkman_forces<mNumSpatialDims>
+                (aCellOrdinal, tPenalizedBrinkmanCoeff, tPrevVelGP, tStabForceGP);
+
+            Plato::FluidMechanics::integrate_stabilized_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, tStabForceGP, tGradient, tStabForce);
+            Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, 0.5, tTimeStepWS, tStabForce);
+            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForce, 1.0, aResult);
+
+            // 3. apply time step to sum of internal and stabilized forces, F = \Delta{t} * \left( F_i^{int} + F_i^{stab} \right)
+            Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, 1.0, tTimeStepWS, aResult);
+
+            // 4. add inertial forces
+            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredictorGP);
+            Plato::FluidMechanics::calculate_inertial_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPredictorGP, tPrevVelGP, aResult);
+
+            /*
             // calculate convective force integral, which is defined as
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::FluidMechanics::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
@@ -3107,6 +3156,7 @@ public:
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredictorGP);
             Plato::FluidMechanics::calculate_inertial_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPredictorGP, tPrevVelGP, aResult);
+                */
         }, "velocity predictor residual");
     }
 
