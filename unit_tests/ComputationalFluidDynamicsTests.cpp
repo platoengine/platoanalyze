@@ -2812,7 +2812,6 @@ template
  Plato::OrdinalType SpaceDim,
  typename ResultT,
  typename ConfigT,
- typename ControlT,
  typename StabForceT,
  typename PrevVelT>
 DEVICE_TYPE inline void
