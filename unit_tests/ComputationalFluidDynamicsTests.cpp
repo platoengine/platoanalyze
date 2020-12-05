@@ -2878,6 +2878,38 @@ multiply_time_step
     }
 }
 
+template
+<Plato::OrdinalType NumNodes,
+ Plato::OrdinalType SpaceDim,
+ typename ResultT,
+ typename ConfigT,
+ typename PredVelT,
+ typename PrevVelT>
+DEVICE_TYPE inline void
+calculate_inertial_forces
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarMultiVectorT<PredVelT> & aPredVelGP,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
+        {
+            auto tDofIndex = (SpaceDim * tNode) + tDimI;
+            aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) * aBasisFunctions(tNode) *
+                ( aPredVelGP(aCellOrdinal, tDimI) - aPrevVelGP(aCellOrdinal, tDimI) );
+        }
+    }
+}
+
+
+
+
+
+
 template<typename PhysicsT, typename EvaluationT>
 class VelocityPredictorResidual : public Plato::FluidMechanics::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -3060,20 +3092,13 @@ public:
             // i.e. F = \Delta{t} * \left( F_i^{int} + F_i^{stab} \right)
             Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, 1.0, tTimeStepWS, aResult);
-            /*
-            for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
-            {
-                for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
-                {
-                    auto tDofIndex = (mNumSpatialDims * tNode) + tDimI;
-                        aResult(aCellOrdinal, tDofIndex) *= tTimeStepWS(aCellOrdinal, tNode);
-                }
-            }
-            */
 
             // calculate inertial force integral, which are defined as
             // \int_{Omega_e} N_u^a \left( u^\ast_i - u^{n-1}_i \right) d\Omega_e
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredictorGP);
+            Plato::FluidMechanics::calculate_inertial_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPredictorGP, tPrevVelGP, aResult);
+            /*
             for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; tNode++)
             {
                 for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
@@ -3083,6 +3108,7 @@ public:
                         ( tPredictorGP(aCellOrdinal, tDimI) - tPrevVelGP(aCellOrdinal, tDimI) );
                 }
             }
+            */
 
         }, "velocity predictor residual");
     }
