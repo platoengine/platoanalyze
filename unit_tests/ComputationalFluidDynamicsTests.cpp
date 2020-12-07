@@ -6446,8 +6446,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
     Plato::ScalarMultiVector tResultWS("cell convective forces", tNumCells, tNumDofsPerCell);
     Plato::ScalarMultiVector tPrevVelWS("previous velocity workset", tNumCells, tNumDofsPerCell);
     auto tHostPrevVelWS = Kokkos::create_mirror(tPrevVelWS);
-    tHostPrevVelWS(0,0) = 1; tHostPrevVelWS(0,1) = 1; tHostPrevVelWS(0,2) = 1; tHostPrevVelWS(0,3) = 1; tHostPrevVelWS(0,4) = 1 ; tHostPrevVelWS(0,5) = 1;
-    tHostPrevVelWS(1,0) = 6; tHostPrevVelWS(1,1) = 7; tHostPrevVelWS(1,2) = 8; tHostPrevVelWS(1,3) = 9; tHostPrevVelWS(1,4) = 10; tHostPrevVelWS(1,5) = 11;
+    tHostPrevVelWS(0,0) = 1; tHostPrevVelWS(0,1) = 2; tHostPrevVelWS(0,2) = 3; tHostPrevVelWS(0,3) = 4 ; tHostPrevVelWS(0,4) = 5 ; tHostPrevVelWS(0,5) = 6;
+    tHostPrevVelWS(1,0) = 7; tHostPrevVelWS(1,1) = 8; tHostPrevVelWS(1,2) = 9; tHostPrevVelWS(1,3) = 10; tHostPrevVelWS(1,4) = 11; tHostPrevVelWS(1,5) = 12;
     Kokkos::deep_copy(tPrevVelWS, tHostPrevVelWS);
     Plato::ScalarMultiVector tPrevVelGP("previous velocity at Gauss point", tNumCells, tSpaceDims);
 
@@ -6472,7 +6472,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
             (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, tResultWS);
     }, "unit test calculate_convective_forces");
 
-    Plato::print_array_2D(tResultWS, "convective forces");
+    auto tTol = 1e-4;
+    std::vector<std::vector<double>> tGold = 
+        {{-1.5,-2.0,-0.5,-0.66666667,2.0,2.66666667},{13.5,15.0,1.5,1.66666667,-15.0,-16.66666667}};
+    auto tHostResultWS = Kokkos::create_mirror(tResultWS);
+    Kokkos::deep_copy(tHostResultWS, tResultWS);
+    for(auto& tGoldVector : tGold)
+    {
+        auto tVecIndex = &tGoldVector - &tGold[0];
+        for(auto& tGoldValue : tGoldVector)
+        {
+            auto tValIndex = &tGoldValue - &tGoldVector[0];
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostResultWS(tVecIndex,tValIndex),tTol);
+        }
+    }
+    //Plato::print_array_2D(tResultWS, "convective forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_update)
