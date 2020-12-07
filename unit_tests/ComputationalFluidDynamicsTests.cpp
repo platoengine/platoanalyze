@@ -6435,24 +6435,29 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
     constexpr auto tSpaceDims = 2;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
 
-    // set workset
+    // set input data for unit test
     auto tNumCells = tMesh->nelems();
     constexpr auto tNumNodesPerCell = tSpaceDims + 1;
-    Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-
     constexpr auto tNumVelDofsPerNode = tSpaceDims;
     constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
-    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
-    Plato::ComputeGradientWorkset<tSpaceDims> tComputeGradient;
-    Plato::InterpolateFromNodal<tSpaceDims, tNumVelDofsPerNode, 0/*offset*/, tSpaceDims> tIntrplVectorField;
-
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
     Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
     Plato::ScalarMultiVector tResultWS("cell convective forces", tNumCells, tNumDofsPerCell);
     Plato::ScalarMultiVector tPrevVelWS("previous velocity workset", tNumCells, tNumDofsPerCell);
+    auto tHostPrevVelWS = Kokkos::create_mirror(tPrevVelWS);
+    tHostPrevVelWS(0,0) = 1; tHostPrevVelWS(0,1) = 1; tHostPrevVelWS(0,2) = 1; tHostPrevVelWS(0,3) = 1; tHostPrevVelWS(0,4) = 1 ; tHostPrevVelWS(0,5) = 1;
+    tHostPrevVelWS(1,0) = 6; tHostPrevVelWS(1,1) = 7; tHostPrevVelWS(1,2) = 8; tHostPrevVelWS(1,3) = 9; tHostPrevVelWS(1,4) = 10; tHostPrevVelWS(1,5) = 11;
+    Kokkos::deep_copy(tPrevVelWS, tHostPrevVelWS);
     Plato::ScalarMultiVector tPrevVelGP("previous velocity at Gauss point", tNumCells, tSpaceDims);
 
+    // set functors for unit test
+    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
+    Plato::ComputeGradientWorkset<tSpaceDims> tComputeGradient;
+    Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    Plato::InterpolateFromNodal<tSpaceDims, tNumVelDofsPerNode, 0/*offset*/, tSpaceDims> tIntrplVectorField;
+
+    // call device kernel
     auto tCubWeight = tCubRule.getCubWeight();
     auto tBasisFunctions = tCubRule.getBasisFunctions();
     Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
