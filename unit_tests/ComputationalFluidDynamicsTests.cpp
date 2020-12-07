@@ -6429,6 +6429,63 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
+{
+    // build mesh, mesh sets, and spatial domain
+    constexpr auto tSpaceDims = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+
+    // set input data for unit test
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    constexpr auto tNumVelDofsPerNode = tSpaceDims;
+    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarMultiVector tResultWS("cell stabilized convective forces", tNumCells, tSpaceDims);
+    Plato::ScalarMultiVector tPrevVelGP("previous velocity at Gauss point", tNumCells, tSpaceDims);
+    Plato::ScalarMultiVector tPrevVelWS("previous velocity workset", tNumCells, tNumDofsPerCell);
+    auto tHostPrevVelWS = Kokkos::create_mirror(tPrevVelWS);
+    tHostPrevVelWS(0,0) = 1; tHostPrevVelWS(0,1) = 2; tHostPrevVelWS(0,2) = 3; tHostPrevVelWS(0,3) = 4 ; tHostPrevVelWS(0,4) = 5 ; tHostPrevVelWS(0,5) = 6;
+    tHostPrevVelWS(1,0) = 7; tHostPrevVelWS(1,1) = 8; tHostPrevVelWS(1,2) = 9; tHostPrevVelWS(1,3) = 10; tHostPrevVelWS(1,4) = 11; tHostPrevVelWS(1,5) = 12;
+    Kokkos::deep_copy(tPrevVelWS, tHostPrevVelWS);
+
+    // set functors for unit test
+    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
+    Plato::ComputeGradientWorkset<tSpaceDims> tComputeGradient;
+    Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    Plato::InterpolateFromNodal<tSpaceDims, tNumVelDofsPerNode, 0/*offset*/, tSpaceDims> tIntrplVectorField;
+
+    // call device kernel
+    auto tBasisFunctions = tCubRule.getBasisFunctions();
+    Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
+        Plato::FluidMechanics::calculate_stabilized_convective_forces<tNumNodesPerCell, tSpaceDims>
+            (aCellOrdinal, tGradient, tPrevVelGP, tResultWS);
+    }, "unit test calculate_stabilized_convective_forces");
+
+    /*
+    auto tTol = 1e-4;
+    std::vector<std::vector<double>> tGold = {{-1.5,-2.0,-0.5},{13.5,15.0,1.5}};
+    auto tHostResultWS = Kokkos::create_mirror(tResultWS);
+    Kokkos::deep_copy(tHostResultWS, tResultWS);
+    for(auto& tGoldVector : tGold)
+    {
+        auto tVecIndex = &tGoldVector - &tGold[0];
+        for(auto& tGoldValue : tGoldVector)
+        {
+            auto tValIndex = &tGoldValue - &tGoldVector[0];
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostResultWS(tVecIndex,tValIndex),tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResultWS, "stabilized convective forces");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
 {
     // build mesh, mesh sets, and spatial domain
@@ -6463,11 +6520,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
     Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
+        tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
         tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
         tCellVolume(aCellOrdinal) *= tCubWeight;
-
-        // 1. calculate internal forces
-        tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
         Plato::FluidMechanics::calculate_convective_forces<tNumNodesPerCell, tSpaceDims>
             (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, tResultWS);
     }, "unit test calculate_convective_forces");
