@@ -6429,6 +6429,28 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
+{
+    constexpr auto tNumCells = 2;
+    constexpr auto tNumDofsPerCell = 6;
+    constexpr auto tSpaceDims = 2;
+    Plato::LinearTetCubRuleDegreeOne<2> tCubRule;
+
+    /*
+    auto tCubWeight = tCubRule.getCubWeight();
+    auto tBasisFunctions = tCubRule.getBasisFunctions();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        tCellVolume(aCellOrdinal) *= tCubWeight;
+
+        // 1. calculate internal forces
+        tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
+        Plato::FluidMechanics::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
+            (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, aResult);
+    }, "unit test calculate_convective_forces");*/
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_update)
 {
     constexpr auto tNumCells = 2;
