@@ -151,10 +151,9 @@ class InternalElasticEnergy :
         //
         tApplyWeighting(aCellOrdinal, tStress, aControl);
     
-        // compute element internal energy (0.5 * inner product of strain and weighted stress)
+        // compute element internal energy (0.5 * inner product of strain increment and weighted stress)
         //
         tComputeScalarProduct(aCellOrdinal, aResult, tStress, tStrainIncrement, tCellVolume, 0.5);
-        tComputeScalarProduct(aCellOrdinal, aResult, tStress, aLocalState, tCellVolume, 0.5);
 
       },"energy gradient");
 

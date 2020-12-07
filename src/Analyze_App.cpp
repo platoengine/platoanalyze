@@ -8,9 +8,7 @@
 #include <PlatoProblemFactory.hpp>
 #include <Plato_OperationsUtilities.hpp>
 
-#ifdef PLATO_CONSOLE
 #include <Plato_Console.hpp>
-#endif
 
 namespace Plato {
 
@@ -763,12 +761,23 @@ ComputeCriterionP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::RCP<Prob
     LocalOp       (aMyApp, aOpNode, aOpDef),
     ESP_Op        (aMyApp, aOpNode),
     CriterionOp   (aMyApp, aOpNode),
-    mStrGradientP ("Criterion Gradient")
+    mStrValName   (getArgumentName(aOpNode, "Value",    "ComputeCriterionP")),
+    mStrGradName  (getArgumentName(aOpNode, "Gradient", "ComputeCriterionP"))
 /******************************************************************************/
 {
 #ifdef PLATO_ESP
     auto tESP = mMyApp->mESP[mESPName];
-    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+    if(aMyApp->mCriterionVectors.count(mStrCriterion) == 0)
+    {
+        aMyApp->mCriterionVectors[mStrCriterion] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+    }
+    addUnique(aMyApp->mVectorNameToCriterionName, mStrGradName, mStrCriterion, "ComputeCriterionP");
+
+    if(aMyApp->mCriterionValues.count(mStrCriterion) == 0)
+    {
+        aMyApp->mCriterionValues[mStrCriterion] = {};
+    }
+    addUnique(aMyApp->mValueNameToCriterionName, mStrValName, mStrCriterion, "ComputeCriterionP");
 #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
 #endif
@@ -786,7 +795,7 @@ void MPMD_App::ComputeCriterionP::operator()()
 #ifdef PLATO_ESP
     mMyApp->mGlobalSolution = mMyApp->mProblem->solution(mMyApp->mControl);
 
-    auto& tGradP = mMyApp->mValuesMap[mStrGradientP];
+    auto& tGradP = mMyApp->mCriterionVectors[mStrCriterion];
 
     auto tControl = mMyApp->mControl;
     auto tState   = mMyApp->mGlobalSolution;
@@ -1003,11 +1012,15 @@ ComputeCriterionGradientP(MPMD_App* aMyApp, Plato::InputData& aOpNode, Teuchos::
     LocalOp       (aMyApp, aOpNode, aOpDef),
     ESP_Op        (aMyApp, aOpNode),
     CriterionOp   (aMyApp, aOpNode),
-    mStrGradientP ("Criterion Gradient")
+    mStrGradName  (getArgumentName(aOpNode, "Gradient", "ComputeCriterionGradientP"))
 {
 #ifdef PLATO_ESP
     auto tESP = mMyApp->mESP[mESPName];
-    mMyApp->mValuesMap[mStrGradientP] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+    if(aMyApp->mCriterionVectors.count(mStrCriterion) == 0)
+    {
+        aMyApp->mCriterionVectors[mStrCriterion] = std::vector<Plato::Scalar>(tESP->getNumParameters());
+    }
+    addUnique(aMyApp->mVectorNameToCriterionName, mStrGradName, mStrCriterion, "ComputeCriterionGradientP");
 #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");
 #endif
@@ -1025,7 +1038,7 @@ void MPMD_App::ComputeCriterionGradientP::operator()()
 #ifdef PLATO_ESP
     auto tControl = mMyApp->mControl;
     auto tState   = mMyApp->mGlobalSolution;
-    auto& tGradP  = mMyApp->mValuesMap[mStrGradientP];
+    auto& tGradP  = mMyApp->mCriterionVectors[mStrCriterion];
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
     tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
@@ -1115,18 +1128,15 @@ void MPMD_App::Reinitialize::operator()()
     auto& tInputState = mMyApp->mValuesMap[mStrParameters];
     if ( hasChanged(tInputState) )
     {
-#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: Reinitialize -- Recomputing Problem");
-#endif
+
         auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
         mMyApp->createProblem(*def);
         mMyApp->resetProblemMetaData();
     }
     else
     {
-#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: Reinitialize -- Not recomputing Problem");
-#endif
     }
 }
 
@@ -1148,9 +1158,8 @@ void MPMD_App::ReinitializeESP::operator()()
     auto& tInputState = mMyApp->mValuesMap[mStrParameters];
     if ( hasChanged(tInputState) )
     {
-#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: ReinitializeESP -- Recomputing Problem");
-#endif
+
         auto def = mMyApp->mProblemDefinitions[mMyApp->mCurrentProblemName];
         auto& tESP = mMyApp->mESP[mESPName];
         auto tModelFileName = tESP->getModelFileName();
@@ -1161,9 +1170,7 @@ void MPMD_App::ReinitializeESP::operator()()
     }
     else
     {
-#ifdef PLATO_CONSOLE
         Plato::Console::Status("Operation: ReinitializeESP -- Not recomputing Problem");
-#endif
     }
   #else
     throw Plato::ParsingException("PlatoApp was not compiled with ESP support.  Turn on 'PLATO_ESP' option and rebuild.");

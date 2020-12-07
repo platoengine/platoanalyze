@@ -34,6 +34,7 @@ set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
 ## core sources
 set(ANALYZE_SOURCES ${ANALYZE_SOURCES}
     ExpressionEvaluator.cpp
+    PlatoMask.cpp
     alg/ParseInput.cpp
     alg/Basis.cpp
     alg/Cubature.cpp

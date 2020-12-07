@@ -156,7 +156,17 @@ TEUCHOS_UNIT_TEST( EllipticUpdLagProblemTests, 3D )
    Call Problem::criterionGradientX(aControl);
    *****************************************************/
 
-//TODO  auto tCriterionGradientX = tProblem->criterionGradientX(tControl, "Internal Energy");
+  auto tCriterionGradientX = tProblem->criterionGradientX(tControl, "Internal Energy");
+
+  auto tCriterionGradientX_Host = Kokkos::create_mirror(tCriterionGradientX);
+  Kokkos::deep_copy(tCriterionGradientX_Host, tCriterionGradientX);
+
+  std::vector<Plato::Scalar> tCriterionGradientX_Gold = {-0.927379, -0.46369, -0.927379, -0.46369};
+  for(Plato::OrdinalType tIndex = 0; tIndex < tCriterionGradientX_Gold.size(); tIndex++)
+  {
+      TEST_FLOATING_EQUALITY(tCriterionGradientX_Host(tIndex), tCriterionGradientX_Gold[tIndex], tTolerance);
+  }
+
 
 
 }

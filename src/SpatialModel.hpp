@@ -132,14 +132,16 @@ namespace Plato {
             using OrdinalT = Plato::OrdinalType;
 
             auto tMask = aMask->cellMask();
-            auto tNumEntries = tMask.extent(0);
+            auto tTotalElemLids = mTotalElemLids;
+            auto tNumEntries = tTotalElemLids.extent(0);
 
             // how many non-zeros in the mask?
             Plato::OrdinalType tSum(0);
             Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0,tNumEntries), 
             LAMBDA_EXPRESSION(const Plato::OrdinalType& aOrdinal, Plato::OrdinalType & aUpdate)
             {
-              aUpdate += tMask(aOrdinal); 
+                auto tElemOrdinal = tTotalElemLids(aOrdinal);
+                aUpdate += tMask(tElemOrdinal); 
             }, tSum);
             Kokkos::resize(mMaskedElemLids, tSum);
 
@@ -148,10 +150,11 @@ namespace Plato {
             // create a list of elements with non-zero mask values
             OrdinalT tOffset(0);
             Kokkos::parallel_scan (Kokkos::RangePolicy<OrdinalT>(0,tNumEntries),
-            KOKKOS_LAMBDA (const OrdinalT& iOrdinal, OrdinalT& aUpdate, const bool& tIsFinal)
+            KOKKOS_LAMBDA (const OrdinalT& aOrdinal, OrdinalT& aUpdate, const bool& tIsFinal)
             {
-                const OrdinalT tVal = tMask(iOrdinal);
-                if( tIsFinal && tVal ) { tMaskedElemLids(aUpdate) = iOrdinal; }
+                auto tElemOrdinal = tTotalElemLids(aOrdinal);
+                const OrdinalT tVal = tMask(tElemOrdinal);
+                if( tIsFinal && tVal ) { tMaskedElemLids(aUpdate) = tElemOrdinal; }
                 aUpdate += tVal;
             }, tOffset);
         }

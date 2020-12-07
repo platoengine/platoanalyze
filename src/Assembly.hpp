@@ -189,7 +189,7 @@ transform_ad_type_to_pod_1Dview(
         auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
         for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerCell; tDimIndex++)
         {
-            aOutput(tCellOrdinal, tDimIndex) = aInput(tCellOrdinal).dx(tDimIndex);
+            aOutput(tCellOrdinal, tDimIndex) = aInput(aCellOrdinal).dx(tDimIndex);
         }
     }, "Convert AD Partial to POD type");
 }

@@ -237,6 +237,64 @@ public:
         return tJacobianMat;
     }
 
+    /**************************************************************************/
+    Teuchos::RCP<Plato::CrsMatrixType>
+    gradient_x(
+        const Plato::ScalarVector & aGlobalState,
+        const Plato::ScalarVector & aLocalState,
+        const Plato::ScalarVector & aPrevLocalState
+    /**************************************************************************/
+    ) const
+    {
+        using ConfigScalar      = typename GradientX::ConfigScalarType;
+        using GlobalStateScalar = typename GradientX::GlobalStateScalarType;
+        using LocalStateScalar  = typename GradientX::LocalStateScalarType;
+        using ResultScalar      = typename GradientX::ResultScalarType;
+
+        auto tNumCells = mMesh.nelems();
+
+        // create return matrix
+        //
+        Teuchos::RCP<Plato::CrsMatrixType> tJacobianMat =
+                Plato::CreateGlobalByLocalBlockMatrix<Plato::CrsMatrixType, mNumNodesPerCell, mNumDofsPerNode, mNumVoigtTerms>( &mMesh );
+
+        // Workset global state
+        //
+        Plato::ScalarMultiVectorT<GlobalStateScalar> tGlobalStateWS("Global State Workset", tNumCells, mNumDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetState(aGlobalState, tGlobalStateWS);
+
+        // Workset local state
+        //
+        Plato::ScalarMultiVectorT<LocalStateScalar> tLocalStateWS("Local State Workset", tNumCells, mNumLocalDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetLocalState(aLocalState, tLocalStateWS);
+
+        // Workset previous local state
+        //
+        Plato::ScalarMultiVectorT<LocalStateScalar> tPrevLocalStateWS("Previous Local State Workset", tNumCells, mNumLocalDofsPerCell);
+        Plato::WorksetBase<PhysicsT>::worksetLocalState(aPrevLocalState, tPrevLocalStateWS);
+
+        // Workset config
+        //
+        Plato::ScalarArray3DT<ConfigScalar> tConfigWS("Config Workset", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::WorksetBase<PhysicsT>::worksetConfig(tConfigWS);
+
+        // create result
+        //
+        Plato::ScalarMultiVectorT<ResultScalar> tResult("Result Workset", tNumCells, mNumLocalDofsPerCell);
+
+        ResidualFunction<GradientX> tGradientXFunction;
+        tGradientXFunction.evaluate(tGlobalStateWS, tLocalStateWS, tPrevLocalStateWS, tConfigWS, tResult);
+
+        // assembly to return matrix
+        //
+        Plato::GlobalByLocalEntryFunctor<mNumSpatialDims, mNumDofsPerNode, mNumLocalDofsPerCell> tJacobianMatEntryOrdinal( tJacobianMat, &mMesh );
+
+        auto tJacobianMatEntries = tJacobianMat->entries();
+        Plato::WorksetBase<PhysicsT>::assembleTransposeJacobian
+            (mNumLocalDofsPerCell, mNumDofsPerCell, tJacobianMatEntryOrdinal, tResult, tJacobianMatEntries);
+
+        return tJacobianMat;
+    }
 
 };
 

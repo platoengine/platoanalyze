@@ -15,6 +15,7 @@
 #include "ApplyConstraints.hpp"
 #include "SpatialModel.hpp"
 #include "PlatoSequence.hpp"
+#include "ToMap.hpp"
 
 #include "ParseTools.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -281,6 +282,11 @@ public:
             {
                 tLocalState  = Kokkos::subview(mLocalStates, tStepIndex-1, Kokkos::ALL());
                 Kokkos::deep_copy(tTotalState, Kokkos::subview(mTotalStates, tStepIndex-1, Kokkos::ALL()));
+
+                // copy the previous global state to use as a starting guess for faster convergence
+                Plato::ScalarVector tPrevGlobalState = Kokkos::subview(mGlobalStates, tStepIndex-1, Kokkos::ALL());
+                Kokkos::deep_copy(tGlobalState, tPrevGlobalState);
+                
             }
             else
             {
@@ -335,6 +341,7 @@ public:
             Plato::blas1::axpy(1.0, tGlobalState, tTotalState);
             mDataMap.vectorNodeFields["total displacement"] = tTotalState;
             mDataMap.scalarNodeFields["topology"] = aControl;
+            Plato::toMap(mDataMap.scalarNodeFields, tSequenceStep.getMask()->nodeMask(), "node_mask");
 
             mDataMap.saveState();
 
@@ -474,7 +481,7 @@ public:
 
         auto& tSequenceSteps = mSequence.getSteps();
         auto tLastStepIndex  = tSequenceSteps.size()-1; 
-        for (Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--)
+        for (Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex >= 0; tStepIndex--)
         {
 
             const auto& tSequenceStep = tSequenceSteps[tStepIndex];
@@ -516,7 +523,16 @@ public:
             Plato::blas1::scale(-1.0, t_dFdc);
             Kokkos::deep_copy(tAdjoint_C, t_dFdc);
 
-            Plato::ScalarVector tC_prev = Kokkos::subview(mLocalStates, tStepIndex-1, Kokkos::ALL());
+            Plato::ScalarVector tC_prev;
+            if (tStepIndex > 0)
+            {
+                tC_prev = Kokkos::subview(mLocalStates, tStepIndex-1, Kokkos::ALL());
+            }
+            else
+            {
+                // kokkos initializes new views to zero.
+                tC_prev = Plato::ScalarVector("initial local state",  mPDE->stateSize());
+            }
 
             // H_{,u^k}^{k}
             auto t_dHdu = mLagrangianUpdate.gradient_u_T(tU, tC, tC_prev);
@@ -590,52 +606,94 @@ public:
         const Plato::Solution     & aSolution,
               Criterion             aCriterion)
     {
-#ifdef COMING_SOON
-        assert(aSolution.State.extent(0) == mStates.extent(0));
-        assert(aSolution.State.extent(1) == mStates.extent(1));
-
         if(aCriterion == nullptr)
         {
             THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
         }
 
-        // compute partial derivative wrt x
-        const Plato::OrdinalType tTIME_STEP_INDEX = 0;
-        auto tStatesSubView = Kokkos::subview(aSolution.State, tTIME_STEP_INDEX, Kokkos::ALL());
+        auto tSolution = Plato::Solution(mGlobalStates);
 
-        auto tPartialCriterionWRT_Config  = aCriterion->gradient_x(aSolution, aControl);
+        // F_{,z}
+        auto t_dFdx = aCriterion->gradient_x(aSolution, mLocalStates, aControl);
 
-        if(mIsSelfAdjoint)
+        auto& tSequenceSteps = mSequence.getSteps();
+        auto tLastStepIndex  = tSequenceSteps.size()-1; 
+        for (Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--)
         {
-            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialCriterionWRT_Config);
+
+            const auto& tSequenceStep = tSequenceSteps[tStepIndex];
+
+            mSpatialModel.applyMask(tSequenceStep.getMask());
+
+            auto tU = Kokkos::subview(mGlobalStates, tStepIndex, Kokkos::ALL());
+            auto tC = Kokkos::subview(mLocalStates, tStepIndex, Kokkos::ALL());
+
+            Plato::ScalarVector tAdjoint_U = Kokkos::subview(mGlobalAdjoints, tStepIndex, Kokkos::ALL());
+            Plato::ScalarVector tAdjoint_C = Kokkos::subview(mLocalAdjoints, tStepIndex, Kokkos::ALL());
+
+
+            // F_{,c^k}
+            auto t_dFdc = aCriterion->gradient_c(aSolution, mLocalStates, aControl, tStepIndex);
+            // F_{,u^k}
+            auto t_dFdu = aCriterion->gradient_u(aSolution, mLocalStates, aControl, tStepIndex);
+
+            if(tStepIndex != tLastStepIndex)
+            {
+
+                auto tU_next = Kokkos::subview(mGlobalStates, tStepIndex+1, Kokkos::ALL());
+
+                // \lambda^{k+1}
+                Plato::ScalarVector tAdjoint_U_next = Kokkos::subview(mGlobalAdjoints, tStepIndex+1, Kokkos::ALL());
+
+                // R_{,c^{k-1}}^{k+1}
+                mLocalJacobian = mPDE->gradient_cp_T(tU_next, tC, aControl);
+
+                // f_{,c^k} += \R_{,c^{k-1}}^{k+1} \lambda^{k+1}
+                Plato::MatrixTimesVectorPlusVector(mLocalJacobian, tAdjoint_U_next, t_dFdc);
+
+                // \mu^{k+1}
+                Plato::ScalarVector tAdjoint_C_next = Kokkos::subview(mLocalAdjoints, tStepIndex+1, Kokkos::ALL());
+
+                // f_{,c^k} -= \mu^{k+1}
+                Plato::blas1::axpy(-1.0, tAdjoint_C_next, t_dFdc);
+            }
+            Plato::blas1::scale(-1.0, t_dFdc);
+            Kokkos::deep_copy(tAdjoint_C, t_dFdc);
+
+            Plato::ScalarVector tC_prev = Kokkos::subview(mLocalStates, tStepIndex-1, Kokkos::ALL());
+
+            // H_{,u^k}^{k}
+            auto t_dHdu = mLagrangianUpdate.gradient_u_T(tU, tC, tC_prev);
+
+            // f_{,u^k} += \H_{,u^k}^{k}^T \mu^{k}
+            Plato::MatrixTimesVectorPlusVector(t_dHdu, tAdjoint_C, t_dFdu);
+
+            Plato::blas1::scale(-1.0, t_dFdu);
+
+            // R_{,u^k}^T
+            mGlobalJacobian = mPDE->gradient_u_T(tU, tC_prev, aControl);
+
+            this->applyAdjointConstraints(mGlobalJacobian, t_dFdu);
+
+            tSequenceStep.template constrainInactiveNodes<PhysicsT::mNumDofsPerNode>(mGlobalJacobian, t_dFdu);
+
+            mSolver->solve(*mGlobalJacobian, tAdjoint_U, t_dFdu);
+
+            // R_{,x}^T
+            // dRdx is returned transposed, nxm.  n=x.size() and m=u.size().
+            auto t_dRdx = mPDE->gradient_x(tU, tC_prev, aControl);
+
+            // F_{,x} += \lambda^k R_{,x}^k
+            Plato::MatrixTimesVectorPlusVector(t_dRdx, tAdjoint_U, t_dFdx);
+
+            // H_{,x}^T
+            // dHdx is returned transposed, nxm.  n=x.size() and m=c.size().
+            auto t_dHdx = mLagrangianUpdate.gradient_x(tU, tC, tC_prev);
+
+            // F_{,x} += \mu^k R_{,x}^k
+            Plato::MatrixTimesVectorPlusVector(t_dHdx, tAdjoint_C, t_dFdx);
         }
-        else
-        {
-            // compute dfdu: partial of criterion wrt u
-            auto tPartialCriterionWRT_State = aCriterion->gradient_u(aSolution, aControl, /*stepIndex=*/0);
-            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tPartialCriterionWRT_State);
-
-            // compute dgdu: partial of PDE wrt state
-            mGlobalJacobian = mPDE->gradient_u(tStatesSubView, aControl);
-            this->applyStateConstraints(mGlobalJacobian, tPartialCriterionWRT_State, 1.0);
-
-            // adjoint problem uses transpose of global stiffness, but we're assuming the constrained
-            // system is symmetric.
-
-            Plato::ScalarVector
-              tAdjointSubView = Kokkos::subview(mAdjoint, tTIME_STEP_INDEX, Kokkos::ALL());
-
-            mSolver->solve(*mGlobalJacobian, tAdjointSubView, tPartialCriterionWRT_State);
-
-            // compute dgdx: partial of PDE wrt config.
-            // dgdx is returned transposed, nxm.  n=x.size() and m=u.size().
-            auto tPartialPDE_WRT_Config = mPDE->gradient_x(tStatesSubView, aControl);
-
-            // compute dgdx . adjoint + dfdx
-            Plato::MatrixTimesVectorPlusVector(tPartialPDE_WRT_Config, tAdjointSubView, tPartialCriterionWRT_Config);
-        }
-        return tPartialCriterionWRT_Config;
-#endif
+        return t_dFdx;
     }
 
     /******************************************************************************//**

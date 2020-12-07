@@ -12,6 +12,53 @@ namespace Plato {
     struct BoxLimits {
       Plato::Scalar mMaximum[mSpaceDim];
       Plato::Scalar mMinimum[mSpaceDim];
+      std::string mMaxKeywords[3];
+      std::string mMinKeywords[3];
+
+      BoxLimits(
+          const Teuchos::ParameterList& aParams
+      ) :
+          mMaxKeywords{"Maximum X", "Maximum Y", "Maximum Z"},
+          mMinKeywords{"Minimum X", "Minimum Y", "Minimum Z"}
+      {
+          for (Plato::OrdinalType tDim=0; tDim<mSpaceDim; tDim++)
+          {
+              auto tMaxKeyword = mMaxKeywords[tDim];
+              if (aParams.isType<Plato::Scalar>(tMaxKeyword))
+              {
+                  mMaximum[tDim] = aParams.get<Plato::Scalar>(tMaxKeyword);
+              }
+              else
+              {
+                  mMaximum[tDim] = 1e12;
+              }
+              auto tMinKeyword = mMinKeywords[tDim];
+              if (aParams.isType<Plato::Scalar>(tMinKeyword))
+              {
+                  mMinimum[tDim] = aParams.get<Plato::Scalar>(tMinKeyword);
+              }
+              else
+              {
+                  mMinimum[tDim] = -1e12;
+              }
+          }
+      }
+    };
+
+    class ConstructivePrimitive
+    {
+      public:
+        virtual void apply( LocalOrdinalVector aCellMask, Plato::ScalarMultiVector aCellCenters ) const = 0;
+    };
+
+    class BrickPrimitive : public ConstructivePrimitive
+    {
+        BoxLimits<3> mLimits;
+        Plato::OrdinalType mOperation;
+
+      public:
+        BrickPrimitive( Teuchos::ParameterList& aParams );
+        void apply( LocalOrdinalVector aCellMask, Plato::ScalarMultiVector aCellCenters ) const override;
     };
 
     /******************************************************************************/
@@ -150,9 +197,6 @@ namespace Plato {
 
         Plato::BoxLimits<mSpaceDim> mLimits;
 
-        std::string mMaxKeywords[3];
-        std::string mMinKeywords[3];
-
       public:
         /******************************************************************************//**
          * \brief Constructor for Plato::Mask
@@ -164,8 +208,7 @@ namespace Plato {
             const Teuchos::ParameterList & aInputParams
         ) :
             Plato::Mask<mSpaceDim>(aMesh),
-            mMaxKeywords{"Maximum X", "Maximum Y", "Maximum Z"},
-            mMinKeywords{"Minimum X", "Minimum Y", "Minimum Z"}
+            mLimits(aInputParams)
         {
             initialize(aMesh, aInputParams);
         }
@@ -175,28 +218,6 @@ namespace Plato {
             const Teuchos::ParameterList & aInputParams
         )
         {
-            for (Plato::OrdinalType tDim=0; tDim<mSpaceDim; tDim++)
-            {
-                auto tMaxKeyword = mMaxKeywords[tDim];
-                if (aInputParams.isType<Plato::Scalar>(tMaxKeyword))
-                {
-                    mLimits.mMaximum[tDim] = aInputParams.get<Plato::Scalar>(tMaxKeyword);
-                }
-                else
-                {
-                    mLimits.mMaximum[tDim] = 1e12;
-                }
-                auto tMinKeyword = mMinKeywords[tDim];
-                if (aInputParams.isType<Plato::Scalar>(tMinKeyword))
-                {
-                    mLimits.mMinimum[tDim] = aInputParams.get<Plato::Scalar>(tMinKeyword);
-                }
-                else
-                {
-                    mLimits.mMinimum[tDim] = -1e12;
-                }
-            }
-
             auto tCellCenters = this->getCellCenters(aMesh);
 
             auto tCellMask = mCellMask;
@@ -218,6 +239,78 @@ namespace Plato {
         }
     };
 
+    template <int mSpaceDim>
+    class ConstructiveMask : public Plato::Mask<mSpaceDim>
+    {
+      private:
+        using Plato::Mask<mSpaceDim>::mCellMask;
+
+        Plato::BoxLimits<mSpaceDim> mLimits;
+
+        std::vector<std::shared_ptr<Plato::ConstructivePrimitive>> mPrimitives;
+
+      public:
+        /******************************************************************************//**
+         * \brief Constructor for Plato::Mask
+         * \param [in] aMesh Omega_h mesh
+         * \param [in] aInputParams Mask definition
+        **********************************************************************************/
+        ConstructiveMask(
+                  Omega_h::Mesh          & aMesh,
+            const Teuchos::ParameterList & aInputParams
+        ) :
+            Plato::Mask<mSpaceDim>(aMesh),
+            mLimits(aInputParams)
+        {
+            initialize(aMesh, aInputParams);
+        }
+
+        void initialize(
+                  Omega_h::Mesh          & aMesh,
+            const Teuchos::ParameterList & aInputParams
+        )
+        {
+
+            auto tPrimitivesParams = aInputParams.sublist("Primitives");
+            for(auto tIndex = tPrimitivesParams.begin(); tIndex != tPrimitivesParams.end(); ++tIndex)
+            {
+                const auto & tEntry  = tPrimitivesParams.entry(tIndex);
+                const auto & tMyName = tPrimitivesParams.name(tIndex);
+
+                if (!tEntry.isList())
+                {
+                    THROWERR("Parameter in Primitives list not valid.  Expect lists only.");
+                }   
+
+                Teuchos::ParameterList& tPrimitiveParams = tPrimitivesParams.sublist(tMyName);
+
+                if (!tPrimitiveParams.isType<std::string>("Type")) {
+                    THROWERR("Primitive definition is missing required parameter 'Type'");
+                }
+
+                auto tType = tPrimitiveParams.get<std::string>("Type");
+                if ( tType == "Brick" )
+                {
+                    mPrimitives.push_back(std::make_shared<Plato::BrickPrimitive>(tPrimitiveParams));
+                }
+                else
+                {
+                    THROWERR("Unknown Primitive type requested");
+                }
+
+            }
+
+            auto tCellCenters = this->getCellCenters(aMesh);
+
+            auto tCellMask = mCellMask;
+            for (auto& tPrimitive : mPrimitives)
+            {
+                tPrimitive->apply(tCellMask, tCellCenters);
+            }
+
+            this->computeNodeMask(aMesh);
+        }
+    };
     template <int mSpaceDim>
     class MaskFactory
     {
@@ -245,6 +338,11 @@ namespace Plato {
                     if (tMaskType == "Brick")
                     {
                         return std::make_shared<Plato::BrickMask<mSpaceDim>>(aMesh, tMaskParams);
+                    }
+                    else
+                    if (tMaskType == "Constructive")
+                    {
+                        return std::make_shared<Plato::ConstructiveMask<mSpaceDim>>(aMesh, tMaskParams);
                     }
                     else
                     {
