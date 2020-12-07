@@ -2680,8 +2680,10 @@ calculate_convective_forces
     }
 }
 
+// todo: fix stabilized calculation
 // calculate stabilized convective force integral, which is defined as
 // F_i = \frac{\partial}{\partial x_j}\left(u^{n-1}_j u^{n-1}_i\right)
+/*
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -2703,6 +2705,42 @@ calculate_stabilized_convective_forces
             {
                 aResult(aCellOrdinal, tDimI) += aGradient(aCellOrdinal, tNode, tDimJ) *
                     ( aPrevVelGP(aCellOrdinal, tDimJ) * aPrevVelGP(aCellOrdinal, tDimI) );
+            }
+        }
+    }
+}
+*/
+
+// todo:finish
+template
+<Plato::OrdinalType NumNodes,
+ Plato::OrdinalType SpaceDim,
+ typename ResultT,
+ typename ConfigT,
+ typename PrevVelT>
+DEVICE_TYPE inline void
+calculate_stabilized_convective_forces
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
+        {
+            auto tDofIndex = (SpaceDim * tNode) + tDimI;
+            for(Plato::OrdinalType tDimJ = 0; tDimJ < SpaceDim; tDimJ++)
+            {
+                for(Plato::OrdinalType tDimK = 0; tDimK < SpaceDim; tDimK++)
+                {
+                    aResult(aCellOrdinal, tDofIndex) += aBasisFunctions(tNode)
+                            * aPrevVelGP(aCellOrdinal, tDimK) * aGradient(aCellOrdinal, tNode, tDimK)
+                            * ( aGradient(aCellOrdinal, tNode, tDimJ) * aPrevVelGP(aCellOrdinal, tDimJ)
+                                    * aPrevVelGP(aCellOrdinal, tDimI) ) * aCellVolume(aCellOrdinal);
+                }
             }
         }
     }
@@ -2770,6 +2808,7 @@ calculate_natural_convective_forces
     }
 }
 
+// todo: fix stabilized calculation
 // calculate stabilized natural convective force integral, which is defined as F_i = Gr_i Pr^2 T^h
 template
 <Plato::OrdinalType SpaceDim,
@@ -2818,6 +2857,7 @@ calculate_brinkman_forces
     }
  }
 
+// todo: fix stabilized calculation
 // calculate stabilized brinkman force, which is defined as F_i = \frac{Pr}{Da} u^{n-1}_i
 template
 <Plato::OrdinalType SpaceDim,
@@ -3073,8 +3113,8 @@ public:
                 (aCellOrdinal, tPenalizedBrinkmanCoeff, tBasisFunctions, tCellVolume, tPrevVelGP, aResult);
 
             // 2. calculate stabilized internal forces
-            Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tPrevVelGP, tStabForceGP);
+            //Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
+            //    (aCellOrdinal, tGradient, tPrevVelGP, tStabForceGP);
             Plato::FluidMechanics::calculate_stabilized_natural_convective_forces<mNumSpatialDims>
                 (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tStabForceGP);
             Plato::FluidMechanics::calculate_stabilized_brinkman_forces<mNumSpatialDims>
@@ -6465,7 +6505,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
         tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
         tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
         Plato::FluidMechanics::calculate_stabilized_convective_forces<tNumNodesPerCell, tSpaceDims>
-            (aCellOrdinal, tGradient, tPrevVelGP, tResultWS);
+            (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, tResultWS);
     }, "unit test calculate_stabilized_convective_forces");
 
     /*
