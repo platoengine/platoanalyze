@@ -6513,9 +6513,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateViscousForces)
             (aCellOrdinal, tPenalizedPrNum, tCellVolume, tGradient, tStrainRate, tResultWS);
     }, "unit test calculate_stabilized_convective_forces");
 
-    /*
     auto tTol = 1e-4;
-    std::vector<std::vector<double>> tGold = {{12.0,16.0},{-36.0,-40.0}};
+    std::vector<std::vector<double>> tGold = {{-1.0,-1.0,0.0,0.0,1.0,1.0},{-1.0,-1.0,0.0,0.0,1.0,1.0}};
     auto tHostResultWS = Kokkos::create_mirror(tResultWS);
     Kokkos::deep_copy(tHostResultWS, tResultWS);
     for(auto& tGoldVector : tGold)
@@ -6527,9 +6526,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateViscousForces)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostResultWS(tVecIndex,tValIndex),tTol);
         }
     }
-    */
-    Plato::print_array_3D(tStrainRate, "strain rate");
-    Plato::print_array_2D(tResultWS, "stabilized convective forces");
+    //Plato::print_array_2D(tResultWS, "stabilized convective forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
