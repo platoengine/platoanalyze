@@ -6472,14 +6472,48 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+// todo: finish
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedBrinkmanForces)
+{
+    // set input data for unit test
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
+    Plato::ScalarMultiVector tPrevVelGP("velocity at GP", tNumCells, tSpaceDims);
+    auto tHostPrevVelGP = Kokkos::create_mirror(tPrevVelGP);
+    tHostPrevVelGP(0,0)=1; tHostPrevVelGP(0,1)=2;
+    tHostPrevVelGP(1,0)=3; tHostPrevVelGP(1,1)=4;
+    Kokkos::deep_copy(tPrevVelGP, tHostPrevVelGP);
+    Plato::ScalarMultiVector tResultGP("cell brinkman forces", tNumCells, tSpaceDims);
+    auto tBrinkmanCoeff = 10.0;
+
+    // call device kernel
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::FluidMechanics::calculate_stabilized_brinkman_forces<tSpaceDims>
+            (aCellOrdinal, tBrinkmanCoeff, tPrevVelGP, tResultGP);
+    }, "unit test calculate_stabilized_natural_convective_forces");
+
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{10.0,20.0},{30.0,40.0}};
+    auto tHostResultWS = Kokkos::create_mirror(tResultGP);
+    Kokkos::deep_copy(tHostResultWS, tResultGP);
+    for(auto& tGoldVector : tGold)
+    {
+        auto tVecIndex = &tGoldVector - &tGold[0];
+        for(auto& tGoldValue : tGoldVector)
+        {
+            auto tValIndex = &tGoldValue - &tGoldVector[0];
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostResultWS(tVecIndex,tValIndex),tTol);
+        }
+    }
+    //Plato::print_array_2D(tResultWS, "stabilized natural convective forces");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateBrinkmanForces)
 {
-    // build mesh, mesh sets, and spatial domain
-    constexpr auto tSpaceDims = 2;
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-
     // set input data for unit test
-    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
     constexpr auto tNumNodesPerCell = tSpaceDims + 1;
     constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
@@ -6504,7 +6538,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateBrinkmanForces)
     }, "unit test calculate_stabilized_natural_convective_forces");
 
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{1.66666666666667,3.33333333333333},{5.0,6.66666666666667}};
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{1.66666666666667,3.33333333333333,1.66666666666667,3.33333333333333,1.66666666666667,3.33333333333333},
+         {5.0,6.66666666666667,5.0,6.66666666666667,5.0,6.66666666666667}};
     auto tHostResultWS = Kokkos::create_mirror(tResultWS);
     Kokkos::deep_copy(tHostResultWS, tResultWS);
     for(auto& tGoldVector : tGold)
