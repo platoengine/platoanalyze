@@ -6490,7 +6490,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateNaturalConvectiveForces)
     Plato::Scalar tPenalizedPrNumTimesPrNum = 0.25;
     Plato::ScalarVector tPenalizedGrNum("Grashof Number", tSpaceDims);
     auto tHostPenalizedGrNum = Kokkos::create_mirror(tPenalizedGrNum);
-    tPenalizedGrNum(1) = 1.0;
+    tHostPenalizedGrNum(1) = 1.0;
     Kokkos::deep_copy(tPenalizedGrNum, tHostPenalizedGrNum);
 
     // set functors for unit test
@@ -6504,7 +6504,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateNaturalConvectiveForces)
     Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        tComputeVolume(aCellOrdinal, tConfigWS, tCellVolume);
+        tComputeVolume(aCellOrdinal, tConfigWS, tCellVolume(aCellOrdinal));
         tCellVolume(aCellOrdinal) *= tCubWeight;
         Plato::FluidMechanics::calculate_natural_convective_forces<tNumNodesPerCell, tSpaceDims>
             (aCellOrdinal, tPenalizedPrNumTimesPrNum, tPenalizedGrNum, tBasisFunctions, tCellVolume, tPrevTempGP, tResultWS);
