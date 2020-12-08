@@ -6512,7 +6512,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateNaturalConvectiveForces)
 
     auto tTol = 1e-4;
     std::vector<std::vector<double>> tGold =
-        {{0.0,4.166667e-2,0.0,4.166667e-2,0.0,4.166667e-2},{4.166667e-2,0.0,4.166667e-2,0.0,4.166667e-2,0.0}};
+        {{0.0,4.166667e-2,0.0,4.166667e-2,0.0,4.166667e-2},{0.0,4.166667e-2,0.0,4.166667e-2,0.0,4.166667e-2}};
     auto tHostResultWS = Kokkos::create_mirror(tResultWS);
     Kokkos::deep_copy(tHostResultWS, tResultWS);
     for(auto& tGoldVector : tGold)
