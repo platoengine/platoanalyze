@@ -2758,7 +2758,7 @@ template
  typename ControlT,
  typename StrainT>
 DEVICE_TYPE inline void
-calculate_vicous_forces
+calculate_viscous_forces
 (const Plato::OrdinalType & aCellOrdinal,
  const ControlT & aPenalizedPrandtlNum,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
@@ -3099,7 +3099,7 @@ public:
                 (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
             ControlT tPenalizedPrandtlNum = Plato::FluidMechanics::ramp_penalization<mNumNodesPerCell>
                 (aCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
-            Plato::FluidMechanics::calculate_vicous_forces<mNumNodesPerCell, mNumSpatialDims>
+            Plato::FluidMechanics::calculate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPenalizedPrandtlNum, tCellVolume, tGradient, tStrainRate, aResult);
 
             auto tPrNumTimesPrNum = tPrNum * tPrNum;
@@ -6472,7 +6472,7 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateVicousForces)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateViscousForces)
 {
     // build mesh, mesh sets, and spatial domain
     constexpr auto tSpaceDims = 2;
@@ -6481,7 +6481,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateVicousForces)
     // set input data for unit test
     auto tNumCells = tMesh->nelems();
     constexpr auto tNumNodesPerCell = tSpaceDims + 1;
-    constexpr auto tNumVelDofsPerNode = tSpaceDims;
     constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::ScalarArray3D tStrainRate("cell strain rate", tNumCells, tSpaceDims, tSpaceDims);
@@ -6510,7 +6509,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateVicousForces)
 
         Plato::FluidMechanics::strain_rate<tNumNodesPerCell, tSpaceDims>
             (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
-        Plato::FluidMechanics::calculate_vicous_forces<tNumNodesPerCell, tSpaceDims>
+        Plato::FluidMechanics::calculate_viscous_forces<tNumNodesPerCell, tSpaceDims>
             (aCellOrdinal, tPenalizedPrNum, tCellVolume, tGradient, tStrainRate, tResultWS);
     }, "unit test calculate_stabilized_convective_forces");
 
