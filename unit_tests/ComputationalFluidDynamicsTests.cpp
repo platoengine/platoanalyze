@@ -2682,37 +2682,8 @@ calculate_convective_forces
     }
 }
 
-// todo: fix stabilized calculation
 // calculate stabilized convective force integral, which is defined as
 // F_i = \frac{\partial}{\partial x_j}\left(u^{n-1}_j u^{n-1}_i\right)
-/*
-template
-<Plato::OrdinalType NumNodes,
- Plato::OrdinalType SpaceDim,
- typename ResultT,
- typename ConfigT,
- typename PrevVelT>
-DEVICE_TYPE inline void
-calculate_stabilized_convective_forces
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
-{
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
-        {
-            for(Plato::OrdinalType tDimJ = 0; tDimJ < SpaceDim; tDimJ++)
-            {
-                aResult(aCellOrdinal, tDimI) += aGradient(aCellOrdinal, tNode, tDimJ) *
-                    ( aPrevVelGP(aCellOrdinal, tDimJ) * aPrevVelGP(aCellOrdinal, tDimI) );
-            }
-        }
-    }
-}
-*/
-
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -2741,8 +2712,6 @@ calculate_stabilized_convective_forces
     }
 }
 
-
-// todo:finish
 /*
 template
 <Plato::OrdinalType NumNodes,
@@ -2841,7 +2810,6 @@ calculate_natural_convective_forces
     }
 }
 
-// todo: fix stabilized calculation
 // calculate stabilized natural convective force integral, which is defined as F_i = Gr_i Pr^2 T^h
 template
 <Plato::OrdinalType SpaceDim,
@@ -6556,7 +6524,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostResultGP(tVecIndex,tValIndex),tTol);
         }
     }
-    Plato::print_array_2D(tResultGP, "stabilized convective forces");
+    //Plato::print_array_2D(tResultGP, "stabilized convective forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
