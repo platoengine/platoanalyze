@@ -6472,7 +6472,7 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedNaturalConvectiveForces)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateBrinkmanForces)
 {
     // build mesh, mesh sets, and spatial domain
     constexpr auto tSpaceDims = 2;
@@ -6480,6 +6480,50 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedNaturalConvectiveFor
 
     // set input data for unit test
     auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::blas1::fill(0.5, tCellVolume);
+    Plato::ScalarMultiVector tPrevVelGP("velocity at GP", tNumCells, tSpaceDims);
+    auto tHostPrevVelGP = Kokkos::create_mirror(tPrevVelGP);
+    tHostPrevVelGP(0,0)=1; tHostPrevVelGP(0,1)=2;
+    tHostPrevVelGP(1,0)=3; tHostPrevVelGP(1,1)=4;
+    Kokkos::deep_copy(tPrevVelGP, tHostPrevVelGP);
+    Plato::ScalarMultiVector tResultWS("cell brinkman forces", tNumCells, tNumDofsPerCell);
+    auto tBrinkmanCoeff = 10.0;
+
+    // set functors for unit test
+    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
+
+    // call device kernel
+    auto tBasisFunctions = tCubRule.getBasisFunctions();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::FluidMechanics::calculate_brinkman_forces<tNumNodesPerCell, tSpaceDims>
+            (aCellOrdinal, tBrinkmanCoeff, tBasisFunctions, tCellVolume, tPrevVelGP, tResultWS);
+    }, "unit test calculate_stabilized_natural_convective_forces");
+
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{1.66666666666667,3.33333333333333},{5.0,6.66666666666667}};
+    auto tHostResultWS = Kokkos::create_mirror(tResultWS);
+    Kokkos::deep_copy(tHostResultWS, tResultWS);
+    for(auto& tGoldVector : tGold)
+    {
+        auto tVecIndex = &tGoldVector - &tGold[0];
+        for(auto& tGoldValue : tGoldVector)
+        {
+            auto tValIndex = &tGoldValue - &tGoldVector[0];
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostResultWS(tVecIndex,tValIndex),tTol);
+        }
+    }
+    //Plato::print_array_2D(tResultWS, "stabilized natural convective forces");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedNaturalConvectiveForces)
+{
+    // set input data for unit test
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::ScalarVector tPrevTempGP("temperature at GP", tNumCells);
     Plato::blas1::fill(1.0, tPrevTempGP);
