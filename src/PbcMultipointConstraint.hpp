@@ -67,7 +67,9 @@ public:
 
     // ! Perform translation mapping from child nodes to parent locations
     void mapChildVertexLocations(Omega_h::Mesh & aMesh,
-                                 const Plato::Scalar aTranslation[],
+                                 const Plato::Scalar aTranslationX,
+                                 const Plato::Scalar aTranslationY,
+                                 const Plato::Scalar aTranslationZ,
                                  Plato::ScalarMultiVector & aLocations,
                                  Plato::ScalarMultiVector & aMappedLocations);
     

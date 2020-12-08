@@ -30,14 +30,15 @@ PbcMultipointConstraint(Omega_h::Mesh & aMesh,
     // parse translation vector
     bool tIsVector = aParam.isType<Teuchos::Array<Plato::Scalar>>("Vector");
 
-    Plato::Scalar tTranslation[Plato::Geometry::cSpaceDim];
+    Plato::Scalar tTranslationX;
+    Plato::Scalar tTranslationY;
+    Plato::Scalar tTranslationZ;
     if (tIsVector)
     {
         auto tVector = aParam.get<Teuchos::Array<Plato::Scalar>>("Vector");
-        for(Plato::OrdinalType iDim=0; iDim<Plato::Geometry::cSpaceDim; iDim++)
-        {
-            tTranslation[iDim] = tVector[iDim]; 
-        }
+        tTranslationX = tVector[0];
+        tTranslationY = tVector[1];
+        tTranslationZ = tVector[2];
     }
     else
     {
@@ -46,9 +47,9 @@ PbcMultipointConstraint(Omega_h::Mesh & aMesh,
         THROWERR(tMsg.str())
     }
 
-    auto tLength = tTranslation[0] * tTranslation[0]
-                 + tTranslation[1] * tTranslation[1]
-                 + tTranslation[2] * tTranslation[2];
+    auto tLength = tTranslationX * tTranslationX
+                 + tTranslationY * tTranslationY
+                 + tTranslationZ * tTranslationZ;
 
     if( tLength == 0.0 )
     {
@@ -83,7 +84,7 @@ PbcMultipointConstraint(Omega_h::Mesh & aMesh,
     Plato::ScalarMultiVector tChildNodeLocations       ("child node locations",        Plato::Geometry::cSpaceDim, tNumberChildNodes);
     Plato::ScalarMultiVector tMappedChildNodeLocations ("mapped child node locations", Plato::Geometry::cSpaceDim, tNumberChildNodes);
 
-    this->mapChildVertexLocations(aMesh, tTranslation, tChildNodeLocations, tMappedChildNodeLocations);
+    this->mapChildVertexLocations(aMesh, tTranslationX, tTranslationY, tTranslationZ, tChildNodeLocations, tMappedChildNodeLocations);
     
     // find elements that contain mapped child node locations
     Plato::LocalOrdinalVector tParentElements("mapped elements", tNumberChildNodes);
@@ -164,8 +165,8 @@ updateLengths(OrdinalType& lengthChild,
 {
     auto tNumberChildNodes = mChildNodes.size();
     auto tNumberParentNodes = mParentNodes.size();
-    const auto& tMpcRowMap = mMpcMatrix->rowMap();
-    auto tNumberNonzero = tMpcRowMap(tNumberChildNodes);
+    const auto& tMpcColMap = mMpcMatrix->columnIndices();
+    auto tNumberNonzero = tMpcColMap.size();
 
     lengthChild += tNumberChildNodes;
     lengthParent += tNumberParentNodes;
@@ -189,7 +190,9 @@ updateNodesets(const OrdinalType& tNumberChildNodes,
 /****************************************************************************/
 void Plato::PbcMultipointConstraint::
 mapChildVertexLocations(Omega_h::Mesh & aMesh,
-                        const Plato::Scalar aTranslation[],
+                        const Plato::Scalar aTranslationX,
+                        const Plato::Scalar aTranslationY,
+                        const Plato::Scalar aTranslationZ,
                         Plato::ScalarMultiVector & aLocations,
                         Plato::ScalarMultiVector & aMappedLocations)
 /****************************************************************************/
@@ -206,9 +209,9 @@ mapChildVertexLocations(Omega_h::Mesh & aMesh,
             aLocations(iDim, nodeOrdinal) = tCoords[childNode*Plato::Geometry::cSpaceDim+iDim];
         }
         // perform translation mapping
-        aMappedLocations(0, nodeOrdinal) = aLocations(0, nodeOrdinal) + aTranslation[0];
-        aMappedLocations(1, nodeOrdinal) = aLocations(1, nodeOrdinal) + aTranslation[1];
-        aMappedLocations(2, nodeOrdinal) = aLocations(2, nodeOrdinal) + aTranslation[2];
+        aMappedLocations(0, nodeOrdinal) = aLocations(0, nodeOrdinal) + aTranslationX;
+        aMappedLocations(1, nodeOrdinal) = aLocations(1, nodeOrdinal) + aTranslationY;
+        aMappedLocations(2, nodeOrdinal) = aLocations(2, nodeOrdinal) + aTranslationZ;
     }, "get verts and apply map");
 }
 
