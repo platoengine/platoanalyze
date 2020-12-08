@@ -2884,8 +2884,8 @@ calculate_brinkman_forces
         for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
             auto tDofIndex = (SpaceDim * tNode) + tDim;
-            aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) *
-                aBasisFunctions(tNode) * (aPenalizedBrinkmanCoeff * aPrevVelGP(aCellOrdinal, tDim));
+            aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) * aBasisFunctions(tNode)
+                    * ( aPenalizedBrinkmanCoeff * aPrevVelGP(aCellOrdinal, tDim) );
         }
     }
  }
@@ -2926,21 +2926,23 @@ integrate_stabilized_forces
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelWS,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
  const Plato::ScalarMultiVectorT<StabForceT> & aStabForce,
- const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<ResultT> & aResult)
  {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
         for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
         {
-            auto tDofIndex = (SpaceDim * tNode) + tDimI;
-            for(Plato::OrdinalType tDimJ = 0; tDimJ < SpaceDim; tDimJ++)
+            auto tDofIndexI = (SpaceDim * tNode) + tDimI;
+            for(Plato::OrdinalType tDimK = 0; tDimK < SpaceDim; tDimK++)
             {
-                // todo: unit test this code to understand application
-                aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) * aBasisFunctions(tNode)
-                    * ( aGradient(aCellOrdinal, tNode, tDimJ) * aPrevVelGP(aCellOrdinal, tDimJ) ) * aStabForce(aCellOrdinal, tDimI);
+                auto tDofIndexK = (SpaceDim * tNode) + tDimK;
+                aResult(aCellOrdinal, tDofIndexI) += aBasisFunctions(tNode)
+                    * ( aGradient(aCellOrdinal, tNode, tDimK) * aPrevVelWS(aCellOrdinal, tDofIndexK) )
+                        * aStabForce(aCellOrdinal, tDimI) * aCellVolume(aCellOrdinal) ;
             }
         }
     }
@@ -3146,15 +3148,15 @@ public:
                 (aCellOrdinal, tPenalizedBrinkmanCoeff, tBasisFunctions, tCellVolume, tPrevVelGP, aResult);
 
             // 2. calculate stabilized internal forces
-            //Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-            //    (aCellOrdinal, tGradient, tPrevVelGP, tStabForceGP);
+            Plato::FluidMechanics::calculate_stabilized_convective_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tStabForceGP);
             Plato::FluidMechanics::calculate_stabilized_natural_convective_forces<mNumSpatialDims>
                 (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tStabForceGP);
             Plato::FluidMechanics::calculate_stabilized_brinkman_forces<mNumSpatialDims>
                 (aCellOrdinal, tPenalizedBrinkmanCoeff, tPrevVelGP, tStabForceGP);
 
             Plato::FluidMechanics::integrate_stabilized_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, tStabForceGP, tGradient, tStabForce);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tStabForceGP, tStabForce);
             Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForce);
             Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForce, 1.0, aResult);
@@ -6541,9 +6543,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
             (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tResultWS);
     }, "unit test calculate_stabilized_convective_forces");
 
-    /*
     auto tTol = 1e-4;
-    std::vector<std::vector<double>> tGold = {{-1.5,-2.0,-0.5},{13.5,15.0,1.5}};
+    std::vector<std::vector<double>> tGold = {{27.0,36.0},{732.0,814.0}};
     auto tHostResultWS = Kokkos::create_mirror(tResultWS);
     Kokkos::deep_copy(tHostResultWS, tResultWS);
     for(auto& tGoldVector : tGold)
@@ -6555,7 +6556,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostResultWS(tVecIndex,tValIndex),tTol);
         }
     }
-    */
     Plato::print_array_2D(tResultWS, "stabilized convective forces");
 }
 
