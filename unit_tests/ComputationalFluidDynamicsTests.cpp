@@ -2713,7 +2713,37 @@ calculate_stabilized_convective_forces
 }
 */
 
+template
+<Plato::OrdinalType NumNodes,
+ Plato::OrdinalType SpaceDim,
+ typename ResultT,
+ typename ConfigT,
+ typename PrevVelT>
+DEVICE_TYPE inline void
+calculate_stabilized_convective_forces
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelWS,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
+        {
+            for(Plato::OrdinalType tDimJ = 0; tDimJ < SpaceDim; tDimJ++)
+            {
+                auto tDofIndexJ = (SpaceDim * tNode) + tDimJ;
+                aResult(aCellOrdinal, tDimI) += aGradient(aCellOrdinal, tNode, tDimJ) *
+                    ( aPrevVelWS(aCellOrdinal, tDofIndexJ) * aPrevVelGP(aCellOrdinal, tDimI) );
+            }
+        }
+    }
+}
+
+
 // todo:finish
+/*
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -2747,6 +2777,7 @@ calculate_stabilized_convective_forces
         }
     }
 }
+*/
 
 // calculate viscous force integral, which is defined as,
 // \int_{\Omega_e}\frac{\partial N_u^a}{\partial x_j}\tau^h_{ij} d\Omega_e
@@ -6507,7 +6538,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
         tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
         tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
         Plato::FluidMechanics::calculate_stabilized_convective_forces<tNumNodesPerCell, tSpaceDims>
-            (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, tResultWS);
+            (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tResultWS);
     }, "unit test calculate_stabilized_convective_forces");
 
     /*
