@@ -6518,7 +6518,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
     Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
-    Plato::ScalarMultiVector tResultWS("cell stabilized convective forces", tNumCells, tSpaceDims);
+    Plato::ScalarMultiVector tResultGP("cell stabilized convective forces", tNumCells, tSpaceDims);
     Plato::ScalarMultiVector tPrevVelGP("previous velocity at Gauss point", tNumCells, tSpaceDims);
     Plato::ScalarMultiVector tPrevVelWS("previous velocity workset", tNumCells, tNumDofsPerCell);
     auto tHostPrevVelWS = Kokkos::create_mirror(tPrevVelWS);
@@ -6540,23 +6540,23 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
         tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
         tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
         Plato::FluidMechanics::calculate_stabilized_convective_forces<tNumNodesPerCell, tSpaceDims>
-            (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tResultWS);
+            (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tResultGP);
     }, "unit test calculate_stabilized_convective_forces");
 
     auto tTol = 1e-4;
-    std::vector<std::vector<double>> tGold = {{27.0,36.0},{732.0,814.0}};
-    auto tHostResultWS = Kokkos::create_mirror(tResultWS);
-    Kokkos::deep_copy(tHostResultWS, tResultWS);
+    std::vector<std::vector<double>> tGold = {{12.0,16.0},{-36.0,-40.0}};
+    auto tHostResultGP = Kokkos::create_mirror(tResultGP);
+    Kokkos::deep_copy(tHostResultGP, tResultGP);
     for(auto& tGoldVector : tGold)
     {
         auto tVecIndex = &tGoldVector - &tGold[0];
         for(auto& tGoldValue : tGoldVector)
         {
             auto tValIndex = &tGoldValue - &tGoldVector[0];
-            TEST_FLOATING_EQUALITY(tGoldValue,tHostResultWS(tVecIndex,tValIndex),tTol);
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostResultGP(tVecIndex,tValIndex),tTol);
         }
     }
-    Plato::print_array_2D(tResultWS, "stabilized convective forces");
+    Plato::print_array_2D(tResultGP, "stabilized convective forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
