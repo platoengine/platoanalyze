@@ -6480,8 +6480,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedNaturalConvectiveFor
 
     // set input data for unit test
     auto tNumCells = tMesh->nelems();
-    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
-    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::ScalarVector tPrevTempGP("temperature at GP", tNumCells);
     Plato::blas1::fill(1.0, tPrevTempGP);
