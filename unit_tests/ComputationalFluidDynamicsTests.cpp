@@ -2662,6 +2662,7 @@ calculate_convective_forces
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelWS,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
  const Plato::ScalarMultiVectorT<ResultT> & aResult)
 {
@@ -2669,12 +2670,13 @@ calculate_convective_forces
     {
         for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
         {
-            auto tDofIndex = (SpaceDim * tNode) + tDimI;
+            auto tDofIndexI = (SpaceDim * tNode) + tDimI;
             for(Plato::OrdinalType tDimJ = 0; tDimJ < SpaceDim; tDimJ++)
             {
-                aResult(aCellOrdinal, tDofIndex) +=
-                    aCellVolume(aCellOrdinal) * aBasisFunctions(tNode) * ( aGradient(aCellOrdinal, tNode, tDimJ)
-                        *  ( aPrevVelGP(aCellOrdinal, tDimJ) * aPrevVelGP(aCellOrdinal, tDimI) ) );
+                auto tDofIndexJ = (SpaceDim * tNode) + tDimJ;
+                aResult(aCellOrdinal, tDofIndexI) +=  aBasisFunctions(tNode)
+                    * ( aGradient(aCellOrdinal, tNode, tDimJ) * ( aPrevVelWS(aCellOrdinal, tDofIndexJ)
+                            * aPrevVelGP(aCellOrdinal, tDimI) ) ) * aCellVolume(aCellOrdinal);
             }
         }
     }
@@ -3090,7 +3092,7 @@ public:
             // 1. calculate internal forces
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::FluidMechanics::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, aResult);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, aResult);
 
             Plato::FluidMechanics::strain_rate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
@@ -6564,7 +6566,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
         tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
         tCellVolume(aCellOrdinal) *= tCubWeight;
         Plato::FluidMechanics::calculate_convective_forces<tNumNodesPerCell, tSpaceDims>
-            (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, tResultWS);
+            (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tResultWS);
     }, "unit test calculate_convective_forces");
 
     auto tTol = 1e-4;
