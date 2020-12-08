@@ -6510,9 +6510,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateNaturalConvectiveForces)
             (aCellOrdinal, tPenalizedPrNumTimesPrNum, tPenalizedGrNum, tBasisFunctions, tCellVolume, tPrevTempGP, tResultWS);
     }, "unit test calculate_stabilized_convective_forces");
 
-    /*
     auto tTol = 1e-4;
-    std::vector<std::vector<double>> tGold = {{-1.0,-1.0,0.0,0.0,1.0,1.0},{-1.0,-1.0,0.0,0.0,1.0,1.0}};
+    std::vector<std::vector<double>> tGold =
+        {{0.0,4.166667e-2,0.0,4.166667e-2,0.0,4.166667e-2},{4.166667e-2,0.0,4.166667e-2,0.0,4.166667e-2,0.0}};
     auto tHostResultWS = Kokkos::create_mirror(tResultWS);
     Kokkos::deep_copy(tHostResultWS, tResultWS);
     for(auto& tGoldVector : tGold)
@@ -6524,8 +6524,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateNaturalConvectiveForces)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostResultWS(tVecIndex,tValIndex),tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResultWS, "natural convective forces");
+    //Plato::print_array_2D(tResultWS, "natural convective forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateViscousForces)
