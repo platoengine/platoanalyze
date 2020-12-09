@@ -6602,10 +6602,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces)
             (aCellOrdinal, tBasisFunctions, tCellVolume, tPredVelGP, tPrevVelGP, tResult);
     }, "unit test calculate_inertial_forces");
 
-    /*
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.5,0.5,1.0,1.0,1.5,1.5},{2.0,2.0,2.5,2.5,3.0,3.0}};
+        {{-1.666667e-01,-3.333333e-01,-1.666667e-01,-3.333333e-01,-1.666667e-01,-3.333333e-01},
+         {-5.000000e-01,-6.666667e-01,-5.000000e-01,-6.666667e-01,-5.000000e-01,-6.666667e-01}};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tGoldVector : tGold)
@@ -6617,8 +6617,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostResult(tCell,tDof),tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "inertial forces");
+    //Plato::print_array_2D(tResult, "inertial forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MultiplyTimeStep)
