@@ -1770,7 +1770,7 @@ deviatoric_stress
 (const Plato::OrdinalType & aCellOrdinal,
  const ControlT & aPrandtlNum,
  const Plato::ScalarArray3DT<StrainT> & aStrain,
- const Plato::ScalarArray3DT<StressT> & aStress,)
+ const Plato::ScalarArray3DT<StressT> & aStress)
 {
     for(Plato::OrdinalType tDimI = 0; tDimI < NumSpaceDim; tDimI++)
     {
@@ -3345,7 +3345,7 @@ public:
                 (aCellOrdinal, tDivPrevVel, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, tInternalForces, tStabForces);
             Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>  // todo unit test
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForceWS, 1.0, aResultWS);
+            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForces, 1.0, aResultWS);
 
             // 3. apply time step to sum of internal and stabilizing forces, F = \Delta{t} * \left( F_i^{int} + F_i^{stab} \right)
             Plato::FluidMechanics::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
@@ -6978,65 +6978,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStabilizedConvectiveForces)
     //Plato::print_array_2D(tResultGP, "stabilized convective forces");
 }
 */
-
-// TODO : FIX
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
-{
-    // build mesh, mesh sets, and spatial domain
-    constexpr auto tSpaceDims = 2;
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-
-    // set input data for unit test
-    auto tNumCells = tMesh->nelems();
-    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
-    constexpr auto tNumVelDofsPerNode = tSpaceDims;
-    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
-    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
-    Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
-    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
-    Plato::ScalarMultiVector tResultWS("cell convective forces", tNumCells, tNumDofsPerCell);
-    Plato::ScalarMultiVector tPrevVelWS("previous velocity workset", tNumCells, tNumDofsPerCell);
-    auto tHostPrevVelWS = Kokkos::create_mirror(tPrevVelWS);
-    tHostPrevVelWS(0,0) = 1; tHostPrevVelWS(0,1) = 2; tHostPrevVelWS(0,2) = 3; tHostPrevVelWS(0,3) = 4 ; tHostPrevVelWS(0,4) = 5 ; tHostPrevVelWS(0,5) = 6;
-    tHostPrevVelWS(1,0) = 7; tHostPrevVelWS(1,1) = 8; tHostPrevVelWS(1,2) = 9; tHostPrevVelWS(1,3) = 10; tHostPrevVelWS(1,4) = 11; tHostPrevVelWS(1,5) = 12;
-    Kokkos::deep_copy(tPrevVelWS, tHostPrevVelWS);
-    Plato::ScalarMultiVector tPrevVelGP("previous velocity at Gauss point", tNumCells, tSpaceDims);
-
-    // set functors for unit test
-    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
-    Plato::ComputeGradientWorkset<tSpaceDims> tComputeGradient;
-    Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-    Plato::InterpolateFromNodal<tSpaceDims, tNumVelDofsPerNode, 0/*offset*/, tSpaceDims> tIntrplVectorField;
-
-    // call device kernel
-    auto tCubWeight = tCubRule.getCubWeight();
-    auto tBasisFunctions = tCubRule.getBasisFunctions();
-    Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
-        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
-        tCellVolume(aCellOrdinal) *= tCubWeight;
-        Plato::FluidMechanics::calculate_convective_forces<tNumNodesPerCell, tSpaceDims>
-            (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tResultWS);
-    }, "unit test calculate_convective_forces");
-
-    auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold =
-        {{-0.5,-0.666667,-0.5,-0.666667,3.0,4.0},{10.5,11.666667,1.5,1.666667,-18.0,-20.0}};
-    auto tHostResultWS = Kokkos::create_mirror(tResultWS);
-    Kokkos::deep_copy(tHostResultWS, tResultWS);
-    for(auto& tGoldVector : tGold)
-    {
-        auto tVecIndex = &tGoldVector - &tGold[0];
-        for(auto& tGoldValue : tGoldVector)
-        {
-            auto tValIndex = &tGoldValue - &tGoldVector[0];
-            TEST_FLOATING_EQUALITY(tGoldValue,tHostResultWS(tVecIndex,tValIndex),tTol);
-        }
-    }
-    //Plato::print_array_2D(tResultWS, "convective forces");
-}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_update)
 {
