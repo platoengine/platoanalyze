@@ -3230,7 +3230,7 @@ public:
                 (aCellOrdinal, tGradient, tPrevVelWS, tDivPrevVel);
             Plato::Fluids::integrate_stabilizing_forces<mNumNodesPerCell, mNumSpatialDims> // todo unit test
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tDivPrevVel, tGradient, tPrevVelGP, tInternalForces, tStabForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>  // todo unit test
+            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces);
             Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForces, 1.0, aResultWS);
 
@@ -6576,6 +6576,50 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces)
+{
+    // set input data for unit test
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::blas1::fill(0.5, tCellVolume);
+    Plato::ScalarMultiVector tResult("result", tNumCells, tNumDofsPerCell);
+    Plato::ScalarMultiVector tPredVelGP("predicted velocities", tNumCells, tNumNodesPerCell);
+    Plato::ScalarMultiVector tPrevVelGP("previous velocities", tNumCells, tNumNodesPerCell);
+    auto tHostPrevVelGP = Kokkos::create_mirror(tPrevVelGP);
+    tHostPrevVelGP(0,0) = 1; tHostPrevVelGP(0,1) = 2;
+    tHostPrevVelGP(1,0) = 3; tHostPrevVelGP(1,1) = 4;
+    Kokkos::deep_copy(tPrevVelGP, tHostTimeStep);
+
+    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
+    auto tBasisFunctions = tCubRule.getBasisFunctions();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Fluids::calculate_inertial_forces<tNumNodesPerCell, tSpaceDims>
+            (aCellOrdinal, tBasisFunctions, tCellVolume, tPredVelGP, tPrevVelGP, tResult);
+    }, "unit test calculate_inertial_forces");
+
+    /*
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{0.5,0.5,1.0,1.0,1.5,1.5},{2.0,2.0,2.5,2.5,3.0,3.0}};
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for(auto& tGoldVector : tGold)
+    {
+        auto tCell = &tGoldVector - &tGold[0];
+        for(auto& tGoldValue : tGoldVector)
+        {
+            auto tDof = &tGoldValue - &tGoldVector[0];
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostResult(tCell,tDof),tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "inertial forces");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MultiplyTimeStep)
 {
