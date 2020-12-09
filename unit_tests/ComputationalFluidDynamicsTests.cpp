@@ -3037,7 +3037,7 @@ template
  typename ConfigT,
  typename ForceT>
 DEVICE_TYPE inline
-void integrate_internal_forces
+void integrate
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
@@ -3334,7 +3334,7 @@ public:
             Plato::Fluids::calculate_brinkman_forces<mNumSpatialDims>
                 (aCellOrdinal, tPenalizedBrinkmanCoeff, tPrevVelGP, tInternalForces);
 
-            Plato::Fluids::integrate_internal_forces<mNumNodesPerCell, mNumSpatialDims>  // todo unit test
+            Plato::Fluids::integrate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
 
             // 2. add stabilizing internal force contribution
@@ -6690,9 +6690,47 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateInternalForces)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Divergence)
 {
+    // build mesh, mesh sets, and spatial domain
+    constexpr auto tSpaceDims = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
 
+    // set input data for unit test
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarMultiVector tPrevVelWS("previous velocity", tNumCells, tNumDofsPerCell);
+    auto tHostPrevVelWS = Kokkos::create_mirror(tPrevVelWS);
+    tHostPrevVelWS(0,0) = 1; tHostPrevVelWS(0,1) = 2; tHostPrevVelWS(0,2) = 3; tHostPrevVelWS(0,3) = 4 ; tHostPrevVelWS(0,4) = 5 ; tHostPrevVelWS(0,5) = 6;
+    tHostPrevVelWS(1,0) = 7; tHostPrevVelWS(1,1) = 8; tHostPrevVelWS(1,2) = 9; tHostPrevVelWS(1,3) = 10; tHostPrevVelWS(1,4) = 11; tHostPrevVelWS(1,5) = 12;
+    Kokkos::deep_copy(tPrevVelWS, tHostPrevVelWS);
+
+    // set functors for unit test
+    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
+    Plato::ComputeGradientWorkset<tSpaceDims> tComputeGradient;
+    Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+
+    // call device kernel
+    auto tResult = 0.0;
+    auto tCubWeight = tCubRule.getCubWeight();
+    auto tBasisFunctions = tCubRule.getBasisFunctions();
+    Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        Plato::Fluids::divergence<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, tGradient, tPrevVelWS, tResult);
+    }, "unit test integrate");
+
+    auto tTol = 1e-4;
+    TEST_FLOATING_EQUALITY(0.0,tResult,tTol);
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Integrate)
+{
     // set input data for unit test
     constexpr auto tNumCells = 2;
     constexpr auto tSpaceDims = 2;
@@ -6713,9 +6751,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateInternalForces)
     auto tBasisFunctions = tCubRule.getBasisFunctions();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::Fluids::integrate_internal_forces<tNumNodesPerCell, tSpaceDims>
+        Plato::Fluids::integrate<tNumNodesPerCell, tSpaceDims>
             (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, tResult);
-    }, "unit test integrate_internal_forces");
+    }, "unit test integrate");
 
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
