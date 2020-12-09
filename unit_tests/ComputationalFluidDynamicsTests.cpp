@@ -6592,7 +6592,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces)
     auto tHostPrevVelGP = Kokkos::create_mirror(tPrevVelGP);
     tHostPrevVelGP(0,0) = 1; tHostPrevVelGP(0,1) = 2;
     tHostPrevVelGP(1,0) = 3; tHostPrevVelGP(1,1) = 4;
-    Kokkos::deep_copy(tPrevVelGP, tHostTimeStep);
+    Kokkos::deep_copy(tPrevVelGP, tHostPrevVelGP);
 
     Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
     auto tBasisFunctions = tCubRule.getBasisFunctions();
