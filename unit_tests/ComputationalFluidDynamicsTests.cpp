@@ -3318,7 +3318,7 @@ public:
                 (aCellOrdinal, tPenalizedPrandtlNum, tCellVolume, tGradient, tStrainRate, aResultWS);
 
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
-            Plato::Fluids::calculate_advected_internal_forces<mNumNodesPerCell, mNumSpatialDims>  // todo unit test
+            Plato::Fluids::calculate_advected_internal_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tInternalForces);
 
             auto tPrNumTimesPrNum = tPrNum * tPrNum;
@@ -6690,6 +6690,50 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateInternalForces)
+{
+
+    // set input data for unit test
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::blas1::fill(0.5, tCellVolume);
+    Plato::ScalarMultiVector tResult("results", tNumCells, tNumDofsPerCell);
+    Plato::ScalarMultiVector tInternalForces("internal forces", tNumCells, tSpaceDims);
+
+    // set functors for unit test
+    Plato::ComputeCellVolume<tSpaceDims> tComputeVolume;
+    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
+
+    // call device kernel
+    auto tCubWeight = tCubRule.getCubWeight();
+    auto tBasisFunctions = tCubRule.getBasisFunctions();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Fluids::integrate_internal_forces<tNumNodesPerCell, tSpaceDims>
+            (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, tResult);
+    }, "unit test integrate_internal_forces");
+
+    /*
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{26.0,30.0},{-74.0,-78.0}};
+    auto tHostInternalForces = Kokkos::create_mirror(tInternalForces);
+    Kokkos::deep_copy(tHostInternalForces, tInternalForces);
+    for(auto& tGoldVector : tGold)
+    {
+        auto tVecIndex = &tGoldVector - &tGold[0];
+        for(auto& tGoldValue : tGoldVector)
+        {
+            auto tValIndex = &tGoldValue - &tGoldVector[0];
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostInternalForces(tVecIndex,tValIndex),tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "integrated forces");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateAdvectedInternalForces)
 {
     // build mesh, mesh sets, and spatial domain
@@ -6730,7 +6774,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateAdvectedInternalForces)
         tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
         Plato::Fluids::calculate_advected_internal_forces<tNumNodesPerCell, tSpaceDims>
             (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tInternalForces);
-    }, "unit test calculate_brinkman_forces");
+    }, "unit test calculate_advected_internal_forces");
 
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold = {{26.0,30.0},{-74.0,-78.0}};
