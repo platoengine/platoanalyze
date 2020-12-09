@@ -2948,7 +2948,7 @@ void divergence
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
- typename DivergenceT,
+ typename DivVelT,
  typename ResultT,
  typename ConfigT,
  typename PrevVelT,
@@ -2956,9 +2956,9 @@ template
 DEVICE_TYPE inline void
 integrate_stabilizing_forces
 (const Plato::OrdinalType & aCellOrdinal,
- const DivergenceT & aDivPrevVel,
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarVectorT<DivVelT> & aDivPrevVel,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
  const Plato::ScalarMultiVectorT<StabForceT> & aStabForce,
@@ -2973,7 +2973,7 @@ integrate_stabilizing_forces
             {
                 aResult(aCellOrdinal, tCellDofI) += aCellVolume(aCellOrdinal) *
                     ( aPrevVelGP(aCellOrdinal, tDimK) * aGradient(aCellOrdinal, tNode, tDimK) +
-                        aDivPrevVel * aBasisFunctions(tNode) ) * aStabForce(aCellOrdinal, tDimI);
+                        aDivPrevVel(aCellOrdinal) * aBasisFunctions(tNode) ) * aStabForce(aCellOrdinal, tDimI);
             }
         }
     }
@@ -3341,7 +3341,7 @@ public:
             Plato::Fluids::divergence<mNumNodesPerCell, mNumSpatialDims>  // todo unit test
                 (aCellOrdinal, tGradient, tPrevVelWS, tDivPrevVel);
             Plato::Fluids::integrate_stabilizing_forces<mNumNodesPerCell, mNumSpatialDims> // todo unit test
-                (aCellOrdinal, tDivPrevVel, tBasisFunctions, tCellVolume, tGradient, tPrevVelGP, tInternalForces, tStabForces);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tDivPrevVel, tGradient, tPrevVelGP, tInternalForces, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>  // todo unit test
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces);
             Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForces, 1.0, aResultWS);
@@ -6724,21 +6724,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Divergence)
         Plato::Fluids::divergence<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, tGradient, tPrevVelWS, tResult);
     }, "unit test integrate");
 
-    /*
     auto tTol = 1e-4;
     std::vector<Plato::Scalar> tGold = {2.0,-2.0};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
-    for(auto& tGoldVector : tGold)
+    for(auto& tValue : tGold)
     {
-        auto tCell = &tGoldVector - &tGold[0];
-        for(auto& tGoldValue : tGoldVector)
-        {
-            auto tDof = &tGoldValue - &tGoldVector[0];
-            TEST_FLOATING_EQUALITY(tGoldValue,tHostResult(tCell,tDof),tTol);
-        }
+        auto tCell = &tValue - &tGold[0];
+        TEST_FLOATING_EQUALITY(tValue,tHostResult(tCell),tTol);
     }
-    */
     Plato::print(tResult, "divergence");
 }
 
