@@ -6732,9 +6732,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateAdvectedInternalForces)
             (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tInternalForces);
     }, "unit test calculate_brinkman_forces");
 
-    /*
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{10.0,20.0},{30.0,40.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{26.0,30.0},{-74.0,-78.0}};
     auto tHostInternalForces = Kokkos::create_mirror(tInternalForces);
     Kokkos::deep_copy(tHostInternalForces, tInternalForces);
     for(auto& tGoldVector : tGold)
@@ -6746,7 +6745,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateAdvectedInternalForces)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostInternalForces(tVecIndex,tValIndex),tTol);
         }
     }
-    */
     Plato::print_array_2D(tInternalForces, "advected internal forces");
 }
 
