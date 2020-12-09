@@ -6720,18 +6720,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateInternalForces)
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
         {{4.333333,5.0,4.333333,5.0,4.333333,5.0},{-1.233333,-1.3,-1.233333,-1.3,-1.233333,-1.3}};
-    auto tHostInternalForces = Kokkos::create_mirror(tInternalForces);
-    Kokkos::deep_copy(tHostInternalForces, tInternalForces);
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tGoldVector : tGold)
     {
         auto tVecIndex = &tGoldVector - &tGold[0];
         for(auto& tGoldValue : tGoldVector)
         {
             auto tValIndex = &tGoldValue - &tGoldVector[0];
-            TEST_FLOATING_EQUALITY(tGoldValue,tHostInternalForces(tVecIndex,tValIndex),tTol);
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostResult(tVecIndex,tValIndex),tTol);
         }
     }
-    Plato::print_array_2D(tHostInternalForces, "integrated forces");
+    Plato::print_array_2D(tHostResult, "integrated forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateAdvectedInternalForces)
