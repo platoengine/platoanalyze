@@ -2921,7 +2921,7 @@ calculate_brinkman_forces
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
- typename OutputT,
+ typename ResultT,
  typename ConfigT,
  typename PrevVelT>
 DEVICE_TYPE inline
@@ -2929,15 +2929,14 @@ void divergence
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelWS,
- OutputT & aOutput)
+ const Plato::ScalarVectorT<ResultT> & aResult)
 {
-    aOutput = 0.0;
     for (Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
         for (Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
             auto tCellDof = (SpaceDim * tNode) + tDim;
-            aOutput += aGradient(aCellOrdinal, tNode, tDim) * aPrevVelWS(aCellOrdinal, tCellDof);
+            aResult(aCellOrdinal) += aGradient(aCellOrdinal, tNode, tDim) * aPrevVelWS(aCellOrdinal, tCellDof);
         }
     }
 }
@@ -3269,6 +3268,7 @@ public:
         }
 
         Plato::ScalarVectorT<ConfigT>   tCellVolume("cell weight", tNumCells);
+        Plato::ScalarVectorT<StrainT>   tDivPrevVel("divergence previous velocity", tNumCells);
         Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
 
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
@@ -3338,7 +3338,6 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
 
             // 2. add stabilizing internal force contribution
-            StrainT tDivPrevVel(0.0);
             Plato::Fluids::divergence<mNumNodesPerCell, mNumSpatialDims>  // todo unit test
                 (aCellOrdinal, tGradient, tPrevVelWS, tDivPrevVel);
             Plato::Fluids::integrate_stabilizing_forces<mNumNodesPerCell, mNumSpatialDims> // todo unit test
@@ -6700,6 +6699,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Divergence)
     auto tNumCells = tMesh->nelems();
     constexpr auto tNumNodesPerCell = tSpaceDims + 1;
     constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
+    Plato::ScalarVector tResult("divergence", tNumCells);
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
     Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
@@ -6715,7 +6715,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Divergence)
     Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
 
     // call device kernel
-    auto tResult = 0.0;
     auto tCubWeight = tCubRule.getCubWeight();
     auto tBasisFunctions = tCubRule.getBasisFunctions();
     Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
@@ -6725,8 +6724,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Divergence)
         Plato::Fluids::divergence<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, tGradient, tPrevVelWS, tResult);
     }, "unit test integrate");
 
+    /*
     auto tTol = 1e-4;
-    TEST_FLOATING_EQUALITY(0.0,tResult,tTol);
+    std::vector<Plato::Scalar> tGold = {2.0,-2.0};
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for(auto& tGoldVector : tGold)
+    {
+        auto tCell = &tGoldVector - &tGold[0];
+        for(auto& tGoldValue : tGoldVector)
+        {
+            auto tDof = &tGoldValue - &tGoldVector[0];
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostResult(tCell,tDof),tTol);
+        }
+    }
+    */
+    Plato::print(tResult, "divergence");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Integrate)
