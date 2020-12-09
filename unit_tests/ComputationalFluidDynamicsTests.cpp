@@ -6725,7 +6725,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Divergence)
     }, "unit test integrate");
 
     auto tTol = 1e-4;
-    std::vector<Plato::Scalar> tGold = {2.0,-2.0};
+    std::vector<Plato::Scalar> tGold = {4.0,-4.0};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tValue : tGold)
@@ -6733,7 +6733,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Divergence)
         auto tCell = &tValue - &tGold[0];
         TEST_FLOATING_EQUALITY(tValue,tHostResult(tCell),tTol);
     }
-    Plato::print(tResult, "divergence");
+    //Plato::print(tResult, "divergence");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Integrate)
