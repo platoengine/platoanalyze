@@ -6702,12 +6702,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateInternalForces)
     Plato::blas1::fill(0.5, tCellVolume);
     Plato::ScalarMultiVector tResult("results", tNumCells, tNumDofsPerCell);
     Plato::ScalarMultiVector tInternalForces("internal forces", tNumCells, tSpaceDims);
-
-    // set functors for unit test
-    Plato::ComputeCellVolume<tSpaceDims> tComputeVolume;
-    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
+    auto tHostInternalForces = Kokkos::create_mirror(tInternalForces);
+    tHostInternalForces(0,0) = 26.0 ; tHostInternalForces(0,1) = 30.0;
+    tHostInternalForces(1,0) = -74.0; tHostInternalForces(1,1) = -78.0;
+    Kokkos::deep_copy(tInternalForces, tHostInternalForces);
 
     // call device kernel
+    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
     auto tCubWeight = tCubRule.getCubWeight();
     auto tBasisFunctions = tCubRule.getBasisFunctions();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
