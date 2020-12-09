@@ -274,7 +274,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
     "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n"
     "      <Parameter  name='Child'    type='string'    value='MPC Child'/>  \n"
     "      <Parameter  name='Parent'   type='string'    value='MPC Parent'/> \n"
-    "      <Parameter  name='Value'    type='double'    value='0.0'/>        \n"
+    "      <Parameter  name='Value'    type='double'    value='4.2'/>        \n"
     "    </ParameterList>                                                    \n"
     "  </ParameterList>                                                      \n"
     "</ParameterList>                                                        \n"
@@ -367,7 +367,7 @@ TEUCHOS_UNIT_TEST( MultipointConstraintTests, Elastic2DTieMPC )
   //
   Plato::OrdinalType checkChildNode = 4;
   Plato::OrdinalType checkParentNode = 7;
-  Plato::Scalar      checkValue = 0.0;
+  Plato::Scalar      checkValue = 4.2;
 
   Plato::OrdinalType checkChildDof0 = checkChildNode*tNumDofsPerNode;
   Plato::OrdinalType checkChildDof1 = checkChildNode*tNumDofsPerNode + 1;
