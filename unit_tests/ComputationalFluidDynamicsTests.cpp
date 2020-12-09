@@ -6588,8 +6588,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MultiplyTimeStep)
     Plato::blas2::fill(1.0, tResult);
     Plato::ScalarMultiVector tTimeStep("time step", tNumCells, tNumNodesPerCell);
     auto tHostTimeStep = Kokkos::create_mirror(tTimeStep);
-    tHostTimeStep(0,0) = 1; tHostTimeStep(0,1) = 2; tHostTimeStep(0,2) = 3; tHostTimeStep(0,3) = 4;
-    tHostTimeStep(1,0) = 5; tHostTimeStep(1,1) = 6; tHostTimeStep(1,2) = 7; tHostTimeStep(1,3) = 8;
+    tHostTimeStep(0,0) = 1; tHostTimeStep(0,1) = 2; tHostTimeStep(0,2) = 3;
+    tHostTimeStep(1,0) = 4; tHostTimeStep(1,1) = 5; tHostTimeStep(1,2) = 6;
     Kokkos::deep_copy(tTimeStep, tHostTimeStep);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -6598,7 +6598,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MultiplyTimeStep)
     }, "unit test multiply_time_step");
 
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0.5,1.0,1.5,2.0},{2.5,3.0,3.5,4.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{0.5,0.5,1.0,1.0,1.5,1.5},{2.0,2.0,2.5,2.5,3.0,3.0}};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tGoldVector : tGold)
