@@ -3055,7 +3055,7 @@ public:
             // 2. add stabilizing internal force contribution
             Plato::Fluids::divergence<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelWS, tDivPrevVel);
-            Plato::Fluids::integrate_stabilizing_forces<mNumNodesPerCell, mNumSpatialDims> // todo unit test
+            Plato::Fluids::integrate_stabilizing_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tDivPrevVel, tGradient, tPrevVelGP, tInternalForces, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces);
@@ -6404,6 +6404,35 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateBrinkmanForces)
+{
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
+    constexpr auto tBrinkmanCoeff = 0.5;
+    Plato::ScalarMultiVector tPrevVelGP("previous velocities", tNumCells, tSpaceDims);
+    auto tHostPrevVelGP = Kokkos::create_mirror(tPrevVelGP);
+    tHostPrevVelGP(0,0) = 1; tHostPrevVelGP(0,1) = 2;
+    tHostPrevVelGP(1,0) = 3; tHostPrevVelGP(1,1) = 4;
+    Plato::ScalarMultiVector tResult("results", tSpaceDims);
+
+    // call device kernel
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Fluids::calculate_brinkman_forces<tSpaceDims>(aCellOrdinal, tBrinkmanCoeff, tPrevVelGP, tResult);
+    }, "unit test calculate_brinkman_forces");
+    Plato::print_array_2D(tResult, "brinkman forces");
+
+    auto tTol = 1e-4;
+    std::vector<Plato::Scalar> tGold = {0.0,0.0};
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for(auto& tValue : tGold)
+    {
+        auto tCell = &tValue - &tGold[0];
+        TEST_FLOATING_EQUALITY(tValue,tHostResult(tCell),tTol);
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingForces)
 {
     // build mesh, mesh sets, and spatial domain
@@ -6462,7 +6491,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingForces)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostResult(tCell,tDof),tTol);
         }
     }
-    Plato::print_array_2D(tResult, "stabilizing forces");
+    //Plato::print_array_2D(tResult, "stabilizing forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces)
