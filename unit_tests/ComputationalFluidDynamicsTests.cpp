@@ -6409,11 +6409,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateBrinkmanForces)
     constexpr auto tNumCells = 2;
     constexpr auto tSpaceDims = 2;
     constexpr auto tBrinkmanCoeff = 0.5;
+    Plato::ScalarVector tResult("results", tSpaceDims);
     Plato::ScalarMultiVector tPrevVelGP("previous velocities", tNumCells, tSpaceDims);
     auto tHostPrevVelGP = Kokkos::create_mirror(tPrevVelGP);
     tHostPrevVelGP(0,0) = 1; tHostPrevVelGP(0,1) = 2;
     tHostPrevVelGP(1,0) = 3; tHostPrevVelGP(1,1) = 4;
-    Plato::ScalarMultiVector tResult("results", tSpaceDims);
 
     // call device kernel
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -6429,7 +6429,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateBrinkmanForces)
     for(auto& tValue : tGold)
     {
         auto tCell = &tValue - &tGold[0];
-        TEST_FLOATING_EQUALITY(tValue,tHostResult(tCell),tTol);
+        TEST_FLOATING_EQUALITY(tValue, tHostResult(tCell), tTol);
     }
 }
 
