@@ -6447,11 +6447,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingForces)
             (aCellOrdinal, tBasisFunctions, tCellVolume, tDivergence, tGradient, tPrevVelGP, tForce, tResult);
     }, "unit test integrate_stabilizing_forces");
 
-    /*
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{-1.666667e-01,-3.333333e-01,-1.666667e-01,-3.333333e-01,-1.666667e-01,-3.333333e-01},
-         {-5.000000e-01,-6.666667e-01,-5.000000e-01,-6.666667e-01,-5.000000e-01,-6.666667e-01}};
+        {{8.333333e-01,8.333333e-01,8.333333e-01,8.333333e-01,2.333333e+00,2.333333e+00},
+         {1.666667e-01,1.666667e-01,-8.333333e-01,-8.333333e-01,-3.333333e+00,-3.333333e+00}};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tGoldVector : tGold)
@@ -6463,7 +6462,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingForces)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostResult(tCell,tDof),tTol);
         }
     }
-    */
     Plato::print_array_2D(tResult, "stabilizing forces");
 }
 
