@@ -6404,9 +6404,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureGradient)
     Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
     Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
     Plato::ScalarMultiVector tCurPress("current pressure", tNumCells, tNumNodesPerCell);
+    auto tHostCurPress = Kokkos::create_mirror(tCurPress);
+    tHostCurPress(0,0) = 1; tHostCurPress(0,1) = 2; tHostCurPress(0,2) = 3;
+    tHostCurPress(1,0) = 4; tHostCurPress(1,1) = 5; tHostCurPress(1,2) = 6;
+    Kokkos::deep_copy(tCurPress, tHostCurPress);
     Plato::ScalarMultiVector tPrevPress("previous pressure", tNumCells, tNumNodesPerCell);
-    Plato::blas2::fill(1.0, tCurPress);
-    Plato::blas2::fill(2.0, tPrevPress);
+    auto tHostPrevPress = Kokkos::create_mirror(tPrevPress);
+    tHostPrevPress(0,0) = 1; tHostPrevPress(0,1) = 12; tHostPrevPress(0,2) = 3;
+    tHostPrevPress(1,0) = 4; tHostPrevPress(1,1) = 15; tHostPrevPress(1,2) = 6;
+    Kokkos::deep_copy(tPrevPress, tHostPrevPress);
     Plato::ScalarMultiVector tPressGrad("result", tNumCells, tSpaceDims);
 
     // set functors for unit test
@@ -6425,7 +6431,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureGradient)
 
     /*
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0}, {0.0,0.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{3.0,-1.0}, {-3.0,1.0}};
     auto tHostPressGrad = Kokkos::create_mirror(tPressGrad);
     Kokkos::deep_copy(tHostPressGrad, tPressGrad);
     for(auto& tGoldVector : tGold)
