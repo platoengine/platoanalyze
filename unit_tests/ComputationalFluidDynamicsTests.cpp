@@ -6390,6 +6390,57 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureGradient)
+{
+    // build mesh, mesh sets, and spatial domain
+    constexpr auto tSpaceDims = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+
+    // set input data for unit test
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarMultiVector tCurPress("current pressure", tNumCells, tNumNodesPerCell);
+    Plato::ScalarMultiVector tPrevPress("previous pressure", tNumCells, tNumNodesPerCell);
+    Plato::blas2::fill(1.0, tCurPress);
+    Plato::blas2::fill(2.0, tPrevPress);
+    Plato::ScalarMultiVector tPressGrad("result", tNumCells, tSpaceDims);
+
+    // set functors for unit test
+    Plato::ComputeGradientWorkset<tSpaceDims> tComputeGradient;
+    Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+
+    // call device kernel
+    auto tTheta = 0.2;
+    Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        Plato::Fluids::calculate_pressure_gradient<tNumNodesPerCell, tSpaceDims>
+            (aCellOrdinal, tTheta, tGradient, tCurPress, tPrevPress, tPressGrad);
+    }, "unit test calculate_pressure_gradient");
+
+    /*
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0}, {0.0,0.0}};
+    auto tHostPressGrad = Kokkos::create_mirror(tPressGrad);
+    Kokkos::deep_copy(tHostPressGrad, tPressGrad);
+    for(auto& tGoldVector : tGold)
+    {
+        auto tCell = &tGoldVector - &tGold[0];
+        for(auto& tGoldValue : tGoldVector)
+        {
+            auto tDof = &tGoldValue - &tGoldVector[0];
+            TEST_FLOATING_EQUALITY(tGoldValue,tHostPressGrad(tCell,tDof),tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tPressGrad, "pressure gradient");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateBrinkmanForces)
 {
     constexpr auto tNumCells = 2;
