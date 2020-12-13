@@ -3530,7 +3530,6 @@ template
  Plato::OrdinalType SpaceDim,
  typename FluxT,
  typename ConfigT,
- typename ScalarT,
  typename StateT>
 DEVICE_TYPE inline void
 calculate_flux
@@ -3702,18 +3701,19 @@ public:
         }
 
         // set local data
-        Plato::ScalarVectorT<ConfigT> tCellVolume("cell weight", tNumCells);
-        Plato::ScalarVectorT<ResultT> tInternalForces("internal forces", tNumCells);
+        Plato::ScalarVectorT<ConfigT>     tCellVolume("cell weight", tNumCells);
+        Plato::ScalarVectorT<ResultT>     tInternalForces("internal forces", tNumCells);
+        Plato::ScalarVectorT<CurTempT>    tCurTempGP("current temperature at Gauss points", tNumCells);
+        Plato::ScalarVectorT<PrevTempT>   tPrevTempGP("previous temperature at Gauss points", tNumCells);
+        Plato::ScalarVectorT<ResultT>     tHeatSource("heat source", tNumCells);
+        Plato::blas1::fill(mHeatSourceConstant, tHeatSource);
         Plato::ScalarVectorT<DivergenceT> tDivPrevVel("divergence previous velocity", tNumCells);
-        Plato::ScalarVectorT<CurTempT> tCurTempGP("current temperature at Gauss points", tNumCells);
-        Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss points", tNumCells);
-        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
 
-        Plato::ScalarMultiVectorT<ResultT> tHeatSource("heat source", tNumCells, mNumNodesPerCell);
-        Plato::blas2::fill(mHeatSourceConstant, tHeatSource);
         Plato::ScalarMultiVectorT<ResultT> tThermalFlux("thermal flux", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<ResultT> tStabForces("stabilizing forces", tNumCells, mNumNodesPerCell);
         Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss points", tNumCells, mNumVelDofsPerNode);
+        
+        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
