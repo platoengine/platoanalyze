@@ -3347,7 +3347,6 @@ public:
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
             mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Time Step Multiplier Theta 2", 0.0);
-            printf("\nThetaTwo = %f\n", mThetaTwo);
         }
     }
 
@@ -6480,18 +6479,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityIncrementResidual)
     // test vector function value
     auto tResidual = tVectorFunction.value(tControls, tVariables);
 
-    /*
     auto tTol = 1e-4;
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {0,0,0,0,0,0,0,0};
+    std::vector<Plato::Scalar> tGold = {-2.48466,-2.778444,-1.494833,-1.663333,-2.483833,-2.774944,-9.860000e-1,-1.114444};
     for(auto& tValue : tGold)
     {
         auto tIndex = &tValue - &tGold[0];
         TEST_FLOATING_EQUALITY(tValue,tHostResidual(tIndex),tTol);
     }
-    */
-    Plato::print(tResidual, "residual");
+    //Plato::print(tResidual, "residual");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureGradient)
