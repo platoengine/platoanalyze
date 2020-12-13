@@ -3460,7 +3460,7 @@ calculate_convective_forces
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
  const Plato::ScalarMultiVectorT<PrevTempT> & aPrevTemp,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarVectorT<ResultT> & aResult)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
@@ -3481,7 +3481,7 @@ integrate_scalar_field
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarMultiVectorT<SourceT> & aSource,
+ const Plato::ScalarVectorT<SourceT> & aSource,
  const Plato::ScalarMultiVectorT<ResultT> & aResult)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
@@ -3515,7 +3515,8 @@ calculate_thermal_flux
     }
 }
 
-template<typename ControlT>
+template<Plato::OrdinalType NumNodesPerCell,
+         typename ControlT>
 DEVICE_TYPE inline ControlT
 penalize_thermal_diffusivity
 (const Plato::OrdinalType & aCellOrdinal,
@@ -3524,14 +3525,14 @@ penalize_thermal_diffusivity
  const Plato::Scalar & aPenaltyExponent,
  const Plato::ScalarMultiVectorT<ControlT> & aControl)
 {
-    auto tNumNodesPerCell = aControl.extent(1);
-    ControlT tDensity = Plato::cell_density<tNumNodesPerCell>(aCellOrdinal, aControl);
+    ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControl);
     ControlT tPenalizedDensity = pow(tDensity, aPenaltyExponent);
     ControlT tPenalizedThermalDiff = aSolidThermalDiff + ( (aFluidThermalDiff - aSolidThermalDiff) * tPenalizedDensity);
     return tPenalizedThermalDiff;
 }
 
-template<typename ControlT>
+template<Plato::OrdinalType NumNodesPerCell,
+         typename ControlT>
 DEVICE_TYPE inline ControlT
 penalize_heat_source_constant
 (const Plato::OrdinalType & aCellOrdinal,
@@ -3539,8 +3540,7 @@ penalize_heat_source_constant
  const Plato::Scalar & aPenaltyExponent,
  const Plato::ScalarMultiVectorT<ControlT> & aControl)
 {
-    auto tNumNodesPerCell = aControl.extent(1);
-    ControlT tDensity = Plato::cell_density<tNumNodesPerCell>(aCellOrdinal, aControl);
+    ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControl);
     ControlT tPenalizedDensity = pow(tDensity, aPenaltyExponent);
     auto tPenalizedProperty = static_cast<Plato::Scalar>(1) - tPenalizedDensity;
     return tPenalizedProperty;
@@ -3562,7 +3562,7 @@ integrate_stabilizing_scalar_forces
  const Plato::ScalarVectorT<DivVelT> & aDivPrevVel,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- const Plato::ScalarMultiVectorT<StabForceT> & aStabForce,
+ const Plato::ScalarVectorT<StabForceT> & aStabForce,
  const Plato::ScalarMultiVectorT<ResultT> & aResult)
  {
     for (Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
@@ -3646,8 +3646,7 @@ public:
      Teuchos::ParameterList     & aInputs) :
          mDataMap(aDataMap),
          mSpatialDomain(aDomain),
-         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>()),
-         mHeatSource(0.0)
+         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
         // todo add parsing for penalty and input parameters
         this->setSourceTerm(aInputs);
@@ -3718,11 +3717,11 @@ public:
                 (aCellOrdinal, tFluidThermalDiff, tSolidThermalDiff, tThermalDiffPenaltyExp, tControlWS);
             Plato::Fluids::calculate_thermal_flux<mNumNodesPerCell,mNumSpatialDims>
                 (aCellOrdinal, tPenalizedDiffusivity, tGradient, tPrevTempWS, tThermalFlux);
-            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell,mNumSpatialDims>
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalFlux, aResultWS);
 
             auto tHeatSrcConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTempDiff);
-            ControlT tPenalizedHeatSrcConst = Plato::Fluids::penalize_heat_source_constant
+            ControlT tPenalizedHeatSrcConst = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
                 (aCellOrdinal, tHeatSrcConst, tHeatSrcPenaltyExp, tControlWS);
             tInternalForces(aCellOrdinal) += tPenalizedHeatSrcConst * tHeatSource(aCellOrdinal);
 
@@ -3796,7 +3795,7 @@ private:
         if(aInputs.isSublist("Thermal Source Term"))
         {
             auto tSublist = aInputs.sublist("Thermal Source Term");
-            mHeatSource = tSublist.get<Plato::Scalar>("Source Term", 0.0);
+            mHeatSourceConstant = tSublist.get<Plato::Scalar>("Source Term", 0.0);
         }
     }
 
