@@ -106,6 +106,20 @@ update(const Plato::OrdinalType & aCellOrdinal,
 
 template<Plato::OrdinalType Length,
          typename ScalarT,
+         typename ResultT>
+DEVICE_TYPE inline void
+scale(const Plato::OrdinalType & aCellOrdinal,
+      const ScalarT & aScalar,
+      const Plato::ScalarMultiVectorT<ResultT> & aOutputWS)
+{
+    for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
+    {
+        aOutputWS(aCellOrdinal, tIndex) *= aScalar;
+    }
+}
+
+template<Plato::OrdinalType Length,
+         typename ScalarT,
          typename AViewTypeT,
          typename BViewTypeT>
 DEVICE_TYPE inline void
@@ -3488,27 +3502,48 @@ integrate_scalar_field
     }
 }
 
+template<Plato::OrdinalType NumNodes,
+         Plato::OrdinalType SpaceDim,
+         typename ConfigT,
+         typename SourceT,
+         typename ResultT>
+DEVICE_TYPE inline void
+calculate_flux_divergence
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarMultiVectorT<SourceT> & aSource,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
+        {
+            aResult(aCellOrdinal, tNode) +=
+                ( aGradient(aCellOrdinal, tNode, tDim) * aSource(aCellOrdinal, tDim) ) * aCellVolume(aCellOrdinal);
+        }
+    }
+}
+
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
  typename FluxT,
  typename ConfigT,
  typename ScalarT,
- typename PrevTempT>
+ typename StateT>
 DEVICE_TYPE inline void
-calculate_thermal_flux
+calculate_flux
 (const Plato::OrdinalType & aCellOrdinal,
- const ScalarT & aThermalDiffusivity,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<PrevTempT> & aPrevTemp,
+ const Plato::ScalarMultiVectorT<StateT> & aState,
  const Plato::ScalarMultiVectorT<FluxT> & aThermalFlux)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
-            aThermalFlux(aCellOrdinal, tDim) +=
-                aThermalDiffusivity * aGradient(aCellOrdinal, tNode, tDim) * aPrevTemp(aCellOrdinal, tNode);
+            aThermalFlux(aCellOrdinal, tDim) += aGradient(aCellOrdinal, tNode, tDim) * aState(aCellOrdinal, tNode);
         }
     }
 }
@@ -3713,10 +3748,10 @@ public:
             // 1. calculate internal forces
             ControlT tPenalizedDiffusivity = Plato::Fluids::penalize_thermal_diffusivity<mNumNodesPerCell>
                 (aCellOrdinal, tFluidThermalDiff, tSolidThermalDiff, tThermalDiffPenaltyExp, tControlWS);
-            Plato::Fluids::calculate_thermal_flux<mNumNodesPerCell,mNumSpatialDims>
-                (aCellOrdinal, tPenalizedDiffusivity, tGradient, tPrevTempWS, tThermalFlux);
-            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalFlux, aResultWS);
+            Plato::Fluids::calculate_flux<mNumNodesPerCell,mNumSpatialDims>(aCellOrdinal, tGradient, tPrevTempWS, tThermalFlux);
+            Plato::blas1::scale<mNumSpatialDims>(aCellOrdinal, tPenalizedDiffusivity, tThermalFlux);
+            Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell,mNumSpatialDims>
+                (aCellOrdinal, tGradient, tCellVolume, tThermalFlux, aResultWS);
 
             auto tHeatSrcConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTempDiff);
             ControlT tPenalizedHeatSrcConst = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
