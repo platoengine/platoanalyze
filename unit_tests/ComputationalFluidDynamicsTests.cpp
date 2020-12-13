@@ -3302,8 +3302,7 @@ calculate_pressure_gradient
     {
         for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
-            auto tLocalCellDof = (SpaceDim * tNode) + tDim;
-            aPressGrad(aCellOrdinal,tLocalCellDof) += ( (static_cast<Plato::Scalar>(1.0) - aTheta)
+            aPressGrad(aCellOrdinal, tDim) += ( (static_cast<Plato::Scalar>(1.0) - aTheta)
                 * aGradient(aCellOrdinal, tNode, tDim) * aPrevPress(aCellOrdinal, tNode) )
                 + ( aTheta * aGradient(aCellOrdinal, tNode, tDim) * aCurPress(aCellOrdinal, tNode) );
         }
@@ -6399,7 +6398,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureGradient)
     // set input data for unit test
     auto tNumCells = tMesh->nelems();
     constexpr auto tNumNodesPerCell = tSpaceDims + 1;
-    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
     Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
