@@ -2663,7 +2663,6 @@ public:
 // class AbstractVectorFunction
 
 
-// todo: finish unit testing all these inline functions
 // calculate f_i^{convective}=\frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i), where
 // \frac{\partial}{\partial x_j}(u^{n-1}_j u^{n-1}_i) = \frac{\partial u^{n-1}_j}{\partial x_j}u^{n-1}_i + u^{n-1}_j\frac{\partial u^{n-1}_i}{\partial x_j}
 template
@@ -3446,8 +3445,7 @@ public:
 
 
 
-
-// todo: unit test all these new inlined functions
+// todo: unit test these functions
 template<Plato::OrdinalType NumNodes,
          Plato::OrdinalType SpaceDim,
          typename ConfigT,
