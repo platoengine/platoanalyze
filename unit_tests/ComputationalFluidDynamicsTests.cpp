@@ -6427,9 +6427,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureGradient)
             (aCellOrdinal, tTheta, tGradient, tCurPress, tPrevPress, tPressGrad);
     }, "unit test calculate_pressure_gradient");
 
-    /*
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{3.0,-1.0}, {-3.0,1.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{9.0,-7.0}, {-9.0,7.0}};
     auto tHostPressGrad = Kokkos::create_mirror(tPressGrad);
     Kokkos::deep_copy(tHostPressGrad, tPressGrad);
     for(auto& tGoldVector : tGold)
@@ -6441,8 +6440,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureGradient)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostPressGrad(tCell,tDof),tTol);
         }
     }
-    */
-    Plato::print_array_2D(tPressGrad, "pressure gradient");
+    //Plato::print_array_2D(tPressGrad, "pressure gradient");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateBrinkmanForces)
