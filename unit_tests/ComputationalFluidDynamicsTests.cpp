@@ -6460,7 +6460,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityIncrementResidual)
     auto tHostCurPress = Kokkos::create_mirror(tCurPress);
     tHostCurPress(0) = 1; tHostCurPress(1) = 2;
     tHostCurPress(2) = 3; tHostCurPress(3) = 4;
-    Kokkos::deep_copy(tCurPress, tHostCurPred);
+    Kokkos::deep_copy(tCurPress, tHostCurPress);
     tVariables.vector("current pressure", tCurPress);
     Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
     tVariables.vector("current temperature", tCurTemp);
