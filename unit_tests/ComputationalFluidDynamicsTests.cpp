@@ -3347,6 +3347,7 @@ public:
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
             mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Time Step Multiplier Theta 2", 0.0);
+            printf("\nThetaTwo = %f\n", mThetaTwo);
         }
     }
 
@@ -3399,7 +3400,7 @@ public:
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
             // 1. calculate internal forces
-            Plato::Fluids::calculate_pressure_gradient<mNumNodesPerCell, mNumSpatialDims> // todo unit test
+            Plato::Fluids::calculate_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tThetaTwo, tGradient, tCurPressWS, tPrevPressWS, tInternalForces);
             Plato::Fluids::integrate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
@@ -6388,6 +6389,110 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityIncrementResidual)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
+            "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
+            "      <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
+            "    </ParameterList>"
+            "    <ParameterList name='Momentum Conservation'>"
+            "      <ParameterList name='Penalty Function'>"
+            "        <Parameter name='Grashof Penalty Exponent'     type='double' value='3.0'/>"
+            "        <Parameter name='Prandtl Convexity Parameter'  type='double' value='0.5'/>"
+            "        <Parameter name='Brinkman Convexity Parameter' type='double' value='0.5'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Time Integration'>"
+            "    <Parameter name='Time Step Multiplier Theta 2' type='double' value='0.2'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
+    tModel.append(tDomain);
+
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+
+    // set control variables
+    auto tNumNodes = tMesh->nverts();
+    Plato::ScalarVector tControls("control", tNumNodes);
+    Plato::blas1::fill(1.0, tControls);
+
+    // set state variables
+    Plato::Primal tVariables;
+    auto tNumVelDofs = tNumNodes * tNumSpaceDims;
+    Plato::ScalarVector tPrevVel("previous velocity", tNumVelDofs);
+    auto tHostPrevVel = Kokkos::create_mirror(tPrevVel);
+    tHostPrevVel(0) = 1; tHostPrevVel(1) = 2; tHostPrevVel(2) = 3;
+    tHostPrevVel(3) = 4; tHostPrevVel(4) = 5; tHostPrevVel(5) = 6;
+    Kokkos::deep_copy(tPrevVel, tHostPrevVel);
+    tVariables.vector("previous velocity", tPrevVel);
+    Plato::ScalarVector tPrevPress("previous pressure", tNumNodes);
+    Plato::blas1::fill(1.0, tPrevPress);
+    tVariables.vector("previous pressure", tPrevPress);
+    Plato::ScalarVector tPrevTemp("previous temperature", tNumNodes);
+    tVariables.vector("previous temperature", tPrevTemp);
+
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    tVariables.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPred("current predictor", tNumVelDofs);
+    auto tHostCurPred = Kokkos::create_mirror(tCurPred);
+    tHostCurPred(0) = 7; tHostCurPred(1) = 8; tHostCurPred(2) = 9;
+    tHostCurPred(3) = 10; tHostCurPred(4) = 11; tHostCurPred(5) = 12;
+    Kokkos::deep_copy(tCurPred, tHostCurPred);
+    tVariables.vector("current predictor", tCurPred);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    auto tHostCurPress = Kokkos::create_mirror(tCurPress);
+    tHostCurPress(0) = 1; tHostCurPress(1) = 2;
+    tHostCurPress(2) = 3; tHostCurPress(3) = 4;
+    Kokkos::deep_copy(tCurPress, tHostCurPred);
+    tVariables.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    tVariables.vector("current temperature", tCurTemp);
+
+    Plato::ScalarVector tTimeSteps("time step", tNumNodes);
+    Plato::blas1::fill(0.1, tTimeSteps);
+    tVariables.vector("time steps", tTimeSteps);
+    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::blas1::fill(1.0, tVelBCs);
+    tVariables.vector("prescribed velocity", tVelBCs);
+
+    // allocate vector function
+    Plato::DataMap tDataMap;
+    std::string tFuncName("Velocity");
+    Plato::Fluids::VectorFunction<PhysicsT> tVectorFunction(tFuncName, tModel, tDataMap, tInputs.operator*());
+
+    // test vector function value
+    auto tResidual = tVectorFunction.value(tControls, tVariables);
+
+    /*
+    auto tTol = 1e-4;
+    auto tHostResidual = Kokkos::create_mirror(tResidual);
+    Kokkos::deep_copy(tHostResidual, tResidual);
+    std::vector<Plato::Scalar> tGold = {0,0,0,0,0,0,0,0};
+    for(auto& tValue : tGold)
+    {
+        auto tIndex = &tValue - &tGold[0];
+        TEST_FLOATING_EQUALITY(tValue,tHostResidual(tIndex),tTol);
+    }
+    */
+    Plato::print(tResidual, "residual");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureGradient)
 {
