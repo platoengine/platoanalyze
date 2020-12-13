@@ -7004,7 +7004,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateAdvectedInternalForces)
             TEST_FLOATING_EQUALITY(tGoldValue,tHostInternalForces(tVecIndex,tValIndex),tTol);
         }
     }
-    Plato::print_array_2D(tInternalForces, "advected internal forces");
+    //Plato::print_array_2D(tInternalForces, "advected internal forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateNaturalConvectiveForces)
