@@ -6528,6 +6528,52 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
+{
+    // build mesh, mesh sets, and spatial domain
+    constexpr auto tSpaceDims = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+
+    // set input data for unit test
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarMultiVector tPrevTemp("previous temperature", tNumCells, tNumNodesPerCell);
+    Plato::blas2::fill(1.0, tPrevTemp);
+    Plato::ScalarMultiVector tPrevVelGP("previous velocities", tNumCells, tSpaceDims);
+    auto tHostPrevVelGP = Kokkos::create_mirror(tPrevVelGP);
+    tHostPrevVelGP(0,0) = 1; tHostPrevVelGP(0,1) = 2;
+    tHostPrevVelGP(1,0) = 3; tHostPrevVelGP(1,1) = 4;
+    Kokkos::deep_copy(tPrevVelGP, tHostPrevVelGP);
+    Plato::ScalarVector tForces("internal force", tNumCells);
+
+    // set functors for unit test
+    Plato::ComputeGradientWorkset<tSpaceDims> tComputeGradient;
+    Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+
+    Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        Plato::Fluids::calculate_convective_forces<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, tGradient, tPrevVelGP, tPrevTemp, tForces);
+    }, "unit test calculate_convective_forces");
+
+    /*
+    auto tTol = 1e-4;
+    std::vector<Plato::Scalar> tGold = {0.0,0.0};
+    auto tHostForces = Kokkos::create_mirror(tForces);
+    Kokkos::deep_copy(tHostForces, tForces);
+    for (auto &tValue : tGold)
+    {
+        auto tCell = &tValue - &tGold[0];
+        TEST_FLOATING_EQUALITY(tValue, tHostForces(tCell), tTol);
+    }
+    */
+    Plato::print(tForces, "convective forces");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityIncrementResidual)
 {
     // set xml file inputs
@@ -7681,6 +7727,30 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale)
         for (Plato::OrdinalType tDim = 0; tDim < tNumSpaceDims; tDim++)
         {
             TEST_FLOATING_EQUALITY(4.0, tHostOutput(tCell, tDim), tTol);
+        }
+    }
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BLAS1_DeviceScale_Version2)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    Plato::ScalarMultiVector tInput("input", tNumCells, tNumSpaceDims);
+    Plato::blas2::fill(1.0, tInput);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::blas1::scale<tNumSpaceDims>(aCellOrdinal, 4.0, tInput);
+    }, "device blas1::scale");
+
+    auto tTol = 1e-6;
+    auto tHostInput = Kokkos::create_mirror(tInput);
+    Kokkos::deep_copy(tHostInput, tInput);
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDim = 0; tDim < tNumSpaceDims; tDim++)
+        {
+            TEST_FLOATING_EQUALITY(4.0, tHostInput(tCell, tDim), tTol);
         }
     }
 }
