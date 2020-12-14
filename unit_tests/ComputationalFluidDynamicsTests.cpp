@@ -6556,7 +6556,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFlux)
         Plato::Fluids::calculate_flux<tNumNodesPerCell,tSpaceDims>(aCellOrdinal, tGradient, tPrevTemp, tFlux);
     }, "unit test calculate_flux_divergence");
 
-    /*
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold = {{11.0,-9.0}, {-11.0,9.0}};
     auto tHostFlux = Kokkos::create_mirror(tFlux);
@@ -6570,8 +6569,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFlux)
             TEST_FLOATING_EQUALITY(tGValue,tHostFlux(tCell,tDof),tTol);
         }
     }
-    */
-    Plato::print_array_2D(tFlux, "flux");
+    //Plato::print_array_2D(tFlux, "flux");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFluxDivergence)
