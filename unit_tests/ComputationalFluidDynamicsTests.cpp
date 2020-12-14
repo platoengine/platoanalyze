@@ -6528,6 +6528,30 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeThermalDiffusivity)
+{
+    // set input data for unit test
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarMultiVector tControl("control", tNumCells, tNumNodesPerCell);
+    Plato::blas2::fill(0.5, tControl);
+
+    auto tResult = 0.0;
+    constexpr auto tFluidDiff  = 1.0;
+    constexpr auto tSolidDiff  = 4.0;
+    constexpr auto tPenaltyExp = 3.0;
+
+    // call device function
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tResult = Plato::Fluids::penalize_thermal_diffusivity<tNumNodesPerCell>(aCellOrdinal, tFluidDiff, tSolidDiff, tPenaltyExp, tControl);
+    }, "unit test penalize_thermal_diffusivity");
+
+    auto tTol = 1e-4;
+    TEST_FLOATING_EQUALITY(3.6250,tResult,tTol);
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFlux)
 {
     // set input data for unit test
@@ -6554,7 +6578,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFlux)
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         Plato::Fluids::calculate_flux<tNumNodesPerCell,tSpaceDims>(aCellOrdinal, tGradient, tPrevTemp, tFlux);
-    }, "unit test calculate_flux_divergence");
+    }, "unit test calculate_flux");
 
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold = {{11.0,-9.0}, {-11.0,9.0}};
