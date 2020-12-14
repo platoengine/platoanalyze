@@ -3601,10 +3601,11 @@ integrate_stabilizing_scalar_forces
     {
         for (Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
         {
-            aResult(aCellOrdinal, tNode) += aGradient(aCellOrdinal, tNode, tDimI) * aPrevVelGP(aCellOrdinal, tDimI);
+            aResult(aCellOrdinal, tNode) += aStabForce(aCellOrdinal) * aCellVolume(aCellOrdinal) 
+                * ( aGradient(aCellOrdinal, tNode, tDimI) * aPrevVelGP(aCellOrdinal, tDimI) );
         }
         aResult(aCellOrdinal, tNode) += aStabForce(aCellOrdinal) * aCellVolume(aCellOrdinal)
-            * ( aResult(aCellOrdinal, tNode) + aBasisFunctions(tNode) * aDivPrevVel(aCellOrdinal) )
+            * ( aBasisFunctions(tNode) * aDivPrevVel(aCellOrdinal) );
     }
  }
 
@@ -6548,7 +6549,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::blas1::fill(0.5, tCellVolume);
     Plato::ScalarVector tBasisFunctions("basis functions", tNumNodesPerCell);
-    Plato::blas1::fill(0.33333333333333333333333, tCellVolume);
+    Plato::blas1::fill(0.33333333333333333333333, tBasisFunctions);
     Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
     auto tHostGradient = Kokkos::create_mirror(tGradient);
     tHostGradient(0,0,0) = -1; tHostGradient(0,0,1) = 0;
@@ -6572,7 +6573,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
             (aCellOrdinal, tBasisFunctions, tCellVolume, tDivergence, tGradient, tPrevVelGP, tStabForce, tResult);
     }, "unit test integrate_stabilizing_scalar_forces");
 
-    /*
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
         {{0.166666666666667,0.166666666666667,1.666666666666667},
@@ -6588,8 +6588,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
             TEST_FLOATING_EQUALITY(tGValue,tHostResult(tCell,tDof),tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "result");
+    //Plato::print_array_2D(tResult, "result");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces_ThermalResidual)
