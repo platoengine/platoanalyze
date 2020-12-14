@@ -6528,6 +6528,48 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+// todo finish
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateScalarField)
+{
+    // set input data for unit test
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::blas1::fill(0.5, tCellVolume);
+    Plato::ScalarVector tSource("cell source", tNumCells);
+    auto tHostSource = Kokkos::create_mirror(tSource);
+    tHostSource(0) = 1; tHostSource(1) = 2;
+    Kokkos::deep_copy(tSource, tHostSource);
+    Plato::ScalarMultiVector tResult("result", tNumCells, tNumNodesPerCell);
+
+    // call device kernel
+    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
+    auto tBasisFunctions = tCubRule.getBasisFunctions();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Fluids::integrate_scalar_field<tNumNodesPerCell>(aCellOrdinal, tBasisFunctions, tCellVolume, tSource, tResult)
+    }, "unit test calculate_convective_forces");
+
+    /*
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0,0.0},{0.0,0.0,0.0}};
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for(auto& tGArray : tGold)
+    {
+        auto tCell = &tGArray - &tGold[0];
+        for(auto& tGValue : tGArray)
+        {
+            auto tDof = &tGValue - &tGArray[0];
+            TEST_FLOATING_EQUALITY(tGValue,tHostResult(tCell,tDof),tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
+
+// todo finish testing
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
 {
     // build mesh, mesh sets, and spatial domain
@@ -6541,7 +6583,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
     Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
     Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
     Plato::ScalarMultiVector tPrevTemp("previous temperature", tNumCells, tNumNodesPerCell);
-    Plato::blas2::fill(1.0, tPrevTemp);
+    auto tHostPrevTemp = Kokkos::create_mirror(tPrevTemp);
+    tHostPrevTemp(0,0) = 1; tHostPrevTemp(0,1) = 2; tHostPrevTemp(0,2) = 3;
+    tHostPrevTemp(1,0) = 4; tHostPrevTemp(1,1) = 5; tHostPrevTemp(1,2) = 6;
+    Kokkos::deep_copy(tPrevTemp, tHostPrevTemp);
     Plato::ScalarMultiVector tPrevVelGP("previous velocities", tNumCells, tSpaceDims);
     auto tHostPrevVelGP = Kokkos::create_mirror(tPrevVelGP);
     tHostPrevVelGP(0,0) = 1; tHostPrevVelGP(0,1) = 2;
