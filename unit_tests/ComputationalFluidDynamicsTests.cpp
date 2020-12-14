@@ -6528,7 +6528,7 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces_ThermalResidual)
 {
     // set input data for unit test
     constexpr auto tNumCells = 2;
