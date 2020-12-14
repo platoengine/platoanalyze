@@ -6528,6 +6528,70 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
+{
+    // build mesh, mesh sets, and spatial domain
+    constexpr auto tSpaceDims = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+
+    // set input data for unit test
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarVector tStabForce("cell weight", tNumCells);
+    auto tHostStabForce = Kokkos::create_mirror(tStabForce);
+    tHostStabForce(0) = 1; tHostStabForce(1) = -1;
+    Kokkos::deep_copy(tStabForce, tHostStabForce);
+    Plato::ScalarVector tDivergence("cell weight", tNumCells);
+    auto tHostDivergence = Kokkos::create_mirror(tDivergence);
+    tHostDivergence(0) = 4; tHostDivergence(1) = -4;
+    Kokkos::deep_copy(tDivergence, tHostDivergence);
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::blas1::fill(0.5, tCellVolume);
+    Plato::ScalarVector tBasisFunctions("basis functions", tNumNodesPerCell);
+    Plato::blas1::fill(0.33333333333333333333333, tCellVolume);
+    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    auto tHostGradient = Kokkos::create_mirror(tGradient);
+    tHostGradient(0,0,0) = -1; tHostGradient(0,0,1) = 0;
+    tHostGradient(0,1,0) = 1;  tHostGradient(0,1,1) = -1;
+    tHostGradient(0,2,0) = 0;  tHostGradient(0,2,1) = 1;
+    tHostGradient(1,0,0) = 1;  tHostGradient(1,0,1) = 0;
+    tHostGradient(1,1,0) = -1; tHostGradient(1,1,1) = 1;
+    tHostGradient(1,2,0) = 0;  tHostGradient(1,2,1) = -1;
+    Kokkos::deep_copy(tGradient, tHostGradient);
+    Plato::ScalarMultiVector tPrevVelGP("previous velocities", tNumCells, tSpaceDims);
+    auto tHostPrevVelGP = Kokkos::create_mirror(tPrevVelGP);
+    tHostPrevVelGP(0,0) = 1; tHostPrevVelGP(0,1) = 2;
+    tHostPrevVelGP(1,0) = 3; tHostPrevVelGP(1,1) = 4;
+    Kokkos::deep_copy(tPrevVelGP, tHostPrevVelGP);
+    Plato::ScalarMultiVector tResult("result", tNumCells, tNumNodesPerCell);
+
+    // call device function
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Fluids::integrate_stabilizing_scalar_forces<tNumNodesPerCell,tSpaceDims>
+            (aCellOrdinal, tBasisFunctions, tCellVolume, tDivergence, tGradient, tPrevVelGP, tStabForce, tResult);
+    }, "unit test integrate_stabilizing_scalar_forces");
+
+    /*
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{1.666666666666667,1.666666666666667,1.666666666666667},
+         {2.0,2.0,2.0}};
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for(auto& tGArray : tGold)
+    {
+        auto tCell = &tGArray - &tGold[0];
+        for(auto& tGValue : tGArray)
+        {
+            auto tDof = &tGValue - &tGArray[0];
+            TEST_FLOATING_EQUALITY(tGValue,tHostResult(tCell,tDof),tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "result");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces_ThermalResidual)
 {
     // set input data for unit test
