@@ -6548,7 +6548,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateScalarField)
     auto tBasisFunctions = tCubRule.getBasisFunctions();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::Fluids::integrate_scalar_field<tNumNodesPerCell>(aCellOrdinal, tBasisFunctions, tCellVolume, tSource, tResult)
+        Plato::Fluids::integrate_scalar_field<tNumNodesPerCell>(aCellOrdinal, tBasisFunctions, tCellVolume, tSource, tResult);
     }, "unit test calculate_convective_forces");
 
     /*
