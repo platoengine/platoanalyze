@@ -3612,21 +3612,21 @@ template
 <Plato::OrdinalType NumNodes,
  typename ResultT,
  typename ConfigT,
- typename CurTempT,
- typename PrevTempT>
+ typename CurStateT,
+ typename PrevStateT>
 DEVICE_TYPE inline void
 calculate_inertial_forces
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarVectorT<CurTempT> & aCurTemp,
- const Plato::ScalarVectorT<PrevTempT> & aPrevTemp,
+ const Plato::ScalarVectorT<CurStateT> & aCurState,
+ const Plato::ScalarVectorT<PrevStateT> & aPrevState,
  const Plato::ScalarMultiVectorT<ResultT> & aResult)
 {
     for (Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
         aResult(aCellOrdinal, tNode) +=
-            aCellVolume(aCellOrdinal) * aBasisFunctions(tNode) * ( aCurTemp(aCellOrdinal) - aPrevTemp(aCellOrdinal) );
+            aCellVolume(aCellOrdinal) * aBasisFunctions(tNode) * ( aCurState(aCellOrdinal) - aPrevState(aCellOrdinal) );
     }
 }
 
@@ -6527,6 +6527,52 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces)
+{
+    // set input data for unit test
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarVector tVolume("result", tNumCells);
+    Plato::blas1::fill(1.0, tVolume);
+    Plato::ScalarVector tCurTemp("current temperature", tNumCells);
+    auto tHostCurTemp = Kokkos::create_mirror(tCurTemp);
+    tHostCurTemp(0,0) = 10; tHostCurTemp(0,1) = 10; tHostCurTemp(0,2) = 10;
+    tHostCurTemp(1,0) = 12; tHostCurTemp(1,1) = 12; tHostCurTemp(1,2) = 12;
+    Kokkos::deep_copy(tCurTemp, tHostCurTemp);
+    Plato::ScalarVector tPrevTemp("previous temperature", tNumCells);
+    auto tHostPrevTemp = Kokkos::create_mirror(tPrevTemp);
+    tHostPrevTemp(0,0) = 5; tHostPrevTemp(0,1) = 5; tHostPrevTemp(0,2) = 5;
+    tHostPrevTemp(1,0) = 6; tHostPrevTemp(1,1) = 6; tHostPrevTemp(1,2) = 6;
+    Kokkos::deep_copy(tPrevTemp, tHostPrevTemp);
+    Plato::ScalarMultiVector tResult("flux", tNumCells, tNumNodesPerCell);
+
+    // call device function
+    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
+    auto tBasisFunctions = tCubRule.getBasisFunctions();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Fluids::calculate_inertial_forces<tNumNodesPerCell>(aCellOrdinal, tBasisFunctions, tVolume, tCurTemp, tPrevTemp, tResult);
+    }, "unit test calculate_inertial_forces");
+
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{1.666666666666667,1.666666666666667,1.666666666666667},
+         {2.0,2.0,2.0}};
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for(auto& tGArray : tGold)
+    {
+        auto tCell = &tGArray - &tGold[0];
+        for(auto& tGValue : tGArray)
+        {
+            auto tDof = &tGValue - &tGArray[0];
+            TEST_FLOATING_EQUALITY(tGValue,tHostResult(tCell,tDof),tTol);
+        }
+    }
+    //Plato::print_array_2D(tFlux, "flux");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeHeatSourceConstant)
 {
