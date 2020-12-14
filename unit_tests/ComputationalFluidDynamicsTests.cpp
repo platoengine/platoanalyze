@@ -6551,9 +6551,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateScalarField)
         Plato::Fluids::integrate_scalar_field<tNumNodesPerCell>(aCellOrdinal, tBasisFunctions, tCellVolume, tSource, tResult);
     }, "unit test calculate_convective_forces");
 
-    /*
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0,0.0},{0.0,0.0,0.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{0.166666666666667,0.166666666666667,0.166666666666667},
+         {0.333333333333333,0.333333333333333,0.333333333333333}};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tGArray : tGold)
@@ -6565,8 +6566,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateScalarField)
             TEST_FLOATING_EQUALITY(tGValue,tHostResult(tCell,tDof),tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 // todo finish testing
@@ -6605,9 +6605,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
         Plato::Fluids::calculate_convective_forces<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, tGradient, tPrevVelGP, tPrevTemp, tForces);
     }, "unit test calculate_convective_forces");
 
-    /*
     auto tTol = 1e-4;
-    std::vector<Plato::Scalar> tGold = {0.0,0.0};
+    std::vector<Plato::Scalar> tGold = {3.0,-7.0};
     auto tHostForces = Kokkos::create_mirror(tForces);
     Kokkos::deep_copy(tHostForces, tForces);
     for (auto &tValue : tGold)
@@ -6615,8 +6614,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
         auto tCell = &tValue - &tGold[0];
         TEST_FLOATING_EQUALITY(tValue, tHostForces(tCell), tTol);
     }
-    */
-    Plato::print(tForces, "convective forces");
+    //Plato::print(tForces, "convective forces");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityIncrementResidual)
