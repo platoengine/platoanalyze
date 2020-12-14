@@ -6559,9 +6559,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFluxDivergence)
         Plato::Fluids::calculate_flux_divergence<tNumNodesPerCell,tSpaceDims>(aCellOrdinal, tGradient, tCellVolume, tFlux, tResult);
     }, "unit test calculate_flux_divergence");
 
-    /*
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.5,-0.5,1.0}, {1.5,0.5,-2.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-1.0,-1.0,2.0}, {3.0,1.0,-4.0}};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tGArray : tGold)
@@ -6573,8 +6572,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFluxDivergence)
             TEST_FLOATING_EQUALITY(tGValue,tHostResult(tCell,tDof),tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateScalarField)
