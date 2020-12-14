@@ -6534,10 +6534,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeThermalDiffusivity)
     constexpr auto tNumCells = 2;
     constexpr auto tSpaceDims = 2;
     constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarMultiVector tResult("result", tNumCells);
     Plato::ScalarMultiVector tControl("control", tNumCells, tNumNodesPerCell);
-    Plato::blas2::fill(0.5, tControl);
-
-    auto tResult = 0.0;
+    auto tHostControl = Kokkos::create_mirror(tControl);
+    tHostControl(0,0) = 0.5; tHostControl(0,1) = 0.5; tHostControl(0,2) = 0.5;
+    tHostControl(1,0) = 1.0; tHostControl(1,1) = 1.0; tHostControl(1,2) = 1.0;
+    Kokkos::deep_copy(tControl, tHostControl);
     constexpr auto tFluidDiff  = 1.0;
     constexpr auto tSolidDiff  = 4.0;
     constexpr auto tPenaltyExp = 3.0;
@@ -6545,11 +6547,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeThermalDiffusivity)
     // call device function
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        tResult = Plato::Fluids::penalize_thermal_diffusivity<tNumNodesPerCell>(aCellOrdinal, tFluidDiff, tSolidDiff, tPenaltyExp, tControl);
+        tResult(aCellOrdinal) =
+            Plato::Fluids::penalize_thermal_diffusivity<tNumNodesPerCell>(aCellOrdinal, tFluidDiff, tSolidDiff, tPenaltyExp, tControl);
     }, "unit test penalize_thermal_diffusivity");
 
+    /*
     auto tTol = 1e-4;
-    TEST_FLOATING_EQUALITY(3.6250,tResult,tTol);
+    std::vector<Plato::Scalar> tGold = {3.6250,1.0};
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for (auto &tValue : tGold)
+    {
+        auto tCell = &tValue - &tGold[0];
+        TEST_FLOATING_EQUALITY(tValue, tHostResult(tCell), tTol);
+    }
+    */
+    Plato::print(tResult, "result");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFlux)
