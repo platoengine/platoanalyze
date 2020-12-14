@@ -6979,7 +6979,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityIncrementResidual)
     auto tTol = 1e-4;
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {-2.48466,-2.778444,-1.494833,-1.663333,-2.483833,-2.774944,-9.860000e-1,-1.114444};
+    std::vector<Plato::Scalar> tGold = {-2.48717,-2.77761,-1.4955,-1.66333,-2.4845,-2.77561,-0.9885,-1.11444};
     for(auto& tValue : tGold)
     {
         auto tIndex = &tValue - &tGold[0];
@@ -7121,8 +7121,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingForces)
 
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{8.333333e-01,8.333333e-01,8.333333e-01,8.333333e-01,2.333333e+00,2.333333e+00},
-         {1.666667e-01,1.666667e-01,-8.333333e-01,-8.333333e-01,-3.333333e+00,-3.333333e+00}};
+        {{0.166666666666667,0.166666666666667,0.166666666666667,0.166666666666667,1.666666666666667,1.666666666666667},
+         {0.833333333333333,0.833333333333333,-0.166666666666667,-0.166666666666667,-2.666666666666667,-2.666666666666667}};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tGoldVector : tGold)
@@ -7624,7 +7624,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
     std::vector<Plato::Scalar> tGold =
-        {-3.383333e-01, -3.309167e-01, -1.913333e-01, -1.910833e-01, -3.294444e-01, -1.742037e-01, -2.175556e-01, -7.379630e-02};
+        {-0.275924, -0.267048, -0.176428, -0.175155, -0.329743, -0.171701, -0.202908, -0.0580922};
     auto tTol = 1e-4;
     for(auto& tValue : tGold)
     {
