@@ -3601,10 +3601,10 @@ integrate_stabilizing_scalar_forces
     {
         for (Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
         {
-            aResult(aCellOrdinal, tNode) += aStabForce(aCellOrdinal) * aCellVolume(aCellOrdinal)
-                * ( ( aGradient(aCellOrdinal, tNode, tDimI) * aPrevVelGP(aCellOrdinal, tDimI) )
-                    + ( aBasisFunctions(tNode) * aDivPrevVel(aCellOrdinal) ) );
+            aResult(aCellOrdinal, tNode) += aGradient(aCellOrdinal, tNode, tDimI) * aPrevVelGP(aCellOrdinal, tDimI);
         }
+        aResult(aCellOrdinal, tNode) += aStabForce(aCellOrdinal) * aCellVolume(aCellOrdinal)
+            * ( aResult(aCellOrdinal, tNode) + aBasisFunctions(tNode) * aDivPrevVel(aCellOrdinal) )
     }
  }
 
@@ -6575,8 +6575,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
     /*
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{1.666666666666667,1.666666666666667,1.666666666666667},
-         {2.0,2.0,2.0}};
+        {{0.166666666666667,0.166666666666667,1.666666666666667},
+         {-0.833333333333333,0.166666666666667,2.666666666666667}};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     for(auto& tGArray : tGold)
