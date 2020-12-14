@@ -2833,10 +2833,11 @@ integrate_stabilizing_vector_forces
             auto tLocalCellDofI = (SpaceDim * tNode) + tDimI;
             for(Plato::OrdinalType tDimK = 0; tDimK < SpaceDim; tDimK++)
             {
-                aResult(aCellOrdinal, tLocalCellDofI) += aCellVolume(aCellOrdinal) *
-                    ( aPrevVelGP(aCellOrdinal, tDimK) * aGradient(aCellOrdinal, tNode, tDimK) +
-                        aDivPrevVel(aCellOrdinal) * aBasisFunctions(tNode) ) * aStabForce(aCellOrdinal, tDimI);
+                aResult(aCellOrdinal, tLocalCellDofI) += aCellVolume(aCellOrdinal) * aStabForce(aCellOrdinal, tDimI)
+                    * ( aGradient(aCellOrdinal, tNode, tDimK) * aPrevVelGP(aCellOrdinal, tDimK) );
             }
+            aResult(aCellOrdinal, tLocalCellDofI) += aCellVolume(aCellOrdinal) * aStabForce(aCellOrdinal, tDimI)
+                * ( aBasisFunctions(tNode) * aDivPrevVel(aCellOrdinal) );
         }
     }
  }
