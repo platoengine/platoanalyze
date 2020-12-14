@@ -6534,7 +6534,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeThermalDiffusivity)
     constexpr auto tNumCells = 2;
     constexpr auto tSpaceDims = 2;
     constexpr auto tNumNodesPerCell = tSpaceDims + 1;
-    Plato::ScalarMultiVector tResult("result", tNumCells);
+    Plato::ScalarVector tResult("result", tNumCells);
     Plato::ScalarMultiVector tControl("control", tNumCells, tNumNodesPerCell);
     auto tHostControl = Kokkos::create_mirror(tControl);
     tHostControl(0,0) = 0.5; tHostControl(0,1) = 0.5; tHostControl(0,2) = 0.5;
@@ -6551,7 +6551,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeThermalDiffusivity)
             Plato::Fluids::penalize_thermal_diffusivity<tNumNodesPerCell>(aCellOrdinal, tFluidDiff, tSolidDiff, tPenaltyExp, tControl);
     }, "unit test penalize_thermal_diffusivity");
 
-    /*
     auto tTol = 1e-4;
     std::vector<Plato::Scalar> tGold = {3.6250,1.0};
     auto tHostResult = Kokkos::create_mirror(tResult);
@@ -6561,8 +6560,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeThermalDiffusivity)
         auto tCell = &tValue - &tGold[0];
         TEST_FLOATING_EQUALITY(tValue, tHostResult(tCell), tTol);
     }
-    */
-    Plato::print(tResult, "result");
+    //Plato::print(tResult, "result");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFlux)
