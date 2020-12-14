@@ -3512,7 +3512,7 @@ calculate_flux_divergence
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarMultiVectorT<SourceT> & aSource,
+ const Plato::ScalarMultiVectorT<SourceT> & aFlux,
  const Plato::ScalarMultiVectorT<ResultT> & aResult)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
@@ -3520,7 +3520,7 @@ calculate_flux_divergence
         for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
             aResult(aCellOrdinal, tNode) +=
-                ( aGradient(aCellOrdinal, tNode, tDim) * aSource(aCellOrdinal, tDim) ) * aCellVolume(aCellOrdinal);
+                ( aGradient(aCellOrdinal, tNode, tDim) * aFlux(aCellOrdinal, tDim) ) * aCellVolume(aCellOrdinal);
         }
     }
 }
@@ -6528,7 +6528,55 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
-// todo finish
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFluxDivergence)
+{
+    // build mesh, mesh sets, and spatial domain
+    constexpr auto tSpaceDims = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+
+    // set input data for unit test
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    Plato::ScalarMultiVector tResult("result", tNumCells, tNumNodesPerCell);
+    Plato::ScalarMultiVector tFlux("flux", tNumCells, tSpaceDims);
+    auto tHostFlux = Kokkos::create_mirror(tFlux);
+    tHostFlux(0,0) = 1; tHostFlux(0,1) = 2;
+    tHostFlux(1,0) = 3; tHostFlux(1,1) = 4;
+    Kokkos::deep_copy(tFlux, tHostFlux);
+
+    // set functors for unit test
+    Plato::ComputeGradientWorkset<tSpaceDims> tComputeGradient;
+    Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+
+    // call device function
+    Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+        Plato::Fluids::calculate_flux_divergence<tNumNodesPerCell,tSpaceDims>(aCellOrdinal, tGradient, tCellVolume, tFlux, tResult);
+    }, "unit test calculate_flux_divergence");
+
+    /*
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.5,-0.5,1.0}, {1.5,0.5,-2.0}};
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for(auto& tGArray : tGold)
+    {
+        auto tCell = &tGArray - &tGold[0];
+        for(auto& tGValue : tGArray)
+        {
+            auto tDof = &tGValue - &tGArray[0];
+            TEST_FLOATING_EQUALITY(tGValue,tHostResult(tCell,tDof),tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateScalarField)
 {
     // set input data for unit test
@@ -6549,7 +6597,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateScalarField)
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         Plato::Fluids::integrate_scalar_field<tNumNodesPerCell>(aCellOrdinal, tBasisFunctions, tCellVolume, tSource, tResult);
-    }, "unit test calculate_convective_forces");
+    }, "unit test integrate_scalar_field");
 
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
@@ -6569,7 +6617,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateScalarField)
     //Plato::print_array_2D(tResult, "results");
 }
 
-// todo finish testing
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
 {
     // build mesh, mesh sets, and spatial domain
