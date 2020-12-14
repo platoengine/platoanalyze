@@ -6528,6 +6528,52 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFlux)
+{
+    // set input data for unit test
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    auto tHostGradient = Kokkos::create_mirror(tGradient);
+    tHostGradient(0,0,0) = -1; tHostGradient(0,0,1) = 0;
+    tHostGradient(0,1,0) = 1;  tHostGradient(0,1,1) = -1;
+    tHostGradient(0,2,0) = 0;  tHostGradient(0,2,1) = 1;
+    tHostGradient(1,0,0) = 1;  tHostGradient(1,0,1) = 0;
+    tHostGradient(1,1,0) = -1; tHostGradient(1,1,1) = 1;
+    tHostGradient(1,2,0) = 0;  tHostGradient(1,2,1) = -1;
+    Kokkos::deep_copy(tGradient, tHostGradient);
+    Plato::ScalarMultiVector tPrevTemp("previous temperature", tNumCells, tNumNodesPerCell);
+    auto tHostPrevTemp = Kokkos::create_mirror(tPrevTemp);
+    tHostPrevTemp(0,0) = 1; tHostPrevTemp(0,1) = 12; tHostPrevTemp(0,2) = 3;
+    tHostPrevTemp(1,0) = 4; tHostPrevTemp(1,1) = 15; tHostPrevTemp(1,2) = 6;
+    Kokkos::deep_copy(tPrevTemp, tHostPrevTemp);
+    Plato::ScalarMultiVector tFlux("flux", tNumCells, tSpaceDims);
+
+    // call device function
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Fluids::calculate_flux<tNumNodesPerCell,tSpaceDims>(aCellOrdinal, tGradient, tPrevTemp, tFlux);
+    }, "unit test calculate_flux_divergence");
+
+    /*
+    auto tTol = 1e-4;
+    std::vector<std::vector<Plato::Scalar>> tGold = {{11.0,-9.0}, {-11.0,9.0}};
+    auto tHostFlux = Kokkos::create_mirror(tFlux);
+    Kokkos::deep_copy(tHostFlux, tFlux);
+    for(auto& tGArray : tGold)
+    {
+        auto tCell = &tGArray - &tGold[0];
+        for(auto& tGValue : tGArray)
+        {
+            auto tDof = &tGValue - &tGArray[0];
+            TEST_FLOATING_EQUALITY(tGValue,tHostFlux(tCell,tDof),tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tFlux, "flux");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateFluxDivergence)
 {
     // build mesh, mesh sets, and spatial domain
