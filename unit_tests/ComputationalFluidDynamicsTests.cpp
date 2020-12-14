@@ -3574,7 +3574,7 @@ penalize_heat_source_constant
 {
     ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControl);
     ControlT tPenalizedDensity = pow(tDensity, aPenaltyExponent);
-    auto tPenalizedProperty = static_cast<Plato::Scalar>(1) - tPenalizedDensity;
+    auto tPenalizedProperty = (static_cast<Plato::Scalar>(1) - tPenalizedDensity) * aHeatSourceConstant;
     return tPenalizedProperty;
 }
 
@@ -6527,6 +6527,41 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeHeatSourceConstant)
+{
+    // set input data for unit test
+    constexpr auto tNumCells = 2;
+    constexpr auto tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+
+    constexpr auto tPenaltyExp = 3.0;
+    constexpr auto tHeatSourceConst  = 4.0;
+    Plato::ScalarVector tResult("result", tNumCells);
+    Plato::ScalarMultiVector tControl("control", tNumCells, tNumNodesPerCell);
+    auto tHostControl = Kokkos::create_mirror(tControl);
+    tHostControl(0,0) = 0.5; tHostControl(0,1) = 0.5; tHostControl(0,2) = 0.5;
+    tHostControl(1,0) = 1.0; tHostControl(1,1) = 1.0; tHostControl(1,2) = 1.0;
+    Kokkos::deep_copy(tControl, tHostControl);
+
+    // call device function
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tResult(aCellOrdinal) =
+            Plato::Fluids::penalize_heat_source_constant<tNumNodesPerCell>(aCellOrdinal, tHeatSourceConst, tPenaltyExp, tControl);
+    }, "unit test penalize_heat_source_constant");
+
+    auto tTol = 1e-4;
+    std::vector<Plato::Scalar> tGold = {3.5,0.0};
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    for (auto &tValue : tGold)
+    {
+        auto tCell = &tValue - &tGold[0];
+        TEST_FLOATING_EQUALITY(tValue, tHostResult(tCell), tTol);
+    }
+    //Plato::print(tResult, "result");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeThermalDiffusivity)
 {
