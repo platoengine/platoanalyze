@@ -543,6 +543,7 @@ struct LocalOrdinalMaps
 
     LocalOrdinalMaps(Omega_h::Mesh & aMesh) :
         mNodeCoordinate(&aMesh),
+        mStateOrdinalsMap(&aMesh),
         mScalarFieldOrdinalsMap(&aMesh),
         mVectorFieldOrdinalsMap(&aMesh),
         mControlOrdinalsMap(&aMesh)
