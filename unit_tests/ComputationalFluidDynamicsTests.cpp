@@ -3907,8 +3907,6 @@ template<typename PhysicsT, typename EvaluationT>
 class MomentumSurfaceForces
 {
 private:
-    static constexpr auto mNumDofsPerNode  = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom (dofs) per node */
-
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;       /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;      /*!< number of nodes per face */
     static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace; /*!< number of spatial dimensions on face */
@@ -3951,7 +3949,6 @@ public:
         // set local functors
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
         Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumDofsPerNode> tIntrplVectorField;
         Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
@@ -3959,11 +3956,6 @@ public:
         auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mEntitySetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
-
-        // set previous pressure at Gauss points container
-        auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Plato::ScalarVector tVelBCsGP("prescribed velocities at Gauss point", tNumCells, mNumDofsPerNode);
-        Plato::ScalarVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumDofsPerNode);
 
         // set input state worksets
         auto tVelBCsWS  = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("prescribed velocity"));
@@ -3995,24 +3987,21 @@ public:
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project into aResult workset
-              tIntrplVectorField(tCellOrdinal, tBasisFunctions, tVelBCsWS, tVelBCsGP);
-              tIntrplVectorField(tCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
               printf("\nNumNodesPerFace=%d\n",mNumNodesPerFace);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
-                  for( Plato::OrdinalType tDof = 0; tDof < mNumDofsPerNode; tDof++ )
+                  for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
                   {
-                      auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * mNumDofsPerNode) + tDof;
-                      printf("CellDofOrdinal=%d\n",tCellDofOrdinal);
+                      auto tMomentumDof = (tLocalNodeOrd[tNode] * mNumSpatialDims) + tDim;
                       printf("Weight=%f\n",tWeight);
-                      printf("PrevVelGP(Dof=%d)=%f\n",tDof,tVelBCsGP(tDof));
-                      printf("PrevVelGP(Dof=%d)=%f\n",tDof,tPrevVelGP(tDof));
-                      printf("VelBCsGP(Dof=%d)=%f\n",tDof,tVelBCsGP(tDof));
-                      printf("UnitNormalVec(Dof=%d)=%f\n",tDof,tUnitNormalVec(tDof));
+                      printf("MomentumDof=%d\n",tMomentumDof);
+                      printf("UnitNormalVec(Dof=%d)=%f\n",tDim,tUnitNormalVec(tDim));
                       printf("BasisFunctions(Node=%d)=%f\n",tNode,tBasisFunctions(tNode));
-                      aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode) *
-                          ( tUnitNormalVec(tDof) * ( tVelBCsGP(tDof) - tPrevVelGP(tDof) ) ) * tWeight;
-                      printf("Result(Cell=%d,Dof=%d)=%f\n",tCellOrdinal,tCellDofOrdinal,aResult(tCellOrdinal, tCellDofOrdinal));
+                      printf("PrevVelWS(Cell=%d,Dof=%d)=%f\n",tCellOrdinal,tMomentumDof,tPrevVelWS(tCellOrdinal, tMomentumDof));
+                      printf("VelBCsWS(Cell=%d,Dof=%d)=%f\n",tCellOrdinal,tMomentumDof,tVelBCsWS(tCellOrdinal, tMomentumDof));
+                      aResult(tCellOrdinal, tNode) += aMultiplier * tBasisFunctions(tNode) * tWeight * ( tUnitNormalVec(tDim)
+                          * ( tBasisFunctions(tNode) * ( tVelBCsWS(tCellOrdinal, tMomentumDof) - tPrevVelWS(tCellOrdinal, tMomentumDof) ) ) );
+                      printf("Result(Cell=%d,Dof=%d)=%f\n",tCellOrdinal,tMomentumDof,aResult(tCellOrdinal, tMomentumDof));
                   }
               }
           }
