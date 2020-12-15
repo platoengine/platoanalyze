@@ -3848,7 +3848,7 @@ private:
     {
         auto tMaterialName = mSpatialDomain.getMaterialName();
         Plato::is_material_defined(tMaterialName, aInputs);
-        auto tMaterials = aInputs.sublist("Material Blocks");
+        auto tMaterials = aInputs.sublist("Material Models");
         mReferenceTemperature = Plato::parse_parameter<Plato::Scalar>("Reference Temperature", tMaterialName, tMaterials);
         mSolidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Solid Thermal Diffusivity", tMaterialName, tMaterials);
         mFluidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Diffusivity", tMaterialName, tMaterials);
@@ -6616,7 +6616,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
         ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
     auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
-    tHostVelocity(0, 0) = 1; tHostVelocity(1, 0) = 11;
+    tHostVelocity(0, `0) = 1; tHostVelocity(1, 0) = 11;
     tHostVelocity(0, 1) = 2; tHostVelocity(1, 1) = 12;
     tHostVelocity(0, 2) = 3; tHostVelocity(1, 2) = 13;
     tHostVelocity(0, 3) = 4; tHostVelocity(1, 3) = 14;
