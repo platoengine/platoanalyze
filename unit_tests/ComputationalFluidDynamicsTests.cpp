@@ -3848,11 +3848,12 @@ private:
     {
         auto tMaterialName = mSpatialDomain.getMaterialName();
         Plato::is_material_defined(tMaterialName, aInputs);
-        auto tMaterials = aInputs.sublist("Material Models");
-        mReferenceTemperature = Plato::parse_parameter<Plato::Scalar>("Reference Temperature", tMaterialName, tMaterials);
-        mSolidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Solid Thermal Diffusivity", tMaterialName, tMaterials);
-        mFluidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Diffusivity", tMaterialName, tMaterials);
-        mFluidThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Conductivity", tMaterialName, tMaterials);
+        auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
+        auto tThermalPropBlock = std::string("Thermal Properties");
+        mReferenceTemperature = Plato::parse_parameter<Plato::Scalar>("Reference Temperature", tThermalPropBlock, tMaterial);
+        mSolidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Solid Thermal Diffusivity", tThermalPropBlock, tMaterial);
+        mFluidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Diffusivity", tThermalPropBlock, tMaterial);
+        mFluidThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Conductivity", tThermalPropBlock, tMaterial);
     }
 
     void setDimensionlessProperties
@@ -6616,7 +6617,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
         ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
     auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
-    tHostVelocity(0, `0) = 1; tHostVelocity(1, 0) = 11;
+    tHostVelocity(0, 0) = 1; tHostVelocity(1, 0) = 11;
     tHostVelocity(0, 1) = 2; tHostVelocity(1, 1) = 12;
     tHostVelocity(0, 2) = 3; tHostVelocity(1, 2) = 13;
     tHostVelocity(0, 3) = 4; tHostVelocity(1, 3) = 14;
@@ -6767,7 +6768,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual)
     auto tTol = 1e-4;
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {-2.48717,-2.77761,-1.4955,-1.66333,-2.4845,-2.77561,-0.9885,-1.11444};
+    std::vector<Plato::Scalar> tGold = {-6.330556e-01,0.0,-2.222222e-01,0.0};
     for(auto& tValue : tGold)
     {
         auto tIndex = &tValue - &tGold[0];
