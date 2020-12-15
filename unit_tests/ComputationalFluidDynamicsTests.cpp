@@ -536,14 +536,12 @@ template <typename PhysicsT>
 struct LocalOrdinalMaps
 {
     Plato::NodeCoordinate<PhysicsT::SimplexT::mNumSpatialDims> mNodeCoordinate;
-    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::mNumDofsPerNode>                  mStateOrdinalsMap;
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, 1 /*scalar dofs per node*/>                 mScalarFieldOrdinalsMap;
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumSpatialDims>        mVectorFieldOrdinalsMap;
     Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumControlDofsPerNode> mControlOrdinalsMap;
 
     LocalOrdinalMaps(Omega_h::Mesh & aMesh) :
         mNodeCoordinate(&aMesh),
-        mStateOrdinalsMap(&aMesh),
         mScalarFieldOrdinalsMap(&aMesh),
         mVectorFieldOrdinalsMap(&aMesh),
         mControlOrdinalsMap(&aMesh)
@@ -4338,6 +4336,7 @@ private:
     Plato::DataMap& mDataMap;
     const Plato::SpatialModel& mSpatialModel;
     Plato::LocalOrdinalMaps<PhysicsT> mLocalOrdinalMaps;
+    Plato::VectorEntryOrdinal<mNumSpatialDims,mNumDofsPerNode> mStateOrdinalsMap;
 
 public:
     /**************************************************************************//**
@@ -4354,7 +4353,8 @@ public:
            Teuchos::ParameterList & aInputs) :
         mSpatialModel(aSpatialModel),
         mDataMap(aDataMap),
-        mLocalOrdinalMaps(aSpatialModel.Mesh)
+        mLocalOrdinalMaps(aSpatialModel.Mesh),
+        mStateOrdinalsMap(&aSpatialModel.Mesh)
     {
         this->initialize(aName, aDataMap, aInputs);
     }
@@ -4396,8 +4396,7 @@ public:
             auto tName = tDomain.getDomainName();
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mResidualFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
-            Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mStateOrdinalsMap, tResultWS, tReturnValue);
+            Plato::assemble_residual<mNumNodesPerCell,mNumDofsPerNode>(tNumCells, mStateOrdinalsMap, tResultWS, tReturnValue);
         }
 
         // evaluate boundary forces
@@ -4410,14 +4409,12 @@ public:
             // evaluate prescribed forces
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mResidualFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
-            Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mStateOrdinalsMap, tResultWS, tReturnValue);
+            Plato::assemble_residual<mNumNodesPerCell,mNumDofsPerNode>(tNumCells, mStateOrdinalsMap, tResultWS, tReturnValue);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mResidualFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
-            Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mStateOrdinalsMap, tResultWS, tReturnValue);
+            Plato::assemble_residual<mNumNodesPerCell,mNumDofsPerNode>(tNumCells, mStateOrdinalsMap, tResultWS, tReturnValue);
         }
 
         return tReturnValue;
