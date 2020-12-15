@@ -6604,7 +6604,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     // set workset
     Plato::WorkSets tWorkSets;
     auto tNumCells = tMesh->nelems();
-    auto tNumNodesPerCell = tNumSpaceDims + 1;
+    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
     using ConfigT = EvaluationT::ConfigScalarType;
     Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
     auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
