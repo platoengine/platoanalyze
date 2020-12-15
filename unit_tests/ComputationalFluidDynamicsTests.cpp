@@ -4357,6 +4357,21 @@ public:
         this->initialize(aName, aDataMap, aInputs);
     }
 
+    decltype(mNumSpatialDims) getNumSpatialDims() const
+    {
+        return mNumSpatialDims;
+    }
+
+    decltype(mNumDofsPerCell) getNumDofsPerCell() const
+    {
+        return mNumDofsPerCell;
+    }
+
+    decltype(mNumDofsPerNode) getNumDofsPerNode() const
+    {
+        return mNumDofsPerNode;
+    }
+
     Plato::ScalarVector value
     (const Plato::ScalarVector & aControls,
      const Plato::Primal       & aVariables) const
