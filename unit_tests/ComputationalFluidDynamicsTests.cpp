@@ -536,15 +536,16 @@ template <typename PhysicsT>
 struct LocalOrdinalMaps
 {
     Plato::NodeCoordinate<PhysicsT::SimplexT::mNumSpatialDims> mNodeCoordinate;
-    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, 1 /*scalar dofs per node*/>                 mScalarStateOrdinalMap;
-    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumSpatialDims>        mVectorStateOrdinalMap;
-    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumControlDofsPerNode> mControlOrdinalMap;
+    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::mNumDofsPerNode>                  mStateOrdinalsMap;
+    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, 1 /*scalar dofs per node*/>                 mScalarFieldOrdinalsMap;
+    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumSpatialDims>        mVectorFieldOrdinalsMap;
+    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumControlDofsPerNode> mControlOrdinalsMap;
 
     LocalOrdinalMaps(Omega_h::Mesh & aMesh) :
         mNodeCoordinate(&aMesh),
-        mScalarStateOrdinalMap(&aMesh),
-        mVectorStateOrdinalMap(&aMesh),
-        mControlOrdinalMap(&aMesh)
+        mScalarFieldOrdinalsMap(&aMesh),
+        mVectorFieldOrdinalsMap(&aMesh),
+        mControlOrdinalsMap(&aMesh)
     { return; }
 };
 
@@ -1184,31 +1185,31 @@ build_scalar_function_worksets
     using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
     auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
         ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("current velocity"), tCurVelWS->mData);
     aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
     auto tCurPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentPressureT> > >
         ( Plato::ScalarMultiVectorT<CurrentPressureT>("current pressure", tNumCells, PhysicsT::SimplexT::mNumMassDofsPerCell) );
-    tWorkSetBuilder.buildMassWorkSet(aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("current pressure"), tCurPressWS->mData);
+    tWorkSetBuilder.buildMassWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current pressure"), tCurPressWS->mData);
     aWorkSets.set("current pressure", tCurPressWS);
 
     using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
     auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
         ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", tNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("current temperature"), tCurTempWS->mData);
+    tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
     aWorkSets.set("current temperature", tCurTempWS);
 
     using ControlT = typename EvaluationT::ControlScalarType;
     auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
         ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
-    tWorkSetBuilder.buildControlWorkSet(aDomain, aMaps.mControlOrdinalMap, aControls, tControlWS->mData);
+    tWorkSetBuilder.buildControlWorkSet(aDomain, aMaps.mControlOrdinalsMap, aControls, tControlWS->mData);
     aWorkSets.set("control", tControlWS);
 
     auto tTimeStepsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("time steps", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
     Plato::workset_control_scalar_scalar<PhysicsT::SimplexT::mNumNodesPerCell>
-        (aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
+        (aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
 
     using ConfigT = typename EvaluationT::ConfigScalarType;
@@ -1234,31 +1235,31 @@ build_scalar_function_worksets
     using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
     auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
         ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("current velocity"), tCurVelWS->mData);
     aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
     auto tCurPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentPressureT> > >
         ( Plato::ScalarMultiVectorT<CurrentPressureT>("current pressure", aNumCells, PhysicsT::SimplexT::mNumMassDofsPerCell) );
-    tWorkSetBuilder.buildMassWorkSet(aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("current pressure"), tCurPressWS->mData);
+    tWorkSetBuilder.buildMassWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current pressure"), tCurPressWS->mData);
     aWorkSets.set("current pressure", tCurPressWS);
 
     using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
     auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
         ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("current temperature"), tCurTempWS->mData);
+    tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
     aWorkSets.set("current temperature", tCurTempWS);
 
     using ControlT = typename EvaluationT::ControlScalarType;
     auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
         ( Plato::ScalarMultiVectorT<ControlT>("control", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
-    tWorkSetBuilder.buildControlWorkSet(aNumCells, aMaps.mControlOrdinalMap, aControls, tControlWS->mData);
+    tWorkSetBuilder.buildControlWorkSet(aNumCells, aMaps.mControlOrdinalsMap, aControls, tControlWS->mData);
     aWorkSets.set("control", tControlWS);
 
     auto tTimeStepsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("time steps", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
     Plato::workset_control_scalar_scalar<PhysicsT::SimplexT::mNumNodesPerCell>
-        (aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
+        (aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
 
     using ConfigT = typename EvaluationT::ConfigScalarType;
@@ -1286,49 +1287,49 @@ build_vector_function_worksets
     using CurrentPredictorT = typename EvaluationT::MomentumPredictorScalarType;
     auto tPredictorWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentPredictorT> > >
         ( Plato::ScalarMultiVectorT<CurrentPredictorT>("current predictor", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("current predictor"), tPredictorWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("current predictor"), tPredictorWS->mData);
     aWorkSets.set("current predictor", tPredictorWS);
 
     using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
     auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
         ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("current velocity"), tCurVelWS->mData);
     aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
     auto tCurPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentPressureT> > >
         ( Plato::ScalarMultiVectorT<CurrentPressureT>("current pressure", tNumCells, PhysicsT::SimplexT::mNumMassDofsPerCell) );
-    tWorkSetBuilder.buildMassWorkSet(aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("current pressure"), tCurPressWS->mData);
+    tWorkSetBuilder.buildMassWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current pressure"), tCurPressWS->mData);
     aWorkSets.set("current pressure", tCurPressWS);
 
     using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
     auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
         ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", tNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("current temperature"), tCurTempWS->mData);
+    tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
     aWorkSets.set("current temperature", tCurTempWS);
 
     using PreviousVelocityT = typename EvaluationT::PreviousMomentumScalarType;
     auto tPrevVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousVelocityT> > >
         ( Plato::ScalarMultiVectorT<PreviousVelocityT>("previous velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("previous velocity"), tPrevVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("previous velocity"), tPrevVelWS->mData);
     aWorkSets.set("previous velocity", tPrevVelWS);
 
     using PreviousPressureT = typename EvaluationT::PreviousMassScalarType;
     auto tPrevPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousPressureT> > >
         ( Plato::ScalarMultiVectorT<PreviousPressureT>("previous pressure", tNumCells, PhysicsT::SimplexT::mNumMassDofsPerCell) );
-    tWorkSetBuilder.buildMassWorkSet(aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("previous pressure"), tPrevPressWS->mData);
+    tWorkSetBuilder.buildMassWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous pressure"), tPrevPressWS->mData);
     aWorkSets.set("previous pressure", tPrevPressWS);
 
     using PreviousTemperatureT = typename EvaluationT::PreviousEnergyScalarType;
     auto tPrevTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousTemperatureT> > >
         ( Plato::ScalarMultiVectorT<PreviousTemperatureT>("previous temperature", tNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("previous temperature"), tPrevTempWS->mData);
+    tWorkSetBuilder.buildEnergyWorkSet(aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous temperature"), tPrevTempWS->mData);
     aWorkSets.set("previous temperature", tPrevTempWS);
 
     using ControlT = typename EvaluationT::ControlScalarType;
     auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
         ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
-    tWorkSetBuilder.buildControlWorkSet(aDomain, aMaps.mControlOrdinalMap, aControls, tControlWS->mData);
+    tWorkSetBuilder.buildControlWorkSet(aDomain, aMaps.mControlOrdinalsMap, aControls, tControlWS->mData);
     aWorkSets.set("control", tControlWS);
 
     using ConfigT = typename EvaluationT::ConfigScalarType;
@@ -1340,12 +1341,12 @@ build_vector_function_worksets
     auto tTimeStepsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("time steps", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
     Plato::workset_control_scalar_scalar<PhysicsT::SimplexT::mNumNodesPerCell>
-        (aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
+        (aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
 
     auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("previous velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorStateOrdinalMap, aVariables.vector("prescribed velocity"), tVelBCsWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("prescribed velocity"), tVelBCsWS->mData);
     aWorkSets.set("prescribed velocity", tVelBCsWS);
 
     if(aVariables.defined("artificial compressibility"))
@@ -1353,7 +1354,7 @@ build_vector_function_worksets
         auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
             ( Plato::ScalarMultiVector("artificial compressibility", tNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
         Plato::workset_control_scalar_scalar<PhysicsT::SimplexT::mNumNodesPerCell>
-            (aDomain, aMaps.mScalarStateOrdinalMap, aVariables.vector("artificial compressibility"), tArtificialCompressWS->mData);
+            (aDomain, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("artificial compressibility"), tArtificialCompressWS->mData);
         aWorkSets.set("artificial compressibility", tArtificialCompressWS);
     }
 }
@@ -1374,49 +1375,49 @@ build_vector_function_worksets
     using CurrentPredictorT = typename EvaluationT::MomentumPredictorScalarType;
     auto tPredictorWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentPredictorT> > >
         ( Plato::ScalarMultiVectorT<CurrentPredictorT>("current predictor", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("current predictor"), tPredictorWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("current predictor"), tPredictorWS->mData);
     aWorkSets.set("current predictor", tPredictorWS);
 
     using CurrentVelocityT = typename EvaluationT::CurrentMomentumScalarType;
     auto tCurVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentVelocityT> > >
         ( Plato::ScalarMultiVectorT<CurrentVelocityT>("current velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("current velocity"), tCurVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("current velocity"), tCurVelWS->mData);
     aWorkSets.set("current velocity", tCurVelWS);
 
     using CurrentPressureT = typename EvaluationT::CurrentMassScalarType;
     auto tCurPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentPressureT> > >
         ( Plato::ScalarMultiVectorT<CurrentPressureT>("current pressure", aNumCells, PhysicsT::SimplexT::mNumMassDofsPerCell) );
-    tWorkSetBuilder.buildMassWorkSet(aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("current pressure"), tCurPressWS->mData);
+    tWorkSetBuilder.buildMassWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current pressure"), tCurPressWS->mData);
     aWorkSets.set("current pressure", tCurPressWS);
 
     using CurrentTemperatureT = typename EvaluationT::CurrentEnergyScalarType;
     auto tCurTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurrentTemperatureT> > >
         ( Plato::ScalarMultiVectorT<CurrentTemperatureT>("current temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("current temperature"), tCurTempWS->mData);
+    tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("current temperature"), tCurTempWS->mData);
     aWorkSets.set("current temperature", tCurTempWS);
 
     using PreviousVelocityT = typename EvaluationT::PreviousMomentumScalarType;
     auto tPrevVelWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousVelocityT> > >
         ( Plato::ScalarMultiVectorT<PreviousVelocityT>("previous velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("previous velocity"), tPrevVelWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("previous velocity"), tPrevVelWS->mData);
     aWorkSets.set("previous velocity", tPrevVelWS);
 
     using PreviousPressureT = typename EvaluationT::PreviousMassScalarType;
     auto tPrevPressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousPressureT> > >
         ( Plato::ScalarMultiVectorT<PreviousPressureT>("previous pressure", aNumCells, PhysicsT::SimplexT::mNumMassDofsPerCell) );
-    tWorkSetBuilder.buildMassWorkSet(aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("previous pressure"), tPrevPressWS->mData);
+    tWorkSetBuilder.buildMassWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous pressure"), tPrevPressWS->mData);
     aWorkSets.set("previous pressure", tPrevPressWS);
 
     using PreviousTemperatureT = typename EvaluationT::PreviousEnergyScalarType;
     auto tPrevTempWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PreviousTemperatureT> > >
         ( Plato::ScalarMultiVectorT<PreviousTemperatureT>("previous temperature", aNumCells, PhysicsT::SimplexT::mNumEnergyDofsPerCell) );
-    tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("previous temperature"), tPrevTempWS->mData);
+    tWorkSetBuilder.buildEnergyWorkSet(aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("previous temperature"), tPrevTempWS->mData);
     aWorkSets.set("previous temperature", tPrevTempWS);
 
     using ControlT = typename EvaluationT::ControlScalarType;
     auto tControlWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
         ( Plato::ScalarMultiVectorT<ControlT>("control", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
-    tWorkSetBuilder.buildControlWorkSet(aNumCells, aMaps.mControlOrdinalMap, aControls, tControlWS->mData);
+    tWorkSetBuilder.buildControlWorkSet(aNumCells, aMaps.mControlOrdinalsMap, aControls, tControlWS->mData);
     aWorkSets.set("control", tControlWS);
 
     using ConfigT = typename EvaluationT::ConfigScalarType;
@@ -1428,12 +1429,12 @@ build_vector_function_worksets
     auto tTimeStepsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("time steps", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
     Plato::workset_control_scalar_scalar<PhysicsT::SimplexT::mNumNodesPerCell>
-        (aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
+        (aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("time steps"), tTimeStepsWS->mData);
     aWorkSets.set("time steps", tTimeStepsWS);
 
     auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("previous velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorStateOrdinalMap, aVariables.vector("prescribed velocity"), tVelBCsWS->mData);
+    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("prescribed velocity"), tVelBCsWS->mData);
     aWorkSets.set("prescribed velocity", tVelBCsWS);
 
     if(aVariables.defined("artificial compressibility"))
@@ -1441,7 +1442,7 @@ build_vector_function_worksets
         auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
             ( Plato::ScalarMultiVector("artificial compressibility", aNumCells, PhysicsT::SimplexT::mNumNodesPerCell) );
         Plato::workset_control_scalar_scalar<PhysicsT::SimplexT::mNumNodesPerCell>
-            (aNumCells, aMaps.mScalarStateOrdinalMap, aVariables.vector("artificial compressibility"), tArtificialCompressWS->mData);
+            (aNumCells, aMaps.mScalarFieldOrdinalsMap, aVariables.vector("artificial compressibility"), tArtificialCompressWS->mData);
         aWorkSets.set("artificial compressibility", tArtificialCompressWS);
     }
 }
@@ -2112,7 +2113,7 @@ public:
             mGradConfigFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>
-                (tDomain, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tGradient);
+                (tDomain, mLocalOrdinalMaps.mVectorFieldOrdinalsMap, tResultWS, tGradient);
         }
 
         // evaluate boundary
@@ -2126,7 +2127,7 @@ public:
             mGradConfigFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumSpatialDims>
-                (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tGradient);
+                (tNumCells, mLocalOrdinalMaps.mVectorFieldOrdinalsMap, tResultWS, tGradient);
         }
 
         return tGradient;
@@ -2153,7 +2154,7 @@ public:
             mGradControlFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlDofsPerNode>
-                (tDomain, mLocalOrdinalMaps.mControlOrdinalMap, tResultWS, tGradient);
+                (tDomain, mLocalOrdinalMaps.mControlOrdinalsMap, tResultWS, tGradient);
         }
 
         // evaluate boundary
@@ -2167,7 +2168,7 @@ public:
             mGradControlFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumControlDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mControlOrdinalMap, tResultWS, tGradient);
+                (tNumCells, mLocalOrdinalMaps.mControlOrdinalsMap, tResultWS, tGradient);
         }
 
         return tGradient;
@@ -2194,7 +2195,7 @@ public:
             mGradCurrentPressureFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMassDofsPerNode>
-                (tDomain, mLocalOrdinalMaps.mScalarStateOrdinalMap, tResultWS, tGradient);
+                (tDomain, mLocalOrdinalMaps.mScalarFieldOrdinalsMap, tResultWS, tGradient);
         }
 
         // evaluate boundary
@@ -2208,7 +2209,7 @@ public:
             mGradCurrentPressureFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMassDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mScalarStateOrdinalMap, tResultWS, tGradient);
+                (tNumCells, mLocalOrdinalMaps.mScalarFieldOrdinalsMap, tResultWS, tGradient);
         }
 
         return tGradient;
@@ -2235,7 +2236,7 @@ public:
             mGradCurrentTemperatureFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumEnergyDofsPerNode>
-                (tDomain, mLocalOrdinalMaps.mScalarStateOrdinalMap, tResultWS, tGradient);
+                (tDomain, mLocalOrdinalMaps.mScalarFieldOrdinalsMap, tResultWS, tGradient);
         }
 
         // evaluate boundary
@@ -2249,7 +2250,7 @@ public:
             mGradCurrentTemperatureFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumEnergyDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mScalarStateOrdinalMap, tResultWS, tGradient);
+                (tNumCells, mLocalOrdinalMaps.mScalarFieldOrdinalsMap, tResultWS, tGradient);
         }
 
         return tGradient;
@@ -2276,7 +2277,7 @@ public:
             mGradCurrentVelocityFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMomentumDofsPerNode>
-                (tDomain, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tGradient);
+                (tDomain, mLocalOrdinalMaps.mVectorFieldOrdinalsMap, tResultWS, tGradient);
         }
 
         // evaluate boundary
@@ -2290,7 +2291,7 @@ public:
             mGradCurrentVelocityFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
             Plato::assemble_vector_gradient_fad<mNumNodesPerCell, mNumMomentumDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tGradient);
+                (tNumCells, mLocalOrdinalMaps.mVectorFieldOrdinalsMap, tResultWS, tGradient);
         }
 
         return tGradient;
@@ -4395,7 +4396,7 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mResidualFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tReturnValue);
+                (tNumCells, mLocalOrdinalMaps.mStateOrdinalsMap, tResultWS, tReturnValue);
         }
 
         // evaluate boundary forces
@@ -4409,13 +4410,13 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mResidualFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tReturnValue);
+                (tNumCells, mLocalOrdinalMaps.mStateOrdinalsMap, tResultWS, tReturnValue);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mResidualFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_residual<mNumNodesPerCell, mNumDofsPerNode>
-                (tNumCells, mLocalOrdinalMaps.mVectorStateOrdinalMap, tResultWS, tReturnValue);
+                (tNumCells, mLocalOrdinalMaps.mStateOrdinalsMap, tResultWS, tReturnValue);
         }
 
         return tReturnValue;
@@ -9832,8 +9833,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     auto tNumCells = tMesh->nelems();
     Plato::ScalarArray3D tCoords("coordinates", tNumCells, PhysicsT::mNumNodesPerCell, tNumSpaceDim);
     Plato::ScalarMultiVector tControlOrdinals("control", tNumCells, PhysicsT::mNumNodesPerCell);
-    Plato::ScalarMultiVector tScalarOrdinals("scalar field", tNumCells, PhysicsT::mNumNodesPerCell);
-    Plato::ScalarArray3D tVectorOrdinals("vector field", tNumCells, PhysicsT::mNumNodesPerCell, PhysicsT::mNumMomentumDofsPerNode);
+    Plato::ScalarMultiVector tScalarFieldOrdinals("scalar field ordinals", tNumCells, PhysicsT::mNumNodesPerCell);
+    Plato::ScalarArray3D tStateOrdinals("state ordinals", tNumCells, PhysicsT::mNumNodesPerCell, PhysicsT::mNumDofsPerNode);
+    Plato::ScalarArray3D tVectorFieldOrdinals("vector field ordinals", tNumCells, PhysicsT::mNumNodesPerCell, PhysicsT::mNumMomentumDofsPerNode);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
@@ -9842,7 +9844,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumSpatialDims; tDim++)
             {
                 tCoords(aCellOrdinal, tNode, tDim) = tLocalOrdinalMaps.mNodeCoordinate(aCellOrdinal, tNode, tDim);
-                tVectorOrdinals(aCellOrdinal, tNode, tDim) = tLocalOrdinalMaps.mVectorStateOrdinalMap(aCellOrdinal, tNode, tDim);
+                tStateOrdinals(aCellOrdinal, tNode, tDim) = tLocalOrdinalMaps.mStateOrdinalsMap(aCellOrdinal, tNode, tDim);
+                tVectorFieldOrdinals(aCellOrdinal, tNode, tDim) = tLocalOrdinalMaps.mVectorFieldOrdinalsMap(aCellOrdinal, tNode, tDim);
             }
         }
 
@@ -9850,8 +9853,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
         {
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumControlDofsPerNode; tDim++)
             {
-                tControlOrdinals(aCellOrdinal, tNode) = tLocalOrdinalMaps.mControlOrdinalMap(aCellOrdinal, tNode, tDim);
-                tScalarOrdinals(aCellOrdinal, tNode) = tLocalOrdinalMaps.mScalarStateOrdinalMap(aCellOrdinal, tNode, tDim);
+                tControlOrdinals(aCellOrdinal, tNode) = tLocalOrdinalMaps.mControlOrdinalsMap(aCellOrdinal, tNode, tDim);
+                tScalarFieldOrdinals(aCellOrdinal, tNode) = tLocalOrdinalMaps.mScalarFieldOrdinalsMap(aCellOrdinal, tNode, tDim);
             }
         }
 
@@ -9901,8 +9904,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     tHostGoldVecOrdinals(3,0,2) = 2;  tHostGoldVecOrdinals(3,1,2) = 20; tHostGoldVecOrdinals(3,2,2) = 17; tHostGoldVecOrdinals(3,3,2) = 5;
     tHostGoldVecOrdinals(4,0,2) = 23; tHostGoldVecOrdinals(4,1,2) = 20; tHostGoldVecOrdinals(4,2,2) = 17; tHostGoldVecOrdinals(4,3,2) = 2;
     tHostGoldVecOrdinals(5,0,2) = 23; tHostGoldVecOrdinals(5,1,2) = 17; tHostGoldVecOrdinals(5,2,2) = 14; tHostGoldVecOrdinals(5,3,2) = 2;
-    auto tHostVectorOrdinals = Kokkos::create_mirror(tVectorOrdinals);
-    Kokkos::deep_copy(tHostVectorOrdinals, tVectorOrdinals);
+    auto tHostVectorFieldOrdinals = Kokkos::create_mirror(tVectorFieldOrdinals);
+    Kokkos::deep_copy(tHostVectorFieldOrdinals, tVectorFieldOrdinals);
+    auto tHostStateOrdinals = Kokkos::create_mirror(tStateOrdinals);
+    Kokkos::deep_copy(tHostStateOrdinals, tStateOrdinals);
 
     auto tTol = 1e-6;
     for(Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
@@ -9912,7 +9917,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumSpatialDims; tDim++)
             {
                 TEST_FLOATING_EQUALITY(tHostGoldCoords(tCell, tNode, tDim), tHostCoords(tCell, tNode, tDim), tTol);
-                TEST_FLOATING_EQUALITY(tHostGoldVecOrdinals(tCell, tNode, tDim), tHostVectorOrdinals(tCell, tNode, tDim), tTol);
+                TEST_FLOATING_EQUALITY(tHostGoldVecOrdinals(tCell, tNode, tDim), tHostStateOrdinals(tCell, tNode, tDim), tTol);
+                TEST_FLOATING_EQUALITY(tHostGoldVecOrdinals(tCell, tNode, tDim), tHostVectorFieldOrdinals(tCell, tNode, tDim), tTol);
             }
         }
     }
@@ -9937,15 +9943,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     tHostGoldScalarOrdinals(3,0) = 0; tHostGoldScalarOrdinals(3,1) = 6; tHostGoldScalarOrdinals(3,2) = 5; tHostGoldScalarOrdinals(3,3) = 1;
     tHostGoldScalarOrdinals(4,0) = 7; tHostGoldScalarOrdinals(4,1) = 6; tHostGoldScalarOrdinals(4,2) = 5; tHostGoldScalarOrdinals(4,3) = 0;
     tHostGoldScalarOrdinals(5,0) = 7; tHostGoldScalarOrdinals(5,1) = 5; tHostGoldScalarOrdinals(5,2) = 4; tHostGoldScalarOrdinals(5,3) = 0;
-    auto tHostScalarOrdinals = Kokkos::create_mirror(tScalarOrdinals);
-    Kokkos::deep_copy(tHostScalarOrdinals, tScalarOrdinals);
+    auto tHostScalarFieldOrdinals = Kokkos::create_mirror(tScalarFieldOrdinals);
+    Kokkos::deep_copy(tHostScalarFieldOrdinals, tScalarFieldOrdinals);
 
     for(Plato::OrdinalType tNode = 0; tNode < PhysicsT::mNumNodesPerCell; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumSpatialDims; tDim++)
         {
             TEST_FLOATING_EQUALITY(tHostGoldControlOrdinals(tNode, tDim), tHostControlOrdinals(tNode, tDim), tTol);
-            TEST_FLOATING_EQUALITY(tHostGoldScalarOrdinals(tNode, tDim), tHostScalarOrdinals(tNode, tDim), tTol);
+            TEST_FLOATING_EQUALITY(tHostGoldScalarOrdinals(tNode, tDim), tHostScalarFieldOrdinals(tNode, tDim), tTol);
         }
     }
 }
