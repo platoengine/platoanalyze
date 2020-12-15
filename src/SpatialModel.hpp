@@ -28,6 +28,16 @@ private:
 
 public:
     /******************************************************************************//**
+     * \fn getDomainName
+     * \brief Return domain name.
+     * \return domain name
+     **********************************************************************************/
+    decltype(mSpatialDomainName) getDomainName() const
+    {
+        return mSpatialDomainName;
+    }
+
+    /******************************************************************************//**
      * \fn getMaterialName
      * \brief Return material model name.
      * \return material model name
@@ -38,13 +48,33 @@ public:
     }
 
     /******************************************************************************//**
-     * \fn getDomainName
-     * \brief Return domain name.
-     * \return domain name
+     * \fn setMaterialName
+     * \brief Set material model name.
+     * \param [in] aName material model name
      **********************************************************************************/
-    decltype(mSpatialDomainName) getDomainName() const
+    void setMaterialName(const std::string & aName)
     {
-        return mSpatialDomainName;
+        mMaterialModelName = aName;
+    }
+
+    /******************************************************************************//**
+     * \fn getElementBlockName
+     * \brief Return element block name.
+     * \return element block name
+     **********************************************************************************/
+    decltype(mElementBlockName) getElementBlockName() const
+    {
+        return mElementBlockName;
+    }
+
+    /******************************************************************************//**
+     * \fn setElementBlockName
+     * \brief Set element block name.
+     * \param [in] aName element block name
+     **********************************************************************************/
+    void setElementBlockName(const std::string & aName)
+    {
+        mElementBlockName = aName;
     }
 
     /******************************************************************************//**
