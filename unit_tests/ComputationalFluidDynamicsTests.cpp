@@ -4002,7 +4002,7 @@ public:
                   {
                       auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * mNumDofsPerNode) + tDof;
                       aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode) *
-                          tUnitNormalVec(tDof) * ( tVelBCsGP(tDof) - tPrevVelGP(tDof) )* tWeight;
+                          ( tUnitNormalVec(tDof) * ( tVelBCsGP(tDof) - tPrevVelGP(tDof) ) ) * tWeight;
                   }
               }
           }
@@ -6603,6 +6603,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual)
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
+            "<ParameterList name='Spatial Model'>"
+            "  <ParameterList name='Domains'>"
+            "    <ParameterList name='Design Volume'>"
+            "      <Parameter name='Element Block' type='string' value='block_1'/>"
+            "      <Parameter name='Material Model' type='string' value='Steel'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
             "<ParameterList name='Material Models'>"
             "  <ParameterList name='Steel'>"
             "    <ParameterList name='Thermal Properties'>"
