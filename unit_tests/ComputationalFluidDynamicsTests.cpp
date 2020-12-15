@@ -9832,7 +9832,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     Plato::ScalarArray3D tCoords("coordinates", tNumCells, PhysicsT::mNumNodesPerCell, tNumSpaceDim);
     Plato::ScalarMultiVector tControlOrdinals("control", tNumCells, PhysicsT::mNumNodesPerCell);
     Plato::ScalarMultiVector tScalarFieldOrdinals("scalar field ordinals", tNumCells, PhysicsT::mNumNodesPerCell);
-    Plato::ScalarArray3D tStateOrdinals("state ordinals", tNumCells, PhysicsT::mNumNodesPerCell, PhysicsT::mNumDofsPerNode);
     Plato::ScalarArray3D tVectorFieldOrdinals("vector field ordinals", tNumCells, PhysicsT::mNumNodesPerCell, PhysicsT::mNumMomentumDofsPerNode);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -9842,7 +9841,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumSpatialDims; tDim++)
             {
                 tCoords(aCellOrdinal, tNode, tDim) = tLocalOrdinalMaps.mNodeCoordinate(aCellOrdinal, tNode, tDim);
-                tStateOrdinals(aCellOrdinal, tNode, tDim) = tLocalOrdinalMaps.mStateOrdinalsMap(aCellOrdinal, tNode, tDim);
                 tVectorFieldOrdinals(aCellOrdinal, tNode, tDim) = tLocalOrdinalMaps.mVectorFieldOrdinalsMap(aCellOrdinal, tNode, tDim);
             }
         }
@@ -9904,8 +9902,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
     tHostGoldVecOrdinals(5,0,2) = 23; tHostGoldVecOrdinals(5,1,2) = 17; tHostGoldVecOrdinals(5,2,2) = 14; tHostGoldVecOrdinals(5,3,2) = 2;
     auto tHostVectorFieldOrdinals = Kokkos::create_mirror(tVectorFieldOrdinals);
     Kokkos::deep_copy(tHostVectorFieldOrdinals, tVectorFieldOrdinals);
-    auto tHostStateOrdinals = Kokkos::create_mirror(tStateOrdinals);
-    Kokkos::deep_copy(tHostStateOrdinals, tStateOrdinals);
 
     auto tTol = 1e-6;
     for(Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
@@ -9915,7 +9911,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
             for(Plato::OrdinalType tDim = 0; tDim < PhysicsT::mNumSpatialDims; tDim++)
             {
                 TEST_FLOATING_EQUALITY(tHostGoldCoords(tCell, tNode, tDim), tHostCoords(tCell, tNode, tDim), tTol);
-                TEST_FLOATING_EQUALITY(tHostGoldVecOrdinals(tCell, tNode, tDim), tHostStateOrdinals(tCell, tNode, tDim), tTol);
                 TEST_FLOATING_EQUALITY(tHostGoldVecOrdinals(tCell, tNode, tDim), tHostVectorFieldOrdinals(tCell, tNode, tDim), tTol);
             }
         }
