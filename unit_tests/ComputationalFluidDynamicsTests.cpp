@@ -224,6 +224,16 @@ entity_ordinals
 }
 // function node_set_face_ordinals
 
+inline void is_material_defined
+(const std::string & aMaterialName,
+ const Teuchos::ParameterList & aInputs)
+{
+    if(!aInputs.sublist("Material Models").isSublist(aMaterialName))
+    {
+        THROWERR(std::string("Material with tag '") + aMaterialName + "' is not defined in 'Material Models' block")
+    }
+}
+
 template<Omega_h::SetType EntitySet>
 inline bool
 is_entity_set_defined
@@ -3168,15 +3178,15 @@ private:
        {
            THROWERR("'Hyperbolic' Parameter List is not defined.")
        }
-       auto tHyperParamList = aInputs.sublist("Hyperbolic");
-       this->setDimensionlessProperties(tHyperParamList);
+       auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
+       this->setDimensionlessProperties(tHyperbolicParamList);
 
-       if(tHyperParamList.isSublist("Momentum Conservation") == false)
+       if(tHyperbolicParamList.isSublist("Momentum Conservation") == false)
        {
            THROWERR(std::string("Parameter List 'Momentum Conservation' is not defined within Parameter List '") 
-               + tHyperParamList.name() + "'.")
+               + tHyperbolicParamList.name() + "'.")
        }
-       auto tMomentumParamList = tHyperParamList.sublist("Momentum Conservation");
+       auto tMomentumParamList = tHyperbolicParamList.sublist("Momentum Conservation");
 
        this->setPenaltyModel(tMomentumParamList);
    }
@@ -3665,9 +3675,9 @@ private:
 
     Plato::Scalar mHeatSourceConstant         = 0.0;
     Plato::Scalar mCharacteristicLength       = 1.0;
+    Plato::Scalar mReferenceTemperature       = 1.0;
     Plato::Scalar mSolidThermalDiffusivity    = 1.0;
     Plato::Scalar mFluidThermalDiffusivity    = 1.0;
-    Plato::Scalar mReferenceTempDifference    = 1.0;
     Plato::Scalar mFluidThermalConductivity   = 1.0;
     Plato::Scalar mHeatSourcePenaltyExponent  = 3.0;
     Plato::Scalar mThermalDiffPenaltyExponent = 3.0;
@@ -3681,8 +3691,10 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
-        // todo add parsing for penalty and input parameters
         this->setSourceTerm(aInputs);
+        this->setThermalProperties(aInputs);
+        this->setPenaltyModelParameters(aInputs);
+        this->setDimensionlessProperties(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
     }
 
@@ -3730,8 +3742,8 @@ public:
         auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
 
         // transfer member data to device
+        auto tRefTemp               = mReferenceTemperature;
         auto tCharLength            = mCharacteristicLength;
-        auto tRefTempDiff           = mReferenceTempDifference;
         auto tFluidThermalDiff      = mFluidThermalDiffusivity;
         auto tSolidThermalDiff      = mSolidThermalDiffusivity;
         auto tFluidThermalCond      = mFluidThermalConductivity;
@@ -3753,7 +3765,7 @@ public:
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell,mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tThermalFlux, aResultWS);
 
-            auto tHeatSrcConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTempDiff);
+            auto tHeatSrcConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTemp);
             ControlT tPenalizedHeatSrcConst = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
                 (aCellOrdinal, tHeatSrcConst, tHeatSrcPenaltyExp, tControlWS);
             tInternalForces(aCellOrdinal) += tPenalizedHeatSrcConst * tHeatSource(aCellOrdinal);
@@ -3825,10 +3837,55 @@ private:
     void setSourceTerm
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Thermal Source Term"))
+        if(aInputs.isSublist("Heat Source"))
         {
-            auto tSublist = aInputs.sublist("Thermal Source Term");
-            mHeatSourceConstant = tSublist.get<Plato::Scalar>("Source Term", 0.0);
+            mHeatSourceConstant = aInputs.sublist("Heat Source").get<Plato::Scalar>("Constant", 0.0);
+        }
+    }
+
+    void setThermalProperties
+    (Teuchos::ParameterList & aInputs)
+    {
+        auto tMaterialName = mSpatialDomain.getMaterialName();
+        Plato::is_material_defined(tMaterialName, aInputs);
+        auto tMaterials = aInputs.sublist("Material Blocks");
+        mReferenceTemperature = Plato::parse_parameter<Plato::Scalar>("Reference Temperature", tMaterialName, tMaterials);
+        mSolidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Solid Thermal Diffusivity", tMaterialName, tMaterials);
+        mFluidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Diffusivity", tMaterialName, tMaterials);
+        mFluidThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Conductivity", tMaterialName, tMaterials);
+    }
+
+    void setDimensionlessProperties
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Hyperbolic") == false)
+        {
+            THROWERR("'Hyperbolic' Parameter List is not defined.")
+        }
+        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
+        mCharacteristicLength =
+            Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolicParamList);
+    }
+
+    void setPenaltyModelParameters
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Hyperbolic") == false)
+        {
+            THROWERR("'Hyperbolic' Parameter List is not defined.")
+        }
+        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
+        if(tHyperbolicParamList.isSublist("Energy Conservation") == false)
+        {
+            THROWERR(std::string("Parameter List 'Energy Conservation' is not defined within Parameter List '")
+                + tHyperbolicParamList.name() + "'.")
+        }
+        auto tEnergyParamList = tHyperbolicParamList.sublist("Energy Conservation");
+        if (tEnergyParamList.isSublist("Penalty Function"))
+        {
+            auto tPenaltyFuncList = tEnergyParamList.sublist("Penalty Function");
+            mHeatSourcePenaltyExponent = tPenaltyFuncList.get<Plato::Scalar>("Heat Source Penalty Exponent", 3.0);
+            mThermalDiffPenaltyExponent = tPenaltyFuncList.get<Plato::Scalar>("Thermal Diffusion Penalty Exponent", 3.0);
         }
     }
 
@@ -6527,6 +6584,113 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+// todo unit test
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Characteristic Length'  type='double'  value='1.0'/>"
+            "    </ParameterList>"
+            "    <ParameterList name='Energy Conservation'>"
+            "      <ParameterList name='Penalty Function'>"
+            "        <Parameter  name='Heat Source Penalty Exponent'  type='double' value='3.0'/>"
+            "        <Parameter  name='Thermal Diffusion Penalty Exponent'  type='double' value='3.0'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "<ParameterList name='Material Models'>"
+            "  <ParameterList name='Steel'>"
+            "    <ParameterList name='Thermal Properties'>"
+            "      <Parameter  name='Fluid Thermal Conductivity'  type='double'  value='1'/>"
+            "      <Parameter  name='Reference Temperature'       type='double'  value='10.0'/>"
+            "      <Parameter  name='Fluid Thermal Diffusivity'   type='double'  value='0.5'/>"
+            "      <Parameter  name='Solid Thermal Diffusivity'   type='double'  value='1.0'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            "  <ParameterList  name='Heat Source'>"
+            "    <Parameter  name='Constant'  type='double'  value='2.0'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+    Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
+    tModel.append(tDomain);
+
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::EnergyPhysicsT;
+
+    // set control variables
+    auto tNumNodes = tMesh->nverts();
+    Plato::ScalarVector tControls("control", tNumNodes);
+    Plato::blas1::fill(1.0, tControls);
+
+    // set state variables
+    Plato::Primal tVariables;
+    auto tNumVelDofs = tNumNodes * tNumSpaceDims;
+    Plato::ScalarVector tPrevVel("previous velocity", tNumVelDofs);
+    auto tHostPrevVel = Kokkos::create_mirror(tPrevVel);
+    tHostPrevVel(0) = 1; tHostPrevVel(1) = 2; tHostPrevVel(2) = 3; tHostPrevVel(3) = 4;
+    tHostPrevVel(4) = 5; tHostPrevVel(5) = 6; tHostPrevVel(6) = 7; tHostPrevVel(7) = 8;
+    Kokkos::deep_copy(tPrevVel, tHostPrevVel);
+    tVariables.vector("previous velocity", tPrevVel);
+    Plato::ScalarVector tPrevPress("previous pressure", tNumNodes);
+    Plato::blas1::fill(1.0, tPrevPress);
+    tVariables.vector("previous pressure", tPrevPress);
+    Plato::ScalarVector tPrevTemp("previous temperature", tNumNodes);
+    auto tHostPrevTemp = Kokkos::create_mirror(tPrevTemp);
+    tHostPrevTemp(0) = 1; tHostPrevTemp(1) = 2; tHostPrevTemp(2) = 3; tHostPrevTemp(3) = 4;
+    Kokkos::deep_copy(tPrevTemp, tHostPrevTemp);
+    tVariables.vector("previous temperature", tPrevTemp);
+
+    Plato::ScalarVector tCurVel("current velocity", tNumVelDofs);
+    tVariables.vector("current velocity", tCurVel);
+    Plato::ScalarVector tCurPred("current predictor", tNumVelDofs);
+    tVariables.vector("current predictor", tCurPred);
+    Plato::ScalarVector tCurPress("current pressure", tNumNodes);
+    tVariables.vector("current pressure", tCurPress);
+    Plato::ScalarVector tCurTemp("current temperature", tNumNodes);
+    tVariables.vector("current temperature", tCurTemp);
+
+    Plato::ScalarVector tTimeSteps("time step", tNumNodes);
+    Plato::blas1::fill(0.1, tTimeSteps);
+    tVariables.vector("time steps", tTimeSteps);
+    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::blas1::fill(1.0, tVelBCs);
+    tVariables.vector("prescribed velocity", tVelBCs);
+
+    // allocate vector function
+    Plato::DataMap tDataMap;
+    std::string tFuncName("Temperature");
+    Plato::Fluids::VectorFunction<PhysicsT> tVectorFunction(tFuncName, tModel, tDataMap, tInputs.operator*());
+
+    // test vector function value
+    auto tResidual = tVectorFunction.value(tControls, tVariables);
+
+    /*
+    auto tTol = 1e-4;
+    auto tHostResidual = Kokkos::create_mirror(tResidual);
+    Kokkos::deep_copy(tHostResidual, tResidual);
+    std::vector<Plato::Scalar> tGold = {-2.48717,-2.77761,-1.4955,-1.66333,-2.4845,-2.77561,-0.9885,-1.11444};
+    for(auto& tValue : tGold)
+    {
+        auto tIndex = &tValue - &tGold[0];
+        TEST_FLOATING_EQUALITY(tValue,tHostResidual(tIndex),tTol);
+    }
+    */
+    Plato::print(tResidual, "residual");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
 {
