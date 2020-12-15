@@ -3920,7 +3920,7 @@ private:
 
     const std::string mEntitySetName; /*!< side set name */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;  /*!< integration rule */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mCubatureRule;  /*!< integration rule */
 
 public:
     MomentumSurfaceForces
@@ -3997,13 +3997,22 @@ public:
               // project into aResult workset
               tIntrplVectorField(tCellOrdinal, tBasisFunctions, tVelBCsWS, tVelBCsGP);
               tIntrplVectorField(tCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
+              printf("\nNumNodesPerFace=%d\n",mNumNodesPerFace);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
                   for( Plato::OrdinalType tDof = 0; tDof < mNumDofsPerNode; tDof++ )
                   {
                       auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * mNumDofsPerNode) + tDof;
+                      printf("CellDofOrdinal=%d\n",tCellDofOrdinal);
+                      printf("Weight=%f\n",tWeight);
+                      printf("PrevVelGP(Dof=%d)=%f\n",tDof,tVelBCsGP(tDof));
+                      printf("PrevVelGP(Dof=%d)=%f\n",tDof,tPrevVelGP(tDof));
+                      printf("VelBCsGP(Dof=%d)=%f\n",tDof,tVelBCsGP(tDof));
+                      printf("UnitNormalVec(Dof=%d)=%f\n",tDof,tUnitNormalVec(tDof));
+                      printf("BasisFunctions(Node=%d)=%f\n",tNode,tBasisFunctions(tNode));
                       aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode) *
                           ( tUnitNormalVec(tDof) * ( tVelBCsGP(tDof) - tPrevVelGP(tDof) ) ) * tWeight;
+                      printf("Result(Cell=%d,Dof=%d)=%f\n",tCellOrdinal,tCellDofOrdinal,aResult(tCellOrdinal, tCellDofOrdinal));
                   }
               }
           }
@@ -6778,18 +6787,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual)
     // test vector function value
     auto tResidual = tVectorFunction.value(tControls, tVariables);
 
-    /*
     auto tTol = 1e-4;
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {-6.330556e-01,0.0,-2.222222e-01,0.0};
+    std::vector<Plato::Scalar> tGold = {-6.330556e-01,-2.222222e-01,-5.780556e-01,-2.333333e-01};
     for(auto& tValue : tGold)
     {
         auto tIndex = &tValue - &tGold[0];
         TEST_FLOATING_EQUALITY(tValue,tHostResidual(tIndex),tTol);
     }
-    */
-    Plato::print(tResidual, "residual");
+    //Plato::print(tResidual, "residual");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
