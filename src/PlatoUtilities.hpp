@@ -40,7 +40,7 @@ inline std::string tolower(const std::string& aInput)
 inline void print_standard_vector_1D
 (const std::vector<Plato::Scalar> & aInput, std::string aName = "Data")
 {
-    printf("BEGIN PRINT: %s\n", aName);
+    printf("BEGIN PRINT: %s\n", aName.c_str());
     Plato::OrdinalType tSize = aInput.size();
     for(decltype(tSize) tIndex = 0; tIndex < tSize; tIndex++)
     {
@@ -50,7 +50,7 @@ inline void print_standard_vector_1D
         printf("X(%d)=%f\n", tIndex, aInput[tIndex]);
 #endif
     }
-    printf("END PRINT: %s\n", aName);
+    printf("END PRINT: %s\n", aName.c_str());
 }
 // print_standard_vector_1D
 
@@ -136,7 +136,7 @@ DEVICE_TYPE inline void print_array_3D_device
 **********************************************************************************/
 inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, std::string aName = "")
 {
-    printf("\nBEGIN PRINT: %s\n", aName);
+    printf("\nBEGIN PRINT: %s\n", aName.c_str());
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
@@ -146,7 +146,7 @@ inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, st
         printf("X[%d] = %d\n", aIndex, aInput(aIndex));
 #endif
     }, "print array ordinals 1D");
-    printf("END PRINT: %s\n", aName);
+    printf("END PRINT: %s\n", aName.c_str());
 }
 // function print
 
@@ -158,7 +158,7 @@ inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, st
 template<typename ArrayT>
 inline void print(const ArrayT & aInput, std::string aName = "")
 {
-    printf("\nBEGIN PRINT: %s\n", aName);
+    printf("\nBEGIN PRINT: %s\n", aName.c_str());
     Plato::OrdinalType tSize = aInput.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tSize), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
@@ -168,7 +168,7 @@ inline void print(const ArrayT & aInput, std::string aName = "")
         printf("X[%d] = %e\n", aIndex, aInput(aIndex));
 #endif
     }, "print 1D array");
-    printf("END PRINT: %s\n", aName);
+    printf("END PRINT: %s\n", aName.c_str());
 }
 // function print
 
@@ -181,7 +181,7 @@ inline void print(const ArrayT & aInput, std::string aName = "")
 template<typename ArrayT>
 inline void print_array_2D(const ArrayT & aInput, const std::string & aName)
 {
-    printf("\nBEGIN PRINT: %s\n", aName);
+    printf("\nBEGIN PRINT: %s\n", aName.c_str());
     const Plato::OrdinalType tNumRows = aInput.extent(0);
     const Plato::OrdinalType tNumCols = aInput.extent(1);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & aRow)
@@ -195,7 +195,7 @@ inline void print_array_2D(const ArrayT & aInput, const std::string & aName)
 #endif
         }
     }, "print 2D array");
-    printf("END PRINT: %s\n", aName);
+    printf("END PRINT: %s\n", aName.c_str());
 }
 // function print_array_2D
 
@@ -205,7 +205,7 @@ inline void print_array_2D_Fad(Plato::OrdinalType aNumCells,
                                const ArrayT & aInput, 
                                std::string aName = "")
 {
-    printf("\nBEGIN PRINT: %s\n", aName);
+    printf("\nBEGIN PRINT: %s\n", aName.c_str());
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCell)
     {
         for(Plato::OrdinalType tDof = 0; tDof < aNumDofsPerCell; tDof++)
@@ -217,7 +217,7 @@ inline void print_array_2D_Fad(Plato::OrdinalType aNumCells,
 #endif
         }
     }, "print 2D array Fad");
-    printf("END PRINT: %s\n", aName);
+    printf("END PRINT: %s\n", aName.c_str());
 }
 
 /******************************************************************************//**
@@ -229,7 +229,7 @@ inline void print_array_2D_Fad(Plato::OrdinalType aNumCells,
 template<typename ArrayT>
 inline void print_array_3D(const ArrayT & aInput, const std::string & aName)
 {
-    printf("\nBEGIN PRINT: %s\n", aName);
+    printf("\nBEGIN PRINT: %s\n", aName.c_str());
     const Plato::OrdinalType tNumRows = aInput.extent(1);
     const Plato::OrdinalType tNumCols = aInput.extent(2);
     const Plato::OrdinalType tNumMatrices = aInput.extent(0);
@@ -247,7 +247,7 @@ inline void print_array_3D(const ArrayT & aInput, const std::string & aName)
             }
         }
     }, "print 3D array");
-    printf("END PRINT: %s\n", aName);
+    printf("END PRINT: %s\n", aName.c_str());
 }
 // function print
 
