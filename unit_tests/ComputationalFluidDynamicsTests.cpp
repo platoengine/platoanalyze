@@ -6630,7 +6630,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual)
     // build mesh, spatial domain, and spatial model
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, tInputs.operator*(), "box");
     tDomain.cellOrdinals("body");
     Plato::SpatialModel tModel(tMesh.operator*(), tMeshSets);
     tModel.append(tDomain);
