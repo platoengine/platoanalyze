@@ -2345,8 +2345,6 @@ template<typename PhysicsT, typename EvaluationT>
 class PressureSurfaceForces
 {
 private:
-    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom (dofs) per node */
-
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;       /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;      /*!< number of nodes per face */
     static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;   /*!< number of pressure dofs per node */
@@ -2409,10 +2407,6 @@ public:
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tSurfaceJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
-        // set previous pressure at Gauss points container
-        auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Plato::ScalarVectorT<PrevPressT> tPrevPressGP("previous pressure at Gauss point", tNumCells);
-
         // set input state worksets
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevPressT>>(aWorkSets.get("previous pressure"));
@@ -2442,14 +2436,14 @@ public:
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project into aResult workset
-              tIntrplScalarField(tCellOrdinal, tBasisFunctions, tPrevPressWS, tPrevPressGP);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
-                  for( Plato::OrdinalType tDof = 0; tDof < mNumDofsPerNode; tDof++ )
+                  for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
                   {
-                      auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * mNumDofsPerNode) + tDof;
-                      aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode) *
-                          tUnitNormalVec(tDof) * tPrevPressGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
+                      auto tLocalCellNode = tLocalNodeOrd[tNode];
+                      auto tCellDofOrdinal = (tLocalCellNode * mNumSpatialDims) + tDim;
+                      aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight
+                          * ( tUnitNormalVec(tDim) * ( tBasisFunctions(tNode) * tPrevPressWS(tCellOrdinal, tLocalCellNode) ) );
                   }
               }
           }
