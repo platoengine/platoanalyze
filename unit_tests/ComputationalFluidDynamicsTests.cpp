@@ -2453,6 +2453,23 @@ public:
 // class PressureSurfaceForces
 
 
+template<Plato::OrdinalType SpaceDim>
+class ComputeSurfaceGradient
+{
+public:
+    ComputeSurfaceGradient(){}
+
+    template<typename ConfigT>
+    DEVICE_TYPE inline void operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const Plato::ScalarArray3DT<ConfigT> & aJacobians,
+     const Plato::ScalarArray3DT<ConfigT> & aGradient) const
+    {
+        //ConfigT tDetJacobian = aJacobians(aCellOrdinal,)*j22-j12*j21;
+    }
+};
+
+
 
 // todo DeviatoricSurfaceForces
 template<typename PhysicsT, typename EvaluationT>
@@ -2519,7 +2536,7 @@ public:
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
         Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
-        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
+        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceAreaTimesCubWeight;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // transfer member data to device
@@ -2533,7 +2550,7 @@ public:
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
         auto tNumFaces = tFaceOrdinalsOnBoundary.size();
-        Plato::ScalarArray3DT<ConfigT> tJacobians("cell jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
+        Plato::ScalarArray3DT<ConfigT> tJacobians("surface jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
         // set input state worksets
         auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
@@ -2557,7 +2574,7 @@ public:
                 // calculate surface jacobians
                 ConfigT tSurfaceAreaTimesCubWeight(0.0);
                 tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
-                tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+                tComputeSurfaceAreaTimesCubWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
                 // compute unit normal vector
                 auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
@@ -6585,7 +6602,6 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
-// todo unit test
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
 {
     // set physics and evaluation type
@@ -6658,7 +6674,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     //Plato::print_array_2D(tResult, "results");
 }
 
-// todo unit test
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual)
 {
     // set xml file inputs
