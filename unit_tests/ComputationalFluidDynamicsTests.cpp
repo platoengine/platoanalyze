@@ -3987,22 +3987,15 @@ public:
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project into aResult workset
-              printf("\nNumNodesPerFace=%d\n",mNumNodesPerFace);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
                   for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
                   {
                       auto tMomentumDof = (tLocalNodeOrd[tNode] * mNumSpatialDims) + tDim;
-                      printf("Weight=%f\n",tWeight);
-                      printf("MomentumDof=%d\n",tMomentumDof);
-                      printf("UnitNormalVec(Dof=%d)=%f\n",tDim,tUnitNormalVec(tDim));
-                      printf("BasisFunctions(Node=%d)=%f\n",tNode,tBasisFunctions(tNode));
-                      printf("PrevVelWS(Cell=%d,Dof=%d)=%f\n",tCellOrdinal,tMomentumDof,tPrevVelWS(tCellOrdinal, tMomentumDof));
-                      printf("VelBCsWS(Cell=%d,Dof=%d)=%f\n",tCellOrdinal,tMomentumDof,tVelBCsWS(tCellOrdinal, tMomentumDof));
-                      aResult(tCellOrdinal, tNode) += aMultiplier * tBasisFunctions(tNode) * tWeight * ( tUnitNormalVec(tDim)
-                          * ( tBasisFunctions(tNode) * ( tVelBCsWS(tCellOrdinal, tMomentumDof) - tPrevVelWS(tCellOrdinal, tMomentumDof) ) ) );
-                      printf("Result(Cell=%d,Dof=%d)=%f\n",tCellOrdinal,tMomentumDof,aResult(tCellOrdinal, tMomentumDof));
+                      aResult(tCellOrdinal, tNode) += tUnitNormalVec(tDim) * tBasisFunctions(tNode) 
+                          * ( tVelBCsWS(tCellOrdinal, tMomentumDof) - tPrevVelWS(tCellOrdinal, tMomentumDof) );
                   }
+                  aResult(tCellOrdinal, tNode) *= aMultiplier * tBasisFunctions(tNode) * tWeight;
               }
           }
         }, "calculate surface momentum integral");
@@ -6657,11 +6650,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     tMomentumBoundaryForces(tWorkSets, tResult);
 
     // test values
-    /*
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0,0.0,0.0},{0.0,0.0,0.0,0.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0,0.0},{3.025,3.475,0.0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
@@ -6669,8 +6661,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 // todo unit test
