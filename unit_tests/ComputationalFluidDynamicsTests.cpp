@@ -6650,7 +6650,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0,0.0},{3.025,3.475,0.0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
-        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
+        for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
         {
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
@@ -8201,7 +8201,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureSurfaceForces)
     Kokkos::deep_copy(tHostResult, tResult);
     
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0,0,0.5,0,0.5,0},{0,0,0,0,0,0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{0,0,0.25,0,0.25,0},{0,0,0,0,0,0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
