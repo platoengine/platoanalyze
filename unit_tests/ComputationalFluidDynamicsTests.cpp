@@ -28,6 +28,7 @@
 #include "PlatoAbstractProblem.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
+#include "SurfaceIntegralUtilities.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 
 #include "alg/PlatoSolverFactory.hpp"
@@ -1524,9 +1525,9 @@ public:
         auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
 
         // allocate local functors
+        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
-        Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
-        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
+        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumPressDofsPerNode> tIntrplScalarField;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
@@ -1561,8 +1562,8 @@ public:
 
                     // calculate surface Jacobian and surface integral weight
                     ConfigT tSurfaceAreaTimesCubWeight(0.0);
-                    tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigurationWS, tJacobians);
-                    tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+                    tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigurationWS, tJacobians);
+                    tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
                     // evaluate surface scalar function
                     tIntrplScalarField(tCellOrdinal, tBasisFunctions, tCurrentPressureWS, tCurrentPressGP);
@@ -1644,9 +1645,9 @@ public:
         auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
 
         // allocate local functors
+        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
-        Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
-        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
+        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumPressDofsPerNode> tIntrplScalarField;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
@@ -1682,8 +1683,8 @@ public:
 
                     // calculate surface Jacobian and surface integral weight
                     ConfigT tSurfaceAreaTimesCubWeight(0.0);
-                    tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigurationWS, tJacobians);
-                    tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+                    tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigurationWS, tJacobians);
+                    tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
                     // evaluate surface scalar function
                     tIntrplScalarField(tCellOrdinal, tBasisFunctions, tCurrentTempWS, tCurrentTempGP);
@@ -2396,9 +2397,9 @@ public:
         auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
 
         // set local functors
+        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
-        Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
-        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
+        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumPressDofsPerNode> tIntrplScalarField;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
@@ -2428,8 +2429,8 @@ public:
 
               // calculate surface jacobians
               ConfigT tSurfaceAreaTimesCubWeight(0.0);
-              tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tSurfaceJacobians);
-              tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tSurfaceJacobians, tSurfaceAreaTimesCubWeight);
+              tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tSurfaceJacobians);
+              tCalculateSurfaceArea(aFaceI, tCubatureWeight, tSurfaceJacobians, tSurfaceAreaTimesCubWeight);
 
               // compute unit normal vector
               auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
@@ -2453,25 +2454,26 @@ public:
 // class PressureSurfaceForces
 
 
-template<Plato::OrdinalType SpaceDim>
-class ComputeSurfaceGradient
-{
-public:
-    ComputeSurfaceGradient(){}
-
-    template<typename ConfigT>
-    DEVICE_TYPE inline void operator()
-    (const Plato::OrdinalType & aCellOrdinal,
-     const Plato::ScalarArray3DT<ConfigT> & aJacobians,
-     const Plato::ScalarArray3DT<ConfigT> & aGradient) const
-    {
-        //ConfigT tDetJacobian = aJacobians(aCellOrdinal,)*j22-j12*j21;
-    }
-};
 
 
 
-// todo DeviatoricSurfaceForces
+
+/***************************************************************************//**
+ * \brief Class used to integrate deviatoric stresses on a surface.  The integral
+ * is defined as: \int_{\Gamma - \Gamma_t} N_i^a \left(\tau_{ij}n_j\right) d\Gamma.
+ * The aforedefined integral is used by the momentum predictor residual evaluations.
+ *
+ * Note: The implementation works well for linear tetrahedral elements since the
+ * gradient is constant across the element. However, the graident calculation, i.e
+ * the calculation of the derivative of the shape functions, will require the
+ * implementation of a map from a 3-D quantity into a 2 dimensional surface. Thus,
+ * the gradients will need to be calculated using this map, which is not the case
+ * for linear tetrahedral elements.
+ *
+ * \tparam PhysicsT    physics type
+ * \tparam EvaluationT forward automatic differentiation type
+ *
+*******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class DeviatoricSurfaceForces
 {
@@ -2533,10 +2535,10 @@ public:
         auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
 
         // set local functors
-        Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
-        Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
-        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceAreaTimesCubWeight;
+        Plato::ComputeGradientWorkset<mNumSpatialDims> tCalculateGradients;
+        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
+        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceAreaTimesCubWeight;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // transfer member data to device
@@ -2547,7 +2549,7 @@ public:
         // set local data structures
         auto tNumCells = mSpatialDomain.Mesh.nelems();
         Plato::ScalarVectorT<ConfigT>  tCellVolume("cell weight", tNumCells);
-        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::ScalarArray3DT<ConfigT> tGradients("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
         auto tNumFaces = tFaceOrdinalsOnBoundary.size();
         Plato::ScalarArray3DT<ConfigT> tJacobians("surface jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
@@ -2573,17 +2575,17 @@ public:
 
                 // calculate surface jacobians
                 ConfigT tSurfaceAreaTimesCubWeight(0.0);
-                tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
-                tComputeSurfaceAreaTimesCubWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+                tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
+                tCalculateSurfaceAreaTimesCubWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
                 // compute unit normal vector
                 auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
                 auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
                 // calculate strain rate
-                tComputeGradient(tCellOrdinal, tGradient, tConfigWS, tCellVolume);
+                tCalculateGradients(tCellOrdinal, tGradients, tConfigWS, tCellVolume);
                 Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
-                    (tCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
+                    (tCellOrdinal, tPrevVelWS, tGradients, tStrainRate);
 
                 // calculate penalized prandtl number
                 ControlT tPenalizedPrandtlNum =
@@ -2595,10 +2597,10 @@ public:
                 {
                     for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
                     {
-                        auto tDof = (mNumSpatialDims * tNode) + tDimI;
+                        auto tLocalCellDofI = (mNumSpatialDims * tNode) + tDimI;
                         for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
                         {
-                            aResult(tCellOrdinal, tDof) += tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight *
+                            aResult(tCellOrdinal, tLocalCellDofI) += tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight *
                                 aMultiplier * ( ( static_cast<Plato::Scalar>(2.0) * tPenalizedPrandtlNum *
                                     tStrainRate(tCellOrdinal, tDimI, tDimJ) ) * tUnitNormalVec(tDimJ) );
                         }
@@ -2606,7 +2608,7 @@ public:
                 }
             }
 
-        }, "calculate deviatoric traction integral");
+        }, "calculate deviatoric stress surface integral");
     }
 
 private:
@@ -3958,9 +3960,9 @@ public:
         auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
 
         // set local functors
+        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
-        Plato::ComputeSurfaceJacobians<mNumSpatialDims> tComputeSurfaceJacobians;
-        Plato::ComputeSurfaceIntegralWeight<mNumSpatialDims> tComputeSurfaceIntegralWeight;
+        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // get sideset faces
@@ -3989,9 +3991,9 @@ public:
               tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
               // calculate surface jacobians
-              ConfigT tWeight(0.0);
-              tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
-              tComputeSurfaceIntegralWeight(aFaceI, tCubatureWeight, tJacobians, tWeight);
+              ConfigT tSurfaceAreaTimesCubWeight(0.0);
+              tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
+              tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
               // compute unit normal vector
               auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
@@ -4006,7 +4008,7 @@ public:
                       aResult(tCellOrdinal, tNode) += tUnitNormalVec(tDim) * tBasisFunctions(tNode) 
                           * ( tVelBCsWS(tCellOrdinal, tMomentumDof) - tPrevVelWS(tCellOrdinal, tMomentumDof) );
                   }
-                  aResult(tCellOrdinal, tNode) *= aMultiplier * tBasisFunctions(tNode) * tWeight;
+                  aResult(tCellOrdinal, tNode) *= aMultiplier * tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight;
               }
           }
         }, "calculate surface momentum integral");

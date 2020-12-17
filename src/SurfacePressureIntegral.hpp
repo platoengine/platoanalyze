@@ -10,8 +10,8 @@
 
 #include "OmegaHUtilities.hpp"
 #include "ImplicitFunctors.hpp"
-#include "NaturalBCUtilities.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
+#include "SurfaceIntegralUtilities.hpp"
 
 namespace Plato
 {
@@ -30,9 +30,14 @@ template<Plato::OrdinalType SpatialDim, Plato::OrdinalType NumDofs=SpatialDim, P
 class SurfacePressureIntegral
 {
 private:
-    const std::string mSideSetName;                              /*!< side set name */
-    const Omega_h::Vector<NumDofs> mFlux;                        /*!< force vector values */
-    Plato::LinearTetCubRuleDegreeOne<SpatialDim> mCubatureRule;  /*!< integration rule */
+    /*!< number of spatial dimensions */
+    static constexpr auto mNumSpatialDims = SpatialDim;
+    /*!< number of spatial dimensions on face */
+    static constexpr auto mNumSpatialDimsOnFace = mNumSpatialDims - static_cast<Plato::OrdinalType>(1);
+
+    const std::string mSideSetName; /*!< side set name */
+    const Omega_h::Vector<NumDofs> mFlux; /*!< force vector values */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mCubatureRule; /*!< integration rule */
 
 public:
     /******************************************************************************//**
@@ -101,39 +106,40 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
 ) const
 {
     // get mesh vertices
-    auto tFace2Verts = aSpatialModel.Mesh.ask_verts_of(SpatialDim-1);
+    auto tFace2Verts = aSpatialModel.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
     auto tCell2Verts = aSpatialModel.Mesh.ask_elem_verts();
 
     // get face to element graph
-    auto tFace2eElems = aSpatialModel.Mesh.ask_up(SpatialDim - 1, SpatialDim);
+    auto tFace2eElems = aSpatialModel.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
     auto tFace2Elems_map   = tFace2eElems.a2ab;
     auto tFace2Elems_elems = tFace2eElems.ab2b;
 
     // get element to face map
-    auto tElem2Faces = aSpatialModel.Mesh.ask_down(SpatialDim, SpatialDim - 1).ab2b;
+    auto tElem2Faces = aSpatialModel.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
 
-    Plato::NodeCoordinate<SpatialDim> tCoords(&(aSpatialModel.Mesh));
-    Plato::ComputeSurfaceJacobians<SpatialDim> tComputeSurfaceJacobians;
-    Plato::ComputeSurfaceIntegralWeight<SpatialDim> tComputeSurfaceIntegralWeight;
-    Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<SpatialDim> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
+    Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
+    Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(aSpatialModel.Mesh));
+    Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
+    Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
     // get sideset faces
     auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(aSpatialModel.MeshSets, mSideSetName);
     auto tNumFaces = tFaceLocalOrdinals.size();
-    Plato::ScalarArray3DT<ConfigScalarType> tJacobians("jacobian", tNumFaces, SpatialDim-1, SpatialDim);
+    Plato::ScalarArray3DT<ConfigScalarType> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
 
     auto tFlux = mFlux;
     auto tNumDofs = NumDofs;
-    auto tNodesPerFace = SpatialDim;
+    auto tNodesPerFace = mNumSpatialDims;
     auto tCubatureWeight = mCubatureRule.getCubWeight();
+    auto tBasisFunctions = mCubatureRule.getBasisFunctions();
     if(std::isfinite(tCubatureWeight) == false)
     {
         THROWERR("Surface Pressure Integral: A non-finite cubature weight was detected.")
     }
+    auto tCubWeightTimesScale = aScale * tCubatureWeight;
 
     // pressure forces should act towards the surface; thus, -1.0 is used to invert the outward facing normal inwards.
-    Plato::Scalar tNormalMultiplier = -1.0;
-
+    Plato::Scalar tNormalMultiplier(-1.0);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
     {
 
@@ -143,17 +149,16 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
       for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal+1]; ++tElem )
       {
           // create a map from face local node index to elem local node index
-          Plato::OrdinalType tLocalNodeOrd[SpatialDim];
+          Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
           auto tCellOrdinal = tFace2Elems_elems[tElem];
           tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
 
-          ConfigScalarType tWeight(0.0);
-          auto tCubWeightMultiplier = aScale * tCubatureWeight;
-          tComputeSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobians);
-          tComputeSurfaceIntegralWeight(aFaceI, tCubWeightMultiplier, tJacobians, tWeight);
+          ConfigScalarType tSurfaceAreaTimesCubWeight(0.0);
+          tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, aConfig, tJacobians);
+          tCalculateSurfaceArea(aFaceI, tCubWeightTimesScale, tJacobians, tSurfaceAreaTimesCubWeight);
 
           // compute unit normal vector
-          auto tElemFaceOrdinal = Plato::get_face_ordinal<SpatialDim>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
+          auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
           auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
           // project into aResult workset
@@ -161,8 +166,9 @@ void SurfacePressureIntegral<SpatialDim,NumDofs,DofsPerNode,DofOffset>::operator
           {
               for( Plato::OrdinalType tDof=0; tDof<tNumDofs; tDof++)
               {
-                  auto tCellDofOrdinal = tLocalNodeOrd[tNode] * DofsPerNode + tDof + DofOffset;
-                  aResult(tCellOrdinal,tCellDofOrdinal) += tNormalMultiplier * tUnitNormalVec(tDof) * tFlux(tDof) * tWeight;
+                  auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * DofsPerNode) + tDof + DofOffset;
+                  aResult(tCellOrdinal,tCellDofOrdinal) += tNormalMultiplier * tBasisFunctions(tNode) *
+                      ( tUnitNormalVec(tDof) * tFlux(tDof) ) * tSurfaceAreaTimesCubWeight;
               }
           }
       }
