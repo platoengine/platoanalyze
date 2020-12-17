@@ -2407,6 +2407,8 @@ public:
         auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tSurfaceJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
+        auto tNumCells = mSpatialDomain.Mesh.nelems();
+        Plato::ScalarVectorT<PrevPressT> tPrevPressGP("previous pressure at Gauss point", tNumCells);
 
         // set input state worksets
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
@@ -2437,14 +2439,15 @@ public:
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project into aResult workset
+              tIntrplScalarField(tCellOrdinal, tBasisFunctions, tPrevPressWS, tPrevPressGP);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
                   for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
                   {
                       auto tLocalCellNode = tLocalNodeOrd[tNode];
                       auto tCellDofOrdinal = (tLocalCellNode * mNumSpatialDims) + tDim;
-                      aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight
-                          * ( tUnitNormalVec(tDim) * ( tBasisFunctions(tNode) * tPrevPressWS(tCellOrdinal, tLocalCellNode) ) );
+                      aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode)
+                          * tSurfaceAreaTimesCubWeight * tPrevPressGP(tCellOrdinal) * tUnitNormalVec(tDim);
                   }
               }
           }
@@ -3920,9 +3923,10 @@ template<typename PhysicsT, typename EvaluationT>
 class MomentumSurfaceForces
 {
 private:
-    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;       /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;      /*!< number of nodes per face */
-    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace; /*!< number of spatial dimensions on face */
+    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
+    static constexpr auto mNumVelDofsPerNode    = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace;   /*!< number of spatial dimensions on face */
 
     // forward automatic differentiation types
     using ResultT    = typename EvaluationT::ResultScalarType;
@@ -3964,11 +3968,15 @@ public:
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
         Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode,   0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
         // get sideset faces
         auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mEntitySetName);
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
+        auto tNumCells = mSpatialDomain.Mesh.nelems();
+        Plato::ScalarMultiVector tVelBCsGP("velocity boundary conditions", tNumCells, mNumVelDofsPerNode);
+        Plato::ScalarMultiVector<PrevVelT> tPrevVelGP("previous velocity", tNumCells, mNumVelDofsPerNode);
 
         // set input state worksets
         auto tVelBCsWS  = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("prescribed velocity"));
@@ -4000,13 +4008,14 @@ public:
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project into aResult workset
+              tIntrplVectorField(tCellOrdinal, tBasisFunctions, tVelBCsWS, tVelBCsGP);
+              tIntrplVectorField(tCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
                   for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
                   {
-                      auto tMomentumDof = (tLocalNodeOrd[tNode] * mNumSpatialDims) + tDim;
                       aResult(tCellOrdinal, tNode) += tUnitNormalVec(tDim) * tBasisFunctions(tNode) 
-                          * ( tVelBCsWS(tCellOrdinal, tMomentumDof) - tPrevVelWS(tCellOrdinal, tMomentumDof) );
+                          * ( tVelBCsGP(tCellOrdinal, tDim) - tPrevVelGP(tCellOrdinal, tDim) );
                   }
                   aResult(tCellOrdinal, tNode) *= aMultiplier * tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight;
               }
