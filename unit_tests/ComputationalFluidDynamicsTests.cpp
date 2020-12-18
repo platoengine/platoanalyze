@@ -6786,7 +6786,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
     Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
     tWorkSets.set("configuration", tConfig);
 
-    TEST_EQUALITY(6,PhysicsT::mNumMomentumDofsPerCell);
     using PrevVelT = EvaluationT::PreviousMomentumScalarType;
     auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
         ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
@@ -6813,7 +6812,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
     Kokkos::deep_copy(tPredictor->mData, tHostPredictor);
     tWorkSets.set("current predictor", tPredictor);
 
-    TEST_EQUALITY(3,PhysicsT::mNumMassDofsPerCell);
     using PrevPressT = EvaluationT::PreviousMassScalarType;
     auto tPrevPress = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevPressT> > >
         ( Plato::ScalarMultiVectorT<PrevPressT>("previous pressure", tNumCells, PhysicsT::mNumMassDofsPerCell) );
