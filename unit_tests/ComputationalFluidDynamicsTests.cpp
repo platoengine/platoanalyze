@@ -75,7 +75,7 @@ calculate_vector_field_gradient
     {
         for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
         {
-            auto tLocalCellDof = (tNode * NumSpatialDims) + tDim
+            auto tLocalCellDof = (tNode * NumSpatialDims) + tDim;
             aResult(aCellOrdinal, tDim) += aGradient(aCellOrdinal, tNode, tDim) * aField(aCellOrdinal, tLocalCellDof);
         }
     }
