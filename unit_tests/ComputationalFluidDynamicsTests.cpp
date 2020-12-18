@@ -4213,6 +4213,9 @@ private:
     using PrevVelT   = typename EvaluationT::PreviousMomentumScalarType;
     using PrevPressT = typename EvaluationT::PreviousMassScalarType;
 
+    using CurPressGradT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurPressT, ConfigT>;
+    using PrevPressGradT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevPressT, ConfigT>;
+
     Plato::DataMap& mDataMap;                   /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< integration rule */
@@ -4257,11 +4260,12 @@ public:
         Plato::ScalarVectorT<PrevPressT> tPrevPressGP("previous pressure", tNumCells);
         Plato::ScalarArray3DT<ConfigT>   tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
 
-        Plato::ScalarMultiVectorT<CurPressT>  tCurPressGrad("current pressure gradient", mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PrevPressT> tPrevPressGrad("previous pressure gradient", mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PrevVelT>   tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PredVelT>   tPredVelGP("predicted velocity at Gauss point", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<ResultT>    tInternalForces("internal force at Gauss point", tNumCells, mNumPressDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultT>  tInternalForces("internal forces", tNumCells, mNumPressDofsPerCell);
+        Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("predicted velocity at Gauss point", tNumCells, mNumSpatialDims);
+
+        Plato::ScalarMultiVectorT<CurPressGradT>  tCurPressGrad("current pressure gradient", mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PrevPressGradT> tPrevPressGrad("previous pressure gradient", mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
