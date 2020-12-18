@@ -4114,7 +4114,6 @@ template<Plato::OrdinalType NumNodesPerCell,
          Plato::OrdinalType NumSpatialDims,
          typename ConfigT,
          typename PrevPressT,
-         typename CurPressT,
          typename ResultT>
 DEVICE_TYPE inline void
 previous_pressure_gradient_divergence
@@ -4142,8 +4141,8 @@ previous_pressure_gradient_divergence
 template<Plato::OrdinalType NumNodesPerCell,
          Plato::OrdinalType NumSpatialDims,
          typename ConfigT,
-         typename PrevPressT,
          typename CurPressT,
+         typename PrevPressT,
          typename ResultT>
 DEVICE_TYPE inline void
 delta_pressure_gradient_divergence
@@ -4152,7 +4151,7 @@ delta_pressure_gradient_divergence
  const Plato::ScalarMultiVector & aTimeStep,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarMultiVectorT<PrevPressT> & aCurPressGrad,
+ const Plato::ScalarMultiVectorT<CurPressT> & aCurPressGrad,
  const Plato::ScalarMultiVectorT<PrevPressT> & aPrevPressGrad,
  const Plato::ScalarMultiVectorT<ResultT> & aResult)
 {
@@ -4178,7 +4177,7 @@ calculate_inertial_forces
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarVectorT<PrevPressT> & aCurPress,
+ const Plato::ScalarVectorT<CurPressT> & aCurPress,
  const Plato::ScalarVectorT<PrevPressT> & aPrevPress,
  const Plato::ScalarMultiVector & aArtificialCompress,
  const Plato::ScalarMultiVectorT<ResultT> & aResult)
