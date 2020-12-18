@@ -6779,7 +6779,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateScalarFieldGradient)
     }, "unit test calculate_scalar_field_gradient");
 
     // test values
-    /*
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
@@ -6791,8 +6790,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateScalarFieldGradient)
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateVectorFieldGradient)
@@ -6800,6 +6798,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateVectorFieldGradient)
     constexpr Plato::OrdinalType tNumCells = 2;
     constexpr Plato::OrdinalType tSpaceDims = 2;
     constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    constexpr Plato::OrdinalType tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
     Plato::ScalarMultiVector tResult("result", tNumCells, tSpaceDims);
     Plato::ScalarArray3D tGradient("gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
     auto tHostGradient = Kokkos::create_mirror(tGradient);
@@ -6810,7 +6809,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateVectorFieldGradient)
     tHostGradient(1,1,0) = -1; tHostGradient(1,1,1) = 1;
     tHostGradient(1,2,0) = 0;  tHostGradient(1,2,1) = -1;
     Kokkos::deep_copy(tGradient, tHostGradient);
-    Plato::ScalarMultiVector tVelocity("pressure", tNumCells, tNumNodesPerCell);
+    Plato::ScalarMultiVector tVelocity("pressure", tNumCells, tNumDofsPerCell);
     auto tHostVelocity = Kokkos::create_mirror(tVelocity);
     tHostVelocity(0,0) = 1; tHostVelocity(0,1) = 2; tHostVelocity(0,2) = 3; tHostVelocity(0,3) = 4 ; tHostVelocity(0,4) = 5 ; tHostVelocity(0,5) = 6;
     tHostVelocity(1,0) = 7; tHostVelocity(1,1) = 8; tHostVelocity(1,2) = 9; tHostVelocity(1,3) = 10; tHostVelocity(1,4) = 11; tHostVelocity(1,5) = 12;
@@ -6823,7 +6822,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateVectorFieldGradient)
     }, "unit test calculate_scalar_field_gradient");
 
     // test values
-    /*
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
@@ -6835,8 +6833,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateVectorFieldGradient)
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PreviousPressureGradientDivergence)
@@ -6875,11 +6872,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateAdvectedForces)
     }, "unit test integrate_advected_forces");
 
     // test values
-    /*
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.5,-0.5,1.0},{1.5,0.5,-2}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.5,-0.5,1.0},{1.5,0.5,-2.0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
@@ -6887,8 +6883,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateAdvectedForces)
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateDeltaAdvectedForces)
@@ -6928,7 +6923,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateDeltaAdvectedForces)
     }, "unit test integrate_delta_advected_forces");
 
     // test values
-    /*
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
@@ -6940,8 +6934,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateDeltaAdvectedForces)
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
