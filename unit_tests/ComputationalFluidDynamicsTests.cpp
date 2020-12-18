@@ -4189,7 +4189,7 @@ integrate_inertial_forces
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
         aResult(aCellOrdinal, tNode) += aCellVolume(aCellOrdinal) * aBasisFunctions(tNode) *
-            ( static_cast<Plato::Scalar>(1) / aArtificialCompress(aCellOrdinal, tNode) ) *
+            ( static_cast<Plato::Scalar>(1.0) / aArtificialCompress(aCellOrdinal, tNode) ) *
             ( aCurPress(aCellOrdinal) - aPrevPress(aCellOrdinal) );
     }
 }
@@ -6757,18 +6757,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateInertialForces)
     constexpr Plato::OrdinalType tSpaceDims = 2;
     constexpr auto tNumNodesPerCell = tSpaceDims + 1;
     Plato::ScalarVector tBasisFunctions("basis functions", tNumNodesPerCell);
-    Plato::blas1::fill(1.0 / 3.0, tBasisFunctions);
+    Plato::blas1::fill(0.33333333333333333333333, tBasisFunctions);
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::blas1::fill(0.5, tCellVolume);
     Plato::ScalarVector tCurPress("current pressure", tNumCells);
     auto tHostCurPress = Kokkos::create_mirror(tCurPress);
-    tHostCurPress(0,0) = 7; tHostCurPress(0,1) = 8;
+    tHostCurPress(0) = 7; tHostCurPress(1) = 8;
     Kokkos::deep_copy(tCurPress, tHostCurPress);
     Plato::ScalarVector tPrevPress("previous pressure", tNumCells);
     auto tHostPrevPress = Kokkos::create_mirror(tPrevPress);
-    tHostPrevPress(0,0) = 1; tHostPrevPress(0,1) = 2;
-    Kokkos::deep_copy(tPrevPress, tHostCurPress);
-    Plato::ScalarMultiVector tArtificialCompress("artificial compressibility", tNumNodesPerCell);
+    tHostPrevPress(0) = 1; tHostPrevPress(1) = 2;
+    Kokkos::deep_copy(tPrevPress, tHostPrevPress);
+    Plato::ScalarMultiVector tArtificialCompress("artificial compressibility", tNumCells, tNumNodesPerCell);
     auto tHostArtificialCompress = Kokkos::create_mirror(tArtificialCompress);
     tHostArtificialCompress(0,0) = 0.1; tHostArtificialCompress(0,1) = 0.2; tHostArtificialCompress(0,2) = 0.3;
     tHostArtificialCompress(1,0) = 0.4; tHostArtificialCompress(1,1) = 0.5; tHostArtificialCompress(1,2) = 0.6;
@@ -6776,7 +6776,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateInertialForces)
     Plato::ScalarMultiVector tResult("result", tNumCells, tNumNodesPerCell);
 
     // call device function
-    auto tMultiplier = 1.0;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         Plato::Fluids::integrate_inertial_forces<tNumNodesPerCell>
@@ -6807,10 +6806,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeltaPressureGradientDivergence)
     Plato::ScalarMultiVector tTimeStep("time step", tNumCells, tNumNodesPerCell);
     Plato::blas2::fill(0.1, tTimeStep);
     Plato::ScalarMultiVector tPrevPressGrad("previous pressure gradient", tNumCells, tSpaceDims);
-    auto tHostCurPressGrad = Kokkos::create_mirror(tPrevPressGrad);
-    tHostCurPressGrad(0,0) = 1; tHostCurPressGrad(0,1) = 2;
-    tHostCurPressGrad(1,0) = 3; tHostCurPressGrad(1,1) = 4;
-    Kokkos::deep_copy(tPrevPressGrad, tHostCurPressGrad);
+    auto tHostPrevPressGrad = Kokkos::create_mirror(tPrevPressGrad);
+    tHostPrevPressGrad(0,0) = 1; tHostPrevPressGrad(0,1) = 2;
+    tHostPrevPressGrad(1,0) = 3; tHostPrevPressGrad(1,1) = 4;
+    Kokkos::deep_copy(tPrevPressGrad, tHostPrevPressGrad);
     Plato::ScalarMultiVector tCurPressGrad("current pressure gradient", tNumCells, tSpaceDims);
     auto tHostCurPressGrad = Kokkos::create_mirror(tCurPressGrad);
     tHostCurPressGrad(0,0) = 5; tHostCurPressGrad(0,1) = 6;
@@ -6840,7 +6839,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeltaPressureGradientDivergence)
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0.2,0.0,-0.2},{-0.2,0.0,0.2}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.2,0.0,0.2},{0.2,0.0,-0.2}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
@@ -6973,7 +6972,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PreviousPressureGradientDivergence)
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.05,0.0,0.05},{0.05,0.0,-0.05}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.05,-0.5,0.1},{0.15,0.05,-0.2}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
