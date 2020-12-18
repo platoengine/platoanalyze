@@ -4173,7 +4173,7 @@ template<Plato::OrdinalType NumNodesPerCell,
          typename CurPressT,
          typename ResultT>
 DEVICE_TYPE inline void
-calculate_inertial_forces
+integrate_inertial_forces
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
@@ -4261,7 +4261,7 @@ public:
         Plato::ScalarMultiVectorT<PrevPressT> tPrevPressGrad("previous pressure gradient", mNumSpatialDims);
         Plato::ScalarMultiVectorT<PrevVelT>   tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PredVelT>   tPredVelGP("predicted velocity at Gauss point", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<ResultT>    tInternalForces("internal force at Gauss point", tNumCells, mNumNodesPerCell);
+        Plato::ScalarMultiVectorT<ResultT>    tInternalForces("internal force at Gauss point", tNumCells, mNumPressDofsPerCell);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
@@ -4312,11 +4312,11 @@ public:
 
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tCurPressWS, tCurPressGP);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevPressWS, tPrevPressGP);
-            Plato::Fluids::calculate_inertial_forces<mNumNodesPerCell>
+            Plato::Fluids::integrate_inertial_forces<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurPressGP, tPrevPressGP, tACompressWS, aResult);
 
             // 2. add internal forces to inertial forces
-            Plato::blas1::update(aCellOrdinal, -1.0, tInternalForces, aResult);
+            Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, -1.0, tInternalForces, aResult);
         }, "conservation of mass internal forces");
     }
 
