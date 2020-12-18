@@ -4243,6 +4243,15 @@ public:
         this->setNaturalBoundaryConditions(aInputs);
     }
 
+    PressureIncrementResidual
+    (const Plato::SpatialDomain & aDomain,
+     Plato::DataMap             & aDataMap) :
+         mDataMap(aDataMap),
+         mSpatialDomain(aDomain),
+         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
+    {
+    }
+
     virtual ~PressureIncrementResidual(){}
 
     void evaluate
@@ -6750,6 +6759,119 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
+{
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MassPhysicsT;
+    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    auto tSpatialDomainName = std::string("my box");
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, tSpatialDomainName);
+    auto tElementBlockName = std::string("body");
+    tDomain.cellOrdinals(tElementBlockName);
+
+    // set workset
+    Plato::WorkSets tWorkSets;
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
+    using ConfigT = EvaluationT::ConfigScalarType;
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
+    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
+    tWorkSets.set("configuration", tConfig);
+
+    using PrevVelT = EvaluationT::PreviousMomentumScalarType;
+    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
+        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
+    tHostVelocity(0, 0) = 1; tHostVelocity(1, 0) = 7;
+    tHostVelocity(0, 1) = 2; tHostVelocity(1, 1) = 8;
+    tHostVelocity(0, 2) = 3; tHostVelocity(1, 2) = 9;
+    tHostVelocity(0, 3) = 4; tHostVelocity(1, 3) = 10;
+    tHostVelocity(0, 4) = 5; tHostVelocity(1, 4) = 11;
+    tHostVelocity(0, 5) = 6; tHostVelocity(1, 5) = 12;
+    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
+    tWorkSets.set("previous velocity", tPrevVel);
+
+    using PredictorT = EvaluationT::MomentumPredictorScalarType;
+    auto tPredictor = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PredictorT> > >
+        ( Plato::ScalarMultiVectorT<PredictorT>("predictor", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+    auto tHostPredictor = Kokkos::create_mirror(tPredictor->mData);
+    tHostPredictor(0, 0) = 0.1; tHostPredictor(1, 0) = 0.7;
+    tHostPredictor(0, 1) = 0.2; tHostPredictor(1, 1) = 0.8;
+    tHostPredictor(0, 2) = 0.3; tHostPredictor(1, 2) = 0.9;
+    tHostPredictor(0, 3) = 0.4; tHostPredictor(1, 3) = 1.0;
+    tHostPredictor(0, 4) = 0.5; tHostPredictor(1, 4) = 1.1;
+    tHostPredictor(0, 5) = 0.6; tHostPredictor(1, 5) = 1.2;
+    Kokkos::deep_copy(tPredictor->mData, tHostPredictor);
+    tWorkSets.set("current predictor", tPredictor);
+
+    using PrevPressT = EvaluationT::PreviousMassScalarType;
+    auto tPrevPress = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevPressT> > >
+        ( Plato::ScalarMultiVectorT<PrevPressT>("previous pressure", tNumCells, PhysicsT::mNumMassDofsPerCell) );
+    auto tHostPrevPress = Kokkos::create_mirror(tPrevPress->mData);
+    tHostPrevPress(0, 0) = 1; tHostPrevPress(1, 0) = 4;
+    tHostPrevPress(0, 1) = 2; tHostPrevPress(1, 1) = 5;
+    tHostPrevPress(0, 2) = 3; tHostPrevPress(1, 2) = 6;
+    Kokkos::deep_copy(tPrevPress->mData, tHostPrevPress);
+    tWorkSets.set("previous pressure", tPrevPress);
+
+    using CurPressT = EvaluationT::CurrentMassScalarType;
+    auto tCurPress = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<CurPressT> > >
+        ( Plato::ScalarMultiVectorT<CurPressT>("current pressure", tNumCells, PhysicsT::mNumMassDofsPerCell) );
+    auto tHostCurPress = Kokkos::create_mirror(tCurPress->mData);
+    tHostCurPress(0, 0) = 7; tHostCurPress(1, 0) = 10;
+    tHostCurPress(0, 1) = 8; tHostCurPress(1, 1) = 11;
+    tHostCurPress(0, 2) = 9; tHostCurPress(1, 2) = 12;
+    Kokkos::deep_copy(tCurPress->mData, tHostCurPress);
+    tWorkSets.set("current pressure", tCurPress);
+
+    auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
+        ( Plato::ScalarMultiVector("time step", tNumCells, tNumNodesPerCell) );
+    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep->mData);
+    tHostTimeStep(0, 0) = 0.01; tHostTimeStep(1, 0) = 0.04;
+    tHostTimeStep(0, 1) = 0.02; tHostTimeStep(1, 1) = 0.05;
+    tHostTimeStep(0, 2) = 0.03; tHostTimeStep(1, 2) = 0.06;
+    Kokkos::deep_copy(tTimeStep->mData, tHostTimeStep);
+    tWorkSets.set("time steps", tTimeStep);
+
+    auto tAC = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
+        ( Plato::ScalarMultiVector("time step", tNumCells, tNumNodesPerCell) );
+    auto tHostAC = Kokkos::create_mirror(tAC->mData);
+    tHostAC(0, 0) = 0.1; tHostAC(1, 0) = 0.4;
+    tHostAC(0, 1) = 0.2; tHostAC(1, 1) = 0.5;
+    tHostAC(0, 2) = 0.3; tHostAC(1, 2) = 0.6;
+    Kokkos::deep_copy(tAC->mData, tHostAC);
+    tWorkSets.set("artificial compressibility", tAC);
+
+    // evaluate pressure increment residual
+    Plato::DataMap tDataMap;
+    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
+    Plato::Fluids::PressureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap);
+    tResidual.evaluate(tWorkSets, tResult);
+
+    // test values
+    /*
+    auto tTol = 1e-4;
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.2,0.0,0.2},{0.2,0.0,-0.2}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateInertialForces)
 {
