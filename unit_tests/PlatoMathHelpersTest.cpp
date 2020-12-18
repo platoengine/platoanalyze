@@ -1963,82 +1963,177 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_R
 
 /******************************************************************************/
 /*! 
-  \brief Check multiplication of block rectangular matrices with slow dumb.
+  \brief Check multiplication of non-block rectangular matrices using Kokkos SPGEMM
+  with slow dumb.
 */
 /******************************************************************************/
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_Rect3)
 {
-  auto tMatrixA1 = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) );
-  std::vector<Plato::OrdinalType> tRowMapA1 = { 0, 2 };
-  std::vector<Plato::OrdinalType> tColMapA1 = { 0, 1 };
-  std::vector<Plato::Scalar>      tValuesA1 = { 0, 1, 2, 0, 0, 3, 1, 0 };
+  auto tMatrixA1 = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 1, 1) );
+  std::vector<Plato::OrdinalType> tRowMapA1 = { 0, 4, 8 };
+  std::vector<Plato::OrdinalType> tColMapA1 = { 0, 1, 2, 3, 0, 1, 2, 3 };
+  std::vector<Plato::Scalar>      tValuesA1 = { 0, 1, 0, 3, 2, 0, 1, 0 };
   PlatoDevel::setMatrixData(tMatrixA1, tRowMapA1, tColMapA1, tValuesA1);
 
-  auto tMatrixA2 = Teuchos::rcp( new Plato::CrsMatrixType(4, 4, 2, 2) );
-  std::vector<Plato::OrdinalType> tRowMapA2 = { 0, 2, 4 };
-  std::vector<Plato::OrdinalType> tColMapA2 = { 0, 1, 0, 1 };
-  std::vector<Plato::Scalar>      tValuesA2 = 
-    { 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 4 };
-  PlatoDevel::setMatrixData(tMatrixA2, tRowMapA2, tColMapA2, tValuesA2);
+  /* auto tMatrixA2 = Teuchos::rcp( new Plato::CrsMatrixType(4, 4, 2, 2) ); */
+  /* std::vector<Plato::OrdinalType> tRowMapA2 = { 0, 2, 4 }; */
+  /* std::vector<Plato::OrdinalType> tColMapA2 = { 0, 1, 0, 1 }; */
+  /* std::vector<Plato::Scalar>      tValuesA2 = */ 
+  /*   { 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 4 }; */
+  /* PlatoDevel::setMatrixData(tMatrixA2, tRowMapA2, tColMapA2, tValuesA2); */
 
-  auto tMatrixB1 = Teuchos::rcp( new Plato::CrsMatrixType(2, 2, 2, 2) );
-  std::vector<Plato::OrdinalType> tRowMapB1 = { 0, 1 };
-  std::vector<Plato::OrdinalType> tColMapB1 = { 0 };
+  auto tMatrixB1 = Teuchos::rcp( new Plato::CrsMatrixType(2, 2, 1, 1) );
+  std::vector<Plato::OrdinalType> tRowMapB1 = { 0, 2, 4 };
+  std::vector<Plato::OrdinalType> tColMapB1 = { 0, 1, 0, 1 };
   std::vector<Plato::Scalar>      tValuesB1 = { 1, 1, 1, 1 };
   PlatoDevel::setMatrixData(tMatrixB1, tRowMapB1, tColMapB1, tValuesB1);
 
-  auto tMatrixB2 = Teuchos::rcp( new Plato::CrsMatrixType(4, 4, 2, 2) );
-  std::vector<Plato::OrdinalType> tRowMapB2 = { 0, 2, 4 };
-  std::vector<Plato::OrdinalType> tColMapB2 = { 0, 1, 0, 1 };
-  std::vector<Plato::Scalar>      tValuesB2 = 
-    { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-  PlatoDevel::setMatrixData(tMatrixB2, tRowMapB2, tColMapB2, tValuesB2);
+  /* auto tMatrixB2 = Teuchos::rcp( new Plato::CrsMatrixType(4, 4, 2, 2) ); */
+  /* std::vector<Plato::OrdinalType> tRowMapB2 = { 0, 2, 4 }; */
+  /* std::vector<Plato::OrdinalType> tColMapB2 = { 0, 1, 0, 1 }; */
+  /* std::vector<Plato::Scalar>      tValuesB2 = */ 
+  /*   { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }; */
+  /* PlatoDevel::setMatrixData(tMatrixB2, tRowMapB2, tColMapB2, tValuesB2); */
 
-  auto tMatrixB3 = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 2, 2) );
-  std::vector<Plato::OrdinalType> tRowMapB3 = { 0, 1, 2 };
-  std::vector<Plato::OrdinalType> tColMapB3 = { 0, 0 };
+  auto tMatrixB3 = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 1, 1) );
+  std::vector<Plato::OrdinalType> tRowMapB3 = { 0, 2, 4, 6, 8 };
+  std::vector<Plato::OrdinalType> tColMapB3 = { 0, 1, 0, 1, 0, 1, 0, 1 };
   std::vector<Plato::Scalar>      tValuesB3 = { 1, 1, 1, 1, 1, 1, 1, 1 };
   PlatoDevel::setMatrixData(tMatrixB3, tRowMapB3, tColMapB3, tValuesB3);
 
-  auto tMatrixB1A1      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) );
-  auto tMatrixA1B2      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) );
-  auto tMatrixA1B3      = Teuchos::rcp( new Plato::CrsMatrixType(2, 2, 2, 2) );
-  auto tMatrixA2B3      = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 2, 2) );
+  auto tMatrixB1A1      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 1, 1) );
+  /* auto tMatrixA1B2      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) ); */
+  auto tMatrixA1B3      = Teuchos::rcp( new Plato::CrsMatrixType(2, 2, 1, 1) );
+  /* auto tMatrixA2B3      = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 2, 2) ); */
 
-  Plato::MatrixMatrixMultiply             ( tMatrixB1, tMatrixA1, tMatrixB1A1);
-  Plato::MatrixMatrixMultiply             ( tMatrixA1, tMatrixB2, tMatrixA1B2);
-  Plato::MatrixMatrixMultiply             ( tMatrixA1, tMatrixB3, tMatrixA1B3);
-  Plato::MatrixMatrixMultiply             ( tMatrixA2, tMatrixB3, tMatrixA2B3);
+  // Set up Kokkos SPGEMM 
+  typedef Plato::ScalarVectorT<Plato::OrdinalType> OrdinalView;
+  typedef Plato::ScalarVectorT<Plato::Scalar>  ScalarView;
 
-  auto tSlowDumbMatrixB1A1      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) );
-  auto tSlowDumbMatrixA1B2      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) );
-  auto tSlowDumbMatrixA1B3      = Teuchos::rcp( new Plato::CrsMatrixType(2, 2, 2, 2) );
-  auto tSlowDumbMatrixA2B3      = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 2, 2) );
+  typedef KokkosKernels::Experimental::KokkosKernelsHandle
+      <Plato::OrdinalType, Plato::OrdinalType, Plato::Scalar,
+      typename Plato::ExecSpace, 
+      typename Plato::MemSpace,
+      typename Plato::MemSpace > KernelHandle;
+
+  KernelHandle tKernel;
+  tKernel.set_team_work_size(1);
+  tKernel.set_dynamic_scheduling(false);
+  SPGEMMAlgorithm aAlgorithm = SPGEMM_KK_SPEED;
+  tKernel.create_spgemm_handle(aAlgorithm);
+
+  // B1A1
+  const Plato::OrdinalType tNumRowsOneB1A1 = tMatrixB1->numRows();
+  const Plato::OrdinalType tNumColsOneB1A1 = tMatrixB1->numCols();
+  const Plato::OrdinalType tNumRowsTwoB1A1 = tMatrixA1->numRows();
+  const Plato::OrdinalType tNumColsTwoB1A1 = tMatrixA1->numCols();
+  const Plato::OrdinalType tNumRowsOutB1A1 = tMatrixB1A1->numRows();
+  const Plato::OrdinalType tNumColsOutB1A1 = tMatrixB1A1->numCols();
+
+  ScalarView  tMatOneValuesB1A1 = tMatrixB1->entries();
+  OrdinalView tMatOneRowMapB1A1 = tMatrixB1->rowMap();
+  OrdinalView tMatOneColMapB1A1 = tMatrixB1->columnIndices();
+
+  ScalarView  tMatTwoValuesB1A1 = tMatrixA1->entries();
+  OrdinalView tMatTwoRowMapB1A1 = tMatrixA1->rowMap();
+  OrdinalView tMatTwoColMapB1A1 = tMatrixA1->columnIndices();
+
+  OrdinalView tOutRowMapB1A1 ("output row map", tNumRowsOneB1A1 + 1);
+  spgemm_symbolic ( &tKernel, tNumRowsOneB1A1, tNumRowsTwoB1A1, tNumColsTwoB1A1,
+      tMatOneRowMapB1A1, tMatOneColMapB1A1, /*transpose=*/false,
+      tMatTwoRowMapB1A1, tMatTwoColMapB1A1, /*transpose=*/false,
+      tOutRowMapB1A1
+  );
+
+  OrdinalView tOutColMapB1A1;
+  ScalarView  tOutValuesB1A1;
+  size_t tNumOutValuesB1A1 = tKernel.get_spgemm_handle()->get_c_nnz();
+  if (tNumOutValuesB1A1){
+    tOutColMapB1A1 = OrdinalView(Kokkos::ViewAllocateWithoutInitializing("out column map"), tNumOutValuesB1A1);
+    tOutValuesB1A1 = ScalarView (Kokkos::ViewAllocateWithoutInitializing("out values"),  tNumOutValuesB1A1);
+  }
+  spgemm_numeric( &tKernel, tNumRowsOneB1A1, tNumRowsTwoB1A1, tNumColsTwoB1A1,
+      tMatOneRowMapB1A1, tMatOneColMapB1A1, tMatOneValuesB1A1, /*transpose=*/false,
+      tMatTwoRowMapB1A1, tMatTwoColMapB1A1, tMatTwoValuesB1A1, /*transpose=*/false,
+      tOutRowMapB1A1, tOutColMapB1A1, tOutValuesB1A1
+  );
+
+  tMatrixB1A1->setRowMap(tOutRowMapB1A1);
+  tMatrixB1A1->setColumnIndices(tOutColMapB1A1);
+  tMatrixB1A1->setEntries(tOutValuesB1A1);
+  
+  // A1B3
+  const Plato::OrdinalType tNumRowsOneA1B3 = tMatrixA1->numRows();
+  const Plato::OrdinalType tNumColsOneA1B3 = tMatrixA1->numCols();
+  const Plato::OrdinalType tNumRowsTwoA1B3 = tMatrixB3->numRows();
+  const Plato::OrdinalType tNumColsTwoA1B3 = tMatrixB3->numCols();
+  const Plato::OrdinalType tNumRowsOutA1B3 = tMatrixA1B3->numRows();
+  const Plato::OrdinalType tNumColsOutA1B3 = tMatrixA1B3->numCols();
+
+  ScalarView  tMatOneValuesA1B3 = tMatrixA1->entries();
+  OrdinalView tMatOneRowMapA1B3 = tMatrixA1->rowMap();
+  OrdinalView tMatOneColMapA1B3 = tMatrixA1->columnIndices();
+
+  ScalarView  tMatTwoValuesA1B3 = tMatrixB3->entries();
+  OrdinalView tMatTwoRowMapA1B3 = tMatrixB3->rowMap();
+  OrdinalView tMatTwoColMapA1B3 = tMatrixB3->columnIndices();
+
+  OrdinalView tOutRowMapA1B3 ("output row map", tNumRowsOneA1B3 + 1);
+  spgemm_symbolic ( &tKernel, tNumRowsOneA1B3, tNumRowsTwoA1B3, tNumColsTwoA1B3,
+      tMatOneRowMapA1B3, tMatOneColMapA1B3, /*transpose=*/false,
+      tMatTwoRowMapA1B3, tMatTwoColMapA1B3, /*transpose=*/false,
+      tOutRowMapA1B3
+  );
+
+  OrdinalView tOutColMapA1B3;
+  ScalarView  tOutValuesA1B3;
+  size_t tNumOutValuesA1B3 = tKernel.get_spgemm_handle()->get_c_nnz();
+  if (tNumOutValuesA1B3){
+    tOutColMapA1B3 = OrdinalView(Kokkos::ViewAllocateWithoutInitializing("out column map"), tNumOutValuesA1B3);
+    tOutValuesA1B3 = ScalarView (Kokkos::ViewAllocateWithoutInitializing("out values"),  tNumOutValuesA1B3);
+  }
+  spgemm_numeric( &tKernel, tNumRowsOneA1B3, tNumRowsTwoA1B3, tNumColsTwoA1B3,
+      tMatOneRowMapA1B3, tMatOneColMapA1B3, tMatOneValuesA1B3, /*transpose=*/false,
+      tMatTwoRowMapA1B3, tMatTwoColMapA1B3, tMatTwoValuesA1B3, /*transpose=*/false,
+      tOutRowMapA1B3, tOutColMapA1B3, tOutValuesA1B3
+  );
+
+  tMatrixA1B3->setRowMap(tOutRowMapA1B3);
+  tMatrixA1B3->setColumnIndices(tOutColMapA1B3);
+  tMatrixA1B3->setEntries(tOutValuesA1B3);
+
+  tKernel.destroy_spgemm_handle();
+
+  // Slow Dumb MatrixMatrixMultiply
+  auto tSlowDumbMatrixB1A1      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 1, 1) );
+  /* auto tSlowDumbMatrixA1B2      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) ); */
+  auto tSlowDumbMatrixA1B3      = Teuchos::rcp( new Plato::CrsMatrixType(2, 2, 1, 1) );
+  /* auto tSlowDumbMatrixA2B3      = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 2, 2) ); */
 
   PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixB1, tMatrixA1, tSlowDumbMatrixB1A1);
-  PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixA1, tMatrixB2, tSlowDumbMatrixA1B2);
+  /* PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixA1, tMatrixB2, tSlowDumbMatrixA1B2); */
   PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixA1, tMatrixB3, tSlowDumbMatrixA1B3);
-  PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixA2, tMatrixB3, tSlowDumbMatrixA2B3);
+  /* PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixA2, tMatrixB3, tSlowDumbMatrixA2B3); */
 
   TEST_ASSERT(is_same(tMatrixB1A1->rowMap(), tSlowDumbMatrixB1A1->rowMap()));
   TEST_ASSERT(is_equivalent(tMatrixB1A1->rowMap(),
                             tMatrixB1A1->columnIndices(), tMatrixB1A1->entries(),
                             tSlowDumbMatrixB1A1->columnIndices(), tSlowDumbMatrixB1A1->entries()));
 
-  TEST_ASSERT(is_same(tMatrixA1B2->rowMap(), tSlowDumbMatrixA1B2->rowMap()));
-  TEST_ASSERT(is_equivalent(tMatrixA1B2->rowMap(),
-                            tMatrixA1B2->columnIndices(), tMatrixA1B2->entries(),
-                            tSlowDumbMatrixA1B2->columnIndices(), tSlowDumbMatrixA1B2->entries()));
+  /* TEST_ASSERT(is_same(tMatrixA1B2->rowMap(), tSlowDumbMatrixA1B2->rowMap())); */
+  /* TEST_ASSERT(is_equivalent(tMatrixA1B2->rowMap(), */
+  /*                           tMatrixA1B2->columnIndices(), tMatrixA1B2->entries(), */
+  /*                           tSlowDumbMatrixA1B2->columnIndices(), tSlowDumbMatrixA1B2->entries())); */
 
   TEST_ASSERT(is_same(tMatrixA1B3->rowMap(), tSlowDumbMatrixA1B3->rowMap()));
   TEST_ASSERT(is_equivalent(tMatrixA1B3->rowMap(),
                             tMatrixA1B3->columnIndices(), tMatrixA1B3->entries(),
                             tSlowDumbMatrixA1B3->columnIndices(), tSlowDumbMatrixA1B3->entries()));
 
-  TEST_ASSERT(is_same(tMatrixA2B3->rowMap(), tSlowDumbMatrixA2B3->rowMap()));
-  TEST_ASSERT(is_equivalent(tMatrixA2B3->rowMap(),
-                            tMatrixA2B3->columnIndices(), tMatrixA2B3->entries(),
-                            tSlowDumbMatrixA2B3->columnIndices(), tSlowDumbMatrixA2B3->entries()));
+  /* TEST_ASSERT(is_same(tMatrixA2B3->rowMap(), tSlowDumbMatrixA2B3->rowMap())); */
+  /* TEST_ASSERT(is_equivalent(tMatrixA2B3->rowMap(), */
+  /*                           tMatrixA2B3->columnIndices(), tMatrixA2B3->entries(), */
+  /*                           tSlowDumbMatrixA2B3->columnIndices(), tSlowDumbMatrixA2B3->entries())); */
 
 }
 
