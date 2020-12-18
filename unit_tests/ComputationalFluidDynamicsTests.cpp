@@ -4316,7 +4316,7 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurPressGP, tPrevPressGP, tACompressWS, aResult);
 
             // 2. add internal forces to inertial forces
-            Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, -1.0, tInternalForces, aResult);
+            Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, -1.0, tInternalForces, 1.0, aResult);
         }, "conservation of mass internal forces");
     }
 
