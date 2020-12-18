@@ -6786,6 +6786,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
     Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
     tWorkSets.set("configuration", tConfig);
 
+    TEST_EQUALITY(6,PhysicsT::mNumMomentumDofsPerCell);
     using PrevVelT = EvaluationT::PreviousMomentumScalarType;
     auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
         ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
@@ -6812,6 +6813,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
     Kokkos::deep_copy(tPredictor->mData, tHostPredictor);
     tWorkSets.set("current predictor", tPredictor);
 
+    TEST_EQUALITY(3,PhysicsT::mNumMassDofsPerCell);
     using PrevPressT = EvaluationT::PreviousMassScalarType;
     auto tPrevPress = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevPressT> > >
         ( Plato::ScalarMultiVectorT<PrevPressT>("previous pressure", tNumCells, PhysicsT::mNumMassDofsPerCell) );
@@ -6832,6 +6834,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
     Kokkos::deep_copy(tCurPress->mData, tHostCurPress);
     tWorkSets.set("current pressure", tCurPress);
 
+    TEST_EQUALITY(3,tNumNodesPerCell);
     auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("time step", tNumCells, tNumNodesPerCell) );
     auto tHostTimeStep = Kokkos::create_mirror(tTimeStep->mData);
@@ -6842,7 +6845,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
     tWorkSets.set("time steps", tTimeStep);
 
     auto tAC = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-        ( Plato::ScalarMultiVector("time step", tNumCells, tNumNodesPerCell) );
+        ( Plato::ScalarMultiVector("artificial compressibility", tNumCells, tNumNodesPerCell) );
     auto tHostAC = Kokkos::create_mirror(tAC->mData);
     tHostAC(0, 0) = 0.1; tHostAC(1, 0) = 0.4;
     tHostAC(0, 1) = 0.2; tHostAC(1, 1) = 0.5;
