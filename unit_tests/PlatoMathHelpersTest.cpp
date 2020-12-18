@@ -637,6 +637,65 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_FromToBlockMatrix_Rect
                             tMatrixB->columnIndices(), tMatrixB->entries()));
 }
 
+/******************************************************************************/
+/*! 
+  \brief Transform a rectangular block matrix to a non-block matrix and check with known
+  non-block matrix.
+*/
+/******************************************************************************/
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_FromToBlockMatrix_Rect2)
+{
+  auto tMatrixA1 = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) );
+  std::vector<Plato::OrdinalType> tRowMapA1 = { 0, 2 };
+  std::vector<Plato::OrdinalType> tColMapA1 = { 0, 1 };
+  std::vector<Plato::Scalar>      tValuesA1 = { 0, 1, 2, 0, 0, 3, 1, 0 };
+  PlatoDevel::setMatrixData(tMatrixA1, tRowMapA1, tColMapA1, tValuesA1);
+
+  auto tMatrixA2 = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 2, 2) );
+  std::vector<Plato::OrdinalType> tRowMapA2 = { 0, 1, 2 };
+  std::vector<Plato::OrdinalType> tColMapA2 = { 0, 0 };
+  std::vector<Plato::Scalar>      tValuesA2 = { 0, 2, 1, 0, 0, 1, 3, 0 };
+  PlatoDevel::setMatrixData(tMatrixA2, tRowMapA2, tColMapA2, tValuesA2);
+
+  auto tGoldMatrixA1 = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 1, 1) );
+  std::vector<Plato::OrdinalType> tGoldRowMapA1 = { 0, 4, 8 };
+  std::vector<Plato::OrdinalType> tGoldColMapA1 = { 0, 1, 2, 3, 0, 1, 2, 3 };
+  std::vector<Plato::Scalar>      tGoldValuesA1 = { 0, 1, 0, 3, 2, 0, 1, 0 };
+  PlatoDevel::setMatrixData(tGoldMatrixA1, tGoldRowMapA1, tGoldColMapA1, tGoldValuesA1);
+
+  auto tGoldMatrixA2 = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 1, 1) );
+  std::vector<Plato::OrdinalType> tGoldRowMapA2 = { 0, 2, 4, 6, 8 };
+  std::vector<Plato::OrdinalType> tGoldColMapA2 = { 0, 1, 0, 1, 0, 1, 0, 1 };
+  std::vector<Plato::Scalar>      tGoldValuesA2 = { 0, 2, 1, 0, 0, 1, 3, 0 };
+  PlatoDevel::setMatrixData(tGoldMatrixA2, tGoldRowMapA2, tGoldColMapA2, tGoldValuesA2);
+
+  auto tMatrixA1NonBlock = Teuchos::rcp( new Plato::CrsMatrixType( 2, 4, 1, 1) );
+  Plato::ScalarVectorT<Plato::Scalar> tMatrixA1NonBlockEntries;
+  Plato::ScalarVectorT<Plato::OrdinalType> tMatrixA1NonBlockRowMap, tMatrixA1NonBlockColMap;
+  Plato::getDataAsNonBlock  (tMatrixA1, tMatrixA1NonBlockRowMap, tMatrixA1NonBlockColMap, tMatrixA1NonBlockEntries);
+  tMatrixA1NonBlock->setRowMap(tMatrixA1NonBlockRowMap);
+  tMatrixA1NonBlock->setColumnIndices(tMatrixA1NonBlockColMap);
+  tMatrixA1NonBlock->setEntries(tMatrixA1NonBlockEntries);
+
+  auto tMatrixA2NonBlock = Teuchos::rcp( new Plato::CrsMatrixType( 4, 2, 1, 1) );
+  Plato::ScalarVectorT<Plato::Scalar> tMatrixA2NonBlockEntries;
+  Plato::ScalarVectorT<Plato::OrdinalType> tMatrixA2NonBlockRowMap, tMatrixA2NonBlockColMap;
+  Plato::getDataAsNonBlock  (tMatrixA2, tMatrixA2NonBlockRowMap, tMatrixA2NonBlockColMap, tMatrixA2NonBlockEntries);
+  tMatrixA2NonBlock->setRowMap(tMatrixA2NonBlockRowMap);
+  tMatrixA2NonBlock->setColumnIndices(tMatrixA2NonBlockColMap);
+  tMatrixA2NonBlock->setEntries(tMatrixA2NonBlockEntries);
+
+  TEST_ASSERT(is_same(tMatrixA1NonBlock->rowMap(), tGoldMatrixA1->rowMap()));
+  TEST_ASSERT(is_equivalent(tMatrixA1NonBlock->rowMap(),
+                            tMatrixA1NonBlock->columnIndices(), tMatrixA1NonBlock->entries(),
+                            tGoldMatrixA1->columnIndices(), tGoldMatrixA1->entries()));
+
+  TEST_ASSERT(is_same(tMatrixA2NonBlock->rowMap(), tGoldMatrixA2->rowMap()));
+  TEST_ASSERT(is_equivalent(tMatrixA2NonBlock->rowMap(),
+                            tMatrixA2NonBlock->columnIndices(), tMatrixA2NonBlock->entries(),
+                            tGoldMatrixA2->columnIndices(), tGoldMatrixA2->entries()));
+}
+
 
 /******************************************************************************/
 /*! 
