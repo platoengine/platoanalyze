@@ -4277,8 +4277,8 @@ public:
         Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("predicted velocity at Gauss point", tNumCells, mNumSpatialDims);
 
-        Plato::ScalarMultiVectorT<CurPressGradT>  tCurPressGrad("current pressure gradient", mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PrevPressGradT> tPrevPressGrad("previous pressure gradient", mNumSpatialDims);
+        Plato::ScalarMultiVectorT<CurPressGradT>  tCurPressGrad("current pressure gradient", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PrevPressGradT> tPrevPressGrad("previous pressure gradient", tNumCells, mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
