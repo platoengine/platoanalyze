@@ -3812,6 +3812,7 @@ public:
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell,mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tThermalFlux, aResultWS);
 
+            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::calculate_convective_forces<mNumNodesPerCell,mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelGP, tPrevTempWS, tInternalForces);
 
@@ -3819,11 +3820,11 @@ public:
             ControlT tPenalizedHeatSrcConst = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
                 (aCellOrdinal, tHeatSrcConst, tHeatSrcPenaltyExp, tControlWS);
             tInternalForces(aCellOrdinal) -= tPenalizedHeatSrcConst * tHeatSource(aCellOrdinal);
+
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
 
             // 2. calculate stabilizing forces
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::divergence<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelWS, tDivPrevVel);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
