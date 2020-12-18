@@ -39,7 +39,7 @@ namespace Plato
 {
 
 template<Plato::OrdinalType NumNodesPerCell,
-         Plato::OrdinalType NumDofsPerNode,
+         Plato::OrdinalType NumSpatialDims,
          typename ConfigT,
          typename InputT,
          typename ResultT>
@@ -52,7 +52,7 @@ calculate_scalar_field_gradient
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
-        for(Plato::OrdinalType tDim = 0; tDim < NumDofsPerNode; tDim++)
+        for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
         {
             aResult(aCellOrdinal, tDim) += aGradient(aCellOrdinal, tNode, tDim) * aField(aCellOrdinal, tNode);
         }
@@ -6750,6 +6750,199 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateScalarFieldGradient)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarMultiVector tResult("result", tNumCells, tSpaceDims);
+    Plato::ScalarArray3D tGradient("gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    auto tHostGradient = Kokkos::create_mirror(tGradient);
+    tHostGradient(0,0,0) = -1; tHostGradient(0,0,1) = 0;
+    tHostGradient(0,1,0) = 1;  tHostGradient(0,1,1) = -1;
+    tHostGradient(0,2,0) = 0;  tHostGradient(0,2,1) = 1;
+    tHostGradient(1,0,0) = 1;  tHostGradient(1,0,1) = 0;
+    tHostGradient(1,1,0) = -1; tHostGradient(1,1,1) = 1;
+    tHostGradient(1,2,0) = 0;  tHostGradient(1,2,1) = -1;
+    Kokkos::deep_copy(tGradient, tHostGradient);
+    Plato::ScalarMultiVector tPressure("pressure", tNumCells, tNumNodesPerCell);
+    auto tHostPressure = Kokkos::create_mirror(tPressure);
+    tHostPressure(0,0) = 1; tHostPressure(0,1) = 2; tHostPressure(0,2) = 3;
+    tHostPressure(1,0) = 4; tHostPressure(1,1) = 5; tHostPressure(1,2) = 6;
+    Kokkos::deep_copy(tPressure, tHostPressure);
+
+    // call device function
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::calculate_scalar_field_gradient<tNumNodesPerCell,tSpaceDims>(aCellOrdinal, tGradient, tPressure, tResult);
+    }, "unit test calculate_scalar_field_gradient");
+
+    // test values
+    /*
+    auto tTol = 1e-4;
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    std::vector<std::vector<Plato::Scalar>> tGold = {{1.0,1.0},{-1.0,-1.0}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < tSpaceDims; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateVectorFieldGradient)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarMultiVector tResult("result", tNumCells, tSpaceDims);
+    Plato::ScalarArray3D tGradient("gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    auto tHostGradient = Kokkos::create_mirror(tGradient);
+    tHostGradient(0,0,0) = -1; tHostGradient(0,0,1) = 0;
+    tHostGradient(0,1,0) = 1;  tHostGradient(0,1,1) = -1;
+    tHostGradient(0,2,0) = 0;  tHostGradient(0,2,1) = 1;
+    tHostGradient(1,0,0) = 1;  tHostGradient(1,0,1) = 0;
+    tHostGradient(1,1,0) = -1; tHostGradient(1,1,1) = 1;
+    tHostGradient(1,2,0) = 0;  tHostGradient(1,2,1) = -1;
+    Kokkos::deep_copy(tGradient, tHostGradient);
+    Plato::ScalarMultiVector tVelocity("pressure", tNumCells, tNumNodesPerCell);
+    auto tHostVelocity = Kokkos::create_mirror(tVelocity);
+    tHostVelocity(0,0) = 1; tHostVelocity(0,1) = 2; tHostVelocity(0,2) = 3; tHostVelocity(0,3) = 4 ; tHostVelocity(0,4) = 5 ; tHostVelocity(0,5) = 6;
+    tHostVelocity(1,0) = 7; tHostVelocity(1,1) = 8; tHostVelocity(1,2) = 9; tHostVelocity(1,3) = 10; tHostVelocity(1,4) = 11; tHostVelocity(1,5) = 12;
+    Kokkos::deep_copy(tVelocity, tHostVelocity);
+
+    // call device function
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::calculate_vector_field_gradient<tNumNodesPerCell,tSpaceDims>(aCellOrdinal, tGradient, tVelocity, tResult);
+    }, "unit test calculate_scalar_field_gradient");
+
+    // test values
+    /*
+    auto tTol = 1e-4;
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    std::vector<std::vector<Plato::Scalar>> tGold = {{2.0,2.0},{-2.0,-2.0}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < tSpaceDims; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PreviousPressureGradientDivergence)
+{
+
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateAdvectedForces)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarMultiVector tResult("result", tNumCells, tNumNodesPerCell);
+    Plato::ScalarMultiVector tPrevVel("previous velocity", tNumCells, tSpaceDims);
+    auto tHostPrevVel = Kokkos::create_mirror(tPrevVel);
+    tHostPrevVel(0,0) = 1; tHostPrevVel(0,1) = 2;
+    tHostPrevVel(1,0) = 3; tHostPrevVel(1,1) = 4;
+    Kokkos::deep_copy(tPrevVel, tHostPrevVel);
+    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    auto tHostGradient = Kokkos::create_mirror(tGradient);
+    tHostGradient(0,0,0) = -1; tHostGradient(0,0,1) = 0;
+    tHostGradient(0,1,0) = 1;  tHostGradient(0,1,1) = -1;
+    tHostGradient(0,2,0) = 0;  tHostGradient(0,2,1) = 1;
+    tHostGradient(1,0,0) = 1;  tHostGradient(1,0,1) = 0;
+    tHostGradient(1,1,0) = -1; tHostGradient(1,1,1) = 1;
+    tHostGradient(1,2,0) = 0;  tHostGradient(1,2,1) = -1;
+    Kokkos::deep_copy(tGradient, tHostGradient);
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::blas1::fill(0.5, tCellVolume);
+
+    // call device function
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Fluids::integrate_advected_forces<tNumNodesPerCell,tSpaceDims>
+            (aCellOrdinal, tGradient, tCellVolume, tPrevVel, tResult);
+    }, "unit test integrate_advected_forces");
+
+    // test values
+    /*
+    auto tTol = 1e-4;
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.5,-0.5,1.0},{1.5,0.5,-2}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateDeltaAdvectedForces)
+{
+    constexpr Plato::OrdinalType tNumCells = 2;
+    constexpr Plato::OrdinalType tSpaceDims = 2;
+    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
+    Plato::ScalarMultiVector tResult("result", tNumCells, tNumNodesPerCell);
+    Plato::ScalarMultiVector tPrevVel("previous velocity", tNumCells, tSpaceDims);
+    auto tHostPrevVel = Kokkos::create_mirror(tPrevVel);
+    tHostPrevVel(0,0) = 1; tHostPrevVel(0,1) = 2;
+    tHostPrevVel(1,0) = 3; tHostPrevVel(1,1) = 4;
+    Kokkos::deep_copy(tPrevVel, tHostPrevVel);
+    Plato::ScalarMultiVector tPredVel("predicted velocity", tNumCells, tSpaceDims);
+    auto tHostPredVel = Kokkos::create_mirror(tPredVel);
+    tHostPredVel(0,0) = 11; tHostPredVel(0,1) = 12;
+    tHostPredVel(1,0) = 13; tHostPredVel(1,1) = 14;
+    Kokkos::deep_copy(tPredVel, tHostPredVel);
+    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
+    auto tHostGradient = Kokkos::create_mirror(tGradient);
+    tHostGradient(0,0,0) = -1; tHostGradient(0,0,1) = 0;
+    tHostGradient(0,1,0) = 1;  tHostGradient(0,1,1) = -1;
+    tHostGradient(0,2,0) = 0;  tHostGradient(0,2,1) = 1;
+    tHostGradient(1,0,0) = 1;  tHostGradient(1,0,1) = 0;
+    tHostGradient(1,1,0) = -1; tHostGradient(1,1,1) = 1;
+    tHostGradient(1,2,0) = 0;  tHostGradient(1,2,1) = -1;
+    Kokkos::deep_copy(tGradient, tHostGradient);
+    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
+    Plato::blas1::fill(0.5, tCellVolume);
+
+    // call device function
+    auto tMultiplier = 1.0;
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        Plato::Fluids::integrate_delta_advected_forces<tNumNodesPerCell,tSpaceDims>
+            (aCellOrdinal, tMultiplier, tGradient, tCellVolume, tPredVel, tPrevVel, tResult);
+    }, "unit test integrate_delta_advected_forces");
+
+    // test values
+    /*
+    auto tTol = 1e-4;
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-5.0,0.0,5.0},{5.0,0.0,-5.0}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
 {
