@@ -1975,12 +1975,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_R
   std::vector<Plato::Scalar>      tValuesA1 = { 0, 1, 0, 3, 2, 0, 1, 0 };
   PlatoDevel::setMatrixData(tMatrixA1, tRowMapA1, tColMapA1, tValuesA1);
 
-  /* auto tMatrixA2 = Teuchos::rcp( new Plato::CrsMatrixType(4, 4, 2, 2) ); */
-  /* std::vector<Plato::OrdinalType> tRowMapA2 = { 0, 2, 4 }; */
-  /* std::vector<Plato::OrdinalType> tColMapA2 = { 0, 1, 0, 1 }; */
-  /* std::vector<Plato::Scalar>      tValuesA2 = */ 
-  /*   { 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 4 }; */
-  /* PlatoDevel::setMatrixData(tMatrixA2, tRowMapA2, tColMapA2, tValuesA2); */
+  auto tMatrixA2 = Teuchos::rcp( new Plato::CrsMatrixType(4, 4, 1, 1) );
+  std::vector<Plato::OrdinalType> tRowMapA2 = { 0, 4, 8, 12, 16 };
+  std::vector<Plato::OrdinalType> tColMapA2 = 
+    { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
+  std::vector<Plato::Scalar>      tValuesA2 = 
+    { 0, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0, 3, 0, 0, 0, 4 };
+  PlatoDevel::setMatrixData(tMatrixA2, tRowMapA2, tColMapA2, tValuesA2);
 
   auto tMatrixB1 = Teuchos::rcp( new Plato::CrsMatrixType(2, 2, 1, 1) );
   std::vector<Plato::OrdinalType> tRowMapB1 = { 0, 2, 4 };
@@ -2004,7 +2005,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_R
   auto tMatrixB1A1      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 1, 1) );
   /* auto tMatrixA1B2      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) ); */
   auto tMatrixA1B3      = Teuchos::rcp( new Plato::CrsMatrixType(2, 2, 1, 1) );
-  /* auto tMatrixA2B3      = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 2, 2) ); */
+  auto tMatrixA2B3      = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 1, 1) );
 
   // Set up Kokkos SPGEMM 
   typedef Plato::ScalarVectorT<Plato::OrdinalType> OrdinalView;
@@ -2101,6 +2102,46 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_R
   tMatrixA1B3->setRowMap(tOutRowMapA1B3);
   tMatrixA1B3->setColumnIndices(tOutColMapA1B3);
   tMatrixA1B3->setEntries(tOutValuesA1B3);
+  
+  // A2B3
+  const Plato::OrdinalType tNumRowsOneA2B3 = tMatrixA2->numRows();
+  const Plato::OrdinalType tNumColsOneA2B3 = tMatrixA2->numCols();
+  const Plato::OrdinalType tNumRowsTwoA2B3 = tMatrixB3->numRows();
+  const Plato::OrdinalType tNumColsTwoA2B3 = tMatrixB3->numCols();
+  const Plato::OrdinalType tNumRowsOutA2B3 = tMatrixA2B3->numRows();
+  const Plato::OrdinalType tNumColsOutA2B3 = tMatrixA2B3->numCols();
+
+  ScalarView  tMatOneValuesA2B3 = tMatrixA2->entries();
+  OrdinalView tMatOneRowMapA2B3 = tMatrixA2->rowMap();
+  OrdinalView tMatOneColMapA2B3 = tMatrixA2->columnIndices();
+
+  ScalarView  tMatTwoValuesA2B3 = tMatrixB3->entries();
+  OrdinalView tMatTwoRowMapA2B3 = tMatrixB3->rowMap();
+  OrdinalView tMatTwoColMapA2B3 = tMatrixB3->columnIndices();
+
+  OrdinalView tOutRowMapA2B3 ("output row map", tNumRowsOneA2B3 + 1);
+  spgemm_symbolic ( &tKernel, tNumRowsOneA2B3, tNumRowsTwoA2B3, tNumColsTwoA2B3,
+      tMatOneRowMapA2B3, tMatOneColMapA2B3, /*transpose=*/false,
+      tMatTwoRowMapA2B3, tMatTwoColMapA2B3, /*transpose=*/false,
+      tOutRowMapA2B3
+  );
+
+  OrdinalView tOutColMapA2B3;
+  ScalarView  tOutValuesA2B3;
+  size_t tNumOutValuesA2B3 = tKernel.get_spgemm_handle()->get_c_nnz();
+  if (tNumOutValuesA2B3){
+    tOutColMapA2B3 = OrdinalView(Kokkos::ViewAllocateWithoutInitializing("out column map"), tNumOutValuesA2B3);
+    tOutValuesA2B3 = ScalarView (Kokkos::ViewAllocateWithoutInitializing("out values"),  tNumOutValuesA2B3);
+  }
+  spgemm_numeric( &tKernel, tNumRowsOneA2B3, tNumRowsTwoA2B3, tNumColsTwoA2B3,
+      tMatOneRowMapA2B3, tMatOneColMapA2B3, tMatOneValuesA2B3, /*transpose=*/false,
+      tMatTwoRowMapA2B3, tMatTwoColMapA2B3, tMatTwoValuesA2B3, /*transpose=*/false,
+      tOutRowMapA2B3, tOutColMapA2B3, tOutValuesA2B3
+  );
+
+  tMatrixA2B3->setRowMap(tOutRowMapA2B3);
+  tMatrixA2B3->setColumnIndices(tOutColMapA2B3);
+  tMatrixA2B3->setEntries(tOutValuesA2B3);
 
   tKernel.destroy_spgemm_handle();
 
@@ -2108,12 +2149,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_R
   auto tSlowDumbMatrixB1A1      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 1, 1) );
   /* auto tSlowDumbMatrixA1B2      = Teuchos::rcp( new Plato::CrsMatrixType(2, 4, 2, 2) ); */
   auto tSlowDumbMatrixA1B3      = Teuchos::rcp( new Plato::CrsMatrixType(2, 2, 1, 1) );
-  /* auto tSlowDumbMatrixA2B3      = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 2, 2) ); */
+  auto tSlowDumbMatrixA2B3      = Teuchos::rcp( new Plato::CrsMatrixType(4, 2, 1, 1) );
 
   PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixB1, tMatrixA1, tSlowDumbMatrixB1A1);
   /* PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixA1, tMatrixB2, tSlowDumbMatrixA1B2); */
   PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixA1, tMatrixB3, tSlowDumbMatrixA1B3);
-  /* PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixA2, tMatrixB3, tSlowDumbMatrixA2B3); */
+  PlatoDevel::SlowDumbMatrixMatrixMultiply( tMatrixA2, tMatrixB3, tSlowDumbMatrixA2B3);
 
   TEST_ASSERT(is_same(tMatrixB1A1->rowMap(), tSlowDumbMatrixB1A1->rowMap()));
   TEST_ASSERT(is_equivalent(tMatrixB1A1->rowMap(),
@@ -2130,10 +2171,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoMathHelpers_MatrixMatrixMultiply_R
                             tMatrixA1B3->columnIndices(), tMatrixA1B3->entries(),
                             tSlowDumbMatrixA1B3->columnIndices(), tSlowDumbMatrixA1B3->entries()));
 
-  /* TEST_ASSERT(is_same(tMatrixA2B3->rowMap(), tSlowDumbMatrixA2B3->rowMap())); */
-  /* TEST_ASSERT(is_equivalent(tMatrixA2B3->rowMap(), */
-  /*                           tMatrixA2B3->columnIndices(), tMatrixA2B3->entries(), */
-  /*                           tSlowDumbMatrixA2B3->columnIndices(), tSlowDumbMatrixA2B3->entries())); */
+  TEST_ASSERT(is_same(tMatrixA2B3->rowMap(), tSlowDumbMatrixA2B3->rowMap()));
+  TEST_ASSERT(is_equivalent(tMatrixA2B3->rowMap(),
+                            tMatrixA2B3->columnIndices(), tMatrixA2B3->entries(),
+                            tSlowDumbMatrixA2B3->columnIndices(), tSlowDumbMatrixA2B3->entries()));
 
 }
 
