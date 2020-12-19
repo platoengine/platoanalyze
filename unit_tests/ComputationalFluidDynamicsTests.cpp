@@ -3960,13 +3960,14 @@ private:
     static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace;   /*!< number of spatial dimensions on face */
 
     // forward automatic differentiation types
-    using ResultT    = typename EvaluationT::ResultScalarType;
-    using ConfigT    = typename EvaluationT::ConfigScalarType;
-    using PrevVelT   = typename EvaluationT::PreviousMomentumScalarType;
+    using ResultT  = typename EvaluationT::ResultScalarType;
+    using ConfigT  = typename EvaluationT::ConfigScalarType;
+    using PrevVelT = typename EvaluationT::PreviousMomentumScalarType;
 
     const std::string mEntitySetName; /*!< side set name */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mCubatureRule;  /*!< integration rule */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mVolumeCubatureRule;  /*!< volume integration rule */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mSurfaceCubatureRule; /*!< surface integration rule */
 
 public:
     MomentumSurfaceForces
@@ -4015,8 +4016,9 @@ public:
         auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
 
         // evaluate integral
-        auto tCubatureWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+        auto tVolumeBasisFunctions = mVolumeCubatureRule.getBasisFunctions();
+        auto tSurfaceCubatureWeight = mSurfaceCubatureRule.getCubWeight();
+        auto tSurfaceBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
         {
 
@@ -4032,23 +4034,25 @@ public:
               // calculate surface jacobians
               ConfigT tSurfaceAreaTimesCubWeight(0.0);
               tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
-              tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+              tCalculateSurfaceArea(aFaceI, tSurfaceCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
               // compute unit normal vector
               auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project into aResult workset
-              tIntrplVectorField(tCellOrdinal, tBasisFunctions, tVelBCsWS, tVelBCsGP);
-              tIntrplVectorField(tCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
+              tIntrplVectorField(tCellOrdinal, tVolumeBasisFunctions, tVelBCsWS, tVelBCsGP);
+              tIntrplVectorField(tCellOrdinal, tVolumeBasisFunctions, tPrevVelWS, tPrevVelGP);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
+                  auto tLocalCellNode = tLocalNodeOrd[tNode];
                   for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
                   {
-                      aResult(tCellOrdinal, tNode) += tUnitNormalVec(tDim) * tBasisFunctions(tNode) 
-                          * ( tVelBCsGP(tCellOrdinal, tDim) - tPrevVelGP(tCellOrdinal, tDim) );
+                      aResult(tCellOrdinal, tLocalCellNode) += tUnitNormalVec(tDim) *
+                          ( tVelBCsGP(tCellOrdinal, tDim) - tPrevVelGP(tCellOrdinal, tDim) );
                   }
-                  aResult(tCellOrdinal, tNode) *= aMultiplier * tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight;
+                  aResult(tCellOrdinal, tLocalCellNode) *=
+                      aMultiplier * tSurfaceBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight;
               }
           }
         }, "calculate surface momentum integral");
