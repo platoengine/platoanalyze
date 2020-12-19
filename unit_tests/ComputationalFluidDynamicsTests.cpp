@@ -2400,11 +2400,13 @@ private:
     using PrevPressT = typename EvaluationT::PreviousMassScalarType;
 
     // set local type names
-    using CubatureRule = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
+    using VolumeCubatureRule = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>;
+    using SurfaceCubatureRule = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
 
     const std::string mSideSetName = "not defined"; /*!< side set name */
 
-    CubatureRule mCubatureRule;  /*!< integration rule */
+    VolumeCubatureRule mVolumeCubatureRule; /*!< volume integration rule */
+    SurfaceCubatureRule mSurfaceCubatureRule; /*!< surface integration rule */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
 
 public:
@@ -2412,7 +2414,6 @@ public:
     (const Plato::SpatialDomain & aSpatialDomain,
      std::string aSideSetName = "not defined") :
          mSideSetName(aSideSetName),
-         mCubatureRule(CubatureRule()),
          mSpatialDomain(aSpatialDomain)
     {
         auto tLowerTag = Plato::tolower(mSideSetName);
@@ -2458,8 +2459,9 @@ public:
         auto tPrevPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevPressT>>(aWorkSets.get("previous pressure"));
 
         // calculate surface integral
-        auto tCubatureWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+        auto tVolumeBasisFunctions = mVolumeCubatureRule.getBasisFunctions();
+        auto tSurfaceCubatureWeight = mSurfaceCubatureRule.getCubWeight();
+        auto tSurfaceBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
         {
 
@@ -2475,22 +2477,22 @@ public:
               // calculate surface jacobians
               ConfigT tSurfaceAreaTimesCubWeight(0.0);
               tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tSurfaceJacobians);
-              tCalculateSurfaceArea(aFaceI, tCubatureWeight, tSurfaceJacobians, tSurfaceAreaTimesCubWeight);
+              tCalculateSurfaceArea(aFaceI, tSurfaceCubatureWeight, tSurfaceJacobians, tSurfaceAreaTimesCubWeight);
 
               // compute unit normal vector
               auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project into aResult workset
-              tIntrplScalarField(tCellOrdinal, tBasisFunctions, tPrevPressWS, tPrevPressGP);
+              tIntrplScalarField(tCellOrdinal, tVolumeBasisFunctions, tPrevPressWS, tPrevPressGP);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
                   for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
                   {
                       auto tLocalCellNode = tLocalNodeOrd[tNode];
-                      auto tCellDofOrdinal = (tLocalCellNode * mNumSpatialDims) + tDim;
-                      aResult(tCellOrdinal, tCellDofOrdinal) += aMultiplier * tBasisFunctions(tNode)
-                          * tSurfaceAreaTimesCubWeight * tPrevPressGP(tCellOrdinal) * tUnitNormalVec(tDim);
+                      auto tLocalCellDof = (tLocalCellNode * mNumSpatialDims) + tDim;
+                      aResult(tCellOrdinal, tLocalCellDof) += aMultiplier * tSurfaceBasisFunctions(tNode)
+                          * tSurfaceAreaTimesCubWeight * (tPrevPressGP(tCellOrdinal) * tUnitNormalVec(tDim));
                   }
               }
           }
@@ -2540,14 +2542,14 @@ private:
     using StrainT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
 
     // set local typenames
-    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
+    using SurfaceCubatureRule = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
 
     std::string   mSideSetName; /*!< side set name */
     Plato::Scalar mPrNum = 1.0;
     Plato::Scalar mPrNumConvexityParam = 0.5;
 
-    CubatureRule mCubatureRule;  /*!< integration rule */
     Omega_h::LOs mFaceOrdinalsOnBoundary;
+    SurfaceCubatureRule mSurfaceCubatureRule; /*!< surface integration rule */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
 
 public:
@@ -2556,7 +2558,6 @@ public:
      Teuchos::ParameterList & aInputs,
      std::string aSideSetName = "") :
          mSideSetName(aSideSetName),
-         mCubatureRule(CubatureRule()),
          mSpatialDomain(aSpatialDomain)
     {
         this->setParameters(aInputs);
@@ -2606,8 +2607,8 @@ public:
         auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
 
         // calculate surface integral
-        auto tCubatureWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+        auto tSurfaceCubatureWeight = mSurfaceCubatureRule.getCubWeight();
+        auto tSurfaceBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
         {
             auto tFaceOrdinal = tFaceOrdinalsOnBoundary[aFaceI];
@@ -2622,7 +2623,7 @@ public:
                 // calculate surface jacobians
                 ConfigT tSurfaceAreaTimesCubWeight(0.0);
                 tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
-                tCalculateSurfaceAreaTimesCubWeight(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+                tCalculateSurfaceAreaTimesCubWeight(aFaceI, tSurfaceCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
                 // compute unit normal vector
                 auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
@@ -2646,8 +2647,8 @@ public:
                         auto tLocalCellDofI = (mNumSpatialDims * tNode) + tDimI;
                         for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
                         {
-                            aResult(tCellOrdinal, tLocalCellDofI) += tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight *
-                                aMultiplier * ( ( static_cast<Plato::Scalar>(2.0) * tPenalizedPrandtlNum *
+                            aResult(tCellOrdinal, tLocalCellDofI) += aMultiplier * tSurfaceBasisFunctions(tNode)
+                            * tSurfaceAreaTimesCubWeight * ( ( static_cast<Plato::Scalar>(2.0) * tPenalizedPrandtlNum *
                                     tStrainRate(tCellOrdinal, tDimI, tDimJ) ) * tUnitNormalVec(tDimJ) );
                         }
                     }
