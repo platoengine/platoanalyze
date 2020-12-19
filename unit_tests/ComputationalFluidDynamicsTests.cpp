@@ -7223,7 +7223,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PreviousPressureGradientDivergence)
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.05,-0.5,0.1},{0.15,0.05,-0.2}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{-0.05,-0.05,0.1},{0.15,0.05,-0.2}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
@@ -7391,7 +7391,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0,0.0},{3.025,3.475,0.0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0,0.0},{0.0,6.05,6.05}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
