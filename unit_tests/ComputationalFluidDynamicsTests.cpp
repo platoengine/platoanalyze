@@ -7508,7 +7508,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual)
     auto tTol = 1e-4;
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {-6.330556e-01,-2.222222e-01,-5.780556e-01,-2.333333e-01};
+    std::vector<Plato::Scalar> tGold = {-0.551344,-0.210351,-0.30325,-0.0991667};
     for(auto& tValue : tGold)
     {
         auto tIndex = &tValue - &tGold[0];
