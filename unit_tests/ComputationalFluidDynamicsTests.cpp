@@ -6828,6 +6828,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     Kokkos::deep_copy(tPrescribedVel->mData, tHostPrescribedVel);
     tWorkSets.set("prescribed velocity", tPrescribedVel);
 
+    auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
+        ( Plato::ScalarMultiVector("time step", tNumCells, tNumNodesPerCell) );
+    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep->mData);
+    tHostTimeStep(0, 0) = 0.01; tHostTimeStep(1, 0) = 0.04;
+    tHostTimeStep(0, 1) = 0.02; tHostTimeStep(1, 1) = 0.05;
+    tHostTimeStep(0, 2) = 0.03; tHostTimeStep(1, 2) = 0.06;
+    Kokkos::deep_copy(tTimeStep->mData, tHostTimeStep);
+    tWorkSets.set("time steps", tTimeStep);
+
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
