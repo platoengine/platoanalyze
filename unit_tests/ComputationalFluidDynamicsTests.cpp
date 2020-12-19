@@ -4409,18 +4409,18 @@ private:
         // the natural bcs are applied on the side sets where velocity essential
         // bcs are enforced. therefore, these side sets should be read by this function.
         std::unordered_map<std::string, std::vector<std::pair<Plato::OrdinalType, Plato::Scalar>>> tMap;
-        if(aInputs.isSublist("Velocity Boundary Conditions") == false)
+        if(aInputs.isSublist("Momentum Boundary Conditions") == false)
         {
-            THROWERR("'Velocity Boundary Conditions' block must be defined for fluid flow problems.")
+            THROWERR("'Momentum Boundary Conditions' block must be defined for fluid flow problems.")
         }
-        auto tSublist = aInputs.sublist("Velocity Boundary Conditions");
+        auto tSublist = aInputs.sublist("Momentum Boundary Conditions");
 
         for (Teuchos::ParameterList::ConstIterator tItr = tSublist.begin(); tItr != tSublist.end(); ++tItr)
         {
             const Teuchos::ParameterEntry &tEntry = tSublist.entry(tItr);
             if (!tEntry.isList())
             {
-                THROWERR(std::string("Error reading 'Velocity Boundary Conditions' block: Expects a parameter ")
+                THROWERR(std::string("Error reading 'Momentum Boundary Conditions' block: Expects a parameter ")
                     + "list input with information pertaining to the velocity boundary conditions .")
             }
 
@@ -6764,14 +6764,14 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Velocity Boundary Conditions"))
+        if(aInputs.isSublist("Momentum Boundary Conditions"))
         {
-            auto tVelBCs = aInputs.sublist("Velocity Boundary Conditions");
+            auto tVelBCs = aInputs.sublist("Momentum Boundary Conditions");
             mVelocityEssentialBCs = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
         }
         else
         {
-            THROWERR("'Velocity Boundary Conditions' must be defined for fluid flow problems.")
+            THROWERR("'Momentum Boundary Conditions' must be defined for fluid flow problems.")
         }
     }
 };
@@ -6785,13 +6785,113 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluatePrescribedBoundary)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
+            "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
+            "      <Parameter  name='Grashof Number' type='Array(double)' value='{0.0,1.0}'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
+            "    <ParameterList  name='Traction Vector Boundary Condition'>"
+            "      <Parameter  name='Type'   type='string'        value='Uniform'/>"
+            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
+            "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0}'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    auto tSpatialDomainName = std::string("my box");
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, tSpatialDomainName);
+    auto tElementBlockName = std::string("body");
+    tDomain.cellOrdinals(tElementBlockName);
+    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
+    tSpatialModel.append(tDomain);
+
+    // set workset
+    Plato::WorkSets tWorkSets;
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
+    using ConfigT = EvaluationT::ConfigScalarType;
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
+    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
+    tWorkSets.set("configuration", tConfig);
+
+    using ControlT = EvaluationT::ControlScalarType;
+    auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
+        ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
+    Plato::blas2::fill(1.0, tControl->mData);
+
+    using PrevVelT = EvaluationT::PreviousMomentumScalarType;
+    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
+        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
+    tHostVelocity(0, 0) = 1; tHostVelocity(1, 0) = 7;
+    tHostVelocity(0, 1) = 2; tHostVelocity(1, 1) = 8;
+    tHostVelocity(0, 2) = 3; tHostVelocity(1, 2) = 9;
+    tHostVelocity(0, 3) = 4; tHostVelocity(1, 3) = 10;
+    tHostVelocity(0, 4) = 5; tHostVelocity(1, 4) = 11;
+    tHostVelocity(0, 5) = 6; tHostVelocity(1, 5) = 12;
+    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
+    tWorkSets.set("previous velocity", tPrevVel);
+
+    auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
+        ( Plato::ScalarMultiVector("time step", tNumCells, tNumNodesPerCell) );
+    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep->mData);
+    tHostTimeStep(0, 0) = 0.01; tHostTimeStep(1, 0) = 0.04;
+    tHostTimeStep(0, 1) = 0.02; tHostTimeStep(1, 1) = 0.05;
+    tHostTimeStep(0, 2) = 0.03; tHostTimeStep(1, 2) = 0.06;
+    Kokkos::deep_copy(tTimeStep->mData, tHostTimeStep);
+    tWorkSets.set("time steps", tTimeStep);
+
+    // evaluate pressure increment residual
+    Plato::DataMap tDataMap;
+    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
+    Plato::Fluids::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
+    tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
+
+    // test values
+    /*
+    auto tTol = 1e-4;
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{0.0,0.0,0.0},{0.0,0.15125,0.1815}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBoundary)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Problem'>"
-            "  <ParameterList  name='Velocity Boundary Conditions'>"
+            "  <ParameterList  name='Momentum Boundary Conditions'>"
             "    <ParameterList  name='Zero Velocity X-Dir'>"
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
             "      <Parameter  name='Index'    type='int'    value='0'/>"
