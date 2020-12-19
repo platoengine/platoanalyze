@@ -3306,8 +3306,8 @@ private:
                         + "to define the 'side set' names where 'Natrual Boundary Conditions' are applied.")
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
-                auto tItr = mPressureBCs.find(tSideSetName);
-                if(tItr != mPressureBCs.end())
+                auto tMapItr = mPressureBCs.find(tSideSetName);
+                if(tMapItr == mPressureBCs.end())
                 {
                     mPressureBCs[tSideSetName] = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
                 }
@@ -3344,8 +3344,8 @@ private:
                         + "to define the 'side set' names where 'Natural Boundary Conditions' are applied.")
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
-                auto tItr = mDeviatoricBCs.find(tSideSetName);
-                if(tItr != mDeviatoricBCs.end())
+                auto tMapItr = mDeviatoricBCs.find(tSideSetName);
+                if(tMapItr == mDeviatoricBCs.end())
                 {
                     mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs, tSideSetName);
                 }
@@ -4411,7 +4411,7 @@ private:
         std::unordered_map<std::string, std::vector<std::pair<Plato::OrdinalType, Plato::Scalar>>> tMap;
         if(aInputs.isSublist("Velocity Boundary Conditions") == false)
         {
-            THROWERR("Velocity boundary conditions must be defined for fluid flow problems.")
+            THROWERR("'Velocity Boundary Conditions' block must be defined for fluid flow problems.")
         }
         auto tSublist = aInputs.sublist("Velocity Boundary Conditions");
 
@@ -4423,16 +4423,16 @@ private:
                 THROWERR(std::string("Error reading 'Velocity Boundary Conditions' block: Expects a parameter ")
                     + "list input with information pertaining to the velocity boundary conditions .")
             }
+
             const std::string& tParamListName = tSublist.name(tItr);
             Teuchos::ParameterList & tParamList = tSublist.sublist(tParamListName);
-
-            if (tSublist.isParameter("Sides") == false)
+            if (tParamList.isParameter("Sides") == false)
             {
                 THROWERR(std::string("Keyword 'Sides' is not define in Parameter List '") + tParamListName + "'.")
             }
-            const auto tEntitySetName = tSublist.get<std::string>("Sides");
-            auto tItr = mMomentumBCs.find(tEntitySetName);
-            if(tItr != mMomentumBCs.end())
+            const auto tEntitySetName = tParamList.get<std::string>("Sides");
+            auto tMapItr = mMomentumBCs.find(tEntitySetName);
+            if(tMapItr == mMomentumBCs.end())
             {
                 mMomentumBCs[tEntitySetName] = std::make_shared<MomentumForces>(mSpatialDomain, tEntitySetName);
             }
@@ -6771,7 +6771,7 @@ private:
         }
         else
         {
-            THROWERR("Velocity boundary conditions are not defined for fluid mechanics problem.")
+            THROWERR("'Velocity Boundary Conditions' must be defined for fluid flow problems.")
         }
     }
 };
@@ -6791,13 +6791,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Problem'>"
-            "  <ParameterList  name='Essential Boundary Conditions'>"
-            "    <ParameterList  name='X Fixed Displacement Boundary Condition'>"
+            "  <ParameterList  name='Velocity Boundary Conditions'>"
+            "    <ParameterList  name='Zero Velocity X-Dir'>"
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
             "      <Parameter  name='Index'    type='int'    value='0'/>"
             "      <Parameter  name='Sides'    type='string' value='x-'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='Y Fixed Displacement Boundary Condition'>"
+            "    <ParameterList  name='Zero Velocity Y-Dir'>"
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
             "      <Parameter  name='Index'    type='int'    value='1'/>"
             "      <Parameter  name='Sides'    type='string' value='x-'/>"
@@ -6869,16 +6869,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
-    Plato::Fluids::PressureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs);
+    Plato::Fluids::PressureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
     tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
 
     // test values
-    /*
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{10.008225,5.0055,3.30055833333333},{2.4006,1.98625,1.832566666666667}};
+        {{0.0,0.0,0.0},{0.0,0.15125,0.1815}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
@@ -6886,8 +6885,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
