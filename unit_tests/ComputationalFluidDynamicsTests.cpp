@@ -6775,6 +6775,83 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBoundary)
+{
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MassPhysicsT;
+    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    auto tSpatialDomainName = std::string("my box");
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, tSpatialDomainName);
+    auto tElementBlockName = std::string("body");
+    tDomain.cellOrdinals(tElementBlockName);
+    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
+    tSpatialModel.append(tDomain);
+
+    // set workset
+    Plato::WorkSets tWorkSets;
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
+    using ConfigT = EvaluationT::ConfigScalarType;
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
+    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
+    tWorkSets.set("configuration", tConfig);
+
+    using PrevVelT = EvaluationT::PreviousMomentumScalarType;
+    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
+        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
+    tHostVelocity(0, 0) = 1; tHostVelocity(1, 0) = 11;
+    tHostVelocity(0, 1) = 2; tHostVelocity(1, 1) = 12;
+    tHostVelocity(0, 2) = 3; tHostVelocity(1, 2) = 13;
+    tHostVelocity(0, 3) = 4; tHostVelocity(1, 3) = 14;
+    tHostVelocity(0, 4) = 5; tHostVelocity(1, 4) = 15;
+    tHostVelocity(0, 5) = 6; tHostVelocity(1, 5) = 16;
+    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
+    tWorkSets.set("previous velocity", tPrevVel);
+
+    auto tPrescribedVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
+        ( Plato::ScalarMultiVector("prescribed velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+    auto tHostPrescribedVel = Kokkos::create_mirror(tPrescribedVel->mData);
+    tHostPrescribedVel(0, 0) = 0.1; tHostPrescribedVel(1, 0) = 0.7;
+    tHostPrescribedVel(0, 1) = 0.2; tHostPrescribedVel(1, 1) = 0.8;
+    tHostPrescribedVel(0, 2) = 0.3; tHostPrescribedVel(1, 2) = 0.9;
+    tHostPrescribedVel(0, 3) = 0.4; tHostPrescribedVel(1, 3) = 1.0;
+    tHostPrescribedVel(0, 4) = 0.5; tHostPrescribedVel(1, 4) = 1.1;
+    tHostPrescribedVel(0, 5) = 0.6; tHostPrescribedVel(1, 5) = 1.2;
+    Kokkos::deep_copy(tPrescribedVel->mData, tHostPrescribedVel);
+    tWorkSets.set("prescribed velocity", tPrescribedVel);
+
+    // evaluate pressure increment residual
+    Plato::DataMap tDataMap;
+    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
+    Plato::Fluids::PressureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap);
+    tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
+
+    // test values
+    /*
+    auto tTol = 1e-4;
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{10.008225,5.0055,3.30055833333333},{2.4006,1.98625,1.832566666666667}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
 {
     // set physics and evaluation type
