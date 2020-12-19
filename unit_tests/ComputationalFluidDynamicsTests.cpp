@@ -3306,8 +3306,11 @@ private:
                         + "to define the 'side set' names where 'Natrual Boundary Conditions' are applied.")
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
-
-                mPressureBCs[tSideSetName] = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
+                auto tItr = mPressureBCs.find(tSideSetName);
+                if(tItr != mPressureBCs.end())
+                {
+                    mPressureBCs[tSideSetName] = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
+                }
             }
         }
     }
@@ -3341,8 +3344,11 @@ private:
                         + "to define the 'side set' names where 'Natural Boundary Conditions' are applied.")
                 }
                 const auto tSideSetName = tSubList.get<std::string>("Sides");
-
-                mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs, tSideSetName);
+                auto tItr = mDeviatoricBCs.find(tSideSetName);
+                if(tItr != mDeviatoricBCs.end())
+                {
+                    mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs, tSideSetName);
+                }
             }
         }
         else
@@ -4425,7 +4431,11 @@ private:
                 THROWERR(std::string("Keyword 'Sides' is not define in Parameter List '") + tParamListName + "'.")
             }
             const auto tEntitySetName = tSublist.get<std::string>("Sides");
-            mMomentumBCs[tEntitySetName] = std::make_shared<MomentumForces>(mSpatialDomain, tEntitySetName);
+            auto tItr = mMomentumBCs.find(tEntitySetName);
+            if(tItr != mMomentumBCs.end())
+            {
+                mMomentumBCs[tEntitySetName] = std::make_shared<MomentumForces>(mSpatialDomain, tEntitySetName);
+            }
         }
     }
 };
@@ -6777,6 +6787,25 @@ namespace ComputationalFluidDynamicsTests
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBoundary)
 {
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList  name='Essential Boundary Conditions'>"
+            "    <ParameterList  name='X Fixed Displacement Boundary Condition'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y Fixed Displacement Boundary Condition'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
     // set physics and evaluation type
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
     using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MassPhysicsT;
@@ -6840,7 +6869,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
-    Plato::Fluids::PressureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap);
+    Plato::Fluids::PressureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs);
     tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
 
     // test values
