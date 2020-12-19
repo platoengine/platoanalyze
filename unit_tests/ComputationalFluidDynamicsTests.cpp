@@ -2564,6 +2564,11 @@ public:
         this->setFacesOnNonPrescribedBoundary(aInputs);
     }
 
+    void setPrNumConvexityParam(const Plato::Scalar & aPrNumConvexityParam)
+    {
+        mPrNumConvexityParam = aPrNumConvexityParam;
+    }
+    
     void operator()
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult,
@@ -2675,17 +2680,14 @@ private:
     void setPenaltyModel
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Momentum Conservation") == false)
+        if(aInputs.isSublist("Momentum Conservation"))
         {
-            THROWERR(std::string("Parameter List 'Momentum Conservation' is not defined within Parameter List '")
-                + aInputs.name() + "'.")
-        }
-        auto tMomentumParamList = aInputs.sublist("Momentum Conservation");
-
-        if (tMomentumParamList.isSublist("Penalty Function"))
-        {
-            auto tPenaltyFuncList = tMomentumParamList.sublist("Penalty Function");
-            mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
+            auto tMomentumParamList = aInputs.sublist("Momentum Conservation");
+            if (tMomentumParamList.isSublist("Penalty Function"))
+            {
+                auto tPenaltyFuncList = tMomentumParamList.sublist("Penalty Function");
+                mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
+            }
         }
     }
 
@@ -3229,14 +3231,11 @@ private:
        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
        this->setDimensionlessProperties(tHyperbolicParamList);
 
-       if(tHyperbolicParamList.isSublist("Momentum Conservation") == false)
+       if(tHyperbolicParamList.isSublist("Momentum Conservation"))
        {
-           THROWERR(std::string("Parameter List 'Momentum Conservation' is not defined within Parameter List '") 
-               + tHyperbolicParamList.name() + "'.")
+           auto tMomentumParamList = tHyperbolicParamList.sublist("Momentum Conservation");
+           this->setPenaltyModel(tMomentumParamList);
        }
-       auto tMomentumParamList = tHyperbolicParamList.sublist("Momentum Conservation");
-
-       this->setPenaltyModel(tMomentumParamList);
    }
 
    void setPenaltyModel
@@ -3348,12 +3347,14 @@ private:
                 if(tMapItr == mDeviatoricBCs.end())
                 {
                     mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs, tSideSetName);
+                    mDeviatoricBCs.find(tSideSetName)->second->setPrNumConvexityParam(mPrNumConvexityParam);
                 }
             }
         }
         else
         {
             mDeviatoricBCs["automated"] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs);
+            mDeviatoricBCs.find("automated")->second->setPrNumConvexityParam(mPrNumConvexityParam);
         }
     }
 };
@@ -6838,6 +6839,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluatePresc
     auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
         ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
     Plato::blas2::fill(1.0, tControl->mData);
+    tWorkSets.set("control", tControl);
 
     using PrevVelT = EvaluationT::PreviousMomentumScalarType;
     auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
@@ -6851,6 +6853,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluatePresc
     tHostVelocity(0, 5) = 6; tHostVelocity(1, 5) = 12;
     Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
     tWorkSets.set("previous velocity", tPrevVel);
+
+    using PrevPressT = EvaluationT::PreviousMassScalarType;
+    auto tPrevPress = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevPressT> > >
+        ( Plato::ScalarMultiVectorT<PrevPressT>("previous pressure", tNumCells, PhysicsT::mNumMassDofsPerCell) );
+    auto tHostPrevPress = Kokkos::create_mirror(tPrevPress->mData);
+    tHostPrevPress(0, 0) = 1; tHostPrevPress(1, 0) = 4;
+    tHostPrevPress(0, 1) = 2; tHostPrevPress(1, 1) = 5;
+    tHostPrevPress(0, 2) = 3; tHostPrevPress(1, 2) = 6;
+    Kokkos::deep_copy(tPrevPress->mData, tHostPrevPress);
+    tWorkSets.set("previous pressure", tPrevPress);
 
     auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("time step", tNumCells, tNumNodesPerCell) );
