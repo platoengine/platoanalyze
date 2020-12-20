@@ -6805,10 +6805,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Energy Natural Boundary Conditions'>"
-            "    <ParameterList  name='Traction Vector Boundary Condition'>"
-            "      <Parameter  name='Type'   type='string'        value='Uniform'/>"
-            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
-            "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0}'/>"
+            "    <ParameterList  name='Heat Flux'>"
+            "      <Parameter  name='Type'   type='string'  value='Uniform'/>"
+            "      <Parameter  name='Sides'  type='string'  value='x+'/>"
+            "      <Parameter  name='Value'  type='double'  value='-1.0'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "</ParameterList>"
@@ -6824,7 +6824,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
-    tDomain.setMaterialName("Steel");
+    tDomain.setMaterialName("Madeuptinum");
     tDomain.setElementBlockName("block_1");
     Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
     tSpatialModel.append(tDomain);
@@ -6869,7 +6869,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumEnergyDofsPerCell);
     Plato::Fluids::TemperatureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
-    tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
+    tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
 
     // test values
     /*
