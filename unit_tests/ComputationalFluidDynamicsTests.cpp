@@ -5267,7 +5267,7 @@ public:
         else if(tLowerType == "least squares")
         {
             auto tCriterion =
-                std::make_shared<Plato::Fluids::LeastSquares<PhysicsT>>
+                std::make_shared<Plato::Fluids::LeastSquaresScalarFunction<PhysicsT>>
                     (aSpatialModel, aDataMap, aInputs, aName);
             return tCriterion;
         }*/
