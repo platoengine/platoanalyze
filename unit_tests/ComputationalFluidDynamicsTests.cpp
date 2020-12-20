@@ -5803,7 +5803,7 @@ public:
 
 
 
-
+// todo: unit test inline functions
 namespace cbs
 {
 
@@ -6782,6 +6782,18 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSize)
+{
+    // build mesh, spatial domain, and spatial model
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+
+    auto tNumCells = tMesh->nelems();
+    auto tElemCharSize = Plato::cbs::calculate_element_characteristic_size<tNumSpaceDims>(tNumCells, tNodeCoordinate);
+    Plato::print_array_2D(tElemCharSize, "element characteristic size");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePrescribed)
 {
