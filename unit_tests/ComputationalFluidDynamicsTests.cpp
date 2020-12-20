@@ -6883,10 +6883,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluatePresc
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,-0.02,0.01,-0.03,0.015}};
+        {{0.0,0.0,-0.02,0.01,-0.03,0.015}, {0.0,0.0,0.0,0.0,0.0,0.0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
-        for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
+        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
         {
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
