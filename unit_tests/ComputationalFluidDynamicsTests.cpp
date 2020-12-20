@@ -5807,21 +5807,22 @@ public:
 namespace cbs
 {
 
-template<Plato::OrdinalType SpaceDim>
+template<Plato::OrdinalType NumSpatialDims,
+         Plato::OrdinalType NumNodesPerCell>
 inline Plato::ScalarVector
 calculate_element_characteristic_size
 (const Plato::OrdinalType & aNumCells,
- const Plato::NodeCoordinate<SpaceDim> & aNodeCoordinate)
+ const Plato::NodeCoordinate<NumSpatialDims> & aNodeCoordinate)
 {
-    Omega_h::Few<Omega_h::Vector<SpaceDim>, SpaceDim + 1> tElementCoords;
     Plato::ScalarVector tElemCharacteristicSize("element size", aNumCells);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < SpaceDim + 1; tNodeIndex++)
+        Omega_h::Few<Omega_h::Vector<NumSpatialDims>, NumNodesPerCell> tElementCoords;
+        for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
         {
-            for(Plato::OrdinalType tDimIndex = 0; tDimIndex < SpaceDim; tDimIndex++)
+            for(Plato::OrdinalType tDimIndex = 0; tDimIndex < NumSpatialDims; tDimIndex++)
             {
-                tElementCoords(tNodeIndex)(tDimIndex) = aNodeCoordinate(aCellOrdinal, tNodeIndex, tDimIndex);
+                tElementCoords[tNodeIndex][tDimIndex] = aNodeCoordinate(aCellOrdinal, tNodeIndex, tDimIndex);
             }
         }
         auto tSphere = Omega_h::get_inball(tElementCoords);
@@ -5988,7 +5989,8 @@ template<typename PhysicsT>
 class Problem : public Plato::Fluids::AbstractProblem
 {
 private:
-    static constexpr auto mNumSpatialDims     = PhysicsT::mNumSpatialDims;         /*!< number of mass dofs per node */
+    static constexpr auto mNumSpatialDims     = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell    = PhysicsT::mNumNodesPerCell;        /*!< number of nodes per cell */
     static constexpr auto mNumVelDofsPerNode  = PhysicsT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
     static constexpr auto mNumPresDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
     static constexpr auto mNumTempDofsPerNode = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
@@ -6321,8 +6323,8 @@ private:
         Plato::ScalarVector tElementSize;
         Plato::NodeCoordinate<mNumSpatialDims> tNodeCoordinates;
         auto tNumCells = mSpatialModel.Mesh.nverts();
-        auto tElemCharacteristicSize =
-            Plato::cbs::calculate_element_characteristic_size<mNumSpatialDims>(tNumCells, tNodeCoordinates);
+        auto tElemCharacteristicSize = 
+            Plato::cbs::calculate_element_characteristic_size<mNumSpatialDims,mNumNodesPerCell>(tNumCells, tNodeCoordinates);
         aVariables.vector("element size", tElemCharacteristicSize);
     }
 
@@ -6791,8 +6793,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSize)
     Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
 
     auto tNumCells = tMesh->nelems();
-    auto tElemCharSize = Plato::cbs::calculate_element_characteristic_size<tNumSpaceDims>(tNumCells, tNodeCoordinate);
-    Plato::print_array_2D(tElemCharSize, "element characteristic size");
+    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
+    auto tElemCharSize = 
+        Plato::cbs::calculate_element_characteristic_size<tNumSpaceDims,tNumNodesPerCell>(tNumCells, tNodeCoordinate);
+
+    // test value
+    auto tTol = 1e-4;
+    auto tHostElemCharSize = Kokkos::create_mirror(tElemCharSize);
+    Kokkos::deep_copy(tHostElemCharSize, tElemCharSize);
+    std::vector<Plato::Scalar> tGold = {5.857864e-01,5.857864e-01};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {   
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostElemCharSize(tCell), tTol);
+    }
+    Plato::print(tElemCharSize, "element characteristic size");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePrescribed)
