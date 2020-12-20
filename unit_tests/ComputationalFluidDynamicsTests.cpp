@@ -3930,26 +3930,24 @@ private:
             THROWERR("'Hyperbolic' Parameter List is not defined.")
         }
         auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
-        if(tHyperbolicParamList.isSublist("Energy Conservation") == false)
+        if(tHyperbolicParamList.isSublist("Energy Conservation"))
         {
-            THROWERR(std::string("Parameter List 'Energy Conservation' is not defined within Parameter List '")
-                + tHyperbolicParamList.name() + "'.")
-        }
-        auto tEnergyParamList = tHyperbolicParamList.sublist("Energy Conservation");
-        if (tEnergyParamList.isSublist("Penalty Function"))
-        {
-            auto tPenaltyFuncList = tEnergyParamList.sublist("Penalty Function");
-            mHeatSourcePenaltyExponent = tPenaltyFuncList.get<Plato::Scalar>("Heat Source Penalty Exponent", 3.0);
-            mThermalDiffPenaltyExponent = tPenaltyFuncList.get<Plato::Scalar>("Thermal Diffusion Penalty Exponent", 3.0);
+            auto tEnergyParamList = tHyperbolicParamList.sublist("Energy Conservation");
+            if (tEnergyParamList.isSublist("Penalty Function"))
+            {
+                auto tPenaltyFuncList = tEnergyParamList.sublist("Penalty Function");
+                mHeatSourcePenaltyExponent = tPenaltyFuncList.get<Plato::Scalar>("Heat Source Penalty Exponent", 3.0);
+                mThermalDiffPenaltyExponent = tPenaltyFuncList.get<Plato::Scalar>("Thermal Diffusion Penalty Exponent", 3.0);
+            }
         }
     }
 
     void setNaturalBoundaryConditions
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Thermal Natural Boundary Conditions"))
+        if(aInputs.isSublist("Energy Natural Boundary Conditions"))
         {
-            auto tSublist = aInputs.sublist("Thermal Natural Boundary Conditions");
+            auto tSublist = aInputs.sublist("Energy Natural Boundary Conditions");
             mHeatFlux = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tSublist);
         }
     }
@@ -6784,6 +6782,103 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePrescribed)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Characteristic Length' type='double' value='1.0'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='Madeuptinum'>"
+            "      <ParameterList name='Thermal Properties'>"
+            "        <Parameter  name='Fluid Thermal Conductivity'  type='double'  value='1'/>"
+            "        <Parameter  name='Reference Temperature'       type='double'  value='10.0'/>"
+            "        <Parameter  name='Fluid Thermal Diffusivity'   type='double'  value='0.5'/>"
+            "        <Parameter  name='Solid Thermal Diffusivity'   type='double'  value='1.0'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Energy Natural Boundary Conditions'>"
+            "    <ParameterList  name='Traction Vector Boundary Condition'>"
+            "      <Parameter  name='Type'   type='string'        value='Uniform'/>"
+            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
+            "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0}'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // set physics and evaluation type
+    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::EnergyPhysicsT;
+    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+    tDomain.setMaterialName("Steel");
+    tDomain.setElementBlockName("block_1");
+    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
+    tSpatialModel.append(tDomain);
+
+    // set workset
+    Plato::WorkSets tWorkSets;
+    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
+    using ConfigT = EvaluationT::ConfigScalarType;
+    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
+        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
+    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
+    tWorkSets.set("configuration", tConfig);
+
+    using ControlT = EvaluationT::ControlScalarType;
+    auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
+        ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
+    Plato::blas2::fill(1.0, tControl->mData);
+    tWorkSets.set("control", tControl);
+
+    using PrevTempT = EvaluationT::PreviousMassScalarType;
+    auto tPrevTemp = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevTempT> > >
+        ( Plato::ScalarMultiVectorT<PrevTempT>("previous pressure", tNumCells, PhysicsT::mNumEnergyDofsPerCell) );
+    auto tHostPrevTemp = Kokkos::create_mirror(tPrevTemp->mData);
+    tHostPrevTemp(0, 0) = 1; tHostPrevTemp(1, 0) = 4;
+    tHostPrevTemp(0, 1) = 2; tHostPrevTemp(1, 1) = 5;
+    tHostPrevTemp(0, 2) = 3; tHostPrevTemp(1, 2) = 6;
+    Kokkos::deep_copy(tPrevTemp->mData, tHostPrevTemp);
+    tWorkSets.set("previous temperature", tPrevTemp);
+
+    // evaluate temperature increment residual
+    Plato::DataMap tDataMap;
+    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumEnergyDofsPerCell);
+    Plato::Fluids::TemperatureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
+    tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
+
+    // test values
+    /*
+    auto tTol = 1e-4;
+    auto tHostResult = Kokkos::create_mirror(tResult);
+    Kokkos::deep_copy(tHostResult, tResult);
+    std::vector<std::vector<Plato::Scalar>> tGold =
+        {{0.0,0.0,0.0}, {0.0,0.0,0.0}};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumEnergyDofsPerCell; tDof++)
+        {
+            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
+        }
+    }
+    */
+    Plato::print_array_2D(tResult, "results");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluateBoundary)
 {
