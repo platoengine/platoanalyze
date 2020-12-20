@@ -6876,15 +6876,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluateBound
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
     Plato::Fluids::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
-    tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
+    tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
 
     // test values
-    /*
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.0,0.0,-0.02,0.01,-0.03,0.015}, {0.0,0.0,0.0,0.0,0.0,0.0}};
+        {{6.666667e-3,6.666667e-3,1.333333e-2,1.333333e-2,0.0,0.0}, {-2.666667e-2,-2.666667e-2,-3.333333e-2,-3.333333e-2,0.0,0.0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
@@ -6892,7 +6891,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluateBound
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
     }
-    */
     //Plato::print_array_2D(tResult, "results");
 }
 
