@@ -6872,12 +6872,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
     tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
 
     // test values
-    /*
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.0,0.0,0.0}, {0.0,0.0,0.0}};
+        {{0.0,0.01,0.015}, {0.0,0.0,0.0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumEnergyDofsPerCell; tDof++)
@@ -6885,8 +6884,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluateBoundary)
@@ -7943,7 +7941,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual)
     auto tTol = 1e-4;
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
-    std::vector<Plato::Scalar> tGold = {-0.551344,-0.210351,-0.30325,-0.0991667};
+    std::vector<Plato::Scalar> tGold = {-0.515278,-0.0647222,-0.1075,-0.0991667};
     for(auto& tValue : tGold)
     {
         auto tIndex = &tValue - &tGold[0];
