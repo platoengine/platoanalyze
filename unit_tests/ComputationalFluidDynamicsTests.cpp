@@ -6806,7 +6806,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSize)
     {   
         TEST_FLOATING_EQUALITY(tGold[tCell], tHostElemCharSize(tCell), tTol);
     }
-    Plato::print(tElemCharSize, "element characteristic size");
+    //Plato::print(tElemCharSize, "element characteristic size");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePrescribed)
