@@ -2610,6 +2610,7 @@ public:
         auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
         auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
+Plato::print_array_2D(tPrevVelWS,"previous velocity");
 
         // calculate surface integral
         auto tSurfaceCubatureWeight = mSurfaceCubatureRule.getCubWeight();
@@ -2715,7 +2716,6 @@ private:
         else
         {
             mFaceOrdinalsOnBoundary = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
-            Plato::omega_h::print(mFaceOrdinalsOnBoundary, "non-prescribed boundary ordinals");
         }
     }
 };
@@ -6875,7 +6875,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluatePresc
 
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
-    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
+    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
     Plato::Fluids::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
     tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
 
