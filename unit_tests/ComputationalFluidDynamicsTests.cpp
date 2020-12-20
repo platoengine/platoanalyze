@@ -2610,7 +2610,6 @@ public:
         auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
         auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
-Plato::print_array_2D(tPrevVelWS,"previous velocity");
 
         // calculate surface integral
         auto tSurfaceCubatureWeight = mSurfaceCubatureRule.getCubWeight();
@@ -6880,12 +6879,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluatePresc
     tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
 
     // test values
-    /*
     auto tTol = 1e-4;
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.0,0.0,0.0},{0.0,0.15125,0.1815}};
+        {{0.0,0.0,0.0,0.0,0.0,0.0},{0.0,0.0,-0.02,0.01,-0.03,0.015}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
@@ -6893,8 +6891,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluatePresc
             TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
         }
     }
-    */
-    Plato::print_array_2D(tResult, "results");
+    //Plato::print_array_2D(tResult, "results");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBoundary)
