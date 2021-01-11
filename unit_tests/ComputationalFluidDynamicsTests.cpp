@@ -6826,7 +6826,6 @@ namespace ComputationalFluidDynamicsTests
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMaxArtificialCompressibility)
 {
     constexpr auto tNumNodes = 4;
-    constexpr auto tNumSpaceDims = 2;
     Plato::ScalarVector tConvectiveVelocity("convective velocity", tNumNodes);
     auto tHostConvectiveVelocity = Kokkos::create_mirror(tConvectiveVelocity);
     tHostConvectiveVelocity(0) = 1.0;
