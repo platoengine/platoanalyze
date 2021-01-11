@@ -178,6 +178,20 @@ scale(const Plato::OrdinalType & aCellOrdinal,
     }
 }
 
+template<Plato::OrdinalType DofPerNode>
+DEVICE_TYPE inline Plato::Scalar
+norm(Plato::OrdinalType aNode, const Plato::ScalarVector & aInput)
+{
+    Plato::Scalar tOutput = 0;
+    for(decltype(aNode) tDim = 0; tDim < DofPerNode; tDim++)
+    {
+        auto tIndex = aNode * DofPerNode + tDim;
+        tOutput += aInput(tIndex) * aInput(tIndex);
+    }
+    tOutput = sqrt(tOutput);
+    return tOutput;
+}
+
 template<Plato::OrdinalType Length,
          typename AViewType,
          typename BViewType,
@@ -5831,6 +5845,38 @@ calculate_element_characteristic_size
     return tElemCharacteristicSize;
 }
 
+DEVICE_TYPE inline Plato::Scalar
+calculate_max_artificial_compressibility
+(const Plato::Scalar & aConvectiveVelocity,
+ const Plato::Scalar & aDiffusiveVelocity,
+ const Plato::Scalar & aThermalVelocity,
+ Plato::Scalar aCritialCompresibility = 0.5)
+{
+    auto tArtificialCompressibility = (aConvectiveVelocity > aDiffusiveVelocity) && (aConvectiveVelocity > aThermalVelocity)
+        && (aConvectiveVelocity > aCritialCompresibility) ? aConvectiveVelocity : aCritialCompresibility;
+    tArtificialCompressibility = (aDiffusiveVelocity > aConvectiveVelocity ) && (aDiffusiveVelocity > aThermalVelocity)
+        && (aDiffusiveVelocity > aCritialCompresibility) ? aDiffusiveVelocity : tArtificialCompressibility;
+    tArtificialCompressibility = (aThermalVelocity > aConvectiveVelocity ) && (aThermalVelocity > aDiffusiveVelocity)
+        && (aThermalVelocity > aCritialCompresibility) ? aThermalVelocity : tArtificialCompressibility;
+    return tArtificialCompressibility;
+}
+
+/***************************************************************************//**
+ *  \brief Calculate artificial compressibility for incompressible flow problems.
+ *  The artificial compressibility is computed as follows:
+ *  \f$ \beta=\max(\epsilon,u_{convective},u_{diffusive},u_{thermal}) \f$,
+ *  where
+ *  \f$ u_{convective} = \sqrt(u_iu_i),\quad\in\{1,\dots,\mbox{dim}\} \f$
+ *  \f$ u_{diffusive}  = \frac{1.0}{h_e\mbox{Re}} \f$
+ *  \f$ u_{thermal}    = \frac{1.0}{h_e\mbox{Re}\mbox{Pr}} \f$
+ *  Here, $h_e$ is the $e$-th element characteristic length, Re is the Reynolds number,
+ *  Pr is the Prandtl number
+ *
+ *  \param aStates                [in] metadata structure with current set of primal states
+ *  \param aCritialCompresibility [in] artificial compressibility lower bound
+ *
+ ******************************************************************************/
+template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
 calculate_artificial_compressibility
 (const Plato::Variables & aStates,
@@ -5841,25 +5887,17 @@ calculate_artificial_compressibility
     auto tElemSize = aStates.vector("element size");
     auto tVelocity = aStates.vector("current velocity");
 
-    auto tLength = tVelocity.size();
-    Plato::ScalarVector tArtificalCompress("artificial compressibility", tLength);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    auto tNumNodes = tElemSize.size();
+    Plato::ScalarVector tArtificalCompress("artificial compressibility", tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNode)
     {
         // calculate velocities
-        Plato::Scalar tConvectiveVelocity = tVelocity(aOrdinal) * tVelocity(aOrdinal);
-        tConvectiveVelocity = sqrt(tConvectiveVelocity);
-        auto tDiffusionVelocity = static_cast<Plato::Scalar>(1.0) / (tElemSize(aOrdinal) * tReynolds);
-        auto tThermalVelocity = static_cast<Plato::Scalar>(1.0) / (tElemSize(aOrdinal) * tReynolds * tPrandtl);
+        auto tConvectiveVelocity = Plato::blas1::norm<SpaceDim>(aNode, tVelocity);
+        auto tDiffusionVelocity = static_cast<Plato::Scalar>(1.0) / (tElemSize(aNode) * tReynolds);
+        auto tThermalVelocity = static_cast<Plato::Scalar>(1.0) / (tElemSize(aNode) * tReynolds * tPrandtl);
 
-        // calculate minimum artificial compressibility
-        auto tArtificialCompressibility = (tConvectiveVelocity < tDiffusionVelocity) && (tConvectiveVelocity < tThermalVelocity)
-            && (tConvectiveVelocity < aCritialCompresibility) ? tConvectiveVelocity : aCritialCompresibility;
-        tArtificialCompressibility = (tDiffusionVelocity < tConvectiveVelocity ) && (tDiffusionVelocity < tThermalVelocity)
-            && (tDiffusionVelocity < aCritialCompresibility) ? tDiffusionVelocity : tArtificialCompressibility;
-        tArtificialCompressibility = (tThermalVelocity < tConvectiveVelocity ) && (tThermalVelocity < tDiffusionVelocity)
-            && (tThermalVelocity < aCritialCompresibility) ? tThermalVelocity : tArtificialCompressibility;
-
-        tArtificalCompress(aOrdinal) = tArtificialCompressibility;
+        tArtificalCompress(aNode) =
+            Plato::cbs::calculate_max_artificial_compressibility(tConvectiveVelocity, tDiffusionVelocity, tThermalVelocity, aCritialCompresibility);
     }, "calculate artificial compressibility");
 
     return tArtificalCompress;
@@ -6330,7 +6368,7 @@ private:
 
     void calculateStableTimeSteps(Plato::Primal & aVariables)
     {
-        auto tArtificialCompressibility = Plato::cbs::calculate_artificial_compressibility(aVariables);
+        auto tArtificialCompressibility = Plato::cbs::calculate_artificial_compressibility<mNumSpatialDims>(aVariables);
         aVariables.vector("artificial compressibility", tArtificialCompressibility);
 
         aVariables.scalar("time step safety factor", mTimeStepSafetyFactor);
@@ -6784,6 +6822,134 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMaxArtificialCompressibility)
+{
+    constexpr auto tNumNodes = 4;
+    constexpr auto tNumSpaceDims = 2;
+    Plato::ScalarVector tConvectiveVelocity("convective velocity", tNumNodes);
+    auto tHostConvectiveVelocity = Kokkos::create_mirror(tConvectiveVelocity);
+    tHostConvectiveVelocity(0) = 1.0;
+    tHostConvectiveVelocity(1) = 2.0;
+    tHostConvectiveVelocity(2) = 3.0;
+    tHostConvectiveVelocity(3) = 0.3;
+    Kokkos::deep_copy(tConvectiveVelocity, tHostConvectiveVelocity);
+    Plato::ScalarVector tDiffusiveVelocity("diffusive velocity", tNumNodes);
+    auto tHostDiffusiveVelocity = Kokkos::create_mirror(tDiffusiveVelocity);
+    tHostDiffusiveVelocity(0) = 0.9;
+    tHostDiffusiveVelocity(1) = 3.0;
+    tHostDiffusiveVelocity(2) = 2.0;
+    tHostDiffusiveVelocity(3) = 0.2;
+    Kokkos::deep_copy(tDiffusiveVelocity, tHostDiffusiveVelocity);
+    Plato::ScalarVector tThermalVelocity("thermal velocity", tNumNodes);
+    auto tHostThermalVelocity = Kokkos::create_mirror(tThermalVelocity);
+    tHostThermalVelocity(0) = 0.9;
+    tHostThermalVelocity(1) = 3.0;
+    tHostThermalVelocity(2) = 4.0;
+    tHostThermalVelocity(3) = 0.1;
+    Kokkos::deep_copy(tThermalVelocity, tHostThermalVelocity);
+    auto tCriticalValue = 0.5;
+    Plato::ScalarVector tOutput("output", tNumNodes);
+
+    // call function
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNode)
+    {
+        tOutput(aNode) =
+            Plato::cbs::calculate_max_artificial_compressibility
+                (tConvectiveVelocity(aNode), tHostDiffusiveVelocity(aNode), tHostThermalVelocity(aNode), tCriticalValue);
+    },"device blas1::norm");
+
+    // test value
+    auto tTol = 1e-4;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    std::vector<Plato::Scalar> tGold = {2.23606797749978969640,5.0,7.81024967590665439412,10.63014581273464940799};
+    for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostOutput(tNode), tTol);
+    }
+    //Plato::print(tOutput, "device blas1::norm");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Device_Blas1_Norm)
+{
+    constexpr auto tNumNodes = 4;
+    constexpr auto tNumSpaceDims = 2;
+    Plato::ScalarVector tVelocity("velocity", tNumNodes * tNumSpaceDims);
+    auto tHostVelocity = Kokkos::create_mirror(tVelocity);
+    tHostVelocity(0) = 1;
+    tHostVelocity(1) = 2;
+    tHostVelocity(2) = 3;
+    tHostVelocity(3) = 4;
+    tHostVelocity(4) = 5;
+    tHostVelocity(5) = 6;
+    tHostVelocity(6) = 7;
+    tHostVelocity(7) = 8;
+    Kokkos::deep_copy(tVelocity, tHostVelocity);
+    Plato::ScalarVector tOutput("output", tNumNodes);
+
+    // call function
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNode)
+    {
+        tOutput(aNode) = Plato::blas1::norm<tNumNodes>(aNode, tVelocity);
+    },"device blas1::norm");
+
+    // test value
+    auto tTol = 1e-4;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    std::vector<Plato::Scalar> tGold = {2.23606797749978969640,5.0,7.81024967590665439412,10.63014581273464940799};
+    for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostOutput(tNode), tTol);
+    }
+    //Plato::print(tOutput, "device blas1::norm");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateArtificialCompressibility)
+{
+    constexpr auto tNumNodes = 4;
+    constexpr auto tNumSpaceDims = 2;
+
+    // set input data
+    Plato::Primal tStates;
+    tStates.scalar("prandtl", 0.5);
+    tStates.scalar("reynolds", 2.0);
+    tStates.scalar("spatial dimensions", tNumSpaceDims);
+
+    constexpr auto tNumCells = 2;
+    Plato::ScalarVector tElemCharSize("element size", tNumCells);
+    Plato::blas1::fill(5.857864e-1, tElemCharSize);
+    tStates.vector("element size", tElemCharSize);
+    Plato::ScalarVector tVelocity("velocity", tNumNodes * tNumSpaceDims);
+    auto tHostVelocity = Kokkos::create_mirror(tVelocity);
+    tHostVelocity(0) = 1;
+    tHostVelocity(1) = 2;
+    tHostVelocity(2) = 3;
+    tHostVelocity(3) = 4;
+    tHostVelocity(4) = 5;
+    tHostVelocity(5) = 6;
+    tHostVelocity(6) = 7;
+    tHostVelocity(7) = 8;
+    Kokkos::deep_copy(tVelocity, tHostVelocity);
+    tStates.vector("previous velocity", tVelocity);
+
+    // call function
+    auto tAC = Plato::cbs::calculate_artificial_compressibility<tNumSpaceDims>(tStates);
+
+    // test value
+    /*
+    auto tTol = 1e-4;
+    auto tHostAC = Kokkos::create_mirror(tAC);
+    Kokkos::deep_copy(tHostAC, tAC);
+    std::vector<Plato::Scalar> tGold = {5.857864e-01,5.857864e-01};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostAC(tCell), tTol);
+    }
+    */
+    Plato::print(tAC, "artificial compressibility");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSize)
 {
