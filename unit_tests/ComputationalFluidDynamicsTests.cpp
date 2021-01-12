@@ -7012,46 +7012,43 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateArtificialCompressibility)
 {
-/*
     constexpr auto tNumNodes = 4;
-    constexpr auto tNumSpaceDims = 2;
+    Plato::ScalarVector tConvectiveVelocity("convective velocity", tNumNodes);
+    auto tHostConvectiveVelocity = Kokkos::create_mirror(tConvectiveVelocity);
+    tHostConvectiveVelocity(1) = 1.0;
+    tHostConvectiveVelocity(1) = 2.0;
+    tHostConvectiveVelocity(2) = 3.0;
+    tHostConvectiveVelocity(3) = 0.3;
+    Kokkos::deep_copy(tConvectiveVelocity, tHostConvectiveVelocity);
+    Plato::ScalarVector tDiffusiveVelocity("diffusive velocity", tNumNodes);
+    auto tHostDiffusiveVelocity = Kokkos::create_mirror(tDiffusiveVelocity);
+    tHostDiffusiveVelocity(0) = 0.9;
+    tHostDiffusiveVelocity(1) = 3.0;
+    tHostDiffusiveVelocity(2) = 2.0;
+    tHostDiffusiveVelocity(3) = 0.2;
+    Kokkos::deep_copy(tDiffusiveVelocity, tHostDiffusiveVelocity);
+    Plato::ScalarVector tThermalVelocity("thermal velocity", tNumNodes);
+    auto tHostThermalVelocity = Kokkos::create_mirror(tThermalVelocity);
+    tHostThermalVelocity(0) = 0.9;
+    tHostThermalVelocity(1) = 3.0;
+    tHostThermalVelocity(2) = 4.0;
+    tHostThermalVelocity(3) = 0.1;
+    Kokkos::deep_copy(tThermalVelocity, tHostThermalVelocity);
+    auto tCriticalValue = 0.5;
 
-    // set input data
-    Plato::Primal tStates;
-    tStates.scalar("prandtl", 0.5);
-    tStates.scalar("reynolds", 2.0);
-
-    constexpr auto tNumCells = 2;
-    Plato::ScalarVector tElemCharSize("element characteristic size", tNumCells);
-    Plato::blas1::fill(0.5, tElemCharSize);
-    tStates.vector("element characteristic size", tElemCharSize);
-    Plato::ScalarVector tVelocity("velocity", tNumNodes * tNumSpaceDims);
-    auto tHostVelocity = Kokkos::create_mirror(tVelocity);
-    tHostVelocity(0) = 1;
-    tHostVelocity(1) = 2;
-    tHostVelocity(2) = 3;
-    tHostVelocity(3) = 4;
-    tHostVelocity(4) = 5;
-    tHostVelocity(5) = 6;
-    tHostVelocity(6) = 7;
-    tHostVelocity(7) = 8;
-    Kokkos::deep_copy(tVelocity, tHostVelocity);
-    tStates.vector("previous velocity", tVelocity);
-
-    // call function
-    auto tAC = Plato::cbs::calculate_artificial_compressibility<tNumSpaceDims>(tStates);
+    auto tOutput =
+        Plato::cbs::calculate_artificial_compressibility(tConvectiveVelocity, tDiffusiveVelocity, tThermalVelocity, tCriticalValue);
 
     // test value
     auto tTol = 1e-4;
-    auto tHostAC = Kokkos::create_mirror(tAC);
-    Kokkos::deep_copy(tHostAC, tAC);
-    std::vector<Plato::Scalar> tGold = {5.857864e-01,5.857864e-01};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    std::vector<Plato::Scalar> tGold = {1.0,3.0,4.0,0.5};
+    for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostAC(tCell), tTol);
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostOutput(tNode), tTol);
     }
-    Plato::print(tAC, "artificial compressibility");
-*/
+    //Plato::print(tOutput, "artificial compressibility");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSize)
