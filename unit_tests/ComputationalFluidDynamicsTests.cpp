@@ -6897,6 +6897,41 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateThermalVelocityMagnitude)
+{
+    // build mesh and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
+
+    // set element characteristic size
+    auto tNumCells = tMesh->nelems();
+    Plato::ScalarVector tElemCharSize("char elem size", tNumCells);
+    auto tHostElemCharSize = Kokkos::create_mirror(tElemCharSize);
+    tHostElemCharSize(0) = 0.5;
+    tHostElemCharSize(1) = 1.0;
+    Kokkos::deep_copy(tElemCharSize, tHostElemCharSize);
+
+    // call function
+    auto tPrandtlNum = 1;
+    auto tReynoldsNum = 2;
+    constexpr auto tNumNodesPerCell = 3;
+    auto tThermalVelocity =
+        Plato::cbs::calculate_thermal_velocity_magnitude<tNumNodesPerCell>(tSpatialModel, tPrandtlNum, tReynoldsNum, tElemCharSize);
+
+    // test value
+    auto tTol = 1e-4;
+    auto tNumNodes = tMesh->nverts();
+    auto tHostThermalVelocity = Kokkos::create_mirror(tThermalVelocity);
+    Kokkos::deep_copy(tHostThermalVelocity, tThermalVelocity);
+    std::vector<Plato::Scalar> tGold = {1.0,1.0,0.5,0.5};
+    for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostThermalVelocity(tNode), tTol);
+    }
+    //Plato::print(tThermalVelocity, "thermal velocity");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateDiffusiveVelocityMagnitude)
 {
     // build mesh and spatial model
@@ -6928,7 +6963,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateDiffusiveVelocityMagnitude)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostDiffusiveVelocity(tNode), tTol);
     }
-    //Plato::print(tConvectiveVelocity, "convective velocity");
+    //Plato::print(tDiffusiveVelocity, "diffusive velocity");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
