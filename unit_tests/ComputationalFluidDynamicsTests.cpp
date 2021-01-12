@@ -6023,21 +6023,21 @@ enforce_boundary_condition
 inline Plato::ScalarVector
 calculate_pressure_residual
 (const Plato::ScalarVector& aTimeStep,
- const Plato::ScalarVector& aCurrentState,
- const Plato::ScalarVector& aPreviousState,
- const Plato::ScalarVector& aArtificialCompressibility)
+ const Plato::ScalarVector& aCurrentPressure,
+ const Plato::ScalarVector& aPreviousPressure,
+ const Plato::ScalarVector& aArtificialCompress)
 {
     // calculate stopping criterion, which is defined as
     // \frac{1}{\beta^2} \left( \frac{p^{n} - p^{n-1}}{\Delta{t}}\right ),
     // where \beta denotes the artificial compressibility
-    auto tLength = aCurrentState.size();
-    Plato::ScalarVector tResidual("pressure residual", tLength);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    auto tNumNodes = aCurrentPressure.size();
+    Plato::ScalarVector tResidual("pressure residual", tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
-        auto tDeltaPressOverTimeStep = ( aCurrentState(aOrdinal) - aPreviousState(aOrdinal) ) / aTimeStep(aOrdinal);
-        auto tOneOverBetaSquared = static_cast<Plato::Scalar>(1) /
-            ( aArtificialCompressibility(aOrdinal) * aArtificialCompressibility(aOrdinal) );
-        tResidual(aOrdinal) = tOneOverBetaSquared * tDeltaPressOverTimeStep;
+        auto tDeltaPressOverTimeStep = ( aCurrentPressure(aNodeOrdinal) - aPreviousPressure(aNodeOrdinal) ) / aTimeStep(aNodeOrdinal);
+        auto tOneOverBetaSquared = static_cast<Plato::Scalar>(1) / ( aArtificialCompress(aNodeOrdinal) * aArtificialCompress(aNodeOrdinal) );
+        tResidual(aNodeOrdinal) = tOneOverBetaSquared * tDeltaPressOverTimeStep;
+        tResidual(aNodeOrdinal) *= tResidual(aNodeOrdinal);
     }, "calculate stopping criterion");
 
     return tResidual;
