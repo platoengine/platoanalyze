@@ -6043,7 +6043,7 @@ calculate_pressure_residual
 }
 
 inline Plato::Scalar
-calculate_explicit_solve_convergence_criterion
+calculate_residual_euclidean_norm
 (const Plato::Variables & aStates)
 {
     auto tTimeStep = aStates.vector("time steps");
@@ -6051,12 +6051,12 @@ calculate_explicit_solve_convergence_criterion
     auto tPreviousPressure = aStates.vector("previous pressure");
     auto tArtificialCompress = aStates.vector("artificial compressibility");
     auto tResidual = Plato::cbs::calculate_pressure_residual(tTimeStep, tCurrentPressure, tPreviousPressure, tArtificialCompress);
-    auto tStoppingCriterion = Plato::blas1::dot(tResidual, tResidual);
-    return tStoppingCriterion;
+    auto tValue = Plato::blas1::dot(tResidual, tResidual);
+    return tValue;
 }
 
 inline Plato::Scalar
-calculate_semi_implicit_solve_convergence_criterion
+calculate_residual_inf_norm
 (const Plato::Variables & aStates)
 {
     std::vector<Plato::Scalar> tErrors;
@@ -6407,11 +6407,11 @@ private:
             Plato::Scalar tCriterionValue(0.0);
             if(mIsExplicitSolve)
             {
-                tCriterionValue = Plato::cbs::calculate_explicit_solve_convergence_criterion(aVariables);
+                tCriterionValue = Plato::cbs::calculate_residual_euclidean_norm(aVariables);
             }
             else
             {
-                tCriterionValue = Plato::cbs::calculate_semi_implicit_solve_convergence_criterion(aVariables);
+                tCriterionValue = Plato::cbs::calculate_residual_inf_norm(aVariables);
             }
 
             Plato::OrdinalType tStep = aVariables.scalar("step");
@@ -6891,6 +6891,59 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualEuclideanNorm)
+{
+    Plato::Variables tVariables;
+
+    // set time step
+    constexpr auto tNumNodes = 4;
+    Plato::ScalarVector tTimeStep("time step", tNumNodes);
+    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep);
+    tHostTimeStep(0) = 0.1;
+    tHostTimeStep(1) = 0.2;
+    tHostTimeStep(2) = 0.3;
+    tHostTimeStep(3) = 0.4;
+    Kokkos::deep_copy(tTimeStep, tHostTimeStep);
+    tVariables.vector("time steps", tTimeStep);
+
+    // set element characteristic size
+    Plato::ScalarVector tCurPressure("current pressure", tNumNodes);
+    auto tHostCurPressure = Kokkos::create_mirror(tCurPressure);
+    tHostCurPressure(0) = 1;
+    tHostCurPressure(1) = 2;
+    tHostCurPressure(2) = 3;
+    tHostCurPressure(3) = 4;
+    Kokkos::deep_copy(tCurPressure, tHostCurPressure);
+    tVariables.vector("current pressure", tCurPressure);
+
+    // set convective velocity
+    Plato::ScalarVector tPrevPressure("previous pressure", tNumNodes);
+    auto tHostPrevPressure = Kokkos::create_mirror(tPrevPressure);
+    tHostPrevPressure(0) = 0.5;
+    tHostPrevPressure(1) = 0.6;
+    tHostPrevPressure(2) = 0.7;
+    tHostPrevPressure(3) = 0.8;
+    Kokkos::deep_copy(tPrevPressure, tHostPrevPressure);
+    tVariables.vector("previous pressure", tPrevPressure);
+
+    // set artificial compressibility
+    Plato::ScalarVector tArtificialCompress("artificial compressibility", tNumNodes);
+    auto tHostArtificialCompress = Kokkos::create_mirror(tArtificialCompress);
+    tHostArtificialCompress(0) = 0.1;
+    tHostArtificialCompress(1) = 0.2;
+    tHostArtificialCompress(2) = 0.3;
+    tHostArtificialCompress(3) = 0.4;
+    Kokkos::deep_copy(tArtificialCompress, tHostArtificialCompress);
+    tVariables.vector("artificial compressibility", tArtificialCompress);
+
+    // call funciton
+    auto tValue = Plato::cbs::calculate_residual_euclidean_norm(tVariables);
+
+    // test result
+    auto tTol = 1e-4;
+    TEST_FLOATING_EQUALITY(2.9038151e5, tValue, tTol);
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
 {
