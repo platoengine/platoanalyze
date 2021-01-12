@@ -6897,6 +6897,40 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateDiffusiveVelocityMagnitude)
+{
+    // build mesh and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
+
+    // set element characteristic size
+    auto tNumCells = tMesh->nelems();
+    Plato::ScalarVector tElemCharSize("char elem size", tNumCells);
+    auto tHostElemCharSize = Kokkos::create_mirror(tElemCharSize);
+    tHostElemCharSize(0) = 0.5;
+    tHostElemCharSize(1) = 1.0;
+    Kokkos::deep_copy(tElemCharSize, tHostElemCharSize);
+
+    // call function
+    auto tReynoldsNum = 2;
+    constexpr auto tNumNodesPerCell = 3;
+    auto tDiffusiveVelocity =
+        Plato::cbs::calculate_diffusive_velocity_magnitude<tNumNodesPerCell>(tSpatialModel, tReynoldsNum, tElemCharSize);
+
+    // test value
+    auto tTol = 1e-4;
+    auto tNumNodes = tMesh->nverts();
+    auto tHostDiffusiveVelocity = Kokkos::create_mirror(tDiffusiveVelocity);
+    Kokkos::deep_copy(tHostDiffusiveVelocity, tDiffusiveVelocity);
+    std::vector<Plato::Scalar> tGold = {1.0,1.0,0.5,0.5};
+    for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostDiffusiveVelocity(tNode), tTol);
+    }
+    //Plato::print(tConvectiveVelocity, "convective velocity");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
 {
     // build mesh and spatial model
