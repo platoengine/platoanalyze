@@ -5854,7 +5854,9 @@ calculate_convective_velocity_magnitude
                 auto tDofIndex = tVertexIndex * tSpaceDim + tDim;
                 tSum += aVelocityField(tDofIndex) * aVelocityField(tDofIndex);
             }
-            tConvectiveVelocity(tVertexIndex) = sqrt(tSum);
+            auto tMyValue = sqrt(tSum);
+            tConvectiveVelocity(tVertexIndex) =
+                tMyValue >= tConvectiveVelocity(tVertexIndex) ? tMyValue : tConvectiveVelocity(tVertexIndex);
         }
     }, "calculate_convective_velocity_magnitude");
 
@@ -5905,8 +5907,9 @@ calculate_thermal_velocity_magnitude
         for(decltype(tNumNodes) tNode = 0; tNode < NodesPerCell; tNode++)
         {
             auto tVertexIndex = tCell2Node[aCell*NodesPerCell + tNode];
+            auto tMyValue = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(aCell) * aReynoldsNum * aPrandtlNum);
             tThermalVelocity(tVertexIndex) =
-                static_cast<Plato::Scalar>(1.0) / (aCharElemSize(aCell) * aReynoldsNum * aPrandtlNum);
+                tMyValue >= tThermalVelocity(tVertexIndex) ? tMyValue : tThermalVelocity(tVertexIndex);
         }
     }, "calculate_thermal_velocity_magnitude");
 
@@ -6926,7 +6929,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateThermalVelocityMagnitude)
     auto tNumNodes = tMesh->nverts();
     auto tHostThermalVelocity = Kokkos::create_mirror(tThermalVelocity);
     Kokkos::deep_copy(tHostThermalVelocity, tThermalVelocity);
-    std::vector<Plato::Scalar> tGold = {1.0,1.0,0.5,0.5};
+    std::vector<Plato::Scalar> tGold = {1.0,0.5,1.0,1.0};
     for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostThermalVelocity(tNode), tTol);
@@ -6992,7 +6995,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
 
     // call function
     constexpr auto tNumNodesPerCell = 3;
-    auto tConvectiveVelocity = Plato::cbs::calculate_convective_velocity_magnitude<tNumNodesPerCell>(tSpatialModel, tVelocity);
+    auto tConvectiveVelocity =
+        Plato::cbs::calculate_convective_velocity_magnitude<tNumNodesPerCell>(tSpatialModel, tVelocity);
 
     // test value
     auto tTol = 1e-4;
