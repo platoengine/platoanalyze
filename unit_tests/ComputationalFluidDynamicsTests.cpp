@@ -5878,7 +5878,9 @@ calculate_diffusive_velocity_magnitude
         for(decltype(tNumNodes) tNode = 0; tNode < NodesPerCell; tNode++)
         {
             auto tVertexIndex = tCell2Node[aCell*NodesPerCell + tNode];
-            tDiffusiveVelocity(tVertexIndex) = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(aCell) * aReynoldsNum);
+            auto tMyValue = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(aCell) * aReynoldsNum);
+            tDiffusiveVelocity(tVertexIndex) = 
+                tMyValue >= tDiffusiveVelocity(tVertexIndex) ? tMyValue : tDiffusiveVelocity(tVertexIndex);
         }
     }, "calculate_diffusive_velocity_magnitude");
 
@@ -6958,7 +6960,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateDiffusiveVelocityMagnitude)
     auto tNumNodes = tMesh->nverts();
     auto tHostDiffusiveVelocity = Kokkos::create_mirror(tDiffusiveVelocity);
     Kokkos::deep_copy(tHostDiffusiveVelocity, tDiffusiveVelocity);
-    std::vector<Plato::Scalar> tGold = {1.0,1.0,0.5,0.5};
+    std::vector<Plato::Scalar> tGold = {1.0,0.5,1.0,1.0};
     for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostDiffusiveVelocity(tNode), tTol);
