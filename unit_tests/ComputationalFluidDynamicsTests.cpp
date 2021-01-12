@@ -236,6 +236,7 @@ inline void print_fad_dx_values
 
 namespace omega_h
 {
+
 template<typename ArrayT>
 void print(const ArrayT & aInput, const std::string & aName)
 {
@@ -247,7 +248,32 @@ void print(const ArrayT & aInput, const std::string & aName)
     }, "print");
     std::cout << "Finished Printing Array with Name '" << aName << "'\n";
 }
+
+template<Plato::OrdinalType NumSpatialDims,
+         Plato::OrdinalType NumNodesPerCell>
+DEVICE_TYPE inline
+Plato::Scalar
+calculate_element_size
+(const Plato::OrdinalType & aCellOrdinal,
+ const Omega_h::LOs & tCells2Nodes,
+ const Omega_h::Reals & tCoords)
+{
+    Omega_h::Few<Omega_h::Vector<NumSpatialDims>, NumNodesPerCell> tElemCoords;
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
+    {
+        const Plato::OrdinalType tVertexIndex = tCells2Nodes[aCellOrdinal*NumNodesPerCell + tNode];
+        for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
+        {
+            tElemCoords[tNode][tDim] = tCoords[tVertexIndex*NumSpatialDims + tDim]
+        }
+    }
+    auto tSphere = Omega_h::get_inball(tElemCoords);
+
+    return (static_cast<Plato::Scalar>(2.0) * tSphere.r);
 }
+
+}
+// namespace omega_h
 
 template<Omega_h::SetType EntitySet>
 inline Omega_h::LOs
@@ -5799,10 +5825,6 @@ public:
 
 
 
-
-
-
-
 // todo: unit test inline functions
 namespace cbs
 {
@@ -5810,25 +5832,26 @@ namespace cbs
 template<Plato::OrdinalType NumSpatialDims,
          Plato::OrdinalType NumNodesPerCell>
 inline Plato::ScalarVector
-calculate_element_characteristic_size
-(const Plato::OrdinalType & aNumCells,
- const Plato::NodeCoordinate<NumSpatialDims> & aNodeCoordinate)
+calculate_element_characteristic_sizes
+(const Plato::SpatialModel & aSpatialModel)
 {
-    Plato::ScalarVector tElemCharacteristicSize("element characteristic size", aNumCells);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    auto tCoords = aSpatialModel.Mesh.coords();
+    auto tCells2Nodes = aSpatialModel.Mesh.ask_elem_verts();
+
+    Plato::OrdinalType tNumCells = aSpatialModel.Mesh.nelems();
+    Plato::OrdinalType tNumNodes = aSpatialModel.Mesh.nverts();
+    Plato::ScalarVector tElemCharSize("element characteristic size", tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Omega_h::Few<Omega_h::Vector<NumSpatialDims>, NumNodesPerCell> tElementCoords;
-        for(Plato::OrdinalType tNodeIndex = 0; tNodeIndex < NumNodesPerCell; tNodeIndex++)
+        auto tElemSize = Plato::omega_h::calculate_element_size<NumSpatialDims,NumNodesPerCell>(aCellOrdinal, tCells2Nodes, tCoords);
+        for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
         {
-            for(Plato::OrdinalType tDimIndex = 0; tDimIndex < NumSpatialDims; tDimIndex++)
-            {
-                tElementCoords[tNodeIndex][tDimIndex] = aNodeCoordinate(aCellOrdinal, tNodeIndex, tDimIndex);
-            }
+            auto tVertexIndex = tCells2Nodes[aCellOrdinal*NumNodesPerCell + tNode];
+            tElemCharSize(tVertexIndex) = tElemSize <= tElemCharSize(tVertexIndex) ? tElemSize : tElemCharSize(tVertexIndex);
         }
-        auto tSphere = Omega_h::get_inball(tElementCoords);
-        tElemCharacteristicSize(aCellOrdinal) = static_cast<Plato::Scalar>(2.0) * tSphere.r;
     },"calculate characteristic element size");
-    return tElemCharacteristicSize;
+
+    return tElemCharSize;
 }
 
 template<Plato::OrdinalType NodesPerCell>
@@ -5837,19 +5860,19 @@ calculate_convective_velocity_magnitude
 (const Plato::SpatialModel & aSpatialModel,
  const Plato::ScalarVector & aVelocityField)
 {
-    auto tSpaceDim = aSpatialModel.Mesh.dim();
-    auto tNumCells = aSpatialModel.Mesh.nelems();
-    auto tNumNodes = aSpatialModel.Mesh.nverts();
     auto tCell2Node = aSpatialModel.Mesh.ask_elem_verts();
+    Plato::OrdinalType tSpaceDim = aSpatialModel.Mesh.dim();
+    Plato::OrdinalType tNumCells = aSpatialModel.Mesh.nelems();
+    Plato::OrdinalType tNumNodes = aSpatialModel.Mesh.nverts();
 
     Plato::ScalarVector tConvectiveVelocity("convective velocity", tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCell)
     {
-        for(decltype(tNumNodes) tNode = 0; tNode < NodesPerCell; tNode++)
+        for(Plato::OrdinalType tNode = 0; tNode < NodesPerCell; tNode++)
         {
-            auto tSum = 0.0;
-            auto tVertexIndex = tCell2Node[aCell*NodesPerCell + tNode];
-            for(decltype(tSpaceDim) tDim = 0; tDim < tSpaceDim; tDim++)
+            Plato::Scalar tSum = 0.0;
+            Plato::OrdinalType tVertexIndex = tCell2Node[aCell*NodesPerCell + tNode];
+            for(Plato::OrdinalType tDim = 0; tDim < tSpaceDim; tDim++)
             {
                 auto tDofIndex = tVertexIndex * tSpaceDim + tDim;
                 tSum += aVelocityField(tDofIndex) * aVelocityField(tDofIndex);
@@ -5870,17 +5893,17 @@ calculate_diffusive_velocity_magnitude
  const Plato::Scalar & aReynoldsNum,
  const Plato::ScalarVector & aCharElemSize)
 {
-    auto tNumCells = aSpatialModel.Mesh.nelems();
-    auto tNumNodes = aSpatialModel.Mesh.nverts();
     auto tCell2Node = aSpatialModel.Mesh.ask_elem_verts();
+    Plato::OrdinalType tNumCells = aSpatialModel.Mesh.nelems();
+    Plato::OrdinalType tNumNodes = aSpatialModel.Mesh.nverts();
 
     Plato::ScalarVector tDiffusiveVelocity("diffusive velocity", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCell)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         for(decltype(tNumNodes) tNode = 0; tNode < NodesPerCell; tNode++)
         {
-            auto tVertexIndex = tCell2Node[aCell*NodesPerCell + tNode];
-            auto tMyValue = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(aCell) * aReynoldsNum);
+            Plato::OrdinalType tVertexIndex = tCell2Node[aCellOrdinal*NodesPerCell + tNode];
+            auto tMyValue = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(tVertexIndex) * aReynoldsNum);
             tDiffusiveVelocity(tVertexIndex) = 
                 tMyValue >= tDiffusiveVelocity(tVertexIndex) ? tMyValue : tDiffusiveVelocity(tVertexIndex);
         }
@@ -5897,17 +5920,17 @@ calculate_thermal_velocity_magnitude
  const Plato::Scalar & aReynoldsNum,
  const Plato::ScalarVector & aCharElemSize)
 {
-    auto tNumCells = aSpatialModel.Mesh.nelems();
-    auto tNumNodes = aSpatialModel.Mesh.nverts();
     auto tCell2Node = aSpatialModel.Mesh.ask_elem_verts();
+    Plato::OrdinalType tNumCells = aSpatialModel.Mesh.nelems();
+    Plato::OrdinalType tNumNodes = aSpatialModel.Mesh.nverts();
 
     Plato::ScalarVector tThermalVelocity("thermal velocity", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCell)
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         for(decltype(tNumNodes) tNode = 0; tNode < NodesPerCell; tNode++)
         {
-            auto tVertexIndex = tCell2Node[aCell*NodesPerCell + tNode];
-            auto tMyValue = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(aCell) * aReynoldsNum * aPrandtlNum);
+            Plato::OrdinalType tVertexIndex = tCell2Node[aCellOrdinal*NodesPerCell + tNode];
+            auto tMyValue = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(tVertexIndex) * aReynoldsNum * aPrandtlNum);
             tThermalVelocity(tVertexIndex) =
                 tMyValue >= tThermalVelocity(tVertexIndex) ? tMyValue : tThermalVelocity(tVertexIndex);
         }
@@ -5938,7 +5961,7 @@ calculate_artificial_compressibility
  const Plato::ScalarVector & aThermalVelocity,
  Plato::Scalar aCritialCompresibility = 0.5)
 {
-    auto tNumNodes = aThermalVelocity.size();
+    Plato::OrdinalType tNumNodes = aThermalVelocity.size();
     Plato::ScalarVector tArtificialCompressibility("artificial compressibility", tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNode)
     {
@@ -5965,35 +5988,19 @@ calculate_artificial_compressibility
 
 inline Plato::ScalarVector
 calculate_stable_time_step
-(const Plato::Variables & aStates)
+(const Plato::SpatialModel & aSpatialModel,
+ const Plato::ScalarVector & aElemCharSize,
+ const Plato::ScalarVector & aVelocityField,
+ const Plato::ScalarVector & aArtificialCompress,
+ Plato::Scalar aSafetyFactor = 0.5)
 {
-    auto tVelocity = aStates.vector("current velocity");
-    auto tElemSize = aStates.vector("element characteristic size");
-    auto tArtificialCompressibility = aStates.vector("artificial compressibility");
-
-    auto tReynolds = aStates.scalar("reynolds");
-    auto tSafetyFactor = aStates.scalar("time step safety factor");
-
-    auto tLength = tVelocity.size();
-    Plato::ScalarVector tTimeStep("time steps", tLength);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    auto tNumNodes = aSpatialModel.Mesh.nverts();
+    Plato::ScalarVector tTimeStep("time step", tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
-        // calculate convective velocity
-        Plato::Scalar tConvectiveVelocity = tVelocity(aOrdinal) * tVelocity(aOrdinal);
-        tConvectiveVelocity = sqrt(tConvectiveVelocity);
-        auto tCriticalConvectiveTimeStep = tElemSize(aOrdinal) /
-            (tConvectiveVelocity + tArtificialCompressibility(aOrdinal));
-
-        // calculate diffusive velocity
-        auto tDiffusiveVelocity = static_cast<Plato::Scalar>(2.0) / (tElemSize(aOrdinal) * tReynolds);
-        auto tCriticalDiffusiveTimeStep = tElemSize(aOrdinal) / tDiffusiveVelocity;
-
-        // calculate stable time step
-        auto tCriticalTimeStep = tCriticalConvectiveTimeStep < tCriticalDiffusiveTimeStep ?
-            tCriticalConvectiveTimeStep : tCriticalDiffusiveTimeStep;
-        tTimeStep(aOrdinal) = tCriticalTimeStep * tSafetyFactor;
+        tTimeStep(aNodeOrdinal) = ( aSafetyFactor * aElemCharSize(aNodeOrdinal) /
+            ( aVelocityField(aNodeOrdinal) + aArtificialCompress(aNodeOrdinal) ) );
     }, "calculate stable time step");
-
     return tTimeStep;
 }
 
@@ -6084,7 +6091,7 @@ public:
 };
 
 template<typename PhysicsT>
-class Problem : public Plato::Fluids::AbstractProblem
+class SteadyStateProblem : public Plato::Fluids::AbstractProblem
 {
 private:
     static constexpr auto mNumSpatialDims     = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -6132,7 +6139,7 @@ private:
     Plato::VectorEntryOrdinal<mNumSpatialDims,mNumVelDofsPerNode> mVelocityOrdinals;
 
 public:
-    Problem
+    SteadyStateProblem
     (Omega_h::Mesh          & aMesh,
      Omega_h::MeshSets      & aMeshSets,
      Teuchos::ParameterList & aInputs,
@@ -6421,48 +6428,28 @@ private:
 
     void calculateElemCharacteristicSize(Plato::Primal & aVariables)
     {
-        Plato::NodeCoordinate<mNumSpatialDims> tNodeCoordinates;
-        auto tNumCells = mSpatialModel.Mesh.nelems();
-        auto tElemCharacteristicSize = 
-            Plato::cbs::calculate_element_characteristic_size<mNumSpatialDims,mNumNodesPerCell>(tNumCells, tNodeCoordinates);
-        aVariables.vector("element characteristic size", tElemCharacteristicSize);
-    }
-
-    void calculateArtificalCompressibility(Plato::Primal & aVariables)
-    {
-        auto tPrandtl = aVariables.scalar("prandtl");
-        auto tReynolds = aVariables.scalar("reynolds");
-        auto tCurrentVelocity = aVariables.vector("current velocity");
-        auto tCharElemSize = aVariables.vector("element characteristic size");
-
-        auto tConvectiveVelocity =
-            Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tCurrentVelocity);
-        auto tDiffusiveVelocity =
-            Plato::cbs::calculate_diffusive_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tReynolds, tCharElemSize);
-        auto tThermalVelocity =
-            Plato::cbs::calculate_thermal_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tPrandtl, tReynolds, tCharElemSize);
-
-        auto tArtificialCompressibility =
-            Plato::cbs::calculate_artificial_compressibility(tConvectiveVelocity, tDiffusiveVelocity, tThermalVelocity);
-        aVariables.vector("artificial compressibility", tArtificialCompressibility);
+        auto tElemCharSizes =
+            Plato::cbs::calculate_element_characteristic_sizes<mNumSpatialDims,mNumNodesPerCell>(mSpatialModel);
+        aVariables.vector("element characteristic size", tElemCharSizes);
     }
 
     void calculateStableTimeSteps(Plato::Primal & aVariables)
     {
-        this->calculateArtificalCompressibility(aVariables);
+        auto tCurrentVelocity = aVariables.vector("current velocity");
+        auto tElemCharSize = aVariables.vector("element characteristic size");
 
-        aVariables.scalar("time step safety factor", mTimeStepSafetyFactor);
-        auto tTimeStep = Plato::cbs::calculate_stable_time_step(aVariables);
-        if(mIsTransientProblem)
-        {
-            Plato::Scalar tMinTimeStep(0);
-            Plato::blas1::min(tTimeStep, tMinTimeStep);
-            Plato::blas1::fill(tMinTimeStep, tTimeStep);
-            auto tCurrentTimeStepIndex = aVariables.scalar("step index");
-            auto tCurrentTime = tMinTimeStep * static_cast<Plato::Scalar>(tCurrentTimeStepIndex);
-            aVariables.scalar("current time", tCurrentTime);
-        }
+        auto tConvectiveVel =
+            Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tCurrentVelocity);
+        auto tDiffusiveVel =
+            Plato::cbs::calculate_diffusive_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mReynoldsNumber, tElemCharSize);
+        auto tThermalVel =
+            Plato::cbs::calculate_thermal_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mPrandtlNumber, mReynoldsNumber, tElemCharSize);
+        auto tArtificialCompress =
+            Plato::cbs::calculate_artificial_compressibility(tConvectiveVel, tDiffusiveVel, tThermalVel);
+        aVariables.vector("artificial compressibility", tArtificialCompress);
 
+        auto tTimeStep =
+            Plato::cbs::calculate_stable_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, tArtificialCompress, mTimeStepSafetyFactor);
         aVariables.vector("time steps", tTimeStep);
     }
 
@@ -6904,6 +6891,60 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStableTimeStep)
+{
+    // build mesh and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
+
+    // set element characteristic size
+    auto tNumNodes = tMesh->nverts();
+    Plato::ScalarVector tElemCharSize("char elem size", tNumNodes);
+    auto tHostElemCharSize = Kokkos::create_mirror(tElemCharSize);
+    tHostElemCharSize(0) = 0.5;
+    tHostElemCharSize(1) = 0.5;
+    tHostElemCharSize(2) = 1.0;
+    tHostElemCharSize(3) = 1.0;
+    Kokkos::deep_copy(tElemCharSize, tHostElemCharSize);
+
+    // set convective velocity
+    auto tNumNodes = tMesh->nverts();
+    Plato::ScalarVector tVelocity("convective velocity", tNumNodes);
+    auto tHostVelocity = Kokkos::create_mirror(tVelocity);
+    tHostVelocity(0) = 1;
+    tHostVelocity(1) = 2;
+    tHostVelocity(2) = 3;
+    tHostVelocity(3) = 4;
+    Kokkos::deep_copy(tVelocity, tHostVelocity);
+
+    // set artificial compressibility
+    auto tNumNodes = tMesh->nverts();
+    Plato::ScalarVector tArtificialCompress("artificial compressibility", tNumNodes);
+    auto tHostArtificialCompress = Kokkos::create_mirror(tArtificialCompress);
+    tHostArtificialCompress(0) = 0.1;
+    tHostArtificialCompress(1) = 0.2;
+    tHostArtificialCompress(2) = 0.3;
+    tHostArtificialCompress(3) = 0.4;
+    Kokkos::deep_copy(tArtificialCompress, tHostArtificialCompress);
+
+    // call function
+    auto tTimeStep = Plato::cbs::calculate_stable_time_step(tSpatialModel, tElemCharSize, tVelocity, tArtificialCompress);
+
+    // test results
+    /*
+    auto tTol = 1e-4;
+    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep);
+    Kokkos::deep_copy(tHostTimeStep, tTimeStep);
+    std::vector<Plato::Scalar> tGold = {1.0,0.5,1.0,1.0};
+    for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostTimeStep(tNode), tTol);
+    }
+    */
+    Plato::print(tTimeStep, "time step");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateThermalVelocityMagnitude)
 {
     // build mesh and spatial model
@@ -6912,11 +6953,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateThermalVelocityMagnitude)
     Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
 
     // set element characteristic size
-    auto tNumCells = tMesh->nelems();
-    Plato::ScalarVector tElemCharSize("char elem size", tNumCells);
+    auto tNumNodes = tMesh->nverts();
+    Plato::ScalarVector tElemCharSize("char elem size", tNumNodes);
     auto tHostElemCharSize = Kokkos::create_mirror(tElemCharSize);
     tHostElemCharSize(0) = 0.5;
-    tHostElemCharSize(1) = 1.0;
+    tHostElemCharSize(1) = 0.5;
+    tHostElemCharSize(2) = 1.0;
+    tHostElemCharSize(3) = 1.0;
     Kokkos::deep_copy(tElemCharSize, tHostElemCharSize);
 
     // call function
@@ -6928,7 +6971,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateThermalVelocityMagnitude)
 
     // test value
     auto tTol = 1e-4;
-    auto tNumNodes = tMesh->nverts();
     auto tHostThermalVelocity = Kokkos::create_mirror(tThermalVelocity);
     Kokkos::deep_copy(tHostThermalVelocity, tThermalVelocity);
     std::vector<Plato::Scalar> tGold = {1.0,0.5,1.0,1.0};
@@ -6947,11 +6989,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateDiffusiveVelocityMagnitude)
     Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
 
     // set element characteristic size
-    auto tNumCells = tMesh->nelems();
-    Plato::ScalarVector tElemCharSize("char elem size", tNumCells);
+    auto tNumNodes = tMesh->nverts();
+    Plato::ScalarVector tElemCharSize("char elem size", tNumNodes);
     auto tHostElemCharSize = Kokkos::create_mirror(tElemCharSize);
     tHostElemCharSize(0) = 0.5;
-    tHostElemCharSize(1) = 1.0;
+    tHostElemCharSize(1) = 0.5;
+    tHostElemCharSize(2) = 1.0;
+    tHostElemCharSize(3) = 1.0;
     Kokkos::deep_copy(tElemCharSize, tHostElemCharSize);
 
     // call function
@@ -6962,7 +7006,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateDiffusiveVelocityMagnitude)
 
     // test value
     auto tTol = 1e-4;
-    auto tNumNodes = tMesh->nverts();
     auto tHostDiffusiveVelocity = Kokkos::create_mirror(tDiffusiveVelocity);
     Kokkos::deep_copy(tHostDiffusiveVelocity, tDiffusiveVelocity);
     std::vector<Plato::Scalar> tGold = {1.0,0.5,1.0,1.0};
@@ -7053,26 +7096,28 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateArtificialCompressibility)
     //Plato::print(tOutput, "artificial compressibility");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSize)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSizes)
 {
-    // build mesh, spatial domain, and spatial model
-    constexpr Plato::OrdinalType tNumSpaceDims = 2;
+    // build mesh and spatial model
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialModel tSpatialModel(tMesh.operator*(), tMeshSets);
 
-    auto tNumCells = tMesh->nelems();
+    constexpr auto tNumSpaceDims = 2;
     constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
     auto tElemCharSize = 
-        Plato::cbs::calculate_element_characteristic_size<tNumSpaceDims,tNumNodesPerCell>(tNumCells, tNodeCoordinate);
+        Plato::cbs::calculate_element_characteristic_sizes<tNumSpaceDims,tNumNodesPerCell>(tSpatialModel);
 
     // test value
     auto tTol = 1e-4;
     auto tHostElemCharSize = Kokkos::create_mirror(tElemCharSize);
     Kokkos::deep_copy(tHostElemCharSize, tElemCharSize);
-    std::vector<Plato::Scalar> tGold = {5.857864e-01,5.857864e-01};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    std::vector<Plato::Scalar> tGold = {5.857864e-01,5.857864e-01,5.857864e-01,5.857864e-01};
+
+    auto tNumNodes = tSpatialModel.Mesh.nverts();
+    for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {   
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostElemCharSize(tCell), tTol);
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostElemCharSize(tNode), tTol);
     }
     //Plato::print(tElemCharSize, "element characteristic size");
 }
