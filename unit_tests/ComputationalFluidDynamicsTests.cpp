@@ -6992,7 +6992,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
     std::vector<Plato::Scalar> tGold = {500,175,85.185185185,50};
-    for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
+    for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostResidual(tNode), tTol);
     }
