@@ -6932,7 +6932,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostConvectiveVelocity(tNode), tTol);
     }
-    //Plato::print(tOutput, "device blas1::norm");
+    //Plato::print(tOutput, "convective velocity");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateArtificialCompressibility)
