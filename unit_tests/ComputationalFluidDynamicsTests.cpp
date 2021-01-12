@@ -5942,17 +5942,19 @@ calculate_artificial_compressibility
     Plato::ScalarVector tArtificialCompressibility("artificial compressibility", tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNode)
     {
-        auto tMyArtificialCompressibility = (aConvectiveVelocity(aNode) > aDiffusiveVelocity(aNode))
-            && (aConvectiveVelocity(aNode) > aThermalVelocity(aNode)) && (aConvectiveVelocity(aNode) > aCritialCompresibility) ?
+        auto tMyArtificialCompressibility = (aConvectiveVelocity(aNode) >= aDiffusiveVelocity(aNode))
+            && (aConvectiveVelocity(aNode) >= aThermalVelocity(aNode))
+            && (aConvectiveVelocity(aNode) >= aCritialCompresibility) ?
                 aConvectiveVelocity(aNode) : aCritialCompresibility;
 
-        tMyArtificialCompressibility = (aDiffusiveVelocity(aNode) > aConvectiveVelocity(aNode) )
-            && (aDiffusiveVelocity(aNode) > aThermalVelocity(aNode)) && (aDiffusiveVelocity(aNode) > aCritialCompresibility) ?
+        tMyArtificialCompressibility = (aDiffusiveVelocity(aNode) >= aConvectiveVelocity(aNode) )
+            && (aDiffusiveVelocity(aNode) >= aThermalVelocity(aNode))
+            && (aDiffusiveVelocity(aNode) >= aCritialCompresibility) ?
                 aDiffusiveVelocity(aNode) : tMyArtificialCompressibility;
 
-        tMyArtificialCompressibility = (aThermalVelocity(aNode) > aConvectiveVelocity(aNode) )
-            && (aThermalVelocity(aNode) > aDiffusiveVelocity(aNode))
-            && (aThermalVelocity(aNode) > aCritialCompresibility) ?
+        tMyArtificialCompressibility = (aThermalVelocity(aNode) >= aConvectiveVelocity(aNode) )
+            && (aThermalVelocity(aNode) >= aDiffusiveVelocity(aNode))
+            && (aThermalVelocity(aNode) >= aCritialCompresibility) ?
                 aThermalVelocity(aNode) : tMyArtificialCompressibility;
 
         tArtificialCompressibility(aNode) = tMyArtificialCompressibility;
@@ -7015,7 +7017,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateArtificialCompressibility)
     constexpr auto tNumNodes = 4;
     Plato::ScalarVector tConvectiveVelocity("convective velocity", tNumNodes);
     auto tHostConvectiveVelocity = Kokkos::create_mirror(tConvectiveVelocity);
-    tHostConvectiveVelocity(1) = 1.0;
+    tHostConvectiveVelocity(0) = 1.0;
     tHostConvectiveVelocity(1) = 2.0;
     tHostConvectiveVelocity(2) = 3.0;
     tHostConvectiveVelocity(3) = 0.3;
