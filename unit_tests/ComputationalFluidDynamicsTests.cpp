@@ -264,7 +264,7 @@ calculate_element_size
         const Plato::OrdinalType tVertexIndex = tCells2Nodes[aCellOrdinal*NumNodesPerCell + tNode];
         for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
         {
-            tElemCoords[tNode][tDim] = tCoords[tVertexIndex*NumSpatialDims + tDim]
+            tElemCoords[tNode][tDim] = tCoords[tVertexIndex*NumSpatialDims + tDim];
         }
     }
     auto tSphere = Omega_h::get_inball(tElemCoords);
@@ -5841,6 +5841,8 @@ calculate_element_characteristic_sizes
     Plato::OrdinalType tNumCells = aSpatialModel.Mesh.nelems();
     Plato::OrdinalType tNumNodes = aSpatialModel.Mesh.nverts();
     Plato::ScalarVector tElemCharSize("element characteristic size", tNumNodes);
+    Plato::blas1::fill(std::numeric_limits<Plato::Scalar>::max(), tElemCharSize);
+
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         auto tElemSize = Plato::omega_h::calculate_element_size<NumSpatialDims,NumNodesPerCell>(aCellOrdinal, tCells2Nodes, tCoords);
@@ -5998,7 +6000,7 @@ calculate_stable_time_step
     Plato::ScalarVector tTimeStep("time step", tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
-        tTimeStep(aNodeOrdinal) = ( aSafetyFactor * aElemCharSize(aNodeOrdinal) /
+        tTimeStep(aNodeOrdinal) = aSafetyFactor * ( aElemCharSize(aNodeOrdinal) /
             ( aVelocityField(aNodeOrdinal) + aArtificialCompress(aNodeOrdinal) ) );
     }, "calculate stable time step");
     return tTimeStep;
@@ -6909,7 +6911,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStableTimeStep)
     Kokkos::deep_copy(tElemCharSize, tHostElemCharSize);
 
     // set convective velocity
-    auto tNumNodes = tMesh->nverts();
     Plato::ScalarVector tVelocity("convective velocity", tNumNodes);
     auto tHostVelocity = Kokkos::create_mirror(tVelocity);
     tHostVelocity(0) = 1;
@@ -6919,7 +6920,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStableTimeStep)
     Kokkos::deep_copy(tVelocity, tHostVelocity);
 
     // set artificial compressibility
-    auto tNumNodes = tMesh->nverts();
     Plato::ScalarVector tArtificialCompress("artificial compressibility", tNumNodes);
     auto tHostArtificialCompress = Kokkos::create_mirror(tArtificialCompress);
     tHostArtificialCompress(0) = 0.1;
@@ -6932,17 +6932,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStableTimeStep)
     auto tTimeStep = Plato::cbs::calculate_stable_time_step(tSpatialModel, tElemCharSize, tVelocity, tArtificialCompress);
 
     // test results
-    /*
     auto tTol = 1e-4;
     auto tHostTimeStep = Kokkos::create_mirror(tTimeStep);
     Kokkos::deep_copy(tHostTimeStep, tTimeStep);
-    std::vector<Plato::Scalar> tGold = {1.0,0.5,1.0,1.0};
+    std::vector<Plato::Scalar> tGold = {2.272727e-1,1.136364e-1,1.515152e-1,1.136364e-1};
     for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostTimeStep(tNode), tTol);
     }
-    */
-    Plato::print(tTimeStep, "time step");
+    //Plato::print(tTimeStep, "time step");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateThermalVelocityMagnitude)
@@ -6973,7 +6971,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateThermalVelocityMagnitude)
     auto tTol = 1e-4;
     auto tHostThermalVelocity = Kokkos::create_mirror(tThermalVelocity);
     Kokkos::deep_copy(tHostThermalVelocity, tThermalVelocity);
-    std::vector<Plato::Scalar> tGold = {1.0,0.5,1.0,1.0};
+    std::vector<Plato::Scalar> tGold = {1.0,1.0,0.5,0.5};
     for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostThermalVelocity(tNode), tTol);
@@ -7008,7 +7006,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateDiffusiveVelocityMagnitude)
     auto tTol = 1e-4;
     auto tHostDiffusiveVelocity = Kokkos::create_mirror(tDiffusiveVelocity);
     Kokkos::deep_copy(tHostDiffusiveVelocity, tDiffusiveVelocity);
-    std::vector<Plato::Scalar> tGold = {1.0,0.5,1.0,1.0};
+    std::vector<Plato::Scalar> tGold = {1.0,1.0,0.5,0.5};
     for (decltype(tNumNodes) tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostDiffusiveVelocity(tNode), tTol);
