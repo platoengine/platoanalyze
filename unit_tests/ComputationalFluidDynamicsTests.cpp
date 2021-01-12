@@ -6932,11 +6932,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveVelocityMagnitude)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostConvectiveVelocity(tNode), tTol);
     }
-    //Plato::print(tOutput, "convective velocity");
+    //Plato::print(tConvectiveVelocity, "convective velocity");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateArtificialCompressibility)
 {
+/*
     constexpr auto tNumNodes = 4;
     constexpr auto tNumSpaceDims = 2;
 
@@ -6966,7 +6967,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateArtificialCompressibility)
     auto tAC = Plato::cbs::calculate_artificial_compressibility<tNumSpaceDims>(tStates);
 
     // test value
-    /*
     auto tTol = 1e-4;
     auto tHostAC = Kokkos::create_mirror(tAC);
     Kokkos::deep_copy(tHostAC, tAC);
@@ -6975,8 +6975,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateArtificialCompressibility)
     {
         TEST_FLOATING_EQUALITY(tGold[tCell], tHostAC(tCell), tTol);
     }
-    */
     Plato::print(tAC, "artificial compressibility");
+*/
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSize)
