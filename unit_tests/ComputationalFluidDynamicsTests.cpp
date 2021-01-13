@@ -7923,7 +7923,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_Brinkman)
     using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
 
     Plato::Fluids::ApplyWeightData tInputs;
-    tInputs.set("penalty", 3.0);
+    tInputs.set("convexity", 0.5);
     Plato::Fluids::ApplyWeight<Plato::Fluids::WeightBrinkman<PhysicsT>> tApplyWeight(tInputs);
 
     auto tNumCells = 2;
@@ -7936,7 +7936,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_Brinkman)
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tPhysicalParam, tControlWS);
-    }, "unit test apply weight function - msimp");
+    }, "unit test apply weight function - brinkman");
 
     // test results
     auto tTol = 1e-4;
