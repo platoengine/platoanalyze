@@ -7917,6 +7917,106 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_Brinkman)
+{
+    constexpr auto tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+
+    Plato::Fluids::ApplyWeightData tInputs;
+    tInputs.set("penalty", 3.0);
+    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightBrinkman<PhysicsT>> tApplyWeight(tInputs);
+
+    auto tNumCells = 2;
+    auto tPhysicalParam = 20;
+    auto tNumNodesPerCell = 3;
+    Plato::ScalarVector tOutput("output", tNumCells);
+    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
+    Plato::blas2::fill(0.5, tControlWS);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tPhysicalParam, tControlWS);
+    }, "unit test apply weight function - msimp");
+
+    // test results
+    auto tTol = 1e-4;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    std::vector<Plato::Scalar> tGold = {8.0,8.0};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+    }
+    //Plato::print(tOutput, "output");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_MSIMP)
+{
+    constexpr auto tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+
+    Plato::Fluids::ApplyWeightData tInputs;
+    tInputs.set("penalty", 3.0);
+    tInputs.set("minimum ersatz", 1e-9);
+    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightMSIMP<PhysicsT>> tApplyWeight(tInputs);
+
+    auto tNumCells = 2;
+    auto tPhysicalParam = 20;
+    auto tNumNodesPerCell = 3;
+    Plato::ScalarVector tOutput("output", tNumCells);
+    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
+    Plato::blas2::fill(0.5, tControlWS);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tPhysicalParam, tControlWS);
+    }, "unit test apply weight function - msimp");
+
+    // test results
+    auto tTol = 1e-4;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    std::vector<Plato::Scalar> tGold = {2.5,2.5};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+    }
+    //Plato::print(tOutput, "output");
+}
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_SIMP)
+{
+    constexpr auto tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+
+    Plato::Fluids::ApplyWeightData tInputs;
+    tInputs.set("penalty", 3.0);
+    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightSIMP<PhysicsT>> tApplyWeight(tInputs);
+
+    auto tNumCells = 2;
+    auto tPhysicalParam = 20;
+    auto tNumNodesPerCell = 3;
+    Plato::ScalarVector tOutput("output", tNumCells);
+    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
+    Plato::blas2::fill(0.5, tControlWS);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tPhysicalParam, tControlWS);
+    }, "unit test apply weight function - simp");
+
+    // test results
+    auto tTol = 1e-4;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    std::vector<Plato::Scalar> tGold = {2.5,2.5};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+    }
+    //Plato::print(tOutput, "output");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_RAMP)
 {
     constexpr auto tNumSpaceDims = 2;
