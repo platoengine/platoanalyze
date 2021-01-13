@@ -7983,7 +7983,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualInfNorm)
 
     // test result
     auto tTol = 1e-4;
-    TEST_FLOATING_EQUALITY(500, tValue, tTol);
+    TEST_FLOATING_EQUALITY(500.0, tValue, tTol);
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
