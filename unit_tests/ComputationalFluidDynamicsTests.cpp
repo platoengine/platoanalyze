@@ -7828,8 +7828,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_RAMP)
     tInputs.set("convexity", 0.5);
     Plato::Fluids::ApplyWeight<Plato::Fluids::WeightRAMP<PhysicsT>> tApplyWeight(tInputs);
 
-    auto tReNum = 20;
     auto tNumCells = 2;
+    auto tPhysicalParam = 20;
     auto tNumNodesPerCell = 3;
     Plato::ScalarVector tOutput("output", tNumCells);
     Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
@@ -7837,14 +7837,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_RAMP)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tReNum, tControlWS);
+        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tPhysicalParam, tControlWS);
     }, "unit test apply weight function - ramp");
 
     // test results
     auto tTol = 1e-4;
     auto tHostOutput = Kokkos::create_mirror(tOutput);
     Kokkos::deep_copy(tHostOutput, tOutput);
-    std::vector<Plato::Scalar> tGold = {0.0,0.0};
+    std::vector<Plato::Scalar> tGold = {0.22,0.22};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
