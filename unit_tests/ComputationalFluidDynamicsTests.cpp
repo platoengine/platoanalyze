@@ -6105,8 +6105,6 @@ private:
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
     bool mIsExplicitSolve = true;
-    bool mIsTransientProblem = false;
-
     Plato::Scalar mPrandtlNumber = 1.0;
     Plato::Scalar mReynoldsNumber = 1.0;
     Plato::Scalar mCBSsolverTolerance = 1e-5;
@@ -6350,6 +6348,26 @@ private:
         mVectorFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
         mScalarFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumPresDofsPerNode);
 
+        this->parseCriteria(aInputs);
+        this->setMemberStates(aInputs);
+        this->readBoundaryConditions(aInputs);
+        this->setDimensionlessProperties(aInputs);
+    }
+
+    void setDimensionlessProperties
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Hyperbolic") == false)
+        {
+            THROWERR("'Hyperbolic' Parameter List is not defined.")
+        }
+        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
+        mPrandtlNumber = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolicParamList);
+        mReynoldsNumber = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolicParamList);
+    }
+
+    void setMemberStates(Teuchos::ParameterList & aInputs)
+    {
         if(aInputs.isSublist("Time Integration"))
         {
             mNumTimeSteps = aInputs.sublist("Time Integration").get<int>("Number Time Steps", 100);
@@ -6359,9 +6377,6 @@ private:
         mVelocity    = Plato::ScalarMultiVector("Velocity Snapshots", mNumTimeSteps, tNumNodes * mNumVelDofsPerNode);
         mPredictor   = Plato::ScalarMultiVector("Predictor Snapshots", mNumTimeSteps, tNumNodes * mNumVelDofsPerNode);
         mTemperature = Plato::ScalarMultiVector("Temperature Snapshots", mNumTimeSteps, tNumNodes);
-
-        this->parseCriteria(aInputs);
-        this->readBoundaryConditions(aInputs);
     }
 
     void readBoundaryConditions(Teuchos::ParameterList& aInputs)
@@ -6399,30 +6414,27 @@ private:
         }
     }
 
+    Plato::Scalar calculateResidualNorm(const Plato::Primal & aVariables)
+    {
+        Plato::Scalar tCriterionValue(0.0);
+        if (mIsExplicitSolve)
+        {
+            tCriterionValue = Plato::cbs::calculate_residual_euclidean_norm(aVariables);
+        }
+        else
+        {
+            tCriterionValue = Plato::cbs::calculate_residual_inf_norm(aVariables);
+        }
+        return tCriterionValue;
+    }
+
     bool checkStoppingCriteria(const Plato::Primal & aVariables)
     {
         bool tStop = false;
-        if(!mIsTransientProblem)
+        auto tCriterionValue = this->calculateResidualNorm(aVariables);
+        if (tCriterionValue < mCBSsolverTolerance)
         {
-            Plato::Scalar tCriterionValue(0.0);
-            if(mIsExplicitSolve)
-            {
-                tCriterionValue = Plato::cbs::calculate_residual_euclidean_norm(aVariables);
-            }
-            else
-            {
-                tCriterionValue = Plato::cbs::calculate_residual_inf_norm(aVariables);
-            }
-
-            Plato::OrdinalType tStep = aVariables.scalar("step");
-            if(tCriterionValue < mCBSsolverTolerance)
-            {
-                tStop = true;
-            }
-            else if(tStep >= mNumTimeSteps)
-            {
-                tStop = true;
-            }
+            tStop = true;
         }
         return tStop;
     }
@@ -6458,15 +6470,7 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(mIsTransientProblem)
-        {
-            auto tCurrentTime = aVariables.scalar("current time");
-            mVelocityEssentialBCs.get(tBcDofs, tBcValues, tCurrentTime);
-        }
-        else
-        {
-            mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        }
+        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
 
         auto tCurrentVelocity = aVariables.vector("current velocity");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
@@ -6481,15 +6485,7 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(mIsTransientProblem)
-        {
-            auto tCurrentTime = aVariables.scalar("current time");
-            mPressureEssentialBCs.get(tBcDofs, tBcValues, tCurrentTime);
-        }
-        else
-        {
-            mPressureEssentialBCs.get(tBcDofs, tBcValues);
-        }
+        mPressureEssentialBCs.get(tBcDofs, tBcValues);
         auto tCurrentPressure = aVariables.vector("current pressure");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
     }
@@ -6498,15 +6494,7 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(mIsTransientProblem)
-        {
-            auto tCurrentTime = aVariables.scalar("current time");
-            mTemperatureEssentialBCs.get(tBcDofs, tBcValues, tCurrentTime);
-        }
-        else
-        {
-            mTemperatureEssentialBCs.get(tBcDofs, tBcValues);
-        }
+        mTemperatureEssentialBCs.get(tBcDofs, tBcValues);
         auto tCurrentTemperature = aVariables.vector("current temperature");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
     }
