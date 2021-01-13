@@ -1783,6 +1783,20 @@ simp_penalization
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::Scalar      & aPhysicalParam,
  const Plato::Scalar      & aPenaltyParam,
+ const Plato::ScalarMultiVectorT<ControlT> & aControlWS)
+{
+    ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControlWS);
+    ControlT tPenalizedDensity = pow(tDensity, aPenaltyParam);
+    ControlT tPenalizedParam = tPenalizedDensity * aPhysicalParam;
+    return tPenalizedParam;
+}
+
+template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
+DEVICE_TYPE inline ControlT
+msimp_penalization
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::Scalar      & aPhysicalParam,
+ const Plato::Scalar      & aPenaltyParam,
  const Plato::Scalar      & aMinErsatzParam,
  const Plato::ScalarMultiVectorT<ControlT> & aControlWS)
 {
@@ -2666,6 +2680,7 @@ public:
                     (tCellOrdinal, tPrevVelWS, tGradients, tStrainRate);
 
                 // calculate penalized prandtl number
+                // TODO: FIX THIS, I SHOULD NOT PENALIZE THE PR NUM
                 ControlT tPenalizedPrandtlNum =
                     Plato::Fluids::ramp_penalization<mNumNodesPerCell>(tCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
 
@@ -3019,7 +3034,7 @@ void integrate_vector_field
 struct SupportedApplyWeightTags
 {
 private:
-    std::vector<std::string> mData = {"convexity"};
+    std::vector<std::string> mData = {"convexity", "minimum ersatz", "penalty"};
 
 public:
     bool supported(const std::string & aTag)
@@ -3070,6 +3085,83 @@ public:
                const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
     {
         ScalarType tOutput = static_cast<Plato::Scalar>(1.0) * aPhysicalProperty;
+        return tOutput;
+    }
+};
+
+template<class PhysicsT>
+class WeightSIMP
+{
+private:
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    Plato::Scalar mPenalty;
+
+public:
+    void set(const Plato::Fluids::ApplyWeightData & aInputs)
+    {
+        mPenalty = aInputs.get("penalty");
+    }
+
+    template<typename ScalarType>
+    DEVICE_TYPE inline ScalarType
+    operator()(const Plato::OrdinalType & aCellOrdinal,
+               const Plato::Scalar & aPhysicalProperty,
+               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    {
+        ScalarType tOutput =
+            Plato::Fluids::simp_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mPenalty, aControlWS);
+        return tOutput;
+    }
+};
+
+template<class PhysicsT>
+class WeightMSIMP
+{
+private:
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    Plato::Scalar mPenalty;
+    Plato::Scalar mMinErsatz;
+
+public:
+    void set(const Plato::Fluids::ApplyWeightData & aInputs)
+    {
+        mPenalty = aInputs.get("penalty");
+        mMinErsatz = aInputs.get("minimum ersatz");
+    }
+
+    template<typename ScalarType>
+    DEVICE_TYPE inline ScalarType
+    operator()(const Plato::OrdinalType & aCellOrdinal,
+               const Plato::Scalar & aPhysicalProperty,
+               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    {
+        ScalarType tOutput =
+            Plato::Fluids::msimp_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mPenalty, mMinErsatz, aControlWS);
+        return tOutput;
+    }
+};
+
+template<class PhysicsT>
+class WeightBrinkman
+{
+private:
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    Plato::Scalar mConvexity;
+
+public:
+    void set(const Plato::Fluids::ApplyWeightData & aInputs)
+    {
+        mConvexity = aInputs.get("convexity");
+    }
+
+    template<typename ScalarType>
+    DEVICE_TYPE inline ScalarType
+    operator()(const Plato::OrdinalType & aCellOrdinal,
+               const Plato::Scalar & aPhysicalProperty,
+               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    {
+        ScalarType tOutput =
+            Plato::Fluids::brinkman_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mConvexity, aControlWS);
         return tOutput;
     }
 };
@@ -3251,6 +3343,7 @@ public:
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
             // 1. add internal force contribution
+            // TODO: FIX THIS, I SHOULD NOT PENALIZE THE PR NUM
             Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
             ControlT tPenalizedPrandtlNum = Plato::Fluids::ramp_penalization<mNumNodesPerCell>
@@ -3262,8 +3355,9 @@ public:
             Plato::Fluids::calculate_advected_internal_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tInternalForces);
 
+            // TODO: FIX THIS, I SHOULD NOT PENALIZE PR^2*GR
             auto tPrNumTimesPrNum = tPrNum * tPrNum;
-            ControlT tPenalizedPrNumSquared = Plato::Fluids::simp_penalization<mNumNodesPerCell>
+            ControlT tPenalizedPrNumSquared = Plato::Fluids::msimp_penalization<mNumNodesPerCell>
                 (aCellOrdinal, tPrNumTimesPrNum, tPowerPenaltySIMP, tMinErsatzMatSIMP, tControlWS);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
             Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
@@ -3755,6 +3849,7 @@ calculate_flux
     }
 }
 
+// TODO: FIX THIS, IT SHOULD BE DIMENSIONLESS
 template<Plato::OrdinalType NumNodesPerCell,
          typename ControlT>
 DEVICE_TYPE inline ControlT
@@ -3771,6 +3866,7 @@ penalize_thermal_diffusivity
     return tPenalizedThermalDiff;
 }
 
+// TODO: FIX THIS, PUT IT IN TERMS OF APPLY_WEIGHT CLASS
 template<Plato::OrdinalType NumNodesPerCell,
          typename ControlT>
 DEVICE_TYPE inline ControlT
@@ -3956,6 +4052,7 @@ public:
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
             // 1. calculate internal forces
+            // TODO: FIX THIS, THERMAL DIFFUSIVITY SHOULD BE DIMENSIONLESS IT SHOULD BE DIMENSIONLESS
             ControlT tPenalizedDiffusivity = Plato::Fluids::penalize_thermal_diffusivity<mNumNodesPerCell>
                 (aCellOrdinal, tFluidThermalDiff, tSolidThermalDiff, tThermalDiffPenaltyExp, tControlWS);
             Plato::Fluids::calculate_flux<mNumNodesPerCell,mNumSpatialDims>(aCellOrdinal, tGradient, tPrevTempWS, tThermalFlux);
@@ -3967,6 +4064,7 @@ public:
             Plato::Fluids::calculate_convective_forces<mNumNodesPerCell,mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelGP, tPrevTempWS, tInternalForces);
 
+            // TODO: FIX THIS, PUT IT IN THE CONTEXT OF THE PENALTY MODEL
             auto tHeatSrcConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTemp);
             ControlT tPenalizedHeatSrcConst = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
                 (aCellOrdinal, tHeatSrcConst, tHeatSrcPenaltyExp, tControlWS);
