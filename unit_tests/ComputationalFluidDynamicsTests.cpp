@@ -3016,7 +3016,12 @@ void integrate_vector_field
     }
 }
 
+}
+// namespace Fluids
 
+
+namespace NaturalConvection
+{
 
 template<typename PhysicsT, typename EvaluationT>
 class VelocityPredictorResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
@@ -3385,6 +3390,12 @@ private:
 };
 // class VelocityPredictorResidual
 
+}
+// namespace NaturalConvection
+
+namespace Fluids
+{
+
 // calculate pressure gradient integral, which is defined as \frac{\partial p^{n+\theta_2}}{\partial x_i}, where
 // p^{n+\theta_2} = \frac{\partial p^{n-1}}{\partial x_i} + \theta_2\frac{\partial\delta{p}}{\partial x_i}
 // and \delta{p} = p^n - p^{n-1}
@@ -3416,7 +3427,7 @@ calculate_pressure_gradient
 
 
 template<typename PhysicsT, typename EvaluationT>
-class VelocityIncrementResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
+class VelocityCorrectorResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumDofsPerNode    = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
@@ -3440,7 +3451,7 @@ private:
     Plato::Scalar mThetaTwo = 0.0;
 
 public:
-    VelocityIncrementResidual
+    VelocityCorrectorResidual
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs) :
@@ -3451,11 +3462,11 @@ public:
         if(aInputs.isSublist("Time Integration"))
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Time Step Multiplier Theta 2", 0.0);
+            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping Two", 0.0);
         }
     }
 
-    virtual ~VelocityIncrementResidual(){}
+    virtual ~VelocityCorrectorResidual(){}
 
     void evaluate
     (const Plato::WorkSets & aWorkSets,
@@ -3546,7 +3557,7 @@ public:
     const override
     { return; /* prescribed force integral equals zero */ }
 };
-// class VelocityIncrementResidual
+// class VelocityCorrectorResidual
 
 
 
@@ -3724,7 +3735,7 @@ calculate_inertial_forces
 
 
 template<typename PhysicsT, typename EvaluationT>
-class TemperatureIncrementResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
+class TemperatureResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
@@ -3763,7 +3774,7 @@ private:
     Plato::Scalar mThermalDiffPenaltyExponent = 3.0;
 
 public:
-    TemperatureIncrementResidual
+    TemperatureResidual
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs) :
@@ -3778,7 +3789,7 @@ public:
         this->setNaturalBoundaryConditions(aInputs);
     }
 
-    virtual ~TemperatureIncrementResidual(){}
+    virtual ~TemperatureResidual(){}
 
     void evaluate
     (const Plato::WorkSets & aWorkSets,
@@ -3978,7 +3989,7 @@ private:
         }
     }
 };
-// class TemperatureIncrementResidual
+// class TemperatureResidual
 
 
 template<typename PhysicsT, typename EvaluationT>
@@ -4233,7 +4244,7 @@ integrate_inertial_forces
 
 
 template<typename PhysicsT, typename EvaluationT>
-class PressureIncrementResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
+class PressureResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -4266,7 +4277,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<MomentumForces>> mMomentumBCs;
 
 public:
-    PressureIncrementResidual
+    PressureResidual
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs) :
@@ -4278,7 +4289,7 @@ public:
         this->setNaturalBoundaryConditions(aInputs);
     }
 
-    PressureIncrementResidual
+    PressureResidual
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap) :
          mDataMap(aDataMap),
@@ -4287,7 +4298,7 @@ public:
     {
     }
 
-    virtual ~PressureIncrementResidual(){}
+    virtual ~PressureResidual(){}
 
     void setThetaOne(const Plato::Scalar & aThetaOne)
     {
@@ -4423,8 +4434,8 @@ private:
         if(aInputs.isSublist("Time Integration"))
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Time Step Multiplier Theta 1", 0.5);
-            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Time Step Multiplier Theta 2", 0.0);
+            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping One", 0.5);
+            mThetaTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping Two", 0.0);
         }
     }
 
@@ -4463,7 +4474,7 @@ private:
         }
     }
 };
-// class PressureIncrementResidual
+// class PressureResidual
 
 
 
@@ -5151,6 +5162,30 @@ private:
 };
 // class VectorFunction
 
+
+
+
+
+template <typename PhysicsT, typename EvaluationT>
+inline std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>>
+velocity_predictor_residual
+(const Plato::SpatialDomain & aDomain,
+ Plato::DataMap & aDataMap,
+ Teuchos::ParameterList & aInputs)
+{
+    auto tTag = aInputs.get<std::string>("Heat Transfer Mechanism", "Not Defined");
+    auto tLowerTag = Plato::tolower(tTag);
+
+    if( tLowerTag == "natural convection" )
+    {
+        return ( std::make_shared<Plato::NaturalConvection::VelocityPredictorResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+    }
+    else
+    {
+        THROWERR(std::string("Heat Transfer Mechanism '") + tTag + "' is not supported.")
+    }
+}
+
 struct FunctionFactory
 {
 public:
@@ -5162,23 +5197,23 @@ public:
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs)
     {
-        auto tLowerTag = Plato::tolower(aTag);
         // TODO: explore function interface for constructor, similar to how it is done in the xml generator
+        auto tLowerTag = Plato::tolower(aTag);
         if( tLowerTag == "pressure" )
         {
-            return ( std::make_shared<Plato::Fluids::PressureIncrementResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+            return ( std::make_shared<Plato::Fluids::PressureResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
         }
         else if( tLowerTag == "velocity" )
         {
-            return ( std::make_shared<Plato::Fluids::VelocityIncrementResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+            return ( std::make_shared<Plato::Fluids::VelocityCorrectorResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
         }
         else if( tLowerTag == "temperature" )
         {
-            return ( std::make_shared<Plato::Fluids::TemperatureIncrementResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+            return ( std::make_shared<Plato::Fluids::TemperatureResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
         }
         else if( tLowerTag == "velocity predictor" )
         {
-            return ( std::make_shared<Plato::Fluids::VelocityPredictorResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+            return ( Plato::Fluids::velocity_predictor_residual<PhysicsT, EvaluationT>(aDomain, aDataMap, aInputs) );
         }
         else
         {
@@ -6092,7 +6127,791 @@ public:
 };
 
 template<typename PhysicsT>
-class SteadyStateProblem : public Plato::Fluids::AbstractProblem
+class SteadyState : public Plato::Fluids::AbstractProblem
+{
+private:
+    static constexpr auto mNumSpatialDims     = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell    = PhysicsT::mNumNodesPerCell;        /*!< number of nodes per cell */
+    static constexpr auto mNumVelDofsPerNode  = PhysicsT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumPresDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
+    static constexpr auto mNumTempDofsPerNode = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+
+    Plato::DataMap      mDataMap;
+    Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
+
+    bool mIsExplicitSolve = true;
+    Plato::Scalar mPrandtlNumber = 1.0;
+    Plato::Scalar mReynoldsNumber = 1.0;
+    Plato::Scalar mCBSsolverTolerance = 1e-5;
+    Plato::Scalar mTimeStepSafetyFactor = 0.5; /*!< safety factor applied to stable time step */
+
+    Plato::ScalarMultiVector mPressure;
+    Plato::ScalarMultiVector mVelocity;
+    Plato::ScalarMultiVector mPredictor;
+    Plato::ScalarMultiVector mTemperature;
+
+    Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
+    Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
+    Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mVelocityResidual;
+    Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>   mTemperatureResidual;
+
+    using Criterion = std::shared_ptr<Plato::Fluids::CriterionBase>;
+    using Criteria  = std::unordered_map<std::string, Criterion>;
+    Criteria mCriteria;
+
+    using MassConservationT     = typename Plato::MassConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
+    using EnergyConservationT   = typename Plato::EnergyConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
+    using MomentumConservationT = typename Plato::MomentumConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
+    Plato::EssentialBCs<MassConservationT>     mPressureEssentialBCs;
+    Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs;
+    Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
+
+    std::shared_ptr<Plato::AbstractSolver> mVectorFieldSolver;
+    std::shared_ptr<Plato::AbstractSolver> mScalarFieldSolver;
+
+    Plato::VectorEntryOrdinal<mNumSpatialDims,mNumVelDofsPerNode> mVelocityOrdinals;
+
+public:
+    SteadyState
+    (Omega_h::Mesh          & aMesh,
+     Omega_h::MeshSets      & aMeshSets,
+     Teuchos::ParameterList & aInputs,
+     Comm::Machine          & aMachine) :
+        mSpatialModel(aMesh, aMeshSets, aInputs),
+        mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
+        mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
+        mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
+        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs),
+        mVelocityOrdinals(&aMesh)
+    {
+        this->initialize(aInputs, aMachine);
+    }
+
+    const decltype(mDataMap)& getDataMap() const
+    {
+        return mDataMap;
+    }
+
+    void output(std::string aFilePath = "output")
+    {
+        auto tMesh = mSpatialModel.Mesh;
+        auto tWriter = Omega_h::vtk::Writer(aFilePath.c_str(), &tMesh, mNumSpatialDims);
+
+        constexpr auto tStride = 0;
+        constexpr auto tCurrentTimeStep = 1;
+        const auto tNumNodes = tMesh.nverts();
+
+        auto tPressSubView = Kokkos::subview(mPressure, tCurrentTimeStep, Kokkos::ALL());
+        Omega_h::Write<Omega_h::Real> tPressure(tPressSubView.size(), "Pressure");
+        Plato::copy<mNumPresDofsPerNode, mNumPresDofsPerNode>(tStride, tNumNodes, tPressSubView, tPressure);
+        tMesh.add_tag(Omega_h::VERT, "Pressure", mNumPresDofsPerNode, Omega_h::Reals(tPressure));
+
+        auto tTempSubView = Kokkos::subview(mTemperature, tCurrentTimeStep, Kokkos::ALL());
+        Omega_h::Write<Omega_h::Real> tTemperature(tTempSubView.size(), "Temperature");
+        Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTempSubView, tTemperature);
+        tMesh.add_tag(Omega_h::VERT, "Temperature", mNumTempDofsPerNode, Omega_h::Reals(tTemperature));
+
+        auto tVelSubView = Kokkos::subview(mVelocity, tCurrentTimeStep, Kokkos::ALL());
+        Omega_h::Write<Omega_h::Real> tVelocity(tVelSubView.size(), "Velocity");
+        Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tVelSubView, tVelocity);
+        tMesh.add_tag(Omega_h::VERT, "Velocity", mNumVelDofsPerNode, Omega_h::Reals(tVelocity));
+
+        auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mNumSpatialDims);
+        auto tTime = static_cast<Plato::Scalar>(tCurrentTimeStep);
+        tWriter.write(tCurrentTimeStep, tTime, tTags);
+    }
+
+    Plato::Solutions solution
+    (const Plato::ScalarVector& aControl)
+    {
+        Plato::Primal tPrimalVars;
+        this->calculateElemCharacteristicSize(tPrimalVars);
+
+        while(true)
+        {
+            this->setPrimalVariables(tPrimalVars);
+            this->calculateStableTimeSteps(tPrimalVars);
+
+            this->updatePredictor(aControl, tPrimalVars);
+            this->updatePressure(aControl, tPrimalVars);
+            this->updateVelocity(aControl, tPrimalVars);
+            this->updateTemperature(aControl, tPrimalVars);
+
+            // todo: verify BC enforcement
+            this->enforceVelocityBoundaryConditions(tPrimalVars);
+            this->enforcePressureBoundaryConditions(tPrimalVars);
+            this->enforceTemperatureBoundaryConditions(tPrimalVars);
+
+            if(this->checkStoppingCriteria(tPrimalVars))
+            {
+                break;
+            }
+        }
+
+        Plato::Solutions tSolution;
+        tSolution.set("mass state", mPressure);
+        tSolution.set("energy state", mTemperature);
+        tSolution.set("momentum state", mVelocity);
+        return tSolution;
+    }
+
+    Plato::Scalar criterionValue
+    (const Plato::ScalarVector & aControl,
+     const std::string         & aName)
+    {
+        auto tItr = mCriteria.find(aName);
+        if (tItr == mCriteria.end())
+        {
+            Plato::Primal tPrimalVars;
+            this->calculateElemCharacteristicSize(tPrimalVars);
+
+            Plato::Scalar tOutput(0);
+            auto tNumTimeSteps = mVelocity.extent(0);
+            for (Plato::OrdinalType tStep = 0; tStep < tNumTimeSteps; tStep++)
+            {
+                tPrimalVars.scalar("step", tStep);
+                auto tPressure = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
+                auto tVelocity = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
+                auto tTemperature = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
+                tPrimalVars.vector("current pressure", tPressure);
+                tPrimalVars.vector("current velocity", tVelocity);
+                tPrimalVars.vector("current temperature", tTemperature);
+                tOutput += tItr->second->value(aControl, tPrimalVars);
+            }
+            return tOutput;
+        }
+        else
+        {
+            THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
+        }
+    }
+
+    Plato::ScalarVector criterionGradient
+    (const Plato::ScalarVector & aControl,
+     const std::string         & aName)
+    {
+        auto tItr = mCriteria.find(aName);
+        if (tItr == mCriteria.end())
+        {
+            Plato::Dual tDualVars;
+            Plato::Primal tCurPrimalVars, tPrevPrimalVars;
+            this->calculateElemCharacteristicSize(tCurPrimalVars);
+
+            auto tLastStepIndex = mVelocity.extent(0) - 1;
+            Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
+            for(Plato::OrdinalType tStep = tLastStepIndex; tStep >= 0; tStep--)
+            {
+                tDualVars.scalar("step", tStep);
+                tCurPrimalVars.scalar("step", tStep);
+                tPrevPrimalVars.scalar("step", tStep + 1);
+
+                this->setDualVariables(tDualVars);
+                this->setPrimalVariables(tCurPrimalVars);
+                this->setPrimalVariables(tPrevPrimalVars);
+
+                this->calculateStableTimeSteps(tCurPrimalVars);
+                this->calculateStableTimeSteps(tPrevPrimalVars);
+
+                this->calculateVelocityAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
+                this->calculateTemperatureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
+                this->calculatePressureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
+                this->calculatePredictorAdjoint(aControl, tCurPrimalVars, tDualVars);
+
+                this->calculateGradientControl(aName, aControl, tCurPrimalVars, tDualVars, tTotalDerivative);
+            }
+
+            return tTotalDerivative;
+        }
+        else
+        {
+            THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
+        }
+    }
+
+    Plato::ScalarVector criterionGradientX
+    (const Plato::ScalarVector & aControl,
+     const std::string         & aName)
+    {
+        auto tItr = mCriteria.find(aName);
+        if (tItr == mCriteria.end())
+        {
+            Plato::Dual tDualVars;
+            Plato::Primal tCurPrimalVars, tPrevPrimalVars;
+            this->calculateElemCharacteristicSize(tCurPrimalVars);
+
+            auto tLastStepIndex = mVelocity.extent(0) - 1;
+            Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
+            for(Plato::OrdinalType tStep = tLastStepIndex; tStep >= 0; tStep--)
+            {
+                tDualVars.scalar("step", tStep);
+                tCurPrimalVars.scalar("step", tStep);
+                tPrevPrimalVars.scalar("step", tStep + 1);
+
+                this->setDualVariables(tDualVars);
+                this->setPrimalVariables(tCurPrimalVars);
+                this->setPrimalVariables(tPrevPrimalVars);
+
+                this->calculateStableTimeSteps(tCurPrimalVars);
+                this->calculateStableTimeSteps(tPrevPrimalVars);
+
+                this->calculateVelocityAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
+                this->calculateTemperatureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
+                this->calculatePressureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
+                this->calculatePredictorAdjoint(aControl, tCurPrimalVars, tDualVars);
+
+                this->calculateGradientConfig(aName, aControl, tCurPrimalVars, tDualVars, tTotalDerivative);
+            }
+
+            return tTotalDerivative;
+        }
+        else
+        {
+            THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
+        }
+    }
+
+private:
+    void initialize
+    (Teuchos::ParameterList & aInputs,
+     Comm::Machine          & aMachine)
+    {
+        Plato::SolverFactory tSolverFactory(aInputs.sublist("Linear Solver"));
+        mVectorFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
+        mScalarFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumPresDofsPerNode);
+
+        this->parseCriteria(aInputs);
+        this->setMemberStates(aInputs);
+        this->setExplicitSolveFlag(aInputs);
+        this->readBoundaryConditions(aInputs);
+        this->setDimensionlessProperties(aInputs);
+    }
+
+    void setExplicitSolveFlag
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Time Integration"))
+        {
+            auto tTimeIntegration = aInputs.sublist("Time Integration");
+            auto tArtificialDampingTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping Two", 0.0);
+            mIsExplicitSolve = tArtificialDampingTwo > static_cast<Plato::Scalar>(0.0) ? false : true;
+            mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.5);
+        }
+    }
+
+    void setDimensionlessProperties
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Hyperbolic") == false)
+        {
+            THROWERR("'Hyperbolic' Parameter List is not defined.")
+        }
+        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
+        mPrandtlNumber = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolicParamList);
+        mReynoldsNumber = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolicParamList);
+    }
+
+    void setMemberStates(Teuchos::ParameterList & aInputs)
+    {
+        constexpr auto tTimeSnapshotsStored = 2;
+        auto tNumNodes = mSpatialModel.Mesh.nverts();
+        mPressure    = Plato::ScalarMultiVector("Pressure Snapshots", tTimeSnapshotsStored, tNumNodes);
+        mTemperature = Plato::ScalarMultiVector("Temperature Snapshots", tTimeSnapshotsStored, tNumNodes);
+        mVelocity    = Plato::ScalarMultiVector("Velocity Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
+        mPredictor   = Plato::ScalarMultiVector("Predictor Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
+    }
+
+    void readBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        auto tReadBCs = aInputs.get<bool>("Read Boundary Conditions", true);
+        if (tReadBCs)
+        {
+            this->readPressureBoundaryConditions(aInputs);
+            this->readVelocityBoundaryConditions(aInputs);
+            this->readTemperatureBoundaryConditions(aInputs);
+        }
+    }
+
+    void parseCriteria(Teuchos::ParameterList &aInputs)
+    {
+        if(aInputs.isSublist("Criteria"))
+        {
+            Plato::Fluids::CriterionFactory<PhysicsT> tScalarFuncFactory;
+
+            auto tCriteriaParams = aInputs.sublist("Criteria");
+            for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
+            {
+                const Teuchos::ParameterEntry& tEntry = tCriteriaParams.entry(tIndex);
+                if(tEntry.isList())
+                {
+                    THROWERR("Parameter in Criteria block is not supported.  Expect lists only.")
+                }
+                auto tName = tCriteriaParams.name(tIndex);
+                auto tCriterion = tScalarFuncFactory.createCriterion(mSpatialModel, mDataMap, aInputs, tName);
+                if( tCriterion != nullptr )
+                {
+                    mCriteria[tName] = tCriterion;
+                }
+            }
+        }
+    }
+
+    Plato::Scalar calculateResidualNorm(const Plato::Primal & aVariables)
+    {
+        Plato::Scalar tCriterionValue(0.0);
+        if (mIsExplicitSolve)
+        {
+            tCriterionValue = Plato::cbs::calculate_residual_euclidean_norm(aVariables);
+        }
+        else
+        {
+            tCriterionValue = Plato::cbs::calculate_residual_inf_norm(aVariables);
+        }
+        return tCriterionValue;
+    }
+
+    bool checkStoppingCriteria(const Plato::Primal & aVariables)
+    {
+        bool tStop = false;
+        auto tCriterionValue = this->calculateResidualNorm(aVariables);
+        if (tCriterionValue < mCBSsolverTolerance)
+        {
+            tStop = true;
+        }
+        return tStop;
+    }
+
+    void calculateElemCharacteristicSize(Plato::Primal & aVariables)
+    {
+        auto tElemCharSizes =
+            Plato::cbs::calculate_element_characteristic_sizes<mNumSpatialDims,mNumNodesPerCell>(mSpatialModel);
+        aVariables.vector("element characteristic size", tElemCharSizes);
+    }
+
+    void calculateStableTimeSteps(Plato::Primal & aVariables)
+    {
+        auto tCurrentVelocity = aVariables.vector("current velocity");
+        auto tElemCharSize = aVariables.vector("element characteristic size");
+
+        auto tConvectiveVel =
+            Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tCurrentVelocity);
+        auto tDiffusiveVel =
+            Plato::cbs::calculate_diffusive_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mReynoldsNumber, tElemCharSize);
+        auto tThermalVel =
+            Plato::cbs::calculate_thermal_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mPrandtlNumber, mReynoldsNumber, tElemCharSize);
+        auto tArtificialCompress =
+            Plato::cbs::calculate_artificial_compressibility(tConvectiveVel, tDiffusiveVel, tThermalVel);
+        aVariables.vector("artificial compressibility", tArtificialCompress);
+
+        auto tTimeStep =
+            Plato::cbs::calculate_stable_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, tArtificialCompress, mTimeStepSafetyFactor);
+        aVariables.vector("time steps", tTimeStep);
+    }
+
+    void enforceVelocityBoundaryConditions(Plato::Primal & aVariables)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
+
+        auto tCurrentVelocity = aVariables.vector("current velocity");
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
+
+        auto tLength = tCurrentVelocity.size();
+        Plato::ScalarVector tPrescribedVelocities("prescribed velocity", tLength);
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tPrescribedVelocities);
+        aVariables.vector("prescribed velocity", tPrescribedVelocities);
+    }
+
+    void enforcePressureBoundaryConditions(Plato::Primal& aVariables)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        mPressureEssentialBCs.get(tBcDofs, tBcValues);
+        auto tCurrentPressure = aVariables.vector("current pressure");
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
+    }
+
+    void enforceTemperatureBoundaryConditions(Plato::Primal & aVariables)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        mTemperatureEssentialBCs.get(tBcDofs, tBcValues);
+        auto tCurrentTemperature = aVariables.vector("current temperature");
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
+    }
+
+    void setDualVariables(Plato::Dual & aVariables)
+    {
+        if(aVariables.isVectorMapEmpty())
+        {
+            // FIRST BACKWARD TIME INTEGRATION STEP
+            auto tTotalNumNodes = mSpatialModel.Mesh.nverts();
+            std::vector<std::string> tNames =
+                {"current pressure adjoint" , "current temperature adjoint",
+                "previous pressure adjoint", "previous temperature adjoint"};
+            for(auto& tName : tNames)
+            {
+                Plato::ScalarVector tView(tName, tTotalNumNodes);
+                aVariables.vector(tName, tView);
+            }
+
+            auto tTotalNumDofs = mNumVelDofsPerNode * tTotalNumNodes;
+            tNames = {"current velocity adjoint" , "current predictor adjoint" ,
+                      "previous velocity adjoint", "previous predictor adjoint"};
+            for(auto& tName : tNames)
+            {
+                Plato::ScalarVector tView(tName, tTotalNumDofs);
+                aVariables.vector(tName, tView);
+            }
+        }
+        else
+        {
+            // N-TH BACKWARD TIME INTEGRATION STEP
+            std::vector<std::string> tNames =
+                {"pressure adjoint", "temperature adjoint", "velocity adjoint", "predictor adjoint" };
+            for(auto& tName : tNames)
+            {
+                auto tVector = aVariables.vector(std::string("current ") + tName);
+                aVariables.vector(std::string("previous ") + tName, tVector);
+            }
+        }
+    }
+
+    void setPrimalVariables(Plato::Primal & aVariables)
+    {
+        constexpr Plato::OrdinalType tCurrentStep = 1;
+        auto tCurrentVel   = Kokkos::subview(mVelocity, tCurrentStep, Kokkos::ALL());
+        auto tCurrentPred  = Kokkos::subview(mPredictor, tCurrentStep, Kokkos::ALL());
+        auto tCurrentTemp  = Kokkos::subview(mTemperature, tCurrentStep, Kokkos::ALL());
+        auto tCurrentPress = Kokkos::subview(mPressure, tCurrentStep, Kokkos::ALL());
+        aVariables.vector("current velocity", tCurrentVel);
+        aVariables.vector("current pressure", tCurrentPress);
+        aVariables.vector("current temperature", tCurrentTemp);
+        aVariables.vector("current predictor", tCurrentPred);
+
+        constexpr auto tPrevStep = tCurrentStep - 1;
+        if (tPrevStep >= static_cast<Plato::OrdinalType>(0))
+        {
+            auto tPreviouVel    = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
+            auto tPreviousPred  = Kokkos::subview(mPredictor, tPrevStep, Kokkos::ALL());
+            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
+            auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
+            aVariables.vector("previous velocity", tPreviouVel);
+            aVariables.vector("previous predictor", tPreviousPred);
+            aVariables.vector("previous pressure", tPreviousPress);
+            aVariables.vector("previous temperature", tPreviousTemp);
+        }
+        else
+        {
+            auto tLength = mPressure.extent(1);
+            Plato::ScalarVector tPreviousPress("previous pressure", tLength);
+            aVariables.vector("previous pressure", tPreviousPress);
+            tLength = mTemperature.extent(1);
+            Plato::ScalarVector tPreviousTemp("previous temperature", tLength);
+            aVariables.vector("previous temperature", tPreviousTemp);
+            tLength = mVelocity.extent(1);
+            Plato::ScalarVector tPreviousVel("previous velocity", tLength);
+            aVariables.vector("previous velocity", tPreviousVel);
+            tLength = mPredictor.extent(1);
+            Plato::ScalarVector tPreviousPred("previous predictor", tLength);
+            aVariables.vector("previous previous predictor", tPreviousPred);
+        }
+    }
+
+    void updateVelocity
+    (const Plato::ScalarVector & aControl,
+           Plato::Primal       & aVariables)
+    {
+        // calculate current residual and jacobian matrix
+        auto tResidualVelocity = mVelocityResidual.value(aVariables);
+        auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aVariables);
+
+        // solve velocity equation (consistent or mass lumped)
+        Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
+        mVectorFieldSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
+
+        // update velocity
+        auto tCurrentVelocity  = aVariables.vector("current velocity");
+        auto tPreviousVelocity = aVariables.vector("previous velocity");
+        Plato::blas1::copy(tPreviousVelocity, tCurrentVelocity);
+        Plato::blas1::axpy(1.0, tDeltaVelocity, tCurrentVelocity);
+    }
+
+    void updatePredictor
+    (const Plato::ScalarVector & aControl,
+           Plato::Primal       & aVariables)
+    {
+        // calculate current residual and jacobian matrix
+        auto tResidualPredictor = mPredictorResidual.value(aVariables);
+        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aVariables);
+
+        // solve predictor equation (consistent or mass lumped)
+        Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPredictor);
+        mVectorFieldSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
+
+        // update current predictor
+        auto tCurrentPredictor  = aVariables.vector("current predictor");
+        auto tPreviousPredictor = aVariables.vector("previous predictor");
+        Plato::blas1::copy(tPreviousPredictor, tCurrentPredictor);
+        Plato::blas1::axpy(1.0, tDeltaPredictor, tCurrentPredictor);
+    }
+
+    void updatePressure
+    (const Plato::ScalarVector & aControl,
+           Plato::Primal       & aVariables)
+    {
+        // calculate current residual and jacobian matrix
+        auto tResidualPressure = mPressureResidual.value(aVariables);
+        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aVariables);
+
+        // solve mass equation (consistent or mass lumped)
+        Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPressure);
+        mScalarFieldSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
+
+        // update pressure
+        auto tCurrentPressure = aVariables.vector("current pressure");
+        auto tPreviousPressure = aVariables.vector("previous pressure");
+        Plato::blas1::copy(tPreviousPressure, tCurrentPressure);
+        Plato::blas1::axpy(1.0, tDeltaPressure, tCurrentPressure);
+    }
+
+    void updateTemperature
+    (const Plato::ScalarVector & aControl,
+           Plato::Primal       & aVariables)
+    {
+        // calculate current residual and jacobian matrix
+        auto tResidualTemperature = mTemperatureResidual.value(aVariables);
+        auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aVariables);
+
+        // solve energy equation (consistent or mass lumped)
+        Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
+        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaTemperature);
+        mScalarFieldSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
+
+        // update temperature
+        auto tCurrentTemperature  = aVariables.vector("current temperature");
+        auto tPreviousTemperature = aVariables.vector("previous temperature");
+        Plato::blas1::copy(tPreviousTemperature, tCurrentTemperature);
+        Plato::blas1::axpy(1.0, tDeltaTemperature, tCurrentTemperature);
+    }
+
+    void calculatePredictorAdjoint
+    (const Plato::ScalarVector & aControl,
+     const Plato::Primal       & aCurPrimalVars,
+           Plato::Dual         & aDualVars)
+    {
+
+        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
+        auto tGradResVelWrtPredictor = mVelocityResidual.gradientPredictor(aControl, aCurPrimalVars);
+        Plato::ScalarVector tRHS("right hand side", tCurrentVelocityAdjoint.size());
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPredictor, tCurrentVelocityAdjoint, tRHS);
+
+        auto tCurrentPressureAdjoint = aDualVars.vector("current pressure adjoint");
+        auto tGradResPressWrtPredictor = mPressureResidual.gradientPredictor(aControl, aCurPrimalVars);
+        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPredictor, tCurrentPressureAdjoint, tRHS);
+        Plato::blas1::scale(-1.0, tRHS);
+
+        auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
+        Plato::blas1::fill(0.0, tCurrentPredictorAdjoint);
+        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurPrimalVars);
+        mVectorFieldSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
+    }
+
+    void calculatePressureAdjoint
+    (const std::string         & aName,
+     const Plato::ScalarVector & aControl,
+     const Plato::Primal       & aCurPrimalVars,
+     const Plato::Primal       & aPrevPrimalVars,
+           Plato::Dual         & aDualVars)
+    {
+        auto tRHS = mCriteria[aName]->gradientCurrentPress(aControl, aCurPrimalVars);
+
+        auto tGradResVelWrtCurPress = mVelocityResidual.gradientCurrentPress(aControl, aCurPrimalVars);
+        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtCurPress, tCurrentVelocityAdjoint, tRHS);
+
+        auto tGradResPressWrtPrevPress = mPressureResidual.gradientPreviousPress(aControl, aPrevPrimalVars);
+        auto tPrevPressureAdjoint = aDualVars.vector("previous pressure adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPrevPress, tPrevPressureAdjoint, tRHS);
+
+        auto tGradResVelWrtPrevPress = mVelocityResidual.gradientPreviousPress(aControl, aPrevPrimalVars);
+        auto tPrevVelocityAdjoint = aDualVars.vector("previous velocity adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPrevPress, tPrevVelocityAdjoint, tRHS);
+
+        auto tGradResPredWrtPrevPress = mPredictorResidual.gradientPreviousPress(aControl, aPrevPrimalVars);
+        auto tPrevPredictorAdjoint = aDualVars.vector("previous predictor adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevPress, tPrevPredictorAdjoint, tRHS);
+        Plato::blas1::scale(-1.0, tRHS);
+
+        auto tCurrentPressAdjoint = aDualVars.vector("current pressure adjoint");
+        Plato::blas1::fill(0.0, tCurrentPressAdjoint);
+        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aCurPrimalVars);
+        mScalarFieldSolver->solve(*tJacobianPressure, tCurrentPressAdjoint, tRHS);
+    }
+
+    void calculateTemperatureAdjoint
+    (const std::string         & aName,
+     const Plato::ScalarVector & aControl,
+     const Plato::Primal       & aCurPrimalVars,
+     const Plato::Primal       & aPrevPrimalVars,
+           Plato::Dual         & aDualVars)
+    {
+        auto tRHS = mCriteria[aName]->gradientCurrentTemp(aControl, aCurPrimalVars);
+
+        auto tGradResPredWrtPrevTemp = mPredictorResidual.gradientPreviousTemp(aControl, aPrevPrimalVars);
+        auto tPrevPredictorAdjoint = aDualVars.vector("previous predictor adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevTemp, tPrevPredictorAdjoint, tRHS);
+
+        auto tGradResTempWrtPrevTemp = mTemperatureResidual.gradientPreviousTemp(aControl, aPrevPrimalVars);
+        auto tPrevTempAdjoint = aDualVars.vector("previous temperature adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtPrevTemp, tPrevTempAdjoint, tRHS);
+        Plato::blas1::scale(-1.0, tRHS);
+
+        auto tCurrentTempAdjoint = aDualVars.vector("current temperature adjoint");
+        Plato::blas1::fill(0.0, tCurrentTempAdjoint);
+        auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aControl, aCurPrimalVars);
+        mScalarFieldSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
+    }
+
+    void calculateVelocityAdjoint
+    (const std::string         & aName,
+     const Plato::ScalarVector & aControl,
+     const Plato::Primal       & aCurPrimalVars,
+     const Plato::Primal       & aPrevPrimalVars,
+           Plato::Dual         & aDualVars)
+    {
+        auto tRHS = mCriteria[aName]->gradientCurrentVel(aControl, aCurPrimalVars);
+
+        auto tGradResPredWrtPrevVel = mPredictorResidual.gradientPreviousVel(aControl, aPrevPrimalVars);
+        auto tPrevPredictorAdjoint = aDualVars.vector("previous predictor adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevVel, tPrevPredictorAdjoint, tRHS);
+
+        auto tGradResVelWrtPrevVel = mVelocityResidual.gradientPreviousVel(aControl, aPrevPrimalVars);
+        auto tPrevVelocityAdjoint = aDualVars.vector("previous velocity adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPrevVel, tPrevVelocityAdjoint, tRHS);
+
+        auto tGradResPressWrtPrevVel = mPressureResidual.gradientPreviousVel(aControl, aPrevPrimalVars);
+        auto tPrevPressureAdjoint = aDualVars.vector("previous pressure adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPrevVel, tPrevPressureAdjoint, tRHS);
+
+        auto tGradResTempWrtPrevVel = mTemperatureResidual.gradientPreviousVel(aControl, aPrevPrimalVars);
+        auto tPrevTemperatureAdjoint = aDualVars.vector("previous temperature adjoint");
+        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtPrevVel, tPrevTemperatureAdjoint, tRHS);
+        Plato::blas1::scale(-1.0, tRHS);
+
+        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
+        Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
+        auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aControl, aCurPrimalVars);
+        mVectorFieldSolver->solve(*tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
+    }
+
+    void calculateGradientControl
+    (const std::string         & aName,
+     const Plato::ScalarVector & aControl,
+     const Plato::Primal       & aCurPrimalVars,
+     const Plato::Dual         & aDualVars,
+           Plato::ScalarVector & aTotalDerivative)
+    {
+        auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aCurPrimalVars);
+
+        auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
+        auto tGradResPredWrtControl = mPredictorResidual.gradientControl(aControl, aCurPrimalVars);
+        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtControl, tCurrentPredictorAdjoint, tGradCriterionWrtControl);
+
+        auto tCurrentPressureAdjoint = aDualVars.vector("current pressure adjoint");
+        auto tGradResPressWrtControl = mPressureResidual.gradientControl(aControl, aCurPrimalVars);
+        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtControl, tCurrentPressureAdjoint, tGradCriterionWrtControl);
+
+        auto tCurrentTemperatureAdjoint = aDualVars.vector("current temperature adjoint");
+        auto tGradResTempWrtControl = mTemperatureResidual.gradientControl(aControl, aCurPrimalVars);
+        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtControl, tCurrentTemperatureAdjoint, tGradCriterionWrtControl);
+
+        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
+        auto tGradResVelWrtControl = mVelocityResidual.gradientControl(aControl, aCurPrimalVars);
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtControl, tCurrentVelocityAdjoint, tGradCriterionWrtControl);
+
+        Plato::blas1::axpy(1.0, tGradCriterionWrtControl, aTotalDerivative);
+    }
+
+    void calculateGradientConfig
+    (const std::string         & aName,
+     const Plato::ScalarVector & aControl,
+     const Plato::Primal       & aCurPrimalVars,
+     const Plato::Dual         & aDualVars,
+           Plato::ScalarVector & aTotalDerivative)
+    {
+        auto tGradCriterionWrtConfig = mCriteria[aName]->gradientConfig(aControl, aCurPrimalVars);
+
+        auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
+        auto tGradResPredWrtConfig = mPredictorResidual.gradientConfig(aControl, aCurPrimalVars);
+        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtConfig, tCurrentPredictorAdjoint, tGradCriterionWrtConfig);
+
+        auto tCurrentPressureAdjoint = aDualVars.vector("current pressure adjoint");
+        auto tGradResPressWrtConfig = mPressureResidual.gradientConfig(aControl, aCurPrimalVars);
+        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtConfig, tCurrentPressureAdjoint, tGradCriterionWrtConfig);
+
+        auto tCurrentTemperatureAdjoint = aDualVars.vector("current temperature adjoint");
+        auto tGradResTempWrtConfig = mTemperatureResidual.gradientConfig(aControl, aCurPrimalVars);
+        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtConfig, tCurrentTemperatureAdjoint, tGradCriterionWrtConfig);
+
+        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
+        auto tGradResVelWrtConfig = mVelocityResidual.gradientConfig(aControl, aCurPrimalVars);
+        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtConfig, tCurrentVelocityAdjoint, tGradCriterionWrtConfig);
+
+        Plato::blas1::axpy(1.0, tGradCriterionWrtConfig, aTotalDerivative);
+    }
+
+    void readTemperatureBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        if(aInputs.isSublist("Temperature Boundary Conditions"))
+        {
+            auto tTempBCs = aInputs.sublist("Temperature Boundary Conditions");
+            mTemperatureEssentialBCs = Plato::EssentialBCs<EnergyConservationT>(tTempBCs, mSpatialModel.MeshSets);
+        }
+        else
+        {
+            THROWERR("Temperature boundary conditions are not defined for fluid mechanics problem.")
+        }
+    }
+
+    void readPressureBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        if(aInputs.isSublist("Pressure Boundary Conditions"))
+        {
+            auto tPressBCs = aInputs.sublist("Pressure Boundary Conditions");
+            mPressureEssentialBCs = Plato::EssentialBCs<MassConservationT>(tPressBCs, mSpatialModel.MeshSets);
+        }
+        else
+        {
+            THROWERR("Pressure boundary conditions are not defined for fluid mechanics problem.")
+        }
+    }
+
+    void readVelocityBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        if(aInputs.isSublist("Momentum Boundary Conditions"))
+        {
+            auto tVelBCs = aInputs.sublist("Momentum Boundary Conditions");
+            mVelocityEssentialBCs = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
+        }
+        else
+        {
+            THROWERR("'Momentum Boundary Conditions' must be defined for fluid flow problems.")
+        }
+    }
+};
+
+template<typename PhysicsT>
+class Transient : public Plato::Fluids::AbstractProblem
 {
 private:
     static constexpr auto mNumSpatialDims     = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -6138,7 +6957,7 @@ private:
     Plato::VectorEntryOrdinal<mNumSpatialDims,mNumVelDofsPerNode> mVelocityOrdinals;
 
 public:
-    SteadyStateProblem
+    Transient
     (Omega_h::Mesh          & aMesh,
      Omega_h::MeshSets      & aMeshSets,
      Teuchos::ParameterList & aInputs,
@@ -6348,10 +7167,23 @@ private:
         mVectorFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
         mScalarFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumPresDofsPerNode);
 
-        this->parseCriteria(aInputs);
-        this->setMemberStates(aInputs);
+        this->setCriteria(aInputs);
+        this->setMemberStateData(aInputs);
+        this->setExplicitSolveFlag(aInputs);
         this->readBoundaryConditions(aInputs);
         this->setDimensionlessProperties(aInputs);
+    }
+
+    void setExplicitSolveFlag
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Time Integration"))
+        {
+            auto tTimeIntegration = aInputs.sublist("Time Integration");
+            auto tArtificialDampingTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping Two", 0.0);
+            mIsExplicitSolve = tArtificialDampingTwo > static_cast<Plato::Scalar>(0.0) ? false : true;
+            mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.5);
+        }
     }
 
     void setDimensionlessProperties
@@ -6366,7 +7198,7 @@ private:
         mReynoldsNumber = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolicParamList);
     }
 
-    void setMemberStates(Teuchos::ParameterList & aInputs)
+    void setMemberStateData(Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Time Integration"))
         {
@@ -6390,7 +7222,7 @@ private:
         }
     }
 
-    void parseCriteria(Teuchos::ParameterList &aInputs)
+    void setCriteria(Teuchos::ParameterList &aInputs)
     {
         if(aInputs.isSublist("Criteria"))
         {
@@ -6554,7 +7386,7 @@ private:
         if (tPrevStep >= static_cast<Plato::OrdinalType>(0))
         {
             auto tPreviouVel    = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
-            auto tPreviousPred  = Kokkos::subview(mPredictor, tStep, Kokkos::ALL());
+            auto tPreviousPred  = Kokkos::subview(mPredictor, tPrevStep, Kokkos::ALL());
             auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
             auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
             aVariables.vector("previous velocity", tPreviouVel);
@@ -7272,7 +8104,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Characteristic Length' type='double' value='1.0'/>"
@@ -7352,7 +8184,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
     // evaluate temperature increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumEnergyDofsPerCell);
-    Plato::Fluids::TemperatureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
+    Plato::Fluids::TemperatureResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
     tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
 
     // test values
@@ -7376,7 +8208,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluateBound
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
@@ -7461,7 +8293,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluateBound
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::Fluids::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
+    Plato::NaturalConvection::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
     tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
 
     // test values
@@ -7485,7 +8317,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluatePresc
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
@@ -7570,7 +8402,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluatePresc
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::Fluids::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
+    Plato::NaturalConvection::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
     tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
 
     // test values
@@ -7594,7 +8426,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList  name='Momentum Boundary Conditions'>"
             "    <ParameterList  name='Zero Velocity X-Dir'>"
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
@@ -7673,7 +8505,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
-    Plato::Fluids::PressureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
+    Plato::Fluids::PressureResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
     tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
 
     // test values
@@ -7692,7 +8524,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     //Plato::print_array_2D(tResult, "results");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureResidual)
 {
     // set physics and evaluation type
     constexpr Plato::OrdinalType tNumSpaceDims = 2;
@@ -7786,7 +8618,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual)
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
-    Plato::Fluids::PressureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap);
+    Plato::Fluids::PressureResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap);
     tResidual.evaluate(tWorkSets, tResult);
 
     // test values
@@ -7899,7 +8731,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_ThetaTwo_Set)
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
-    Plato::Fluids::PressureIncrementResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap);
+    Plato::Fluids::PressureResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap);
     tResidual.setThetaOne(0.5);
     tResidual.setThetaTwo(1.0);
     tResidual.evaluate(tWorkSets, tResult);
@@ -8320,12 +9152,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     //Plato::print_array_2D(tResult, "results");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureResidual)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
+            "  <Parameter name='Heat Transfer Mechanism' type='string' value='Natural Convection'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Characteristic Length'  type='double'  value='1.0'/>"
@@ -8790,12 +9623,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateConvectiveForces)
     //Plato::print(tForces, "convective forces");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityIncrementResidual)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityCorrectorResidual)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
+            "  <Parameter name='Heat Transfer Mechanism' type='string' value='Natural Convection'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
@@ -8811,7 +9645,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityIncrementResidual)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Time Step Multiplier Theta 2' type='double' value='0.2'/>"
+            "    <Parameter name='Artificial Damping Two' type='double' value='0.2'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
@@ -9438,12 +10272,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsEntitySetDefined)
     TEST_EQUALITY(false, Plato::is_entity_set_defined<Omega_h::SIDE_SET>(tMeshSets, "dog"));
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvection_VelocityPredictorResidual)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
+            "  <Parameter name='Heat Transfer Mechanism' type='string' value='Natural Convection'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
@@ -9632,7 +10467,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Prandtl Number' type='double' value='1.0'/>"
@@ -9723,7 +10558,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces_Zeros)
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Prandtl Number' type='double' value='1.0'/>"
@@ -10103,7 +10938,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList  name='Criteria'>"
             "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
             "    <ParameterList name='My Criteria'>"
@@ -10169,7 +11004,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList  name='Criteria'>"
             "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
             "    <ParameterList name='My Criteria'>"
@@ -10250,7 +11085,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList  name='Criteria'>"
             "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
             "    <ParameterList name='My Criteria'>"
@@ -10331,7 +11166,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList  name='Criteria'>"
             "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
             "    <ParameterList name='My Criteria'>"
@@ -10393,7 +11228,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList  name='Criteria'>"
             "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
             "    <ParameterList name='My Criteria'>"
@@ -10462,7 +11297,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_Value)
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList  name='Criteria'>"
             "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
             "    <ParameterList name='My Criteria'>"
@@ -10524,7 +11359,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_GradCurTemp)
     // set inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Problem'>"
+            "<ParameterList name='Plato Problem'>"
             "  <ParameterList  name='Criteria'>"
             "    <Parameter  name='Type'    type='string'    value='Scalar Function'/>"
             "    <ParameterList name='My Criteria'>"
