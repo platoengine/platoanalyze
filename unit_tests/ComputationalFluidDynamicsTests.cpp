@@ -1776,7 +1776,7 @@ public:
 };
 // class AverageSurfaceTemperature
 
-
+// todo: continue to build class abstractions
 template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
 DEVICE_TYPE inline ControlT
 simp_penalization
@@ -3016,10 +3016,52 @@ void integrate_vector_field
     }
 }
 
+struct SupportedApplyWeightTags
+{
+private:
+    std::vector<std::string> mData = {"convexity"};
+
+public:
+    bool supported(const std::string & aTag)
+    {
+        if(std::find(mData.begin(), mData.end(), aTag) == mData.end())
+        {
+            THROWERR(std::string("Tag '" + aTag + "' is not a valid keyword."))
+        }
+        return true;
+    }
+};
+
+struct ApplyWeightData
+{
+private:
+    Plato::Fluids::SupportedApplyWeightTags mValidTags;
+    std::unordered_map<std::string, Plato::Scalar> mData;
+
+public:
+    void set(const std::string & aTag, const Plato::Scalar & aInput)
+    {
+        auto tLowerTag = Plato::tolower(aTag);
+        mValidTags.supported(tLowerTag);
+        mData[tLowerTag] = aInput;
+    }
+
+    Plato::Scalar get(const std::string & aTag) const
+    {
+        auto tLowerTag = Plato::tolower(aTag);
+        auto tItr = mData.find(tLowerTag);
+        if(tItr == mData.end())
+        {
+            THROWERR(std::string("Parameter with tag '" + aTag + "' is not defined."))
+        }
+        return tItr->second;
+    }
+};
+
 class NoWeight
 {
 public:
-    void set(const std::unordered_map<std::string, Plato::Scalar> & aInputs){ return; }
+    void set(const Plato::Fluids::ApplyWeightData & aInputs){ return; }
 
     template<typename ScalarType>
     DEVICE_TYPE inline ScalarType
@@ -3032,6 +3074,31 @@ public:
     }
 };
 
+template<class PhysicsT>
+class WeightRAMP
+{
+private:
+    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    Plato::Scalar mConvexity;
+
+public:
+    void set(const Plato::Fluids::ApplyWeightData & aInputs)
+    {
+        mConvexity = aInputs.get("convexity");
+    }
+
+    template<typename ScalarType>
+    DEVICE_TYPE inline ScalarType
+    operator()(const Plato::OrdinalType & aCellOrdinal,
+               const Plato::Scalar & aPhysicalProperty,
+               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    {
+        ScalarType tOutput =
+            Plato::Fluids::ramp_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mConvexity, aControlWS);
+        return tOutput;
+    }
+};
+
 template<class Method>
 class ApplyWeight
 {
@@ -3039,7 +3106,7 @@ private:
     Method mMethod;
 
 public:
-    ApplyWeight(const std::unordered_map<std::string, Plato::Scalar> & aInputs)
+    ApplyWeight(const Plato::Fluids::ApplyWeightData & aInputs)
     {
         mMethod.set(aInputs);
     }
@@ -7752,9 +7819,42 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_RAMP)
+{
+    constexpr auto tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+
+    Plato::Fluids::ApplyWeightData tInputs;
+    tInputs.set("convexity", 0.5);
+    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightRAMP<PhysicsT>> tApplyWeight(tInputs);
+
+    auto tReNum = 20;
+    auto tNumCells = 2;
+    auto tNumNodesPerCell = 3;
+    Plato::ScalarVector tOutput("output", tNumCells);
+    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
+    Plato::blas2::fill(0.5, tControlWS);
+
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tReNum, tControlWS);
+    }, "unit test apply weight function - ramp");
+
+    // test results
+    auto tTol = 1e-4;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    std::vector<Plato::Scalar> tGold = {0.0,0.0};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+    }
+    //Plato::print(tOutput, "output");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_NoWeight)
 {
-    std::unordered_map<std::string, Plato::Scalar> tInputs;
+    Plato::Fluids::ApplyWeightData tInputs;
     Plato::Fluids::ApplyWeight<Plato::Fluids::NoWeight> tApplyWeight(tInputs);
 
     auto tReNum = 20;
