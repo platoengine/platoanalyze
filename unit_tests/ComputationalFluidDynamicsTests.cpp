@@ -3016,6 +3016,46 @@ void integrate_vector_field
     }
 }
 
+class NoWeight
+{
+public:
+    void set(const std::unordered_map<std::string, Plato::Scalar> & aInputs){ return; }
+
+    template<typename ScalarType>
+    DEVICE_TYPE inline ScalarType
+    operator()(const Plato::OrdinalType & aCellOrdinal,
+               const Plato::Scalar & aPhysicalProperty,
+               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    {
+        ScalarType tOutput = static_cast<Plato::Scalar>(1.0) * aPhysicalProperty;
+        return tOutput;
+    }
+};
+
+template<class Method>
+class ApplyWeight
+{
+private:
+    Method mMethod;
+
+public:
+    ApplyWeight(const std::unordered_map<std::string, Plato::Scalar> & aInputs)
+    {
+        mMethod.set(aInputs);
+    }
+
+    template<typename ScalarType>
+    DEVICE_TYPE inline ScalarType
+    operator()(const Plato::OrdinalType & aCellOrdinal,
+               const Plato::Scalar & aPhysicalProperty,
+               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    {
+        ScalarType tOutput = mMethod(aCellOrdinal, aPhysicalProperty, aControlWS);
+        return tOutput;
+    }
+};
+
+
 }
 // namespace Fluids
 
@@ -7711,6 +7751,34 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_NoWeight)
+{
+    std::unordered_map<std::string, Plato::Scalar> tInputs;
+    Plato::Fluids::ApplyWeight<Plato::Fluids::NoWeight> tApplyWeight(tInputs);
+
+    auto tReNum = 20;
+    auto tNumCells = 2;
+    auto tNumNodesPerCell = 3;
+    Plato::ScalarVector tOutput("output", tNumCells);
+    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
+    Plato::blas2::fill(0.1, tControlWS);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+    {
+        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tReNum, tControlWS);
+    }, "unit test apply weight function - no weight");
+
+    // test results
+    auto tTol = 1e-4;
+    auto tHostOutput = Kokkos::create_mirror(tOutput);
+    Kokkos::deep_copy(tHostOutput, tOutput);
+    std::vector<Plato::Scalar> tGold = {20.0,20.0};
+    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
+    {
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+    }
+    //Plato::print(tOutput, "output");
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualEuclideanNorm)
 {
