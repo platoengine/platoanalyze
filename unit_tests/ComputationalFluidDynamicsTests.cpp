@@ -2679,11 +2679,6 @@ public:
                 Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
                     (tCellOrdinal, tPrevVelWS, tGradients, tStrainRate);
 
-                // calculate penalized prandtl number
-                // TODO: FIX THIS, I SHOULD NOT PENALIZE THE PR NUM
-                ControlT tPenalizedPrandtlNum =
-                    Plato::Fluids::ramp_penalization<mNumNodesPerCell>(tCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
-
                 // calculate deviatoric traction forces, which are defined as,
                 // \int_{\Gamma_e} N_u^a \left( \tau^h_{ij}n_j \right) d\Gamma_e
                 for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
@@ -2694,7 +2689,7 @@ public:
                         for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
                         {
                             aResult(tCellOrdinal, tLocalCellDofI) += aMultiplier * tSurfaceBasisFunctions(tNode)
-                            * tSurfaceAreaTimesCubWeight * ( ( static_cast<Plato::Scalar>(2.0) * tPenalizedPrandtlNum *
+                            * tSurfaceAreaTimesCubWeight * ( ( static_cast<Plato::Scalar>(2.0) * tPrNum *
                                     tStrainRate(tCellOrdinal, tDimI, tDimJ) ) * tUnitNormalVec(tDimJ) );
                         }
                     }
@@ -3350,25 +3345,19 @@ public:
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
             // 1. add internal force contribution
-            // TODO: FIX THIS, I SHOULD NOT PENALIZE THE PR NUM
             Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
-            ControlT tPenalizedPrandtlNum = Plato::Fluids::ramp_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tPrNum, tPrNumConvexityParam, tControlWS);
             Plato::Fluids::integrate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tPenalizedPrandtlNum, tCellVolume, tGradient, tStrainRate, aResultWS);
+                (aCellOrdinal, tPrNum, tCellVolume, tGradient, tStrainRate, aResultWS);
 
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::calculate_advected_internal_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tInternalForces);
 
-            // TODO: FIX THIS, I SHOULD NOT PENALIZE PR^2*GR
             auto tPrNumTimesPrNum = tPrNum * tPrNum;
-            ControlT tPenalizedPrNumSquared = Plato::Fluids::msimp_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tPrNumTimesPrNum, tPowerPenaltySIMP, tMinErsatzMatSIMP, tControlWS);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
             Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
-                (aCellOrdinal, tPenalizedPrNumSquared, tGrNum, tPrevTempGP, tInternalForces);
+                (aCellOrdinal, tPrNumTimesPrNum, tGrNum, tPrevTempGP, tInternalForces);
 
             auto tPrNumOverDaNum = tPrNum / tDaNum;
             ControlT tPenalizedBrinkmanCoeff = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
