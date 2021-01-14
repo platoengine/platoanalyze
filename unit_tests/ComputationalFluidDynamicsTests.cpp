@@ -3082,7 +3082,7 @@ private:
 public:
     void set(const Plato::Fluids::ApplyWeightData & aInputs){ return; }
 
-    ControlT operator()
+    DEVICE_TYPE ControlT operator()
     (const Plato::OrdinalType & aCellOrdinal,
      const Plato::Scalar & aPhysicalProperty,
      const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
@@ -3107,7 +3107,7 @@ public:
         mPenalty = aInputs.get("penalty");
     }
 
-    ControlT operator()
+    DEVICE_TYPE ControlT operator()
     (const Plato::OrdinalType & aCellOrdinal,
      const Plato::Scalar & aPhysicalProperty,
      const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
@@ -3135,7 +3135,7 @@ public:
         mMinErsatz = aInputs.get("minimum ersatz");
     }
 
-    ControlT operator()
+    DEVICE_TYPE ControlT operator()
     (const Plato::OrdinalType & aCellOrdinal,
      const Plato::Scalar & aPhysicalProperty,
      const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
@@ -3161,7 +3161,7 @@ public:
         mConvexity = aInputs.get("convexity");
     }
 
-    ControlT operator()
+    DEVICE_TYPE ControlT operator()
     (const Plato::OrdinalType & aCellOrdinal,
      const Plato::Scalar & aPhysicalProperty,
      const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
@@ -3187,7 +3187,7 @@ public:
         mConvexity = aInputs.get("convexity");
     }
 
-    ControlT operator()
+    DEVICE_TYPE ControlT operator()
     (const Plato::OrdinalType & aCellOrdinal,
      const Plato::Scalar & aPhysicalProperty,
      const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
@@ -3211,7 +3211,7 @@ public:
         mMethod.set(aInputs);
     }
 
-    ControlT operator()
+    DEVICE_TYPE ControlT operator()
     (const Plato::OrdinalType & aCellOrdinal,
      const Plato::Scalar & aPhysicalProperty,
      const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
