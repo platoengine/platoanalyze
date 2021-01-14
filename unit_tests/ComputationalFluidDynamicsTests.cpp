@@ -8647,7 +8647,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityPredictorResidual_EvaluateBound
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
     std::vector<std::vector<Plato::Scalar>> tGold =
-        {{6.666667e-3,6.666667e-3,1.333333e-2,1.333333e-2,0.0,0.0}, {-2.666667e-2,-2.666667e-2,-3.333333e-2,-3.333333e-2,0.0,0.0}};
+        {{0.02,0.02,0.04,0.04,0.0,0.0}, {-0.08,-0.08,-0.1,-0.1,0.0,0.0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
@@ -10705,7 +10705,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvection_VelocityPredictorResi
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
     std::vector<Plato::Scalar> tGold =
-        {-0.275924, -0.267048, -0.176428, -0.175155, -0.329743, -0.171701, -0.202908, -0.0580922};
+        {-0.212591, -0.190382, -0.163095, -0.161822, -0.293077, -0.0450344, -0.269574, -0.0480922};
     auto tTol = 1e-4;
     for(auto& tValue : tGold)
     {
@@ -10879,7 +10879,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
     Kokkos::deep_copy(tHostResult, tResult);
 
     auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0.117,-0.168,0.117,-0.168,0,0},{0.384,-0.174,0.384,-0.174,0,0}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{0.195,-0.28,0.195,-0.28,0,0},{0.64,-0.29,0.64,-0.29,0,0}};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
         for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
@@ -11404,7 +11404,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     auto tHostGradient = Kokkos::create_mirror(tGradient);
     Kokkos::deep_copy(tHostGradient, tGradient);
 
-    std::vector<Plato::Scalar> tGold = {-0.154798, -0.053530, -0.154798, -0.101269};
+    std::vector<Plato::Scalar> tGold = {-0.00350222, 0.0, -0.00350222, -0.00350222};
     for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostGradient(tNode), tTol);
@@ -11485,7 +11485,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     auto tHostGradient = Kokkos::create_mirror(tGradient);
     Kokkos::deep_copy(tHostGradient, tGradient);
 
-    std::vector<Plato::Scalar> tGold = {0.133106, 0.075276, -0.075276, -0.041220};
+    std::vector<Plato::Scalar> tGold = {0.377522, 0.2091, -0.2091, -0.1145};
     for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostGradient(tNode), tTol);
