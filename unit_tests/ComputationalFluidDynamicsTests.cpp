@@ -3243,7 +3243,6 @@ private:
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mPrescribedBCs; /*!< prescribed boundary conditions, e.g. tractions */
 
     // set member scalar data
-    Plato::Scalar mDaNum = 1.0; /*!< darcy dimensionless number */
     Plato::Scalar mPrNum = 1.0; /*!< prandtl dimensionless number */
     Plato::ScalarVector mGrNum; /*!< grashof dimensionless number */
 
@@ -3304,7 +3303,6 @@ public:
         auto tPredictorWS = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
 
         // transfer member data to device
-        auto tDaNum = mDaNum;
         auto tPrNum = mPrNum;
         auto tGrNum = mGrNum;
 
@@ -3427,9 +3425,7 @@ private:
     void setDimensionlessProperties
     (Teuchos::ParameterList & aInputs)
     {
-        mDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", aInputs);
         mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs);
-
         auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", aInputs);
         if(tGrNum.size() != mNumSpatialDims)
         {
@@ -4428,7 +4424,6 @@ private:
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         auto tThermalPropBlock = std::string("Thermal Properties");
         mReferenceTemperature = Plato::parse_parameter<Plato::Scalar>("Reference Temperature", tThermalPropBlock, tMaterial);
-        mFluidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Diffusivity", tThermalPropBlock, tMaterial);
         mFluidThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Conductivity", tThermalPropBlock, tMaterial);
     }
 
@@ -5914,6 +5909,10 @@ temperature_residual
     else if( tLowerScenario == "analysis" || tLowerScenario == "levelset to" )
     {
         return ( std::make_shared<Plato::Fluids::TemperatureResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+    }
+    else
+    {
+        THROWERR(std::string("Scenario with tag '") + tScenario + "' is not supported.")
     }
 }
 
