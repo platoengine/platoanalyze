@@ -3073,27 +3073,32 @@ public:
     }
 };
 
+template<typename EvaluationT>
 class NoWeight
 {
+private:
+    using ControlT = typename EvaluationT::ControlScalarType;
+
 public:
     void set(const Plato::Fluids::ApplyWeightData & aInputs){ return; }
 
-    template<typename ScalarType>
-    DEVICE_TYPE inline ScalarType
-    operator()(const Plato::OrdinalType & aCellOrdinal,
-               const Plato::Scalar & aPhysicalProperty,
-               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    ControlT operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const Plato::Scalar & aPhysicalProperty,
+     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
     {
-        ScalarType tOutput = static_cast<Plato::Scalar>(1.0) * aPhysicalProperty;
+        ControlT tOutput = static_cast<Plato::Scalar>(1.0) * aPhysicalProperty;
         return tOutput;
     }
 };
 
-template<class PhysicsT>
+template<typename PhysicsT, typename EvaluationT>
 class WeightSIMP
 {
 private:
     static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    using ControlT = typename EvaluationT::ControlScalarType;
+
     Plato::Scalar mPenalty;
 
 public:
@@ -3102,23 +3107,24 @@ public:
         mPenalty = aInputs.get("penalty");
     }
 
-    template<typename ScalarType>
-    DEVICE_TYPE inline ScalarType
-    operator()(const Plato::OrdinalType & aCellOrdinal,
-               const Plato::Scalar & aPhysicalProperty,
-               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    ControlT operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const Plato::Scalar & aPhysicalProperty,
+     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
     {
-        ScalarType tOutput =
+        ControlT tOutput =
             Plato::Fluids::simp_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mPenalty, aControlWS);
         return tOutput;
     }
 };
 
-template<class PhysicsT>
+template<typename PhysicsT, typename EvaluationT>
 class WeightMSIMP
 {
 private:
     static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    using ControlT = typename EvaluationT::ControlScalarType;
+
     Plato::Scalar mPenalty;
     Plato::Scalar mMinErsatz;
 
@@ -3129,23 +3135,24 @@ public:
         mMinErsatz = aInputs.get("minimum ersatz");
     }
 
-    template<typename ScalarType>
-    DEVICE_TYPE inline ScalarType
-    operator()(const Plato::OrdinalType & aCellOrdinal,
-               const Plato::Scalar & aPhysicalProperty,
-               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    ControlT operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const Plato::Scalar & aPhysicalProperty,
+     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
     {
-        ScalarType tOutput =
+        ControlT tOutput =
             Plato::Fluids::msimp_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mPenalty, mMinErsatz, aControlWS);
         return tOutput;
     }
 };
 
-template<class PhysicsT>
+template<typename PhysicsT, typename EvaluationT>
 class WeightBrinkman
 {
 private:
     static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    using ControlT = typename EvaluationT::ControlScalarType;
+
     Plato::Scalar mConvexity;
 
 public:
@@ -3154,23 +3161,24 @@ public:
         mConvexity = aInputs.get("convexity");
     }
 
-    template<typename ScalarType>
-    DEVICE_TYPE inline ScalarType
-    operator()(const Plato::OrdinalType & aCellOrdinal,
-               const Plato::Scalar & aPhysicalProperty,
-               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    ControlT operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const Plato::Scalar & aPhysicalProperty,
+     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
     {
-        ScalarType tOutput =
+        ControlT tOutput =
             Plato::Fluids::brinkman_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mConvexity, aControlWS);
         return tOutput;
     }
 };
 
-template<class PhysicsT>
+template<typename PhysicsT, typename EvaluationT>
 class WeightRAMP
 {
 private:
     static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
+    using ControlT = typename EvaluationT::ControlScalarType;
+
     Plato::Scalar mConvexity;
 
 public:
@@ -3179,22 +3187,22 @@ public:
         mConvexity = aInputs.get("convexity");
     }
 
-    template<typename ScalarType>
-    DEVICE_TYPE inline ScalarType
-    operator()(const Plato::OrdinalType & aCellOrdinal,
-               const Plato::Scalar & aPhysicalProperty,
-               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    ControlT operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const Plato::Scalar & aPhysicalProperty,
+     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
     {
-        ScalarType tOutput =
+        ControlT tOutput =
             Plato::Fluids::ramp_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mConvexity, aControlWS);
         return tOutput;
     }
 };
 
-template<class Method>
+template<typename Method, typename EvaluationT>
 class ApplyWeight
 {
 private:
+    using ControlT = typename EvaluationT::ControlScalarType;
     Method mMethod;
 
 public:
@@ -3203,13 +3211,12 @@ public:
         mMethod.set(aInputs);
     }
 
-    template<typename ScalarType>
-    DEVICE_TYPE inline ScalarType
-    operator()(const Plato::OrdinalType & aCellOrdinal,
-               const Plato::Scalar & aPhysicalProperty,
-               const Plato::ScalarMultiVectorT<ScalarType> & aControlWS) const
+    ControlT operator()
+    (const Plato::OrdinalType & aCellOrdinal,
+     const Plato::Scalar & aPhysicalProperty,
+     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
     {
-        ScalarType tOutput = mMethod(aCellOrdinal, aPhysicalProperty, aControlWS);
+        ControlT tOutput = mMethod(aCellOrdinal, aPhysicalProperty, aControlWS);
         return tOutput;
     }
 };
@@ -7921,10 +7928,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_Brinkman)
 {
     constexpr auto tNumSpaceDims = 2;
     using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
 
     Plato::Fluids::ApplyWeightData tInputs;
     tInputs.set("penalty", 3.0);
-    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightBrinkman<PhysicsT>> tApplyWeight(tInputs);
+    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightBrinkman<PhysicsT,EvaluationT>,EvaluationT> tApplyWeight(tInputs);
 
     auto tNumCells = 2;
     auto tPhysicalParam = 20;
@@ -7954,11 +7962,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_MSIMP)
 {
     constexpr auto tNumSpaceDims = 2;
     using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
 
     Plato::Fluids::ApplyWeightData tInputs;
     tInputs.set("penalty", 3.0);
     tInputs.set("minimum ersatz", 1e-9);
-    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightMSIMP<PhysicsT>> tApplyWeight(tInputs);
+    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightMSIMP<PhysicsT,EvaluationT>,EvaluationT> tApplyWeight(tInputs);
 
     auto tNumCells = 2;
     auto tPhysicalParam = 20;
@@ -7988,10 +7997,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_SIMP)
 {
     constexpr auto tNumSpaceDims = 2;
     using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
 
     Plato::Fluids::ApplyWeightData tInputs;
     tInputs.set("penalty", 3.0);
-    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightSIMP<PhysicsT>> tApplyWeight(tInputs);
+    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightSIMP<PhysicsT,EvaluationT>,EvaluationT> tApplyWeight(tInputs);
 
     auto tNumCells = 2;
     auto tPhysicalParam = 20;
@@ -8021,10 +8031,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_RAMP)
 {
     constexpr auto tNumSpaceDims = 2;
     using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
 
     Plato::Fluids::ApplyWeightData tInputs;
     tInputs.set("convexity", 0.5);
-    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightRAMP<PhysicsT>> tApplyWeight(tInputs);
+    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightRAMP<PhysicsT,EvaluationT>,EvaluationT> tApplyWeight(tInputs);
 
     auto tNumCells = 2;
     auto tPhysicalParam = 20;
@@ -8052,8 +8063,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_RAMP)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_NoWeight)
 {
+    constexpr auto tNumSpaceDims = 2;
+    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
+    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
+
     Plato::Fluids::ApplyWeightData tInputs;
-    Plato::Fluids::ApplyWeight<Plato::Fluids::NoWeight> tApplyWeight(tInputs);
+    Plato::Fluids::ApplyWeight<Plato::Fluids::NoWeight<EvaluationT>,EvaluationT> tApplyWeight(tInputs);
 
     auto tReNum = 20;
     auto tNumCells = 2;
