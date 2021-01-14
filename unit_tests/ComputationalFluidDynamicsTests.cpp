@@ -3834,7 +3834,9 @@ penalize_thermal_diffusivity
 {
     ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControl);
     ControlT tPenalizedDensity = pow(tDensity, aPenaltyExponent);
-    ControlT tPenalizedThermalDiff = aSolidThermalDiff + ( (aFluidThermalDiff - aSolidThermalDiff) * tPenalizedDensity);
+    auto tSolidOverFluidThermalDiff = aSolidThermalDiff / aFluidThermalDiff;
+    ControlT tPenalizedThermalDiff =
+        tSolidOverFluidThermalDiff + ( (static_cast<Plato::Scalar>(1.0) - tSolidOverFluidThermalDiff) * tPenalizedDensity);
     return tPenalizedThermalDiff;
 }
 
