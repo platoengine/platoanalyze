@@ -1918,7 +1918,6 @@ private:
     std::string mFuncName;
     Plato::Scalar mPrNum = 1.0;
     Plato::Scalar mDaNum = 1.0;
-    Plato::Scalar mPrNumConvexityParam = 0.5;
     Plato::Scalar mBrinkmanConvexityParam = 0.5;
 
     // member metadata
@@ -1969,7 +1968,6 @@ public:
         // transfer member data to device
         auto tPrNum = mPrNum;
         auto tDaNum = mDaNum;
-        auto tPrConvexParam = mPrNumConvexityParam;
         auto tBrinkConvexParam = mBrinkmanConvexityParam;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
@@ -1981,10 +1979,8 @@ public:
 
             // calculate deviatoric stress contribution to internal energy
             Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>(aCellOrdinal, tCurVelWS, tGradient, tStrainRate);
-            ControlT tPenalizedPrNum =
-                Plato::Fluids::ramp_penalization<mNumNodesPerCell>(aCellOrdinal, tPrNum, tPrConvexParam, tControlWS);
-            ControlT tTwoTimesPenalizedPrNum = static_cast<Plato::Scalar>(2.0) * tPenalizedPrNum;
-            Plato::blas2::scale<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tTwoTimesPenalizedPrNum, tStrainRate, tDevStress);
+            auto tTwoTimesPrNum = static_cast<Plato::Scalar>(2.0) * tPrNum;
+            Plato::blas2::scale<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tTwoTimesPrNum, tStrainRate, tDevStress);
             Plato::blas2::dot<mNumSpatialDims, mNumSpatialDims>(aCellOrdinal, tDevStress, tDevStress, aResult);
 
             // calculate fictitious material model (i.e. brinkman model) contribution to internal energy
@@ -2011,7 +2007,6 @@ private:
         if(tMyCriterionInputs.isSublist("Penalty Function"))
         {
             auto tPenaltyFuncInputs = tMyCriterionInputs.sublist("Penalty Function");
-            mPrNumConvexityParam = tPenaltyFuncInputs.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
             mBrinkmanConvexityParam = tPenaltyFuncInputs.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
         }
     }
@@ -2585,8 +2580,7 @@ private:
     using SurfaceCubatureRule = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
 
     std::string   mSideSetName; /*!< side set name */
-    Plato::Scalar mPrNum = 1.0;
-    Plato::Scalar mPrNumConvexityParam = 0.5;
+    Plato::Scalar mPrNum = 1.0; /*!< prandtl number */
 
     Omega_h::LOs mFaceOrdinalsOnBoundary;
     SurfaceCubatureRule mSurfaceCubatureRule; /*!< surface integration rule */
@@ -2604,11 +2598,6 @@ public:
         this->setFacesOnNonPrescribedBoundary(aInputs);
     }
 
-    void setPrNumConvexityParam(const Plato::Scalar & aPrNumConvexityParam)
-    {
-        mPrNumConvexityParam = aPrNumConvexityParam;
-    }
-    
     void operator()
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult,
@@ -2635,7 +2624,6 @@ public:
 
         // transfer member data to device
         auto tPrNum = mPrNum;
-        auto tPrNumConvexityParam = mPrNumConvexityParam;
         auto tFaceOrdinalsOnBoundary = mFaceOrdinalsOnBoundary;
 
         // set local data structures
@@ -2722,7 +2710,6 @@ private:
             if (tMomentumParamList.isSublist("Penalty Function"))
             {
                 auto tPenaltyFuncList = tMomentumParamList.sublist("Penalty Function");
-                mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
             }
         }
     }
@@ -3263,14 +3250,11 @@ private:
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mPrescribedBCs; /*!< prescribed boundary conditions, e.g. tractions */
 
     // set member scalar data
-    Plato::Scalar mDaNum = 1.0;
-    Plato::Scalar mPrNum = 1.0;
-    Plato::Scalar mGrNumExponent = 3.0;
-    Plato::Scalar mPrNumConvexityParam = 0.5;
-    Plato::Scalar mBrinkmanConvexityParam = 0.5;
-    Plato::Scalar mGrNumMinErsatzMaterial = 1e-9;
+    Plato::Scalar mDaNum = 1.0; /*!< darcy dimensionless number */
+    Plato::Scalar mPrNum = 1.0; /*!< prandtl dimensionless number */
+    Plato::ScalarVector mGrNum; /*!< grashof dimensionless number */
 
-    Plato::ScalarVector mGrNum;
+    Plato::Scalar mBrinkmanConvexityParam = 0.5;
 
 public:
     VelocityPredictorResidual
@@ -3332,10 +3316,7 @@ public:
         auto tDaNum = mDaNum;
         auto tPrNum = mPrNum;
         auto tGrNum = mGrNum;
-        auto tPowerPenaltySIMP = mGrNumExponent;
-        auto tPrNumConvexityParam = mPrNumConvexityParam;
         auto tBrinkmanConvexityParam = mBrinkmanConvexityParam;
-        auto tMinErsatzMatSIMP = mGrNumMinErsatzMaterial;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -3471,10 +3452,7 @@ private:
         if (aInputs.isSublist("Penalty Function"))
         {
             auto tPenaltyFuncList = aInputs.sublist("Penalty Function");
-            mGrNumExponent = tPenaltyFuncList.get<Plato::Scalar>("Grashof Penalty Exponent", 3.0);
-            mPrNumConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Prandtl Convexity Parameter", 0.5);
             mBrinkmanConvexityParam = tPenaltyFuncList.get<Plato::Scalar>("Brinkman Convexity Parameter", 0.5);
-            mGrNumMinErsatzMaterial = tPenaltyFuncList.get<Plato::Scalar>("Grashof Minimum Ersatz Material Value", 1e-9);
         }
    }
 
@@ -3574,14 +3552,12 @@ private:
                 if(tMapItr == mDeviatoricBCs.end())
                 {
                     mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs, tSideSetName);
-                    mDeviatoricBCs.find(tSideSetName)->second->setPrNumConvexityParam(mPrNumConvexityParam);
                 }
             }
         }
         else
         {
             mDeviatoricBCs["automated"] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs);
-            mDeviatoricBCs.find("automated")->second->setPrNumConvexityParam(mPrNumConvexityParam);
         }
     }
 };
@@ -10008,8 +9984,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityCorrectorResidual)
             "    </ParameterList>"
             "    <ParameterList name='Momentum Conservation'>"
             "      <ParameterList name='Penalty Function'>"
-            "        <Parameter name='Grashof Penalty Exponent'     type='double' value='3.0'/>"
-            "        <Parameter name='Prandtl Convexity Parameter'  type='double' value='0.5'/>"
             "        <Parameter name='Brinkman Convexity Parameter' type='double' value='0.5'/>"
             "      </ParameterList>"
             "    </ParameterList>"
@@ -10657,8 +10631,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvection_VelocityPredictorResi
             "    </ParameterList>"
             "    <ParameterList name='Momentum Conservation'>"
             "      <ParameterList name='Penalty Function'>"
-            "        <Parameter name='Grashof Penalty Exponent'     type='double' value='3.0'/>"
-            "        <Parameter name='Prandtl Convexity Parameter'  type='double' value='0.5'/>"
             "        <Parameter name='Brinkman Convexity Parameter' type='double' value='0.5'/>"
             "      </ParameterList>"
             "    </ParameterList>"
@@ -10842,11 +10814,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Prandtl Number' type='double' value='1.0'/>"
             "    </ParameterList>"
-            "    <ParameterList name='Momentum Conservation'>"
-            "      <ParameterList name='Penalty Function'>"
-            "        <Parameter name='Prandtl Convexity Parameter' type='double' value='0.5'/>"
-            "      </ParameterList>"
-            "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
             "    <ParameterList  name='Traction Vector Boundary Condition'>"
@@ -10932,11 +10899,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces_Zeros)
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Prandtl Number' type='double' value='1.0'/>"
-            "    </ParameterList>"
-            "    <ParameterList name='Momentum Conservation'>"
-            "      <ParameterList name='Penalty Function'>"
-            "        <Parameter name='Prandtl Convexity Parameter' type='double' value='0.5'/>"
-            "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
