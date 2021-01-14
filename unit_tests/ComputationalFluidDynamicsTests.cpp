@@ -4265,11 +4265,7 @@ private:
     Plato::Scalar mHeatSourceConstant         = 0.0;
     Plato::Scalar mCharacteristicLength       = 1.0;
     Plato::Scalar mReferenceTemperature       = 1.0;
-    Plato::Scalar mSolidThermalDiffusivity    = 1.0;
-    Plato::Scalar mFluidThermalDiffusivity    = 1.0;
     Plato::Scalar mFluidThermalConductivity   = 1.0;
-    Plato::Scalar mHeatSourcePenaltyExponent  = 3.0;
-    Plato::Scalar mThermalDiffPenaltyExponent = 3.0;
 
 public:
     TemperatureResidual
@@ -4332,11 +4328,9 @@ public:
         auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
 
         // transfer member data to device
-        auto tRefTemp               = mReferenceTemperature;
-        auto tCharLength            = mCharacteristicLength;
-        auto tFluidThermalDiff      = mFluidThermalDiffusivity;
-        auto tSolidThermalDiff      = mSolidThermalDiffusivity;
-        auto tFluidThermalCond      = mFluidThermalConductivity;
+        auto tRefTemp          = mReferenceTemperature;
+        auto tCharLength       = mCharacteristicLength;
+        auto tFluidThermalCond = mFluidThermalConductivity;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -4434,7 +4428,6 @@ private:
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         auto tThermalPropBlock = std::string("Thermal Properties");
         mReferenceTemperature = Plato::parse_parameter<Plato::Scalar>("Reference Temperature", tThermalPropBlock, tMaterial);
-        mSolidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Solid Thermal Diffusivity", tThermalPropBlock, tMaterial);
         mFluidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Diffusivity", tThermalPropBlock, tMaterial);
         mFluidThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Conductivity", tThermalPropBlock, tMaterial);
     }
@@ -4678,7 +4671,6 @@ private:
         auto tThermalPropBlock = std::string("Thermal Properties");
         mReferenceTemperature = Plato::parse_parameter<Plato::Scalar>("Reference Temperature", tThermalPropBlock, tMaterial);
         mSolidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Solid Thermal Diffusivity", tThermalPropBlock, tMaterial);
-        mFluidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Diffusivity", tThermalPropBlock, tMaterial);
         mFluidThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Conductivity", tThermalPropBlock, tMaterial);
     }
 
@@ -10096,6 +10088,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SIMP_TemperatureResidual)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
+            "  <Parameter name='Scenario' type='string' value='Density TO'/>"
             "  <Parameter name='Heat Transfer Mechanism' type='string' value='Natural Convection'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
@@ -11208,12 +11201,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsEntitySetDefined)
     TEST_EQUALITY(false, Plato::is_entity_set_defined<Omega_h::SIDE_SET>(tMeshSets, "dog"));
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvection_NaturalConvectionBrinkman)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
+            "  <Parameter name='Scenario' type='string' value='Density TO'/>"
             "  <Parameter name='Heat Transfer Mechanism' type='string' value='Natural Convection'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
