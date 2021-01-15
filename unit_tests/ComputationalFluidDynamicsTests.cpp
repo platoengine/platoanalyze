@@ -7052,6 +7052,7 @@ private:
     Plato::Scalar mReynoldsNumber = 1.0;
     Plato::Scalar mCBSsolverTolerance = 1e-5;
     Plato::Scalar mTimeStepSafetyFactor = 0.5; /*!< safety factor applied to stable time step */
+    Plato::OrdinalType mMaxNumIterations = 1e3; /*!< maximum number of steady state iterations */
 
     Plato::ScalarMultiVector mPressure;
     Plato::ScalarMultiVector mVelocity;
@@ -7135,8 +7136,10 @@ public:
         Plato::Primal tPrimalVars;
         this->calculateElemCharacteristicSize(tPrimalVars);
 
+        Plato::OrdinalType tIteration = 0;
         while(true)
         {
+            tPrimalVars.scalar("iteration", tIteration);
             this->setPrimalVariables(tPrimalVars);
             this->calculateStableTimeSteps(tPrimalVars);
 
@@ -7154,6 +7157,7 @@ public:
             {
                 break;
             }
+            tIteration++;
         }
 
         Plato::Solutions tSolution;
@@ -7380,8 +7384,13 @@ private:
     bool checkStoppingCriteria(const Plato::Primal & aVariables)
     {
         bool tStop = false;
+        auto tIteration = aVariables.scalar("iteration");
         auto tCriterionValue = this->calculateResidualNorm(aVariables);
         if (tCriterionValue < mCBSsolverTolerance)
+        {
+            tStop = true;
+        }
+        else if (tIteration >= mMaxNumIterations)
         {
             tStop = true;
         }
