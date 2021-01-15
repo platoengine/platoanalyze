@@ -3426,6 +3426,10 @@ private:
        {
            mViscocity = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
        }
+       else
+       {
+           THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
+       }
    }
 
    void setGrashofNumber
@@ -3466,9 +3470,13 @@ private:
            auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
            mBuoyancy = tPrNum*tPrNum;
        }
+       else if(tHeatTransfer == "none")
+       {
+           mBuoyancy = 0;
+       }
        else
        {
-           mBuoyancy = 0; // default heat transfer == "none"
+           THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
        }
    }
 
@@ -3838,6 +3846,10 @@ private:
        {
            mViscocity = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
        }
+       else
+       {
+           THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
+       }
    }
 
    void setGrashofNumber
@@ -3878,9 +3890,13 @@ private:
            auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
            mBuoyancy = tPrNum*tPrNum;
        }
+       else if(tHeatTransfer == "none")
+       {
+           mBuoyancy = 0;
+       }
        else
        {
-           mBuoyancy = 0; // default heat transfer == "none"
+           THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
        }
    }
 
