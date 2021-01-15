@@ -377,7 +377,7 @@ find_node_ids_on_face_set
 (const Omega_h::Mesh & aMesh,
  const Omega_h::MeshSets & aMeshSets,
  const std::string & aEntitySetName,
- Plato::Scalar aPoints[NumPoints][SpaceDim])
+ const Plato::ScalarMultiVector & aPoints)
 {
     std::vector<Plato::OrdinalType> tNodeIds;
     if(Plato::is_entity_set_defined<Omega_h::SIDE_SET>(aMeshSets, aEntitySetName) == false)
@@ -390,39 +390,50 @@ find_node_ids_on_face_set
     auto tFaceToNodeIds = aMesh.get_adj(Omega_h::FACE, Omega_h::VERT).ab2b;
     const auto tNumNodesOnSet = tFaceToNodeIds.size();
 
-    Plato::ScalarVectorT<Plato::OrdinalType> tMatch("matching node ids", NumPoints);
+    Plato::ScalarVectorT<Plato::OrdinalType> tMatch("1=match & 0=no match", NumPoints);
+    Plato::ScalarVectorT<Plato::OrdinalType> tNodeIdMatch("matching node ids", NumPoints);
     const auto tNumSetFaces = tFaceLocalIds.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumSetFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
-        const auto tFace = tFaceLocalIds[aOrdinal];
+        auto tNumNodes = SpaceDim;
         Plato::OrdinalType tNodes[SpaceDim];
-        for (Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
+        const auto tFace = tFaceLocalIds[aOrdinal];
+        for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
         {
-            tNodes[tDim] = tFaceToNodeIds[SpaceDim*tFace+tDim];
+            tNodes[tNode] = tFaceToNodeIds[tNumNodes*tFace+tNode];
         }
 
-        auto tNumNodes = SpaceDim;
-        Plato::OrdinalType tSum = 0;
         for(Plato::OrdinalType tPoint = 0; tPoint < NumPoints; tPoint++)
         {
             for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
             {
+                Plato::OrdinalType tSum = 0;
                 for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
                 {
-                    tSum += Plato::equal(tAllCoords[SpaceDim*tNodes[tNode] + tDim], aPoints[tPoint][tDim]) ?
+                    tSum += Plato::equal(tAllCoords[SpaceDim*tNodes[tNode] + tDim], aPoints(tPoint,tDim)) ?
                         static_cast<Plato::OrdinalType>(1) : static_cast<Plato::OrdinalType>(0);
                 }
-                if(tSum == SpaceDim) { tMatch(tPoint) = tNodes[tNode]; }
+
+                if(tSum == SpaceDim) 
+                { //Found Match 
+                    tMatch(tPoint) = 1; 
+                    tNodeIdMatch(tPoint) = tNodes[tNode];
+                }
             }
         }
     }, "find_node_ids_on_face_set");
 
     auto tHostMatch = Kokkos::create_mirror(tMatch);
     Kokkos::deep_copy(tHostMatch, tMatch);
-    auto tLength = tMatch.size();
+    auto tHostNodeIdMatch = Kokkos::create_mirror(tNodeIdMatch);
+    Kokkos::deep_copy(tHostNodeIdMatch, tNodeIdMatch);
+    auto tLength = tNodeIdMatch.size();
     for(decltype(tLength) tIndex = 0; tIndex < tLength; tIndex++)
     {
-        tNodeIds.push_back(tHostMatch(tIndex));
+        if(tHostMatch(tIndex) == 1)
+        {
+            tNodeIds.push_back(tHostNodeIdMatch(tIndex));
+        }
     }
 
     return tNodeIds;
@@ -8763,21 +8774,57 @@ namespace ComputationalFluidDynamicsTests
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
 {
-    auto tSideSetName = "-x";
-    Plato::Scalar tPoint[1][2];
-    tPoint[0][0] = 0.0; tPoint[0][1] = 0.0;
+    auto tSideSetName = "x-";
+    constexpr auto tSpaceDim = 2;
+    constexpr auto tNumPointsA = 1;
+    Plato::ScalarMultiVector tPointsA("points",tNumPointsA,tSpaceDim);
+    auto tHostPoints = Kokkos::create_mirror(tPointsA);
+    tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
+    Kokkos::deep_copy(tPointsA, tHostPoints);
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
 
-    constexpr auto tSpaceDim = 2;
-    constexpr auto tNumPoints = 1;
-    auto tNodeIds =
-        Plato::find_node_ids_on_face_set<tNumPoints,tSpaceDim>(tMesh.operator*(), tMeshSets, tSideSetName, tPoint);
-
-    for(auto& tId : tNodeIds)
+    // test one
+    auto tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsA,tSpaceDim>(*tMesh, tMeshSets, tSideSetName, tPointsA);
+    TEST_EQUALITY(1u,tNodeIds.size());
+    std::vector<Plato::OrdinalType> tGold = {0};
+    for(auto& tGoldId : tNodeIds)
     {
-        std::cout << "\n" << tId << "\n";
+        auto tIndex = &tGoldId - &tNodeIds[0];
+        TEST_EQUALITY(tGoldId, tNodeIds[tIndex]);
     }
+
+    // test two
+    constexpr auto tNumPointsB = 2;
+    Plato::ScalarMultiVector tPointsB("points",tNumPointsB,tSpaceDim);
+    tHostPoints = Kokkos::create_mirror(tPointsB);
+    tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
+    tHostPoints(1,0) = 0.0; tHostPoints(1,1) = 1.0;
+    Kokkos::deep_copy(tPointsB, tHostPoints);
+    tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsB,tSpaceDim>(*tMesh, tMeshSets, tSideSetName, tPointsB);
+    TEST_EQUALITY(2u,tNodeIds.size());
+    tGold = {1,0};
+    for(auto& tGoldId : tNodeIds)
+    {
+        auto tIndex = &tGoldId - &tNodeIds[0];
+        TEST_EQUALITY(tGoldId, tNodeIds[tIndex]);
+    }
+
+    // test three 
+    constexpr auto tNumPointsC = 2;
+    Plato::ScalarMultiVector tPointsC("points",tNumPointsC,tSpaceDim);
+    tHostPoints = Kokkos::create_mirror(tPointsC);
+    tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
+    tHostPoints(1,0) = 0.0; tHostPoints(1,1) = 2.0;
+    Kokkos::deep_copy(tPointsC, tHostPoints);
+    tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsC,tSpaceDim>(*tMesh, tMeshSets, tSideSetName, tPointsC);
+    TEST_EQUALITY(1u,tNodeIds.size());
+    tGold = {0};
+    for(auto& tGoldId : tNodeIds)
+    {
+        auto tIndex = &tGoldId - &tNodeIds[0];
+        TEST_EQUALITY(tGoldId, tNodeIds[tIndex]);
+    } 
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
