@@ -10264,7 +10264,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SIMP_TemperatureResidual)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <Parameter name='Scenario' type='string' value='Density TO'/>"
-            "  <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>"
+            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Characteristic Length'  type='double'  value='1.0'/>"
