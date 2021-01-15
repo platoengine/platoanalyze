@@ -6071,7 +6071,7 @@ temperature_residual
  Plato::DataMap & aDataMap,
  Teuchos::ParameterList & aInputs)
 {
-    auto tScenario = aInputs.get<std::string>("Scenario","Undefined");
+    auto tScenario = aInputs.get<std::string>("Scenario","Analysis");
     auto tLowerScenario = Plato::tolower(tScenario);
     if( tLowerScenario == "density to" )
     {
@@ -7064,6 +7064,7 @@ private:
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
     bool mIsExplicitSolve = true;
+    bool mCalculateHeatTransfer = false;
     Plato::Scalar mPrandtlNumber = 1.0;
     Plato::Scalar mReynoldsNumber = 1.0;
     Plato::Scalar mCBSsolverTolerance = 1e-5;
@@ -7149,11 +7150,11 @@ public:
     Plato::Solutions solution
     (const Plato::ScalarVector& aControl)
     {
+        this->checkEssentialBoundaryConditions();
+
         Plato::Primal tPrimalVars;
         this->calculateElemCharacteristicSize(tPrimalVars);
-
-        Plato::OrdinalType tIteration = 0;
-        while(true)
+        for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumIterations; tIteration++)
         {
             tPrimalVars.scalar("iteration", tIteration);
             this->setPrimalVariables(tPrimalVars);
@@ -7162,12 +7163,15 @@ public:
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
             this->updateVelocity(aControl, tPrimalVars);
-            this->updateTemperature(aControl, tPrimalVars);
-
-            // todo: verify BC enforcement
             this->enforceVelocityBoundaryConditions(tPrimalVars);
             this->enforcePressureBoundaryConditions(tPrimalVars);
-            this->enforceTemperatureBoundaryConditions(tPrimalVars);
+
+            // todo: verify BC enforcement
+            if(mCalculateHeatTransfer)
+            {
+                this->updateTemperature(aControl, tPrimalVars);
+                this->enforceTemperatureBoundaryConditions(tPrimalVars);
+            }
 
             if(this->checkStoppingCriteria(tPrimalVars))
             {
@@ -7303,18 +7307,29 @@ private:
     (Teuchos::ParameterList & aInputs,
      Comm::Machine          & aMachine)
     {
+        this->allocateLinearSolvers(aInputs, aMachine);
+
+        this->allocateCriteriaList(aInputs);
+        this->allocateMemberStates(aInputs);
+        this->readTimeIntegrationInputs(aInputs);
+        this->readDimensionlessProperties(aInputs);
+        this->readEssentialBoundaryConditions(aInputs);
+
+        auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+        auto tHeatTransfer = Plato::tolower(tTag);
+        mCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
+    }
+
+    void allocateLinearSolvers
+    (Teuchos::ParameterList & aInputs,
+     Comm::Machine          & aMachine)
+    {
         Plato::SolverFactory tSolverFactory(aInputs.sublist("Linear Solver"));
         mVectorFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
         mScalarFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumPresDofsPerNode);
-
-        this->parseCriteria(aInputs);
-        this->setMemberStates(aInputs);
-        this->setExplicitSolveFlag(aInputs);
-        this->readBoundaryConditions(aInputs);
-        this->setDimensionlessProperties(aInputs);
     }
 
-    void setExplicitSolveFlag
+    void readTimeIntegrationInputs
     (Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Time Integration"))
@@ -7326,7 +7341,26 @@ private:
         }
     }
 
-    void setDimensionlessProperties
+    void checkEssentialBoundaryConditions()
+    {
+        if(mPressureEssentialBCs.empty())
+        {
+            THROWERR("Pressure essential boundary conditions are not defined.")
+        }
+        if(mVelocityEssentialBCs.empty())
+        {
+            THROWERR("Velocity essential boundary conditions are not defined.")
+        }
+        if(mCalculateHeatTransfer)
+        {
+            if(mTemperatureEssentialBCs.empty())
+            {
+                THROWERR("Temperature essential boundary conditions are not defined.")
+            }
+        }
+    }
+
+    void readDimensionlessProperties
     (Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Hyperbolic") == false)
@@ -7338,7 +7372,7 @@ private:
         mReynoldsNumber = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolicParamList);
     }
 
-    void setMemberStates(Teuchos::ParameterList & aInputs)
+    void allocateMemberStates(Teuchos::ParameterList & aInputs)
     {
         constexpr auto tTimeSnapshotsStored = 2;
         auto tNumNodes = mSpatialModel.Mesh.nverts();
@@ -7348,9 +7382,9 @@ private:
         mPredictor   = Plato::ScalarMultiVector("Predictor Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
     }
 
-    void readBoundaryConditions(Teuchos::ParameterList& aInputs)
+    void readEssentialBoundaryConditions(Teuchos::ParameterList& aInputs)
     {
-        auto tReadBCs = aInputs.get<bool>("Read Boundary Conditions", true);
+        auto tReadBCs = aInputs.get<bool>("Read Essential Boundary Conditions", true);
         if (tReadBCs)
         {
             this->readPressureBoundaryConditions(aInputs);
@@ -7359,7 +7393,7 @@ private:
         }
     }
 
-    void parseCriteria(Teuchos::ParameterList &aInputs)
+    void allocateCriteriaList(Teuchos::ParameterList &aInputs)
     {
         if(aInputs.isSublist("Criteria"))
         {
@@ -7806,10 +7840,6 @@ private:
             auto tTempBCs = aInputs.sublist("Temperature Boundary Conditions");
             mTemperatureEssentialBCs = Plato::EssentialBCs<EnergyConservationT>(tTempBCs, mSpatialModel.MeshSets);
         }
-        else
-        {
-            THROWERR("Temperature boundary conditions are not defined for fluid mechanics problem.")
-        }
     }
 
     void readPressureBoundaryConditions(Teuchos::ParameterList& aInputs)
@@ -7821,10 +7851,6 @@ private:
             auto tPressBCs = aInputs.sublist("Pressure Boundary Conditions");
             mPressureEssentialBCs = Plato::EssentialBCs<MassConservationT>(tPressBCs, mSpatialModel.MeshSets);
         }
-        else
-        {
-            THROWERR("Pressure boundary conditions are not defined for fluid mechanics problem.")
-        }
     }
 
     void readVelocityBoundaryConditions(Teuchos::ParameterList& aInputs)
@@ -7835,10 +7861,6 @@ private:
         {
             auto tVelBCs = aInputs.sublist("Momentum Boundary Conditions");
             mVelocityEssentialBCs = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
-        }
-        else
-        {
-            THROWERR("'Momentum Boundary Conditions' must be defined for fluid flow problems.")
         }
     }
 };
@@ -7857,11 +7879,12 @@ private:
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
     bool mIsExplicitSolve = true;
+    bool mCalculateHeatTransfer = false;
     Plato::Scalar mPrandtlNumber = 1.0;
     Plato::Scalar mReynoldsNumber = 1.0;
     Plato::Scalar mCBSsolverTolerance = 1e-5;
     Plato::Scalar mTimeStepSafetyFactor = 0.5; /*!< safety factor applied to stable time step */
-    Plato::OrdinalType mNumTimeSteps = 100;
+    Plato::OrdinalType mMaxNumTimeSteps = 100;
 
     Plato::ScalarMultiVector mPressure;
     Plato::ScalarMultiVector mVelocity;
@@ -7944,10 +7967,11 @@ public:
     Plato::Solutions solution
     (const Plato::ScalarVector& aControl)
     {
+        this->checkEssentialBoundaryConditions();
+
         Plato::Primal tPrimalVars;
         this->calculateElemCharacteristicSize(tPrimalVars);
-
-        for (Plato::OrdinalType tStep = 1; tStep < mNumTimeSteps; tStep++)
+        for (Plato::OrdinalType tStep = 1; tStep < mMaxNumTimeSteps; tStep++)
         {
             tPrimalVars.scalar("step", tStep);
             this->setPrimalVariables(tPrimalVars);
@@ -7956,12 +7980,15 @@ public:
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
             this->updateVelocity(aControl, tPrimalVars);
-            this->updateTemperature(aControl, tPrimalVars);
-
-            // todo: verify BC enforcement
             this->enforceVelocityBoundaryConditions(tPrimalVars);
             this->enforcePressureBoundaryConditions(tPrimalVars);
-            this->enforceTemperatureBoundaryConditions(tPrimalVars);
+
+            // todo: verify BC enforcement
+            if(mCalculateHeatTransfer)
+            {
+                this->updateTemperature(aControl, tPrimalVars);
+                this->enforceTemperatureBoundaryConditions(tPrimalVars);
+            }
 
             if(this->checkStoppingCriteria(tPrimalVars))
             {
@@ -8092,22 +8119,63 @@ public:
     }
 
 private:
+    void checkEssentialBoundaryConditions()
+    {
+        if(mPressureEssentialBCs.empty())
+        {
+            THROWERR("Pressure essential boundary conditions are not defined.")
+        }
+        if(mVelocityEssentialBCs.empty())
+        {
+            THROWERR("Velocity essential boundary conditions are not defined.")
+        }
+        if(mCalculateHeatTransfer)
+        {
+            if(mTemperatureEssentialBCs.empty())
+            {
+                THROWERR("Temperature essential boundary conditions are not defined.")
+            }
+        }
+    }
+
     void initialize
     (Teuchos::ParameterList & aInputs,
      Comm::Machine          & aMachine)
     {
+        this->allocateLinearSolvers(aInputs,aMachine);
+
+        this->allocateCriteriaList(aInputs);
+        this->allocateMemberStateData(aInputs);
+        this->readTimeIntegrationInputs(aInputs);
+        this->readDimensionlessProperties(aInputs);
+        this->readEssentialBoundaryConditions(aInputs);
+
+        auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+        auto tHeatTransfer = Plato::tolower(tTag);
+        mCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
+    }
+
+    void readEssentialBoundaryConditions(Teuchos::ParameterList& aInputs)
+    {
+        auto tReadBCs = aInputs.get<bool>("Read Essential Boundary Conditions", true);
+        if (tReadBCs)
+        {
+            this->readPressureBoundaryConditions(aInputs);
+            this->readVelocityBoundaryConditions(aInputs);
+            this->readTemperatureBoundaryConditions(aInputs);
+        }
+    }
+
+    void allocateLinearSolvers
+    (Teuchos::ParameterList & aInputs,
+     Comm::Machine & aMachine)
+    {
         Plato::SolverFactory tSolverFactory(aInputs.sublist("Linear Solver"));
         mVectorFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
         mScalarFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumPresDofsPerNode);
-
-        this->setCriteria(aInputs);
-        this->setMemberStateData(aInputs);
-        this->setExplicitSolveFlag(aInputs);
-        this->readBoundaryConditions(aInputs);
-        this->setDimensionlessProperties(aInputs);
     }
 
-    void setExplicitSolveFlag
+    void readTimeIntegrationInputs
     (Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Time Integration"))
@@ -8119,43 +8187,32 @@ private:
         }
     }
 
-    void setDimensionlessProperties
+    void readDimensionlessProperties
     (Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Hyperbolic") == false)
         {
             THROWERR("'Hyperbolic' Parameter List is not defined.")
         }
-        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
-        mPrandtlNumber = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolicParamList);
-        mReynoldsNumber = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolicParamList);
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        mPrandtlNumber = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+        mReynoldsNumber = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
     }
 
-    void setMemberStateData(Teuchos::ParameterList & aInputs)
+    void allocateMemberStateData(Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Time Integration"))
         {
-            mNumTimeSteps = aInputs.sublist("Time Integration").get<int>("Number Time Steps", 100);
+            mMaxNumTimeSteps = aInputs.sublist("Time Integration").get<int>("Number Time Steps", 100);
         }
         auto tNumNodes = mSpatialModel.Mesh.nverts();
-        mPressure    = Plato::ScalarMultiVector("Pressure Snapshots", mNumTimeSteps, tNumNodes);
-        mVelocity    = Plato::ScalarMultiVector("Velocity Snapshots", mNumTimeSteps, tNumNodes * mNumVelDofsPerNode);
-        mPredictor   = Plato::ScalarMultiVector("Predictor Snapshots", mNumTimeSteps, tNumNodes * mNumVelDofsPerNode);
-        mTemperature = Plato::ScalarMultiVector("Temperature Snapshots", mNumTimeSteps, tNumNodes);
+        mPressure    = Plato::ScalarMultiVector("Pressure Snapshots", mMaxNumTimeSteps, tNumNodes);
+        mVelocity    = Plato::ScalarMultiVector("Velocity Snapshots", mMaxNumTimeSteps, tNumNodes * mNumVelDofsPerNode);
+        mPredictor   = Plato::ScalarMultiVector("Predictor Snapshots", mMaxNumTimeSteps, tNumNodes * mNumVelDofsPerNode);
+        mTemperature = Plato::ScalarMultiVector("Temperature Snapshots", mMaxNumTimeSteps, tNumNodes);
     }
 
-    void readBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        auto tReadBCs = aInputs.get<bool>("Read Boundary Conditions", true);
-        if (tReadBCs)
-        {
-            this->readPressureBoundaryConditions(aInputs);
-            this->readVelocityBoundaryConditions(aInputs);
-            this->readTemperatureBoundaryConditions(aInputs);
-        }
-    }
-
-    void setCriteria(Teuchos::ParameterList &aInputs)
+    void allocateCriteriaList(Teuchos::ParameterList &aInputs)
     {
         if(aInputs.isSublist("Criteria"))
         {
@@ -8196,8 +8253,13 @@ private:
     bool checkStoppingCriteria(const Plato::Primal & aVariables)
     {
         bool tStop = false;
+        auto tTimeStepIndex = aVariables.scalar("step");
         auto tCriterionValue = this->calculateResidualNorm(aVariables);
         if (tCriterionValue < mCBSsolverTolerance)
+        {
+            tStop = true;
+        }
+        else if (tTimeStepIndex >= mMaxNumTimeSteps)
         {
             tStop = true;
         }
@@ -8599,10 +8661,6 @@ private:
             auto tTempBCs = aInputs.sublist("Temperature Boundary Conditions");
             mTemperatureEssentialBCs = Plato::EssentialBCs<EnergyConservationT>(tTempBCs, mSpatialModel.MeshSets);
         }
-        else
-        {
-            THROWERR("Temperature boundary conditions are not defined for fluid mechanics problem.")
-        }
     }
 
     void readPressureBoundaryConditions(Teuchos::ParameterList& aInputs)
@@ -8613,10 +8671,6 @@ private:
         {
             auto tPressBCs = aInputs.sublist("Pressure Boundary Conditions");
             mPressureEssentialBCs = Plato::EssentialBCs<MassConservationT>(tPressBCs, mSpatialModel.MeshSets);
-        }
-        else
-        {
-            THROWERR("Pressure boundary conditions are not defined for fluid mechanics problem.")
         }
     }
 
@@ -8629,10 +8683,6 @@ private:
             auto tVelBCs = aInputs.sublist("Momentum Boundary Conditions");
             mVelocityEssentialBCs = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
         }
-        else
-        {
-            THROWERR("'Momentum Boundary Conditions' must be defined for fluid flow problems.")
-        }
     }
 };
 
@@ -8644,6 +8694,54 @@ private:
 
 namespace ComputationalFluidDynamicsTests
 {
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Plato Problem'>"
+            "  <Parameter name='Heat Transfer' type='string' value='None'/>"
+            "  <Parameter name='Read Essential Boundary Conditions' type='bool' value='false'/>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Prandtl Number'   type='double'  value='1.0'/>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1.0'/>"
+            "    </ParameterList>"
+            "    <ParameterList name='Energy Conservation'>"
+            "      <ParameterList name='Penalty Function'>"
+            "        <Parameter  name='Heat Source Penalty Exponent'  type='double' value='3.0'/>"
+            "        <Parameter  name='Thermal Diffusion Penalty Exponent'  type='double' value='3.0'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "<ParameterList name='Spatial Model'>"
+            "  <ParameterList name='Domains'>"
+            "    <ParameterList name='Design Volume'>"
+            "      <Parameter name='Element Block' type='string' value='block_1'/>"
+            "      <Parameter name='Material Model' type='string' value='Steel'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            "<ParameterList name='Material Models'>"
+            "  <ParameterList name='Steel'>"
+            "    <ParameterList name='Thermal Properties'>"
+            "      <Parameter  name='Fluid Thermal Conductivity'  type='double'  value='1'/>"
+            "      <Parameter  name='Reference Temperature'       type='double'  value='10.0'/>"
+            "      <Parameter  name='Fluid Thermal Diffusivity'   type='double'  value='0.5'/>"
+            "      <Parameter  name='Solid Thermal Diffusivity'   type='double'  value='1.0'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            "  <ParameterList  name='Heat Source'>"
+            "    <Parameter  name='Constant'  type='double'  value='2.0'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+}
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_Brinkman)
 {
