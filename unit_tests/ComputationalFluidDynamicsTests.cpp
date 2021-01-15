@@ -3203,9 +3203,8 @@ public:
     }
 };
 
-
 template<typename PhysicsT, typename EvaluationT>
-class NaturalConvectionResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
+class VelocityPredictorResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
@@ -3228,7 +3227,6 @@ private:
     using PredVelT  = typename EvaluationT::MomentumPredictorScalarType;
     using StrainT   = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
 
-
     Plato::DataMap& mDataMap; /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< cubature rule evaluator */
@@ -3243,11 +3241,12 @@ private:
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mPrescribedBCs; /*!< prescribed boundary conditions, e.g. tractions */
 
     // set member scalar data
-    Plato::Scalar mPrNum = 1.0; /*!< prandtl dimensionless number */
+    Plato::Scalar mBuoyancy = 1.0; /*!< buoyancy dimensionless number */
+    Plato::Scalar mViscocity = 1.0; /*!< viscocity dimensionless number */
     Plato::ScalarVector mGrNum; /*!< grashof dimensionless number */
 
 public:
-    NaturalConvectionResidual
+    VelocityPredictorResidual
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs) :
@@ -3256,12 +3255,12 @@ public:
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>()),
          mGrNum("grashof number", mNumSpatialDims)
     {
-        this->setParameters(aInputs);
+        this->setDimensionlessProperties(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
         this->setStabilizedNaturalBoundaryConditions(aInputs);
     }
 
-    virtual ~NaturalConvectionResidual(){}
+    virtual ~VelocityPredictorResidual(){}
 
     void evaluate
     (const Plato::WorkSets & aWorkSets,
@@ -3303,8 +3302,9 @@ public:
         auto tPredictorWS = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
 
         // transfer member data to device
-        auto tPrNum = mPrNum;
         auto tGrNum = mGrNum;
+        auto tBuoyancy = mBuoyancy;
+        auto tViscocity = mViscocity;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -3317,16 +3317,15 @@ public:
             Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
             Plato::Fluids::integrate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tPrNum, tCellVolume, tGradient, tStrainRate, aResultWS);
+                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tStrainRate, aResultWS);
 
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::calculate_advected_internal_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tInternalForces);
 
-            auto tPrNumTimesPrNum = tPrNum * tPrNum;
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
             Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
-                (aCellOrdinal, tPrNumTimesPrNum, tGrNum, tPrevTempGP, tInternalForces);
+                (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tInternalForces);
 
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
@@ -3411,127 +3410,169 @@ public:
    }
 
 private:
-   void setParameters
+   void setViscosity
+   (Teuchos::ParameterList & aInputs)
+   {
+       auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+       auto tHeatTransfer = Plato::tolower(tTag);
+
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       if(tHeatTransfer == "forced" || tHeatTransfer == "none")
+       {
+           auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+           mViscocity = static_cast<Plato::Scalar>(1) / tReNum;
+       }
+       else if(tHeatTransfer == "natural")
+       {
+           mViscocity = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+       }
+   }
+
+   void setGrashofNumber
+   (Teuchos::ParameterList & aInputs)
+   {
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
+       if(tGrNum.size() != mNumSpatialDims)
+       {
+           THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
+               + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
+               + std::to_string(mNumSpatialDims)  + "'.")
+       }
+
+       auto tLength = mGrNum.size();
+       auto tHostGrNum = Kokkos::create_mirror(mGrNum);
+       for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
+       {
+           tHostGrNum(tDim) = tGrNum[tDim];
+       }
+       Kokkos::deep_copy(mGrNum, tHostGrNum);
+   }
+
+   void setBuoyancyConstant
+   (Teuchos::ParameterList & aInputs)
+   {
+       auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+       auto tHeatTransfer = Plato::tolower(tTag);
+
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       if(tHeatTransfer == "forced")
+       {
+           auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+           mBuoyancy = static_cast<Plato::Scalar>(1) / (tReNum*tReNum);
+       }
+       else if(tHeatTransfer == "natural")
+       {
+           auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+           mBuoyancy = tPrNum*tPrNum;
+       }
+       else
+       {
+           mBuoyancy = 0; // default heat transfer == "none"
+       }
+   }
+
+   void setDimensionlessProperties
    (Teuchos::ParameterList & aInputs)
    {
        if(aInputs.isSublist("Hyperbolic") == false)
        {
            THROWERR("'Hyperbolic' Parameter List is not defined.")
        }
-       auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
-       this->setDimensionlessProperties(tHyperbolicParamList);
+       this->setViscosity(aInputs);
+       this->setGrashofNumber(aInputs);
+       this->setBuoyancyConstant(aInputs);
    }
 
-    void setDimensionlessProperties
-    (Teuchos::ParameterList & aInputs)
-    {
-        mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs);
-        auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", aInputs);
-        if(tGrNum.size() != mNumSpatialDims)
-        {
-            THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
-                + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
-                + std::to_string(mNumSpatialDims)  + "'.")
-        }
+   void setNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
+   {
+       if(aInputs.isSublist("Momentum Natural Boundary Conditions"))
+       {
+           auto tInputsNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
+           mPrescribedBCs = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tInputsNaturalBCs);
 
-        auto tLength = mGrNum.size();
-        auto tHostGrNum = Kokkos::create_mirror(mGrNum);
-        for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
-        {
-            tHostGrNum(tDim) = tGrNum[tDim];
-        }
-        Kokkos::deep_copy(mGrNum, tHostGrNum);
-    }
+           for (Teuchos::ParameterList::ConstIterator tItr = tInputsNaturalBCs.begin(); tItr != tInputsNaturalBCs.end(); ++tItr)
+           {
+               const Teuchos::ParameterEntry &tEntry = tInputsNaturalBCs.entry(tItr);
+               if (!tEntry.isList())
+               {
+                   THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
+                       + "'. Parameter List block is not valid. Expects Parameter Lists only.")
+               }
 
-    void setNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        if(aInputs.isSublist("Momentum Natural Boundary Conditions"))
-        {
-            auto tInputsNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
-            mPrescribedBCs = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tInputsNaturalBCs);
+               const std::string &tName = tInputsNaturalBCs.name(tItr);
+               if(tInputsNaturalBCs.isSublist(tName) == false)
+               {
+                   THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
+                       + "'. Parameter Sublist '" + tName.c_str() + "' is not defined.")
+               }
 
-            for (Teuchos::ParameterList::ConstIterator tItr = tInputsNaturalBCs.begin(); tItr != tInputsNaturalBCs.end(); ++tItr)
-            {
-                const Teuchos::ParameterEntry &tEntry = tInputsNaturalBCs.entry(tItr);
-                if (!tEntry.isList())
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
-                        + "'. Parameter List block is not valid. Expects Parameter Lists only.")
-                }
+               Teuchos::ParameterList &tSubList = tInputsNaturalBCs.sublist(tName);
+               if(tSubList.isParameter("Sides") == false)
+               {
+                   THROWERR(std::string("Error parsing Parameter List '") + tSubList.name() + "'. 'Sides' keyword "
+                       +"is not define in Parameter Sublist '" + tName.c_str() + "'. The 'Sides' keyword is used "
+                       + "to define the 'side set' names where 'Natrual Boundary Conditions' are applied.")
+               }
+               const auto tSideSetName = tSubList.get<std::string>("Sides");
+               auto tMapItr = mPressureBCs.find(tSideSetName);
+               if(tMapItr == mPressureBCs.end())
+               {
+                   mPressureBCs[tSideSetName] = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
+               }
+           }
+       }
+   }
 
-                const std::string &tName = tInputsNaturalBCs.name(tItr);
-                if(tInputsNaturalBCs.isSublist(tName) == false)
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
-                        + "'. Parameter Sublist '" + tName.c_str() + "' is not defined.")
-                }
+   void setStabilizedNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
+   {
+       if(aInputs.isSublist("Balancing Momentum Natural Boundary Conditions"))
+       {
+           auto tInputsNaturalBCs = aInputs.sublist("Balancing Momentum Natural Boundary Conditions");
+           for (Teuchos::ParameterList::ConstIterator tItr = tInputsNaturalBCs.begin(); tItr != tInputsNaturalBCs.end(); ++tItr)
+           {
+               const Teuchos::ParameterEntry &tEntry = tInputsNaturalBCs.entry(tItr);
+               if (!tEntry.isList())
+               {
+                   THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
+                       + "'. Parameter List block is not valid. Expects Parameter Lists only.")
+               }
 
-                Teuchos::ParameterList &tSubList = tInputsNaturalBCs.sublist(tName);
-                if(tSubList.isParameter("Sides") == false)
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tSubList.name() + "'. 'Sides' keyword "
-                        +"is not define in Parameter Sublist '" + tName.c_str() + "'. The 'Sides' keyword is used "
-                        + "to define the 'side set' names where 'Natrual Boundary Conditions' are applied.")
-                }
-                const auto tSideSetName = tSubList.get<std::string>("Sides");
-                auto tMapItr = mPressureBCs.find(tSideSetName);
-                if(tMapItr == mPressureBCs.end())
-                {
-                    mPressureBCs[tSideSetName] = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
-                }
-            }
-        }
-    }
+               const std::string &tName = tInputsNaturalBCs.name(tItr);
+               if(tInputsNaturalBCs.isSublist(tName) == false)
+               {
+                   THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
+                       + "'. Parameter Sublist '" + tName.c_str() + "' is not defined.")
+               }
 
-    void setStabilizedNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        if(aInputs.isSublist("Balancing Momentum Natural Boundary Conditions"))
-        {
-            auto tInputsNaturalBCs = aInputs.sublist("Balancing Momentum Natural Boundary Conditions");
-            for (Teuchos::ParameterList::ConstIterator tItr = tInputsNaturalBCs.begin(); tItr != tInputsNaturalBCs.end(); ++tItr)
-            {
-                const Teuchos::ParameterEntry &tEntry = tInputsNaturalBCs.entry(tItr);
-                if (!tEntry.isList())
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
-                        + "'. Parameter List block is not valid. Expects Parameter Lists only.")
-                }
-
-                const std::string &tName = tInputsNaturalBCs.name(tItr);
-                if(tInputsNaturalBCs.isSublist(tName) == false)
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
-                        + "'. Parameter Sublist '" + tName.c_str() + "' is not defined.")
-                }
-
-                Teuchos::ParameterList &tSubList = tInputsNaturalBCs.sublist(tName);
-                if(tSubList.isParameter("Sides") == false)
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tSubList.name() + "'. 'Sides' keyword "
-                        +"is not define in Parameter Sublist '" + tName.c_str() + "'. The 'Sides' keyword is used "
-                        + "to define the 'side set' names where 'Natural Boundary Conditions' are applied.")
-                }
-                const auto tSideSetName = tSubList.get<std::string>("Sides");
-                auto tMapItr = mDeviatoricBCs.find(tSideSetName);
-                if(tMapItr == mDeviatoricBCs.end())
-                {
-                    mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs, tSideSetName);
-                }
-            }
-        }
-        else
-        {
-            mDeviatoricBCs["automated"] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs);
-        }
-    }
+               Teuchos::ParameterList &tSubList = tInputsNaturalBCs.sublist(tName);
+               if(tSubList.isParameter("Sides") == false)
+               {
+                   THROWERR(std::string("Error parsing Parameter List '") + tSubList.name() + "'. 'Sides' keyword "
+                       +"is not define in Parameter Sublist '" + tName.c_str() + "'. The 'Sides' keyword is used "
+                       + "to define the 'side set' names where 'Natural Boundary Conditions' are applied.")
+               }
+               const auto tSideSetName = tSubList.get<std::string>("Sides");
+               auto tMapItr = mDeviatoricBCs.find(tSideSetName);
+               if(tMapItr == mDeviatoricBCs.end())
+               {
+                   mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs, tSideSetName);
+               }
+           }
+       }
+       else
+       {
+           mDeviatoricBCs["automated"] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs);
+       }
+   }
 };
-// class NaturalConvectionResidual
+// class VelocityPredictorResidual
 
 namespace Brinkman
 {
 
 template<typename PhysicsT, typename EvaluationT>
-class NaturalConvectionResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
+class VelocityPredictorResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
@@ -3554,7 +3595,6 @@ private:
     using PredVelT  = typename EvaluationT::MomentumPredictorScalarType;
     using StrainT   = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
 
-
     Plato::DataMap& mDataMap; /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< cubature rule evaluator */
@@ -3569,14 +3609,14 @@ private:
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mPrescribedBCs; /*!< prescribed boundary conditions, e.g. tractions */
 
     // set member scalar data
-    Plato::Scalar mDaNum = 1.0; /*!< darcy dimensionless number */
-    Plato::Scalar mPrNum = 1.0; /*!< prandtl dimensionless number */
+    Plato::Scalar mBuoyancy = 1.0; /*!< buoyancy dimensionless number */
+    Plato::Scalar mViscocity = 1.0; /*!< viscocity dimensionless number */
+    Plato::Scalar mPermeability = 1.0; /*!< permeability dimensionless number */
+    Plato::Scalar mBrinkmanConvexityParam = 0.5;  /*!< brinkman model convexity parameter */
     Plato::ScalarVector mGrNum; /*!< grashof dimensionless number */
 
-    Plato::Scalar mBrinkmanConvexityParam = 0.5;
-
 public:
-    NaturalConvectionResidual
+    VelocityPredictorResidual
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs) :
@@ -3590,7 +3630,7 @@ public:
         this->setStabilizedNaturalBoundaryConditions(aInputs);
     }
 
-    virtual ~NaturalConvectionResidual(){}
+    virtual ~VelocityPredictorResidual(){}
 
     void evaluate
     (const Plato::WorkSets & aWorkSets,
@@ -3632,9 +3672,10 @@ public:
         auto tPredictorWS = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
 
         // transfer member data to device
-        auto tDaNum = mDaNum;
-        auto tPrNum = mPrNum;
         auto tGrNum = mGrNum;
+        auto tBuoyancy = mBuoyancy;
+        auto tViscocity = mViscocity;
+        auto tPermeability = mPermeability;
         auto tBrinkmanConvexityParam = mBrinkmanConvexityParam;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
@@ -3648,22 +3689,20 @@ public:
             Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
             Plato::Fluids::integrate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tPrNum, tCellVolume, tGradient, tStrainRate, aResultWS);
+                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tStrainRate, aResultWS);
 
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::calculate_advected_internal_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelWS, tPrevVelGP, tInternalForces);
 
-            auto tPrNumTimesPrNum = tPrNum * tPrNum;
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
             Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
-                (aCellOrdinal, tPrNumTimesPrNum, tGrNum, tPrevTempGP, tInternalForces);
+                (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tInternalForces);
 
-            auto tPrNumOverDaNum = tPrNum / tDaNum;
-            ControlT tPenalizedBrinkmanCoeff = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
-                (aCellOrdinal, tPrNumOverDaNum, tBrinkmanConvexityParam, tControlWS);
+            ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
+                (aCellOrdinal, tPermeability, tBrinkmanConvexityParam, tControlWS);
             Plato::Fluids::calculate_brinkman_forces<mNumSpatialDims>
-                (aCellOrdinal, tPenalizedBrinkmanCoeff, tPrevVelGP, tInternalForces);
+                (aCellOrdinal, tPenalizedPermeability, tPrevVelGP, tInternalForces);
 
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
@@ -3755,9 +3794,8 @@ private:
        {
            THROWERR("'Hyperbolic' Parameter List is not defined.")
        }
+       this->setDimensionlessProperties(aInputs);
        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
-       this->setDimensionlessProperties(tHyperbolicParamList);
-
        if(tHyperbolicParamList.isSublist("Momentum Conservation"))
        {
            auto tMomentumParamList = tHyperbolicParamList.sublist("Momentum Conservation");
@@ -3775,28 +3813,89 @@ private:
         }
    }
 
-    void setDimensionlessProperties
-    (Teuchos::ParameterList & aInputs)
-    {
-        mDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", aInputs);
-        mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs);
+   void setPermeability
+   (Teuchos::ParameterList & aInputs)
+   {
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       auto tDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
+       auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+       mPermeability = tPrNum / tDaNum;
+   }
 
-        auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", aInputs);
-        if(tGrNum.size() != mNumSpatialDims)
-        {
-            THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ") 
-                + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '" 
-                + std::to_string(mNumSpatialDims)  + "'.")
-        }
+   void setViscosity
+   (Teuchos::ParameterList & aInputs)
+   {
+       auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+       auto tHeatTransfer = Plato::tolower(tTag);
 
-        auto tLength = mGrNum.size();
-        auto tHostGrNum = Kokkos::create_mirror(mGrNum);
-        for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
-        {
-            tHostGrNum(tDim) = tGrNum[tDim];
-        }
-        Kokkos::deep_copy(mGrNum, tHostGrNum);
-    }
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       if(tHeatTransfer == "forced" || tHeatTransfer == "none")
+       {
+           auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+           mViscocity = static_cast<Plato::Scalar>(1) / tReNum;
+       }
+       else if(tHeatTransfer == "natural")
+       {
+           mViscocity = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+       }
+   }
+
+   void setGrashofNumber
+   (Teuchos::ParameterList & aInputs)
+   {
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
+       if(tGrNum.size() != mNumSpatialDims)
+       {
+           THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
+               + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
+               + std::to_string(mNumSpatialDims)  + "'.")
+       }
+
+       auto tLength = mGrNum.size();
+       auto tHostGrNum = Kokkos::create_mirror(mGrNum);
+       for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
+       {
+           tHostGrNum(tDim) = tGrNum[tDim];
+       }
+       Kokkos::deep_copy(mGrNum, tHostGrNum);
+   }
+
+   void setBuoyancyConstant
+   (Teuchos::ParameterList & aInputs)
+   {
+       auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+       auto tHeatTransfer = Plato::tolower(tTag);
+
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       if(tHeatTransfer == "forced")
+       {
+           auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+           mBuoyancy = static_cast<Plato::Scalar>(1) / (tReNum*tReNum);
+       }
+       else if(tHeatTransfer == "natural")
+       {
+           auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+           mBuoyancy = tPrNum*tPrNum;
+       }
+       else
+       {
+           mBuoyancy = 0; // default heat transfer == "none"
+       }
+   }
+
+   void setDimensionlessProperties
+   (Teuchos::ParameterList & aInputs)
+   {
+       if(aInputs.isSublist("Hyperbolic") == false)
+       {
+           THROWERR("'Hyperbolic' Parameter List is not defined.")
+       }
+       this->setViscosity(aInputs);
+       this->setPermeability(aInputs);
+       this->setGrashofNumber(aInputs);
+       this->setBuoyancyConstant(aInputs);
+   }
 
     void setNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
     {
@@ -3880,7 +3979,7 @@ private:
         }
     }
 };
-// class NaturalConvectionResidual
+// class VelocityPredictorResidual
 
 }
 // namespace Brinkman
@@ -4227,7 +4326,6 @@ calculate_inertial_forces
 
 
 
-
 template<typename PhysicsT, typename EvaluationT>
 class TemperatureResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -4261,6 +4359,7 @@ private:
     Plato::Scalar mHeatSourceConstant         = 0.0;
     Plato::Scalar mCharacteristicLength       = 1.0;
     Plato::Scalar mReferenceTemperature       = 1.0;
+    Plato::Scalar mEffectiveConductivity      = 1.0;
     Plato::Scalar mFluidThermalConductivity   = 1.0;
 
 public:
@@ -4326,6 +4425,7 @@ public:
         // transfer member data to device
         auto tRefTemp          = mReferenceTemperature;
         auto tCharLength       = mCharacteristicLength;
+        auto tEffConductivity  = mEffectiveConductivity;
         auto tFluidThermalCond = mFluidThermalConductivity;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
@@ -4337,6 +4437,7 @@ public:
 
             // 1. calculate internal forces
             Plato::Fluids::calculate_flux<mNumNodesPerCell,mNumSpatialDims>(aCellOrdinal, tGradient, tPrevTempWS, tThermalFlux);
+            Plato::blas1::scale<mNumSpatialDims>(aCellOrdinal, tEffConductivity, tThermalFlux);
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell,mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tThermalFlux, aResultWS);
 
@@ -4427,6 +4528,36 @@ private:
         mFluidThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Conductivity", tThermalPropBlock, tMaterial);
     }
 
+    void setCharacteristicLength
+    (Teuchos::ParameterList & aInputs)
+    {
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        mCharacteristicLength = Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolic);
+    }
+
+    void setEffectiveConductivity
+    (Teuchos::ParameterList & aInputs)
+    {
+        auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+        auto tHeatTransfer = Plato::tolower(tTag);
+
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        if(tHeatTransfer == "forced" || tHeatTransfer == "none")
+        {
+            auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+            auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+            mEffectiveConductivity = static_cast<Plato::Scalar>(1) / (tReNum*tPrNum);
+        }
+        else if(tHeatTransfer == "natural")
+        {
+            mEffectiveConductivity = 1.0;
+        }
+        else
+        {
+            THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
+        }
+    }
+
     void setDimensionlessProperties
     (Teuchos::ParameterList & aInputs)
     {
@@ -4434,9 +4565,8 @@ private:
         {
             THROWERR("'Hyperbolic' Parameter List is not defined.")
         }
-        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
-        mCharacteristicLength =
-            Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolicParamList);
+        this->setCharacteristicLength(aInputs);
+        this->setEffectiveConductivity(aInputs);
     }
 
     void setNaturalBoundaryConditions
@@ -4488,6 +4618,7 @@ private:
     Plato::Scalar mHeatSourceConstant         = 0.0;
     Plato::Scalar mCharacteristicLength       = 1.0;
     Plato::Scalar mReferenceTemperature       = 1.0;
+    Plato::Scalar mEffectiveConductivity      = 1.0;
     Plato::Scalar mSolidThermalDiffusivity    = 1.0;
     Plato::Scalar mFluidThermalDiffusivity    = 1.0;
     Plato::Scalar mFluidThermalConductivity   = 1.0;
@@ -4556,6 +4687,7 @@ public:
         // transfer member data to device
         auto tRefTemp               = mReferenceTemperature;
         auto tCharLength            = mCharacteristicLength;
+        auto tEffConductivity       = mEffectiveConductivity;
         auto tFluidThermalDiff      = mFluidThermalDiffusivity;
         auto tSolidThermalDiff      = mSolidThermalDiffusivity;
         auto tFluidThermalCond      = mFluidThermalConductivity;
@@ -4570,10 +4702,10 @@ public:
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
             // 1. calculate internal forces
-            // TODO: FIX THIS, THERMAL DIFFUSIVITY SHOULD BE DIMENSIONLESS IT SHOULD BE DIMENSIONLESS
             ControlT tPenalizedDiffusivity = Plato::Fluids::penalize_thermal_diffusivity<mNumNodesPerCell>
                 (aCellOrdinal, tFluidThermalDiff, tSolidThermalDiff, tThermalDiffPenaltyExp, tControlWS);
             Plato::Fluids::calculate_flux<mNumNodesPerCell,mNumSpatialDims>(aCellOrdinal, tGradient, tPrevTempWS, tThermalFlux);
+            tPenalizedDiffusivity = tEffConductivity * tPenalizedDiffusivity;
             Plato::blas1::scale<mNumSpatialDims>(aCellOrdinal, tPenalizedDiffusivity, tThermalFlux);
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell,mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tThermalFlux, aResultWS);
@@ -4582,7 +4714,6 @@ public:
             Plato::Fluids::calculate_convective_forces<mNumNodesPerCell,mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevVelGP, tPrevTempWS, tInternalForces);
 
-            // TODO: FIX THIS, PUT IT IN THE CONTEXT OF THE PENALTY MODEL
             auto tHeatSrcConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTemp);
             ControlT tPenalizedHeatSrcConst = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
                 (aCellOrdinal, tHeatSrcConst, tHeatSrcPenaltyExp, tControlWS);
@@ -4669,6 +4800,36 @@ private:
         mFluidThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Conductivity", tThermalPropBlock, tMaterial);
     }
 
+    void setCharacteristicLength
+    (Teuchos::ParameterList & aInputs)
+    {
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        mCharacteristicLength = Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolic);
+    }
+
+    void setEffectiveConductivity
+    (Teuchos::ParameterList & aInputs)
+    {
+        auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+        auto tHeatTransfer = Plato::tolower(tTag);
+
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        if(tHeatTransfer == "forced" || tHeatTransfer == "none")
+        {
+            auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+            auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+            mEffectiveConductivity = static_cast<Plato::Scalar>(1) / (tReNum*tPrNum);
+        }
+        else if(tHeatTransfer == "natural")
+        {
+            mEffectiveConductivity = 1.0;
+        }
+        else
+        {
+            THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
+        }
+    }
+
     void setDimensionlessProperties
     (Teuchos::ParameterList & aInputs)
     {
@@ -4676,9 +4837,8 @@ private:
         {
             THROWERR("'Hyperbolic' Parameter List is not defined.")
         }
-        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
-        mCharacteristicLength =
-            Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolicParamList);
+        this->setCharacteristicLength(aInputs);
+        this->setEffectiveConductivity(aInputs);
     }
 
     void setPenaltyModelParameters
@@ -5895,13 +6055,8 @@ temperature_residual
  Plato::DataMap & aDataMap,
  Teuchos::ParameterList & aInputs)
 {
-    auto tScenario = aInputs.get<std::string>("Scenario","");
-    if(tScenario.empty())
-    {
-        THROWERR("Scenario was not defined. Options are 1) analysis, density to or levelset to")
-    }
+    auto tScenario = aInputs.get<std::string>("Scenario","Undefined");
     auto tLowerScenario = Plato::tolower(tScenario);
-
     if( tLowerScenario == "density to" )
     {
         return ( std::make_shared<Plato::Fluids::SIMP::TemperatureResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
@@ -5923,26 +6078,19 @@ velocity_predictor_residual
  Plato::DataMap & aDataMap,
  Teuchos::ParameterList & aInputs)
 {
-    auto tScenario = aInputs.get<std::string>("Scenario","");
-    if(tScenario.empty())
-    {
-        THROWERR("Scenario was not defined. Options are 1) analysis, density to or levelset to")
-    }
+    auto tScenario = aInputs.get<std::string>("Scenario","Undefined");
     auto tLowerScenario = Plato::tolower(tScenario);
-
-    auto tTag = aInputs.get<std::string>("Heat Transfer Mechanism", "Not Defined");
-    auto tLowerTag = Plato::tolower(tTag);
-    if( tLowerTag == "natural convection" && tLowerScenario == "density to")
+    if( tLowerScenario == "density to")
     {
-        return ( std::make_shared<Plato::Fluids::Brinkman::NaturalConvectionResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+        return ( std::make_shared<Plato::Fluids::Brinkman::VelocityPredictorResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
     }
-    else if( tLowerTag == "natural convection" && (tLowerScenario == "analysis" || tLowerScenario == "levelset to"))
+    else if( tLowerScenario == "analysis" || tLowerScenario == "levelset to" )
     {
-        return ( std::make_shared<Plato::Fluids::NaturalConvectionResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
+        return ( std::make_shared<Plato::Fluids::VelocityPredictorResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
     }
     else
     {
-        THROWERR(std::string("Heat Transfer Mechanism '") + tTag + "' is not supported.")
+        THROWERR(std::string("Scenario with tag '") + tScenario + "' is not supported.")
     }
 }
 
@@ -9034,6 +9182,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
+            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Characteristic Length' type='double' value='1.0'/>"
@@ -9132,12 +9281,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
     //Plato::print_array_2D(tResult, "results");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman_EvaluateBoundary)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Brinkman_VelocityPredictorResidual_EvaluateBoundary)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
+            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
@@ -9222,7 +9372,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman_EvaluateBound
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::Fluids::Brinkman::NaturalConvectionResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
+    Plato::Fluids::Brinkman::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
     tResidual.evaluateBoundary(tSpatialModel, tWorkSets, tResult);
 
     // test values
@@ -9241,12 +9391,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman_EvaluateBound
     //Plato::print_array_2D(tResult, "results");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman_EvaluatePrescribedBoundary)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Brinkman_VelocityPredictorResidual_EvaluatePrescribedBoundary)
 {
     // set xml file inputs
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
+            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
@@ -9331,7 +9482,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman_EvaluatePresc
     // evaluate pressure increment residual
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::Fluids::Brinkman::NaturalConvectionResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
+    Plato::Fluids::Brinkman::VelocityPredictorResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap,tInputs.operator*());
     tResidual.evaluatePrescribed(tSpatialModel, tWorkSets, tResult);
 
     // test values
@@ -10088,7 +10239,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SIMP_TemperatureResidual)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <Parameter name='Scenario' type='string' value='Density TO'/>"
-            "  <Parameter name='Heat Transfer Mechanism' type='string' value='Natural Convection'/>"
+            "  <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Characteristic Length'  type='double'  value='1.0'/>"
@@ -10559,7 +10710,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityCorrectorResidual)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <Parameter name='Heat Transfer Mechanism' type='string' value='Natural Convection'/>"
+            "  <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
@@ -11207,7 +11358,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <Parameter name='Scenario' type='string' value='Density TO'/>"
-            "  <Parameter name='Heat Transfer Mechanism' type='string' value='Natural Convection'/>"
+            "  <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
