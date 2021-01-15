@@ -11383,7 +11383,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <Parameter name='Scenario' type='string' value='Density TO'/>"
-            "  <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>"
+            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
