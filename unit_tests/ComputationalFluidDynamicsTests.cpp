@@ -8761,6 +8761,25 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
+{
+    auto tSideSetName = "-x";
+    Plato::Scalar tPoint[1][2];
+    tPoint[0][0] = 0.0; tPoint[0][1] = 0.0;
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+
+    constexpr auto tSpaceDim = 2;
+    constexpr auto tNumPoints = 1;
+    auto tNodeIds =
+        Plato::find_node_ids_on_face_set<tNumPoints,tSpaceDim>(tMesh.operator*(), tMeshSets, tSideSetName, tPoint);
+
+    for(auto& tId : tNodeIds)
+    {
+        std::cout << "\n" << tId << "\n";
+    }
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
 {
     // set xml file inputs
