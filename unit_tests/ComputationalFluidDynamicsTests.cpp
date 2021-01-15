@@ -362,6 +362,72 @@ get_num_entities
     }
 }
 
+DEVICE_TYPE
+inline bool equal
+(const Plato::Scalar & aX,
+ const Plato::Scalar & aY,
+ Plato::OrdinalType aULP = 2)
+{
+    return (fabs(aX-aY) <= DBL_EPSILON * fabs(aX-aY) * aULP);
+}
+
+template<Plato::OrdinalType NumPoints, Plato::OrdinalType SpaceDim>
+inline std::vector<Plato::OrdinalType>
+find_node_ids_on_face_set
+(const Omega_h::Mesh & aMesh,
+ const Omega_h::MeshSets & aMeshSets,
+ const std::string & aEntitySetName,
+ Plato::Scalar aPoints[NumPoints][SpaceDim])
+{
+    std::vector<Plato::OrdinalType> tNodeIds;
+    if(Plato::is_entity_set_defined<Omega_h::SIDE_SET>(aMeshSets, aEntitySetName) == false)
+    {
+        return tNodeIds;
+    }
+
+    auto tAllCoords = aMesh.coords();
+    auto tFaceLocalIds = Plato::get_entity_ordinals<Omega_h::SIDE_SET>(aMeshSets, aEntitySetName);
+    auto tFaceToNodeIds = aMesh.get_adj(Omega_h::FACE, Omega_h::VERT).ab2b;
+    const auto tNumNodesOnSet = tFaceToNodeIds.size();
+
+    Plato::ScalarVectorT<Plato::OrdinalType> tMatch("matching node ids", NumPoints);
+    const auto tNumSetFaces = tFaceLocalIds.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumSetFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        const auto tFace = tFaceLocalIds[aOrdinal];
+        Plato::OrdinalType tNodes[SpaceDim];
+        for (Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
+        {
+            tNodes[tDim] = tFaceToNodeIds[SpaceDim*tFace+tDim];
+        }
+
+        auto tNumNodes = SpaceDim;
+        Plato::OrdinalType tSum = 0;
+        for(Plato::OrdinalType tPoint = 0; tPoint < NumPoints; tPoint++)
+        {
+            for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
+            {
+                for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
+                {
+                    tSum += Plato::equal(tAllCoords[SpaceDim*tNodes[tNode] + tDim], aPoints[tPoint][tDim]) ?
+                        static_cast<Plato::OrdinalType>(1) : static_cast<Plato::OrdinalType>(0);
+                }
+                if(tSum == SpaceDim) { tMatch(tPoint) = tNodes[tNode]; }
+            }
+        }
+    }, "find_node_ids_on_face_set");
+
+    auto tHostMatch = Kokkos::create_mirror(tMatch);
+    Kokkos::deep_copy(tHostMatch, tMatch);
+    auto tLength = tMatch.size();
+    for(decltype(tLength) tIndex = 0; tIndex < tLength; tIndex++)
+    {
+        tNodeIds.push_back(tHostMatch(tIndex));
+    }
+
+    return tNodeIds;
+}
+
 template
 <Omega_h::Int EntityDim,
  Omega_h::SetType EntitySet>
@@ -5345,18 +5411,18 @@ private:
         // the natural bcs are applied on the side sets where velocity essential
         // bcs are enforced. therefore, these side sets should be read by this function.
         std::unordered_map<std::string, std::vector<std::pair<Plato::OrdinalType, Plato::Scalar>>> tMap;
-        if(aInputs.isSublist("Momentum Boundary Conditions") == false)
+        if(aInputs.isSublist("Momentum Essential Boundary Conditions") == false)
         {
-            THROWERR("'Momentum Boundary Conditions' block must be defined for fluid flow problems.")
+            THROWERR("'Momentum Essential Boundary Conditions' block must be defined for fluid flow problems.")
         }
-        auto tSublist = aInputs.sublist("Momentum Boundary Conditions");
+        auto tSublist = aInputs.sublist("Momentum Essential Boundary Conditions");
 
         for (Teuchos::ParameterList::ConstIterator tItr = tSublist.begin(); tItr != tSublist.end(); ++tItr)
         {
             const Teuchos::ParameterEntry &tEntry = tSublist.entry(tItr);
             if (!tEntry.isList())
             {
-                THROWERR(std::string("Error reading 'Momentum Boundary Conditions' block: Expects a parameter ")
+                THROWERR(std::string("Error reading 'Momentum Essential Boundary Conditions' block: Expects a parameter ")
                     + "list input with information pertaining to the velocity boundary conditions .")
             }
 
@@ -7835,9 +7901,9 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Temperature Boundary Conditions"))
+        if(aInputs.isSublist("Temperature Essential Boundary Conditions"))
         {
-            auto tTempBCs = aInputs.sublist("Temperature Boundary Conditions");
+            auto tTempBCs = aInputs.sublist("Temperature Essential Boundary Conditions");
             mTemperatureEssentialBCs = Plato::EssentialBCs<EnergyConservationT>(tTempBCs, mSpatialModel.MeshSets);
         }
     }
@@ -7846,9 +7912,9 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Pressure Boundary Conditions"))
+        if(aInputs.isSublist("Pressure Essential Boundary Conditions"))
         {
-            auto tPressBCs = aInputs.sublist("Pressure Boundary Conditions");
+            auto tPressBCs = aInputs.sublist("Pressure Essential Boundary Conditions");
             mPressureEssentialBCs = Plato::EssentialBCs<MassConservationT>(tPressBCs, mSpatialModel.MeshSets);
         }
     }
@@ -7857,9 +7923,9 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Momentum Boundary Conditions"))
+        if(aInputs.isSublist("Momentum Essential Boundary Conditions"))
         {
-            auto tVelBCs = aInputs.sublist("Momentum Boundary Conditions");
+            auto tVelBCs = aInputs.sublist("Momentum Essential Boundary Conditions");
             mVelocityEssentialBCs = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
         }
     }
@@ -8656,9 +8722,9 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Temperature Boundary Conditions"))
+        if(aInputs.isSublist("Temperature Essential Boundary Conditions"))
         {
-            auto tTempBCs = aInputs.sublist("Temperature Boundary Conditions");
+            auto tTempBCs = aInputs.sublist("Temperature Essential Boundary Conditions");
             mTemperatureEssentialBCs = Plato::EssentialBCs<EnergyConservationT>(tTempBCs, mSpatialModel.MeshSets);
         }
     }
@@ -8667,9 +8733,9 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Pressure Boundary Conditions"))
+        if(aInputs.isSublist("Pressure Essential Boundary Conditions"))
         {
-            auto tPressBCs = aInputs.sublist("Pressure Boundary Conditions");
+            auto tPressBCs = aInputs.sublist("Pressure Essential Boundary Conditions");
             mPressureEssentialBCs = Plato::EssentialBCs<MassConservationT>(tPressBCs, mSpatialModel.MeshSets);
         }
     }
@@ -8678,9 +8744,9 @@ private:
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Momentum Boundary Conditions"))
+        if(aInputs.isSublist("Momentum Essential Boundary Conditions"))
         {
-            auto tVelBCs = aInputs.sublist("Momentum Boundary Conditions");
+            auto tVelBCs = aInputs.sublist("Momentum Essential Boundary Conditions");
             mVelocityEssentialBCs = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
         }
     }
@@ -8702,45 +8768,68 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
             "  <Parameter name='Heat Transfer' type='string' value='None'/>"
-            "  <Parameter name='Read Essential Boundary Conditions' type='bool' value='false'/>"
             "  <ParameterList name='Hyperbolic'>"
             "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Prandtl Number'   type='double'  value='1.0'/>"
-            "      <Parameter  name='Reynolds Number'  type='double'  value='1.0'/>"
+            "      <Parameter  name='Prandtl Number'   type='double'  value='1.7'/>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='400'/>"
             "    </ParameterList>"
-            "    <ParameterList name='Energy Conservation'>"
-            "      <ParameterList name='Penalty Function'>"
-            "        <Parameter  name='Heat Source Penalty Exponent'  type='double' value='3.0'/>"
-            "        <Parameter  name='Thermal Diffusion Penalty Exponent'  type='double' value='3.0'/>"
+            "  </ParameterList>"
+            "  <ParameterList name='Spatial Model'>"
+            "    <ParameterList name='Domains'>"
+            "      <ParameterList name='Design Volume'>"
+            "        <Parameter name='Element Block' type='string' value='body'/>"
+            "        <Parameter name='Material Model' type='string' value='Steel'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "<ParameterList name='Spatial Model'>"
-            "  <ParameterList name='Domains'>"
-            "    <ParameterList name='Design Volume'>"
-            "      <Parameter name='Element Block' type='string' value='block_1'/>"
-            "      <Parameter name='Material Model' type='string' value='Steel'/>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='Steel'>"
+            "      <ParameterList name='Thermal Properties'>"
+            "        <Parameter  name='Fluid Thermal Conductivity'  type='double'  value='1'/>"
+            "        <Parameter  name='Reference Temperature'       type='double'  value='10.0'/>"
+            "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
-            "</ParameterList>"
-            "<ParameterList name='Material Models'>"
-            "  <ParameterList name='Steel'>"
-            "    <ParameterList name='Thermal Properties'>"
-            "      <Parameter  name='Fluid Thermal Conductivity'  type='double'  value='1'/>"
-            "      <Parameter  name='Reference Temperature'       type='double'  value='10.0'/>"
-            "      <Parameter  name='Fluid Thermal Diffusivity'   type='double'  value='0.5'/>"
-            "      <Parameter  name='Solid Thermal Diffusivity'   type='double'  value='1.0'/>"
+            "  <ParameterList  name='Momentum Essential Boundary Conditions'>"
+            "    <ParameterList  name='X-Dir No-Slip on X-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "</ParameterList>"
-            "  <ParameterList  name='Heat Source'>"
-            "    <Parameter  name='Constant'  type='double'  value='2.0'/>"
+            "    <ParameterList  name='Y-Dir No-Slip on X-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on X+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on X+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_Brinkman)
@@ -9630,7 +9719,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <ParameterList  name='Momentum Boundary Conditions'>"
+            "  <ParameterList  name='Momentum Essential Boundary Conditions'>"
             "    <ParameterList  name='Zero Velocity X-Dir'>"
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
             "      <Parameter  name='Index'    type='int'    value='0'/>"
