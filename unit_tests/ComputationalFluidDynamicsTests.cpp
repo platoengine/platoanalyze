@@ -7197,8 +7197,6 @@ private:
     std::shared_ptr<Plato::AbstractSolver> mVectorFieldSolver;
     std::shared_ptr<Plato::AbstractSolver> mScalarFieldSolver;
 
-    Plato::VectorEntryOrdinal<mNumSpatialDims,mNumVelDofsPerNode> mVelocityOrdinals;
-
 public:
     SteadyState
     (Omega_h::Mesh          & aMesh,
@@ -7209,8 +7207,7 @@ public:
         mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
         mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
         mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
-        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs),
-        mVelocityOrdinals(&aMesh)
+        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs)
     {
         this->initialize(aInputs, aMachine);
     }
@@ -8012,8 +8009,6 @@ private:
     std::shared_ptr<Plato::AbstractSolver> mVectorFieldSolver;
     std::shared_ptr<Plato::AbstractSolver> mScalarFieldSolver;
 
-    Plato::VectorEntryOrdinal<mNumSpatialDims,mNumVelDofsPerNode> mVelocityOrdinals;
-
 public:
     Transient
     (Omega_h::Mesh          & aMesh,
@@ -8024,8 +8019,7 @@ public:
         mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
         mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
         mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
-        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs),
-        mVelocityOrdinals(&aMesh)
+        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs)
     {
         this->initialize(aInputs, aMachine);
     }
