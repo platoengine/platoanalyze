@@ -237,6 +237,19 @@ inline void print_fad_dx_values
 namespace omega_h
 {
 
+template<typename Type>
+inline Omega_h::LOs
+copy(const ScalarVectorT<Type> & aInput)
+{
+    auto tLength = aInput.size();
+    Omega_h::LOs tOutput(tLength, 0);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tOutput[aOrdinal] = aInput(aOrdinal);
+    }, "copy");
+    return tOutput;
+}
+
 template<typename ArrayT>
 void print(const ArrayT & aInput, const std::string & aName)
 {
@@ -372,14 +385,14 @@ inline bool equal
 }
 
 template<Plato::OrdinalType NumPoints, Plato::OrdinalType SpaceDim>
-inline std::vector<Plato::OrdinalType>
+Plato::ScalarVectorT<Plato::OrdinalType>
 find_node_ids_on_face_set
 (const Omega_h::Mesh & aMesh,
  const Omega_h::MeshSets & aMeshSets,
  const std::string & aEntitySetName,
  const Plato::ScalarMultiVector & aPoints)
 {
-    std::vector<Plato::OrdinalType> tNodeIds;
+    Plato::ScalarVectorT<Plato::OrdinalType> tNodeIds;
     if(Plato::is_entity_set_defined<Omega_h::SIDE_SET>(aMeshSets, aEntitySetName) == false)
     {
         return tNodeIds;
@@ -427,14 +440,25 @@ find_node_ids_on_face_set
     Kokkos::deep_copy(tHostMatch, tMatch);
     auto tHostNodeIdMatch = Kokkos::create_mirror(tNodeIdMatch);
     Kokkos::deep_copy(tHostNodeIdMatch, tNodeIdMatch);
+
     auto tLength = tNodeIdMatch.size();
+    std::vector<Plato::OrdinalType> tIds;
     for(decltype(tLength) tIndex = 0; tIndex < tLength; tIndex++)
     {
         if(tHostMatch(tIndex) == 1)
         {
-            tNodeIds.push_back(tHostNodeIdMatch(tIndex));
+            tIds.push_back(tHostNodeIdMatch(tIndex));
         }
     }
+
+    Kokkos::resize(tNodeIds, tIds.size());
+    auto tHostNodeIds = Kokkos::create_mirror(tNodeIds);
+    for(auto& tId : tIds)
+    {
+        auto tIndex = &tId - &tIds[0];
+        tHostNodeIds(tIndex) = tId;
+    }
+    Kokkos::deep_copy(tNodeIds, tHostNodeIds);
 
     return tNodeIds;
 }
@@ -8786,12 +8810,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
 
     // test one
     auto tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsA,tSpaceDim>(*tMesh, tMeshSets, tSideSetName, tPointsA);
-    TEST_EQUALITY(1u,tNodeIds.size());
+    TEST_EQUALITY(1,tNodeIds.size());
+    auto tHostNodeIds = Kokkos::create_mirror(tNodeIds);
+    Kokkos::deep_copy(tHostNodeIds, tNodeIds);
     std::vector<Plato::OrdinalType> tGold = {0};
     for(auto& tGoldId : tNodeIds)
     {
         auto tIndex = &tGoldId - &tNodeIds[0];
-        TEST_EQUALITY(tGoldId, tNodeIds[tIndex]);
+        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex));
     }
 
     // test two
@@ -8802,12 +8828,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
     tHostPoints(1,0) = 0.0; tHostPoints(1,1) = 1.0;
     Kokkos::deep_copy(tPointsB, tHostPoints);
     tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsB,tSpaceDim>(*tMesh, tMeshSets, tSideSetName, tPointsB);
-    TEST_EQUALITY(2u,tNodeIds.size());
+    TEST_EQUALITY(2,tNodeIds.size());
+    tHostNodeIds = Kokkos::create_mirror(tNodeIds);
+    Kokkos::deep_copy(tHostNodeIds, tNodeIds);
     tGold = {1,0};
     for(auto& tGoldId : tNodeIds)
     {
         auto tIndex = &tGoldId - &tNodeIds[0];
-        TEST_EQUALITY(tGoldId, tNodeIds[tIndex]);
+        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex));
     }
 
     // test three 
@@ -8818,13 +8846,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
     tHostPoints(1,0) = 0.0; tHostPoints(1,1) = 2.0;
     Kokkos::deep_copy(tPointsC, tHostPoints);
     tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsC,tSpaceDim>(*tMesh, tMeshSets, tSideSetName, tPointsC);
-    TEST_EQUALITY(1u,tNodeIds.size());
+    TEST_EQUALITY(1,tNodeIds.size());
+    tHostNodeIds = Kokkos::create_mirror(tNodeIds);
+    Kokkos::deep_copy(tHostNodeIds, tNodeIds);
     tGold = {0};
     for(auto& tGoldId : tNodeIds)
     {
         auto tIndex = &tGoldId - &tNodeIds[0];
-        TEST_EQUALITY(tGoldId, tNodeIds[tIndex]);
+        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex));
     } 
+
+    // test four
+    tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsC,tSpaceDim>(*tMesh, tMeshSets, "dog", tPointsC);
+    TEST_EQUALITY(0,tNodeIds.size());
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
@@ -8888,6 +8922,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "      <Parameter  name='Sides'    type='string' value='y-'/>"
             "    </ParameterList>"
             "  </ParameterList>"
+            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
+            "    <ParameterList  name='Zero Pressure'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='pressure'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
             "</ParameterList>"
             );
 
@@ -8896,6 +8937,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
+
+    // add pressure essential boundary condition to node set list
+    Plato::ScalarMultiVector tPoints("points",1,2);
+    auto tHostPoints = Kokkos::create_mirror(tPoints);
+    tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
+    auto tNodeIds = Plato::find_node_ids_on_face_set<1,2>(*tMesh, tMeshSets, "x-", tPoints);
+    auto tLocalNodeIds = Plato::omega_h::copy(tNodeIds);
+    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tLocalNodeIds) );
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_Brinkman)
