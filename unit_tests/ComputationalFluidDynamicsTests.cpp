@@ -242,12 +242,13 @@ inline Omega_h::LOs
 copy(const ScalarVectorT<Type> & aInput)
 {
     auto tLength = aInput.size();
-    Omega_h::LOs tOutput(tLength, 0);
+    Omega_h::Write<Type> tWrite(tLength);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
-        tOutput[aOrdinal] = aInput(aOrdinal);
+        tWrite[aOrdinal] = aInput(aOrdinal);
     }, "copy");
-    return tOutput;
+
+    return (Omega_h::LOs(tWrite));
 }
 
 template<typename ArrayT>
@@ -8814,9 +8815,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
     auto tHostNodeIds = Kokkos::create_mirror(tNodeIds);
     Kokkos::deep_copy(tHostNodeIds, tNodeIds);
     std::vector<Plato::OrdinalType> tGold = {0};
-    for(auto& tGoldId : tNodeIds)
+    for(auto& tGoldId : tGold)
     {
-        auto tIndex = &tGoldId - &tNodeIds[0];
+        auto tIndex = &tGoldId - &tGold[0];
         TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex));
     }
 
@@ -8831,10 +8832,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
     TEST_EQUALITY(2,tNodeIds.size());
     tHostNodeIds = Kokkos::create_mirror(tNodeIds);
     Kokkos::deep_copy(tHostNodeIds, tNodeIds);
-    tGold = {1,0};
-    for(auto& tGoldId : tNodeIds)
+    tGold = {0,1};
+    for(auto& tGoldId : tGold)
     {
-        auto tIndex = &tGoldId - &tNodeIds[0];
+        auto tIndex = &tGoldId - &tGold[0];
         TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex));
     }
 
@@ -8850,9 +8851,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
     tHostNodeIds = Kokkos::create_mirror(tNodeIds);
     Kokkos::deep_copy(tHostNodeIds, tNodeIds);
     tGold = {0};
-    for(auto& tGoldId : tNodeIds)
+    for(auto& tGoldId : tGold)
     {
-        auto tIndex = &tGoldId - &tNodeIds[0];
+        auto tIndex = &tGoldId - &tGold[0];
         TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex));
     } 
 
