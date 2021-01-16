@@ -5668,8 +5668,9 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradConfigFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumConfigDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumConfigDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         // evaluate boundary forces
@@ -5683,14 +5684,15 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradConfigFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumConfigDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumConfigDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mGradConfigFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumConfigDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         return tJacobian;
@@ -5721,8 +5723,9 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradControlFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControlDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumControlDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         // evaluate boundary forces
@@ -5736,14 +5739,15 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradControlFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumControlDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumControlDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mGradControlFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumControlDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         return tJacobian;
@@ -5774,8 +5778,9 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPredictorFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumVelDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         // evaluate boundary forces
@@ -5789,14 +5794,15 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPredictorFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mGradPredictorFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         return tJacobian;
@@ -5827,8 +5833,9 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevVelFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumVelDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         // evaluate boundary forces
@@ -5842,14 +5849,15 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevVelFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mGradPrevVelFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         return tJacobian;
@@ -5880,8 +5888,9 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevPressFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumPressDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         // evaluate boundary forces
@@ -5895,14 +5904,15 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevPressFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mGradPrevPressFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         return tJacobian;
@@ -5933,8 +5943,9 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevTempFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumTempDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         // evaluate boundary forces
@@ -5948,14 +5959,15 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradPrevTempFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mGradPrevTempFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         return tJacobian;
@@ -5986,8 +5998,9 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradCurVelFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumVelDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         // evaluate boundary forces
@@ -6001,14 +6014,15 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradCurVelFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumVelDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mGradCurVelFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumVelDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         return tJacobian;
@@ -6039,8 +6053,9 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradCurPressFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntires = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumPressDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntires);
         }
 
         // evaluate boundary forces
@@ -6054,14 +6069,15 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradCurPressFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumPressDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mGradCurPressFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumPressDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         return tJacobian;
@@ -6092,8 +6108,9 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradCurTempFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tDomain, mNumDofsPerCell, mNumTempDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         // evaluate prescribed forces
@@ -6107,14 +6124,15 @@ public:
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mGradCurTempFuncs.begin()->second->evaluatePrescribed(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumTempDofsPerNode, mNumDofsPerNode> tJacEntryOrdinal(tJacobian, &tMesh);
+            auto tJacobianMatrixEntries = tJacobian->entries();
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
 
             // evaluate balancing forces
             Plato::blas2::fill(0.0, tResultWS);
             mGradCurTempFuncs.begin()->second->evaluateBoundary(mSpatialModel, tInputWorkSets, tResultWS);
             Plato::assemble_transpose_jacobian(tNumCells, mNumDofsPerCell, mNumTempDofsPerCell,
-                                               tJacEntryOrdinal, tResultWS, tJacobian->entries());
+                                               tJacEntryOrdinal, tResultWS, tJacobianMatrixEntries);
         }
 
         return tJacobian;
@@ -6843,8 +6861,8 @@ public:
     typedef Plato::Fluids::FunctionFactory FunctionFactory;
     using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>;
 
-    static constexpr auto mNumDofsPerNode = SimplexT::mNumMomentumDofsPerNode;
-    static constexpr auto mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
+    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumMomentumDofsPerNode;
+    static constexpr Plato::OrdinalType mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
 };
 
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
@@ -6854,8 +6872,8 @@ public:
     typedef Plato::Fluids::FunctionFactory FunctionFactory;
     using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>;
 
-    static constexpr auto mNumDofsPerNode = SimplexT::mNumMassDofsPerNode;
-    static constexpr auto mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
+    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumMassDofsPerNode;
+    static constexpr Plato::OrdinalType mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
 };
 
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
@@ -6865,8 +6883,8 @@ public:
     typedef Plato::Fluids::FunctionFactory FunctionFactory;
     using SimplexT = Plato::SimplexFluids<SpaceDim, NumControls>;
 
-    static constexpr auto mNumDofsPerNode = SimplexT::mNumEnergyDofsPerNode;
-    static constexpr auto mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
+    static constexpr Plato::OrdinalType mNumDofsPerNode = SimplexT::mNumEnergyDofsPerNode;
+    static constexpr Plato::OrdinalType mNumDofsPerCell = SimplexT::mNumNodesPerCell * mNumDofsPerNode;
 };
 
 template<Plato::OrdinalType SpaceDim, Plato::OrdinalType NumControls = 1>
@@ -7680,8 +7698,8 @@ private:
            Plato::Primal       & aVariables)
     {
         // calculate current residual and jacobian matrix
-        auto tResidualVelocity = mVelocityResidual.value(aVariables);
-        auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aVariables);
+        auto tResidualVelocity = mVelocityResidual.value(aControl, aVariables);
+        auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
 
         // solve velocity equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
