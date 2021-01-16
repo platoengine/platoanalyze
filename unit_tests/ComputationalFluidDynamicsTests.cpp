@@ -7207,7 +7207,10 @@ public:
         mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
         mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
         mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
-        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs)
+        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs),
+        mPressureEssentialBCs(aInputs.sublist("Pressure Essential Boundary Conditions",false),aMeshSets),
+        mVelocityEssentialBCs(aInputs.sublist("Momentum Essential Boundary Conditions",false),aMeshSets),
+        mTemperatureEssentialBCs(aInputs.sublist("Temperature Essential Boundary Conditions",false),aMeshSets)
     {
         this->initialize(aInputs, aMachine);
     }
@@ -7412,7 +7415,6 @@ private:
         this->allocateMemberStates(aInputs);
         this->readTimeIntegrationInputs(aInputs);
         this->readDimensionlessProperties(aInputs);
-        this->readEssentialBoundaryConditions(aInputs);
 
         auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
         auto tHeatTransfer = Plato::tolower(tTag);
@@ -7479,17 +7481,6 @@ private:
         mTemperature = Plato::ScalarMultiVector("Temperature Snapshots", tTimeSnapshotsStored, tNumNodes);
         mVelocity    = Plato::ScalarMultiVector("Velocity Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
         mPredictor   = Plato::ScalarMultiVector("Predictor Snapshots", tTimeSnapshotsStored, tNumNodes * mNumVelDofsPerNode);
-    }
-
-    void readEssentialBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        auto tReadBCs = aInputs.get<bool>("Read Essential Boundary Conditions", true);
-        if (tReadBCs)
-        {
-            this->readPressureBoundaryConditions(aInputs);
-            this->readVelocityBoundaryConditions(aInputs);
-            this->readTemperatureBoundaryConditions(aInputs);
-        }
     }
 
     void allocateCriteriaList(Teuchos::ParameterList &aInputs)
@@ -7929,39 +7920,6 @@ private:
 
         Plato::blas1::axpy(1.0, tGradCriterionWrtConfig, aTotalDerivative);
     }
-
-    void readTemperatureBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Temperature Essential Boundary Conditions"))
-        {
-            auto tTempBCs = aInputs.sublist("Temperature Essential Boundary Conditions");
-            mTemperatureEssentialBCs = Plato::EssentialBCs<EnergyConservationT>(tTempBCs, mSpatialModel.MeshSets);
-        }
-    }
-
-    void readPressureBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Pressure Essential Boundary Conditions"))
-        {
-            auto tPressBCs = aInputs.sublist("Pressure Essential Boundary Conditions");
-            mPressureEssentialBCs = Plato::EssentialBCs<MassConservationT>(tPressBCs, mSpatialModel.MeshSets);
-        }
-    }
-
-    void readVelocityBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Momentum Essential Boundary Conditions"))
-        {
-            auto tVelBCs = aInputs.sublist("Momentum Essential Boundary Conditions");
-            mVelocityEssentialBCs = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
-        }
-    }
 };
 
 template<typename PhysicsT>
@@ -8019,7 +7977,10 @@ public:
         mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
         mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
         mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
-        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs)
+        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs),
+        mPressureEssentialBCs(aInputs.sublist("Pressure Essential Boundary Conditions",false),aMeshSets),
+        mVelocityEssentialBCs(aInputs.sublist("Momentum Essential Boundary Conditions",false),aMeshSets),
+        mTemperatureEssentialBCs(aInputs.sublist("Temperature Essential Boundary Conditions",false),aMeshSets)
     {
         this->initialize(aInputs, aMachine);
     }
@@ -8244,22 +8205,10 @@ private:
         this->allocateMemberStateData(aInputs);
         this->readTimeIntegrationInputs(aInputs);
         this->readDimensionlessProperties(aInputs);
-        this->readEssentialBoundaryConditions(aInputs);
 
         auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
         auto tHeatTransfer = Plato::tolower(tTag);
         mCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
-    }
-
-    void readEssentialBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        auto tReadBCs = aInputs.get<bool>("Read Essential Boundary Conditions", true);
-        if (tReadBCs)
-        {
-            this->readPressureBoundaryConditions(aInputs);
-            this->readVelocityBoundaryConditions(aInputs);
-            this->readTemperatureBoundaryConditions(aInputs);
-        }
     }
 
     void allocateLinearSolvers
@@ -8746,39 +8695,6 @@ private:
         Plato::MatrixTimesVectorPlusVector(tGradResVelWrtConfig, tCurrentVelocityAdjoint, tGradCriterionWrtConfig);
 
         Plato::blas1::axpy(1.0, tGradCriterionWrtConfig, aTotalDerivative);
-    }
-
-    void readTemperatureBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Temperature Essential Boundary Conditions"))
-        {
-            auto tTempBCs = aInputs.sublist("Temperature Essential Boundary Conditions");
-            mTemperatureEssentialBCs = Plato::EssentialBCs<EnergyConservationT>(tTempBCs, mSpatialModel.MeshSets);
-        }
-    }
-
-    void readPressureBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Pressure Essential Boundary Conditions"))
-        {
-            auto tPressBCs = aInputs.sublist("Pressure Essential Boundary Conditions");
-            mPressureEssentialBCs = Plato::EssentialBCs<MassConservationT>(tPressBCs, mSpatialModel.MeshSets);
-        }
-    }
-
-    void readVelocityBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        if(aInputs.isSublist("Momentum Essential Boundary Conditions"))
-        {
-            auto tVelBCs = aInputs.sublist("Momentum Essential Boundary Conditions");
-            mVelocityEssentialBCs = Plato::EssentialBCs<MomentumConservationT>(tVelBCs, mSpatialModel.MeshSets);
-        }
     }
 };
 
