@@ -7700,8 +7700,8 @@ private:
            Plato::Primal       & aVariables)
     {
         // calculate current residual and jacobian matrix
-        auto tResidualPredictor = mPredictorResidual.value(aVariables);
-        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aVariables);
+        auto tResidualPredictor = mPredictorResidual.value(aControl, aVariables);
+        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aVariables);
 
         // solve predictor equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
@@ -7720,8 +7720,8 @@ private:
            Plato::Primal       & aVariables)
     {
         // calculate current residual and jacobian matrix
-        auto tResidualPressure = mPressureResidual.value(aVariables);
-        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aVariables);
+        auto tResidualPressure = mPressureResidual.value(aControl, aVariables);
+        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aVariables);
 
         // solve mass equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
@@ -7740,8 +7740,8 @@ private:
            Plato::Primal       & aVariables)
     {
         // calculate current residual and jacobian matrix
-        auto tResidualTemperature = mTemperatureResidual.value(aVariables);
-        auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aVariables);
+        auto tResidualTemperature = mTemperatureResidual.value(aControl, aVariables);
+        auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aControl, aVariables);
 
         // solve energy equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
