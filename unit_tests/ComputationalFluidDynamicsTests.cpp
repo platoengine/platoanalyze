@@ -4656,10 +4656,9 @@ private:
     void setEffectiveConductivity
     (Teuchos::ParameterList & aInputs)
     {
-        auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
-        auto tHeatTransfer = Plato::tolower(tTag);
-
         auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+        auto tHeatTransfer = Plato::tolower(tTag);
         if(tHeatTransfer == "forced" || tHeatTransfer == "none")
         {
             auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
@@ -4928,10 +4927,9 @@ private:
     void setEffectiveConductivity
     (Teuchos::ParameterList & aInputs)
     {
-        auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
-        auto tHeatTransfer = Plato::tolower(tTag);
-
         auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+        auto tHeatTransfer = Plato::tolower(tTag);
         if(tHeatTransfer == "forced" || tHeatTransfer == "none")
         {
             auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
@@ -6191,7 +6189,13 @@ temperature_residual
  Plato::DataMap & aDataMap,
  Teuchos::ParameterList & aInputs)
 {
-    auto tScenario = aInputs.get<std::string>("Scenario","Analysis");
+    if(aInputs.isSublist("Hyperbolic") == false)
+    {
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
+    }
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+
+    auto tScenario = tHyperbolic.get<std::string>("Scenario","Analysis");
     auto tLowerScenario = Plato::tolower(tScenario);
     if( tLowerScenario == "density to" )
     {
@@ -6214,7 +6218,13 @@ velocity_predictor_residual
  Plato::DataMap & aDataMap,
  Teuchos::ParameterList & aInputs)
 {
-    auto tScenario = aInputs.get<std::string>("Scenario","Undefined");
+    if(aInputs.isSublist("Hyperbolic") == false)
+    {
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
+    }
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+
+    auto tScenario = tHyperbolic.get<std::string>("Scenario","Analysis");
     auto tLowerScenario = Plato::tolower(tScenario);
     if( tLowerScenario == "density to")
     {
@@ -7431,10 +7441,20 @@ private:
 
         this->allocateCriteriaList(aInputs);
         this->allocateMemberStates(aInputs);
+        this->calculateHeatTransfer(aInputs);
         this->readTimeIntegrationInputs(aInputs);
         this->readDimensionlessProperties(aInputs);
+    }
 
-        auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+    void calculateHeatTransfer
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Hyperbolic") == false)
+        {
+            THROWERR("'Hyperbolic' Parameter List is not defined.")
+        }
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
         auto tHeatTransfer = Plato::tolower(tTag);
         mCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
     }
@@ -8220,11 +8240,21 @@ private:
         this->allocateLinearSolvers(aInputs,aMachine);
 
         this->allocateCriteriaList(aInputs);
-        this->allocateMemberStateData(aInputs);
+        this->allocateMemberStates(aInputs);
+        this->calculateHeatTransfer(aInputs);
         this->readTimeIntegrationInputs(aInputs);
         this->readDimensionlessProperties(aInputs);
+    }
 
-        auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+    void calculateHeatTransfer
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Hyperbolic") == false)
+        {
+            THROWERR("'Hyperbolic' Parameter List is not defined.")
+        }
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
         auto tHeatTransfer = Plato::tolower(tTag);
         mCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
     }
@@ -8262,7 +8292,7 @@ private:
         mReynoldsNumber = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
     }
 
-    void allocateMemberStateData(Teuchos::ParameterList & aInputs)
+    void allocateMemberStates(Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Time Integration"))
         {
@@ -8796,8 +8826,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <Parameter name='Heat Transfer' type='string' value='None'/>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Prandtl Number'   type='double'  value='1.7'/>"
             "      <Parameter  name='Reynolds Number'  type='double'  value='400'/>"
@@ -9452,8 +9482,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, TemperatureIncrementResidual_EvaluatePr
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Characteristic Length' type='double' value='1.0'/>"
             "    </ParameterList>"
@@ -9557,8 +9587,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Brinkman_VelocityPredictorResidual_Eval
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
             "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
@@ -9667,8 +9697,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Brinkman_VelocityPredictorResidual_Eval
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
             "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
@@ -10508,9 +10538,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SIMP_TemperatureResidual)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <Parameter name='Scenario' type='string' value='Density TO'/>"
-            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Scenario' type='string' value='Density TO'/>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Characteristic Length'  type='double'  value='1.0'/>"
             "    </ParameterList>"
@@ -10980,8 +11010,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityCorrectorResidual)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural Convection'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
             "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
@@ -11627,9 +11657,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <Parameter name='Scenario' type='string' value='Density TO'/>"
-            "  <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Scenario' type='string' value='Density TO'/>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Darcy Number'   type='double'        value='1.0'/>"
             "      <Parameter  name='Prandtl Number' type='double'        value='1.0'/>"
