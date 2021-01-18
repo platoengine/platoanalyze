@@ -7215,7 +7215,9 @@ private:
     static constexpr auto mNumTempDofsPerNode  = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
     static constexpr auto mNumPressDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
 
-    Plato::DataMap      mDataMap;
+    Plato::Comm::Machine& mMachine; /*!< parallel communication interface */
+
+    Plato::DataMap mDataMap; /*!< static output fields metadata interface */
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
     bool mIsExplicitSolve = true;
@@ -7254,16 +7256,17 @@ public:
     (Omega_h::Mesh          & aMesh,
      Omega_h::MeshSets      & aMeshSets,
      Teuchos::ParameterList & aInputs,
-     Comm::Machine          & aMachine) :
-        mSpatialModel(aMesh, aMeshSets, aInputs),
-        mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
-        mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
-        mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
-        mPressureEssentialBCs(aInputs.sublist("Pressure Essential Boundary Conditions",false),aMeshSets),
-        mVelocityEssentialBCs(aInputs.sublist("Momentum Essential Boundary Conditions",false),aMeshSets),
-        mTemperatureEssentialBCs(aInputs.sublist("Temperature Essential Boundary Conditions",false),aMeshSets)
+     Plato::Comm::Machine   & aMachine) :
+         mMachine(aMachine),
+         mSpatialModel(aMesh, aMeshSets, aInputs),
+         mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
+         mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
+         mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
+         mPressureEssentialBCs(aInputs.sublist("Pressure Essential Boundary Conditions",false),aMeshSets),
+         mVelocityEssentialBCs(aInputs.sublist("Momentum Essential Boundary Conditions",false),aMeshSets),
+         mTemperatureEssentialBCs(aInputs.sublist("Temperature Essential Boundary Conditions",false),aMeshSets)
     {
-        this->initialize(aInputs, aMachine);
+        this->initialize(aInputs);
     }
 
     const decltype(mDataMap)& getDataMap() const
@@ -7460,8 +7463,7 @@ public:
 
 private:
     void initialize
-    (Teuchos::ParameterList & aInputs,
-     Comm::Machine          & aMachine)
+    (Teuchos::ParameterList & aInputs)
     {
         this->allocateCriteriaList(aInputs);
         this->allocateMemberStates(aInputs);
@@ -7589,6 +7591,11 @@ private:
         bool tStop = false;
         auto tIteration = aVariables.scalar("iteration");
         auto tCriterionValue = this->calculateResidualNorm(aVariables);
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            printf("Convergence: Residual Norm = %f\n",tCriterionValue);
+        }
+
         if (tCriterionValue < mCBSsolverTolerance)
         {
             tStop = true;
@@ -7597,6 +7604,7 @@ private:
         {
             tStop = true;
         }
+
         return tStop;
     }
 
@@ -8002,7 +8010,9 @@ private:
     static constexpr auto mNumTempDofsPerNode  = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
     static constexpr auto mNumPressDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
 
-    Plato::DataMap      mDataMap;
+    Plato::Comm::Machine& mMachine; /*!< parallel communication interface */
+
+    Plato::DataMap      mDataMap;  /*!< static output fields metadata interface */
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
     bool mIsExplicitSolve = true;
@@ -8041,16 +8051,17 @@ public:
     (Omega_h::Mesh          & aMesh,
      Omega_h::MeshSets      & aMeshSets,
      Teuchos::ParameterList & aInputs,
-     Comm::Machine          & aMachine) :
-        mSpatialModel(aMesh, aMeshSets, aInputs),
-        mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
-        mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
-        mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
-        mPressureEssentialBCs(aInputs.sublist("Pressure Essential Boundary Conditions",false),aMeshSets),
-        mVelocityEssentialBCs(aInputs.sublist("Momentum Essential Boundary Conditions",false),aMeshSets),
-        mTemperatureEssentialBCs(aInputs.sublist("Temperature Essential Boundary Conditions",false),aMeshSets)
+     Plato::Comm::Machine   & aMachine) :
+         mMachine(aMachine),
+         mSpatialModel(aMesh, aMeshSets, aInputs),
+         mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
+         mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
+         mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
+         mPressureEssentialBCs(aInputs.sublist("Pressure Essential Boundary Conditions",false),aMeshSets),
+         mVelocityEssentialBCs(aInputs.sublist("Momentum Essential Boundary Conditions",false),aMeshSets),
+         mTemperatureEssentialBCs(aInputs.sublist("Temperature Essential Boundary Conditions",false),aMeshSets)
     {
-        this->initialize(aInputs, aMachine);
+        this->initialize(aInputs);
     }
 
     const decltype(mDataMap)& getDataMap() const
@@ -8268,8 +8279,7 @@ private:
     }
 
     void initialize
-    (Teuchos::ParameterList & aInputs,
-     Comm::Machine          & aMachine)
+    (Teuchos::ParameterList & aInputs)
     {
         this->allocateCriteriaList(aInputs);
         this->allocateMemberStates(aInputs);
@@ -8378,6 +8388,11 @@ private:
         bool tStop = false;
         auto tTimeStepIndex = aVariables.scalar("step");
         auto tCriterionValue = this->calculateResidualNorm(aVariables);
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            printf("Convergence: Residual Norm = %f\n",tCriterionValue);
+        }
+
         if (tCriterionValue < mCBSsolverTolerance)
         {
             tStop = true;
