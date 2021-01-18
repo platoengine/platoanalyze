@@ -19,6 +19,7 @@
 #include "Simplex.hpp"
 #include "Assembly.hpp"
 #include "NaturalBCs.hpp"
+#include "Plato_Solve.hpp"
 #include "SpatialModel.hpp"
 #include "EssentialBCs.hpp"
 #include "ProjectToNode.hpp"
@@ -7208,11 +7209,11 @@ template<typename PhysicsT>
 class SteadyState : public Plato::Fluids::AbstractProblem
 {
 private:
-    static constexpr auto mNumSpatialDims     = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerCell    = PhysicsT::mNumNodesPerCell;        /*!< number of nodes per cell */
-    static constexpr auto mNumVelDofsPerNode  = PhysicsT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
-    static constexpr auto mNumPresDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
-    static constexpr auto mNumTempDofsPerNode = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumSpatialDims      = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell     = PhysicsT::mNumNodesPerCell;        /*!< number of nodes per cell */
+    static constexpr auto mNumVelDofsPerNode   = PhysicsT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumTempDofsPerNode  = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumPressDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
 
     Plato::DataMap      mDataMap;
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
@@ -7248,9 +7249,6 @@ private:
     Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs;
     Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
 
-    std::shared_ptr<Plato::AbstractSolver> mVectorFieldSolver;
-    std::shared_ptr<Plato::AbstractSolver> mScalarFieldSolver;
-
 public:
     SteadyState
     (Omega_h::Mesh          & aMesh,
@@ -7284,8 +7282,8 @@ public:
 
         auto tPressSubView = Kokkos::subview(mPressure, tCurrentTimeStep, Kokkos::ALL());
         Omega_h::Write<Omega_h::Real> tPressure(tPressSubView.size(), "Pressure");
-        Plato::copy<mNumPresDofsPerNode, mNumPresDofsPerNode>(tStride, tNumNodes, tPressSubView, tPressure);
-        tMesh.add_tag(Omega_h::VERT, "Pressure", mNumPresDofsPerNode, Omega_h::Reals(tPressure));
+        Plato::copy<mNumPressDofsPerNode, mNumPressDofsPerNode>(tStride, tNumNodes, tPressSubView, tPressure);
+        tMesh.add_tag(Omega_h::VERT, "Pressure", mNumPressDofsPerNode, Omega_h::Reals(tPressure));
 
         auto tVelSubView = Kokkos::subview(mVelocity, tCurrentTimeStep, Kokkos::ALL());
         Omega_h::Write<Omega_h::Real> tVelocity(tVelSubView.size(), "Velocity");
@@ -7325,7 +7323,6 @@ public:
             this->enforceVelocityBoundaryConditions(tPrimalVars);
             this->enforcePressureBoundaryConditions(tPrimalVars);
 
-            // todo: verify BC enforcement
             if(mCalculateHeatTransfer)
             {
                 this->updateTemperature(aControl, tPrimalVars);
@@ -7466,8 +7463,6 @@ private:
     (Teuchos::ParameterList & aInputs,
      Comm::Machine          & aMachine)
     {
-        this->allocateLinearSolvers(aInputs, aMachine);
-
         this->allocateCriteriaList(aInputs);
         this->allocateMemberStates(aInputs);
         this->calculateHeatTransfer(aInputs);
@@ -7492,16 +7487,6 @@ private:
             mTemperatureResidual =
                 std::make_shared<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>>("Temperature", mSpatialModel, mDataMap, aInputs);
         }
-    }
-
-    void allocateLinearSolvers
-    (Teuchos::ParameterList & aInputs,
-     Comm::Machine          & aMachine)
-    {
-        Plato::SolverFactory tVecSolverFactory(aInputs.sublist("Linear Solver"));
-        mVectorFieldSolver = tVecSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
-        Plato::SolverFactory tScaSolverFactory(aInputs.sublist("Linear Solver"));
-        mScalarFieldSolver = tScaSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumPresDofsPerNode);
     }
 
     void readTimeIntegrationInputs
@@ -7770,7 +7755,7 @@ private:
         // solve velocity equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
-        mVectorFieldSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
+        Plato::Solve::Consistent<mNumVelDofsPerNode>(tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
 
         // update velocity
         auto tCurrentVelocity  = aVariables.vector("current velocity");
@@ -7790,7 +7775,7 @@ private:
         // solve predictor equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPredictor);
-        mVectorFieldSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
+        Plato::Solve::Consistent<mNumVelDofsPerNode>(tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
 
         // update current predictor
         auto tCurrentPredictor  = aVariables.vector("current predictor");
@@ -7810,7 +7795,7 @@ private:
         // solve mass equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPressure);
-        mScalarFieldSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
+        Plato::Solve::Consistent<mNumPressDofsPerNode>(tJacobianPressure, tDeltaPressure, tResidualPressure);
 
         // update pressure
         auto tCurrentPressure = aVariables.vector("current pressure");
@@ -7830,7 +7815,7 @@ private:
         // solve energy equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaTemperature);
-        mScalarFieldSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
+        Plato::Solve::Consistent<mNumTempDofsPerNode>(tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
 
         // update temperature
         auto tCurrentTemperature  = aVariables.vector("current temperature");
@@ -7858,7 +7843,7 @@ private:
         auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
         Plato::blas1::fill(0.0, tCurrentPredictorAdjoint);
         auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurPrimalVars);
-        mVectorFieldSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
+        Plato::Solve::Consistent<mNumVelDofsPerNode>(tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
     }
 
     void calculatePressureAdjoint
@@ -7890,7 +7875,7 @@ private:
         auto tCurrentPressAdjoint = aDualVars.vector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
         auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aCurPrimalVars);
-        mScalarFieldSolver->solve(*tJacobianPressure, tCurrentPressAdjoint, tRHS);
+        Plato::Solve::Consistent<mNumPressDofsPerNode>(tJacobianPressure, tCurrentPressAdjoint, tRHS);
     }
 
     void calculateTemperatureAdjoint
@@ -7914,7 +7899,7 @@ private:
         auto tCurrentTempAdjoint = aDualVars.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
         auto tJacobianTemperature = mTemperatureResidual->gradientCurrentTemp(aControl, aCurPrimalVars);
-        mScalarFieldSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
+        Plato::Solve::Consistent<mNumTempDofsPerNode>(tJacobianTemperature, tCurrentTempAdjoint, tRHS);
     }
 
     void calculateVelocityAdjoint
@@ -7946,7 +7931,7 @@ private:
         auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
         auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aControl, aCurPrimalVars);
-        mVectorFieldSolver->solve(*tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
+        Plato::Solve::Consistent<mNumVelDofsPerNode>(tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
     }
 
     void calculateGradientControl
@@ -8005,16 +7990,17 @@ private:
         Plato::blas1::axpy(1.0, tGradCriterionWrtConfig, aTotalDerivative);
     }
 };
+// class SteadyState
 
 template<typename PhysicsT>
 class Transient : public Plato::Fluids::AbstractProblem
 {
 private:
-    static constexpr auto mNumSpatialDims     = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerCell    = PhysicsT::mNumNodesPerCell;        /*!< number of nodes per cell */
-    static constexpr auto mNumVelDofsPerNode  = PhysicsT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
-    static constexpr auto mNumPresDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
-    static constexpr auto mNumTempDofsPerNode = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumSpatialDims      = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell     = PhysicsT::mNumNodesPerCell;        /*!< number of nodes per cell */
+    static constexpr auto mNumVelDofsPerNode   = PhysicsT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumTempDofsPerNode  = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
+    static constexpr auto mNumPressDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
 
     Plato::DataMap      mDataMap;
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
@@ -8050,9 +8036,6 @@ private:
     Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs;
     Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
 
-    std::shared_ptr<Plato::AbstractSolver> mVectorFieldSolver;
-    std::shared_ptr<Plato::AbstractSolver> mScalarFieldSolver;
-
 public:
     Transient
     (Omega_h::Mesh          & aMesh,
@@ -8087,8 +8070,8 @@ public:
         {
             auto tPressSubView = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
             Omega_h::Write<Omega_h::Real> tPressure(tPressSubView.size(), "Pressure");
-            Plato::copy<mNumPresDofsPerNode, mNumPresDofsPerNode>(tStride, tNumNodes, tPressSubView, tPressure);
-            tMesh.add_tag(Omega_h::VERT, "Pressure", mNumPresDofsPerNode, Omega_h::Reals(tPressure));
+            Plato::copy<mNumPressDofsPerNode, mNumPressDofsPerNode>(tStride, tNumNodes, tPressSubView, tPressure);
+            tMesh.add_tag(Omega_h::VERT, "Pressure", mNumPressDofsPerNode, Omega_h::Reals(tPressure));
 
             auto tVelSubView = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
             Omega_h::Write<Omega_h::Real> tVelocity(tVelSubView.size(), "Velocity");
@@ -8130,7 +8113,6 @@ public:
             this->enforceVelocityBoundaryConditions(tPrimalVars);
             this->enforcePressureBoundaryConditions(tPrimalVars);
 
-            // todo: verify BC enforcement
             if(mCalculateHeatTransfer)
             {
                 this->updateTemperature(aControl, tPrimalVars);
@@ -8289,8 +8271,6 @@ private:
     (Teuchos::ParameterList & aInputs,
      Comm::Machine          & aMachine)
     {
-        this->allocateLinearSolvers(aInputs,aMachine);
-
         this->allocateCriteriaList(aInputs);
         this->allocateMemberStates(aInputs);
         this->calculateHeatTransfer(aInputs);
@@ -8316,15 +8296,6 @@ private:
             mTemperatureResidual =
                 std::make_shared<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>>("Temperature", mSpatialModel, mDataMap, aInputs);
         }
-    }
-
-    void allocateLinearSolvers
-    (Teuchos::ParameterList & aInputs,
-     Comm::Machine & aMachine)
-    {
-        Plato::SolverFactory tSolverFactory(aInputs.sublist("Linear Solver"));
-        mVectorFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
-        mScalarFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumPresDofsPerNode);
     }
 
     void readTimeIntegrationInputs
@@ -8575,7 +8546,7 @@ private:
         // solve velocity equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
-        mVectorFieldSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
+        Plato::Solve::Consistent<mNumVelDofsPerNode>(tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
 
         // update velocity
         auto tCurrentVelocity  = aVariables.vector("current velocity");
@@ -8595,7 +8566,7 @@ private:
         // solve predictor equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPredictor);
-        mVectorFieldSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
+        Plato::Solve::Consistent<mNumVelDofsPerNode>(tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
 
         // update current predictor
         auto tCurrentPredictor  = aVariables.vector("current predictor");
@@ -8615,7 +8586,7 @@ private:
         // solve mass equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPressure);
-        mScalarFieldSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
+        Plato::Solve::Consistent<mNumPressDofsPerNode>(tJacobianPressure, tDeltaPressure, tResidualPressure);
 
         // update pressure
         auto tCurrentPressure = aVariables.vector("current pressure");
@@ -8635,7 +8606,7 @@ private:
         // solve energy equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaTemperature);
-        mScalarFieldSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
+        Plato::Solve::Consistent<mNumTempDofsPerNode>(tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
 
         // update temperature
         auto tCurrentTemperature  = aVariables.vector("current temperature");
@@ -8663,7 +8634,7 @@ private:
         auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
         Plato::blas1::fill(0.0, tCurrentPredictorAdjoint);
         auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurPrimalVars);
-        mVectorFieldSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
+        Plato::Solve::Consistent<mNumVelDofsPerNode>(tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
     }
 
     void calculatePressureAdjoint
@@ -8695,7 +8666,7 @@ private:
         auto tCurrentPressAdjoint = aDualVars.vector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
         auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aCurPrimalVars);
-        mScalarFieldSolver->solve(*tJacobianPressure, tCurrentPressAdjoint, tRHS);
+        Plato::Solve::Consistent<mNumPressDofsPerNode>(tJacobianPressure, tCurrentPressAdjoint, tRHS);
     }
 
     void calculateTemperatureAdjoint
@@ -8719,7 +8690,7 @@ private:
         auto tCurrentTempAdjoint = aDualVars.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
         auto tJacobianTemperature = mTemperatureResidual->gradientCurrentTemp(aControl, aCurPrimalVars);
-        mScalarFieldSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
+        Plato::Solve::Consistent<mNumTempDofsPerNode>(tJacobianTemperature, tCurrentTempAdjoint, tRHS);
     }
 
     void calculateVelocityAdjoint
@@ -8751,7 +8722,7 @@ private:
         auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
         auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aControl, aCurPrimalVars);
-        mVectorFieldSolver->solve(*tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
+        Plato::Solve::Consistent<mNumVelDofsPerNode>(tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
     }
 
     void calculateGradientControl
