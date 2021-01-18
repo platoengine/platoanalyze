@@ -8951,6 +8951,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "      <Parameter  name='Sides'    type='string' value='pressure'/>"
             "    </ParameterList>"
             "  </ParameterList>"
+            "  <ParameterList  name='Time Integration'>"
+            "    <Parameter name='Max Number Iterations' type='int' value='4'/>"
+            "  </ParameterList>"
             "</ParameterList>"
             );
 
