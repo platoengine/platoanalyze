@@ -8027,7 +8027,9 @@ private:
     Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
     Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
     Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mVelocityResidual;
-    Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>   mTemperatureResidual;
+    // Using pointer since default VectorFunction constructor allocations are not permitted.
+    // Temperature VectorFunction allocation is optional since heat transfer calculations are optional
+    std::shared_ptr<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>> mTemperatureResidual;
 
     using Criterion = std::shared_ptr<Plato::Fluids::CriterionBase>;
     using Criteria  = std::unordered_map<std::string, Criterion>;
@@ -8053,7 +8055,6 @@ public:
         mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
         mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
         mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
-        mTemperatureResidual("Temperature", mSpatialModel, mDataMap, aInputs),
         mPressureEssentialBCs(aInputs.sublist("Pressure Essential Boundary Conditions",false),aMeshSets),
         mVelocityEssentialBCs(aInputs.sublist("Momentum Essential Boundary Conditions",false),aMeshSets),
         mTemperatureEssentialBCs(aInputs.sublist("Temperature Essential Boundary Conditions",false),aMeshSets)
@@ -8295,10 +8296,17 @@ private:
         {
             THROWERR("'Hyperbolic' Parameter List is not defined.")
         }
+
         auto tHyperbolic = aInputs.sublist("Hyperbolic");
         auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
         auto tHeatTransfer = Plato::tolower(tTag);
         mCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
+
+        if(mCalculateHeatTransfer)
+        {
+            mTemperatureResidual =
+                std::make_shared<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>>("Temperature", mSpatialModel, mDataMap, aInputs);
+        }
     }
 
     void allocateLinearSolvers
@@ -8606,8 +8614,8 @@ private:
            Plato::Primal       & aVariables)
     {
         // calculate current residual and jacobian matrix
-        auto tResidualTemperature = mTemperatureResidual.value(aVariables);
-        auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aVariables);
+        auto tResidualTemperature = mTemperatureResidual->value(aVariables);
+        auto tJacobianTemperature = mTemperatureResidual->gradientCurrentTemp(aVariables);
 
         // solve energy equation (consistent or mass lumped)
         Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
@@ -8688,14 +8696,14 @@ private:
         auto tPrevPredictorAdjoint = aDualVars.vector("previous predictor adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevTemp, tPrevPredictorAdjoint, tRHS);
 
-        auto tGradResTempWrtPrevTemp = mTemperatureResidual.gradientPreviousTemp(aControl, aPrevPrimalVars);
+        auto tGradResTempWrtPrevTemp = mTemperatureResidual->gradientPreviousTemp(aControl, aPrevPrimalVars);
         auto tPrevTempAdjoint = aDualVars.vector("previous temperature adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResTempWrtPrevTemp, tPrevTempAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
 
         auto tCurrentTempAdjoint = aDualVars.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
-        auto tJacobianTemperature = mTemperatureResidual.gradientCurrentTemp(aControl, aCurPrimalVars);
+        auto tJacobianTemperature = mTemperatureResidual->gradientCurrentTemp(aControl, aCurPrimalVars);
         mScalarFieldSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
     }
 
@@ -8720,7 +8728,7 @@ private:
         auto tPrevPressureAdjoint = aDualVars.vector("previous pressure adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPrevVel, tPrevPressureAdjoint, tRHS);
 
-        auto tGradResTempWrtPrevVel = mTemperatureResidual.gradientPreviousVel(aControl, aPrevPrimalVars);
+        auto tGradResTempWrtPrevVel = mTemperatureResidual->gradientPreviousVel(aControl, aPrevPrimalVars);
         auto tPrevTemperatureAdjoint = aDualVars.vector("previous temperature adjoint");
         Plato::MatrixTimesVectorPlusVector(tGradResTempWrtPrevVel, tPrevTemperatureAdjoint, tRHS);
         Plato::blas1::scale(-1.0, tRHS);
@@ -8749,7 +8757,7 @@ private:
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtControl, tCurrentPressureAdjoint, tGradCriterionWrtControl);
 
         auto tCurrentTemperatureAdjoint = aDualVars.vector("current temperature adjoint");
-        auto tGradResTempWrtControl = mTemperatureResidual.gradientControl(aControl, aCurPrimalVars);
+        auto tGradResTempWrtControl = mTemperatureResidual->gradientControl(aControl, aCurPrimalVars);
         Plato::MatrixTimesVectorPlusVector(tGradResTempWrtControl, tCurrentTemperatureAdjoint, tGradCriterionWrtControl);
 
         auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
@@ -8777,7 +8785,7 @@ private:
         Plato::MatrixTimesVectorPlusVector(tGradResPressWrtConfig, tCurrentPressureAdjoint, tGradCriterionWrtConfig);
 
         auto tCurrentTemperatureAdjoint = aDualVars.vector("current temperature adjoint");
-        auto tGradResTempWrtConfig = mTemperatureResidual.gradientConfig(aControl, aCurPrimalVars);
+        auto tGradResTempWrtConfig = mTemperatureResidual->gradientConfig(aControl, aCurPrimalVars);
         Plato::MatrixTimesVectorPlusVector(tGradResTempWrtConfig, tCurrentTemperatureAdjoint, tGradCriterionWrtConfig);
 
         auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
