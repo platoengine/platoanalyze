@@ -6207,7 +6207,7 @@ temperature_residual
     }
     else
     {
-        THROWERR(std::string("Scenario with tag '") + tScenario + "' is not supported.")
+        THROWERR(std::string("Scenario with tag '") + tScenario + "' is not supported. Options are 1) Analysis, 2) Density TO or 3) Levelset TO.")
     }
 }
 
@@ -6236,7 +6236,7 @@ velocity_predictor_residual
     }
     else
     {
-        THROWERR(std::string("Scenario with tag '") + tScenario + "' is not supported.")
+        THROWERR(std::string("Scenario with tag '") + tScenario + "' is not supported. Options are 1) Analysis, 2) Density TO or 3) Levelset TO.")
     }
 }
 
