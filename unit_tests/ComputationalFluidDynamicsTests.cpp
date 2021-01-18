@@ -7317,6 +7317,7 @@ public:
             tPrimalVars.scalar("iteration", tIteration);
             this->setPrimalVariables(tPrimalVars);
             this->calculateStableTimeSteps(tPrimalVars);
+            updatePrescribedVelocityField(tPrimalVars);
 
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
@@ -7497,9 +7498,10 @@ private:
     (Teuchos::ParameterList & aInputs,
      Comm::Machine          & aMachine)
     {
-        Plato::SolverFactory tSolverFactory(aInputs.sublist("Linear Solver"));
-        mVectorFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
-        mScalarFieldSolver = tSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumPresDofsPerNode);
+        Plato::SolverFactory tVecSolverFactory(aInputs.sublist("Linear Solver"));
+        mVectorFieldSolver = tVecSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumVelDofsPerNode);
+        Plato::SolverFactory tScaSolverFactory(aInputs.sublist("Linear Solver"));
+        mScalarFieldSolver = tScaSolverFactory.create(mSpatialModel.Mesh, aMachine, mNumPresDofsPerNode);
     }
 
     void readTimeIntegrationInputs
@@ -7640,19 +7642,25 @@ private:
         aVariables.vector("time steps", tTimeStep);
     }
 
+    void updatePrescribedVelocityField(Plato::Primal & aVariables)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
+        auto tCurrentVelocity = aVariables.vector("current velocity");
+        auto tLength = tCurrentVelocity.size();
+        Plato::ScalarVector tPrescribedVelocities("prescribed velocity", tLength);
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tPrescribedVelocities);
+        aVariables.vector("prescribed velocity", tPrescribedVelocities);
+    }
+
     void enforceVelocityBoundaryConditions(Plato::Primal & aVariables)
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-
         auto tCurrentVelocity = aVariables.vector("current velocity");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
-
-        auto tLength = tCurrentVelocity.size();
-        Plato::ScalarVector tPrescribedVelocities("prescribed velocity", tLength);
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tPrescribedVelocities);
-        aVariables.vector("prescribed velocity", tPrescribedVelocities);
     }
 
     void enforcePressureBoundaryConditions(Plato::Primal& aVariables)
@@ -8114,6 +8122,7 @@ public:
             tPrimalVars.scalar("step", tStep);
             this->setPrimalVariables(tPrimalVars);
             this->calculateStableTimeSteps(tPrimalVars);
+            this->updatePrescribedVelocityField(tPrimalVars);
 
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
@@ -8436,19 +8445,25 @@ private:
         aVariables.vector("time steps", tTimeStep);
     }
 
+    void updatePrescribedVelocityField(Plato::Primal & aVariables)
+    {
+        Plato::ScalarVector tBcValues;
+        Plato::LocalOrdinalVector tBcDofs;
+        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
+        auto tCurrentVelocity = aVariables.vector("current velocity");
+        auto tLength = tCurrentVelocity.size();
+        Plato::ScalarVector tPrescribedVelocities("prescribed velocity", tLength);
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tPrescribedVelocities);
+        aVariables.vector("prescribed velocity", tPrescribedVelocities);
+    }
+
     void enforceVelocityBoundaryConditions(Plato::Primal & aVariables)
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-
         auto tCurrentVelocity = aVariables.vector("current velocity");
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
-
-        auto tLength = tCurrentVelocity.size();
-        Plato::ScalarVector tCurrentPrescribedVelocities("prescribed velocity", tLength);
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPrescribedVelocities);
-        aVariables.vector("prescribed velocity", tCurrentPrescribedVelocities);
     }
 
     void enforcePressureBoundaryConditions(Plato::Primal& aVariables)
