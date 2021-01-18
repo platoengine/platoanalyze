@@ -3515,10 +3515,10 @@ private:
    void setViscosity
    (Teuchos::ParameterList & aInputs)
    {
-       auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
        auto tHeatTransfer = Plato::tolower(tTag);
 
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
        if(tHeatTransfer == "forced" || tHeatTransfer == "none")
        {
            auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
@@ -3538,30 +3538,41 @@ private:
    (Teuchos::ParameterList & aInputs)
    {
        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-       auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
-       if(tGrNum.size() != mNumSpatialDims)
-       {
-           THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
-               + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
-               + std::to_string(mNumSpatialDims)  + "'.")
-       }
+       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+       auto tHeatTransfer = Plato::tolower(tTag);
+       auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
 
-       auto tLength = mGrNum.size();
-       auto tHostGrNum = Kokkos::create_mirror(mGrNum);
-       for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
-       {
-           tHostGrNum(tDim) = tGrNum[tDim];
-       }
-       Kokkos::deep_copy(mGrNum, tHostGrNum);
+        if(tCalculateHeatTransfer)
+        {
+            auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
+            if(tGrNum.size() != mNumSpatialDims)
+            {
+                THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
+                    + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
+                    + std::to_string(mNumSpatialDims) + "'.")
+            }
+
+            auto tLength = mGrNum.size();
+            auto tHostGrNum = Kokkos::create_mirror(mGrNum);
+            for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
+            {
+                tHostGrNum(tDim) = tGrNum[tDim];
+            }
+            Kokkos::deep_copy(mGrNum, tHostGrNum);
+        }
+        else
+        {
+            Plato::blas1::fill(0.0, mGrNum);
+        }
    }
 
    void setBuoyancyConstant
    (Teuchos::ParameterList & aInputs)
    {
-       auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
        auto tHeatTransfer = Plato::tolower(tTag);
 
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
        if(tHeatTransfer == "forced")
        {
            auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
@@ -3905,10 +3916,10 @@ private:
            THROWERR("'Hyperbolic' Parameter List is not defined.")
        }
        this->setDimensionlessProperties(aInputs);
-       auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
-       if(tHyperbolicParamList.isSublist("Momentum Conservation"))
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       if(tHyperbolic.isSublist("Momentum Conservation"))
        {
-           auto tMomentumParamList = tHyperbolicParamList.sublist("Momentum Conservation");
+           auto tMomentumParamList = tHyperbolic.sublist("Momentum Conservation");
            this->setPenaltyModel(tMomentumParamList);
        }
    }
@@ -3935,10 +3946,10 @@ private:
    void setViscosity
    (Teuchos::ParameterList & aInputs)
    {
-       auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
        auto tHeatTransfer = Plato::tolower(tTag);
 
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
        if(tHeatTransfer == "forced" || tHeatTransfer == "none")
        {
            auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
@@ -3957,31 +3968,42 @@ private:
    void setGrashofNumber
    (Teuchos::ParameterList & aInputs)
    {
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
-       auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
-       if(tGrNum.size() != mNumSpatialDims)
-       {
-           THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
-               + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
-               + std::to_string(mNumSpatialDims)  + "'.")
-       }
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+        auto tHeatTransfer = Plato::tolower(tTag);
+        auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
 
-       auto tLength = mGrNum.size();
-       auto tHostGrNum = Kokkos::create_mirror(mGrNum);
-       for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
-       {
-           tHostGrNum(tDim) = tGrNum[tDim];
-       }
-       Kokkos::deep_copy(mGrNum, tHostGrNum);
+        if(tCalculateHeatTransfer)
+        {
+            auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
+            if(tGrNum.size() != mNumSpatialDims)
+            {
+                THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
+                    + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
+                    + std::to_string(mNumSpatialDims) + "'.")
+            }
+
+            auto tLength = mGrNum.size();
+            auto tHostGrNum = Kokkos::create_mirror(mGrNum);
+            for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
+            {
+                tHostGrNum(tDim) = tGrNum[tDim];
+            }
+            Kokkos::deep_copy(mGrNum, tHostGrNum);
+        }
+        else
+        {
+            Plato::blas1::fill(0.0, mGrNum);
+        }
    }
 
    void setBuoyancyConstant
    (Teuchos::ParameterList & aInputs)
    {
-       auto tTag = aInputs.get<std::string>("Heat Transfer", "None");
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
        auto tHeatTransfer = Plato::tolower(tTag);
 
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
        if(tHeatTransfer == "forced")
        {
            auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
@@ -4659,6 +4681,7 @@ private:
         auto tHyperbolic = aInputs.sublist("Hyperbolic");
         auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
         auto tHeatTransfer = Plato::tolower(tTag);
+
         if(tHeatTransfer == "forced" || tHeatTransfer == "none")
         {
             auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
@@ -4930,6 +4953,7 @@ private:
         auto tHyperbolic = aInputs.sublist("Hyperbolic");
         auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
         auto tHeatTransfer = Plato::tolower(tTag);
+
         if(tHeatTransfer == "forced" || tHeatTransfer == "none")
         {
             auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
@@ -7262,15 +7286,18 @@ public:
         Plato::copy<mNumPresDofsPerNode, mNumPresDofsPerNode>(tStride, tNumNodes, tPressSubView, tPressure);
         tMesh.add_tag(Omega_h::VERT, "Pressure", mNumPresDofsPerNode, Omega_h::Reals(tPressure));
 
-        auto tTempSubView = Kokkos::subview(mTemperature, tCurrentTimeStep, Kokkos::ALL());
-        Omega_h::Write<Omega_h::Real> tTemperature(tTempSubView.size(), "Temperature");
-        Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTempSubView, tTemperature);
-        tMesh.add_tag(Omega_h::VERT, "Temperature", mNumTempDofsPerNode, Omega_h::Reals(tTemperature));
-
         auto tVelSubView = Kokkos::subview(mVelocity, tCurrentTimeStep, Kokkos::ALL());
         Omega_h::Write<Omega_h::Real> tVelocity(tVelSubView.size(), "Velocity");
         Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tVelSubView, tVelocity);
         tMesh.add_tag(Omega_h::VERT, "Velocity", mNumVelDofsPerNode, Omega_h::Reals(tVelocity));
+
+        if(mCalculateHeatTransfer)
+        {
+            auto tTempSubView = Kokkos::subview(mTemperature, tCurrentTimeStep, Kokkos::ALL());
+            Omega_h::Write<Omega_h::Real> tTemperature(tTempSubView.size(), "Temperature");
+            Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTempSubView, tTemperature);
+            tMesh.add_tag(Omega_h::VERT, "Temperature", mNumTempDofsPerNode, Omega_h::Reals(tTemperature));
+        }
 
         auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mNumSpatialDims);
         auto tTime = static_cast<Plato::Scalar>(tCurrentTimeStep);
@@ -8043,15 +8070,19 @@ public:
             Plato::copy<mNumPresDofsPerNode, mNumPresDofsPerNode>(tStride, tNumNodes, tPressSubView, tPressure);
             tMesh.add_tag(Omega_h::VERT, "Pressure", mNumPresDofsPerNode, Omega_h::Reals(tPressure));
 
-            auto tTempSubView = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
-            Omega_h::Write<Omega_h::Real> tTemperature(tTempSubView.size(), "Temperature");
-            Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTempSubView, tTemperature);
-            tMesh.add_tag(Omega_h::VERT, "Temperature", mNumTempDofsPerNode, Omega_h::Reals(tTemperature));
-
             auto tVelSubView = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
             Omega_h::Write<Omega_h::Real> tVelocity(tVelSubView.size(), "Velocity");
             Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tVelSubView, tVelocity);
             tMesh.add_tag(Omega_h::VERT, "Velocity", mNumVelDofsPerNode, Omega_h::Reals(tVelocity));
+
+            if(mCalculateHeatTransfer)
+            {
+                auto tTempSubView = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
+                Omega_h::Write<Omega_h::Real> tTemperature(tTempSubView.size(), "Temperature");
+                Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTempSubView, tTemperature);
+                tMesh.add_tag(Omega_h::VERT, "Temperature", mNumTempDofsPerNode, Omega_h::Reals(tTemperature));
+
+            }
 
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mNumSpatialDims);
             auto tTime = static_cast<Plato::Scalar>(1.0 / tTimeSteps) * static_cast<Plato::Scalar>(tStep + 1);
