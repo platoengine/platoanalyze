@@ -8318,6 +8318,7 @@ private:
             auto tArtificialDampingTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping Two", 0.0);
             mIsExplicitSolve = tArtificialDampingTwo > static_cast<Plato::Scalar>(0.0) ? false : true;
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.5);
+            mMaxNumTimeSteps = tTimeIntegration.get<Plato::Scalar>("Max Number Time Steps", 1e3);
         }
     }
 
