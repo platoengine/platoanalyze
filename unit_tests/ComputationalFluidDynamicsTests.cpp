@@ -387,7 +387,7 @@ inline bool equal
 }
 
 template<Plato::OrdinalType NumPoints, Plato::OrdinalType SpaceDim>
-Plato::ScalarVectorT<Plato::OrdinalType>
+inline Plato::ScalarVectorT<Plato::OrdinalType>
 find_node_ids_on_face_set
 (const Omega_h::Mesh & aMesh,
  const Omega_h::MeshSets & aMeshSets,
@@ -7500,7 +7500,7 @@ private:
             auto tArtificialDampingTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping Two", 0.0);
             mIsExplicitSolve = tArtificialDampingTwo > static_cast<Plato::Scalar>(0.0) ? false : true;
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.5);
-            mMaxNumIterations = tTimeIntegration.get<Plato::Scalar>("Max Number Iterations", 1e3);
+            mMaxNumIterations = tTimeIntegration.get<Plato::OrdinalType>("Max Number Iterations", 1e3);
         }
     }
 
@@ -7594,7 +7594,7 @@ private:
         auto tCriterionValue = this->calculateResidualNorm(aVariables);
         if(Plato::Comm::rank(mMachine) == 0)
         {
-            printf("Convergence: Residual Norm = %f\n",tCriterionValue);
+            printf("Convergence: Residual Norm = %e\n",tCriterionValue);
         }
 
         if (tCriterionValue < mCBSsolverTolerance)
@@ -8392,7 +8392,7 @@ private:
         auto tCriterionValue = this->calculateResidualNorm(aVariables);
         if(Plato::Comm::rank(mMachine) == 0)
         {
-            printf("Convergence: Residual Norm = %f\n",tCriterionValue);
+            printf("Convergence: Residual Norm = %e\n",tCriterionValue);
         }
 
         if (tCriterionValue < mCBSsolverTolerance)
@@ -8968,7 +8968,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
     Plato::ScalarMultiVector tPoints("points",1,2);
     auto tHostPoints = Kokkos::create_mirror(tPoints);
     tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
-    auto tNodeIds = Plato::find_node_ids_on_face_set<1,2>(*tMesh, tMeshSets, "x-", tPoints);
+    auto tNodeIds = Plato::find_node_ids_on_face_set<1,2>(*tMesh, tMeshSets, "y-", tPoints);
     auto tLocalNodeIds = Plato::omega_h::copy(tNodeIds);
     tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tLocalNodeIds) );
 
