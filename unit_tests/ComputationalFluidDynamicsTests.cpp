@@ -7261,6 +7261,7 @@ public:
      Teuchos::ParameterList & aInputs,
      Plato::Comm::Machine   & aMachine) :
          mMachine(aMachine),
+         mInputs(aInputs),
          mSpatialModel(aMesh, aMeshSets, aInputs),
          mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
          mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
@@ -7770,7 +7771,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
-        tSolver->solve(tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
+        tSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
 
         // update velocity
         auto tCurrentVelocity  = aVariables.vector("current velocity");
@@ -7793,7 +7794,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPredictor);
-        tSolver->solve(tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
+        tSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
 
         // update current predictor
         auto tCurrentPredictor  = aVariables.vector("current predictor");
@@ -7816,7 +7817,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
         Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPressure);
-        tSolver->solve(tJacobianPressure, tDeltaPressure, tResidualPressure);
+        tSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
 
         // update pressure
         auto tCurrentPressure = aVariables.vector("current pressure");
@@ -7839,7 +7840,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
         Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaTemperature);
-        tSolver->solve(tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
+        tSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
 
         // update temperature
         auto tCurrentTemperature  = aVariables.vector("current temperature");
@@ -7870,7 +7871,7 @@ private:
         auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
         Plato::blas1::fill(0.0, tCurrentPredictorAdjoint);
         auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurPrimalVars);
-        tSolver->solve(tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
+        tSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
     }
 
     void calculatePressureAdjoint
@@ -7905,7 +7906,7 @@ private:
         auto tCurrentPressAdjoint = aDualVars.vector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
         auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aCurPrimalVars);
-        tSolver->solve(tJacobianPressure, tCurrentPressAdjoint, tRHS);
+        tSolver->solve(*tJacobianPressure, tCurrentPressAdjoint, tRHS);
     }
 
     void calculateTemperatureAdjoint
@@ -7932,7 +7933,7 @@ private:
         auto tCurrentTempAdjoint = aDualVars.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
         auto tJacobianTemperature = mTemperatureResidual->gradientCurrentTemp(aControl, aCurPrimalVars);
-        tSolver->solve(tJacobianTemperature, tCurrentTempAdjoint, tRHS);
+        tSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
     }
 
     void calculateVelocityAdjoint
@@ -7967,7 +7968,7 @@ private:
         auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
         auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aControl, aCurPrimalVars);
-        tSolver->solve(tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
+        tSolver->solve(*tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
     }
 
     void calculateGradientControl
@@ -8083,6 +8084,7 @@ public:
      Teuchos::ParameterList & aInputs,
      Plato::Comm::Machine   & aMachine) :
          mMachine(aMachine),
+         mInputs(aInputs),
          mSpatialModel(aMesh, aMeshSets, aInputs),
          mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
          mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
@@ -8595,7 +8597,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
-        tSolver->solve(tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
+        tSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
 
         // update velocity
         auto tCurrentVelocity  = aVariables.vector("current velocity");
@@ -8618,7 +8620,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPredictor);
-        tSolver->solve(tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
+        tSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
 
         // update current predictor
         auto tCurrentPredictor  = aVariables.vector("current predictor");
@@ -8641,7 +8643,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
         Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPressure);
-        tSolver->solve(tJacobianPressure, tDeltaPressure, tResidualPressure);
+        tSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
 
         // update pressure
         auto tCurrentPressure = aVariables.vector("current pressure");
@@ -8664,7 +8666,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
         Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaTemperature);
-        tSolver->solve(tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
+        tSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
 
         // update temperature
         auto tCurrentTemperature  = aVariables.vector("current temperature");
@@ -8695,7 +8697,7 @@ private:
         auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
         Plato::blas1::fill(0.0, tCurrentPredictorAdjoint);
         auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurPrimalVars);
-        tSolver->solve(tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
+        tSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
     }
 
     void calculatePressureAdjoint
@@ -8730,7 +8732,7 @@ private:
         auto tCurrentPressAdjoint = aDualVars.vector("current pressure adjoint");
         Plato::blas1::fill(0.0, tCurrentPressAdjoint);
         auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aCurPrimalVars);
-        tSolver->solve(tJacobianPressure, tCurrentPressAdjoint, tRHS);
+        tSolver->solve(*tJacobianPressure, tCurrentPressAdjoint, tRHS);
     }
 
     void calculateTemperatureAdjoint
@@ -8757,7 +8759,7 @@ private:
         auto tCurrentTempAdjoint = aDualVars.vector("current temperature adjoint");
         Plato::blas1::fill(0.0, tCurrentTempAdjoint);
         auto tJacobianTemperature = mTemperatureResidual->gradientCurrentTemp(aControl, aCurPrimalVars);
-        tSolver->solve(tJacobianTemperature, tCurrentTempAdjoint, tRHS);
+        tSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
     }
 
     void calculateVelocityAdjoint
@@ -8792,7 +8794,7 @@ private:
         auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
         Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
         auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aControl, aCurPrimalVars);
-        tSolver->solve(tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
+        tSolver->solve(*tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
     }
 
     void calculateGradientControl
