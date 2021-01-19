@@ -1,7 +1,7 @@
 /*
- * InfinitesimalStrainPlasticityResidual.hpp
+ * InfinitesimalStrainThermoPlasticityResidual.hpp
  *
- *  Created on: Feb 29, 2020
+ *  Created on: Jan 20, 2021
  */
 
 #pragma once
@@ -16,7 +16,7 @@
 #include "FluxDivergence.hpp"
 #include "StressDivergence.hpp"
 #include "StrainDivergence.hpp"
-#include "SimplexPlasticity.hpp"
+#include "SimplexThermoPlasticity.hpp"
 #include "PressureDivergence.hpp"
 #include "ComputeCauchyStress.hpp"
 #include "Plato_TopOptFunctors.hpp"
@@ -40,7 +40,7 @@ namespace Plato
  *
  * \tparam EvaluationType denotes evaluation type for vector function, possible
  *   options are Residual, Jacobian, PartialControl, etc.
- * \tparam SimplexPhysicsType simplex physics type, e.g. SimplexPlasticity. gives
+ * \tparam SimplexPhysicsType simplex physics type, e.g. SimplexThermoPlasticity. gives
  *   access to static data related to the physics problem.
  *
  * \f$   \langle \nabla{v_h}, s_h \rangle + \langle \nabla\cdot{v_h}, p_h \rangle
@@ -56,7 +56,7 @@ namespace Plato
  *
 ***************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>
-class InfinitesimalStrainPlasticityResidual: public Plato::AbstractGlobalVectorFunctionInc<EvaluationType>
+class InfinitesimalStrainThermoPlasticityResidual: public Plato::AbstractGlobalVectorFunctionInc<EvaluationType>
 {
 // Private member data
 private:
@@ -335,7 +335,7 @@ public:
      * \param [in] aProblemParams input XML data
      * \param [in] aPenaltyParams penalty function input XML data
     *******************************************************************************/
-    InfinitesimalStrainPlasticityResidual(
+    InfinitesimalStrainThermoPlasticityResidual(
         const Plato::SpatialDomain   & aSpatialDomain,
               Plato::DataMap         & aDataMap,
               Teuchos::ParameterList & aProblemParams
@@ -360,7 +360,7 @@ public:
     /***************************************************************************//**
      * \brief Destructor
     *******************************************************************************/
-    virtual ~InfinitesimalStrainPlasticityResidual()
+    virtual ~InfinitesimalStrainThermoPlasticityResidual()
     {
     }
 
@@ -569,15 +569,15 @@ public:
         this->addExternalForces(aSpatialModel, aCurrentGlobalState, aControls, aConfig, aResult);
     }
 };
-// class InfinitesimalStrainPlasticityResidual
+// class InfinitesimalStrainThermoPlasticityResidual
 
 }
 // namespace Plato
 
 #ifdef PLATOANALYZE_2D
-PLATO_EXPL_DEC_INC_VMS(Plato::InfinitesimalStrainPlasticityResidual, Plato::SimplexPlasticity, 2)
+PLATO_EXPL_DEC_INC_VMS(Plato::InfinitesimalStrainThermoPlasticityResidual, Plato::SimplexThermoPlasticity, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-PLATO_EXPL_DEC_INC_VMS(Plato::InfinitesimalStrainPlasticityResidual, Plato::SimplexPlasticity, 3)
+PLATO_EXPL_DEC_INC_VMS(Plato::InfinitesimalStrainThermoPlasticityResidual, Plato::SimplexThermoPlasticity, 3)
 #endif

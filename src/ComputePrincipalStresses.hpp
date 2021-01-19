@@ -4,6 +4,8 @@
  *  Created on: Apr 6, 2020
  */
 
+#pragma once
+
 #include "Simp.hpp"
 #include "Strain.hpp"
 #include "Eigenvalues.hpp"

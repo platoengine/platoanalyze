@@ -17,6 +17,7 @@
 #include "PlatoAbstractProblem.hpp"
 #include "PathDependentAdjointSolver.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticity.hpp"
 #include "PathDependentScalarFunctionFactory.hpp"
 
 namespace Plato
@@ -79,7 +80,7 @@ private:
     Plato::ScalarVector mDirichletValues;         /*!< values associated with the Dirichlet boundary conditions */
     Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
 
-    Plato::WorksetBase<Plato::SimplexPlasticity<mSpaceDim>> mWorksetBase; /*!< assembly routine interface */
+    Plato::WorksetBase<PhysicsT> mWorksetBase;    /*!< assembly routine interface */
 
     std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver;         /*!< Newton-Raphson solve interface */
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
@@ -1090,13 +1091,16 @@ private:
 
 #ifdef PLATOANALYZE_1D
 extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<1>>;
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainThermoPlasticity<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
 extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainThermoPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainThermoPlasticity<3>>;
 #endif
 
