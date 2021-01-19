@@ -7359,7 +7359,6 @@ public:
             {
                 break;
             }
-            tIteration++;
         }
 
         Plato::Solutions tSolution;
@@ -7613,7 +7612,7 @@ private:
     bool checkStoppingCriteria(const Plato::Primal & aVariables)
     {
         bool tStop = false;
-        auto tIteration = aVariables.scalar("iteration");
+        Plato::OrdinalType tIteration = aVariables.scalar("iteration");
         auto tCriterionValue = this->calculateResidualNorm(aVariables);
         if(Plato::Comm::rank(mMachine) == 0)
         {
@@ -9056,7 +9055,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Max Number Iterations' type='int' value='4'/>"
+            "    <Parameter name='Max Number Iterations' type='int' value='2'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -9065,7 +9064,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,100,100);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -9074,8 +9073,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
     Plato::ScalarMultiVector tPoints("points",1,2);
     auto tHostPoints = Kokkos::create_mirror(tPoints);
     tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
-    auto tNodeIds = Plato::find_node_ids_on_face_set<1,2>(*tMesh, tMeshSets, "y-", tPoints);
-    auto tLocalNodeIds = Plato::omega_h::copy(tNodeIds);
+    //auto tNodeIds = Plato::find_node_ids_on_face_set<1,2>(*tMesh, tMeshSets, "y-", tPoints);
+    //auto tLocalNodeIds = Plato::omega_h::copy(tNodeIds);
+    Omega_h::Write<int> tWrite(1);
+    tWrite[0]=0; auto tLocalNodeIds = Omega_h::LOs(tWrite);
     tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tLocalNodeIds) );
 
     // create communicator
