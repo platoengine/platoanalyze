@@ -7309,7 +7309,7 @@ public:
     Plato::Solutions solution
     (const Plato::ScalarVector& aControl)
     {
-        this->checkEssentialBoundaryConditions();
+        this->checkProblemSetup();
 
         Plato::Primal tPrimalVars;
         this->calculateElemCharacteristicSize(tPrimalVars);
@@ -7318,7 +7318,7 @@ public:
             tPrimalVars.scalar("iteration", tIteration);
             this->setPrimalVariables(tPrimalVars);
             this->calculateStableTimeSteps(tPrimalVars);
-            updatePrescribedVelocityField(tPrimalVars);
+            this->updatePrescribedVelocityField(tPrimalVars);
 
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
@@ -7504,7 +7504,7 @@ private:
         }
     }
 
-    void checkEssentialBoundaryConditions()
+    void checkProblemSetup()
     {
         if(mPressureEssentialBCs.empty())
         {
@@ -8108,7 +8108,7 @@ public:
     Plato::Solutions solution
     (const Plato::ScalarVector& aControl)
     {
-        this->checkEssentialBoundaryConditions();
+        this->checkProblemSetup();
 
         Plato::Primal tPrimalVars;
         this->calculateElemCharacteristicSize(tPrimalVars);
@@ -8260,7 +8260,7 @@ public:
     }
 
 private:
-    void checkEssentialBoundaryConditions()
+    void checkProblemSetup()
     {
         if(mPressureEssentialBCs.empty())
         {
