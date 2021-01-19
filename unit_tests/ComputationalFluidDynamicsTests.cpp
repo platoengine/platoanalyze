@@ -1518,8 +1518,8 @@ build_vector_function_worksets
 
     auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("previous velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("prescribed velocity"), tVelBCsWS->mData);
-    aWorkSets.set("prescribed velocity", tVelBCsWS);
+    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("surface velocity"), tVelBCsWS->mData);
+    aWorkSets.set("surface velocity", tVelBCsWS);
 
     if(aVariables.defined("artificial compressibility"))
     {
@@ -1606,8 +1606,8 @@ build_vector_function_worksets
 
     auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("previous velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("prescribed velocity"), tVelBCsWS->mData);
-    aWorkSets.set("prescribed velocity", tVelBCsWS);
+    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("surface velocity"), tVelBCsWS->mData);
+    aWorkSets.set("surface velocity", tVelBCsWS);
 
     if(aVariables.defined("artificial compressibility"))
     {
@@ -5079,7 +5079,7 @@ public:
         Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity", tNumCells, mNumVelDofsPerNode);
 
         // set input state worksets
-        auto tVelBCsWS  = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("prescribed velocity"));
+        auto tVelBCsWS  = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("surface velocity"));
         auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
 
@@ -7120,6 +7120,23 @@ calculate_stable_time_step
     return tTimeStep;
 }
 
+inline Plato::ScalarVector
+update_surface_velocities
+(const Plato::LocalOrdinalVector & aBcDofs,
+ Plato::ScalarVector             & aCurVel,
+ Plato::ScalarVector             & aPrevVel)
+{
+    auto tLength = aBcDofs.size();
+    auto tNumNodes = aCurVel.size();
+    Plato::ScalarVector tSurfaceVelocities("surface velocities", tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        auto tDof = aBcDofs(aOrdinal);
+        tSurfaceVelocities(tDof) = aCurVel(tDof) - aPrevVel(tDof);
+    }, "calculate delta velocity field on boundary where momentum bcs are prescribed");
+    return tSurfaceVelocities;
+}
+
 inline void
 enforce_boundary_condition
 (const Plato::LocalOrdinalVector & aBcDofs,
@@ -7322,7 +7339,7 @@ public:
             tPrimalVars.scalar("iteration", tIteration);
             this->setPrimalVariables(tPrimalVars);
             this->calculateStableTimeSteps(tPrimalVars);
-            this->updatePrescribedVelocityField(tPrimalVars);
+            this->updateSurfaceVelocityField(tPrimalVars);
 
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
@@ -7640,16 +7657,15 @@ private:
         aVariables.vector("time steps", tTimeStep);
     }
 
-    void updatePrescribedVelocityField(Plato::Primal & aVariables)
+    void updateSurfaceVelocityField(Plato::Primal & aVariables)
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
         auto tCurrentVelocity = aVariables.vector("current velocity");
-        auto tLength = tCurrentVelocity.size();
-        Plato::ScalarVector tPrescribedVelocities("prescribed velocity", tLength);
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tPrescribedVelocities);
-        aVariables.vector("prescribed velocity", tPrescribedVelocities);
+        auto tPreviousVelocity = aVariables.vector("previous velocity");
+        auto tSurfaceVelocities = Plato::cbs::update_surface_velocities(tBcDofs, tCurrentVelocity, tPreviousVelocity);
+        aVariables.vector("surface velocity", tSurfaceVelocities);
     }
 
     void enforceVelocityBoundaryConditions(Plato::Primal & aVariables)
@@ -8148,7 +8164,7 @@ public:
             tPrimalVars.scalar("step", tStep);
             this->setPrimalVariables(tPrimalVars);
             this->calculateStableTimeSteps(tPrimalVars);
-            this->updatePrescribedVelocityField(tPrimalVars);
+            this->updateSurfaceVelocityField(tPrimalVars);
 
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
@@ -8464,16 +8480,15 @@ private:
         aVariables.vector("time steps", tTimeStep);
     }
 
-    void updatePrescribedVelocityField(Plato::Primal & aVariables)
+    void updateSurfaceVelocityField(Plato::Primal & aVariables)
     {
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
         auto tCurrentVelocity = aVariables.vector("current velocity");
-        auto tLength = tCurrentVelocity.size();
-        Plato::ScalarVector tPrescribedVelocities("prescribed velocity", tLength);
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tPrescribedVelocities);
-        aVariables.vector("prescribed velocity", tPrescribedVelocities);
+        auto tPreviousVelocity = aVariables.vector("previous velocity");
+        auto tSurfaceVelocities = Plato::cbs::update_surface_velocities(tBcDofs, tCurrentVelocity, tPreviousVelocity);
+        aVariables.vector("surface velocity", tSurfaceVelocities);
     }
 
     void enforceVelocityBoundaryConditions(Plato::Primal & aVariables)
@@ -9987,7 +10002,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     tWorkSets.set("previous velocity", tPrevVel);
 
     auto tPrescribedVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-        ( Plato::ScalarMultiVector("prescribed velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+        ( Plato::ScalarMultiVector("surface velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
     auto tHostPrescribedVel = Kokkos::create_mirror(tPrescribedVel->mData);
     tHostPrescribedVel(0, 0) = 0.1; tHostPrescribedVel(1, 0) = 0.7;
     tHostPrescribedVel(0, 1) = 0.2; tHostPrescribedVel(1, 1) = 0.8;
@@ -9996,7 +10011,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     tHostPrescribedVel(0, 4) = 0.5; tHostPrescribedVel(1, 4) = 1.1;
     tHostPrescribedVel(0, 5) = 0.6; tHostPrescribedVel(1, 5) = 1.2;
     Kokkos::deep_copy(tPrescribedVel->mData, tHostPrescribedVel);
-    tWorkSets.set("prescribed velocity", tPrescribedVel);
+    tWorkSets.set("surface velocity", tPrescribedVel);
 
     auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("time step", tNumCells, tNumNodesPerCell) );
@@ -10625,7 +10640,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     tWorkSets.set("previous velocity", tPrevVel);
 
     auto tPrescribedVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-        ( Plato::ScalarMultiVector("prescribed velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
+        ( Plato::ScalarMultiVector("surface velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
     auto tHostPrescribedVel = Kokkos::create_mirror(tPrescribedVel->mData);
     tHostPrescribedVel(0, 0) = 0.1; tHostPrescribedVel(1, 0) = 0.7;
     tHostPrescribedVel(0, 1) = 0.2; tHostPrescribedVel(1, 1) = 0.8;
@@ -10634,7 +10649,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
     tHostPrescribedVel(0, 4) = 0.5; tHostPrescribedVel(1, 4) = 1.1;
     tHostPrescribedVel(0, 5) = 0.6; tHostPrescribedVel(1, 5) = 1.2;
     Kokkos::deep_copy(tPrescribedVel->mData, tHostPrescribedVel);
-    tWorkSets.set("prescribed velocity", tPrescribedVel);
+    tWorkSets.set("surface velocity", tPrescribedVel);
 
     // build momentum surface forces interface and call funciton
     auto tSideSetName = std::string("x-");
@@ -10749,9 +10764,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SIMP_TemperatureResidual)
     Plato::ScalarVector tTimeSteps("time step", tNumNodes);
     Plato::blas1::fill(0.1, tTimeSteps);
     tVariables.vector("time steps", tTimeSteps);
-    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
     Plato::blas1::fill(1.0, tVelBCs);
-    tVariables.vector("prescribed velocity", tVelBCs);
+    tVariables.vector("surface velocity", tVelBCs);
 
     // allocate vector function
     Plato::DataMap tDataMap;
@@ -11206,9 +11221,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityCorrectorResidual)
     Plato::ScalarVector tTimeSteps("time step", tNumNodes);
     Plato::blas1::fill(0.1, tTimeSteps);
     tVariables.vector("time steps", tTimeSteps);
-    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
     Plato::blas1::fill(1.0, tVelBCs);
-    tVariables.vector("prescribed velocity", tVelBCs);
+    tVariables.vector("surface velocity", tVelBCs);
 
     // allocate vector function
     Plato::DataMap tDataMap;
@@ -11851,9 +11866,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
     Plato::ScalarVector tTimeSteps("time step", tNumNodes);
     Plato::blas1::fill(0.1, tTimeSteps);
     tVariables.vector("time steps", tTimeSteps);
-    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
     Plato::blas1::fill(1.0, tVelBCs);
-    tVariables.vector("prescribed velocity", tVelBCs);
+    tVariables.vector("surface velocity", tVelBCs);
 
     // allocate vector function
     Plato::DataMap tDataMap;
@@ -13103,9 +13118,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
     Plato::ScalarVector tArtCompress("artificial compressibility", tNumNodes);
     Plato::blas1::fill(5.0, tArtCompress);
     tPrimal.vector("artificial compressibility", tArtCompress);
-    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
     Plato::blas1::fill(6.0, tVelBCs);
-    tPrimal.vector("prescribed velocity", tVelBCs);
+    tPrimal.vector("surface velocity", tVelBCs);
 
     // call build_vector_function_worksets
     Plato::WorkSets tWorkSets;
@@ -13230,8 +13245,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
         }
     }
 
-    // test prescribed velocity results
-    auto tVelBCsWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("prescribed velocity"));
+    // test surface velocity results
+    auto tVelBCsWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("surface velocity"));
     TEST_EQUALITY(tNumCells, tVelBCsWS.extent(0));
     TEST_EQUALITY(tNumVelDofsPerCell, tVelBCsWS.extent(1));
     auto tHostVelBCsWS = Kokkos::create_mirror(tVelBCsWS);
@@ -13324,9 +13339,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     Plato::ScalarVector tArtCompress("artificial compressibility", tNumNodes);
     Plato::blas1::fill(5.0, tArtCompress);
     tPrimal.vector("artificial compressibility", tArtCompress);
-    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
     Plato::blas1::fill(6.0, tVelBCs);
-    tPrimal.vector("prescribed velocity", tVelBCs);
+    tPrimal.vector("surface velocity", tVelBCs);
 
     // set ordinal maps;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
@@ -13468,8 +13483,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
         }
     }
 
-    // test prescribed velocity results
-    auto tVelBCsWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("prescribed velocity"));
+    // test surface velocity results
+    auto tVelBCsWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("surface velocity"));
     TEST_EQUALITY(tNumCells, tVelBCsWS.extent(0));
     TEST_EQUALITY(tNumVelDofsPerCell, tVelBCsWS.extent(1));
     auto tHostVelBCsWS = Kokkos::create_mirror(tVelBCsWS);
@@ -13545,9 +13560,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksetsTwo)
     Plato::ScalarVector tTimeSteps("time steps", tNumNodes);
     Plato::blas1::fill(4.0, tTimeSteps);
     tPrimal.vector("time steps", tTimeSteps);
-    Plato::ScalarVector tVelBCs("prescribed velocity", tNumVelDofs);
+    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
     Plato::blas1::fill(6.0, tVelBCs);
-    tPrimal.vector("prescribed velocity", tVelBCs);
+    tPrimal.vector("surface velocity", tVelBCs);
 
     // set ordinal maps;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
