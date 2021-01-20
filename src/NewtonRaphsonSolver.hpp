@@ -18,6 +18,7 @@
 #include "LocalVectorFunctionInc.hpp"
 #include "GlobalVectorFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticity.hpp"
 
 namespace Plato
 {
@@ -41,10 +42,10 @@ private:
     static constexpr auto mNumGlobalDofsPerNode = PhysicsT::mNumDofsPerNode;     /*!< number of global degrees of freedom per node*/
     static constexpr auto mNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell; /*!< number of local degrees of freedom per cell (i.e. element)*/
 
-    using LocalPhysicsT = typename Plato::Plasticity<mNumSpatialDims>;
+    using LocalPhysicsT = typename PhysicsT::LocalPhysicsT;
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;    /*!< global state residual interface */
     std::shared_ptr<Plato::LocalVectorFunctionInc<LocalPhysicsT>> mLocalEquation; /*!< local state residual interface*/
-    Plato::WorksetBase<Plato::SimplexPlasticity<mNumSpatialDims>> mWorksetBase;   /*!< interface for assembly routines */
+    Plato::WorksetBase<PhysicsT> mWorksetBase;   /*!< interface for assembly routines */
 
     Plato::Scalar mStoppingTolerance;            /*!< stopping tolerance */
     Plato::Scalar mDirichletValuesMultiplier;    /*!< multiplier for Dirichlet values */
@@ -618,13 +619,16 @@ public:
 
 #ifdef PLATOANALYZE_1D
 extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainPlasticity<1>>;
+extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainThermoPlasticity<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
 extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainThermoPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::NewtonRaphsonSolver<Plato::InfinitesimalStrainThermoPlasticity<3>>;
 #endif
 

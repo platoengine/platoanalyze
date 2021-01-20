@@ -280,9 +280,17 @@ private:
             mBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
             mShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
         }
+        else if (tMaterialInputs.isSublist("Isotropic Linear Thermoelastic"))
+        {
+            auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Thermoelastic");
+            auto tPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
+            auto tElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
+            mBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
+            mShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
+        }
         else
         {
-            THROWERR("'Isotropic Linear Elastic' sublist of 'Material Model' is not defined.")
+            THROWERR("'Isotropic Linear Elastic' or 'Isotropic Linear Thermoelastic' sublist of 'Material Model' is not defined.")
         }
     }
 };

@@ -23,7 +23,7 @@ public:
     // degree-of-freedom attributes
     static constexpr auto mNumControl = NumControls;                            /*!< number of controls */
     static constexpr auto mNumDofsPerNode = mNumSpatialDims + 1;                /*!< number of global degrees of freedom per node { disp_x, disp_y, disp_z, pressure} */
-    static constexpr auto mDisplacementDofOffset = 0;                           /*!< displacement degrees of freedom offset */
+    static constexpr Plato::OrdinalType mDisplacementDofOffset = 0;             /*!< displacement degrees of freedom offset */
     static constexpr auto mPressureDofOffset = mNumSpatialDims;                 /*!< number of pressure degrees of freedom offset */
     static constexpr auto mTemperatureDofOffset = -1;                           /*!< no temperature degrees of freedom offset */
     static constexpr auto mNumDofsPerCell = mNumDofsPerNode * mNumNodesPerCell; /*!< number of global degrees of freedom per cell */

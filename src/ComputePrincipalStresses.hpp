@@ -12,11 +12,14 @@
 #include "SimplexFadTypes.hpp"
 #include "ImplicitFunctors.hpp"
 #include "SimplexPlasticity.hpp"
+#include "SimplexThermoPlasticity.hpp"
 #include "ComputeCauchyStress.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "ThermoPlasticityUtilities.hpp"
 #include "IsotropicMaterialUtilities.hpp"
+
+#include "ExpInstMacros.hpp"
 
 namespace Plato
 {
@@ -205,23 +208,11 @@ public:
 
 
 #ifdef PLATOANALYZE_2D
-extern template class Plato::ComputePrincipalStresses<Plato::ResidualTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::JacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::JacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::JacobianNTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::GradientXTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::GradientZTypes<Plato::SimplexPlasticity<2>>, Plato::SimplexPlasticity<2>>;
+PLATO_EXPL_DEC_INC_VMS(Plato::ComputePrincipalStresses, Plato::SimplexPlasticity, 2)
+PLATO_EXPL_DEC_INC_VMS(Plato::ComputePrincipalStresses, Plato::SimplexThermoPlasticity, 2)
 #endif
 
 #ifdef PLATOANALYZE_3D
-extern template class Plato::ComputePrincipalStresses<Plato::ResidualTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::JacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::JacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::JacobianNTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::LocalJacobianTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::LocalJacobianPTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::GradientXTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>; \
-extern template class Plato::ComputePrincipalStresses<Plato::GradientZTypes<Plato::SimplexPlasticity<3>>, Plato::SimplexPlasticity<3>>;
+PLATO_EXPL_DEC_INC_VMS(Plato::ComputePrincipalStresses, Plato::SimplexPlasticity, 3)
+PLATO_EXPL_DEC_INC_VMS(Plato::ComputePrincipalStresses, Plato::SimplexThermoPlasticity, 3)
 #endif

@@ -52,7 +52,7 @@ private:
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
     // Required
-    using PlasticityT = typename Plato::Plasticity<mSpaceDim>;
+    using PlasticityT = typename PhysicsT::LocalPhysicsT;
     using ProjectorT  = typename Plato::Projection<mSpaceDim, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
     std::shared_ptr<Plato::VectorFunctionVMS<ProjectorT>> mProjectionEquation;  /*!< global pressure gradient projection interface */
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;  /*!< global equality constraint interface */
@@ -205,7 +205,7 @@ public:
             tMesh.add_tag(Omega_h::VERT, "Reaction Force", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tForceSubViewDefaultMirror)));
             auto tDispSubView = Kokkos::subview(tDisplacements, tSnapshot, Kokkos::ALL());
             auto tDispSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tDispSubView);
-            tMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
+            tMesh.add_tag(Omega_h::VERT, "Displacements (and Temperature)", mNumGlobalDofsPerNode - 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
             Plato::add_element_state_tags(tMesh, mDataMap, tSnapshot);
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mSpaceDim);
             auto tTime = mPseudoTimeStep * static_cast<Plato::Scalar>(tSnapshot + 1);

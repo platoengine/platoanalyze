@@ -21,6 +21,7 @@
 #include "ComputeCauchyStress.hpp"
 #include "Plato_TopOptFunctors.hpp"
 #include "InterpolateFromNodal.hpp"
+#include "InterpolateGradientFromScalarNodal.hpp"
 #include "ComputeStabilization.hpp"
 #include "J2PlasticityUtilities.hpp"
 #include "ComputeDeviatoricStress.hpp"
@@ -64,11 +65,13 @@ private:
     static constexpr auto mNumStressTerms = SimplexPhysicsType::mNumStressTerms;       /*!< number of stress/strain components */
     static constexpr auto mNumDofsPerCell = SimplexPhysicsType::mNumDofsPerCell;       /*!< number of degrees of freedom (dofs) per cell */
     static constexpr auto mNumNodesPerCell = SimplexPhysicsType::mNumNodesPerCell;     /*!< number nodes per cell */
-    static constexpr auto mPressureDofOffset = SimplexPhysicsType::mPressureDofOffset; /*!< number of pressure dofs offset */
+    static constexpr auto mPressureDofOffset = SimplexPhysicsType::mPressureDofOffset; /*!< pressure dofs offset */
     static constexpr auto mNumGlobalDofsPerNode = SimplexPhysicsType::mNumDofsPerNode; /*!< number of global dofs per node */
 
-    static constexpr auto mNumMechDims = mSpaceDim;                                    /*!< number of mechanical degrees of freedom */
-    static constexpr auto mMechDofOffset = SimplexPhysicsType::mDisplacementDofOffset; /*!< mechanical degrees of freedom offset */
+    static constexpr auto mNumDisplacementDims = mSpaceDim;                                    /*!< number of displacement degrees of freedom */
+    static constexpr auto mDisplacementDofOffset = SimplexPhysicsType::mDisplacementDofOffset; /*!< displacement degrees of freedom offset */
+    static constexpr Plato::OrdinalType mNumThermalDims = 1;                           /*!< number of thermal degrees of freedom */
+    static constexpr auto mTemperatureDofOffset = SimplexPhysicsType::mTemperatureDofOffset; /*!< temperature dofs offset */
 
     using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mSpatialDomain; /*!< mesh database */
     using Plato::AbstractGlobalVectorFunctionInc<EvaluationType>::mDataMap;       /*!< PLATO Engine output database */
@@ -90,6 +93,7 @@ private:
     Plato::Scalar mPressureScaling;                /*!< Pressure scaling term */
     Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
+    Plato::Scalar mThermalConductivityCoefficient; /*!< thermal conductivity coefficient */
 
     Plato::Scalar mPenaltySIMP;               /*!< SIMP penalty for elastic properties */
     Plato::Scalar mMinErsatzSIMP;             /*!< SIMP min ersatz stiffness for elastic properties */
@@ -100,7 +104,10 @@ private:
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                       /*!< body loads interface */
     std::shared_ptr<CubatureType> mCubatureRule;                                        /*!< linear cubature rule */
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> mNeumannLoads; /*!< Neumann loads interface */
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumDisplacementDims, mNumGlobalDofsPerNode, mDisplacementDofOffset>> 
+                    mNeumannMechanicalLoads; /*!< Neumann mechanical loads interface */
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumThermalDims, mNumGlobalDofsPerNode, mTemperatureDofOffset>> 
+                    mNeumannThermalLoads; /*!< Neumann thermal loads interface */
 
 // Private access functions
 private:
@@ -132,7 +139,7 @@ private:
         }
         else
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Elliptic' sublist is not defined in XML input file.")
+            THROWERR("Infinitesimal Strain Thermoplasticity Residual: 'Elliptic' sublist is not defined in XML input file.")
         }
     }
 
@@ -156,7 +163,7 @@ private:
         }
         else
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Elliptic' sublist is not defined in XML input file.")
+            THROWERR("Infinitesimal Strain Thermoplasticity Residual: 'Elliptic' sublist is not defined in XML input file.")
         }
     }
 
@@ -172,11 +179,20 @@ private:
             mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
         }
 
-        // Parse Neumman loads
-        if(aProblemParams.isSublist("Natural Boundary Conditions"))
+        // Parse mechanical Neumann loads
+        if(aProblemParams.isSublist("Mechanical Natural Boundary Conditions"))
         {
-            mNeumannLoads =
-                    std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
+            mNeumannMechanicalLoads =
+                    std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumDisplacementDims, mNumGlobalDofsPerNode, mDisplacementDofOffset>>
+                    (aProblemParams.sublist("Mechanical Natural Boundary Conditions"));
+        }
+
+        // Parse thermal Neumann loads
+        if(aProblemParams.isSublist("Thermal Natural Boundary Conditions"))
+        {
+            mNeumannThermalLoads =
+                    std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumThermalDims, mNumGlobalDofsPerNode, mTemperatureDofOffset>>
+                    (aProblemParams.sublist("Thermal Natural Boundary Conditions"));
         }
 
         mDataMap.mScalarValues["LoadControlConstant"] = 1.0;
@@ -194,7 +210,7 @@ private:
         }
         else
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Material Models' sublist is not defined.")
+            THROWERR("Infinitesimal Strain Thermoplasticity Residual: 'Material Models' sublist is not defined.")
         }
     }
 
@@ -210,18 +226,24 @@ private:
         Teuchos::ParameterList tMaterialInputs = tMaterialsInputs.sublist(tMaterialName);
 
         mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
-        if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
+        if (tMaterialInputs.isSublist("Isotropic Linear Thermoelastic"))
         {
-            auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
-            mPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
-            mElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
+            auto tThermoelasticSubList = tMaterialInputs.sublist("Isotropic Linear Thermoelastic");
+            mPoissonsRatio = tThermoelasticSubList.get<Plato::Scalar>("Poissons Ratio");
+            mElasticModulus = tThermoelasticSubList.get<Plato::Scalar>("Youngs Modulus");
+            //mPoissonsRatio = Plato::parse_poissons_ratio(tThermoelasticSubList);
+            //mElasticModulus = Plato::parse_elastic_modulus(tThermoelasticSubList);
             mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
             mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
+
+            //mThermalExpansionCoefficient    = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
+            //mReferenceTemperature           = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
+            mThermalConductivityCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Conductivity Coefficient");
         }
         else
         {
             std::stringstream ss;
-            ss << "Infinitesimal Strain Plasticity Residual: 'Isotropic Linear Elastic' sublist of '" << tMaterialName << "' is not defined.";
+            ss << "Infinitesimal Strain Thermoplasticity Residual: 'Isotropic Linear Thermoelastic' sublist of '" << tMaterialName << "' is not defined.";
             THROWERR(ss.str());
         }
     }
@@ -242,7 +264,7 @@ private:
     }
 
     /************************************************************************//**
-     * \brief Add external forces to residual
+     * \brief Add external neumann forces to residual
      * \param [in]     aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
      * \param [in]     aControls    design variables
      * \param [in]     aConfig      configuration variables
@@ -258,18 +280,24 @@ private:
         auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
         if(tSearch == mDataMap.mScalarValues.end())
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Load Control Constant' is NOT defined in data map.")
+            THROWERR("Infinitesimal Strain Thermoplasticity Residual: 'Load Control Constant' is NOT defined in data map.")
         }
 
         auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tSearch->second;
-        if( mNeumannLoads != nullptr )
+        if( mNeumannMechanicalLoads != nullptr )
         {
-            mNeumannLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
+            mNeumannMechanicalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
+        }
+
+        tMultiplier = static_cast<Plato::Scalar>(-1.0);
+        if( mNeumannThermalLoads != nullptr )
+        {
+            mNeumannThermalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
         }
     }
 
     /************************************************************************//**
-     * \brief Add external forces to residual
+     * \brief Add body forces to residual
      * \param [in]     aGlobalState current global state ( i.e. state at the n-th time interval (\f$ t^{n} \f$) )
      * \param [in]     aControls    design variables
      * \param [in]     aConfig      configuration variables
@@ -285,7 +313,7 @@ private:
         auto tSearch = mDataMap.mScalarValues.find("LoadControlConstant");
         if(tSearch == mDataMap.mScalarValues.end())
         {
-            THROWERR("Infinitesimal Strain Plasticity Residual: 'Load Control Constant' is NOT defined in data map.")
+            THROWERR("Infinitesimal Strain Thermoplasticity Residual: 'Load Control Constant' is NOT defined in data map.")
         }
 
         auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tSearch->second;
@@ -346,13 +374,15 @@ public:
         mPressureScaling(1.0),
         mElasticBulkModulus(-1.0),
         mElasticShearModulus(-1.0),
+        mThermalConductivityCoefficient(-1.0),
         mPenaltySIMP(3),
         mMinErsatzSIMP(1e-9),
         mUpperBoundOnPenaltySIMP(4),
         mAdditiveContinuationParam(0.1),
         mBodyLoads(nullptr),
         mCubatureRule(std::make_shared<CubatureType>()),
-        mNeumannLoads(nullptr)
+        mNeumannMechanicalLoads(nullptr),
+        mNeumannThermalLoads(nullptr)
     {
         this->initialize(aProblemParams);
     }
@@ -401,9 +431,11 @@ public:
     ) override
     {
         auto tNumCells = mSpatialDomain.numCells();
+        auto tSpaceDim = mSpaceDim;
 
         using GradScalarT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
         using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
+        using ThermalFluxT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ControlT, ConfigT>;
 
         // Functors used to compute residual-related quantities
         Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
@@ -416,19 +448,23 @@ public:
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
-        Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, 0 /* dof offset */, mSpaceDim> tInterpolatePressGradFromNodal;
+        Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, mDisplacementDofOffset, mSpaceDim> tInterpolatePressGradFromNodal;
+        Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mTemperatureDofOffset> tInterpolateTemperatureFromNodal;
+        Plato::InterpolateGradientFromScalarNodal<mSpaceDim, mNumGlobalDofsPerNode, mTemperatureDofOffset> tInterpolateTemperatureGradFromNodal;
 
         // Residual evaulation functors
         Plato::PressureDivergence<mSpaceDim, mNumGlobalDofsPerNode> tPressureDivergence;
-        Plato::StressDivergence<mSpaceDim, mNumGlobalDofsPerNode, mMechDofOffset> tStressDivergence;
+        Plato::StressDivergence<mSpaceDim, mNumGlobalDofsPerNode, mDisplacementDofOffset> tStressDivergence;
         Plato::ProjectToNode<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tProjectVolumeStrain;
         Plato::FluxDivergence<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tStabilizedDivergence;
+        Plato::FluxDivergence<mSpaceDim, mNumGlobalDofsPerNode, mTemperatureDofOffset> tThermalFluxDivergence;
         Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatzSIMP);
 
         Plato::ScalarVectorT<ResultT> tPressure("L2 pressure", tNumCells);
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
         Plato::ScalarVectorT<ResultT> tVolumeStrain("volume strain", tNumCells);
         Plato::ScalarVectorT<ResultT> tStrainDivergence("strain divergence", tNumCells);
+        //Plato::ScalarVectorT<ResultT> tTemperature("temperature", tNumCells);
         Plato::ScalarMultiVectorT<ResultT> tStabilization("cell stabilization", tNumCells, mSpaceDim);
         Plato::ScalarMultiVectorT<GradScalarT> tPressureGrad("pressure gradient", tNumCells, mSpaceDim);
         Plato::ScalarMultiVectorT<GradScalarT> tTotalStrain("total strain", tNumCells, mNumStressTerms);
@@ -436,6 +472,8 @@ public:
         Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
         Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<GradScalarT> tTemperatureGrad("temperature grad", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<ThermalFluxT> tThermalFlux("thermal flux", tNumCells, mSpaceDim);
 
         // output quantities
         Plato::ScalarMultiVectorT<ResultT> tCauchyStress("cauchy stress", tNumCells, mNumStressTerms);
@@ -450,6 +488,7 @@ public:
         auto tPressureDofOffset = mPressureDofOffset;
         auto tElasticBulkModulus = mElasticBulkModulus;
         auto tElasticShearModulus = mElasticShearModulus;
+        auto tThermalConductivityCoefficient = mThermalConductivityCoefficient;
 
         auto tQuadratureWeight = mCubatureRule->getCubWeight();
         auto tBasisFunctions = mCubatureRule->getBasisFunctions();
@@ -459,7 +498,11 @@ public:
             tComputeGradient(aCellOrdinal, tConfigurationGradient, aConfig, tCellVolume);
             tCellVolume(aCellOrdinal) *= tQuadratureWeight;
 
-            // compute elastic strain, i.e. e_elastic = e_total - e_plastic
+            // compute thermal quantities
+            //tInterpolateTemperatureFromNodal(aCellOrdinal, tBasisFunctions, aCurrentGlobalState, tTemperature);
+            tInterpolateTemperatureGradFromNodal(aCellOrdinal, tConfigurationGradient, aCurrentGlobalState, tTemperatureGrad);
+
+            // compute elastic strain, i.e. e_elastic = e_total - e_plastic - e_thermal
             tComputeTotalStrain(aCellOrdinal, tTotalStrain, aCurrentGlobalState, tConfigurationGradient);
             tThermoPlasticityUtils.computeElasticStrain(aCellOrdinal, aCurrentGlobalState, aCurrentLocalState,
                                                         tBasisFunctions, tTotalStrain, tElasticStrain);
@@ -490,8 +533,15 @@ public:
             tComputeStabilization(aCellOrdinal, tCellVolume, tPressureGrad, tProjectedPressureGradGP, tStabilization);
             Plato::apply_penalty<mSpaceDim>(aCellOrdinal, tElasticPropertiesPenalty, tStabilization);
 
+            // compute the thermal flux
+            ControlT tPenalizedThermalConductivityCoefficient = tElasticPropertiesPenalty * tThermalConductivityCoefficient;
+            for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; ++tDimIndex)
+                tThermalFlux(aCellOrdinal, tDimIndex) = static_cast<Plato::Scalar>(-1.0) * tPenalizedThermalConductivityCoefficient *
+                                                        tTemperatureGrad(aCellOrdinal, tDimIndex);
+
             // compute residual
             tStressDivergence (aCellOrdinal, aResult, tDeviatoricStress, tConfigurationGradient, tCellVolume);
+            tThermalFluxDivergence(aCellOrdinal, aResult, tThermalFlux, tConfigurationGradient, tCellVolume, -1.0);
             tPressureDivergence (aCellOrdinal, aResult, tPressure, tConfigurationGradient, tCellVolume);
             tStabilizedDivergence (aCellOrdinal, aResult, tStabilization, tConfigurationGradient, tCellVolume, -1.0);
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
@@ -503,7 +553,7 @@ public:
             tJ2PlasticityUtils.getAccumulatedPlasticStrain(aCellOrdinal, aCurrentLocalState, tAccumPlasticStrain);
             tJ2PlasticityUtils.getPlasticStrainTensor(aCellOrdinal, aCurrentLocalState, tPlasticStrain);
             tJ2PlasticityUtils.getBackstressTensor(aCellOrdinal, aCurrentLocalState, tBackStress);
-        }, "stabilized infinitesimal strain plasticity residual");
+        }, "stabilized infinitesimal strain thermoplasticity residual");
 
         this->addBodyForces(aCurrentGlobalState, aControls, aConfig, aResult);
 
@@ -516,6 +566,7 @@ public:
         this->outputData(tPlasticStrain, "plastic strain");
         this->outputData(tCauchyStress, "cauchy stress");
         this->outputData(tBackStress, "backstress");
+        this->outputData(tThermalFlux, "thermal flux");
     }
 
     /******************************************************************************//**
@@ -534,7 +585,7 @@ public:
         auto tSuggestedPenaltySIMP = tPreviousPenaltySIMP + mAdditiveContinuationParam;
         mPenaltySIMP = tSuggestedPenaltySIMP >= mUpperBoundOnPenaltySIMP ? mUpperBoundOnPenaltySIMP : tSuggestedPenaltySIMP;
         std::ostringstream tMsg;
-        tMsg << "Infinitesimal Strain Plasticity Residual: New penalty parameter is set to '" << mPenaltySIMP
+        tMsg << "Infinitesimal Strain Thermoplasticity Residual: New penalty parameter is set to '" << mPenaltySIMP
                 << "'. Previous penalty parameter was '" << tPreviousPenaltySIMP << "'.\n";
         REPORT(tMsg.str().c_str())
     }

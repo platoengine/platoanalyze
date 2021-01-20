@@ -19,6 +19,7 @@
 #include "LocalVectorFunctionInc.hpp"
 #include "GlobalVectorFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticity.hpp"
 
 namespace Plato
 {
@@ -129,7 +130,7 @@ private:
     static constexpr auto mNumPressGradDofsPerCell = PhysicsT::mNumNodeStatePerCell;  /*!< number of projected pressure gradient dofs per cell */
     static constexpr auto mNumConfigDofsPerCell = mNumSpatialDims * mNumNodesPerCell; /*!< number of configuration (i.e. coordinates) dofs per cell/element */
 
-    using LocalPhysicsT = typename Plato::Plasticity<mNumSpatialDims>;
+    using LocalPhysicsT = typename PhysicsT::LocalPhysicsT;
     using ProjectorT  = typename Plato::Projection<mNumSpatialDims, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
 
     std::shared_ptr<Plato::LocalScalarFunctionInc> mCriterion;                    /*!< local criterion interface */ 
@@ -137,7 +138,7 @@ private:
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;    /*!< global equality constraint interface */
     std::shared_ptr<Plato::LocalVectorFunctionInc<LocalPhysicsT>> mLocalEquation; /*!< local equality constraint interface */
 
-    Plato::WorksetBase<Plato::SimplexPlasticity<mNumSpatialDims>> mWorksetBase;   /*!< interface for assembly routines */
+    Plato::WorksetBase<PhysicsT> mWorksetBase;   /*!< interface for assembly routines */
 
     Plato::OrdinalType mNumPseudoTimeSteps;   /*!< current number of pseudo time steps*/
     Plato::LocalOrdinalVector mDirichletDofs; /*!< Dirichlet boundary conditions degrees of freedom */
@@ -880,12 +881,15 @@ public:
 
 #ifdef PLATOANALYZE_1D
 extern template class Plato::PathDependentAdjointSolver<Plato::InfinitesimalStrainPlasticity<1>>;
+extern template class Plato::PathDependentAdjointSolver<Plato::InfinitesimalStrainThermoPlasticity<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
 extern template class Plato::PathDependentAdjointSolver<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::PathDependentAdjointSolver<Plato::InfinitesimalStrainThermoPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::PathDependentAdjointSolver<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::PathDependentAdjointSolver<Plato::InfinitesimalStrainThermoPlasticity<3>>;
 #endif

@@ -10,6 +10,7 @@
 #include "ElasticWorkCriterion.hpp"
 #include "PlasticWorkCriterion.hpp"
 #include "InfinitesimalStrainThermoPlasticityResidual.hpp"
+#include "ThermoPlasticity.hpp"
 
 namespace Plato
 {
@@ -129,6 +130,9 @@ public:
 
     /*!< short name for projected pressure gradient physics */
     using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset>;
+
+    /*!< short name for local physics physics */
+    using LocalPhysicsT = typename Plato::ThermoPlasticity<NumSpaceDim>;
 };
 // class InfinitesimalStrainThermoPlasticity
 
