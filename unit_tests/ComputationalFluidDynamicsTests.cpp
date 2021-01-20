@@ -7333,7 +7333,9 @@ public:
         this->checkProblemSetup();
 
         Plato::Primal tPrimalVars;
+        this->setInitialConditions(tPrimalVars);
         this->calculateElemCharacteristicSize(tPrimalVars);
+
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumIterations; tIteration++)
         {
             tPrimalVars.scalar("iteration", tIteration);
@@ -7729,6 +7731,37 @@ private:
                 auto tVector = aVariables.vector(std::string("current ") + tName);
                 aVariables.vector(std::string("previous ") + tName, tVector);
             }
+        }
+    }
+
+    void setInitialConditions
+    (Plato::Primal & aVariables)
+    {
+        const auto tTime = 0.0;
+        const auto tPrevStep = 0;
+
+        Plato::ScalarVector tVelBcValues;
+        Plato::LocalOrdinalVector tVelBcDofs;
+        mVelocityEssentialBCs.get(tVelBcDofs, tVelBcValues, tTime);
+        auto tPreviouVel = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
+        Plato::cbs::enforce_boundary_condition(tVelBcDofs, tVelBcValues, tPreviouVel);
+        aVariables.vector("previous velocity", tPreviouVel);
+
+        Plato::ScalarVector tPressBcValues;
+        Plato::LocalOrdinalVector tPressBcDofs;
+        mPressureEssentialBCs.get(tPressBcDofs, tPressBcValues, tTime);
+        auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
+        Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
+        aVariables.vector("previous pressure", tPreviousPress);
+
+        if(mCalculateHeatTransfer)
+        {
+            Plato::ScalarVector tTempBcValues;
+            Plato::LocalOrdinalVector tTempBcDofs;
+            mTemperatureEssentialBCs.get(tTempBcDofs, tTempBcValues, tTime);
+            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
+            Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
+            aVariables.vector("previous temperature", tPreviousTemp);
         }
     }
 
