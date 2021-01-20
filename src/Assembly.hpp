@@ -18,17 +18,20 @@ namespace Plato
 *
 **********************************************************************************/
 template <class Scalar, class Result>
-inline Scalar local_result_sum(const Plato::OrdinalType& aNumCells, const Result & aResult)
+inline Scalar
+local_result_sum(
+    const Plato::OrdinalType & aNumCells,
+    const Result             & aResult
+)
 {
-  Scalar tReturnVal(0.0);
-  Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0,aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal, Scalar& aLocalResult)
-  {
-    aLocalResult += aResult(aCellOrdinal);
-  }, tReturnVal);
-  return tReturnVal;
+    Scalar tReturnVal(0.0);
+    Kokkos::parallel_reduce(Kokkos::RangePolicy<>(0,aNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal, Scalar& aLocalResult)
+    {
+        aLocalResult += aResult(aCellOrdinal);
+    }, tReturnVal);
+    return tReturnVal;
 }
 // function local_result_sum
-
 
 /******************************************************************************//**
  * \brief Flatten vector workset. Takes 2D view and converts it into a 1D view.
@@ -189,11 +192,11 @@ transform_ad_type_to_pod_1Dview(
         auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
         for(Plato::OrdinalType tDimIndex=0; tDimIndex < NumDofsPerCell; tDimIndex++)
         {
-            aOutput(tCellOrdinal, tDimIndex) = aInput(aCellOrdinal).dx(tDimIndex);
+            aOutput(tCellOrdinal * NumDofsPerCell + tDimIndex) = aInput(aCellOrdinal).dx(tDimIndex);
         }
     }, "Convert AD Partial to POD type");
 }
-// function transform_ad_type_to_pod_2Dview
+// function transform_ad_type_to_pod_1Dview
 
 /************************************************************************//**
  *
@@ -1472,7 +1475,8 @@ assemble_transpose_jacobian(
             for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < aNumColumnsPerCell; tColumnIndex++)
             {
                 Plato::OrdinalType tEntryOrdinal = aMatrixEntryOrdinal(aCellOrdinal, tColumnIndex, tRowIndex);
-                Kokkos::atomic_add(&aReturnValue(tEntryOrdinal), aJacobianWorkset(aCellOrdinal, tRowIndex).dx(tColumnIndex));
+                auto tEntryValue = aJacobianWorkset(aCellOrdinal, tRowIndex).dx(tColumnIndex);
+                Kokkos::atomic_add(&aReturnValue(tEntryOrdinal), tEntryValue);
             }
         }
     }, "assemble_transpose_jacobian");

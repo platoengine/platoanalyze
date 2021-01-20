@@ -740,7 +740,7 @@ class GlobalByLocalEntryFunctor
         auto iNode = icellDof / DofsPerNode_I;
         auto iDof  = icellDof % DofsPerNode_I;
         Plato::OrdinalType iLocalOrdinal = mCells2nodes[cellOrdinal * (SpaceDim+1) + iNode];
-        Plato::OrdinalType jLocalOrdinal = cellOrdinal * (SpaceDim+1) + jcellDof;
+        Plato::OrdinalType jLocalOrdinal = cellOrdinal;
         Plato::OrdinalType rowStart = mRowMap(iLocalOrdinal);
         Plato::OrdinalType rowEnd   = mRowMap(iLocalOrdinal+1);
         for (Plato::OrdinalType entryOrdinal=rowStart; entryOrdinal<rowEnd; entryOrdinal++)

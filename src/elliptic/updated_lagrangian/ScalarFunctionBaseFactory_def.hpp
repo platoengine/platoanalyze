@@ -23,10 +23,11 @@ namespace UpdatedLagrangian
     template <typename PhysicsT>
     std::shared_ptr<Plato::Elliptic::UpdatedLagrangian::ScalarFunctionBase> 
     ScalarFunctionBaseFactory<PhysicsT>::create(
-        const Plato::SpatialModel    & aSpatialModel,
-              Plato::DataMap         & aDataMap,
-              Teuchos::ParameterList & aProblemParams,
-              std::string            & aFunctionName
+              Plato::SpatialModel                 & aSpatialModel,
+        const Plato::Sequence<PhysicsT::SpaceDim> & aSequence,
+              Plato::DataMap                      & aDataMap,
+              Teuchos::ParameterList              & aProblemParams,
+              std::string                         & aFunctionName
     ) 
     {
         auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(aFunctionName);
@@ -34,7 +35,7 @@ namespace UpdatedLagrangian
 
         if(tFunctionType == "Scalar Function")
         {
-            return std::make_shared<PhysicsScalarFunction<PhysicsT>>(aSpatialModel, aDataMap, aProblemParams, aFunctionName);
+            return std::make_shared<PhysicsScalarFunction<PhysicsT>>(aSpatialModel, aSequence, aDataMap, aProblemParams, aFunctionName);
         }
         else
         {

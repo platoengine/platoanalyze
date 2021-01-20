@@ -3,6 +3,7 @@
 #include <Teuchos_ParameterList.hpp>
 
 #include "PlatoMask.hpp"
+#include "ApplyConstraints.hpp"
 #include "PlatoStaticsTypes.hpp"
 
 namespace Plato {
@@ -72,7 +73,7 @@ namespace Plato {
         std::vector<Plato::SequenceStep<mSpatialDim>> mSteps;
 
       public:
-        const decltype(mSteps) & getSteps() { return mSteps; }
+        const decltype(mSteps) & getSteps() const { return mSteps; }
 
         int getNumSteps() const { return mSteps.size(); }
 

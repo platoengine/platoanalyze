@@ -122,7 +122,7 @@ public:
       mLocalStates   ("Local states",  mSequence.getNumSteps(), mPDE->stateSize()),
       mGlobalJacobian(Teuchos::null),
       mIsSelfAdjoint (aProblemParams.get<bool>("Self-Adjoint", false)),
-      mLagrangianUpdate(aMesh)
+      mLagrangianUpdate(mSpatialModel)
     {
         this->initialize(aProblemParams);
 
@@ -258,8 +258,8 @@ public:
     /******************************************************************************//**
      * \brief Solve system of equations
      * \param [in] aControl 1D view of control variables
-     * \return Plato::Solution composed of state variables
-    **********************************************************************************/
+     * \return Plato::Solution composed of state variables    
+     ***********************************************************************************/
     Plato::Solution
     solution(const Plato::ScalarVector & aControl)
     {
@@ -281,12 +281,9 @@ public:
             if (tStepIndex > 0)
             {
                 tLocalState  = Kokkos::subview(mLocalStates, tStepIndex-1, Kokkos::ALL());
-                Kokkos::deep_copy(tTotalState, Kokkos::subview(mTotalStates, tStepIndex-1, Kokkos::ALL()));
 
-                // copy the previous global state to use as a starting guess for faster convergence
-                Plato::ScalarVector tPrevGlobalState = Kokkos::subview(mGlobalStates, tStepIndex-1, Kokkos::ALL());
-                Kokkos::deep_copy(tGlobalState, tPrevGlobalState);
-                
+                // copy forward the previous total state
+                Kokkos::deep_copy(tTotalState, Kokkos::subview(mTotalStates, tStepIndex-1, Kokkos::ALL()));
             }
             else
             {
@@ -336,6 +333,7 @@ public:
             mResidual  = mPDE->value(tGlobalState, tLocalState, aControl);
 
             Plato::ScalarVector tUpdatedLocalState = Kokkos::subview(mLocalStates, tStepIndex, Kokkos::ALL());
+            mDataMap.scalarMultiVectors["total strain"] = Plato::ScalarMultiVector("total strain", numCells(), NumVoigtTerms);
             mLagrangianUpdate(mDataMap, tLocalState, tUpdatedLocalState);
 
             Plato::blas1::axpy(1.0, tGlobalState, tTotalState);
@@ -347,7 +345,9 @@ public:
 
         } // end sequence loop
 
-        return Plato::Solution(mGlobalStates);
+        auto tSol = Plato::Solution(mGlobalStates);
+        tSol.LocalState = mLocalStates;
+        return tSol;
     }
 
     /******************************************************************************//**
@@ -618,7 +618,7 @@ public:
 
         auto& tSequenceSteps = mSequence.getSteps();
         auto tLastStepIndex  = tSequenceSteps.size()-1; 
-        for (Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex > 0; tStepIndex--)
+        for (Plato::OrdinalType tStepIndex = tLastStepIndex; tStepIndex >= 0; tStepIndex--)
         {
 
             const auto& tSequenceStep = tSequenceSteps[tStepIndex];
@@ -660,7 +660,16 @@ public:
             Plato::blas1::scale(-1.0, t_dFdc);
             Kokkos::deep_copy(tAdjoint_C, t_dFdc);
 
-            Plato::ScalarVector tC_prev = Kokkos::subview(mLocalStates, tStepIndex-1, Kokkos::ALL());
+            Plato::ScalarVector tC_prev;
+            if (tStepIndex > 0)
+            {
+                tC_prev = Kokkos::subview(mLocalStates, tStepIndex-1, Kokkos::ALL());
+            }
+            else
+            {
+                // kokkos initializes new views to zero.
+                tC_prev = Plato::ScalarVector("initial local state",  mPDE->stateSize());
+            }
 
             // H_{,u^k}^{k}
             auto t_dHdu = mLagrangianUpdate.gradient_u_T(tU, tC, tC_prev);
@@ -821,7 +830,7 @@ private:
                 }
                 else
                 {
-                    auto tCriterion = tNonlinearFunctionBaseFactory.create(mSpatialModel, mDataMap, aProblemParams, tName);
+                    auto tCriterion = tNonlinearFunctionBaseFactory.create(mSpatialModel, mSequence, mDataMap, aProblemParams, tName);
                     if( tCriterion != nullptr )
                     {
                         mCriteria[tName] = tCriterion;

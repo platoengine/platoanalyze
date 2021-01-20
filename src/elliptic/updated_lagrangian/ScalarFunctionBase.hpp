@@ -35,10 +35,10 @@ public:
      **********************************************************************************/
     virtual Plato::Scalar
     value(
-        const Plato::Solution          & aSolution,
-        const Plato::ScalarMultiVector & aLocalState,
-        const Plato::ScalarVector      & aControl,
-              Plato::Scalar              aTimeStep = 0.0) const = 0;
+        const Plato::Solution                  & aSolution,
+        const Plato::ScalarMultiVector         & aLocalState,
+        const Plato::ScalarVector              & aControl,
+              Plato::Scalar                      aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
      * @brief Return function gradient wrt design variables
@@ -49,10 +49,11 @@ public:
      * @return function gradient wrt design variables
      **********************************************************************************/
     virtual Plato::ScalarVector
-    gradient_z(const Plato::Solution          & aSolution,
-               const Plato::ScalarMultiVector & aLocalState,
-               const Plato::ScalarVector      & aControl,
-                     Plato::Scalar              aTimeStep = 0.0) const = 0;
+    gradient_z(
+        const Plato::Solution                  & aSolution,
+        const Plato::ScalarMultiVector         & aLocalState,
+        const Plato::ScalarVector              & aControl,
+              Plato::Scalar                      aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
      * @brief Return function gradient wrt state variables
@@ -64,11 +65,12 @@ public:
      * @return function gradient wrt state variables
      **********************************************************************************/
     virtual Plato::ScalarVector
-    gradient_u(const Plato::Solution          & aSolution,
-               const Plato::ScalarMultiVector & aLocalState,
-               const Plato::ScalarVector      & aControl,
-                     Plato::OrdinalType         aStepIndex,
-                     Plato::Scalar              aTimeStep = 0.0) const = 0;
+    gradient_u(
+        const Plato::Solution          & aSolution,
+        const Plato::ScalarMultiVector & aLocalState,
+        const Plato::ScalarVector      & aControl,
+              Plato::OrdinalType         aStepIndex,
+              Plato::Scalar              aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
      * @brief Return function gradient wrt local state variables
@@ -80,11 +82,12 @@ public:
      * @return function gradient wrt state variables
      **********************************************************************************/
     virtual Plato::ScalarVector
-    gradient_c(const Plato::Solution          & aSolution,
-               const Plato::ScalarMultiVector & aLocalState,
-               const Plato::ScalarVector      & aControl,
-                     Plato::OrdinalType         aStepIndex,
-                     Plato::Scalar              aTimeStep = 0.0) const = 0;
+    gradient_c(
+        const Plato::Solution          & aSolution,
+        const Plato::ScalarMultiVector & aLocalState,
+        const Plato::ScalarVector      & aControl,
+              Plato::OrdinalType         aStepIndex,
+              Plato::Scalar              aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
      * @brief Return function gradient wrt configurtion variables
@@ -95,10 +98,11 @@ public:
      * @return function gradient wrt configurtion variables
      **********************************************************************************/
     virtual Plato::ScalarVector
-    gradient_x(const Plato::Solution          & aSolution,
-               const Plato::ScalarMultiVector & aLocalState,
-               const Plato::ScalarVector      & aControl,
-                     Plato::Scalar              aTimeStep = 0.0) const = 0;
+    gradient_x(
+        const Plato::Solution                  & aSolution,
+        const Plato::ScalarMultiVector         & aLocalState,
+        const Plato::ScalarVector              & aControl,
+              Plato::Scalar                      aTimeStep = 0.0) const = 0;
 
     /******************************************************************************//**
      * \fn virtual void updateProblem(const Plato::ScalarVector & aState,

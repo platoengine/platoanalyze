@@ -65,6 +65,8 @@ struct Solution {
   ScalarMultiVector State;
   ScalarMultiVector StateDot;
   ScalarMultiVector StateDotDot;
+  
+  ScalarMultiVector LocalState;
 };
 typedef Solution Adjoint;
 
