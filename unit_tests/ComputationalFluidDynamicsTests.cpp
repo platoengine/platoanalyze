@@ -7141,7 +7141,7 @@ inline void
 enforce_boundary_condition
 (const Plato::LocalOrdinalVector & aBcDofs,
  const Plato::ScalarVector       & aBcValues,
- Plato::ScalarVector             & aState)
+ const Plato::ScalarVector       & aState)
 {
     auto tLength = aBcValues.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
