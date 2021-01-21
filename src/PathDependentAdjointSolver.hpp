@@ -167,7 +167,7 @@ private:
         auto tDhDu = mLocalEquation->gradient_u(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                                 aStates.mCurrentLocalState, aStates.mPreviousLocalState,
                                                 aControls, aStates.mCurrentStepIndex);
-printf("\n WHY : %d , %d\n", tDhDu.extent(1), tDhDu.extent(2));
+
         // Compute cell C = (dH/dc)^{-1}*dH/du, where H is the local residual, c are the local states and u are the global states
         Plato::Scalar tBeta = 0.0;
         const Plato::Scalar tAlpha = 1.0;

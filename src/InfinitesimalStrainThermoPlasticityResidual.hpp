@@ -179,20 +179,33 @@ private:
             mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
         }
 
-        // Parse mechanical Neumann loads
-        if(aProblemParams.isSublist("Mechanical Natural Boundary Conditions"))
+        if(aProblemParams.isSublist("Natural Boundary Conditions"))
         {
-            mNeumannMechanicalLoads =
-                    std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumDisplacementDims, mNumGlobalDofsPerNode, mDisplacementDofOffset>>
-                    (aProblemParams.sublist("Mechanical Natural Boundary Conditions"));
-        }
+            auto tNaturalBCsParams = aProblemParams.sublist("Natural Boundary Conditions");
+            
+            // Parse mechanical Neumann loads
+            if(tNaturalBCsParams.isSublist("Mechanical Natural Boundary Conditions"))
+            {
+                mNeumannMechanicalLoads =
+                        std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumDisplacementDims, mNumGlobalDofsPerNode, mDisplacementDofOffset>>
+                        (tNaturalBCsParams.sublist("Mechanical Natural Boundary Conditions"));
+            }
+            else
+            {
+                REPORT("No 'Mechanical Natural Boundary Conditions' specified.")
+            }
 
-        // Parse thermal Neumann loads
-        if(aProblemParams.isSublist("Thermal Natural Boundary Conditions"))
-        {
-            mNeumannThermalLoads =
-                    std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumThermalDims, mNumGlobalDofsPerNode, mTemperatureDofOffset>>
-                    (aProblemParams.sublist("Thermal Natural Boundary Conditions"));
+            // Parse thermal Neumann loads
+            if(tNaturalBCsParams.isSublist("Thermal Natural Boundary Conditions"))
+            {
+                mNeumannThermalLoads =
+                        std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumThermalDims, mNumGlobalDofsPerNode, mTemperatureDofOffset>>
+                        (tNaturalBCsParams.sublist("Thermal Natural Boundary Conditions"));
+            }
+            else
+            {
+                REPORT("No 'Thermal Natural Boundary Conditions' specified.")
+            }
         }
 
         mDataMap.mScalarValues["LoadControlConstant"] = 1.0;
