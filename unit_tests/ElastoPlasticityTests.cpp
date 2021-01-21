@@ -4657,13 +4657,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
 
     // 3.3 set Dirichlet boundary conditions
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
-
+printf("\nBefore failure\n");
     // 4. Solution
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tPlasticityProblem.solution(tControls).State;
-
+printf("\nYou made it!\n");
     // 5. Test results
     Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
     Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices * tSpaceDim);
