@@ -3004,11 +3004,12 @@ calculate_brinkman_forces
 (const Plato::OrdinalType & aCellOrdinal,
  const ControlT & aPenalizedBrinkmanCoeff,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
     for (Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
     {
-        aResult(aCellOrdinal, tDim) += aPenalizedBrinkmanCoeff * aPrevVelGP(aCellOrdinal, tDim);
+        aResult(aCellOrdinal, tDim) += aMultiplier * aPenalizedBrinkmanCoeff * aPrevVelGP(aCellOrdinal, tDim);
     }
 }
 
@@ -3164,15 +3165,16 @@ void integrate_vector_field
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarMultiVectorT<ForceT> & aForce,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
             auto tLocalCellDof = (SpaceDim * tNode) + tDim;
-            aResult(aCellOrdinal, tLocalCellDof) +=
-                aCellVolume(aCellOrdinal) * aBasisFunctions(tNode) * aForce(aCellOrdinal, tDim);
+            aResult(aCellOrdinal, tLocalCellDof) += aMultiplier * aCellVolume(aCellOrdinal) *
+                aBasisFunctions(tNode) * aForce(aCellOrdinal, tDim);
         }
     }
 }
@@ -3369,36 +3371,55 @@ public:
 
 /***************************************************************************//**
  * \class VelocityPredictorResidual
+ *
  * \tparam PhysicsT    physics type
  * \tparam EvaluationT forward automatic differentiation evaluation type
- * \brief Calculate the momentum, i.e. velocity, predictor residual, which is
- * defined as
+ *
+ * \brief Calculate the momentum predictor residual, which is defined as
  *
  * \f[
- * \int_{\Omega}w_i^h \left( \frac{\bar{u}^{\ast}_i - \bar{u}_i^{n}}{\Delta\bar{t}}
- * \right) d\Omega=\mathcal{R}^n_{\bar{u}_i}(w^h_i) + \frac{\Delta\bar{t}}{2}\left[
- * \int_{\Omega} \left( \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^n_k + w_i^h
- * \frac{\partial \bar{u}^n_k}{\partial\bar{x}_k} \right) \hat{R}^n_{\bar{u}_i}\,
- * d\Omega \right]
+ *   \mathcal{R}^n_i(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) - E_i^n(w^h_i) = 0.
+ * \f]
+ *
+ * Inertial Forces:
+ *
+ * \f[
+ *   I^n_i(w^h_i) =
+ *     \int_{\Omega}w_i^h\left(\frac{\bar{u}^{\ast}_i - \bar{u}_i^{n}}{\Delta\bar{t}}\right)d\Omega
+ * \f]
+ *
+ * Internal Forces:
+ *
+ * \f[
+ *   F^n_i(w^h_i) =
+ *     -\int_{\Omega}w_i^h\left( \frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n
+ *     +\bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \right) d\Omega
+ *     -\int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
+ *     +\int_\Omega w_i^h\left(Gr_i Pr^2\bar{T}^n\right)\,d\Omega
+ * \f]
+ *
+ * Stabilizing Forces:
+ *
+ * \f[
+ *   S_i^n(w^h_i) =
+ *     \frac{\Delta\bar{t}}{2}\left[ \int_{\Omega} \left( \frac{\partial w_i^h}
+ *     {\partial\bar{x}_k}\bar{u}^n_k + w_i^h\frac{\partial \bar{u}^n_k}
+ *     {\partial\bar{x}_k} \right) \hat{F}^n_{\bar{u}_i}\, d\Omega \right]
  * \f]
  *
  * where
  *
  * \f[
- * \mathcal{R}^n_{\bar{u}_i}(w^h_i)=&-\int_{\Omega}w_i^h\left( \frac{\partial \bar{u}_j^n}
- * {\partial\bar{x}_j}\bar{u}_i^n + \bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j}
- * \right) d\Omega - \int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,
- * d\Omega + \int_{\Gamma-\Gamma_t}w_i^h\bar{\tau}^n_{ij}n_j\,d\Gamma + \int_{\Gamma_t}w_i^h
- * \left(t_i+\bar{p}^n n_i\right)\,d\Gamma + \int_\Omega w_i^h\left(Gr_i Pr^2\bar{T}^n\right)
- * \,d\Omega + \int_\Omega w^h_i\left(\pi^{Br}(\theta)\bar{u}_i^n\right)\,d\Omega
+ *   \hat{F}^n_{\bar{u}_i} = -\frac{\partial\bar{u}_j^n}{\partial \bar{x}_j}\bar{u}_i^n
+ *     - \bar{u}_j^n\frac{\partial\bar{u}_i^n}{\partial \bar{x}_j} + Gr_i Pr^2\bar{T}^n
  * \f]
  *
- * and
+ * External Forces:
  *
  * \f[
- * \hat{R}_{\bar{u}_i}^n = -\frac{\partial\bar{u}_j^n}{\partial \bar{x}_j}\bar{u}_i^n
- * - \bar{u}_j^n\frac{\partial\bar{u}_i^n}{\partial \bar{x}_j} + Gr_i Pr^2\bar{T}^n
- * + \pi^{Br}(\theta)\bar{u}_i^n
+ *   E_i^n(w^h_i) =
+ *     \int_{\Gamma-\Gamma_t}w_i^h\bar{\tau}^n_{ij}n_j\,d\Gamma
+ *     + \int_{\Gamma_t}w_i^h\left( t_i+\bar{p}^{n}n_i \right)\,d\Gamma
  * \f]
  *
  ******************************************************************************/
@@ -3464,12 +3485,20 @@ public:
     /***************************************************************************//**
      * \fn void evaluate
      * \brief Evaluate the total internal forces, which are given by the sum of the
-     *   internal and stabilizing forces. The internal and stabilizing forces are
+     *   inertial, internal, and stabilizing forces. The internal and stabilizing forces are
      *   respectively calculated as follows:
      *
-     * Internal:
+     * Inertial:
+     *
      * \f[
-     *   R^n_i(w^h_i) =
+     *   I^n_i(w^h_i) =
+     *     \int_{\Omega}w_i^h\left(\frac{\bar{u}^{\ast}_i - \bar{u}_i^{n}}{\Delta\bar{t}}\right)d\Omega
+     * \f]
+     *
+     * Internal:
+     *
+     * \f[
+     *   F^n_i(w^h_i) =
      *     -\int_{\Omega}w_i^h\left( \frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n
      *     +\bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \right) d\Omega
      *     -\int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
@@ -3477,27 +3506,35 @@ public:
      * \f]
      *
      * Stabilizing:
+     *
      * \f[
      *   S_i^n(w^h_i) =
      *     \frac{\Delta\bar{t}}{2}\left[ \int_{\Omega} \left( \frac{\partial w_i^h}
      *     {\partial\bar{x}_k}\bar{u}^n_k + w_i^h\frac{\partial \bar{u}^n_k}
-     *     {\partial\bar{x}_k} \right) \hat{R}^n_{\bar{u}_i}\, d\Omega \right]
+     *     {\partial\bar{x}_k} \right) \hat{F}^n_{\bar{u}_i}\, d\Omega \right]
      * \f]
      *
      * where
+     *
      * \f[
-     *   \hat{R}^n_{\bar{u}_i} =
+     *   \hat{F}^n_{\bar{u}_i} =
      *     -\frac{\partial\bar{u}_j^n}{\partial \bar{x}_j}\bar{u}_i^n
      *     - \bar{u}_j^n\frac{\partial\bar{u}_i^n}{\partial \bar{x}_j}
      *     + Gr_i Pr^2\bar{T}^n
      * \f]
      *
-     * Finally, the total internal force is given by \f$ R^n_i(w^h_i) + S_i^n(w^h_i). \f$
+     * Finally, the internal momentum corrector residual is given by
+     *
+     * \f[
+     *   \hat{R}_i^n(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) = 0.
+     * \f]
      *
      * In the equations presented above \f$ \alpha \f$ denotes a scalar multiplier,
      * \f$ w_i^h \f$ are the test functions, \f$ \Delta\bar{t} \f$ denotes the current
      * time step, \f$ \bar{\tau}^n_{ij} \f$ is the second order deviatoric stress tensor,
-     * and \f$ n_i \f$ is the unit normal vector.
+     * \f$ \bar{u}^{\ast}_i \f$ is the current momentum (i.e. velocity) predictor,
+     * \f$ \bar{u}_i^{n} \f$ is the previous velocity, and \f$ n_i \f$ is the unit
+     * normal vector.
      *
      ******************************************************************************/
     void evaluate
@@ -3555,7 +3592,7 @@ public:
             Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
             Plato::Fluids::integrate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tStrainRate, aResultWS, -1.0);
+                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tStrainRate, aResultWS);
 
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::calculate_advected_momentum_forces<mNumNodesPerCell, mNumSpatialDims>
@@ -3566,7 +3603,7 @@ public:
                 (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tInternalForces);
 
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS, -1.0);
 
             // 2. add stabilizing internal force contribution
             Plato::Fluids::divergence<mNumNodesPerCell, mNumSpatialDims>
@@ -3575,9 +3612,9 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tDivPrevVel, tGradient, tPrevVelGP, tInternalForces, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForces, 1.0, aResultWS);
+            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tStabForces, 1.0, aResultWS);
 
-            // 3. apply time step to sum of internal and stabilizing forces, F = \Delta{t}\left( F_i^{int} + F_i^{stab} \right)
+            // 3. apply time step to sum of internal and stabilizing forces
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, aResultWS);
 
@@ -3621,7 +3658,7 @@ public:
        {
            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
-           Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tResultWS, 1.0, aResult);
+           Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
        }, "deviatoric traction forces on non-traction boundary");
    }
 
@@ -3668,7 +3705,7 @@ public:
            {
                Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                    (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
-               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tResultWS, 1.0, aResult);
+               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
            }, "prescribed deviatoric traction forces");
        }
    }
@@ -3854,6 +3891,63 @@ private:
 namespace Brinkman
 {
 
+/***************************************************************************//**
+ * \class VelocityPredictorResidual
+ *
+ * \tparam PhysicsT    physics type
+ * \tparam EvaluationT forward automatic differentiation evaluation type
+ *
+ * \brief Calculate the momentum predictor residual, which is defined as
+ *
+ * \f[
+ *   \mathcal{R}^n_i(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) - E_i^n(w^h_i) = 0.
+ * \f]
+ *
+ * Inertial Forces:
+ *
+ * \f[
+ *   I^n_i(w^h_i) =
+ *     \int_{\Omega}w_i^h\left(\frac{\bar{u}^{\ast}_i - \bar{u}_i^{n}}{\Delta\bar{t}}\right)d\Omega
+ * \f]
+ *
+ * Internal Forces:
+ *
+ * \f[
+ *   F^n_i(w^h_i) =
+ *     - \int_{\Omega}w_i^h\left( \frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n
+ *     + \bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \right) d\Omega
+ *     - \int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
+ *     + \int_\Omega w_i^h\left(Gr_i Pr^2\bar{T}^n\right)\,d\Omega
+ *     + \int_\Omega w^h_i\left(\pi^{Br}(\theta)\bar{u}_i^n\right)\,d\Omega
+ * \f]
+ *
+ * Stabilizing Forces:
+ *
+ * \f[
+ *   S_i^n(w^h_i) =
+ *     \frac{\Delta\bar{t}}{2}\left[ \int_{\Omega} \left( \frac{\partial w_i^h}
+ *     {\partial\bar{x}_k}\bar{u}^n_k + w_i^h\frac{\partial \bar{u}^n_k}
+ *     {\partial\bar{x}_k} \right) \hat{F}^n_{\bar{u}_i}\, d\Omega \right]
+ * \f]
+ *
+ * where
+ *
+ * \f[
+ *   \hat{F}^n_{\bar{u}_i} =
+ *     -\frac{\partial\bar{u}_j^n}{\partial \bar{x}_j}\bar{u}_i^n
+ *     - \bar{u}_j^n\frac{\partial\bar{u}_i^n}{\partial \bar{x}_j}
+ *     + Gr_i Pr^2\bar{T}^n + \pi^{Br}(\theta)\bar{u}_i^n
+ * \f]
+ *
+ * External Forces:
+ *
+ * \f[
+ *   E_i^n(w^h_i) =
+ *     \int_{\Gamma-\Gamma_t}w_i^h\bar{\tau}^n_{ij}n_j\,d\Gamma
+ *     + \int_{\Gamma_t}w_i^h\left( t_i+\bar{p}^{n}n_i \right)\,d\Gamma
+ * \f]
+ *
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class VelocityPredictorResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -3918,12 +4012,21 @@ public:
     /***************************************************************************//**
      * \fn void evaluate
      * \brief Evaluate the total internal forces, which are given by the sum of the
-     *   internal and stabilizing forces. The penalized internal and stabilizing forces
-     *   for density-based topology optimization are respectively calculated as follows:
+     *   inertial, internal, and stabilizing forces. The penalized internal and
+     *   stabilizing forces for density-based topology optimization are respectively
+     *   calculated as:
+     *
+     * Inertial:
+     *
+     * \f[
+     *   I^n_i(w^h_i) =
+     *     \int_{\Omega}w_i^h\left(\frac{\bar{u}^{\ast}_i - \bar{u}_i^{n}}{\Delta\bar{t}}\right)d\Omega
+     * \f]
      *
      * Internal:
+     *
      * \f[
-     *   R^n_i(w^h_i) =
+     *   F^n_i(w^h_i) =
      *     - \int_{\Omega}w_i^h\left( \frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n
      *     + \bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \right) d\Omega
      *     - \int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
@@ -3932,24 +4035,28 @@ public:
      * \f]
      *
      * Stabilizing:
+     *
      * \f[
      *   S_i^n(w^h_i) =
      *     \frac{\Delta\bar{t}}{2}\left[ \int_{\Omega} \left( \frac{\partial w_i^h}
      *     {\partial\bar{x}_k}\bar{u}^n_k + w_i^h\frac{\partial \bar{u}^n_k}
-     *     {\partial\bar{x}_k} \right) \hat{R}^n_{\bar{u}_i}\, d\Omega \right]
+     *     {\partial\bar{x}_k} \right) \hat{F}^n_{\bar{u}_i}\, d\Omega \right]
      * \f]
      *
      * where
+     *
      * \f[
-     *   \hat{R}^n_{\bar{u}_i} =
+     *   \hat{F}^n_{\bar{u}_i} =
      *     -\frac{\partial\bar{u}_j^n}{\partial \bar{x}_j}\bar{u}_i^n
      *     - \bar{u}_j^n\frac{\partial\bar{u}_i^n}{\partial \bar{x}_j}
      *     + Gr_i Pr^2\bar{T}^n + \pi^{Br}(\theta)\bar{u}_i^n
      * \f]
      *
-     * The term \f$ \pi^{Br} \f$ the Brinkman penalization term used to model a fictitious
-     * porous material within the fluid domain. Finally, the total internal force is given
-     * by \f$ R^n_i(w^h_i) + S_i^n(w^h_i). \f$
+     * Finally, the internal momentum corrector residual is given by
+     *
+     * \f[
+     *   \hat{R}_i^n(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) = 0.
+     * \f]
      *
      * In the equations presented above \f$ \alpha \f$ denotes a scalar multiplier,
      * \f$ w_i^h \f$ are the test functions, \f$ \Delta\bar{t} \f$ denotes the current
@@ -4015,7 +4122,7 @@ public:
             Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tPrevVelWS, tGradient, tStrainRate);
             Plato::Fluids::integrate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tStrainRate, aResultWS, -1.0);
+                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tStrainRate, aResultWS);
 
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::calculate_advected_momentum_forces<mNumNodesPerCell, mNumSpatialDims>
@@ -4031,7 +4138,7 @@ public:
                 (aCellOrdinal, tPenalizedPermeability, tPrevVelGP, tInternalForces);
 
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS, -1.0);
 
             // 2. add stabilizing internal force contribution
             Plato::Fluids::divergence<mNumNodesPerCell, mNumSpatialDims>
@@ -4040,9 +4147,9 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tDivPrevVel, tGradient, tPrevVelGP, tInternalForces, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForces, 1.0, aResultWS);
+            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tStabForces, 1.0, aResultWS);
 
-            // 3. apply time step to sum of internal and stabilizing forces, F = \Delta{t}\left( F_i^{int} + F_i^{stab} \right)
+            // 3. apply time step to sum of internal and stabilizing forces
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, aResultWS);
 
@@ -4088,7 +4195,7 @@ public:
        {
            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
-           Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tResultWS, 1.0, aResult);
+           Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
        }, "deviatoric traction forces on non-traction boundary");
    }
 
@@ -4136,7 +4243,7 @@ public:
            {
                Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                    (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
-               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tResultWS, 1.0, aResult);
+               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
            }, "prescribed deviatoric traction forces");
        }
    }
@@ -4358,9 +4465,20 @@ private:
 }
 // namespace Brinkman
 
-// calculate pressure gradient integral, which is defined as \frac{\partial p^{n+\theta_2}}{\partial x_i}, where
-// p^{n+\theta_2} = \frac{\partial p^{n-1}}{\partial x_i} + \theta_2\frac{\partial\delta{p}}{\partial x_i}
-// and \delta{p} = p^n - p^{n-1}
+/***************************************************************************//**
+ * \fn device_type void calculate_pressure_gradient
+ * \brief Calculate pressure gradient, which is defined as
+ *
+ * \f[
+ *   \frac{\partial p^{n+\theta_2}}{\partial x_i} =
+ *     \alpha\left( 1-\theta_2 \right)\frac{partial p^n}{partial x_i}
+ *     + \theta_2\frac{\partial\delta{p}}{\partial x_i}
+ * \f]
+ *
+ * where \f$ \delta{p} = p^{n+1} - p^{n} \f$ and \f$ \alpha \f$ denotes a scalar
+ * multiplier.
+ *
+ ******************************************************************************/
 template<Plato::OrdinalType NumNodes,
          Plato::OrdinalType SpaceDim,
          typename ConfigT,
@@ -4387,7 +4505,52 @@ calculate_pressure_gradient
     }
 }
 
-
+/***************************************************************************//**
+ * \class VelocityCorrectorResidual
+ *
+ * \tparam PhysicsT    physics type
+ * \tparam EvaluationT forward automatic differentiation evaluation type
+ *
+ * \brief Evaluate momentum corrector residual, which is defined by
+ *
+ * \f[
+ *   \mathcal{R}_i^n(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) - E_i^n(w^h_i) = 0.
+ * \f]
+ *
+ * where
+ *
+ * Inertial:
+ *
+ * \f[
+ *   I^n_i(w^h_i) = \int_{\Omega}w_i^h \left(\frac{\bar{u}^{n+1}_i - \bar{u}^{\ast}_i}{\Delta\bar{t}}\right)d\Omega
+ * \f]
+ *
+ * Internal:
+ *
+ * \f[
+ *   F^n_i(w^h_i) = -\int_{\Omega}w_i^h\frac{\partial\bar{p}^{\,n+\theta_2}}{\partial\bar{x}_i}d\Omega
+ * \f]
+ *
+ * Stabilizing:
+ *
+ * \f[
+ *   S^n_i(w^h_i) =
+ *     -\frac{\Delta\bar{t}}{2}\int_{\Omega} \left(  \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^{n}_k
+ *     + w_i^h \frac{\partial\bar{u}^{n}_k}{\partial\bar{x}_k} \right)
+ *       \frac{\partial\bar{p}^{\,n+\theta_2}}{\partial\bar{x}_i} d\Omega
+ * \f]
+ *
+ * where
+ *
+ * \f[
+ *   \frac{\partial p^{n+\theta_2}}{\partial x_i} =
+ *     \left( 1-\theta_2 \right)\frac{partial p^n}{partial x_i}
+ *       + \theta_2\frac{\partial\delta{p}}{\partial x_i}
+ * \f]
+ *
+ * The external forces \f$ E_i^n(w^h_i) \f$ are zero.
+ *
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class VelocityCorrectorResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -4430,6 +4593,52 @@ public:
 
     virtual ~VelocityCorrectorResidual(){}
 
+    /***************************************************************************//**
+     * \fn void evaluate
+     * \brief Evaluate the internal momentum corrector residual, which is defined by
+     * the sum of the inertial, internal, and stabilizing forces, defined as
+     *
+     * Inertial:
+     *
+     * \f[
+     *   I^n_i(w^h_i) = \int_{\Omega}w_i^h \left(\frac{\bar{u}^{n+1}_i - \bar{u}^{\ast}_i}{\Delta\bar{t}}\right)d\Omega
+     * \f]
+     *
+     * Internal:
+     *
+     * \f[
+     *   F^n_i(w^h_i) = -\int_{\Omega}w_i^h\frac{\partial\bar{p}^{\,n+\theta_2}}{\partial\bar{x}_i}d\Omega
+     * \f]
+     *
+     * Stabilizing:
+     *
+     * \f[
+     *   S^n_i(w^h_i) =
+     *     -\frac{\Delta\bar{t}}{2}\int_{\Omega} \left(  \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^{n}_k
+     *     + w_i^h \frac{\partial\bar{u}^{n}_k}{\partial\bar{x}_k} \right)
+     *       \frac{\partial\bar{p}^{\,n+\theta_2}}{\partial\bar{x}_i} d\Omega
+     * \f]
+     *
+     * where
+     *
+     * \f[
+     *   \frac{\partial p^{n+\theta_2}}{\partial x_i} =
+     *     \left( 1-\theta_2 \right)\frac{partial p^n}{partial x_i} + \theta_2\frac{\partial\delta{p}}{\partial x_i}
+     * \f]
+     *
+     * Finally, the internal momentum corrector residual is given by
+     *
+     * \f[
+     *   \hat{R}_i^n(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) = 0.
+     * \f]
+     *
+     * In the equations presented above \f$ w_i^h \f$ denote the test functions, \f$ \Delta\bar{t} \f$
+     * denotes the current time step, \f$ \bar{u}^{n+1} \f$ and \f$ \bar{u}^n \f$ are respectively the
+     * current and previous velocity \f$ \bar{u}^{\ast}_i \f$ is the predicted velocity (i.e. predictor),
+     * \f$ \bar{p}^{n+1} \f$ and \f$ \bar{u}^n \f$ are respectively the current and previous pressure,
+     * \f$ \theta_2 \f$ is a scalar multiplier, and \f$ \delta{p} = p^{n+1} - p^{n}. \f$
+     *
+     ******************************************************************************/
     void evaluate
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResultWS)
@@ -4492,8 +4701,7 @@ public:
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces);
             Plato::blas1::update<mNumNodesPerCell>(aCellOrdinal, 1.0, tStabForces, 1.0, aResultWS);
 
-            // 3. apply time step to sum of internal and stabilizing forces, i.e.
-            // F = \Delta{t} * \left( F_i^{int} + F_i^{stab} \right)
+            // 3. apply time step to the sum of internal and stabilizing forces
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, aResultWS);
 
@@ -4502,7 +4710,7 @@ public:
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredictorGP);
             Plato::Fluids::integrate_momentum_inertial_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurVelGP, tPredictorGP, aResultWS);
-        }, "velocity increment residual, i.e. 'corrector step'");
+        }, "calculate momentum, i.e. velocity, corrector residual forces");
     }
 
     void evaluateBoundary
@@ -5363,34 +5571,60 @@ public:
 
 
 
-// todo unit test all these inline functions for the pressure increment calculation
-// integrate previous advective force, which is defined as
-// \int_{\Omega_e}\frac{\partial N_p^a}{partial x_i}u_i^{n-1} d\Omega_e
+/***************************************************************************//**
+ * \fn device_type void integrate_divergence_momentum
+ *
+ * \brief Integrate momentum divergence, which is defined as
+ *
+ * \f[
+ *   \alpha\int_{\Omega} v^h\frac{\partial\bar{u}_i^{n}}{\partial\bar{x}_i} d\Omega
+ * \f]
+ *
+ * where \f$ v^h \f$ is the test function, \f$ \bar{u}_i^{n} \f$ is the previous
+ * velocity, and \f$ \alpha \f$ denotes a scalar multiplier.
+ *
+ ******************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell,
          Plato::OrdinalType NumSpatialDims,
          typename ConfigT,
          typename PrevVelT,
          typename ResultT>
 DEVICE_TYPE inline void
-integrate_advected_forces
+integrate_divergence_momentum
 (const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVel,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
         {
-            aResult(aCellOrdinal, tNode) +=
-                aCellVolume(aCellOrdinal) * aGradient(aCellOrdinal, tNode, tDim) * aPrevVel(aCellOrdinal, tDim);
+            aResult(aCellOrdinal, tNode) += aMultiplier * aCellVolume(aCellOrdinal) *
+                aBasisFunctions(tNode) * aGradient(aCellOrdinal, tNode, tDim) * aPrevVel(aCellOrdinal, tDim);
         }
     }
 }
 
-// integrate current predicted advective force, which is defined as
-// \int_{\Omega_e}\frac{\partial N_p^a}{partial x_i} \left( \theta_1\left( u^{\ast}_i - u^{n-1}_i \right) \right) d\Omega_e
+/***************************************************************************//**
+ * \fn device_type void integrate_divergence_delta_predicted_momentum
+ *
+ * \brief Integrate divergence predicted momentum increment, which is defined as
+ *
+ * \f[
+ *   \theta_1\int_{\Omega} \frac{\partial v^h}{\partial\bar{x}_i}\Delta{u}^{\ast}_i d\Omega
+ * \f]
+ *
+ * where \f$ \Delta{u}^{\ast}_i = \bar{u}^{\ast}_i - \bar{u}^{n-1}_i. \f$
+ *
+ * Here, \f$ v^h \f$ is the test function, \f$ \bar{u}_i^{n} \f$ is the previous
+ * velocity, \f$ \bar{u}_i^{\ast} \f$ is the current predicted velocity, and
+ * \f$ \theta_1 \f$ denotes a scalar multiplier.
+ *
+ ******************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell,
          Plato::OrdinalType NumSpatialDims,
          typename ConfigT,
@@ -5398,55 +5632,83 @@ template<Plato::OrdinalType NumNodesPerCell,
          typename PredVelT,
          typename ResultT>
 DEVICE_TYPE inline void
-integrate_delta_advected_forces
+integrate_divergence_delta_predicted_momentum
 (const Plato::OrdinalType & aCellOrdinal,
- const Plato::Scalar & aMultiplier,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarMultiVectorT<PredVelT> & aPredVel,
- const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVel,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<PredVelT> & aPredVelGP,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
         {
             aResult(aCellOrdinal, tNode) += aMultiplier * aCellVolume(aCellOrdinal) *
-                aGradient(aCellOrdinal, tNode, tDim) * ( aPredVel(aCellOrdinal, tDim) - aPrevVel(aCellOrdinal, tDim) );
+                aGradient(aCellOrdinal, tNode, tDim) * ( aPredVelGP(aCellOrdinal, tDim) -
+                    aPrevVelGP(aCellOrdinal, tDim) );
         }
     }
 }
 
-// integrate fist term enforcing continuity, which is defined as
-// -\theta_1\int_{\Omega_e}\frac{\partial N_p^a}{partial x_i}\Delta{t}\frac{\partial p^{n-1}}{\partial x_i} d\Omega_e,
+/***************************************************************************//**
+ * \fn device_type void integrate_divergence_previous_pressure_gradient
+ *
+ * \brief Integrate divergence previous pressure gradient, which is defined as
+ *
+ * \f[
+ *   \theta_1\int_{\Omega_e} \Delta{t}\frac{\partial v^h}{partial x_i}
+ *     \frac{\partial p^{n}}{\partial x_i} d\Omega,
+ * \f]
+ *
+ * where \f$ v^h \f$ is the test function, \f$ p^{n} \f$ is the previous
+ * pressure, \f$ \Delta{t} \f$ is the current nodal time step, and
+ * \f$ \theta_1 \f$ denotes a scalar multiplier.
+ *
+ ******************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell,
          Plato::OrdinalType NumSpatialDims,
          typename ConfigT,
          typename PrevPressT,
          typename ResultT>
 DEVICE_TYPE inline void
-previous_pressure_gradient_divergence
+integrate_divergence_previous_pressure_gradient
 (const Plato::OrdinalType & aCellOrdinal,
- const Plato::Scalar & aMultiplier,
  const Plato::ScalarMultiVector & aTimeStep,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarMultiVectorT<PrevPressT> & aPrevPressGrad,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
         {
             aResult(aCellOrdinal, tNode) += aMultiplier * aTimeStep(aCellOrdinal, tNode) *
-                aGradient(aCellOrdinal, tNode, tDim) * aPrevPressGrad(aCellOrdinal, tDim) * aCellVolume(aCellOrdinal);
+                aGradient(aCellOrdinal, tNode, tDim) * aPrevPressGrad(aCellOrdinal, tDim) *
+                aCellVolume(aCellOrdinal);
         }
     }
 }
 
-// integrate second term enforcing continuity, which is defined as
-// -\theta_1\int_{\Omega_e}\frac{\partial N_p^a}{partial x_i}\Delta{t}\theta_2\frac{\partial \Delta{p}}{\partial x_i} d\Omega_e,
-// where \Delta{p}=p^{n}-p^{n-1}
+/***************************************************************************//**
+ * \fn device_type void integrate_divergence_delta_pressure_gradient
+ *
+ * \brief Integrate divergence delta pressure gradient, which is defined as
+ *
+ * \f[
+ *   \alpha\int_{\Omega_e} \frac{\partial v^h}{partial x_i}\Delta{t}
+ *     \frac{\partial\Delta{p}}{\partial x_i} d\Omega,
+ * \f]
+ *
+ * where \f$ v^h \f$ is the test function, \f$ \Delta{p}=p^{n+1}-p^{n} \f$,
+ * \f$ p^{n+1} \f$ is the current pressure, \f$ p^{n} \f$ is the previous pressure,
+ * \f$ \Delta{t} \f$ is the current nodal time step, and \f$ alpha = \theta_1*\theta_2 \f$
+ * denotes a scalar multiplier.
+ *
+ ******************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell,
          Plato::OrdinalType NumSpatialDims,
          typename ConfigT,
@@ -5454,28 +5716,42 @@ template<Plato::OrdinalType NumNodesPerCell,
          typename PrevPressT,
          typename ResultT>
 DEVICE_TYPE inline void
-delta_pressure_gradient_divergence
+integrate_divergence_delta_pressure_gradient
 (const Plato::OrdinalType & aCellOrdinal,
- const Plato::Scalar & aMultiplier,
  const Plato::ScalarMultiVector & aTimeStep,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarMultiVectorT<CurPressT> & aCurPressGrad,
  const Plato::ScalarMultiVectorT<PrevPressT> & aPrevPressGrad,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
         {
-            aResult(aCellOrdinal, tNode) += aMultiplier * aTimeStep(aCellOrdinal, tNode) * aCellVolume(aCellOrdinal) *
-                aGradient(aCellOrdinal, tNode, tDim) * ( aCurPressGrad(aCellOrdinal, tDim) - aPrevPressGrad(aCellOrdinal, tDim) );
+            aResult(aCellOrdinal, tNode) += aMultiplier * aTimeStep(aCellOrdinal, tNode) *
+                aCellVolume(aCellOrdinal) * aGradient(aCellOrdinal, tNode, tDim) *
+                ( aCurPressGrad(aCellOrdinal, tDim) - aPrevPressGrad(aCellOrdinal, tDim) );
         }
     }
 }
 
-// integrate inertial forces, which are defined as
-// \int_{\Omega_e} N_p^a\left(\frac{1}{\beta^2}\right)(p^n - p^{n-1}) d\Omega_e
+/***************************************************************************//**
+ * \fn device_type void integrate_inertial_forces
+ *
+ * \brief Integrate inertial forces, which are defined as
+ *
+ * \f[
+ *   \int_{\Omega}v^h \left(\frac{1}{\bar{c}^2}\right) \left( \bar{p}^{n+1} - \bar{p}^{n} \right)\, d\Omega
+ * \f]
+ *
+ * where \f$ v^h \f$ is the test function, \f$ \bar{c} \f$ is the artificial
+ * compressility, \f$ p^{n+1} \f$ is the current pressure, and \f$ p^{n} \f$ is
+ * the previous pressure. Recall that the time step is move to the left hand
+ * side, i.e. applied to the internal force vector.
+ *
+ ******************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell,
          typename ConfigT,
          typename PrevPressT,
@@ -5500,8 +5776,50 @@ integrate_inertial_forces
 }
 
 
-
-
+/***************************************************************************//**
+ * \class PressureResidual
+ *
+ * \tparam PhysicsT    physics type
+ * \tparam EvaluationT forward automatic differentiation evaluation type
+ *
+ * \brief Evaluate pressure equation residual, which is defined by
+ *
+ * \f[
+ *   \mathcal{R}^n(v^h) = I^n(v^h) - F^n(v^h) - E^n(v^h) = 0.
+ * \f]
+ *
+ * where
+ *
+ * Inertial Forces:
+ *
+ * \f[
+ *   I^n(v^h) = \int_{\Omega}v^h & \left(\frac{1}{\bar{c}^2}\right)
+ *     \left(\frac{\bar{p}^{n+1} - \bar{p}^{n}}{\Delta\bar{t}}\right)\, d\Omega
+ * \f]
+ *
+ * Internal Forces:
+ *
+ * \f[
+ *   F^n(v^h) = -\int_{\Omega}v^h\frac{\partial\bar{u}_i^{n}}{\partial\bar{x}_i}d\Omega
+ *     + \theta_1\int_{\Omega}\frac{\partial v^h}{\partial\bar{x}_i}\left( \Delta{u}^{\ast}_i
+ *     - \Delta\bar{t}\,\frac{\partial\bar{p}^{\,n+\theta_2}}{\partial\bar{x}_i} \right)d\Omega
+ * \f]
+ *
+ * External Forces:
+ *
+ * \f[
+ *   E^n(v^h) = -\theta_1\int_{\Gamma_u}v^h n_i \Delta{u}_i^n d\Gamma
+ * \f]
+ *
+ * where
+ *
+ * \f[
+ *   \frac{\partial\bar{p}^{\,n+\theta_2}}{\partial\bar{x}_i} =
+ *     (1-\theta_2)\frac{\partial\bar{p}^{\,n}}{\partial\bar{x}_i} + \theta_2\frac{\partial\bar{p}^{\,n+1}}{\partial\bar{x}_i}
+ *       = \frac{\partial\bar{p}^{\,n}}{\partial\bar{x}_i}+\theta_2\frac{\partial\Delta\bar{p}}{\partial\bar{x}_i}
+ * \f]
+ *
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class PressureResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -5569,6 +5887,39 @@ public:
         mThetaTwo = aThetaTwo;
     }
 
+    /***************************************************************************//**
+     * \fn void evaluate
+     *
+     * \brief Evaluate internal pressure residual, which is defined by
+     *
+     * \f[
+     *   \hat{R}^n(v^h) = I^n(v^h) - F^n(v^h) = 0.
+     * \f]
+     *
+     * Inertial Forces:
+     *
+     * \f[
+     *   I^n(v^h) = \int_{\Omega}v^h & \left(\frac{1}{\bar{c}^2}\right)
+     *     \left(\frac{\bar{p}^{n+1} - \bar{p}^{n}}{\Delta\bar{t}}\right)\, d\Omega
+     * \f]
+     *
+     * Internal Forces:
+     *
+     * \f[
+     *   F^n(v^h) = -\int_{\Omega}v^h\frac{\partial\bar{u}_i^{n}}{\partial\bar{x}_i}d\Omega
+     *     + \theta_1\int_{\Omega}\frac{\partial v^h}{\partial\bar{x}_i}\left( \Delta{u}^{\ast}_i
+     *     - \Delta\bar{t}\,\frac{\partial\bar{p}^{\,n+\theta_2}}{\partial\bar{x}_i} \right)d\Omega
+     * \f]
+     *
+     * where
+     *
+     * \f[
+     *   \frac{\partial\bar{p}^{\,n+\theta_2}}{\partial\bar{x}_i} =
+     *     (1-\theta_2)\frac{\partial\bar{p}^{\,n}}{\partial\bar{x}_i} + \theta_2\frac{\partial\bar{p}^{\,n+1}}{\partial\bar{x}_i}
+     *       = \frac{\partial\bar{p}^{\,n}}{\partial\bar{x}_i}+\theta_2\frac{\partial\Delta\bar{p}}{\partial\bar{x}_i}
+     * \f]
+     *
+     ******************************************************************************/
     void evaluate
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult)
@@ -5592,8 +5943,8 @@ public:
         Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss point", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("predicted velocity at Gauss point", tNumCells, mNumSpatialDims);
 
-        Plato::ScalarMultiVectorT<CurPressGradT>  tCurPressGrad("current pressure gradient", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PrevPressGradT> tPrevPressGrad("previous pressure gradient", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<CurPressGradT>  tCurPressGradGP("current pressure gradient", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PrevPressGradT> tPrevPressGradGP("previous pressure gradient", tNumCells, mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
@@ -5622,54 +5973,67 @@ public:
 
             // 1. integrate internal forces
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
-            Plato::Fluids::integrate_advected_forces<mNumNodesPerCell,mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCellVolume, tPrevVelGP, tInternalForces);
+            Plato::Fluids::integrate_divergence_momentum<mNumNodesPerCell,mNumSpatialDims>
+                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPrevVelGP, tInternalForces, -1.0);
 
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredVelGP);
-            Plato::Fluids::integrate_delta_advected_forces<mNumNodesPerCell,mNumSpatialDims>
-                (aCellOrdinal, tThetaOne, tGradient, tCellVolume, tPredVelGP, tPrevVelGP, tInternalForces);
+            Plato::Fluids::integrate_divergence_delta_predicted_momentum<mNumNodesPerCell,mNumSpatialDims>
+                (aCellOrdinal, tGradient, tCellVolume, tPredVelGP, tPrevVelGP, tInternalForces, tThetaOne);
 
             Plato::calculate_scalar_field_gradient<mNumNodesPerCell,mNumSpatialDims>
-                (aCellOrdinal, tGradient, tPrevPressWS, tPrevPressGrad);
+                (aCellOrdinal, tGradient, tPrevPressWS, tPrevPressGradGP);
             Plato::calculate_scalar_field_gradient<mNumNodesPerCell,mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCurPressWS, tCurPressGrad);
-            Plato::Fluids::previous_pressure_gradient_divergence<mNumNodesPerCell,mNumSpatialDims>
-               (aCellOrdinal, -tThetaOne, tTimeStepWS, tGradient, tCellVolume, tPrevPressGrad, tInternalForces);
-            auto tMultiplier = -tThetaOne * tThetaTwo;
-            Plato::Fluids::delta_pressure_gradient_divergence<mNumNodesPerCell,mNumSpatialDims>
-                (aCellOrdinal, tMultiplier, tTimeStepWS, tGradient, tCellVolume, tCurPressGrad, tPrevPressGrad, tInternalForces);
+                (aCellOrdinal, tGradient, tCurPressWS, tCurPressGradGP);
+            Plato::Fluids::integrate_divergence_previous_pressure_gradient<mNumNodesPerCell,mNumSpatialDims>
+               (aCellOrdinal, tTimeStepWS, tGradient, tCellVolume, tPrevPressGradGP, tInternalForces, -tThetaOne);
+            auto tThetaOneTimesThetaTwo = -tThetaOne * tThetaTwo;
+            Plato::Fluids::integrate_divergence_delta_pressure_gradient<mNumNodesPerCell,mNumSpatialDims>
+                (aCellOrdinal, tTimeStepWS, tGradient, tCellVolume, tCurPressGradGP,
+                    tPrevPressGradGP, tInternalForces, tThetaOneTimesThetaTwo);
 
+            // 2. apply time step to internal force vector
             Plato::Fluids::multiply_time_step<mNumNodesPerCell,mNumPressDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
 
+            // 3. calculate inertial forces
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tCurPressWS, tCurPressGP);
             tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevPressWS, tPrevPressGP);
             Plato::Fluids::integrate_inertial_forces<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurPressGP, tPrevPressGP, tACompressWS, aResult);
 
-            // 2. add internal forces to inertial forces
+            // 4. sum inertial and internal forces
             Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, -1.0, tInternalForces, 1.0, aResult);
-        }, "conservation of mass internal forces");
+        }, "conservation of mass residual");
     }
 
-    // todo: verify implementation with formulation - checked!
+    /***************************************************************************//**
+     * \fn void evaluateBoundary
+     *
+     * \brief Evaluate prescribed momentum forces applied on \f$ \Gamma_u \f$,
+     * which are defined by
+     *
+     * \f[
+     *   E^n(v^h) = -\theta_1\int_{\Gamma_u}v^h n_i \Delta{u}_i^n d\Gamma
+     * \f]
+     *
+     * where \f$ \Delta{u}_i^n=\bar{u}_i^{n+1}-\bar{u}_i^{n} \f$
+     *
+     ******************************************************************************/
     void evaluateBoundary
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult)
     const override
     {
-        // calculate previous momentum forces, which are defined as
-        // -\theta_1\Delta{t} \int_{\Gamma_u} N_u^a n_i( \hat{u}_i^n - u_i^{n-1} ) d\Gamma_u,
-        // where \hat{u}_i^n denote the prescribed velocities.
+        // 1. calculate prescribed delta momentum boundary forces
         auto tNumCells = aResult.extent(0);
-        Plato::ScalarMultiVectorT<ResultT> tResultWS("delta momentum surface forces", tNumCells, mNumPressDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultT> tResultWS("delta momentum boundary forces", tNumCells, mNumPressDofsPerCell);
         for(auto& tPair : mMomentumBCs)
         {
             tPair.second->operator()(aWorkSets, tResultWS);
         }
 
-        // multiply force vector by the corresponding nodal time steps
+        // 2. apply time steps to boundary forces
         auto tThetaOne = mThetaOne;
         auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("time steps"));
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -5677,7 +6041,7 @@ public:
             Plato::Fluids::multiply_time_step<mNumNodesPerCell,mNumPressDofsPerNode>
                 (aCellOrdinal, tThetaOne, tTimeStepWS, tResultWS);
             Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, 1.0, tResultWS, 1.0, aResult);
-        }, "delta momentum surface forces");
+        }, "prescribed delta momentum boundary forces");
     }
 
     void evaluatePrescribed
@@ -10619,9 +10983,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeltaPressureGradientDivergence)
     auto tMultiplier = 1.0;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::Fluids::delta_pressure_gradient_divergence<tNumNodesPerCell,tSpaceDims>
-            (aCellOrdinal, tMultiplier, tTimeStep, tGradient, tCellVolume, tCurPressGrad, tPrevPressGrad, tResult);
-    }, "unit test delta_pressure_gradient_divergence");
+        Plato::Fluids::integrate_divergence_delta_pressure_gradient<tNumNodesPerCell,tSpaceDims>
+            (aCellOrdinal, tTimeStep, tGradient, tCellVolume, tCurPressGrad, tPrevPressGrad, tResult, tMultiplier);
+    }, "unit test integrate_divergence_delta_pressure_gradient");
 
     // test values
     auto tTol = 1e-4;
@@ -10752,9 +11116,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PreviousPressureGradientDivergence)
     auto tMultiplier = 1.0;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::Fluids::previous_pressure_gradient_divergence<tNumNodesPerCell,tSpaceDims>
-            (aCellOrdinal, tMultiplier, tTimeStep, tGradient, tCellVolume, tPressureGrad, tResult);
-    }, "unit test previous_pressure_gradient_divergence");
+        Plato::Fluids::integrate_divergence_previous_pressure_gradient<tNumNodesPerCell,tSpaceDims>
+            (aCellOrdinal, tTimeStep, tGradient, tCellVolume, tPressureGrad, tResult, tMultiplier);
+    }, "unit test integrate_divergence_previous_pressure_gradient");
 
     // test values
     auto tTol = 1e-4;
@@ -10793,13 +11157,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateAdvectedForces)
     Kokkos::deep_copy(tGradient, tHostGradient);
     Plato::ScalarVector tCellVolume("cell weight", tNumCells);
     Plato::blas1::fill(0.5, tCellVolume);
+    Plato::ScalarVector tBasisFunctions("basis functions", tNumNodesPerCell);
+    Plato::blas1::fill(0.33333333333333333333333, tBasisFunctions);
 
     // call device function
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::Fluids::integrate_advected_forces<tNumNodesPerCell,tSpaceDims>
-            (aCellOrdinal, tGradient, tCellVolume, tPrevVel, tResult);
-    }, "unit test integrate_advected_forces");
+        Plato::Fluids::integrate_divergence_momentum<tNumNodesPerCell,tSpaceDims>
+            (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPrevVel, tResult);
+    }, "unit test integrate_divergence_momentum");
 
     // test values
     auto tTol = 1e-4;
@@ -10848,9 +11214,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateDeltaAdvectedForces)
     auto tMultiplier = 1.0;
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::Fluids::integrate_delta_advected_forces<tNumNodesPerCell,tSpaceDims>
-            (aCellOrdinal, tMultiplier, tGradient, tCellVolume, tPredVel, tPrevVel, tResult);
-    }, "unit test integrate_delta_advected_forces");
+        Plato::Fluids::integrate_divergence_delta_predicted_momentum<tNumNodesPerCell,tSpaceDims>
+            (aCellOrdinal, tGradient, tCellVolume, tPredVel, tPrevVel, tResult, tMultiplier);
+    }, "unit test integrate_divergence_delta_predicted_momentum");
 
     // test values
     auto tTol = 1e-4;
