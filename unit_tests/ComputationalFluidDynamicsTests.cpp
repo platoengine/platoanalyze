@@ -3369,6 +3369,7 @@ public:
     }
 };
 
+// todo: predictor equation
 /***************************************************************************//**
  * \class VelocityPredictorResidual
  *
@@ -3888,6 +3889,7 @@ private:
 };
 // class VelocityPredictorResidual
 
+// todo: predictor equation - to
 namespace Brinkman
 {
 
@@ -4505,6 +4507,7 @@ calculate_pressure_gradient
     }
 }
 
+// todo: corrector equation
 /***************************************************************************//**
  * \class VelocityCorrectorResidual
  *
@@ -4743,13 +4746,14 @@ calculate_convective_forces
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
  const Plato::ScalarMultiVectorT<PrevTempT> & aPrevTemp,
- const Plato::ScalarVectorT<ResultT> & aResult)
+ const Plato::ScalarVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
-            aResult(aCellOrdinals) += aPrevVelGP(aCellOrdinals, tDim)
+            aResult(aCellOrdinals) += aMultiplier * aPrevVelGP(aCellOrdinals, tDim)
                 * ( aGradient(aCellOrdinals, tNode, tDim) * aPrevTemp(aCellOrdinals, tNode) );
         }
     }
@@ -4765,11 +4769,13 @@ integrate_scalar_field
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarVectorT<SourceT> & aSource,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
-        aResult(aCellOrdinal, tNode) += aBasisFunctions(tNode) * aSource(aCellOrdinal) * aCellVolume(aCellOrdinal);
+        aResult(aCellOrdinal, tNode) += aMultiplier * aBasisFunctions(tNode) *
+            aSource(aCellOrdinal) * aCellVolume(aCellOrdinal);
     }
 }
 
@@ -4784,14 +4790,15 @@ calculate_flux_divergence
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarMultiVectorT<SourceT> & aFlux,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
-            aResult(aCellOrdinal, tNode) +=
-                ( aGradient(aCellOrdinal, tNode, tDim) * aFlux(aCellOrdinal, tDim) ) * aCellVolume(aCellOrdinal);
+            aResult(aCellOrdinal, tNode) += aMultiplier * ( aGradient(aCellOrdinal, tNode, tDim) *
+                aFlux(aCellOrdinal, tDim) ) * aCellVolume(aCellOrdinal);
         }
     }
 }
@@ -4818,7 +4825,6 @@ calculate_flux
     }
 }
 
-// TODO: FIX THIS, IT SHOULD BE DIMENSIONLESS
 template<Plato::OrdinalType NumNodesPerCell,
          typename ControlT>
 DEVICE_TYPE inline ControlT
@@ -4907,7 +4913,60 @@ calculate_inertial_forces
 }
 
 
-
+// todo: energy equation FINISH DOXYGEN COMMENTS AND CHECK IMPLEMENTATION
+/***************************************************************************//**
+ * \class TemperatureResidual
+ *
+ * \tparam PhysicsT    physics type
+ * \tparam EvaluationT forward automatic differentiation evaluation type
+ *
+ * \brief Evaluate energy conservation (i.e. temperature equation) residual, which
+ * is given by
+ *
+ * \f[
+ *   \mathcal{R}^n(q^h) = I^n(q^h) - F^n(q^h) - S^n(q^h) - E^n(q^h) = 0.
+ * \f]
+ *
+ * where
+ *
+ * Inertial:
+ *
+ * \f[
+ *   I^n(q^h) = \int_{\Omega}q^h \left(\frac{\bar{T}^{n+1} - \bar{T}^{\ast}}{\Delta\bar{t}}\right)d\Omega
+ * \f]
+ *
+ * Internal:
+ *
+ * \f[
+ *   F^n(q^h) =
+ *     -\int_{\Omega}q^h\left(\bar{u}^n_i\frac{\partial\bar{T}^n}{\partial\bar{x}_i}\right)d\Omega
+ *     - \int_{\Omega}\frac{\partial q^h}{\partial\bar{x}_i}\frac{\partial\bar{T}}{\partial\bar{x}_i}\,d\Omega
+ *     + \int_{\Omega}q^h Q\,d\Omega
+ * \f]
+ *
+ * External:
+ *
+ * \f[
+ *   E_i^n(w^h_i) = \int_{\Gamma_H}q^h H\,d\Gamma
+ * \f]
+ *
+ * Stabilizing:
+ *
+ * \f[
+ *   S^n(q^h) =
+ *     \frac{\Delta\bar{t}}{2}\int_{\Omega}\left( \frac{\partial q^h}{\partial\bar{x}_k}\bar{u}^n_k
+ *     + q^h\frac{\partial\bar{u}^n_k}{\partial\bar{x}_k} \right)\hat{R}^n_T\, d\Omega
+ * \f]
+ *
+ * where
+ *
+ * \f[
+ *   \hat{R}^n_T = -\bar{u}_i\frac{\partial\bar{T}}{\partial\bar{x}_i} + Q
+ * \f]
+ *
+ * The variable \f$ Q \f$ denotes a volumetric heat source.
+ *
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class TemperatureResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -4961,6 +5020,31 @@ public:
 
     virtual ~TemperatureResidual(){}
 
+    /***************************************************************************//**
+     * \fn void evaluate
+     *
+     * \brief Evaluate internal pressure residual, which is defined by
+     *
+     * \f[
+     *   \hat{R}^n(v^h) = I^n(v^h) - F^n(v^h) = 0.
+     * \f]
+     *
+     * Inertial Forces:
+     *
+     * \f[
+     *   I^n(q^h) = \int_{\Omega}q^h \left(\frac{\bar{T}^{n+1} - \bar{T}^{\ast}}{\Delta\bar{t}}\right)d\Omega
+     * \f]
+     *
+     * Internal Forces:
+     *
+     * \f[
+     *   F^n(q^h) =
+     *     - \int_{\Omega}q^h\left(\bar{u}^n_i\frac{\partial\bar{T}^n}{\partial\bar{x}_i}\right)d\Omega
+     *     - \int_{\Omega}\frac{\partial q^h}{\partial\bar{x}_i}\frac{\partial\bar{T}}{\partial\bar{x}_i}\,d\Omega
+     *     + \int_{\Omega}q^h\left(\pi^{\beta}(\theta)Q\right)d\Omega
+     * \f]
+     *
+     ******************************************************************************/
     void evaluate
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResultWS)
@@ -5025,13 +5109,13 @@ public:
 
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::calculate_convective_forces<mNumNodesPerCell,mNumSpatialDims>
-                (aCellOrdinal, tGradient, tPrevVelGP, tPrevTempWS, tInternalForces);
+                (aCellOrdinal, tGradient, tPrevVelGP, tPrevTempWS, tInternalForces, -1.0);
 
             auto tHeatSrcConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTemp);
-            tInternalForces(aCellOrdinal) -= tHeatSrcConst * tHeatSource(aCellOrdinal);
+            tInternalForces(aCellOrdinal) += tHeatSrcConst * tHeatSource(aCellOrdinal);
 
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS, -1.0);
 
             // 2. calculate stabilizing forces
             Plato::Fluids::divergence<mNumNodesPerCell, mNumSpatialDims>
@@ -5040,9 +5124,9 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tDivPrevVel, tGradient, tPrevVelGP, tInternalForces, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForces, 1.0, aResultWS);
+            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tStabForces, 1.0, aResultWS);
 
-            // 3. apply time step to sum of internal and stabilizing forces, F = \Delta{t}\left( F_i^{int} + F_i^{stab} \right)
+            // 3. apply time step to sum of internal and stabilizing forces
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, aResultWS);
 
@@ -5061,6 +5145,24 @@ public:
     const override
     { return; /* boundary integral equates zero */ }
 
+    /***************************************************************************//**
+     * \fn void evaluatePrescribed
+     *
+     * \brief Evaluate prescribed heat flux, which is defined by
+     *
+     * \f[
+     *   E_i^n(w^h_i) = \int_{\Gamma_H}q^h H\,d\Gamma
+     * \f]
+     *
+     * Recall, the residual equation is being evaluated, i.e.
+     *
+     * \f[
+     *   \mathcal{R}^n(q^h) = I^n(q^h) - F^n(q^h) - S^n(q^h) - E^n(q^h) = 0.
+     * \f]
+     *
+     * Therefore, the prescribed heat flux is multiplied by -1.0.
+     *
+     ******************************************************************************/
     void evaluatePrescribed
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
@@ -5083,8 +5185,8 @@ public:
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
                 Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                    (aCellOrdinal, -1.0, tTimeStepWS, tResultWS);
-                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tResultWS, 1.0, aResult);
+                    (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
+                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
             }, "heat flux contribution");
         }
     }
@@ -5164,9 +5266,71 @@ private:
 // class TemperatureResidual
 
 
+// todo: energy equation - to
 namespace SIMP
 {
 
+/***************************************************************************//**
+ * \class TemperatureResidual
+ *
+ * \tparam PhysicsT    physics type
+ * \tparam EvaluationT forward automatic differentiation evaluation type
+ *
+ * \brief Evaluate energy conservation (i.e. temperature equation) residual, which
+ * is given by
+ *
+ * \f[
+ *   \mathcal{R}^n(q^h) = I^n(q^h) - F^n(q^h) - S^n(q^h) - E^n(q^h) = 0.
+ * \f]
+ *
+ * where
+ *
+ * Inertial:
+ *
+ * \f[
+ *   I^n(q^h) = \int_{\Omega}q^h \left(\frac{\bar{T}^{n+1} - \bar{T}^{\ast}}{\Delta\bar{t}}\right)d\Omega
+ * \f]
+ *
+ * Internal:
+ *
+ * \f[
+ *   F^n(q^h) =
+ *     - \int_{\Omega}q^h\left(\bar{u}^n_i\frac{\partial\bar{T}^n}{\partial\bar{x}_i}\right)d\Omega
+ *     - \int_{\Omega}\frac{\partial q^h}{\partial\bar{x}_i}\left(\pi^{\alpha}(\theta)
+ *       \frac{\partial\bar{T}}{\partial\bar{x}_i}\right)d\Omega
+ *     + \int_{\Omega}q^h\left(\pi^{\beta}(\theta)Q\right)d\Omega
+ * \f]
+ *
+ * Here, the material penalty function \f$ \pi^{\alpha}(\theta) \f$ is introduced to
+ * allow penalization of the thermal diffusivity \f$ \alpha \f$ for density-based
+ * topology optimization. The variable \f$ \theta \f$ denotes the density field used
+ * to define the geometry parameterization. Similarly, the volumetric heat source
+ * is penalized by \f$ \pi^{\beta}(\theta) \f$ within the fluid domain since only
+ * the solid domain is assumed to conduct heat.
+ *
+ * External:
+ *
+ * \f[
+ *   E_i^n(w^h_i) = \int_{\Gamma_H}q^h H\,d\Gamma
+ * \f]
+ *
+ * Stabilizing:
+ *
+ * \f[
+ *   S^n(q^h) =
+ *     \frac{\Delta\bar{t}}{2}\int_{\Omega}\left( \frac{\partial q^h}{\partial\bar{x}_k}\bar{u}^n_k
+ *     + q^h\frac{\partial\bar{u}^n_k}{\partial\bar{x}_k} \right)\hat{R}^n_T\, d\Omega
+ * \f]
+ *
+ * where
+ *
+ * \f[
+ *   \hat{R}^n_T = -\bar{u}_i\frac{\partial\bar{T}}{\partial\bar{x}_i} + \pi^{\beta}(\theta)Q
+ * \f]
+ *
+ * The variable \f$ Q \f$ denotes a volumetric heat source.
+ *
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class TemperatureResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -5225,6 +5389,32 @@ public:
 
     virtual ~TemperatureResidual(){}
 
+    /***************************************************************************//**
+     * \fn void evaluate
+     *
+     * \brief Evaluate internal pressure residual, which is defined by
+     *
+     * \f[
+     *   \hat{R}^n(v^h) = I^n(v^h) - F^n(v^h) = 0.
+     * \f]
+     *
+     * Inertial Forces:
+     *
+     * \f[
+     *   I^n(q^h) = \int_{\Omega}q^h \left(\frac{\bar{T}^{n+1} - \bar{T}^{\ast}}{\Delta\bar{t}}\right)d\Omega
+     * \f]
+     *
+     * Internal Forces:
+     *
+     * \f[
+     *   F^n(q^h) =
+     *     - \int_{\Omega}q^h\left(\bar{u}^n_i\frac{\partial\bar{T}^n}{\partial\bar{x}_i}\right)d\Omega
+     *     - \int_{\Omega}\frac{\partial q^h}{\partial\bar{x}_i}\left(\pi^{\alpha}(\theta)
+     *       \frac{\partial\bar{T}}{\partial\bar{x}_i}\right)d\Omega
+     *     + \int_{\Omega}q^h\left(\pi^{\beta}(\theta)Q\right)d\Omega
+     * \f]
+     *
+     ******************************************************************************/
     void evaluate
     (const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResultWS)
@@ -5294,15 +5484,15 @@ public:
 
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::calculate_convective_forces<mNumNodesPerCell,mNumSpatialDims>
-                (aCellOrdinal, tGradient, tPrevVelGP, tPrevTempWS, tInternalForces);
+                (aCellOrdinal, tGradient, tPrevVelGP, tPrevTempWS, tInternalForces, -1.0);
 
             auto tHeatSrcConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTemp);
             ControlT tPenalizedHeatSrcConst = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
                 (aCellOrdinal, tHeatSrcConst, tHeatSrcPenaltyExp, tControlWS);
-            tInternalForces(aCellOrdinal) -= tPenalizedHeatSrcConst * tHeatSource(aCellOrdinal);
+            tInternalForces(aCellOrdinal) += tPenalizedHeatSrcConst * tHeatSource(aCellOrdinal);
 
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS);
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tInternalForces, aResultWS, -1.0);
 
             // 2. calculate stabilizing forces
             Plato::Fluids::divergence<mNumNodesPerCell, mNumSpatialDims>
@@ -5311,9 +5501,9 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tDivPrevVel, tGradient, tPrevVelGP, tInternalForces, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tStabForces, 1.0, aResultWS);
+            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tStabForces, 1.0, aResultWS);
 
-            // 3. apply time step to sum of internal and stabilizing forces, F = \Delta{t}\left( F_i^{int} + F_i^{stab} \right)
+            // 3. apply time step to sum of internal and stabilizing forces
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, aResultWS);
 
@@ -5332,6 +5522,24 @@ public:
     const override
     { return; /* boundary integral equates zero */ }
 
+    /***************************************************************************//**
+     * \fn void evaluatePrescribed
+     *
+     * \brief Evaluate prescribed heat flux, which is defined by
+     *
+     * \f[
+     *   E_i^n(w^h_i) = \int_{\Gamma_H}q^h H\,d\Gamma
+     * \f]
+     *
+     * Recall, the residual equation is being evaluated, i.e.
+     *
+     * \f[
+     *   \mathcal{R}^n(q^h) = I^n(q^h) - F^n(q^h) - S^n(q^h) - E^n(q^h) = 0.
+     * \f]
+     *
+     * Therefore, the prescribed heat flux is multiplied by -1.0.
+     *
+     ******************************************************************************/
     void evaluatePrescribed
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
@@ -5354,8 +5562,8 @@ public:
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
                 Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                    (aCellOrdinal, -1.0, tTimeStepWS, tResultWS);
-                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, 1.0, tResultWS, 1.0, aResult);
+                    (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
+                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
             }, "heat flux contribution");
         }
     }
@@ -5776,6 +5984,7 @@ integrate_inertial_forces
 }
 
 
+// todo: continuity equation
 /***************************************************************************//**
  * \class PressureResidual
  *
@@ -6009,8 +6218,8 @@ public:
     /***************************************************************************//**
      * \fn void evaluateBoundary
      *
-     * \brief Evaluate prescribed momentum forces applied on \f$ \Gamma_u \f$,
-     * which are defined by
+     * \brief Evaluate momentum force increment applied on \f$ \Gamma_u \f$, which
+     * is defined by
      *
      * \f[
      *   E^n(v^h) = -\theta_1\int_{\Gamma_u}v^h n_i \Delta{u}_i^n d\Gamma
@@ -6044,6 +6253,12 @@ public:
         }, "prescribed delta momentum boundary forces");
     }
 
+    /***************************************************************************//**
+     * \fn void evaluatePrescribed
+     *
+     * \brief Prescribed boundary forces are empty.
+     *
+     ******************************************************************************/
     void evaluatePrescribed
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
