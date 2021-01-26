@@ -9985,17 +9985,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "      <Parameter  name='Index'    type='int'    value='1'/>"
             "      <Parameter  name='Sides'    type='string' value='y-'/>"
             "    </ParameterList>"
-            "    <ParameterList  name='X-Dir No-Slip on Y+'>"
-            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
-            "      <Parameter  name='Value'    type='double' value='1.0'/>"
-            "      <Parameter  name='Index'    type='int'    value='0'/>"
-            "      <Parameter  name='Sides'    type='string' value='y+'/>"
-            "    </ParameterList>"
-            "    <ParameterList  name='Y-Dir No-Slip on Y+'>"
-            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
-            "      <Parameter  name='Index'    type='int'    value='1'/>"
-            "      <Parameter  name='Sides'    type='string' value='y+'/>"
-            "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
             "    <ParameterList  name='Zero Pressure'>"
@@ -10003,9 +9992,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "      <Parameter  name='Index'    type='int'    value='0'/>"
             "      <Parameter  name='Sides'    type='string' value='pressure'/>"
             "    </ParameterList>"
+            "    <ParameterList  name='Tangential Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='1'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='velocity'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Normal Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='0'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='velocity'/>"
+            "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Max Number Iterations' type='int' value='2'/>"
+            "    <Parameter name='Max Number Iterations' type='int' value='10'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -10019,15 +10020,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
 
+    // add ramping boundary conditions to node set list
+    Omega_h::Write<int> tWriteVel(4);
+    tWriteVel[0]=13; tWriteVel[1]=15; tWriteVel[2]=20; tWriteVel[3]=22;
+    auto tVelBcNodeIds = Omega_h::LOs(tWriteVel);
+    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("velocity",tVelBcNodeIds) );    
+
     // add pressure essential boundary condition to node set list
-    Plato::ScalarMultiVector tPoints("points",1,2);
+    /*Plato::ScalarMultiVector tPoints("points",1,2);
     auto tHostPoints = Kokkos::create_mirror(tPoints);
     tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
-    //auto tNodeIds = Plato::find_node_ids_on_face_set<1,2>(*tMesh, tMeshSets, "y-", tPoints);
-    //auto tLocalNodeIds = Plato::omega_h::copy(tNodeIds);
-    Omega_h::Write<int> tWrite(1);
-    tWrite[0]=0; auto tLocalNodeIds = Omega_h::LOs(tWrite);
-    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tLocalNodeIds) );
+    auto tNodeIds = Plato::find_node_ids_on_face_set<1,2>(*tMesh, tMeshSets, "y-", tPoints);
+    auto tLocalNodeIds = Plato::omega_h::copy(tNodeIds);*/
+    Omega_h::Write<int> tWritePress(1);
+    tWritePress[0]=0; auto tPressBcNodeIds = Omega_h::LOs(tWritePress);
+    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tPressBcNodeIds) );
 
     // create communicator
     MPI_Comm tMyComm;
