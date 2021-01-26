@@ -1,6 +1,6 @@
 # Plato Docker images
 ## Usage:
-Docker images offer a convenient way to quickly get started using Plato.  A convenient workflow is:
+Docker images offer a convenient way to quickly get started using Plato.  A typical workflow is:
 1. Create the problem definition in the host filesystem.  Users can clone/download the [Plato Engine](https://github.com/platoengine/platoengine/tree/docker) repository which has a collection of example problems.  More experienced users may be interested in the [Use Cases](https://github.com/platoengine/use_cases) repository.
 2. Start the Plato container following the instructions below and run the optimization problem(s) of interest.  The container mounts the problem directory so results are available in the host filesystem.
 3. Exit the container (or just open another terminal) to visualize the results. 
