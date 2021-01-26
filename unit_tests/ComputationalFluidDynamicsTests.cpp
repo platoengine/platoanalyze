@@ -8762,6 +8762,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
+        Plato::blas1::scale(-1.0, tResidualVelocity);
         tSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
 
         // update velocity
@@ -8785,6 +8786,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPredictor);
+        Plato::blas1::scale(-1.0, tResidualPredictor);
         tSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
 
         // update current predictor
@@ -8808,6 +8810,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
         Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPressure);
+        Plato::blas1::scale(-1.0, tResidualPressure);
         tSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
 
         // update pressure
@@ -8831,6 +8834,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
         Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaTemperature);
+        Plato::blas1::scale(-1.0, tResidualTemperature);
         tSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
 
         // update temperature
@@ -9587,6 +9591,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
+        Plato::blas1::scale(-1.0, tResidualVelocity);
         tSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
 
         // update velocity
@@ -9610,6 +9615,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
         Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPredictor);
+        Plato::blas1::scale(-1.0, tResidualPredictor);
         tSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
 
         // update current predictor
@@ -9633,6 +9639,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
         Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPressure);
+        Plato::blas1::scale(-1.0, tResidualPressure);
         tSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
 
         // update pressure
@@ -9656,6 +9663,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
         Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaTemperature);
+        Plato::blas1::scale(-1.0, tResidualTemperature);
         tSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
 
         // update temperature
