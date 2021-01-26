@@ -16,24 +16,7 @@ Images are available at [hub.docker.com](https://hub.docker.com/u/plato3d) for t
 - plato3d/plato-analyze:cuda-10.2-cc-7.5-develop
 - plato3d/plato-analyze:cuda-10.2-cc-7.5-release
 
-**Option 1 - Run as root (not recommended):** These can be used without modification, but the default user within the image is root.  This creates a few issues:
-1. Any files created in mounted directories will have root ownership.
-2. Running MPI programs (e.g., Plato) as root requires the user to set environment variables to permit it.
-3. Running MPI programs as root will also induce warnings to stdout during runtime.
-
-To run the 'root' image:
-- For CPU:
-```shell
-sudo docker run -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 -it plato3d/plato-analyze:cpu-release
-```
-- For GPU:
-```shell
-sudo docker run --gpus all -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 -it plato3d/plato-analyze:cpu-release
-```
-
-The command above sets two environment variables that are required to execute mpirun as root.  The -v argument followed by $(pwd):examples mounts the present working directory on the host (i.e., the result of 'pwd') inside the container at /examples.
-
-**Option 2 - Run as user (recommended):** The images described above can be customized to an individual user.  This avoids issues with running as root within the container.  To do so, create a file called `Dockerfile.adduser` with the following contents:
+**Option 1 - Run as user (recommended):** The above images can be customized to an individual user.  This avoids issues with running as root within the container.  To do so, create a file called `Dockerfile.adduser` with the following contents:
 ```shell
 FROM plato3d/plato-analyze:cpu-develop
 
@@ -64,3 +47,20 @@ sudo docker run --gpus all -v $(pwd):/home/user/mount --privileged -it plato-ana
 ```
 
 The -v argument followed by $(pwd):/home/user/mount mounts the present working directory on the host (i.e., the result of 'pwd') inside the container at /home/user/mount.
+
+**Option 2 - Run as root (not recommended):** The Plato images can be used without modification, but the default user within the image is root.  This creates a few issues:
+1. Any files created in mounted directories will be owned by root.
+2. Running MPI programs (e.g., Plato) as root requires the user to set environment variables to permit it.
+3. Running MPI programs as root will also induce warnings to stdout during runtime.
+
+To run the 'root' image:
+- For CPU:
+```shell
+sudo docker run -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 -it plato3d/plato-analyze:cpu-release
+```
+- For GPU:
+```shell
+sudo docker run --gpus all -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 -it plato3d/plato-analyze:cpu-release
+```
+
+The command above sets two environment variables that are required to execute mpirun as root.  The -v argument followed by $(pwd):examples mounts the present working directory on the host (i.e., the result of 'pwd') inside the container at /examples.
