@@ -1,9 +1,0 @@
-FROM plato3d/plato-spack:cuda-10.2-nonroot
-
-RUN spack install platoanalyze+cuda+mpmd+python+geometry+esp @release ^nvcc-wrapper compute_capability=75 ^openmpi@4.0.2
-
-USER root
-RUN echo 'spack load platoanalyze' >> /etc/profile.d/spack.sh
-USER plato
-
-ENTRYPOINT ["/bin/bash", "--rcfile", "/etc/profile", "-l"]

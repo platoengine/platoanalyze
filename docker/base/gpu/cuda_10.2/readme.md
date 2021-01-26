@@ -5,7 +5,7 @@ This Dockerfile generates an image based on Ubuntu 18.04 that includes all of th
 To build the image:
 
 ```shell
-sudo docker build . -f Dockerfile.base -t plato3d/plato-base:cuda-10.2
+sudo docker build . -f Dockerfile -t plato3d/plato-base:cuda-10.2
 ```
 
 ## Commiting

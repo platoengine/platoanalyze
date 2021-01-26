@@ -1,27 +1,25 @@
 # Dockerfiles
-- Dockerfile generates an image based on plato3d/plato-spack:cuda-10.2 that includes plato analyze compiled for Nvidia compute capability of 7.5.  The user in the container is root.  Note that calling mpirun as root requires setting environment variables to explicitly allow it.
+- Dockerfile generates an image based on plato3d/plato-spack:cpu that includes plato analyze compiled for execution on the CPU.  The user in the container is root.  Note that calling mpirun as root requires setting environment variables to explicitly allow it.
 
 ## Building
 To build the image:
 
 ```shell
-sudo docker build . --no-cache -f Dockerfile -t plato3d/plato-analyze:cuda-10.2-cc-7.5-release
+sudo docker build . --no-cache -f Dockerfile -t plato3d/plato-analyze:cpu-release
 ```
-
-To build the develop branch, or any other branch, edit the Dockerfile and change @release to @develop, etc.
 
 ## Commiting
 To commit the image to docker hub:
 
 ```shell
-sudo docker push plato3d/plato-analyze:cuda-10.2-cc-7.5-release
+sudo docker push plato3d/plato-analyze:cpu-release
 ```
 
 ## Using
 To run the docker image:
 
 ```shell
-sudo docker run -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 --gpus all -it plato3d/plato-analyze:cuda-10.2-cc-7.5-release
+sudo docker run -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 -it plato3d/plato-analyze:cpu-release
 ```
 
 The command above sets two environment variables that are required to execute mpirun as root.  The -v argument followed by $(pwd):examples mounts the present working directory on the host (i.e., the result of 'pwd') inside the container at /examples.
