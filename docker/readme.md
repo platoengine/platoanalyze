@@ -22,10 +22,14 @@ Images are available at [hub.docker.com](https://hub.docker.com/u/plato3d) for t
 3. Running MPI programs as root will also induce warnings to stdout during runtime.
 
 To run the 'root' image:
+- For CPU:
 ```shell
 sudo docker run -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 -it plato3d/plato-analyze:cpu-release
 ```
-(**Important!:** When running an image that uses GPUs, you must add `--gpus all` to the `docker run` command above.)
+- For GPU:
+```shell
+sudo docker run --gpus all -v $(pwd):/examples --env OMPI_ALLOW_RUN_AS_ROOT=1 --env OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1 -it plato3d/plato-analyze:cpu-release
+```
 
 The command above sets two environment variables that are required to execute mpirun as root.  The -v argument followed by $(pwd):examples mounts the present working directory on the host (i.e., the result of 'pwd') inside the container at /examples.
 
@@ -49,10 +53,14 @@ where `FROM plato3d/plato-analyze:cpu-develop` indicates the image that you wish
 sudo docker build . --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -f Dockerfile.adduser -t plato-analyze:cpu-develop-user
 ```
 
-To run the resulting docker image:
+To use the resulting docker image, change to the directory that contains the problem(s) to be run and start the container:
+- For CPU:
 ```shell
 sudo docker run -v $(pwd):/home/user/mount --privileged -it plato-analyze:cpu-develop-user
 ```
-(**Important!:** When running an image that uses GPUs, you must add `--gpus all` to the `docker run` command above.)
+- For GPU:
+```shell
+sudo docker run --gpus all -v $(pwd):/home/user/mount --privileged -it plato-analyze:cpu-develop-user
+```
 
 The -v argument followed by $(pwd):/home/user/mount mounts the present working directory on the host (i.e., the result of 'pwd') inside the container at /home/user/mount.
