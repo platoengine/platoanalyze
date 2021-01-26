@@ -4931,6 +4931,7 @@ penalize_heat_source_constant
     return tPenalizedProperty;
 }
 
+/*
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -4961,11 +4962,11 @@ integrate_stabilizing_scalar_forces
             * ( aBasisFunctions(tNode) * aDivPrevVel(aCellOrdinal) );
     }
  }
+*/
 
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
- typename DivVelT,
  typename ResultT,
  typename ConfigT,
  typename PrevVelT,
@@ -5229,8 +5230,7 @@ public:
                 (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
 
             // 2. calculate stabilizing forces
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tConvection, 1.0, tStabilization);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal,  1.0, tHeatSource, 1.0, tStabilization);
+            tStabilization(aCellOrdinal) += tHeatSource(aCellOrdinal) - tConvection(aCellOrdinal);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tStabilization, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
@@ -5612,8 +5612,7 @@ public:
                 (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
 
             // 2. calculate stabilizing forces
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tConvection, 1.0, tStabilization);
-            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal,  1.0, tHeatSource, 1.0, tStabilization);
+            tStabilization(aCellOrdinal) += tHeatSource(aCellOrdinal) - tConvection(aCellOrdinal);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tStabilization, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
@@ -11775,6 +11774,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SIMP_TemperatureResidual)
     //Plato::print(tResidual, "residual");
 }
 
+/*
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
 {
     // build mesh, mesh sets, and spatial domain
@@ -11836,6 +11836,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
     }
     //Plato::print_array_2D(tResult, "result");
 }
+*/
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces_ThermalResidual)
 {
