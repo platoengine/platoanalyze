@@ -4,7 +4,7 @@ ARG USER_ID
 ARG GROUP_ID
 
 USER root
-RUN addgroup --gid $GROUP_ID user
+RUN addgroup --gid $GROUP_ID user || true
 RUN useradd --create-home --shell /bin/bash --uid $USER_ID --gid $GROUP_ID user
 USER user
 WORKDIR /home/user
