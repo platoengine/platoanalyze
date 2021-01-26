@@ -4,7 +4,7 @@ Docker images offer a convenient way to quickly get started using Plato.
 1. [Docker](https://docs.docker.com/engine/install/) must be installed and running.
 2. [Nvidia Docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) is required if users wish to access GPU hardware in the Docker container.  Nvidia Docker is only available in Linux and Windows (using [Windows Subsystem Linux 2](https://docs.microsoft.com/en-us/windows/wsl/install-win10)).
 ## Usage:
-A convenient workflow is:
+A typical workflow is:
 1. Create the problem definition in the host filesystem.  Users can clone/download the [Plato Engine](https://github.com/platoengine/platoengine/tree/docker) repository which has a collection of example problems.  More experienced users may be interested in the [Use Cases](https://github.com/platoengine/use_cases) repository.
 2. Start the Plato container following the instructions below and run the optimization problem(s) of interest.  The container mounts the problem directory so results are available in the host filesystem.
 3. Exit the container (or just open another terminal) to visualize the results. 
