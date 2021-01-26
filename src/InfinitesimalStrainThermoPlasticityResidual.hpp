@@ -30,7 +30,7 @@
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "IsotropicMaterialUtilities.hpp"
 #include "AbstractGlobalVectorFunctionInc.hpp"
-
+#include <typeinfo>
 #include "ExpInstMacros.hpp"
 
 namespace Plato
@@ -94,6 +94,8 @@ private:
     Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
     Plato::Scalar mThermalConductivityCoefficient; /*!< thermal conductivity coefficient */
+    Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
+    Plato::Scalar mReferenceTemperature;           /*!< thermal reference temperature */
 
     Plato::Scalar mPenaltySIMP;               /*!< SIMP penalty for elastic properties */
     Plato::Scalar mMinErsatzSIMP;             /*!< SIMP min ersatz stiffness for elastic properties */
@@ -182,7 +184,7 @@ private:
         if(aProblemParams.isSublist("Natural Boundary Conditions"))
         {
             auto tNaturalBCsParams = aProblemParams.sublist("Natural Boundary Conditions");
-            
+
             // Parse mechanical Neumann loads
             if(tNaturalBCsParams.isSublist("Mechanical Natural Boundary Conditions"))
             {
@@ -249,8 +251,8 @@ private:
             mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
             mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
 
-            //mThermalExpansionCoefficient    = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
-            //mReferenceTemperature           = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
+            mThermalExpansionCoefficient    = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
+            mReferenceTemperature           = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
             mThermalConductivityCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Conductivity Coefficient");
         }
         else
@@ -388,6 +390,8 @@ public:
         mElasticBulkModulus(-1.0),
         mElasticShearModulus(-1.0),
         mThermalConductivityCoefficient(-1.0),
+        mThermalExpansionCoefficient(0.0),
+        mReferenceTemperature(0.0),
         mPenaltySIMP(3),
         mMinErsatzSIMP(1e-9),
         mUpperBoundOnPenaltySIMP(4),
@@ -448,7 +452,7 @@ public:
 
         using GradScalarT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
         using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
-        using ThermalFluxT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ControlT, ConfigT>;
+        //using ThermalFluxT = typename Plato::fad_type_t<SimplexPhysicsType, ControlT, ConfigT, GlobalStateT>;
 
         // Functors used to compute residual-related quantities
         Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
@@ -458,7 +462,7 @@ public:
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence;
         Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
         Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, mDisplacementDofOffset, mSpaceDim> tInterpolatePressGradFromNodal;
@@ -486,7 +490,7 @@ public:
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
         Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
         Plato::ScalarMultiVectorT<GradScalarT> tTemperatureGrad("temperature grad", tNumCells, mSpaceDim);
-        Plato::ScalarMultiVectorT<ThermalFluxT> tThermalFlux("thermal flux", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<ResultT> tThermalFlux("thermal flux", tNumCells, mSpaceDim);
 
         // output quantities
         Plato::ScalarMultiVectorT<ResultT> tCauchyStress("cauchy stress", tNumCells, mNumStressTerms);
@@ -549,7 +553,7 @@ public:
             // compute the thermal flux
             ControlT tPenalizedThermalConductivityCoefficient = tElasticPropertiesPenalty * tThermalConductivityCoefficient;
             for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; ++tDimIndex)
-                tThermalFlux(aCellOrdinal, tDimIndex) = static_cast<Plato::Scalar>(-1.0) * tPenalizedThermalConductivityCoefficient *
+                tThermalFlux(aCellOrdinal, tDimIndex) = static_cast<ResultT>(-1.0) * tPenalizedThermalConductivityCoefficient *
                                                         tTemperatureGrad(aCellOrdinal, tDimIndex);
 
             // compute residual

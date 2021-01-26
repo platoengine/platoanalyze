@@ -566,19 +566,19 @@ public:
 
         tOutputData.mWriteOutput = mWriteSolverDiagnostics;
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mSolverDiagnosticsFile);
-
+const bool tPrintSteps = true;
         this->initializeSolver(aStates);
         while(true)
         {
             tOutputData.mCurrentIteration = mCurrentSolverIter;
-
+if (tPrintSteps) printf("Iter: %d\nUpdate Local Jacobian Inverse.\n", mCurrentSolverIter);
             // update inverse of local Jacobian -> store in tInvLocalJacobianT
             this->updateInverseLocalJacobian(aControls, aStates, tInvLocalJacobianT);
-
+if (tPrintSteps) printf("Assemble residual.\n");
             // assemble residual
             auto tGlobalResidual = this->assembleResidual(aControls, aStates, tInvLocalJacobianT);
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1.0), tGlobalResidual);
-
+if (tPrintSteps) printf("Assemble tangent.\n");
             // assemble tangent stiffness matrix
             auto tGlobalJacobian = this->assembleTangentMatrix(aControls, aStates, tInvLocalJacobianT);
 
@@ -596,17 +596,17 @@ public:
                 tNewtonRaphsonConverged = this->didNewtonRaphsonSolverConverge(tOutputData);
                 break;
             }
-
+if (tPrintSteps) printf("Update global states.\n");
             // update global states
             this->updateGlobalStates(tGlobalJacobian, tGlobalResidual, aStates);
-
+if (tPrintSteps) printf("Update local states.\n");
             // update local states
             mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                              aStates.mCurrentLocalState, aStates.mPreviousLocalState,
                                              aControls, aStates.mCurrentStepIndex);
             mCurrentSolverIter++;
         }
-
+if (tPrintSteps) printf("Newton finsihed\n");
         Plato::print_newton_raphson_stop_criterion(tOutputData, mSolverDiagnosticsFile);
 
         return (tNewtonRaphsonConverged);

@@ -189,9 +189,9 @@ public:
 
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
-        Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*(mNumGlobalDofsPerNode - 1));
+        Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalStates, tPressure);
-        Plato::blas2::extract<mNumGlobalDofsPerNode, mNumGlobalDofsPerNode - 1>(tNumNodes, mGlobalStates, tDisplacements);
+        Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
         Plato::blas2::scale(mPressureScaling, tPressure);
 
         Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
@@ -205,7 +205,7 @@ public:
             tMesh.add_tag(Omega_h::VERT, "Reaction Force", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tForceSubViewDefaultMirror)));
             auto tDispSubView = Kokkos::subview(tDisplacements, tSnapshot, Kokkos::ALL());
             auto tDispSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tDispSubView);
-            tMesh.add_tag(Omega_h::VERT, "Displacements (and Temperature)", mNumGlobalDofsPerNode - 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
+            tMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
             Plato::add_element_state_tags(tMesh, mDataMap, tSnapshot);
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mSpaceDim);
             auto tTime = mPseudoTimeStep * static_cast<Plato::Scalar>(tSnapshot + 1);

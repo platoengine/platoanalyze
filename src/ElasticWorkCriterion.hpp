@@ -68,6 +68,9 @@ private:
     Plato::Scalar mBulkModulus;              /*!< elastic bulk modulus */
     Plato::Scalar mShearModulus;             /*!< elastic shear modulus */
 
+    Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
+    Plato::Scalar mReferenceTemperature;           /*!< thermal reference temperature */
+
     Plato::Scalar mPenaltySIMP;                /*!< SIMP penalty for elastic properties */
     Plato::Scalar mMinErsatz;                  /*!< SIMP min ersatz stiffness for elastic properties */
     Plato::Scalar mUpperBoundOnPenaltySIMP;    /*!< continuation parameter: upper bound on SIMP penalty for elastic properties */
@@ -94,6 +97,8 @@ public:
         FunctionBaseType(aSpatialDomain, aDataMap, aName),
         mBulkModulus(-1.0),
         mShearModulus(-1.0),
+        mThermalExpansionCoefficient(0.0),
+        mReferenceTemperature(0.0),
         mPenaltySIMP(3),
         mMinErsatz(1e-9),
         mUpperBoundOnPenaltySIMP(4),
@@ -162,7 +167,7 @@ public:
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::ComputeDeviatoricStrain<mSpaceDim> tComputeDeviatoricStrain;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils;
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
         Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatz);
 
         // allocate local containers used to evaluate criterion
@@ -282,11 +287,14 @@ private:
         }
         else if (tMaterialInputs.isSublist("Isotropic Linear Thermoelastic"))
         {
-            auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Thermoelastic");
-            auto tPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
-            auto tElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
+            auto tThermoelasticSubList = tMaterialInputs.sublist("Isotropic Linear Thermoelastic");
+            auto tPoissonsRatio = Plato::parse_poissons_ratio(tThermoelasticSubList);
+            auto tElasticModulus = Plato::parse_elastic_modulus(tThermoelasticSubList);
             mBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
             mShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
+
+            mThermalExpansionCoefficient = tThermoelasticSubList.get<Plato::Scalar>("Thermal Expansion Coefficient");
+            mReferenceTemperature        = tThermoelasticSubList.get<Plato::Scalar>("Reference Temperature");
         }
         else
         {
