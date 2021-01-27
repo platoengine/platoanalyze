@@ -6364,6 +6364,7 @@ public:
      Plato::ScalarMultiVectorT<ResultT> & aResult)
     const override
     {
+/*
         // 1. calculate prescribed delta momentum boundary forces
         auto tNumCells = aResult.extent(0);
         Plato::ScalarMultiVectorT<ResultT> tResultWS("delta momentum boundary forces", tNumCells, mNumPressDofsPerCell);
@@ -6381,6 +6382,7 @@ public:
                 (aCellOrdinal, tThetaOne, tTimeStepWS, tResultWS);
             Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, 1.0, tResultWS, 1.0, aResult);
         }, "prescribed delta momentum boundary forces");
+*/
     }
 
     /***************************************************************************//**
@@ -6576,15 +6578,15 @@ public:
         for(const auto& tDomain : mSpatialModel.Domains)
         {
             Plato::WorkSets tInputWorkSets;
-            auto tNumCells = tDomain.numCells();
             Plato::Fluids::build_vector_function_worksets<ResidualEvalT>
                 (tDomain, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             // evaluate internal forces
+            auto tNumCells = tDomain.numCells();
             auto tName = tDomain.getDomainName();
             Plato::ScalarMultiVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells, mNumDofsPerCell);
             mResidualFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
-            Plato::assemble_residual<mNumNodesPerCell,mNumDofsPerNode>(tNumCells, mStateOrdinalsMap, tResultWS, tReturnValue);
+            Plato::assemble_residual<mNumNodesPerCell,mNumDofsPerNode>(tDomain, mStateOrdinalsMap, tResultWS, tReturnValue);
         }
 
         // evaluate boundary forces
@@ -9985,13 +9987,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "      <Parameter  name='Index'    type='int'    value='1'/>"
             "      <Parameter  name='Sides'    type='string' value='y-'/>"
             "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
-            "    <ParameterList  name='Zero Pressure'>"
-            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
-            "      <Parameter  name='Index'    type='int'    value='0'/>"
-            "      <Parameter  name='Sides'    type='string' value='pressure'/>"
-            "    </ParameterList>"
             "    <ParameterList  name='Tangential Velocity'>"
             "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
             "      <Parameter  name='Value'    type='double' value='1'/>"
@@ -10001,12 +9996,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    <ParameterList  name='Normal Velocity'>"
             "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
             "      <Parameter  name='Value'    type='double' value='0'/>"
-            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
             "      <Parameter  name='Sides'    type='string' value='velocity'/>"
             "    </ParameterList>"
             "  </ParameterList>"
+            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
+            "    <ParameterList  name='Zero Pressure'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='pressure'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Max Number Iterations' type='int' value='10'/>"
+            "    <Parameter name='Max Number Iterations' type='int' value='1'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
