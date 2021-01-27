@@ -10,6 +10,7 @@
 #include <Omega_h_array.hpp>
 
 #include "PlatoStaticsTypes.hpp"
+#include "Plato_Solve.hpp"
 
 namespace Plato
 {
@@ -115,6 +116,56 @@ inline void print_array_ordinals_1D(const Plato::LocalOrdinalVector & aInput, st
     std::cout << std::endl;
 }
 // function print
+
+
+/******************************************************************************//**
+ * \brief Print input sparse matrix to file for debugging
+ * \param [in] aInMatrix Pointer to Crs Matrix
+ * \param [in] aFilename  file name (default = "matrix.txt")
+**********************************************************************************/
+inline void print_sparse_matrix_to_file( Teuchos::RCP<Plato::CrsMatrixType> aInMatrix, std::string aFilename = "matrix.txt")
+{
+    FILE * tOutputFile;
+    tOutputFile = fopen(aFilename.c_str(), "w");
+    auto tNumRowsPerBlock = aInMatrix->numRowsPerBlock();
+    auto tNumColsPerBlock = aInMatrix->numColsPerBlock();
+    auto tBlockSize = tNumRowsPerBlock*tNumColsPerBlock;
+
+    auto tRowMap = Kokkos::create_mirror(aInMatrix->rowMap());
+    Kokkos::deep_copy(tRowMap, aInMatrix->rowMap());
+
+    auto tColMap = Kokkos::create_mirror(aInMatrix->columnIndices());
+    Kokkos::deep_copy(tColMap, aInMatrix->columnIndices());
+
+    auto tValues = Kokkos::create_mirror(aInMatrix->entries());
+    Kokkos::deep_copy(tValues, aInMatrix->entries());
+
+    auto tNumRows = tRowMap.extent(0)-1;
+    for(Plato::OrdinalType iRowIndex=0; iRowIndex<tNumRows; iRowIndex++)
+    {
+        auto tFrom = tRowMap(iRowIndex);
+        auto tTo   = tRowMap(iRowIndex+1);
+        for(auto iColMapEntryIndex=tFrom; iColMapEntryIndex<tTo; iColMapEntryIndex++)
+        {
+            auto tBlockColIndex = tColMap(iColMapEntryIndex);
+            for(Plato::OrdinalType iLocalRowIndex=0; iLocalRowIndex<tNumRowsPerBlock; iLocalRowIndex++)
+            {
+                auto tRowIndex = iRowIndex * tNumRowsPerBlock + iLocalRowIndex;
+                for(Plato::OrdinalType iLocalColIndex=0; iLocalColIndex<tNumColsPerBlock; iLocalColIndex++)
+                {
+                    auto tColIndex = tBlockColIndex * tNumColsPerBlock + iLocalColIndex;
+                    auto tSparseIndex = iColMapEntryIndex * tBlockSize + iLocalRowIndex * tNumColsPerBlock + iLocalColIndex;
+#ifdef PLATOANALYZE_LONG_LONG_ORDINALTYPE
+                    fprintf(tOutputFile, "%lld %lld %16.8e\n", tRowIndex, tColIndex, tValues[tSparseIndex]);
+#else
+                    fprintf(tOutputFile, "%d %d %16.8e\n", tRowIndex, tColIndex, tValues[tSparseIndex]);
+#endif
+                }
+            }
+        }
+    }
+    fclose(tOutputFile);
+}
 
 /******************************************************************************//**
  * \brief Print input 1D container to terminal - host function

@@ -11,7 +11,6 @@
 #include "Plato_Diagnostics.hpp"
 
 #include "PlasticityProblem.hpp"
-#include "Plato_Diagnostics.hpp"
 #include "SimplexStabilizedMechanics.hpp"
 #include "StabilizedElastostaticResidual.hpp"
 

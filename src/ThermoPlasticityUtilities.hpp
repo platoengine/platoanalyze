@@ -152,7 +152,6 @@ class ThermoPlasticityUtilities
     aElasticStrain(aCellOrdinal, 0) -= tThermalStrain;
     aElasticStrain(aCellOrdinal, 1) -= tThermalStrain;
     aElasticStrain(aCellOrdinal, 3) -= tThermalStrain;
-//printf("Cell %d , Temp: %f\n", aCellOrdinal, tTemperature);
   }
 
   /******************************************************************************//**

@@ -11,8 +11,6 @@
 #include "Plato_Diagnostics.hpp"
 
 #include "PlasticityProblem.hpp"
-// #include "SimplexStabilizedMechanics.hpp"
-// #include "StabilizedElastostaticResidual.hpp"
 
 #include <Teuchos_XMLParameterListCoreHelpers.hpp>
 
@@ -47,8 +45,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
       "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
       "        <Parameter  name='Poissons Ratio' type='double' value='0.24'/>                   \n"
       "        <Parameter  name='Youngs Modulus' type='double' value='1.0e7'/>                  \n"
-      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='300.0'/>  \n"
-      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='100.0e-1'/>  \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='50.0'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-20'/>  \n"
       "        <Parameter  name='Reference Temperature' type='double' value='10.0'/>            \n"
       "      </ParameterList>                                                                   \n"
       "      <ParameterList name='Plasticity Model'>                                               \n"
@@ -92,14 +90,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
       "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
-      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, 0.0}'/>             \n"/*0, -100, 0*/
+      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, -100.0}'/>            \n"/*0, -100, 0*/
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "   </ParameterList>                                                                      \n"
       "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
       "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
-      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e-9}'/>                   \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{0.0e-9}'/>                   \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "   </ParameterList>                                                                      \n"
@@ -128,7 +126,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
     // 3. Set Dirichlet Boundary Conditions
     // 3.1 Symmetry degrees of freedom and 1 temperature
     Plato::Scalar tValueToSet = 0;
-    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + 1 + 1;
+    auto tNumDirichletDofs = tDirichletIndicesBoundaryX0.size() + 2 + 1;
     Plato::ScalarVector tDirichletValues("Dirichlet Values", tNumDirichletDofs);
     Plato::LocalOrdinalVector tDirichletDofs("Dirichlet Dofs", tNumDirichletDofs);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
@@ -140,18 +138,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
     // 3.2. Pinned degrees of freedom
     tValueToSet = 0.0;
     const Plato::OrdinalType tPinnedNodeIndex = 32;
-    auto tOffset = tDirichletIndicesBoundaryX0.size() - 1;
+    auto tOffset = tDirichletIndicesBoundaryX0.size();
 
     auto tHostDirichletValues = Kokkos::create_mirror(tDirichletValues);
     Kokkos::deep_copy(tHostDirichletValues, tDirichletValues);
-    //tHostDirichletValues(tOffset + tDispDofX) = tValueToSet;
+    tHostDirichletValues(tOffset + tDispDofX) = tValueToSet;
     tHostDirichletValues(tOffset + tDispDofY) = tValueToSet;
-    tHostDirichletValues(tOffset + tTemperatureDof) = 1010.0;
+    tHostDirichletValues(tOffset + tTemperatureDof) = 110.0;
     Kokkos::deep_copy(tDirichletValues, tHostDirichletValues);
 
     auto tHostDirichletDofs = Kokkos::create_mirror(tDirichletDofs);
     Kokkos::deep_copy(tHostDirichletDofs, tDirichletDofs);
-    //tHostDirichletDofs(tOffset + tDispDofX) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofX;
+    tHostDirichletDofs(tOffset + tDispDofX) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofX;
     tHostDirichletDofs(tOffset + tDispDofY) = tNumDofsPerNode * tPinnedNodeIndex + tDispDofY;
     tHostDirichletDofs(tOffset + tTemperatureDof) = tNumDofsPerNode * tPinnedNodeIndex + tTemperatureDof;
     Kokkos::deep_copy(tDirichletDofs, tHostDirichletDofs);
@@ -235,6 +233,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
       "  </ParameterList>                                                                       \n"
       "  <Parameter name='Physics'          type='string'  value='Plasticity'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
+      "  <Parameter name='Debug'   type='bool'  value='false'/>                                 \n"
       "  <ParameterList name='Material Models'>                                                 \n"
       "    <ParameterList name='Unobtainium'>                                                   \n"
       "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
@@ -242,7 +241,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
       "        <Parameter  name='Poissons Ratio' type='double' value='0.24'/>                   \n"
       "        <Parameter  name='Youngs Modulus' type='double' value='1.0e3'/>                  \n"
       "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='300.0'/>  \n"
-      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e0'/>  \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-4'/>  \n"
       "        <Parameter  name='Reference Temperature' type='double' value='10.0'/>            \n"
       "      </ParameterList>                                                                   \n"
       "      <ParameterList name='Plasticity Model'>                                               \n"
@@ -274,11 +273,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
       "    <Parameter name='Maximum Number Iterations' type='int' value='20'/>                  \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
-      "  </ParameterList>                                                                        \n"
+      "  </ParameterList>                                                                       \n"
       "</ParameterList>                                                                         \n"
     );
 
-    const bool tOutputData = true; // for debugging purpose, set true to enable Paraview output
+    const bool tOutputData = false; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
@@ -299,11 +298,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     Plato::OrdinalType tDispDofY = 1;
     Plato::OrdinalType tDispDofZ = 2;
     Plato::OrdinalType tTemperatureDof = 3;
+    Plato::OrdinalType tPressureDof = 4;
     constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     auto tDirichletIndicesBoundaryX0_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
-    //auto tDirichletIndicesBoundaryX0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofY);
-    //auto tDirichletIndicesBoundaryX0_Zdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofZ);
-    //auto tDirichletIndicesBoundaryX1_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x1", tNumDofsPerNode, tDispDofY);
     auto tDirichletIndicesBoundaryY0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
     auto tDirichletIndicesBoundaryZ0_Zdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "z0", tNumDofsPerNode, tDispDofZ);
 
@@ -339,18 +336,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
         auto tIndex = tOffset + aIndex;
-        tDirichletValues(tIndex) = 1010.0;
+        tDirichletValues(tIndex) = 110.0;
         tDirichletDofs(tIndex) = tTemperatureDof;
     }, "set dirichlet values and indices");
 
-    // tValueToSet = -1e-3;
-    // tOffset += tDirichletIndicesBoundaryX0_Zdof.size();
-    // Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX1_Ydof.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
-    // {
-    //     auto tIndex = tOffset + aIndex;
-    //     tDirichletValues(tIndex) = tValueToSet;
-    //     tDirichletDofs(tIndex) = tDirichletIndicesBoundaryX1_Ydof(aIndex);
-    // }, "set dirichlet values and indices");
 
     tPlasticityProblem.setEssentialBoundaryConditions(tDirichletDofs, tDirichletValues);
 
@@ -362,22 +351,28 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
 
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
-          {0, 0, 0, -418444.0, 0, 0, 0, -3.06295e+06, 0, 0, 0,  7.8685e+06, 0, 0, 0, 9.58504e+06,
-           3.118233e-4, -1.0e-3, 4.815153e-5, 1.97175e+06, 2.340348e-4, -1.0e-3, 4.357691e-5, -418444.0,
-           -3.927496e-4, -1.0e-3, 5.100447e-5, -1.10956e+07, -1.803906e-4, -1.0e-3, 9.081316e-5, -7.77742e+06}
+          {0.000e+00, 0.000e+00, 0.000e+00, 1.100e+02, 0.0, 
+           0.000e+00, 0.000e+00, 1.000e-02, 1.100e+02, 0.0, 
+           0.000e+00, 1.000e-02, 1.000e-02, 1.100e+02, 0.0, 
+           0.000e+00, 1.000e-02, 0.000e+00, 1.100e+02, 0.0, 
+           1.000e-02, 1.000e-02, 0.000e+00, 1.100e+02, 0.0, 
+           1.000e-02, 1.000e-02, 1.000e-02, 1.100e+02, 0.0, 
+           1.000e-02, 0.000e+00, 1.000e-02, 1.100e+02, 0.0, 
+           1.000e-02, 0.000e+00, 0.000e+00, 1.100e+02, 0.0}
         };
     auto tHostSolution = Kokkos::create_mirror(tSolution);
     Kokkos::deep_copy(tHostSolution, tSolution);
 
     const Plato::Scalar tTolerance = 1e-4;
     const Plato::OrdinalType tDim0 = tSolution.extent(0);
-    const Plato::OrdinalType tDim1 = 10;//tSolution.extent(1);
+    const Plato::OrdinalType tDim1 = tSolution.extent(1);
     for (Plato::OrdinalType tIndexI = 0; tIndexI < tDim0; tIndexI++)
     {
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
         {
             //printf("X(%d,%d) = %f\n", tIndexI, tIndexJ, tHostInput(tIndexI, tIndexJ));
-            TEST_FLOATING_EQUALITY(tHostSolution(tIndexI, tIndexJ), tGold[tIndexI][tIndexJ], tTolerance);
+            const Plato::Scalar tValue = std::abs(tHostSolution(tIndexI, tIndexJ)) < 1.0e-14 ? 0.0 : tHostSolution(tIndexI, tIndexJ);
+            TEST_FLOATING_EQUALITY(tValue, tGold[tIndexI][tIndexJ], tTolerance);
         }
     }
 
@@ -387,7 +382,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     	tIdx = tIndexK * tNumDofsPerNode + tDispDofX; printf("DofX: %12.3e, ", tHostSolution(0, tIdx));
     	tIdx = tIndexK * tNumDofsPerNode + tDispDofY; printf("DofY: %12.3e, ", tHostSolution(0, tIdx));
     	tIdx = tIndexK * tNumDofsPerNode + tDispDofZ; printf("DofZ: %12.3e, ", tHostSolution(0, tIdx));
-    	tIdx = tIndexK * tNumDofsPerNode + tTemperatureDof; printf("DofT: %12.3e \n", tHostSolution(0, tIdx));
+    	tIdx = tIndexK * tNumDofsPerNode + tTemperatureDof; printf("DofT: %12.3e, ", tHostSolution(0, tIdx));
+    	tIdx = tIndexK * tNumDofsPerNode + tPressureDof; printf("DofP: %12.3e \n", tHostSolution(0, tIdx));
     }
 
     // 6. Output Data
@@ -395,7 +391,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     {
         tPlasticityProblem.saveStates("ThermoplasticityThermoelasticSolution");
     }
-
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
