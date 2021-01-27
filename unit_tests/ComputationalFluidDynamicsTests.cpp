@@ -2908,12 +2908,8 @@ calculate_advected_momentum_forces
             auto tCellDofI = (SpaceDim * tNode) + tDimI;
             for(Plato::OrdinalType tDimJ = 0; tDimJ < SpaceDim; tDimJ++)
             {
-                auto tCellDofJ = (SpaceDim * tNode) + tDimJ;
-                aResult(aCellOrdinal, tDimI) += aMultiplier *
-                    (
-                      ( ( aGradient(aCellOrdinal, tNode, tDimJ) * aPrevVelWS(aCellOrdinal, tCellDofJ) ) * aPrevVelGP(aCellOrdinal, tDimI) )
-                      + ( aPrevVelGP(aCellOrdinal, tDimJ) * ( aGradient(aCellOrdinal, tNode, tDimJ) * aPrevVelWS(aCellOrdinal, tCellDofI) ) )
-                    );
+                aResult(aCellOrdinal, tDimI) += aMultiplier * ( aPrevVelGP(aCellOrdinal, tDimJ) *
+                    ( aGradient(aCellOrdinal, tNode, tDimJ) * aPrevVelWS(aCellOrdinal, tCellDofI) ) );
             }
         }
     }
@@ -2981,7 +2977,7 @@ template
 DEVICE_TYPE inline void
 calculate_natural_convective_forces
 (const Plato::OrdinalType & aCellOrdinal,
- const ControlT & aPrNumSquared,
+ const ControlT & aPrTimesPr,
  const Plato::ScalarVector & aGrashofNum,
  const Plato::ScalarVectorT<PrevTempT> & aPrevTempGP,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
@@ -2989,7 +2985,7 @@ calculate_natural_convective_forces
 {
     for (Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
     {
-        aResult(aCellOrdinal, tDim) += aMultiplier * aGrashofNum(tDim) * aPrNumSquared * aPrevTempGP(aCellOrdinal);
+        aResult(aCellOrdinal, tDim) += aMultiplier * aGrashofNum(tDim) * aPrTimesPr * aPrevTempGP(aCellOrdinal);
     }
 }
 
@@ -3037,62 +3033,11 @@ void divergence
 }
 
 /***************************************************************************//**
- * \fn device_type void integrate_stabilizing_vector_forces
+ * \fn device_type void integrate_stabilizing_momentum_forces
  * \brief Integrate stabilizing momentum forces, which are defined as
  *
  * \f[
- *   \alpha\int_{\Omega} \left( \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^n_k
- *   + w_i^h\frac{\partial \bar{u}^n_k}{\partial\bar{x}_k} \right) \hat{R}^n_{\bar{u}_i}\, d\Omega
- * \f]
- *
- * where \f$\alpha\f$ denotes a scalar multiplier and \f$\hat{R}^n_{\bar{u}_i}\f$
- * is the stabilizing residual.
- *
- ******************************************************************************/
-template
-<Plato::OrdinalType NumNodes,
- Plato::OrdinalType SpaceDim,
- typename DivVelT,
- typename ResultT,
- typename ConfigT,
- typename PrevVelT,
- typename StabForceT>
-DEVICE_TYPE inline void
-integrate_stabilizing_vector_forces
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarVector & aBasisFunctions,
- const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarVectorT<DivVelT> & aDivPrevVel,
- const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- const Plato::ScalarMultiVectorT<StabForceT> & aStabForce,
- const Plato::ScalarMultiVectorT<ResultT> & aResult,
- Plato::Scalar aMultiplier = 1.0)
- {
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
-        {
-            auto tLocalCellDofI = (SpaceDim * tNode) + tDimI;
-            for(Plato::OrdinalType tDimK = 0; tDimK < SpaceDim; tDimK++)
-            {
-                aResult(aCellOrdinal, tLocalCellDofI) += aMultiplier * aCellVolume(aCellOrdinal) *
-                    aStabForce(aCellOrdinal, tDimI) * ( aGradient(aCellOrdinal, tNode, tDimK) *
-                        aPrevVelGP(aCellOrdinal, tDimK) );
-            }
-            aResult(aCellOrdinal, tLocalCellDofI) += aMultiplier * aCellVolume(aCellOrdinal) *
-                aStabForce(aCellOrdinal, tDimI) * ( aBasisFunctions(tNode) * aDivPrevVel(aCellOrdinal) );
-        }
-    }
- }
-
-/***************************************************************************//**
- * \fn device_type void integrate_stabilizing_vector_forces
- * \brief Integrate stabilizing momentum forces, which are defined as
- *
- * \f[
- *   \alpha\int_{\Omega} \left( \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^n_k
- *   + w_i^h\frac{\partial \bar{u}^n_k}{\partial\bar{x}_k} \right) \hat{R}^n_{\bar{u}_i}\, d\Omega
+ *   \alpha\int_{\Omega} \left( \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^n_k \right) \hat{R}^n_{\bar{u}_i}\, d\Omega
  * \f]
  *
  * where \f$\alpha\f$ denotes a scalar multiplier and \f$\hat{R}^n_{\bar{u}_i}\f$
@@ -3107,14 +3052,12 @@ template
  typename PrevVelT,
  typename StabilityT>
 DEVICE_TYPE inline void
-integrate_stabilizing_vector_forces
+integrate_stabilizing_momentum_forces
 (const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelWS,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- const Plato::ScalarMultiVectorT<StabilityT> & aStabTerm,
+ const Plato::ScalarMultiVectorT<StabilityT> & aStabilization,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
  Plato::Scalar aMultiplier = 1.0)
 {
@@ -3122,13 +3065,11 @@ integrate_stabilizing_vector_forces
     {
         for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
         {
-            auto tCellDofI = (SpaceDim * tNode) + tDimI;
+            auto tLocalCellDof = (SpaceDim * tNode) + tDimI;
             for(Plato::OrdinalType tDimK = 0; tDimK < SpaceDim; tDimK++)
             {
-                auto tCellDofK = (SpaceDim * tNode) + tDimK;
-                aResult(aCellOrdinal, tCellDofI) += aMultiplier * aCellVolume(aCellOrdinal) * aStabTerm(aCellOrdinal, tDimI) *
-                    ( ( aGradient(aCellOrdinal, tNode, tDimK) * aPrevVelGP(aCellOrdinal, tDimK) )
-                    + ( aBasisFunctions(tNode) * aGradient(aCellOrdinal, tNode, tDimK) * aPrevVelWS(aCellOrdinal, tCellDofK) ) );
+                aResult(aCellOrdinal, tLocalCellDof) += aMultiplier * ( aGradient(aCellOrdinal, tNode, tDimK) *
+                    ( aPrevVelGP(aCellOrdinal, tDimK) * aStabilization(aCellOrdinal, tDimI) ) ) * aCellVolume(aCellOrdinal);
             }
         }
     }
@@ -3679,8 +3620,8 @@ public:
             // 2. calculate stabilizing forces
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal, -1.0, tAdvection, 1.0, tStabilization);
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tNaturalConvection, 1.0, tStabilization);
-            Plato::Fluids::integrate_stabilizing_vector_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tStabilization, tStabForces);
+            Plato::Fluids::integrate_stabilizing_momentum_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
@@ -4222,8 +4163,8 @@ public:
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal, -1.0, tAdvection, 1.0, tStabilization);
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tBrinkman , 1.0, tStabilization);
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tNaturalConvection, 1.0, tStabilization);
-            Plato::Fluids::integrate_stabilizing_vector_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tStabilization, tStabForces);
+            Plato::Fluids::integrate_stabilizing_momentum_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
@@ -4581,6 +4522,55 @@ calculate_pressure_gradient
     }
 }
 
+/***************************************************************************//**
+ * \fn device_type void integrate_stabilizing_pressure_gradient
+ * \brief Integrate stabilizing pressure gradient, which is given by
+ *
+ * \f[
+ *   \alpha\int_{\Omega} \left( \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^n_k \right)
+ *     \frac{\partial \bar{p}^{n+\theta_2}}{\partial \bar{x}_i}\, d\Omega
+ * \f]
+ *
+ * where \f$ \frac{\partial \bar{p}^{n+\theta_2}}{\partial \bar{x}_i} \f$ is given by
+ *
+ * \f[
+ *   \frac{\partial \bar{p}^{n+\theta_2}}{\partial \bar{x}_i} =
+ *     \alpha\left( 1-\theta_2 \right)\frac{partial \bar{p}^n}{partial \bar{x}_i}
+ *       + \theta_2\frac{\partial\delta\bar{p}}{\partial \bar{x}_i}
+ * \f]
+ *
+ ******************************************************************************/
+template
+<Plato::OrdinalType NumNodes,
+ Plato::OrdinalType SpaceDim,
+ typename ResultT,
+ typename ConfigT,
+ typename PrevVelT,
+ typename StabilityT>
+DEVICE_TYPE inline void
+integrate_stabilizing_pressure_gradient
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVectorT<ConfigT> & aCellVolume,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
+ const Plato::ScalarMultiVectorT<StabilityT> & aPressGrad,
+ const Plato::ScalarMultiVectorT<ResultT> & aResult,
+ Plato::Scalar aMultiplier = 1.0)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
+        {
+            auto tLocalCellDof = (SpaceDim * tNode) + tDimI;
+            for(Plato::OrdinalType tDimK = 0; tDimK < SpaceDim; tDimK++)
+            {
+                aResult(aCellOrdinal, tLocalCellDof) += aMultiplier * ( ( aGradient(aCellOrdinal, tNode, tDimK) *
+                    aPrevVelGP(aCellOrdinal, tDimK) ) * aPressGrad(aCellOrdinal, tDimI) ) * aCellVolume(aCellOrdinal);
+            }
+        }
+    }
+}
+
 // todo: corrector equation
 /***************************************************************************//**
  * \class VelocityCorrectorResidual
@@ -4772,8 +4762,8 @@ public:
 
             // 2. calculate stabilizing forces
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
-            Plato::Fluids::integrate_stabilizing_vector_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tPressGradGP, tStabForces, -1.0);
+            Plato::Fluids::integrate_stabilizing_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tPressGradGP, tStabForces, -1.0);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
@@ -4839,14 +4829,14 @@ integrate_scalar_field
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarVectorT<SourceT> & aSource,
+ const Plato::ScalarVectorT<SourceT> & aField,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
  Plato::Scalar aMultiplier = 1.0)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
         aResult(aCellOrdinal, tNode) += aMultiplier * aBasisFunctions(tNode) *
-            aSource(aCellOrdinal) * aCellVolume(aCellOrdinal);
+            aField(aCellOrdinal) * aCellVolume(aCellOrdinal);
     }
 }
 
@@ -4885,14 +4875,13 @@ calculate_flux
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<StateT> & aState,
- const Plato::ScalarMultiVectorT<FluxT> & aThermalFlux)
+ const Plato::ScalarMultiVectorT<FluxT> & aFlux)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
         for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
-            aThermalFlux(aCellOrdinal, tDim) +=
-                aGradient(aCellOrdinal, tNode, tDim) * aState(aCellOrdinal, tNode);
+            aFlux(aCellOrdinal, tDim) += aGradient(aCellOrdinal, tNode, tDim) * aState(aCellOrdinal, tNode);
         }
     }
 }
@@ -4931,39 +4920,6 @@ penalize_heat_source_constant
     return tPenalizedProperty;
 }
 
-/*
-template
-<Plato::OrdinalType NumNodes,
- Plato::OrdinalType SpaceDim,
- typename DivVelT,
- typename ResultT,
- typename ConfigT,
- typename PrevVelT,
- typename StabForceT>
-DEVICE_TYPE inline void
-integrate_stabilizing_scalar_forces
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarVector & aBasisFunctions,
- const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarVectorT<DivVelT> & aDivPrevVel,
- const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
- const Plato::ScalarVectorT<StabForceT> & aStabForce,
- const Plato::ScalarMultiVectorT<ResultT> & aResult)
- {
-    for (Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        for (Plato::OrdinalType tDimI = 0; tDimI < SpaceDim; tDimI++)
-        {
-            aResult(aCellOrdinal, tNode) += aStabForce(aCellOrdinal) * aCellVolume(aCellOrdinal)
-                * ( aGradient(aCellOrdinal, tNode, tDimI) * aPrevVelGP(aCellOrdinal, tDimI) );
-        }
-        aResult(aCellOrdinal, tNode) += aStabForce(aCellOrdinal) * aCellVolume(aCellOrdinal)
-            * ( aBasisFunctions(tNode) * aDivPrevVel(aCellOrdinal) );
-    }
- }
-*/
-
 template
 <Plato::OrdinalType NumNodes,
  Plato::OrdinalType SpaceDim,
@@ -4974,10 +4930,8 @@ template
 DEVICE_TYPE inline void
 integrate_stabilizing_scalar_forces
 (const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelWS,
  const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelGP,
  const Plato::ScalarVectorT<StabForceT> & aStabilization,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
@@ -4987,10 +4941,8 @@ integrate_stabilizing_scalar_forces
     {
         for(Plato::OrdinalType tDimK = 0; tDimK < SpaceDim; tDimK++)
         {
-            auto tCellDofK = (SpaceDim * tNode) + tDimK;
-            aResult(aCellOrdinal, tNode) += aMultiplier * aStabilization(aCellOrdinal) * aCellVolume(aCellOrdinal) *
-                ( ( aGradient(aCellOrdinal, tNode, tDimK) * aPrevVelGP(aCellOrdinal, tDimK) )
-                + ( aBasisFunctions(tNode) * aGradient(aCellOrdinal, tNode, tDimK) * aPrevVelWS(aCellOrdinal, tCellDofK) ) );
+            aResult(aCellOrdinal, tNode) += aMultiplier * ( ( aGradient(aCellOrdinal, tNode, tDimK) *
+                aPrevVelGP(aCellOrdinal, tDimK) ) * aStabilization(aCellOrdinal) ) * aCellVolume(aCellOrdinal);
         }
     }
  }
@@ -5222,8 +5174,8 @@ public:
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, tInternalForces, -1.0);
 
-            auto tHeatSourceConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTemp);
-            tHeatSource(aCellOrdinal) += tHeatSourceConst * tPrescribedHeatSource(aCellOrdinal);
+            auto tDimensionlessConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTemp);
+            tHeatSource(aCellOrdinal) += tDimensionlessConst * tPrescribedHeatSource(aCellOrdinal);
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, tInternalForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
@@ -5232,7 +5184,7 @@ public:
             // 2. calculate stabilizing forces
             tStabilization(aCellOrdinal) += tHeatSource(aCellOrdinal) - tConvection(aCellOrdinal);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tStabilization, tStabForces);
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
@@ -5602,10 +5554,10 @@ public:
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, tInternalForces, -1.0);
 
-            auto tHeatSrcConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTemp);
-            ControlT tPenalizedHeatSourceConst = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
-                (aCellOrdinal, tHeatSrcConst, tHeatSrcPenaltyExp, tControlWS);
-            tHeatSource(aCellOrdinal) += tPenalizedHeatSourceConst * tPrescribedHeatSource(aCellOrdinal);
+            auto tDimensionlessConst = ( tCharLength * tCharLength ) / (tFluidThermalCond * tRefTemp);
+            ControlT tPenalizedDimensionlessConst = Plato::Fluids::penalize_heat_source_constant<mNumNodesPerCell>
+                (aCellOrdinal, tDimensionlessConst, tHeatSrcPenaltyExp, tControlWS);
+            tHeatSource(aCellOrdinal) += tPenalizedDimensionlessConst * tPrescribedHeatSource(aCellOrdinal);
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, tInternalForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
@@ -5614,18 +5566,18 @@ public:
             // 2. calculate stabilizing forces
             tStabilization(aCellOrdinal) += tHeatSource(aCellOrdinal) - tConvection(aCellOrdinal);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tGradient, tPrevVelWS, tPrevVelGP, tStabilization, tStabForces);
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
-            // 4. add inertial force contribution
+            // 3. add inertial force contribution
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
             Plato::Fluids::calculate_inertial_forces<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, tPrevTempGP, aResultWS);
             Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tStabForces, 1.0, aResultWS);
             Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tInternalForces, 1.0, aResultWS);
-        }, "energy conservation residual");
+        }, "temperature residual");
     }
 
     void evaluateBoundary
@@ -5979,7 +5931,7 @@ template<Plato::OrdinalType NumNodesPerCell,
          typename PressT,
          typename ResultT>
 DEVICE_TYPE inline void
-integrate_divergence_pressure_gradient
+integrate_divergence_vector_field
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
@@ -6290,7 +6242,7 @@ public:
 
         Plato::ScalarMultiVectorT<ResultT> tPressGradGP("pressure gradient", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<ResultT> tPressForces("pressure forces", tNumCells, mNumPressDofsPerCell);
-        Plato::ScalarMultiVectorT<ResultT> tInternalForces("internal forces", tNumCells, mNumPressDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultT> tMomentumForces("momentum forces", tNumCells, mNumPressDofsPerCell);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
@@ -6319,18 +6271,19 @@ public:
 
             // 1. integrate internal forces
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
-            Plato::Fluids::integrate_divergence_momentum<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPrevVelGP, tInternalForces, -1.0);
+            Plato::Fluids::integrate_divergence_vector_field<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tGradient, tCellVolume, tPrevVelGP, tMomentumForces);
+
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredVelGP);
             Plato::Fluids::integrate_divergence_delta_predicted_momentum<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCellVolume, tPredVelGP, tPrevVelGP, tInternalForces, tThetaOne);
+                (aCellOrdinal, tGradient, tCellVolume, tPredVelGP, tPrevVelGP, tMomentumForces, tThetaOne);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumPressDofsPerNode>
-                (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
+                (aCellOrdinal, 1.0, tTimeStepWS, tMomentumForces);
 
-            // 2. integrate correcting pressure forces
+            // 2. integrate correcting pressure gradient
             Plato::Fluids::calculate_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tThetaTwo, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
-            Plato::Fluids::integrate_divergence_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
+            Plato::Fluids::integrate_divergence_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tPressGradGP, tPressForces);
             Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumPressDofsPerNode>
                 (aCellOrdinal, -tThetaOne, tTimeStepWS, tPressForces, 2.0);
@@ -6341,8 +6294,8 @@ public:
             Plato::Fluids::integrate_inertial_forces<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurPressGP, tPrevPressGP, tACompressWS, aResult);
             Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, -1.0, tPressForces   , 1.0, aResult);
-            Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, -1.0, tInternalForces, 1.0, aResult);
-        }, "continutity residual");
+            Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, -1.0, tMomentumForces, 1.0, aResult);
+        }, "pressure residual");
     }
 
     /***************************************************************************//**
@@ -11825,7 +11778,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingScalarForces)
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         Plato::Fluids::integrate_stabilizing_scalar_forces<tNumNodesPerCell,tSpaceDims>
-            (aCellOrdinal, tBasisFunctions, tCellVolume, tDivergence, tGradient, tPrevVelGP, tStabForce, tResult);
+            (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabForce, tResult);
     }, "unit test integrate_stabilizing_scalar_forces");
 
     auto tTol = 1e-4;
@@ -12369,10 +12322,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingForces)
     {
         tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
         tCellVolume(aCellOrdinal) *= tCubWeight;
-        Plato::Fluids::integrate_stabilizing_vector_forces<tNumNodesPerCell, tSpaceDims>
-            (aCellOrdinal, tBasisFunctions, tCellVolume, tDivergence, tGradient, tPrevVelGP, tForce, tResult);
-    }, "unit test integrate_stabilizing_vector_forces");
+        Plato::Fluids::integrate_stabilizing_momentum_forces<tNumNodesPerCell, tSpaceDims>
+            (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tForce, tResult);
+    }, "unit test integrate_stabilizing_momentum_forces");
 
+    // TODO: FIX GOLD VALUES ONCE THINGS ARE WORKING
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
         {{0.166666666666667,0.166666666666667,0.166666666666667,0.166666666666667,1.666666666666667,1.666666666666667},
