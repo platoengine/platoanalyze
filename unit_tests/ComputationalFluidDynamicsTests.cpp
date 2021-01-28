@@ -3088,26 +3088,12 @@ multiply_time_step
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
  Plato::Scalar aPower = 1.0)
 {
-    if(aPower > static_cast<Plato::Scalar>(1.0))
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
-        for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
+        for(Plato::OrdinalType tDof = 0; tDof < NumDofPerNode; tDof++)
         {
-            for(Plato::OrdinalType tDof = 0; tDof < NumDofPerNode; tDof++)
-            {
-                auto tLocalCellDof = (NumDofPerNode * tNode) + tDof;
-                aResult(aCellOrdinal, tLocalCellDof) *= aTimeStepWS(aCellOrdinal, tNode) * aMultiplier;
-            }
-        }
-    }
-    else
-    {
-        for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
-        {
-            for(Plato::OrdinalType tDof = 0; tDof < NumDofPerNode; tDof++)
-            {
-                auto tLocalCellDof = (NumDofPerNode * tNode) + tDof;
-                aResult(aCellOrdinal, tLocalCellDof) *= pow(aTimeStepWS(aCellOrdinal, tNode), aPower) * aMultiplier;
-            }
+            auto tLocalCellDof = (NumDofPerNode * tNode) + tDof;
+            aResult(aCellOrdinal, tLocalCellDof) *= pow(aTimeStepWS(aCellOrdinal, tNode), aPower) * aMultiplier;
         }
     }
 }
