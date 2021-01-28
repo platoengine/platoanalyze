@@ -49,7 +49,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
 
     // Set global, local state, and control worksets
     auto tNumNodes = tMesh->nverts();
-    decltype(tNumNodes) tNumState = 4;
+    decltype(tNumNodes) tNumState = 3;
     auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     Plato::ScalarVectorT<EvalType::StateScalarType> tGlobalState("state", tNumState * tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
@@ -57,7 +57,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
         tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
         tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
         tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
-        tGlobalState(aNodeOrdinal*tNumDofsPerNode+3) = (4e-7)*aNodeOrdinal; // press
+        //tGlobalState(aNodeOrdinal*tNumDofsPerNode+3) = (4e-7)*aNodeOrdinal; // press
     }, "set global state");
     Plato::ScalarMultiVector tGlobalStateWS("current state", tNumCells, PhysicsT::mNumDofsPerCell);
     tWorksetBase.worksetState(tGlobalState, tGlobalStateWS);
@@ -75,7 +75,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
 
     // Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{3.219804e-06,1.180196e-06}, {2.482843e-06,1.917157e-06}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{1.07377378e-06, -3.40439781e-07}, {7.83772234e-07, 1.41622777e-06}};
     auto tHostPrincipalStressWS = Kokkos::create_mirror(tPrincipalStressWS);
     Kokkos::deep_copy(tHostPrincipalStressWS, tPrincipalStressWS);
     for (size_t tCell = 0; tCell < tNumCells; tCell++)
