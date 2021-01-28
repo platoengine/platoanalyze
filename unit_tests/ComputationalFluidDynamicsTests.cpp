@@ -3106,7 +3106,7 @@ multiply_time_step
             for(Plato::OrdinalType tDof = 0; tDof < NumDofPerNode; tDof++)
             {
                 auto tLocalCellDof = (NumDofPerNode * tNode) + tDof;
-                aResult(aCellOrdinal, tLocalCellDof) = pow(aTimeStepWS(aCellOrdinal, tNode), aPower) * aMultiplier;
+                aResult(aCellOrdinal, tLocalCellDof) *= pow(aTimeStepWS(aCellOrdinal, tNode), aPower) * aMultiplier;
             }
         }
     }
