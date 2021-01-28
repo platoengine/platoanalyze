@@ -15,6 +15,7 @@
 #include "AnalyzeMacros.hpp"
 #include "ApplyConstraints.hpp"
 #include "VectorFunctionVMS.hpp"
+#include "alg/PlatoAbstractSolver.hpp"
 #include "LocalScalarFunctionInc.hpp"
 #include "LocalVectorFunctionInc.hpp"
 #include "GlobalVectorFunctionInc.hpp"
@@ -142,6 +143,8 @@ private:
 
     Plato::OrdinalType mNumPseudoTimeSteps;   /*!< current number of pseudo time steps*/
     Plato::LocalOrdinalVector mDirichletDofs; /*!< Dirichlet boundary conditions degrees of freedom */
+
+    std::shared_ptr<Plato::AbstractSolver> mLinearSolver; /*!< linear solver object */
 
 private:
     /***************************************************************************//**
@@ -574,7 +577,20 @@ public:
     *******************************************************************************/
     PathDependentAdjointSolver(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs) :
         mWorksetBase(aMesh),
-        mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20))
+        mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
+        mLinearSolver(nullptr)
+    {}
+
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aMesh   mesh database
+     * \param [in] aInputs input parameters list
+     * \param [in] aLinearSolver linear solver object
+    *******************************************************************************/
+    PathDependentAdjointSolver(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :
+        mWorksetBase(aMesh),
+        mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
+        mLinearSolver(aLinearSolver)
     {}
 
     /***************************************************************************//**
@@ -583,7 +599,8 @@ public:
     *******************************************************************************/
     explicit PathDependentAdjointSolver(Omega_h::Mesh & aMesh) :
         mWorksetBase(aMesh),
-        mNumPseudoTimeSteps(20)
+        mNumPseudoTimeSteps(20),
+        mLinearSolver(nullptr)
     {}
 
     /***************************************************************************//**
@@ -744,7 +761,10 @@ public:
 
         // Solve for lambda_k = (K_{tangent})_k^{-T} * F_k^{adjoint}
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mCurrentGlobalAdjoint);
-        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(tJacobian, aAdjointVars.mCurrentGlobalAdjoint, tResidual, false);
+        //Plato::Solve::Consistent<mNumGlobalDofsPerNode>(tJacobian, aAdjointVars.mCurrentGlobalAdjoint, tResidual, false);
+        if (mLinearSolver == nullptr)
+            THROWERR("Linear solver object not initialized.")
+        mLinearSolver->solve(*tJacobian, aAdjointVars.mCurrentGlobalAdjoint, tResidual);
     }
 
     /***************************************************************************//**

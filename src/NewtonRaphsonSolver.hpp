@@ -14,6 +14,7 @@
 #include "AnalyzeMacros.hpp"
 #include "PlatoUtilities.hpp"
 #include "ApplyConstraints.hpp"
+#include "alg/PlatoAbstractSolver.hpp"
 #include "NewtonRaphsonUtilities.hpp"
 #include "LocalVectorFunctionInc.hpp"
 #include "GlobalVectorFunctionInc.hpp"
@@ -62,6 +63,8 @@ private:
     bool mWriteSolverDiagnostics; /*!< write solver diagnostics flag */
     std::ofstream mSolverDiagnosticsFile; /*!< output solver diagnostics */
     Plato::NewtonRaphson::measure_t mStopMeasure; /*!< solver stopping criterion measure */
+
+    std::shared_ptr<Plato::AbstractSolver> mLinearSolver; /*!< linear solver object */
 
 // private functions
 private:
@@ -164,7 +167,10 @@ private:
     {
         const Plato::Scalar tAlpha = 1.0;
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStates.mDeltaGlobalState);
-        Plato::Solve::Consistent<mNumGlobalDofsPerNode>(aMatrix, aStates.mDeltaGlobalState, aResidual, mUseAbsoluteTolerance);
+        //Plato::Solve::Consistent<mNumGlobalDofsPerNode>(aMatrix, aStates.mDeltaGlobalState, aResidual, mUseAbsoluteTolerance);
+        if (mLinearSolver == nullptr)
+            THROWERR("Linear solver object not initialized.")
+        mLinearSolver->solve(*aMatrix, aStates.mDeltaGlobalState, aResidual);
 
         if(mDebugFlag == true)
         {
@@ -457,7 +463,30 @@ public:
         mDebugFlag(aInputs.get<bool>("Debug",false)),
         mUseAbsoluteTolerance(false),
         mWriteSolverDiagnostics(true),
-        mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM)
+        mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM),
+        mLinearSolver(nullptr)
+    {
+        this->initialize(aInputs);
+    }
+
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aMesh   Omega_h mesh database
+     * \param [in] aInputs input parameters database
+     * \param [in] aLinearSolver linear solver object
+    *******************************************************************************/
+    NewtonRaphsonSolver(Omega_h::Mesh& aMesh, Teuchos::ParameterList& aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :
+        mWorksetBase(aMesh),
+        mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-6)),
+        mDirichletValuesMultiplier(1),
+        mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 5e-7)),
+        mMaxNumSolverIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Newton-Raphson", "Maximum Number Iterations", 10)),
+        mCurrentSolverIter(0),
+        mDebugFlag(aInputs.get<bool>("Debug",false)),
+        mUseAbsoluteTolerance(false),
+        mWriteSolverDiagnostics(true),
+        mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM),
+        mLinearSolver(aLinearSolver)
     {
         this->initialize(aInputs);
     }
@@ -476,7 +505,8 @@ public:
         mDebugFlag(false),
         mUseAbsoluteTolerance(false),
         mWriteSolverDiagnostics(true),
-        mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM)
+        mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM),
+        mLinearSolver(nullptr)
     {
         this->openDiagnosticsFile();
     }

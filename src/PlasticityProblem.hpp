@@ -15,6 +15,8 @@
 #include "OmegaHUtilities.hpp"
 #include "NewtonRaphsonSolver.hpp"
 #include "PlatoAbstractProblem.hpp"
+#include "alg/PlatoSolverFactory.hpp"
+#include "alg/PlatoAbstractSolver.hpp"
 #include "PathDependentAdjointSolver.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
 #include "InfinitesimalStrainThermoPlasticity.hpp"
@@ -82,6 +84,9 @@ private:
 
     Plato::WorksetBase<PhysicsT> mWorksetBase;    /*!< assembly routine interface */
 
+    Plato::SolverFactory mLinearSolverFactory;            /*!< linear solver factory */
+    std::shared_ptr<Plato::AbstractSolver> mLinearSolver; /*!< linear solver object */
+
     std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver;         /*!< Newton-Raphson solve interface */
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
 
@@ -121,8 +126,10 @@ public:
       mReactionForce("Reaction Force", mNumPseudoTimeSteps, aMesh.nverts()),
       mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEquation->size()),
       mWorksetBase(aMesh),
-      mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs)),
-      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs)),
+      mLinearSolverFactory(aInputs.sublist("Linear Solver")),
+      mLinearSolver(mLinearSolverFactory.create(aMesh, aMachine, PhysicsT::mNumDofsPerNode)),
+      mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
+      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mStopOptimization(false),
       mMaxNumPseudoTimeStepsReached(false)
     {
