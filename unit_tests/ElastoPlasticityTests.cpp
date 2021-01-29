@@ -3020,7 +3020,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     Teuchos::getParametersFromXmlString(
       "<ParameterList name='Plato Problem'>                                                     \n"
       "  <ParameterList name='Linear Solver'>                                                   \n"
-      "    <Parameter name='Solver Stack' type='string' value='Amgx'/>                         \n"
+      "    <Parameter name='Solver Stack' type='string' value='AmgX'/>                         \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Spatial Model'>                                                   \n"
       "    <ParameterList name='Domains'>                                                       \n"
