@@ -3093,7 +3093,8 @@ multiply_time_step
         for(Plato::OrdinalType tDof = 0; tDof < NumDofPerNode; tDof++)
         {
             auto tLocalCellDof = (NumDofPerNode * tNode) + tDof;
-            aResult(aCellOrdinal, tLocalCellDof) *= pow(aTimeStepWS(aCellOrdinal, tNode), aPower) * aMultiplier;
+            const auto& tScalar = aTimeStepWS(aCellOrdinal, tNode);
+            aResult(aCellOrdinal, tLocalCellDof) *= pow(tScalar, aPower) * aMultiplier;
         }
     }
 }
@@ -9947,7 +9948,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Max Number Iterations' type='int' value='1'/>"
+            "    <Parameter name='Max Number Iterations' type='int' value='4'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
