@@ -8243,8 +8243,9 @@ public:
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumIterations; tIteration++)
         {
             tPrimalVars.scalar("iteration", tIteration);
-            this->setPrimalVariables(tPrimalVars);
-            this->calculateStableTimeSteps(tPrimalVars);
+
+            this->setPrimalStates(tPrimalVars);
+            this->calculateCriticalTimeSteps(tPrimalVars);
             this->updateSurfaceVelocityField(tPrimalVars);
 
             this->updatePredictor(aControl, tPrimalVars);
@@ -8264,12 +8265,15 @@ public:
             {
                 break;
             }
+
+            this->updatePreviousStates(tPrimalVars);
         }
 
         Plato::Solutions tSolution;
         tSolution.set("mass state", mPressure);
         tSolution.set("energy state", mTemperature);
         tSolution.set("momentum state", mVelocity);
+
         return tSolution;
     }
 
@@ -8324,11 +8328,11 @@ public:
                 tPrevPrimalVars.scalar("step", tStep + 1);
 
                 this->setDualVariables(tDualVars);
-                this->setPrimalVariables(tCurPrimalVars);
-                this->setPrimalVariables(tPrevPrimalVars);
+                this->setPrimalStates(tCurPrimalVars);
+                this->setPrimalStates(tPrevPrimalVars);
 
-                this->calculateStableTimeSteps(tCurPrimalVars);
-                this->calculateStableTimeSteps(tPrevPrimalVars);
+                this->calculateCriticalTimeSteps(tCurPrimalVars);
+                this->calculateCriticalTimeSteps(tPrevPrimalVars);
 
                 this->calculateVelocityAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
                 this->calculateTemperatureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
@@ -8366,11 +8370,11 @@ public:
                 tPrevPrimalVars.scalar("step", tStep + 1);
 
                 this->setDualVariables(tDualVars);
-                this->setPrimalVariables(tCurPrimalVars);
-                this->setPrimalVariables(tPrevPrimalVars);
+                this->setPrimalStates(tCurPrimalVars);
+                this->setPrimalStates(tPrevPrimalVars);
 
-                this->calculateStableTimeSteps(tCurPrimalVars);
-                this->calculateStableTimeSteps(tPrevPrimalVars);
+                this->calculateCriticalTimeSteps(tCurPrimalVars);
+                this->calculateCriticalTimeSteps(tPrevPrimalVars);
 
                 this->calculateVelocityAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
                 this->calculateTemperatureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
@@ -8543,13 +8547,13 @@ private:
         aVariables.vector("element characteristic size", tElemCharSizes);
     }
 
-    void calculateStableTimeSteps(Plato::Primal & aVariables)
+    void calculateCriticalTimeSteps(Plato::Primal & aVariables)
     {
-        auto tCurrentVelocity = aVariables.vector("current velocity");
+        auto tPreviousVelocity = aVariables.vector("previous velocity");
         auto tElemCharSize = aVariables.vector("element characteristic size");
 
         auto tConvectiveVel =
-            Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tCurrentVelocity);
+            Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tPreviousVelocity);
         auto tDiffusiveVel =
             Plato::cbs::calculate_diffusive_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mReynoldsNumber, tElemCharSize);
         auto tThermalVel =
@@ -8642,19 +8646,19 @@ private:
     (Plato::Primal & aVariables)
     {
         const auto tTime = 0.0;
-        const auto tPrevStep = 0;
+        const auto tPrevState = 0;
 
         Plato::ScalarVector tVelBcValues;
         Plato::LocalOrdinalVector tVelBcDofs;
         mVelocityEssentialBCs.get(tVelBcDofs, tVelBcValues, tTime);
-        auto tPreviouVel = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
+        auto tPreviouVel = Kokkos::subview(mVelocity, tPrevState, Kokkos::ALL());
         Plato::cbs::enforce_boundary_condition(tVelBcDofs, tVelBcValues, tPreviouVel);
         aVariables.vector("previous velocity", tPreviouVel);
 
         Plato::ScalarVector tPressBcValues;
         Plato::LocalOrdinalVector tPressBcDofs;
         mPressureEssentialBCs.get(tPressBcDofs, tPressBcValues, tTime);
-        auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
+        auto tPreviousPress = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
         Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
         aVariables.vector("previous pressure", tPreviousPress);
 
@@ -8663,51 +8667,54 @@ private:
             Plato::ScalarVector tTempBcValues;
             Plato::LocalOrdinalVector tTempBcDofs;
             mTemperatureEssentialBCs.get(tTempBcDofs, tTempBcValues, tTime);
-            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
+            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
             Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
             aVariables.vector("previous temperature", tPreviousTemp);
         }
     }
 
-    void setPrimalVariables(Plato::Primal & aVariables)
+    void updatePreviousStates(Plato::Primal & aVariables)
     {
-        constexpr Plato::OrdinalType tCurrentStep = 1;
-        auto tCurrentVel   = Kokkos::subview(mVelocity, tCurrentStep, Kokkos::ALL());
-        auto tCurrentPred  = Kokkos::subview(mPredictor, tCurrentStep, Kokkos::ALL());
-        auto tCurrentTemp  = Kokkos::subview(mTemperature, tCurrentStep, Kokkos::ALL());
-        auto tCurrentPress = Kokkos::subview(mPressure, tCurrentStep, Kokkos::ALL());
+        constexpr Plato::OrdinalType tPrevState = 0;
+
+        auto tCurrentVelocity = aVariables.vector("current velocity");
+        auto tPreviousVelocity = Kokkos::subview(mVelocity, tPrevState, Kokkos::ALL());
+        Plato::blas1::copy(tCurrentVelocity, tPreviousVelocity);
+
+        auto tCurrentPressure = aVariables.vector("current pressure");
+        auto tPreviousPressure = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
+        Plato::blas1::copy(tCurrentPressure, tPreviousPressure);
+
+        auto tCurrentTemperature = aVariables.vector("current temperature");
+        auto tPreviousTemperature  = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
+        Plato::blas1::copy(tCurrentTemperature, tPreviousTemperature);
+
+        auto tCurrentPredictor = aVariables.vector("current predictor");
+        auto tPreviousPredictor = Kokkos::subview(mPredictor, tPrevState, Kokkos::ALL());
+        Plato::blas1::copy(tCurrentPredictor, tPreviousPredictor);
+    }
+
+    void setPrimalStates(Plato::Primal & aVariables)
+    {
+        constexpr Plato::OrdinalType tCurrentState = 1;
+        auto tCurrentVel   = Kokkos::subview(mVelocity, tCurrentState, Kokkos::ALL());
+        auto tCurrentPred  = Kokkos::subview(mPredictor, tCurrentState, Kokkos::ALL());
+        auto tCurrentTemp  = Kokkos::subview(mTemperature, tCurrentState, Kokkos::ALL());
+        auto tCurrentPress = Kokkos::subview(mPressure, tCurrentState, Kokkos::ALL());
         aVariables.vector("current velocity", tCurrentVel);
         aVariables.vector("current pressure", tCurrentPress);
         aVariables.vector("current temperature", tCurrentTemp);
         aVariables.vector("current predictor", tCurrentPred);
 
-        constexpr auto tPrevStep = tCurrentStep - 1;
-        if (tPrevStep >= static_cast<Plato::OrdinalType>(0))
-        {
-            auto tPreviouVel    = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
-            auto tPreviousPred  = Kokkos::subview(mPredictor, tPrevStep, Kokkos::ALL());
-            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
-            auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
-            aVariables.vector("previous velocity", tPreviouVel);
-            aVariables.vector("previous predictor", tPreviousPred);
-            aVariables.vector("previous pressure", tPreviousPress);
-            aVariables.vector("previous temperature", tPreviousTemp);
-        }
-        else
-        {
-            auto tLength = mPressure.extent(1);
-            Plato::ScalarVector tPreviousPress("previous pressure", tLength);
-            aVariables.vector("previous pressure", tPreviousPress);
-            tLength = mTemperature.extent(1);
-            Plato::ScalarVector tPreviousTemp("previous temperature", tLength);
-            aVariables.vector("previous temperature", tPreviousTemp);
-            tLength = mVelocity.extent(1);
-            Plato::ScalarVector tPreviousVel("previous velocity", tLength);
-            aVariables.vector("previous velocity", tPreviousVel);
-            tLength = mPredictor.extent(1);
-            Plato::ScalarVector tPreviousPred("previous predictor", tLength);
-            aVariables.vector("previous previous predictor", tPreviousPred);
-        }
+        constexpr auto tPrevState = tCurrentState - 1;
+        auto tPreviouVel = Kokkos::subview(mVelocity, tPrevState, Kokkos::ALL());
+        auto tPreviousPred = Kokkos::subview(mPredictor, tPrevState, Kokkos::ALL());
+        auto tPreviousTemp = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
+        auto tPreviousPress = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
+        aVariables.vector("previous velocity", tPreviouVel);
+        aVariables.vector("previous predictor", tPreviousPred);
+        aVariables.vector("previous pressure", tPreviousPress);
+        aVariables.vector("previous temperature", tPreviousTemp);
     }
 
     void updateCorrector
