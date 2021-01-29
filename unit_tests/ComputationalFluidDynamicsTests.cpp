@@ -3074,20 +3074,20 @@ template
  Plato::OrdinalType NumDofPerNode,
  typename ResultT>
 DEVICE_TYPE inline void
-multiply_time_step
+apply_time_step
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::Scalar & aMultiplier,
- const Plato::ScalarMultiVector & aTimeStepWS,
+ const Plato::ScalarVector & aCriticalTimeStep,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
  Plato::Scalar aPower = 1.0)
 {
+    const auto& tCriticalTimeStep = aCriticalTimeStep(0);
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
         for(Plato::OrdinalType tDof = 0; tDof < NumDofPerNode; tDof++)
         {
             auto tLocalCellDof = (NumDofPerNode * tNode) + tDof;
-            const auto& tScalar = aTimeStepWS(aCellOrdinal, tNode);
-            aResult(aCellOrdinal, tLocalCellDof) *= pow(tScalar, aPower) * aMultiplier;
+            aResult(aCellOrdinal, tLocalCellDof) *= pow(tCriticalTimeStep, aPower) * aMultiplier;
         }
     }
 }
@@ -3594,7 +3594,7 @@ public:
                 (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tNaturalConvection);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tNaturalConvection, tInternalForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
 
             // 2. calculate stabilizing forces
@@ -3602,7 +3602,7 @@ public:
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tNaturalConvection, 1.0, tStabilization);
             Plato::Fluids::integrate_stabilizing_momentum_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
             // 3. calculate residual
@@ -3645,7 +3645,7 @@ public:
        auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("critical time step"));
        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
        {
-           Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+           Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
        }, "deviatoric traction forces on non-traction boundary");
@@ -3692,7 +3692,7 @@ public:
            auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("critical time step"));
            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
            {
-               Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+               Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                    (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
            }, "prescribed deviatoric traction forces");
@@ -4136,7 +4136,7 @@ public:
                 (aCellOrdinal, tPenalizedPermeability, tPrevVelGP, tBrinkman);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tBrinkman, tInternalForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
 
             // 2. calculate stabilization term
@@ -4145,7 +4145,7 @@ public:
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tNaturalConvection, 1.0, tStabilization);
             Plato::Fluids::integrate_stabilizing_momentum_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
             // 3. calculate residual
@@ -4190,7 +4190,7 @@ public:
        auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("critical time step"));
        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
        {
-           Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+           Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
            Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
        }, "deviatoric traction forces on non-traction boundary");
@@ -4238,7 +4238,7 @@ public:
            auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("critical time step"));
            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
            {
-               Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+               Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                    (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
            }, "prescribed deviatoric traction forces");
@@ -4737,14 +4737,14 @@ public:
                 (aCellOrdinal, tThetaTwo, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPressGradGP, tInternalForces, -1.0);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
 
             // 2. calculate stabilizing forces
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::integrate_stabilizing_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tPressGradGP, tStabForces, -1.0);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
             // 3. calculate residual
@@ -5158,14 +5158,14 @@ public:
             tHeatSource(aCellOrdinal) += tDimensionlessConst * tPrescribedHeatSource(aCellOrdinal);
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, tInternalForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
 
             // 2. calculate stabilizing forces
             tStabilization(aCellOrdinal) += tHeatSource(aCellOrdinal) - tConvection(aCellOrdinal);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
             // 3. calculate residual
@@ -5224,7 +5224,7 @@ public:
             auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("critical time step"));
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+                Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                     (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
                 Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
             }, "heat flux contribution");
@@ -5540,14 +5540,14 @@ public:
             tHeatSource(aCellOrdinal) += tPenalizedDimensionlessConst * tPrescribedHeatSource(aCellOrdinal);
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, tInternalForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
 
             // 2. calculate stabilizing forces
             tStabilization(aCellOrdinal) += tHeatSource(aCellOrdinal) - tConvection(aCellOrdinal);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
 
             // 3. add inertial force contribution
@@ -5606,7 +5606,7 @@ public:
             auto tTimeStepWS = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("critical time step"));
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumDofsPerNode>
+                Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                     (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
                 Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
             }, "heat flux contribution");
@@ -6257,7 +6257,7 @@ public:
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredVelGP);
             Plato::Fluids::integrate_divergence_delta_predicted_momentum<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tPredVelGP, tPrevVelGP, tMomentumForces, tThetaOne);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumPressDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumPressDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, tMomentumForces);
 
             // 2. integrate correcting pressure gradient
@@ -6265,7 +6265,7 @@ public:
                 (aCellOrdinal, tThetaTwo, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
             Plato::Fluids::integrate_divergence_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tPressGradGP, tPressForces);
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell, mNumPressDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumPressDofsPerNode>
                 (aCellOrdinal, -tThetaOne, tTimeStepWS, tPressForces, 2.0);
 
             // 3. calculate residual
@@ -6311,7 +6311,7 @@ public:
         auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
         {
-            Plato::Fluids::multiply_time_step<mNumNodesPerCell,mNumPressDofsPerNode>
+            Plato::Fluids::apply_time_step<mNumNodesPerCell,mNumPressDofsPerNode>
                 (aCellOrdinal, tThetaOne, tTimeStepWS, tResultWS);
             Plato::blas1::update<mNumPressDofsPerCell>(aCellOrdinal, 1.0, tResultWS, 1.0, aResult);
         }, "prescribed delta momentum boundary forces");
@@ -9842,7 +9842,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
     for(auto& tGoldId : tGold)
     {
         auto tIndex = &tGoldId - &tGold[0];
-        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex));
+        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex)); // @suppress("Invalid arguments")
     }
 
     // test two
@@ -9860,7 +9860,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
     for(auto& tGoldId : tGold)
     {
         auto tIndex = &tGoldId - &tGold[0];
-        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex));
+        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex)); // @suppress("Invalid arguments")
     }
 
     // test three 
@@ -9878,7 +9878,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
     for(auto& tGoldId : tGold)
     {
         auto tIndex = &tGoldId - &tGold[0];
-        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex));
+        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex)); // @suppress("Invalid arguments")
     } 
 
     // test four
@@ -10041,7 +10041,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_Brinkman)
     std::vector<Plato::Scalar> tGold = {8.0,8.0};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
     }
     //Plato::print(tOutput, "output");
 }
@@ -10076,7 +10076,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_MSIMP)
     std::vector<Plato::Scalar> tGold = {2.5,2.5};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
     }
     //Plato::print(tOutput, "output");
 }
@@ -10110,7 +10110,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_SIMP)
     std::vector<Plato::Scalar> tGold = {2.5,2.5};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
     }
     //Plato::print(tOutput, "output");
 }
@@ -10144,7 +10144,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_RAMP)
     std::vector<Plato::Scalar> tGold = {0.22,0.22};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
     }
     //Plato::print(tOutput, "output");
 }
@@ -10176,7 +10176,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_NoWeight)
     std::vector<Plato::Scalar> tGold = {20.0,20.0};
     for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
     {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol);
+        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
     }
     //Plato::print(tOutput, "output");
 }
@@ -10332,7 +10332,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
     std::vector<Plato::Scalar> tGold = {500,175,85.185185185,50};
     for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
     {
-        TEST_FLOATING_EQUALITY(tGold[tNode], tHostResidual(tNode), tTol);
+        TEST_FLOATING_EQUALITY(tGold[tNode], tHostResidual(tNode), tTol); // @suppress("Invalid arguments")
     }
     //Plato::print(tResidual, "residual");
 }
@@ -12396,8 +12396,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MultiplyTimeStep)
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
-        Plato::Fluids::multiply_time_step<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, 0.5, tTimeStep, tResult);
-    }, "unit test multiply_time_step");
+        Plato::Fluids::apply_time_step<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, 0.5, tTimeStep, tResult);
+    }, "unit test apply_time_step");
 
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =

@@ -136,6 +136,7 @@ class VectorFunction : public Plato::WorksetBase<PhysicsT>
     ******************************************************************************/
     VectorFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
             Plato::WorksetBase<PhysicsT>(aMesh),
+            mSpatialModel(),
             mDataMap(aDataMap)
     {
     }
