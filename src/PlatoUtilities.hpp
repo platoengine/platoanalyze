@@ -11,6 +11,7 @@
 
 #include "PlatoStaticsTypes.hpp"
 #include "Plato_Solve.hpp"
+#include <typeinfo>
 
 namespace Plato
 {
@@ -165,6 +166,17 @@ inline void print_sparse_matrix_to_file( Teuchos::RCP<Plato::CrsMatrixType> aInM
         }
     }
     fclose(tOutputFile);
+}
+
+/******************************************************************************//**
+ * \brief Print the template type to the console
+ * \param [in] aLabelString string to print along with the type 
+**********************************************************************************/
+template<typename TypeToPrint>
+inline void print_type_to_console(std::string aLabelString = "Type:")
+{
+    TypeToPrint tTemp;
+    std::cout << aLabelString << " " << typeid(tTemp).name() << std::endl;
 }
 
 /******************************************************************************//**

@@ -30,7 +30,6 @@
 #include "LinearTetCubRuleDegreeOne.hpp"
 #include "IsotropicMaterialUtilities.hpp"
 #include "AbstractGlobalVectorFunctionInc.hpp"
-#include <typeinfo>
 #include "ExpInstMacros.hpp"
 
 namespace Plato

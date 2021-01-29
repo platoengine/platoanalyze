@@ -452,27 +452,6 @@ public:
      * \brief Constructor
      * \param [in] aMesh   Omega_h mesh database
      * \param [in] aInputs input parameters database
-    *******************************************************************************/
-    NewtonRaphsonSolver(Omega_h::Mesh& aMesh, Teuchos::ParameterList& aInputs) :
-        mWorksetBase(aMesh),
-        mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-6)),
-        mDirichletValuesMultiplier(1),
-        mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 5e-7)),
-        mMaxNumSolverIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Newton-Raphson", "Maximum Number Iterations", 10)),
-        mCurrentSolverIter(0),
-        mDebugFlag(aInputs.get<bool>("Debug",false)),
-        mUseAbsoluteTolerance(false),
-        mWriteSolverDiagnostics(true),
-        mStopMeasure(Plato::NewtonRaphson::ABSOLUTE_RESIDUAL_NORM),
-        mLinearSolver(nullptr)
-    {
-        this->initialize(aInputs);
-    }
-
-    /***************************************************************************//**
-     * \brief Constructor
-     * \param [in] aMesh   Omega_h mesh database
-     * \param [in] aInputs input parameters database
      * \param [in] aLinearSolver linear solver object
     *******************************************************************************/
     NewtonRaphsonSolver(Omega_h::Mesh& aMesh, Teuchos::ParameterList& aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :

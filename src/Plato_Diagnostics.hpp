@@ -88,7 +88,7 @@ test_criterion_grad_wrt_control(
                 - static_cast<Plato::Scalar>(8.) * tValueMinus1Eps + tValueMinus2Eps;
         auto tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
         auto tFiniteDiffAppx = tNumerator / tDenominator;
-        auto tAppxError = abs(tFiniteDiffAppx - tGradientDotStep);
+        auto tAppxError = fabs(tFiniteDiffAppx - tGradientDotStep);
         tFiniteDiffApproxError.push_back(tAppxError);
 
         tOutput << std::right << std::scientific << std::setprecision(8) << std::setw(14) << tEpsilon << std::setw(19)
@@ -755,7 +755,7 @@ test_partial_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<S
             Plato::Scalar tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
             Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
 
-            Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
+            Plato::Scalar tAppxError = fabs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
 
             tErrorVector(aDofOrdinal) = tAppxError;
 
@@ -888,7 +888,7 @@ test_partial_prev_global_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunction
             Plato::Scalar tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
             Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
 
-            Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
+            Plato::Scalar tAppxError = fabs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
 
             tErrorVector(aDofOrdinal) = tAppxError;
 
@@ -1016,7 +1016,7 @@ test_partial_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionInc<Si
             Plato::Scalar tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
             Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
 
-            Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
+            Plato::Scalar tAppxError = fabs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
 
             tErrorVector(aDofOrdinal) = tAppxError;
 
@@ -1144,7 +1144,7 @@ test_partial_prev_local_state(Omega_h::Mesh & aMesh, Plato::LocalVectorFunctionI
             Plato::Scalar tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
             Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
 
-            Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
+            Plato::Scalar tAppxError = fabs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
 
             tErrorVector(aDofOrdinal) = tAppxError;
 
@@ -1277,7 +1277,7 @@ test_partial_local_vect_func_inc_wrt_control(Omega_h::Mesh & aMesh, Plato::Local
             Plato::Scalar tDenominator = static_cast<Plato::Scalar>(12.) * tEpsilon;
             Plato::Scalar tFiniteDiffAppx = tNumerator / tDenominator;
 
-            Plato::Scalar tAppxError = abs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
+            Plato::Scalar tAppxError = fabs(tFiniteDiffAppx - tGradientDotStep(aDofOrdinal));
 
             tErrorVector(aDofOrdinal) = tAppxError;
 

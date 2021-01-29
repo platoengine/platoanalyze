@@ -574,17 +574,6 @@ public:
      * \brief Constructor
      * \param [in] aMesh   mesh database
      * \param [in] aInputs input parameters list
-    *******************************************************************************/
-    PathDependentAdjointSolver(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs) :
-        mWorksetBase(aMesh),
-        mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
-        mLinearSolver(nullptr)
-    {}
-
-    /***************************************************************************//**
-     * \brief Constructor
-     * \param [in] aMesh   mesh database
-     * \param [in] aInputs input parameters list
      * \param [in] aLinearSolver linear solver object
     *******************************************************************************/
     PathDependentAdjointSolver(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :
