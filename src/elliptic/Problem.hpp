@@ -573,6 +573,11 @@ public:
         }
         Plato::EssentialBCs<SimplexPhysics> tEssentialBoundaryConditions(aInputParams.sublist("Essential Boundary Conditions", false));
         tEssentialBoundaryConditions.get(aMeshSets, mBcDofs, mBcValues);
+
+        if(mMPCs)
+        {
+            mMPCs->checkEssentialBcsConflicts(mBcDofs);
+        }
     }
 
     /***************************************************************************//**
