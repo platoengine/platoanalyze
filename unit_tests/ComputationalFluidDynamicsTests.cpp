@@ -7985,7 +7985,7 @@ calculate_critical_time_step
  const Plato::ScalarVector & aElemCharSize,
  const Plato::ScalarVector & aVelocityField,
  const Plato::ScalarVector & aArtificialCompress,
- Plato::Scalar aSafetyFactor = 0.5)
+ Plato::Scalar aSafetyFactor = 0.9)
 {
     auto tNumNodes = aSpatialModel.Mesh.nverts();
     Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
@@ -8017,8 +8017,8 @@ update_surface_velocities
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
         auto tDof = aBcDofs(aOrdinal);
-        tSurfaceVelocities(tDof) = aCurVel(tDof) - aPrevVel(tDof);
-    }, "calculate delta velocity field on boundary where momentum bcs are prescribed");
+        tSurfaceVelocities(tDof) = aPrevVel(tDof);
+    }, "calculate surface velocities on boundary where momentum bcs are prescribed");
     return tSurfaceVelocities;
 }
 
