@@ -8257,7 +8257,7 @@ public:
             if(mCalculateHeatTransfer)
             {
                 this->updateTemperature(aControl, tPrimalVars);
-                //this->enforceTemperatureBoundaryConditions(tPrimalVars);
+                this->enforceTemperatureBoundaryConditions(tPrimalVars);
             }
 
             if(this->checkStoppingCriteria(tPrimalVars))
