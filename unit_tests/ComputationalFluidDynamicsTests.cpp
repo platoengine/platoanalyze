@@ -8552,18 +8552,14 @@ private:
         auto tPreviousVelocity = aVariables.vector("previous velocity");
         auto tElemCharSize = aVariables.vector("element characteristic size");
 
-        auto tConvectiveVel =
-            Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tPreviousVelocity);
-        auto tDiffusiveVel =
-            Plato::cbs::calculate_diffusive_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mReynoldsNumber, tElemCharSize);
-        auto tThermalVel =
-            Plato::cbs::calculate_thermal_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mPrandtlNumber, mReynoldsNumber, tElemCharSize);
-        auto tArtificialCompress =
-            Plato::cbs::calculate_artificial_compressibility(tConvectiveVel, tDiffusiveVel, tThermalVel);
+        auto tConvectiveVel =  Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tPreviousVelocity);
+        auto tDiffusiveVel = Plato::cbs::calculate_diffusive_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mReynoldsNumber, tElemCharSize);
+        auto tThermalVel = Plato::cbs::calculate_thermal_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mPrandtlNumber, mReynoldsNumber, tElemCharSize);
+
+        auto tArtificialCompress = Plato::cbs::calculate_artificial_compressibility(tConvectiveVel, tDiffusiveVel, tThermalVel);
         aVariables.vector("artificial compressibility", tArtificialCompress);
 
-        auto tTimeStep = Plato::cbs::calculate_critical_time_step
-                (mSpatialModel, tElemCharSize, tConvectiveVel, tArtificialCompress, mTimeStepSafetyFactor);
+        auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, tArtificialCompress, mTimeStepSafetyFactor);
         aVariables.vector("critical time step", tTimeStep);
     }
 
@@ -8685,13 +8681,16 @@ private:
         auto tPreviousPressure = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
         Plato::blas1::copy(tCurrentPressure, tPreviousPressure);
 
-        auto tCurrentTemperature = aVariables.vector("current temperature");
-        auto tPreviousTemperature  = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
-        Plato::blas1::copy(tCurrentTemperature, tPreviousTemperature);
-
         auto tCurrentPredictor = aVariables.vector("current predictor");
         auto tPreviousPredictor = Kokkos::subview(mPredictor, tPrevState, Kokkos::ALL());
         Plato::blas1::copy(tCurrentPredictor, tPreviousPredictor);
+
+        if(mCalculateHeatTransfer)
+        {
+            auto tCurrentTemperature = aVariables.vector("current temperature");
+            auto tPreviousTemperature = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
+            Plato::blas1::copy(tCurrentTemperature, tPreviousTemperature);
+        }
     }
 
     void setPrimalStates(Plato::Primal & aVariables)
@@ -8699,22 +8698,26 @@ private:
         constexpr Plato::OrdinalType tCurrentState = 1;
         auto tCurrentVel   = Kokkos::subview(mVelocity, tCurrentState, Kokkos::ALL());
         auto tCurrentPred  = Kokkos::subview(mPredictor, tCurrentState, Kokkos::ALL());
-        auto tCurrentTemp  = Kokkos::subview(mTemperature, tCurrentState, Kokkos::ALL());
         auto tCurrentPress = Kokkos::subview(mPressure, tCurrentState, Kokkos::ALL());
         aVariables.vector("current velocity", tCurrentVel);
         aVariables.vector("current pressure", tCurrentPress);
-        aVariables.vector("current temperature", tCurrentTemp);
         aVariables.vector("current predictor", tCurrentPred);
 
         constexpr auto tPrevState = tCurrentState - 1;
         auto tPreviouVel = Kokkos::subview(mVelocity, tPrevState, Kokkos::ALL());
         auto tPreviousPred = Kokkos::subview(mPredictor, tPrevState, Kokkos::ALL());
-        auto tPreviousTemp = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
         auto tPreviousPress = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
         aVariables.vector("previous velocity", tPreviouVel);
         aVariables.vector("previous predictor", tPreviousPred);
         aVariables.vector("previous pressure", tPreviousPress);
-        aVariables.vector("previous temperature", tPreviousTemp);
+
+        if(mCalculateHeatTransfer)
+        {
+            auto tCurrentTemp = Kokkos::subview(mTemperature, tCurrentState, Kokkos::ALL());
+            aVariables.vector("current temperature", tCurrentTemp);
+            auto tPreviousTemp = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
+            aVariables.vector("previous temperature", tPreviousTemp);
+        }
     }
 
     void updateCorrector
