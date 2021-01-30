@@ -1079,6 +1079,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     constexpr Plato::OrdinalType tNodesPerCell        = PhysicsT::mNumNodesPerCell;
     constexpr Plato::OrdinalType tNumStressTerms      = PhysicsT::mNumStressTerms;
     constexpr Plato::OrdinalType tNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    constexpr Plato::OrdinalType tTemperature         = PhysicsT::mTemperatureDofOffset;
 
     // Create configuration workset
     Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
@@ -1104,7 +1105,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     set_dof_value_in_vector_on_boundary_2D(*tMesh, "y1", tGlobalState, tDofsPerNode, tDispX, 0.1);
     set_dof_value_in_vector_on_boundary_2D(*tMesh, "y1", tGlobalState, tDofsPerNode, tDispY, 0.1);
 
-    Plato::OrdinalType tTemperature = 3;
     set_dof_value_in_vector(tGlobalState, tDofsPerNode, tTemperature, 310.0);
 
     Plato::ScalarMultiVectorT<GlobalStateT> tGlobalStateWS("global state workset", tNumCells, tDofsPerCell);
@@ -1307,6 +1307,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     constexpr Plato::OrdinalType tNodesPerCell        = PhysicsT::mNumNodesPerCell;
     constexpr Plato::OrdinalType tNumStressTerms       = PhysicsT::mNumVoigtTerms;
     constexpr Plato::OrdinalType tNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    constexpr Plato::OrdinalType tTemperature         = PhysicsT::mTemperatureDofOffset;
 
     // Create configuration workset
     Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
@@ -1338,7 +1339,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     set_dof_value_in_vector_on_boundary_3D(*tMesh, "z1", tGlobalState, tDofsPerNode, tDispY, 0.1);
     set_dof_value_in_vector_on_boundary_3D(*tMesh, "z1", tGlobalState, tDofsPerNode, tDispZ, 0.1);
 
-    Plato::OrdinalType tTemperature = 4;
     set_dof_value_in_vector(tGlobalState, tDofsPerNode, tTemperature, 310.0);
 
     Plato::ScalarMultiVectorT<GlobalStateT> tGlobalStateWS("global state workset", tNumCells, tDofsPerCell);

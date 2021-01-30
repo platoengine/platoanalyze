@@ -33,14 +33,21 @@ struct FunctionFactory
               Teuchos::ParameterList & aInputParams
     )
     {
-        if(aInputParams.isSublist("Plasticity Model") == false)
+        if(aInputParams.isSublist("Material Models") == false)
+        {
+            THROWERR("'Material Models' Sublist is not defined.")
+        }
+        Teuchos::ParameterList tMaterialModelsList = aInputParams.sublist("Material Models");
+        Teuchos::ParameterList tMaterialModelList  = tMaterialModelsList.sublist(aSpatialDomain.getMaterialName());
+
+        if(tMaterialModelList.isSublist("Plasticity Model") == false)
         {
             THROWERR("Plasticity Model Sublist is not defined.")
         }
 
-        auto tPlasticityParamList = aInputParams.get<Teuchos::ParameterList>("Plasticity Model");
+        auto tPlasticityParamList = tMaterialModelList.get<Teuchos::ParameterList>("Plasticity Model");
 
-        if(tPlasticityParamList.isSublist("J2ThermoPlasticity"))
+        if(tPlasticityParamList.isSublist("J2 Plasticity"))
         {
           constexpr Plato::OrdinalType tSpaceDim = EvaluationType::SpatialDim;
           return std::make_shared
@@ -49,7 +56,7 @@ struct FunctionFactory
         }
         else
         {
-          const std::string tError = std::string("Unknown Plasticity Model.  Options are: J2ThermoPlasticity.")
+          const std::string tError = std::string("Unknown Plasticity Model.  Options are: J2 Plasticity.")
               + "User is advised to select one of the available options.";
           THROWERR(tError)
         }

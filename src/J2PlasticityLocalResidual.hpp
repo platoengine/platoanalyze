@@ -304,12 +304,12 @@ public:
       using StressT        = typename Plato::fad_type_t<SimplexPhysicsType, ControlT, LocalStateT, ConfigT, GlobalStateT>;
 
       // Functors
-      Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
+      Plato::ComputeGradientWorkset<mSpaceDim>  tComputeGradient;
       Plato::Strain<mSpaceDim, mNumDofsPerNode> tComputeTotalStrain;
       Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
 
       // J2 Utility Functions Object
-      Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
+      Plato::J2PlasticityUtilities<mSpaceDim>   tJ2PlasticityUtils;
 
       // ThermoPlasticity Utility Functions Object (for computing elastic strain and potentially temperature-dependent material properties)
       Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType>

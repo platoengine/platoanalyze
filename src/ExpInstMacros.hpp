@@ -94,4 +94,24 @@ template class C<Plato::JacobianTypes<T<D>>, T<D> >; \
 template class C<Plato::GradientXTypes<T<D>>, T<D> >; \
 template class C<Plato::GradientZTypes<T<D>>, T<D> >;
 
+#define PLATO_EXPL_DEC_INC_VMS(C, T, D) \
+extern template class C<Plato::ResidualTypes<T<D>>, T<D>>; \
+extern template class C<Plato::JacobianTypes<T<D>>, T<D>>; \
+extern template class C<Plato::JacobianPTypes<T<D>>, T<D>>; \
+extern template class C<Plato::JacobianNTypes<T<D>>, T<D>>; \
+extern template class C<Plato::LocalJacobianTypes<T<D>>, T<D>>; \
+extern template class C<Plato::LocalJacobianPTypes<T<D>>, T<D>>; \
+extern template class C<Plato::GradientXTypes<T<D>>, T<D>>; \
+extern template class C<Plato::GradientZTypes<T<D>>, T<D>>; 
+
+#define PLATO_EXPL_DEF_INC_VMS(C, T, D) \
+template class C<Plato::ResidualTypes<T<D>>, T<D>>; \
+template class C<Plato::JacobianTypes<T<D>>, T<D>>; \
+template class C<Plato::JacobianPTypes<T<D>>, T<D>>; \
+template class C<Plato::JacobianNTypes<T<D>>, T<D>>; \
+template class C<Plato::LocalJacobianTypes<T<D>>, T<D>>; \
+template class C<Plato::LocalJacobianPTypes<T<D>>, T<D>>; \
+template class C<Plato::GradientXTypes<T<D>>, T<D>>; \
+template class C<Plato::GradientZTypes<T<D>>, T<D>>; 
+
 #endif

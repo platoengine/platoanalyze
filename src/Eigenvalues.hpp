@@ -126,23 +126,23 @@ Eigenvalues<3>::operator()(const Plato::OrdinalType & aCellOrdinal,
         while ((tOffDiagNorm > tRelativeTolerance) && (tIteration < mMaxIterations))
         {
             // ########## Compute location of max off-diagonal entry ##########
-            if (abs(tTensor[0][1]) >= abs(tTensor[0][2]))
+            if (fabs(tTensor[0][1]) >= fabs(tTensor[0][2]))
             {
-                if (abs(tTensor[0][1]) >= abs(tTensor[1][2]))
+                if (fabs(tTensor[0][1]) >= fabs(tTensor[1][2]))
                 {   p = static_cast<Plato::OrdinalType>(0); q = static_cast<Plato::OrdinalType>(1);  }
                 else
                 {   p = static_cast<Plato::OrdinalType>(1); q = static_cast<Plato::OrdinalType>(2);  }
             }
             else
             {
-                if (abs(tTensor[0][2]) >= abs(tTensor[1][2]))
+                if (fabs(tTensor[0][2]) >= fabs(tTensor[1][2]))
                 {   p = static_cast<Plato::OrdinalType>(0); q = static_cast<Plato::OrdinalType>(2);  }
                 else
                 {   p = static_cast<Plato::OrdinalType>(1); q = static_cast<Plato::OrdinalType>(2);  }
             }
 
             // ########## Compute rotation sine and cosine ##########
-            if (abs(tTensor[p][q]) > 1.0e-15)
+            if (fabs(tTensor[p][q]) > 1.0e-15)
             {
                 tTau = (tTensor[q][q] - tTensor[p][p]) / (2.0 * tTensor[p][q]);
                 if (tTau >= static_cast<Plato::Scalar>(0.0))
@@ -227,8 +227,8 @@ Eigenvalues<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
     {
         tTensor12 = aVoigtTensor(aCellOrdinal, 2);
     }
-    
-    if (abs(tTensor12) < mTolerance) // Tensor is diagonal
+
+    if (fabs(tTensor12) < mTolerance) // Tensor is diagonal
     {
         aEigenvalues(aCellOrdinal, 0) = aVoigtTensor(aCellOrdinal, 0);
         aEigenvalues(aCellOrdinal, 1) = aVoigtTensor(aCellOrdinal, 1);

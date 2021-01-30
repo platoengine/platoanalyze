@@ -19,6 +19,7 @@ class ThermoPlasticityUtilities
   private:
     static constexpr Plato::OrdinalType mNumNodesPerCell = SimplexPhysicsT::mNumNodesPerCell;
     static constexpr Plato::OrdinalType mNumDofsPerNode  = SimplexPhysicsT::mNumDofsPerNode;
+    static constexpr Plato::OrdinalType mTemperatureDofOffset  = SimplexPhysicsT::mTemperatureDofOffset;
 
     Plato::Scalar mThermalExpansionCoefficient;
     Plato::Scalar mReferenceTemperature;
@@ -142,7 +143,7 @@ class ThermoPlasticityUtilities
     GlobalStateT tTemperature = 0.0;
     for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; ++tNode)
     {
-      Plato::OrdinalType tTemperatureIndex = tNode * mNumDofsPerNode + 3;
+      Plato::OrdinalType tTemperatureIndex = tNode * mNumDofsPerNode + mTemperatureDofOffset;
       tTemperature += aGlobalState(aCellOrdinal, tTemperatureIndex) * aBasisFunctions(tNode);
     }
 
@@ -180,7 +181,7 @@ class ThermoPlasticityUtilities
       GlobalStateT tTemperature = 0.0;
       for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerCell; ++tNode)
       {
-          Plato::OrdinalType tTemperatureIndex = tNode * mNumDofsPerNode + 4;
+          Plato::OrdinalType tTemperatureIndex = tNode * mNumDofsPerNode + mTemperatureDofOffset;
           tTemperature += aGlobalState(aCellOrdinal, tTemperatureIndex) * aBasisFunctions(tNode);
       }
 

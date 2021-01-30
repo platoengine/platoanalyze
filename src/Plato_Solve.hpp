@@ -5,38 +5,11 @@
 
 #include "PlatoMathFunctors.hpp"
 #include "PlatoStaticsTypes.hpp"
-
 #include "alg/ParallelComm.hpp"
-#ifdef HAVE_AMGX
-#include "alg/AmgXSparseLinearProblem.hpp"
-#endif
 
 namespace Plato {
 
 namespace Solve {
-
-    /******************************************************************************//**
-     * \brief Solve linear system, A x = b.
-     * \param [in]     a_A Matrix, A
-     * \param [in/out] a_x Solution vector, x, with initial guess
-     * \param [in]     a_b Forcing vector, b
-     * \param [in]     aUseAbsoluteTolerance enables absolute stopping tolerance measure
-    **********************************************************************************/
-    template <Plato::OrdinalType NumDofsPerNode>
-    void Consistent(
-        Teuchos::RCP<Plato::CrsMatrixType> a_A,
-        Plato::ScalarVector a_x,
-        Plato::ScalarVector a_b,
-        bool aUseAbsoluteTolerance = false
-        )
-        {
-#ifdef HAVE_AMGX
-              using AmgXLinearProblem = Plato::AmgXSparseLinearProblem< Plato::OrdinalType, NumDofsPerNode>;
-              auto tConfigString = Plato::get_config_string(aUseAbsoluteTolerance);
-              AmgXLinearProblem tSolver(*a_A, a_x, a_b, tConfigString);
-              tSolver.solve();
-#endif
-        }
 
     /******************************************************************************//**
      * \brief Approximate solution for linear system, A x = b, by x = R^-1 b, where

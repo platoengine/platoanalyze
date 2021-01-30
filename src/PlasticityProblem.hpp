@@ -15,8 +15,11 @@
 #include "OmegaHUtilities.hpp"
 #include "NewtonRaphsonSolver.hpp"
 #include "PlatoAbstractProblem.hpp"
+#include "alg/PlatoSolverFactory.hpp"
+#include "alg/PlatoAbstractSolver.hpp"
 #include "PathDependentAdjointSolver.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticity.hpp"
 #include "PathDependentScalarFunctionFactory.hpp"
 
 namespace Plato
@@ -51,7 +54,7 @@ private:
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
     // Required
-    using PlasticityT = typename Plato::Plasticity<mSpaceDim>;
+    using PlasticityT = typename PhysicsT::LocalPhysicsT;
     using ProjectorT  = typename Plato::Projection<mSpaceDim, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
     std::shared_ptr<Plato::VectorFunctionVMS<ProjectorT>> mProjectionEquation;  /*!< global pressure gradient projection interface */
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;  /*!< global equality constraint interface */
@@ -79,7 +82,10 @@ private:
     Plato::ScalarVector mDirichletValues;         /*!< values associated with the Dirichlet boundary conditions */
     Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
 
-    Plato::WorksetBase<Plato::SimplexPlasticity<mSpaceDim>> mWorksetBase; /*!< assembly routine interface */
+    Plato::WorksetBase<PhysicsT> mWorksetBase;    /*!< assembly routine interface */
+
+    Plato::SolverFactory mLinearSolverFactory;            /*!< linear solver factory */
+    std::shared_ptr<Plato::AbstractSolver> mLinearSolver; /*!< linear solver object */
 
     std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver;         /*!< Newton-Raphson solve interface */
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
@@ -120,8 +126,10 @@ public:
       mReactionForce("Reaction Force", mNumPseudoTimeSteps, aMesh.nverts()),
       mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEquation->size()),
       mWorksetBase(aMesh),
-      mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs)),
-      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs)),
+      mLinearSolverFactory(aInputs.sublist("Linear Solver")),
+      mLinearSolver(mLinearSolverFactory.create(aMesh, aMachine, PhysicsT::mNumDofsPerNode)),
+      mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
+      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mStopOptimization(false),
       mMaxNumPseudoTimeStepsReached(false)
     {
@@ -1090,13 +1098,16 @@ private:
 
 #ifdef PLATOANALYZE_1D
 extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<1>>;
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainThermoPlasticity<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
 extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainThermoPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainThermoPlasticity<3>>;
 #endif
 

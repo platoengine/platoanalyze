@@ -73,10 +73,10 @@ private:
         {
             auto tName = tDomain.getDomainName();
 
-            auto tMaterialModelsInputs = aProblemParams.get<Teuchos::ParameterList>("Material Models");
-            if( tMaterialModelsInputs.isSublist(tDomain.getMaterialName()) )
+            auto tMaterialModels = aProblemParams.get<Teuchos::ParameterList>("Material Models");
+            if( tMaterialModels.isSublist(tDomain.getMaterialName()) )
             {
-                auto tMaterialModelInputs = aProblemParams.sublist(tDomain.getMaterialName());
+                auto tMaterialModelInputs = tMaterialModels.sublist(tDomain.getMaterialName());
                 mMaterialDensities[tName] = tMaterialModelInputs.get<Plato::Scalar>("Density", 1.0);
             }
 
