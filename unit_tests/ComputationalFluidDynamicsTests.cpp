@@ -3432,7 +3432,7 @@ private:
     using PrevVelT  = typename EvaluationT::PreviousMomentumScalarType;
     using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;
     using PredVelT  = typename EvaluationT::MomentumPredictorScalarType;
-    using StrainT   = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
+    using StrainT   = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PredVelT, ConfigT>;
 
     Plato::DataMap& mDataMap; /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
@@ -6010,9 +6010,6 @@ private:
     using PrevVelT   = typename EvaluationT::PreviousMomentumScalarType;
     using PrevPressT = typename EvaluationT::PreviousMassScalarType;
 
-    using CurPressGradT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurPressT, ConfigT>;
-    using PrevPressGradT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevPressT, ConfigT>;
-
     Plato::DataMap& mDataMap;                   /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< integration rule */
@@ -6029,7 +6026,6 @@ public:
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
         this->setParameters(aInputs);
-        this->setNaturalBoundaryConditions(aInputs);
     }
 
     PressureResidual
@@ -6043,14 +6039,9 @@ public:
 
     virtual ~PressureResidual(){}
 
-    void setThetaOne(const Plato::Scalar & aThetaOne)
+    void setTheta(const Plato::Scalar & aTheta)
     {
-        mThetaOne = aThetaOne;
-    }
-
-    void setThetaTwo(const Plato::Scalar & aThetaTwo)
-    {
-        mTheta = aThetaTwo;
+        mTheta = aTheta;
     }
 
     /***************************************************************************//**
@@ -6134,7 +6125,7 @@ public:
 
             // 2. add divergence of predicted velocity to residual
             Plato::Fluids::integrate_divergence_predicted_momentum<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPredVelWS, aResult)
+                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPredVelWS, aResult);
         }, "calculate continuity residual");
     }
 
@@ -9781,8 +9772,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Max Number Iterations'  type='int' value='5'/>"
-            "    <Parameter name='Artificial Damping Two' type='double' value='1'/>"
+            "    <Parameter name='Max Number Iterations' type='int'    value='5'/>"
+            "    <Parameter name='Artificial Damping'    type='double' value='0.0'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -11003,8 +10994,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_ThetaTwo_Set)
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
     Plato::Fluids::PressureResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap);
-    tResidual.setThetaOne(0.5);
-    tResidual.setThetaTwo(1.0);
+    tResidual.setTheta(1.0);
     tResidual.evaluate(tWorkSets, tResult);
 
     // test values
