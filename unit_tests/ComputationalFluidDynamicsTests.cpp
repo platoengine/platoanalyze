@@ -3133,7 +3133,8 @@ integrate_momentum_inertial_forces
         {
             auto tDofIndex = (SpaceDim * tNode) + tDimI;
             aResult(aCellOrdinal, tDofIndex) += aCellVolume(aCellOrdinal) * aBasisFunctions(tNode) *
-                ( aVecA_GP(aCellOrdinal, tDimI) - aVecB_GP(aCellOrdinal, tDimI) );
+                ( aVecB_GP(aCellOrdinal, tDimI) );
+                //( aVecA_GP(aCellOrdinal, tDimI) - aVecB_GP(aCellOrdinal, tDimI) );
         }
     }
 }
@@ -8038,7 +8039,7 @@ public:
         this->checkProblemSetup();
 
         Plato::Primal tPrimalVars;
-        this->setInitialConditions(tPrimalVars);
+        //this->setInitialConditions(tPrimalVars);
         this->calculateElemCharacteristicSize(tPrimalVars);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumIterations; tIteration++)
@@ -8512,13 +8513,10 @@ private:
         aVariables.vector("previous predictor", tPreviousPred);
         aVariables.vector("previous pressure", tPreviousPress);
 
-        if(mCalculateHeatTransfer)
-        {
-            auto tCurrentTemp = Kokkos::subview(mTemperature, tCurrentState, Kokkos::ALL());
-            aVariables.vector("current temperature", tCurrentTemp);
-            auto tPreviousTemp = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
-            aVariables.vector("previous temperature", tPreviousTemp);
-        }
+        auto tCurrentTemp = Kokkos::subview(mTemperature, tCurrentState, Kokkos::ALL());
+        aVariables.vector("current temperature", tCurrentTemp);
+        auto tPreviousTemp = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
+        aVariables.vector("previous temperature", tPreviousTemp);
     }
 
     void updateCorrector
@@ -8536,6 +8534,7 @@ private:
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
         Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobianCorrector, tResidualCorrector);
+        Plato::print_sparse_matrix_to_file(tJacobianCorrector,"jacobian_velocity.txt");
 
         // solve velocity equation (consistent mass matrix)
         auto tParamList = mInputs.sublist("Linear Solver");
@@ -8560,6 +8559,7 @@ private:
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
         Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobianPredictor, tResidualPredictor);
+        Plato::print_sparse_matrix_to_file(tJacobianPredictor,"jacobian_predictor.txt");
 
         // solve predictor equation (consistent or mass lumped)
         auto tParamList = mInputs.sublist("Linear Solver");
@@ -8584,6 +8584,7 @@ private:
         Plato::LocalOrdinalVector tBcDofs;
         mPressureEssentialBCs.get(tBcDofs, tBcValues);
         Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobianPressure, tResidualPressure);
+        Plato::print_sparse_matrix_to_file(tJacobianPressure,"jacobian_pressure.txt");
 
         // solve mass equation (consistent or mass lumped)
         auto tParamList = mInputs.sublist("Linear Solver");
@@ -9761,7 +9762,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "    <ParameterList  name='Tangential Velocity'>"
             "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
-            "      <Parameter  name='Value'    type='double' value='1'/>"
+            "      <Parameter  name='Value'    type='double' value='1e-6'/>"
             "      <Parameter  name='Index'    type='int'    value='0'/>"
             "      <Parameter  name='Sides'    type='string' value='velocity'/>"
             "    </ParameterList>"
@@ -9780,7 +9781,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Max Number Iterations' type='int' value='4'/>"
+            "    <Parameter name='Max Number Iterations'  type='int' value='5'/>"
+            "    <Parameter name='Artificial Damping Two' type='double' value='1'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
