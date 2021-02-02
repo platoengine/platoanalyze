@@ -44,6 +44,7 @@ private:
     static constexpr auto mSpaceDim                = PhysicsT::mSpaceDim;             /*!< spatial dimensions*/
     static constexpr auto mNumNodesPerCell         = PhysicsT::mNumNodesPerCell;      /*!< number of nodes per cell*/
     static constexpr auto mPressureDofOffset       = PhysicsT::mPressureDofOffset;    /*!< number of pressure dofs offset*/
+    static constexpr auto mTemperatureDofOffset    = PhysicsT::mTemperatureDofOffset;    /*!< number of temperature dofs offset*/
     static constexpr auto mNumGlobalDofsPerNode    = PhysicsT::mNumDofsPerNode;       /*!< number of global degrees of freedom per node*/
     static constexpr auto mNumGlobalDofsPerCell    = PhysicsT::mNumDofsPerCell;       /*!< number of global degrees of freedom per cell (i.e. element)*/
     static constexpr auto mNumLocalDofsPerCell     = PhysicsT::mNumLocalDofsPerCell;  /*!< number of local degrees of freedom per cell (i.e. element)*/
@@ -68,6 +69,7 @@ private:
 
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
     Plato::Scalar mPressureScaling;               /*!< pressure term scaling */
+    Plato::Scalar mTemperatureScaling;            /*!< temperature term scaling */
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual */
     Plato::Scalar mDispControlConstant;           /*!< displacement control constant */
     Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step */
@@ -116,6 +118,7 @@ public:
       mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
       mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
       mPressureScaling(1.0),
+      mTemperatureScaling(1.0),
       mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
       mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
       mCurrentPseudoTimeStep(0.0),
@@ -196,10 +199,17 @@ public:
 
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
+        Plato::ScalarMultiVector tTemperature("Temperature", mGlobalStates.extent(0), tNumNodes);
         Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalStates, tPressure);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
         Plato::blas2::scale(mPressureScaling, tPressure);
+        if (mTemperatureDofOffset > 0)
+        {
+          Plato::blas2::extract<mNumGlobalDofsPerNode, mTemperatureDofOffset>(mGlobalStates, tTemperature);
+          Plato::blas2::scale(mTemperatureScaling, tTemperature);
+        }
+        
 
         Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
         for(Plato::OrdinalType tSnapshot = 0; tSnapshot < tDisplacements.extent(0); tSnapshot++)
@@ -213,6 +223,12 @@ public:
             auto tDispSubView = Kokkos::subview(tDisplacements, tSnapshot, Kokkos::ALL());
             auto tDispSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tDispSubView);
             tMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
+            if (mTemperatureDofOffset > 0)
+            {
+              auto tTemperatureSubView = Kokkos::subview(tTemperature, tSnapshot, Kokkos::ALL());
+              auto tTemperatureSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tTemperatureSubView);
+              tMesh.add_tag(Omega_h::VERT, "Temperature", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tTemperatureSubViewDefaultMirror)));
+            }
             Plato::add_element_state_tags(tMesh, mDataMap, tSnapshot);
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mSpaceDim);
             auto tTime = mPseudoTimeStep * static_cast<Plato::Scalar>(tSnapshot + 1);
@@ -688,7 +704,8 @@ private:
         }
         Teuchos::ParameterList tMaterialsInputs = aInputParams.get<Teuchos::ParameterList>("Material Models");
 
-        mPressureScaling = tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        mPressureScaling    = tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        mTemperatureScaling = tMaterialsInputs.get<Plato::Scalar>("Temperature Scaling", 1.0);
     }
 
     /***************************************************************************//**
