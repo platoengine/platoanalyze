@@ -229,12 +229,12 @@ private:
     void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
         Teuchos::ParameterList tMaterialsInputs = aProblemParams.sublist("Material Models");
+        mPressureScaling     = tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        mTemperatureScaling  = tMaterialsInputs.get<Plato::Scalar>("Temperature Scaling", 1.0);
 
         auto tMaterialName = mSpatialDomain.getMaterialName();
         Teuchos::ParameterList tMaterialInputs = tMaterialsInputs.sublist(tMaterialName);
 
-        mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
-        mTemperatureScaling = tMaterialInputs.get<Plato::Scalar>("Temperature Scaling", 1.0);
         if (tMaterialInputs.isSublist("Isotropic Linear Thermoelastic"))
         {
             auto tThermoelasticSubList = tMaterialInputs.sublist("Isotropic Linear Thermoelastic");
