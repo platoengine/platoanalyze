@@ -3542,6 +3542,7 @@ private:
     // set local ad types
     using ResultT   = typename EvaluationT::ResultScalarType;
     using ConfigT   = typename EvaluationT::ConfigScalarType;
+    using ControlT  = typename EvaluationT::ControlScalarType;
     using PrevVelT  = typename EvaluationT::PreviousMomentumScalarType;
     using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;
     using PredVelT  = typename EvaluationT::MomentumPredictorScalarType;
@@ -8137,7 +8138,7 @@ public:
         constexpr auto tCurrentTimeStep = 1;
         const auto tNumNodes = tMesh.nverts();
 
-        auto tPressSubView = Kokkos::subview(mPressure, tCurrentTimeStep, Kokkos::ALL());
+        auto tPressSubView = Kokkos::subview(mPressure, 0, Kokkos::ALL());
         Omega_h::Write<Omega_h::Real> tPressure(tPressSubView.size(), "Pressure");
         Plato::copy<mNumPressDofsPerNode, mNumPressDofsPerNode>(tStride, tNumNodes, tPressSubView, tPressure);
         tMesh.add_tag(Omega_h::VERT, "Pressure", mNumPressDofsPerNode, Omega_h::Reals(tPressure));
@@ -8570,9 +8571,9 @@ private:
         auto tPreviousVelocity = Kokkos::subview(mVelocity, tPrevState, Kokkos::ALL());
         Plato::blas1::copy(tCurrentVelocity, tPreviousVelocity);
 
-        auto tCurrentPressure = aVariables.vector("current pressure");
-        auto tPreviousPressure = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
-        Plato::blas1::copy(tCurrentPressure, tPreviousPressure);
+        //auto tCurrentPressure = aVariables.vector("current pressure");
+        //auto tPreviousPressure = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
+        //Plato::blas1::copy(tCurrentPressure, tPreviousPressure);
 
         auto tCurrentPredictor = aVariables.vector("current predictor");
         auto tPreviousPredictor = Kokkos::subview(mPredictor, tPrevState, Kokkos::ALL());
@@ -9849,13 +9850,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
             "      <Parameter  name='Value'    type='double' value='1.0'/>"
             "      <Parameter  name='Index'    type='int'    value='0'/>"
-            "      <Parameter  name='Sides'    type='string' value='velocity'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
             "    </ParameterList>"
             "    <ParameterList  name='Normal Velocity'>"
             "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
             "      <Parameter  name='Value'    type='double' value='0'/>"
             "      <Parameter  name='Index'    type='int'    value='1'/>"
-            "      <Parameter  name='Sides'    type='string' value='velocity'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
