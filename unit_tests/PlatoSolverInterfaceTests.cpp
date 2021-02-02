@@ -1207,8 +1207,8 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_accept_parameterlist_input
   Plato::LocalOrdinalVector mBcDofs;
   Plato::ScalarVector mBcValues;
   Plato::EssentialBCs<SimplexPhysics>
-      tEssentialBoundaryConditions(tParamList->sublist("Essential Boundary Conditions",false));
-  tEssentialBoundaryConditions.get(tMeshSets, mBcDofs, mBcValues);
+      tEssentialBoundaryConditions(tParamList->sublist("Essential Boundary Conditions",false), tMeshSets);
+  tEssentialBoundaryConditions.get(mBcDofs, mBcValues);
   Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, mBcDofs, mBcValues);
 
   MPI_Comm myComm;

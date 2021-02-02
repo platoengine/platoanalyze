@@ -482,9 +482,10 @@ public:
             tComputeStrainDivergence(aCellOrdinal, tTotalStrain, tStrainDivergence);
 
             // compute volume difference
-            tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
-            tVolumeStrain(aCellOrdinal) = tPressureScaling * tElasticPropertiesPenalty
-                * (tStrainDivergence(aCellOrdinal) - tPressure(aCellOrdinal) / tElasticBulkModulus);
+            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
+            tPressure(aCellOrdinal) *= tPressureScaling;
+            tVolumeStrain(aCellOrdinal) = tPressureScaling
+                * (tStrainDivergence(aCellOrdinal) - tPressure(aCellOrdinal) / tPenalizedBulkModulus);
 
             // compute cell stabilization term
             tComputeStabilization(aCellOrdinal, tCellVolume, tPressureGrad, tProjectedPressureGradGP, tStabilization);
@@ -497,7 +498,6 @@ public:
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
 
             // prepare output data
-            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
             tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
             tJ2PlasticityUtils.getPlasticMultiplierIncrement(aCellOrdinal, aCurrentLocalState, tPlasticMultiplier);
             tJ2PlasticityUtils.getAccumulatedPlasticStrain(aCellOrdinal, aCurrentLocalState, tAccumPlasticStrain);

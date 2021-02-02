@@ -23,15 +23,19 @@ class ThermoPlasticityUtilities
 
     Plato::Scalar mThermalExpansionCoefficient;
     Plato::Scalar mReferenceTemperature;
+    Plato::Scalar mTemperatureScaling;
   public:
     /**************************************************************************//**
     * \brief Constructor
     * \param [in] aThermalExpansionCoefficient thermal expansion coefficient
     * \param [in] aReferenceTemperature reference temperature
     ******************************************************************************/
-    ThermoPlasticityUtilities(Plato::Scalar aThermalExpansionCoefficient = 0.0, Plato::Scalar aReferenceTemperature = 0.0) :
+    ThermoPlasticityUtilities(Plato::Scalar aThermalExpansionCoefficient = 0.0, 
+                              Plato::Scalar aReferenceTemperature = 0.0,
+                              Plato::Scalar aTemperatureScaling = 1.0) :
       mThermalExpansionCoefficient(aThermalExpansionCoefficient),
-      mReferenceTemperature(aReferenceTemperature)
+      mReferenceTemperature(aReferenceTemperature),
+      mTemperatureScaling(aTemperatureScaling)
     {
     }
 
@@ -146,6 +150,7 @@ class ThermoPlasticityUtilities
       Plato::OrdinalType tTemperatureIndex = tNode * mNumDofsPerNode + mTemperatureDofOffset;
       tTemperature += aGlobalState(aCellOrdinal, tTemperatureIndex) * aBasisFunctions(tNode);
     }
+    tTemperature *= mTemperatureScaling;
 
     // Subtract thermal strain
     GlobalStateT tThermalStrain = mThermalExpansionCoefficient * (tTemperature - mReferenceTemperature);
@@ -184,6 +189,7 @@ class ThermoPlasticityUtilities
           Plato::OrdinalType tTemperatureIndex = tNode * mNumDofsPerNode + mTemperatureDofOffset;
           tTemperature += aGlobalState(aCellOrdinal, tTemperatureIndex) * aBasisFunctions(tNode);
       }
+      tTemperature *= mTemperatureScaling;
 
       // Subtract thermal strain
       GlobalStateT tThermalStrain = mThermalExpansionCoefficient * (tTemperature - mReferenceTemperature);
