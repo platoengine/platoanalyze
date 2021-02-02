@@ -201,8 +201,13 @@ Eigenvalues<2>::operator()(const Plato::OrdinalType & aCellOrdinal,
     if (tTau >= tZero)
         tTangent = tOne / (tTau + sqrt(tOne + tTau*tTau));
 
-    ResultType tCosine = tOne / sqrt(tOne + tTangent*tTangent);
-    ResultType tSine   = tTangent * tCosine;
+    ResultType tCosine = tOne;
+    ResultType tSine   = tZero;
+    if (tTensor12 > tZero)
+        tCosine = tOne / sqrt(tOne + tTangent*tTangent);
+    if (tTensor12 > tZero)
+        tSine   = tTangent * tCosine;
+
     aEigenvalues(aCellOrdinal, 0) = tCosine * (tTensor11*tCosine - tTensor12*tSine) -
                                     tSine   * (tTensor12*tCosine - tTensor22*tSine);
     aEigenvalues(aCellOrdinal, 1) = tCosine * (tTensor22*tCosine + tTensor12*tSine) +

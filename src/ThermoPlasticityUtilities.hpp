@@ -29,6 +29,7 @@ class ThermoPlasticityUtilities
     * \brief Constructor
     * \param [in] aThermalExpansionCoefficient thermal expansion coefficient
     * \param [in] aReferenceTemperature reference temperature
+    * \param [in] aTemperatureScaling temperature scaling
     ******************************************************************************/
     ThermoPlasticityUtilities(Plato::Scalar aThermalExpansionCoefficient = 0.0, 
                               Plato::Scalar aReferenceTemperature = 0.0,
