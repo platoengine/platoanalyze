@@ -7941,7 +7941,7 @@ calculate_field_misfit
  const Plato::ScalarVector& aFieldOne,
  const Plato::ScalarVector& aFieldTwo)
 {
-    Plato::ScalarVector tResidual("pressure residual", aNumNodes);
+    Plato::ScalarVector tResidual("pressure residual", aNumNodes * DofsPerNode);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNode)
     {
         for(Plato::OrdinalType tDof = 0; tDof < DofsPerNode; tDof++)
