@@ -3355,6 +3355,111 @@ public:
     }
 };
 
+
+inline Plato::Scalar
+dimensionless_viscosity_constant
+(Teuchos::ParameterList & aInputs)
+{
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+    auto tHeatTransfer = Plato::tolower(tTag);
+
+    if(tHeatTransfer == "forced" || tHeatTransfer == "none")
+    {
+        auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+        auto tViscocity = static_cast<Plato::Scalar>(1) / tReNum;
+        return tViscocity;
+    }
+    else if(tHeatTransfer == "natural")
+    {
+        auto tViscocity = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+        return tViscocity;
+    }
+    else
+    {
+        THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
+    }
+}
+
+inline Plato::Scalar
+dimensionless_buoyancy_constant
+(Teuchos::ParameterList & aInputs)
+{
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+    auto tHeatTransfer = Plato::tolower(tTag);
+
+    if(tHeatTransfer == "forced")
+    {
+        auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+        auto tBuoyancy = static_cast<Plato::Scalar>(1) / (tReNum*tReNum);
+        return tBuoyancy;
+    }
+    else if(tHeatTransfer == "natural")
+    {
+        auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+        auto tBuoyancy = tPrNum*tPrNum;
+        return tBuoyancy;
+    }
+    else if(tHeatTransfer == "none")
+    {
+        auto tBuoyancy = 0;
+        return tBuoyancy;
+    }
+    else
+    {
+        THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
+    }
+}
+
+template<Plato::OrdinalType NumSpaceDim>
+inline Plato::ScalarVector
+dimensionless_grashof_number
+(Teuchos::ParameterList & aInputs)
+{
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+    auto tHeatTransfer = Plato::tolower(tTag);
+    auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
+
+    Plato::ScalarVector tOuput("Grashof Number", NumSpaceDim);
+    if(tCalculateHeatTransfer)
+    {
+        auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
+        if(tGrNum.size() != NumSpaceDim)
+        {
+            THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
+                + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
+                + std::to_string(NumSpaceDim) + "'.")
+        }
+
+        auto tHostGrNum = Kokkos::create_mirror(tOuput);
+        for(Plato::OrdinalType tDim = 0; tDim < NumSpaceDim; tDim++)
+        {
+            tHostGrNum(tDim) = tGrNum[tDim];
+        }
+        Kokkos::deep_copy(tOuput, tHostGrNum);
+    }
+    else
+    {
+        Plato::blas1::fill(0.0, tOuput);
+    }
+
+    return tOuput;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 // todo: predictor equation
 /***************************************************************************//**
  * \class VelocityPredictorResidual
@@ -3428,11 +3533,12 @@ private:
     // set local ad types
     using ResultT   = typename EvaluationT::ResultScalarType;
     using ConfigT   = typename EvaluationT::ConfigScalarType;
-    using ControlT  = typename EvaluationT::ControlScalarType;
     using PrevVelT  = typename EvaluationT::PreviousMomentumScalarType;
     using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;
     using PredVelT  = typename EvaluationT::MomentumPredictorScalarType;
-    using StrainT   = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PredVelT, ConfigT>;
+
+    using AdvectionT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
+    using PredStrainT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PredVelT, ConfigT>;
 
     Plato::DataMap& mDataMap; /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
@@ -3442,9 +3548,9 @@ private:
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mPrescribedBCs; /*!< prescribed boundary conditions, e.g. tractions */
 
     // set member scalar data
-    Plato::Scalar mBuoyancy = 1.0; /*!< buoyancy dimensionless number */
-    Plato::Scalar mViscocity = 1.0; /*!< viscocity dimensionless number */
-    Plato::ScalarVector mGrNum; /*!< grashof dimensionless number */
+    Plato::Scalar mBuoyancy = 1.0;  /*!< dimensionless buoyancy number */
+    Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity number */
+    Plato::ScalarVector mGrNum;     /*!< dimensionless grashof number */
 
 public:
     VelocityPredictorResidual
@@ -3453,8 +3559,7 @@ public:
      Teuchos::ParameterList     & aInputs) :
          mDataMap(aDataMap),
          mSpatialDomain(aDomain),
-         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>()),
-         mGrNum("grashof number", mNumSpatialDims)
+         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
         this->setDimensionlessProperties(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
@@ -3534,16 +3639,15 @@ public:
         Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
 
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
+        Plato::ScalarArray3DT<PredStrainT> tStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
 
         Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("predicted velocity", tNumCells, mNumSpatialDims);
 
-        Plato::ScalarMultiVectorT<ResultT>  tAdvection("advection", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<ResultT>  tStabilization("stabilization", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<ResultT>  tNaturalConvection("natural convection", tNumCells, mNumSpatialDims);
-
-        Plato::ScalarMultiVectorT<ResultT>  tStabForces("stabilizing forces", tNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultT>    tStabForces("stabilizing forces", tNumCells, mNumDofsPerCell);
+        Plato::ScalarMultiVectorT<ResultT>    tStabilization("stabilization", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PrevTempT>  tNaturalConvection("natural convection", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<AdvectionT> tAdvection("advection", tNumCells, mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
@@ -3676,87 +3780,6 @@ public:
    }
 
 private:
-   void setViscosity
-   (Teuchos::ParameterList & aInputs)
-   {
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
-       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-       auto tHeatTransfer = Plato::tolower(tTag);
-
-       if(tHeatTransfer == "forced" || tHeatTransfer == "none")
-       {
-           auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
-           mViscocity = static_cast<Plato::Scalar>(1) / tReNum;
-       }
-       else if(tHeatTransfer == "natural")
-       {
-           mViscocity = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-       }
-       else
-       {
-           THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
-       }
-   }
-
-   void setGrashofNumber
-   (Teuchos::ParameterList & aInputs)
-   {
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
-       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-       auto tHeatTransfer = Plato::tolower(tTag);
-       auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
-
-        if(tCalculateHeatTransfer)
-        {
-            auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
-            if(tGrNum.size() != mNumSpatialDims)
-            {
-                THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
-                    + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
-                    + std::to_string(mNumSpatialDims) + "'.")
-            }
-
-            auto tLength = mGrNum.size();
-            auto tHostGrNum = Kokkos::create_mirror(mGrNum);
-            for(decltype(tLength) tDim = 0; tDim < tLength; tDim++)
-            {
-                tHostGrNum(tDim) = tGrNum[tDim];
-            }
-            Kokkos::deep_copy(mGrNum, tHostGrNum);
-        }
-        else
-        {
-            Plato::blas1::fill(0.0, mGrNum);
-        }
-   }
-
-   void setBuoyancyConstant
-   (Teuchos::ParameterList & aInputs)
-   {
-       auto tHyperbolic = aInputs.sublist("Hyperbolic");
-       auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-       auto tHeatTransfer = Plato::tolower(tTag);
-
-       if(tHeatTransfer == "forced")
-       {
-           auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
-           mBuoyancy = static_cast<Plato::Scalar>(1) / (tReNum*tReNum);
-       }
-       else if(tHeatTransfer == "natural")
-       {
-           auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-           mBuoyancy = tPrNum*tPrNum;
-       }
-       else if(tHeatTransfer == "none")
-       {
-           mBuoyancy = 0;
-       }
-       else
-       {
-           THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
-       }
-   }
-
    void setDimensionlessProperties
    (Teuchos::ParameterList & aInputs)
    {
@@ -3764,9 +3787,11 @@ private:
        {
            THROWERR("'Hyperbolic' Parameter List is not defined.")
        }
-       this->setViscosity(aInputs);
-       this->setGrashofNumber(aInputs);
-       this->setBuoyancyConstant(aInputs);
+
+       mBuoyancy = Plato::Fluids::dimensionless_buoyancy_constant(aInputs);
+       mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
+
+       mGrNum = Plato::Fluids::dimensionless_grashof_number<mNumSpatialDims>(aInputs);
    }
 
    void setNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
@@ -4405,6 +4430,27 @@ calculate_pressure_gradient
     }
 }
 
+template<Plato::OrdinalType NumNodes,
+         Plato::OrdinalType SpaceDim,
+         typename ConfigT,
+         typename FieldT,
+         typename PressGradT>
+DEVICE_TYPE inline void
+calculate_scalar_field_gradient
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarArray3DT<ConfigT> & aGradient,
+ const Plato::ScalarMultiVectorT<FieldT> & aScalarField,
+ const Plato::ScalarMultiVectorT<PressGradT> & aResult)
+{
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
+        {
+            aResult(aCellOrdinal, tDim) += aGradient(aCellOrdinal, tNode, tDim) * aScalarField(aCellOrdinal, tNode);
+        }
+    }
+}
+
 /***************************************************************************//**
  * \fn device_type void integrate_stabilizing_pressure_gradient
  * \brief Integrate stabilizing pressure gradient, which is given by
@@ -4510,19 +4556,21 @@ private:
     static constexpr auto mNumNodesPerCell   = PhysicsT::SimplexT::mNumNodesPerCell; /*!< number of nodes per cell */
     static constexpr auto mNumSpatialDims    = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
 
-    using ResultT    = typename EvaluationT::ResultScalarType;
-    using ConfigT    = typename EvaluationT::ConfigScalarType;
-    using CurVelT    = typename EvaluationT::CurrentMomentumScalarType;
-    using CurPressT  = typename EvaluationT::CurrentMassScalarType;
-    using PrevVelT   = typename EvaluationT::PreviousMomentumScalarType;
-    using PrevPressT = typename EvaluationT::PreviousMassScalarType;
-    using PredictorT = typename EvaluationT::MomentumPredictorScalarType;
+    using ResultT     = typename EvaluationT::ResultScalarType;
+    using ConfigT     = typename EvaluationT::ConfigScalarType;
+    using CurVelT     = typename EvaluationT::CurrentMomentumScalarType;
+    using PredVelT    = typename EvaluationT::MomentumPredictorScalarType;
+    using PrevPressT  = typename EvaluationT::PreviousMassScalarType;
+
+    using PressGradT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevPressT, ConfigT>;
+    using CurStrainT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurVelT, ConfigT>;
+    using PredStrainT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PredVelT, ConfigT>;
 
     Plato::DataMap& mDataMap;                   /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< integration rule */
 
-    Plato::Scalar mTheta = 0.0;
+    Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity number */
 
 public:
     VelocityCorrectorResidual
@@ -4533,11 +4581,7 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
-        if(aInputs.isSublist("Time Integration"))
-        {
-            auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mTheta = tTimeIntegration.get<Plato::Scalar>("Artificial Damping", 0.0);
-        }
+        mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
     }
 
     virtual ~VelocityCorrectorResidual(){}
@@ -4605,23 +4649,27 @@ public:
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell weight", tNumCells);
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
 
-        Plato::ScalarMultiVectorT<ResultT> tPressGradGP("pressure gradient", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<CurVelT> tCurVelGP("current velocity at Gauss points", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PredictorT> tPredVelGP("velocity predictor at Gauss points", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("velocity predictor at Gauss points", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PressGradT> tPressGradGP("pressure gradient", tNumCells, mNumSpatialDims);
+
+        Plato::ScalarArray3DT<CurStrainT>  tCurStrainRate("current strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
+        Plato::ScalarArray3DT<PredStrainT> tPredStrainRate("predicted strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
 
         // set input state worksets
         auto tTimeStepWS  = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tCurVelWS    = Plato::metadata<Plato::ScalarMultiVectorT<CurVelT>>(aWorkSets.get("current velocity"));
-        auto tPredVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PredictorT>>(aWorkSets.get("current predictor"));
-        auto tCurPressWS  = Plato::metadata<Plato::ScalarMultiVectorT<CurPressT>>(aWorkSets.get("current pressure"));
+        auto tPredVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
         auto tPrevPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevPressT>>(aWorkSets.get("previous pressure"));
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
-        auto tTheta = mTheta;
+        // transfer member data to device
+        auto tViscocity = mViscocity;
+
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -4629,20 +4677,34 @@ public:
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
-            // 1. add pressure gradient to residual
-            Plato::Fluids::calculate_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tTheta, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
+            // 1. add previous pressure gradient to residual
+            Plato::Fluids::calculate_scalar_field_gradient<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tGradient, tPrevPressWS, tPressGradGP);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPressGradGP, aResultWS);
+
+            // 2. add current viscous force to residual
+            Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCurVelWS, tGradient, tCurStrainRate);
+            Plato::Fluids::integrate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tCurStrainRate, aResultWS);
+
+            // 3. add predicted viscous force to residual
+            Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tPredVelWS, tGradient, tPredStrainRate);
+            Plato::Fluids::integrate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tPredStrainRate, aResultWS, -1.0);
+
+            // 4. apply time step
             Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                 (aCellOrdinal, 1.0, tTimeStepWS, aResultWS);
 
-            // 2. add current inertial force to residual
+            // 5. add current inertial force to residual
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurVelGP, aResultWS);
 
-            // 3. add predicted inertial force to residual
+            // 6. add predicted inertial force to residual
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredVelWS, tPredVelGP);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPredVelGP, aResultWS, -1.0);
@@ -6005,16 +6067,13 @@ private:
     using ResultT    = typename EvaluationT::ResultScalarType;
     using ConfigT    = typename EvaluationT::ConfigScalarType;
     using PredVelT   = typename EvaluationT::MomentumPredictorScalarType;
-    using ControlT   = typename EvaluationT::ControlScalarType;
-    using CurPressT  = typename EvaluationT::CurrentMassScalarType;
-    using PrevVelT   = typename EvaluationT::PreviousMomentumScalarType;
     using PrevPressT = typename EvaluationT::PreviousMassScalarType;
+
+    using PressGradT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevPressT, ConfigT>;
 
     Plato::DataMap& mDataMap;                   /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< integration rule */
-
-    Plato::Scalar mTheta = 0.0;
 
 public:
     PressureResidual
@@ -6025,7 +6084,6 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
-        this->setParameters(aInputs);
     }
 
     PressureResidual
@@ -6038,11 +6096,6 @@ public:
     }
 
     virtual ~PressureResidual(){}
-
-    void setTheta(const Plato::Scalar & aTheta)
-    {
-        mTheta = aTheta;
-    }
 
     /***************************************************************************//**
      * \fn void evaluate
@@ -6093,20 +6146,17 @@ public:
         // set local data
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell weight", tNumCells);
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<ResultT> tPressGradGP("pressure gradient", tNumCells, mNumSpatialDims);
+
+        Plato::ScalarMultiVectorT<PressGradT> tPressGradGP("pressure gradient", tNumCells, mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
 
         // set input state worksets
-        auto tTimeStepWS  = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tCurPressWS  = Plato::metadata<Plato::ScalarMultiVectorT<CurPressT>>(aWorkSets.get("current pressure"));
+        auto tPredVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
+        auto tTimeStepWS  = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         auto tPrevPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevPressT>>(aWorkSets.get("previous pressure"));
-        auto tPredVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
-
-        // transfer member data to device
-        auto tTheta = mTheta;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -6116,8 +6166,8 @@ public:
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
             // 1. add divergence of pressure gradient (i.e. Laplacian) to residual
-            Plato::Fluids::calculate_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tTheta, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
+            Plato::Fluids::calculate_scalar_field_gradient<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tGradient, tPrevPressWS, tPressGradGP);
             Plato::Fluids::integrate_divergence_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tPressGradGP, aResult, -1.0);
             Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumPressDofsPerNode>
@@ -6159,16 +6209,6 @@ public:
      const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult) const override
     { return; }
-
-private:
-    void setParameters(Teuchos::ParameterList& aInputs)
-    {
-        if(aInputs.isSublist("Time Integration"))
-        {
-            auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mTheta = tTimeIntegration.get<Plato::Scalar>("Artificial Damping", 0.0);
-        }
-    }
 };
 // class PressureResidual
 
@@ -8030,7 +8070,6 @@ public:
         this->checkProblemSetup();
 
         Plato::Primal tPrimalVars;
-        //this->setInitialConditions(tPrimalVars);
         this->calculateElemCharacteristicSize(tPrimalVars);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumIterations; tIteration++)
@@ -8431,37 +8470,6 @@ private:
         }
     }
 
-    void setInitialConditions
-    (Plato::Primal & aVariables)
-    {
-        const auto tTime = 0.0;
-        const auto tPrevState = 0;
-
-        Plato::ScalarVector tVelBcValues;
-        Plato::LocalOrdinalVector tVelBcDofs;
-        mVelocityEssentialBCs.get(tVelBcDofs, tVelBcValues, tTime);
-        auto tPreviouVel = Kokkos::subview(mVelocity, tPrevState, Kokkos::ALL());
-        Plato::cbs::enforce_boundary_condition(tVelBcDofs, tVelBcValues, tPreviouVel);
-        aVariables.vector("previous velocity", tPreviouVel);
-
-        Plato::ScalarVector tPressBcValues;
-        Plato::LocalOrdinalVector tPressBcDofs;
-        mPressureEssentialBCs.get(tPressBcDofs, tPressBcValues, tTime);
-        auto tPreviousPress = Kokkos::subview(mPressure, tPrevState, Kokkos::ALL());
-        Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
-        aVariables.vector("previous pressure", tPreviousPress);
-
-        if(mCalculateHeatTransfer)
-        {
-            Plato::ScalarVector tTempBcValues;
-            Plato::LocalOrdinalVector tTempBcDofs;
-            mTemperatureEssentialBCs.get(tTempBcDofs, tTempBcValues, tTime);
-            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevState, Kokkos::ALL());
-            Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
-            aVariables.vector("previous temperature", tPreviousTemp);
-        }
-    }
-
     void updatePreviousStates(Plato::Primal & aVariables)
     {
         constexpr Plato::OrdinalType tPrevState = 0;
@@ -8565,10 +8573,10 @@ private:
            Plato::Primal       & aVariables)
     {
         // calculate current residual and jacobian matrix
-        auto tCurrentPressure = aVariables.vector("current pressure");
-        Plato::blas1::fill(0.0, tCurrentPressure);
+        auto tPreviousPressure = aVariables.vector("previous pressure");
+        Plato::blas1::fill(0.0, tPreviousPressure);
         auto tResidualPressure = mPressureResidual.value(aControl, aVariables);
-        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aVariables);
+        auto tJacobianPressure = mPressureResidual.gradientPreviousPress(aControl, aVariables);
 
         // apply constraints
         Plato::ScalarVector tBcValues;
@@ -8582,7 +8590,7 @@ private:
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
         Plato::blas1::scale(-1.0, tResidualPressure);
-        tSolver->solve(*tJacobianPressure, tCurrentPressure, tResidualPressure);
+        tSolver->solve(*tJacobianPressure, tPreviousPressure, tResidualPressure);
     }
 
     void updateTemperature
@@ -10994,7 +11002,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_ThetaTwo_Set)
     Plato::DataMap tDataMap;
     Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
     Plato::Fluids::PressureResidual<PhysicsT,EvaluationT> tResidual(tDomain,tDataMap);
-    tResidual.setTheta(1.0);
     tResidual.evaluate(tWorkSets, tResult);
 
     // test values
