@@ -36,13 +36,13 @@ namespace Plato
 {
 
 /***********************************************************************//**
- * \brief Evaluate stabilized infinitesimal strain plasticity residual, defined as
+ * \brief Evaluate stabilized infinitesimal strain thermoplasticity residual, defined as
  *
  * \tparam EvaluationType denotes evaluation type for vector function, possible
  *   options are Residual, Jacobian, PartialControl, etc.
  * \tparam SimplexPhysicsType simplex physics type, e.g. SimplexThermoPlasticity. gives
  *   access to static data related to the physics problem.
- *
+ * NEED TO UPDATE THESE EQUATIONS TO INCLUDE HEAT CONDUCTION
  * \f$   \langle \nabla{v_h}, s_h \rangle + \langle \nabla\cdot{v_h}, p_h \rangle
  *     - \langle v_h, f \rangle - \langle v_h, b \rangle = 0\ \forall\ v_h \in V_{h,0}
  *       = \{v_h \in V_h | v = 0\ \mbox{in}\ \partial\Omega_{u} \} \f$
@@ -90,7 +90,7 @@ private:
     Plato::Scalar mPoissonsRatio;                  /*!< Poisson's ratio */
     Plato::Scalar mElasticModulus;                 /*!< elastic modulus */
     Plato::Scalar mPressureScaling;                /*!< Pressure scaling term */
-    Plato::Scalar mTemperatureScaling;                /*!< Temperature scaling term */
+    Plato::Scalar mTemperatureScaling;             /*!< Temperature scaling term */
     Plato::Scalar mElasticBulkModulus;             /*!< elastic bulk modulus */
     Plato::Scalar mElasticShearModulus;            /*!< elastic shear modulus */
     Plato::Scalar mThermalConductivityCoefficient; /*!< thermal conductivity coefficient */
@@ -192,10 +192,6 @@ private:
                         std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumDisplacementDims, mNumGlobalDofsPerNode, mDisplacementDofOffset>>
                         (tNaturalBCsParams.sublist("Mechanical Natural Boundary Conditions"));
             }
-            else
-            {
-                REPORT("No 'Mechanical Natural Boundary Conditions' specified.")
-            }
 
             // Parse thermal Neumann loads
             if(tNaturalBCsParams.isSublist("Thermal Natural Boundary Conditions"))
@@ -204,10 +200,7 @@ private:
                         std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumThermalDims, mNumGlobalDofsPerNode, mTemperatureDofOffset>>
                         (tNaturalBCsParams.sublist("Thermal Natural Boundary Conditions"));
             }
-            else
-            {
-                REPORT("No 'Thermal Natural Boundary Conditions' specified.")
-            }
+
         }
 
         mDataMap.mScalarValues["LoadControlConstant"] = 1.0;
@@ -245,10 +238,10 @@ private:
         if (tMaterialInputs.isSublist("Isotropic Linear Thermoelastic"))
         {
             auto tThermoelasticSubList = tMaterialInputs.sublist("Isotropic Linear Thermoelastic");
-            mPoissonsRatio = tThermoelasticSubList.get<Plato::Scalar>("Poissons Ratio");
-            mElasticModulus = tThermoelasticSubList.get<Plato::Scalar>("Youngs Modulus");
-            //mPoissonsRatio = Plato::parse_poissons_ratio(tThermoelasticSubList);
-            //mElasticModulus = Plato::parse_elastic_modulus(tThermoelasticSubList);
+            //mPoissonsRatio = tThermoelasticSubList.get<Plato::Scalar>("Poissons Ratio");
+            //mElasticModulus = tThermoelasticSubList.get<Plato::Scalar>("Youngs Modulus");
+            mPoissonsRatio = Plato::parse_poissons_ratio(tThermoelasticSubList);
+            mElasticModulus = Plato::parse_elastic_modulus(tThermoelasticSubList);
             mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
             mElasticShearModulus = Plato::compute_shear_modulus(mElasticModulus, mPoissonsRatio);
 
@@ -452,9 +445,9 @@ public:
         auto tNumCells = mSpatialDomain.numCells();
         auto tSpaceDim = mSpaceDim;
 
-        using GradScalarT = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
-        using ElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
-        using ThermalFluxT = typename Plato::fad_type_t<SimplexPhysicsType, ControlT, ConfigT, GlobalStateT>;
+        using GState_Config_T = typename Plato::fad_type_t<SimplexPhysicsType, GlobalStateT, ConfigT>;
+        using GState_Config_LState_T = typename Plato::fad_type_t<SimplexPhysicsType, LocalStateT, ConfigT, GlobalStateT>;
+        using GState_Config_Control_T = typename Plato::fad_type_t<SimplexPhysicsType, ControlT, ConfigT, GlobalStateT>;
 
         // Functors used to compute residual-related quantities
         Plato::ScalarGrad<mSpaceDim> tComputeScalarGrad;
@@ -464,7 +457,8 @@ public:
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence;
         Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature, 
+                                                                                               mTemperatureScaling);
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
         Plato::InterpolateFromNodal<mSpaceDim, mSpaceDim, mDisplacementDofOffset, mSpaceDim> tInterpolatePressGradFromNodal;
@@ -479,21 +473,21 @@ public:
         Plato::FluxDivergence<mSpaceDim, mNumGlobalDofsPerNode, mTemperatureDofOffset> tThermalFluxDivergence;
         Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatzSIMP);
 
-        Plato::ScalarVectorT<ResultT> tPressure("L2 pressure", tNumCells);
+        Plato::ScalarVectorT<GlobalStateT> tPressure("L2 pressure", tNumCells);
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
-        Plato::ScalarVectorT<ResultT> tVolumeStrain("volume strain", tNumCells);
-        Plato::ScalarVectorT<ResultT> tStrainDivergence("strain divergence", tNumCells);
-        Plato::ScalarVectorT<ResultT> tTemperature("temperature", tNumCells);
-        Plato::ScalarVectorT<ResultT> tThermalVolumetricStrain("thermal volumetric strain", tNumCells);
+        Plato::ScalarVectorT<GState_Config_Control_T> tVolumeStrain("volume strain", tNumCells);
+        Plato::ScalarVectorT<GState_Config_T> tStrainDivergence("strain divergence", tNumCells);
+        Plato::ScalarVectorT<GlobalStateT> tTemperature("temperature", tNumCells);
+        Plato::ScalarVectorT<GlobalStateT> tThermalVolumetricStrain("thermal volumetric strain", tNumCells);
         Plato::ScalarMultiVectorT<ResultT> tStabilization("cell stabilization", tNumCells, mSpaceDim);
-        Plato::ScalarMultiVectorT<GradScalarT> tPressureGrad("pressure gradient", tNumCells, mSpaceDim);
-        Plato::ScalarMultiVectorT<GradScalarT> tTotalStrain("total strain", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<GState_Config_T> tPressureGrad("pressure gradient", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<GState_Config_T> tTotalStrain("total strain", tNumCells, mNumStressTerms);
         Plato::ScalarMultiVectorT<ResultT> tDeviatoricStress("deviatoric stress", tNumCells, mNumStressTerms);
-        Plato::ScalarMultiVectorT<ElasticStrainT> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
+        Plato::ScalarMultiVectorT<GState_Config_LState_T> tElasticStrain("elastic strain", tNumCells, mNumStressTerms);
         Plato::ScalarArray3DT<ConfigT> tConfigurationGradient("configuration gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
         Plato::ScalarMultiVectorT<NodeStateT> tProjectedPressureGradGP("projected pressure gradient", tNumCells, mSpaceDim);
-        Plato::ScalarMultiVectorT<GradScalarT> tTemperatureGrad("temperature grad", tNumCells, mSpaceDim);
-        Plato::ScalarMultiVectorT<ThermalFluxT> tThermalFlux("thermal flux", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<GState_Config_T> tTemperatureGrad("temperature grad", tNumCells, mSpaceDim);
+        Plato::ScalarMultiVectorT<GState_Config_Control_T> tThermalFlux("thermal flux", tNumCells, mSpaceDim);
 
         // output quantities
         Plato::ScalarMultiVectorT<ResultT> tCauchyStress("cauchy stress", tNumCells, mNumStressTerms);
@@ -509,7 +503,7 @@ public:
         auto tElasticBulkModulus = mElasticBulkModulus;
         auto tElasticShearModulus = mElasticShearModulus;
 
-        //auto tTemperatureScaling = mTemperatureScaling;
+        auto tTemperatureScaling = mTemperatureScaling;
         auto tThermalConductivityCoefficient = mThermalConductivityCoefficient;
         auto tThermalExpansionCoefficient = mThermalExpansionCoefficient;
         auto tReferenceTemperature = mReferenceTemperature;
@@ -526,8 +520,8 @@ public:
             tInterpolateTemperatureFromNodal(aCellOrdinal, tBasisFunctions, aCurrentGlobalState, tTemperature);
             tInterpolateTemperatureGradFromNodal(aCellOrdinal, tConfigurationGradient, aCurrentGlobalState, tTemperatureGrad);
             // Trace of the isotropic thermal strain tensor which for 2D plane strain and 3D is always 3*thermal_strain
-            tThermalVolumetricStrain(aCellOrdinal) = static_cast<ThermalFluxT>(3.0) * tThermalExpansionCoefficient * 
-                                                     (tTemperature(aCellOrdinal) - tReferenceTemperature);
+            tThermalVolumetricStrain(aCellOrdinal) = static_cast<GlobalStateT>(3.0) * tThermalExpansionCoefficient * 
+                                                     (tTemperatureScaling * tTemperature(aCellOrdinal) - tReferenceTemperature);
 
             // compute elastic strain, i.e. e_elastic = e_total - e_plastic - e_thermal
             tComputeTotalStrain(aCellOrdinal, tTotalStrain, aCurrentGlobalState, tConfigurationGradient);
@@ -552,10 +546,10 @@ public:
             tComputeStrainDivergence(aCellOrdinal, tTotalStrain, tStrainDivergence); /*This is actually displacement divergence*/
 
             // compute volume difference
-            tPressure(aCellOrdinal) *= tPressureScaling * tElasticPropertiesPenalty;
-            tVolumeStrain(aCellOrdinal) = tPressureScaling * tElasticPropertiesPenalty /* IS THIS RIGHT WITH DOUBLE PENALTY ON PRESSURE? Shouldn't it
-                                                                                          just be on the bulk modulus? */
-                * (tStrainDivergence(aCellOrdinal) - tThermalVolumetricStrain(aCellOrdinal) - tPressure(aCellOrdinal) / tElasticBulkModulus);
+            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
+            tPressure(aCellOrdinal) *= tPressureScaling;
+            tVolumeStrain(aCellOrdinal) = tPressureScaling
+                * (tStrainDivergence(aCellOrdinal) - tThermalVolumetricStrain(aCellOrdinal) - tPressure(aCellOrdinal) / tPenalizedBulkModulus);
 
             // compute cell stabilization term
             tComputeStabilization(aCellOrdinal, tCellVolume, tPressureGrad, tProjectedPressureGradGP, tStabilization);
@@ -564,8 +558,8 @@ public:
             // compute the thermal flux
             ControlT tPenalizedThermalConductivityCoefficient = tElasticPropertiesPenalty * tThermalConductivityCoefficient;
             for (Plato::OrdinalType tDimIndex = 0; tDimIndex < tSpaceDim; ++tDimIndex)
-                tThermalFlux(aCellOrdinal, tDimIndex) = static_cast<ThermalFluxT>(-1.0) * tPenalizedThermalConductivityCoefficient *
-                                                        tTemperatureGrad(aCellOrdinal, tDimIndex);
+                tThermalFlux(aCellOrdinal, tDimIndex) = static_cast<GState_Config_Control_T>(-1.0) * tPenalizedThermalConductivityCoefficient *
+                                                        tTemperatureScaling * tTemperatureGrad(aCellOrdinal, tDimIndex);
 
             // compute residual
             tStressDivergence (aCellOrdinal, aResult, tDeviatoricStress, tConfigurationGradient, tCellVolume);
@@ -575,7 +569,6 @@ public:
             tProjectVolumeStrain (aCellOrdinal, tCellVolume, tBasisFunctions, tVolumeStrain, aResult);
 
             // prepare output data
-            ControlT tPenalizedBulkModulus = tElasticPropertiesPenalty * tElasticBulkModulus;
             tComputeCauchyStress(aCellOrdinal, tPenalizedBulkModulus, tPenalizedShearModulus, tElasticStrain, tCauchyStress);
             tJ2PlasticityUtils.getPlasticMultiplierIncrement(aCellOrdinal, aCurrentLocalState, tPlasticMultiplier);
             tJ2PlasticityUtils.getAccumulatedPlasticStrain(aCellOrdinal, aCurrentLocalState, tAccumPlasticStrain);
