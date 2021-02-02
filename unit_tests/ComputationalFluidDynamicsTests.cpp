@@ -132,6 +132,15 @@ dot(const Plato::OrdinalType & aCellOrdinal,
 namespace blas1
 {
 
+inline void fabs(Plato::ScalarVector & aXvec)
+{
+    Plato::OrdinalType tLength = aXvec.size();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        aXvec(aOrdinal) = fabs(aXvec(aOrdinal));
+    }, "copy vector");
+}
+
 template<Plato::OrdinalType Length,
          typename ScalarT,
          typename AViewTypeT,
@@ -7812,6 +7821,7 @@ calculate_artificial_compressibility
     return tArtificialCompressibility;
 }
 
+/*
 inline Plato::ScalarVector
 calculate_critical_time_step
 (const Plato::SpatialModel & aSpatialModel,
@@ -7837,6 +7847,34 @@ calculate_critical_time_step
 
     return tCriticalTimeStep;
 }
+*/
+
+
+inline Plato::ScalarVector
+calculate_critical_time_step
+(const Plato::SpatialModel & aSpatialModel,
+ const Plato::ScalarVector & aElemCharSize,
+ const Plato::ScalarVector & aVelocityField,
+ Plato::Scalar aSafetyFactor = 0.9)
+{
+    auto tNumNodes = aSpatialModel.Mesh.nverts();
+    Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
+    {
+        tLocalTimeStep(aNodeOrdinal) = aSafetyFactor * ( aElemCharSize(aNodeOrdinal) / aVelocityField(aNodeOrdinal) );
+    }, "calculate local critical time step");
+
+    Plato::Scalar tMinValue = 0;
+    Plato::blas1::min(tLocalTimeStep, tMinValue);
+    Plato::ScalarVector tCriticalTimeStep("global critical time step", 1);
+    auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
+    tHostCriticalTimeStep(0) = tMinValue;
+    Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
+
+    return tCriticalTimeStep;
+}
+
+
 
 inline Plato::ScalarVector
 update_surface_velocities
@@ -7869,8 +7907,9 @@ enforce_boundary_condition
     }, "enforce boundary condition");
 }
 
+/*
 inline Plato::ScalarVector
-calculate_pressure_residual
+calculate_field_misfit
 (const Plato::ScalarVector& aTimeStep,
  const Plato::ScalarVector& aCurrentPressure,
  const Plato::ScalarVector& aPreviousPressure,
@@ -7891,22 +7930,60 @@ calculate_pressure_residual
 
     return tResidual;
 }
+*/
 
+template
+<Plato::OrdinalType DofsPerNode>
+inline Plato::ScalarVector
+calculate_field_misfit
+(const Plato::OrdinalType & aNumNodes,
+ const Plato::ScalarVector& aFieldOne,
+ const Plato::ScalarVector& aFieldTwo)
+{
+    Plato::ScalarVector tResidual("pressure residual", aNumNodes);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNode)
+    {
+        for(Plato::OrdinalType tDof = 0; tDof < DofsPerNode; tDof++)
+        {
+            Plato::OrdinalType tLocalDof = aNode * DofsPerNode + tDof;
+            tResidual(tLocalDof) = aFieldOne(tLocalDof) - aFieldTwo(tLocalDof);
+        }
+    }, "calculate stopping criterion");
+
+    return tResidual;
+}
+
+/*
 inline Plato::Scalar
-calculate_residual_euclidean_norm
+calculate_field_misfit_euclidean_norm
 (const Plato::Variables & aStates)
 {
     auto tTimeStep = aStates.vector("critical time step");
     auto tCurrentPressure = aStates.vector("current pressure");
     auto tPreviousPressure = aStates.vector("previous pressure");
     auto tArtificialCompress = aStates.vector("artificial compressibility");
-    auto tResidual = Plato::cbs::calculate_pressure_residual(tTimeStep, tCurrentPressure, tPreviousPressure, tArtificialCompress);
+    auto tResidual = Plato::cbs::calculate_field_misfit(tTimeStep, tCurrentPressure, tPreviousPressure, tArtificialCompress);
+    auto tValue = Plato::blas1::norm(tResidual);
+    return tValue;
+}
+*/
+
+template
+<Plato::OrdinalType DofsPerNode>
+inline Plato::Scalar
+calculate_misfit_euclidean_norm
+(const Plato::OrdinalType aNumNodes,
+ const Plato::ScalarVector& aFieldOne,
+ const Plato::ScalarVector& aFieldTwo)
+{
+    auto tResidual = Plato::cbs::calculate_field_misfit<DofsPerNode>(aNumNodes, aFieldOne, aFieldTwo);
     auto tValue = Plato::blas1::norm(tResidual);
     return tValue;
 }
 
+/*
 inline Plato::Scalar
-calculate_residual_inf_norm
+calculate_field_misfit_inf_norm
 (const Plato::Variables & aStates)
 {
     std::vector<Plato::Scalar> tErrors;
@@ -7916,10 +7993,28 @@ calculate_residual_inf_norm
     auto tCurrentState = aStates.vector("current pressure");
     auto tPreviousState = aStates.vector("previous pressure");
     auto tArtificialCompress = aStates.vector("artificial compressibility");
-    auto tMyResidual = Plato::cbs::calculate_pressure_residual(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
+    auto tMyResidual = Plato::cbs::calculate_field_misfit(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
     Plato::Scalar tInfinityNorm = 0.0;
     Plato::blas1::max(tMyResidual, tInfinityNorm);
     return tInfinityNorm;
+}
+*/
+
+template
+<Plato::OrdinalType DofsPerNode>
+inline Plato::Scalar
+calculate_misfit_inf_norm
+(const Plato::OrdinalType aNumNodes,
+ const Plato::ScalarVector& aFieldOne,
+ const Plato::ScalarVector& aFieldTwo)
+{
+    auto tMyResidual = Plato::cbs::calculate_field_misfit<DofsPerNode>(aNumNodes, aFieldOne, aFieldTwo);
+
+    Plato::Scalar tOutput = 0.0;
+    Plato::blas1::fabs(tMyResidual);
+    Plato::blas1::max(tMyResidual, tOutput);
+
+    return tOutput;
 }
 
 }
@@ -7979,6 +8074,7 @@ private:
     bool mIsExplicitSolve = true;
     bool mCalculateHeatTransfer = false;
 
+    Plato::Scalar mViscosity = 1.0;
     Plato::Scalar mPrandtlNumber = 1.0;
     Plato::Scalar mReynoldsNumber = 1.0;
     Plato::Scalar mCBSsolverTolerance = 1e-5;
@@ -8336,25 +8432,20 @@ private:
         }
     }
 
-    Plato::Scalar calculateResidualNorm(const Plato::Primal & aVariables)
+    Plato::Scalar calculateVelocityMisfitNorm(const Plato::Primal & aVariables)
     {
-        Plato::Scalar tCriterionValue(0.0);
-        if (mIsExplicitSolve)
-        {
-            tCriterionValue = Plato::cbs::calculate_residual_euclidean_norm(aVariables);
-        }
-        else
-        {
-            tCriterionValue = Plato::cbs::calculate_residual_inf_norm(aVariables);
-        }
-        return tCriterionValue;
+        auto tNumNodes = mSpatialModel.Mesh.nverts();
+        auto tCurrentVelocity = aVariables.vector("current velocity");
+        auto tPreviousVelocity = aVariables.vector("previous velocity");
+        auto tOutput = Plato::cbs::calculate_misfit_euclidean_norm<mNumVelDofsPerNode>(tNumNodes, tCurrentVelocity, tPreviousVelocity);
+        return tOutput;
     }
 
     bool checkStoppingCriteria(const Plato::Primal & aVariables)
     {
         bool tStop = false;
-        Plato::OrdinalType tIteration = aVariables.scalar("iteration");
-        auto tCriterionValue = this->calculateResidualNorm(aVariables);
+        const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
+        const auto tCriterionValue= this->calculateVelocityMisfitNorm(aVariables);
         if(Plato::Comm::rank(mMachine) == 0)
         {
             printf("Convergence: Residual Norm = %e\n",tCriterionValue);
@@ -8391,7 +8482,8 @@ private:
         auto tArtificialCompress = Plato::cbs::calculate_artificial_compressibility(tConvectiveVel, tDiffusiveVel, tThermalVel);
         aVariables.vector("artificial compressibility", tArtificialCompress);
 
-        auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, tArtificialCompress, mTimeStepSafetyFactor);
+        //auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, tArtificialCompress, mTimeStepSafetyFactor);
+        auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, mTimeStepSafetyFactor);
         aVariables.vector("critical time step", tTimeStep);
     }
 
@@ -9170,25 +9262,20 @@ private:
         }
     }
 
-    Plato::Scalar calculateResidualNorm(const Plato::Primal & aVariables)
+    Plato::Scalar calculateVelocityMisfitNorm(const Plato::Primal & aVariables)
     {
-        Plato::Scalar tCriterionValue(0.0);
-        if (mIsExplicitSolve)
-        {
-            tCriterionValue = Plato::cbs::calculate_residual_euclidean_norm(aVariables);
-        }
-        else
-        {
-            tCriterionValue = Plato::cbs::calculate_residual_inf_norm(aVariables);
-        }
-        return tCriterionValue;
+        auto tNumNodes = mSpatialModel.Mesh.nverts();
+        auto tCurrentVelocity = aVariables.vector("current velocity");
+        auto tPreviousVelocity = aVariables.vector("previous velocity");
+        auto tOutput = Plato::cbs::calculate_misfit_euclidean_norm<mNumVelDofsPerNode>(tNumNodes, tCurrentVelocity, tPreviousVelocity);
+        return tOutput;
     }
 
     bool checkStoppingCriteria(const Plato::Primal & aVariables)
     {
         bool tStop = false;
         auto tTimeStepIndex = aVariables.scalar("step");
-        auto tCriterionValue = this->calculateResidualNorm(aVariables);
+        auto tCriterionValue = this->calculateVelocityMisfitNorm(aVariables);
         if(Plato::Comm::rank(mMachine) == 0)
         {
             printf("Convergence: Residual Norm = %e\n",tCriterionValue);
@@ -9227,8 +9314,7 @@ private:
             Plato::cbs::calculate_artificial_compressibility(tConvectiveVel, tDiffusiveVel, tThermalVel);
         aVariables.vector("artificial compressibility", tArtificialCompress);
 
-        auto tTimeStep = Plato::cbs::calculate_critical_time_step
-                (mSpatialModel, tElemCharSize, tConvectiveVel, tArtificialCompress, mTimeStepSafetyFactor);
+        auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, mTimeStepSafetyFactor);
         aVariables.vector("critical time step", tTimeStep);
     }
 
@@ -9716,12 +9802,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Steel'/>"
+            "        <Parameter name='Material Model' type='string' value='Water'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Material Models'>"
-            "    <ParameterList name='Steel'>"
+            "    <ParameterList name='Water'>"
             "      <ParameterList name='Thermal Properties'>"
             "        <Parameter  name='Fluid Thermal Conductivity'  type='double'  value='1'/>"
             "        <Parameter  name='Reference Temperature'       type='double'  value='10.0'/>"
@@ -9781,7 +9867,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
             "    <Parameter name='Max Number Iterations' type='int'    value='5'/>"
-            "    <Parameter name='Artificial Damping'    type='double' value='0.0'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -9995,19 +10080,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_NoWeight)
     //Plato::print(tOutput, "output");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualEuclideanNorm)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
 {
-    Plato::Variables tVariables;
-
-    // set time step
+    // set current pressure
     constexpr auto tNumNodes = 4;
-    Plato::ScalarVector tTimeStep("time step", 1);
-    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep);
-    tHostTimeStep(0) = 0.1;
-    Kokkos::deep_copy(tTimeStep, tHostTimeStep);
-    tVariables.vector("critical time step", tTimeStep);
-
-    // set element characteristic size
     Plato::ScalarVector tCurPressure("current pressure", tNumNodes);
     auto tHostCurPressure = Kokkos::create_mirror(tCurPressure);
     tHostCurPressure(0) = 1;
@@ -10015,9 +10091,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualEuclideanNorm)
     tHostCurPressure(2) = 3;
     tHostCurPressure(3) = 4;
     Kokkos::deep_copy(tCurPressure, tHostCurPressure);
-    tVariables.vector("current pressure", tCurPressure);
 
-    // set convective velocity
+    // set previous pressure
     Plato::ScalarVector tPrevPressure("previous pressure", tNumNodes);
     auto tHostPrevPressure = Kokkos::create_mirror(tPrevPressure);
     tHostPrevPressure(0) = 0.5;
@@ -10025,40 +10100,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualEuclideanNorm)
     tHostPrevPressure(2) = 0.7;
     tHostPrevPressure(3) = 0.8;
     Kokkos::deep_copy(tPrevPressure, tHostPrevPressure);
-    tVariables.vector("previous pressure", tPrevPressure);
 
-    // set artificial compressibility
-    Plato::ScalarVector tArtificialCompress("artificial compressibility", tNumNodes);
-    auto tHostArtificialCompress = Kokkos::create_mirror(tArtificialCompress);
-    tHostArtificialCompress(0) = 0.1;
-    tHostArtificialCompress(1) = 0.2;
-    tHostArtificialCompress(2) = 0.3;
-    tHostArtificialCompress(3) = 0.4;
-    Kokkos::deep_copy(tArtificialCompress, tHostArtificialCompress);
-    tVariables.vector("artificial compressibility", tArtificialCompress);
-
-    // call funciton
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
-    auto tValue = Plato::cbs::calculate_residual_euclidean_norm(tVariables);
+    // call function
+    constexpr auto tDofsPerNode = 1;
+    auto tValue = Plato::cbs::calculate_misfit_euclidean_norm<tDofsPerNode>(tNumNodes, tCurPressure, tPrevPressure);
 
     // test result
     auto tTol = 1e-4;
+    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
     TEST_FLOATING_EQUALITY(5.3887059e2, tValue, tTol);
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualInfNorm)
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitInfNorm)
 {
-    Plato::Variables tVariables;
-
-    // set time step
+    // set current pressure
     constexpr auto tNumNodes = 4;
-    Plato::ScalarVector tTimeStep("time step", 1);
-    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep);
-    tHostTimeStep(0) = 0.1;
-    Kokkos::deep_copy(tTimeStep, tHostTimeStep);
-    tVariables.vector("critical time step", tTimeStep);
-
-    // set element characteristic size
     Plato::ScalarVector tCurPressure("current pressure", tNumNodes);
     auto tHostCurPressure = Kokkos::create_mirror(tCurPressure);
     tHostCurPressure(0) = 1;
@@ -10066,9 +10122,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualInfNorm)
     tHostCurPressure(2) = 3;
     tHostCurPressure(3) = 4;
     Kokkos::deep_copy(tCurPressure, tHostCurPressure);
-    tVariables.vector("current pressure", tCurPressure);
 
-    // set convective velocity
+    // set previous pressure
     Plato::ScalarVector tPrevPressure("previous pressure", tNumNodes);
     auto tHostPrevPressure = Kokkos::create_mirror(tPrevPressure);
     tHostPrevPressure(0) = 0.5;
@@ -10076,20 +10131,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualInfNorm)
     tHostPrevPressure(2) = 0.7;
     tHostPrevPressure(3) = 0.8;
     Kokkos::deep_copy(tPrevPressure, tHostPrevPressure);
-    tVariables.vector("previous pressure", tPrevPressure);
-
-    // set artificial compressibility
-    Plato::ScalarVector tArtificialCompress("artificial compressibility", tNumNodes);
-    auto tHostArtificialCompress = Kokkos::create_mirror(tArtificialCompress);
-    tHostArtificialCompress(0) = 0.1;
-    tHostArtificialCompress(1) = 0.2;
-    tHostArtificialCompress(2) = 0.3;
-    tHostArtificialCompress(3) = 0.4;
-    Kokkos::deep_copy(tArtificialCompress, tHostArtificialCompress);
-    tVariables.vector("artificial compressibility", tArtificialCompress);
 
     // call funciton
-    auto tValue = Plato::cbs::calculate_residual_inf_norm(tVariables);
+    constexpr auto tDofsPerNode = 1;
+    auto tValue = Plato::cbs::calculate_misfit_inf_norm<tDofsPerNode>(tNumNodes, tCurPressure, tPrevPressure);
 
     // test result
     // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
@@ -10099,17 +10144,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateResidualInfNorm)
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
 {
-    // set time step
-    constexpr auto tNumNodes = 4;
-    Plato::ScalarVector tTimeStep("time step", tNumNodes);
-    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep);
-    tHostTimeStep(0) = 0.1;
-    tHostTimeStep(1) = 0.2;
-    tHostTimeStep(2) = 0.3;
-    tHostTimeStep(3) = 0.4;
-    Kokkos::deep_copy(tTimeStep, tHostTimeStep);
-
     // set element characteristic size
+    constexpr auto tNumNodes = 4;
     Plato::ScalarVector tCurPressure("current pressure", tNumNodes);
     auto tHostCurPressure = Kokkos::create_mirror(tCurPressure);
     tHostCurPressure(0) = 1;
@@ -10127,19 +10163,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculatePressureResidual)
     tHostPrevPressure(3) = 0.8;
     Kokkos::deep_copy(tPrevPressure, tHostPrevPressure);
 
-    // set artificial compressibility
-    Plato::ScalarVector tArtificialCompress("artificial compressibility", tNumNodes);
-    auto tHostArtificialCompress = Kokkos::create_mirror(tArtificialCompress);
-    tHostArtificialCompress(0) = 0.1;
-    tHostArtificialCompress(1) = 0.2;
-    tHostArtificialCompress(2) = 0.3;
-    tHostArtificialCompress(3) = 0.4;
-    Kokkos::deep_copy(tArtificialCompress, tHostArtificialCompress);
-
     // call function
-    auto tResidual = Plato::cbs::calculate_pressure_residual(tTimeStep, tCurPressure, tPrevPressure, tArtificialCompress);
+    constexpr auto tDofsPerNode = 1;
+    auto tResidual = Plato::cbs::calculate_field_misfit<tDofsPerNode>(tNumNodes, tCurPressure, tPrevPressure);
 
     // test results
+    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
     auto tTol = 1e-4;
     auto tHostResidual = Kokkos::create_mirror(tResidual);
     Kokkos::deep_copy(tHostResidual, tResidual);
