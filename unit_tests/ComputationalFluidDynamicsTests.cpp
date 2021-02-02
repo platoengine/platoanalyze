@@ -9761,7 +9761,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "    <ParameterList  name='Tangential Velocity'>"
             "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
-            "      <Parameter  name='Value'    type='double' value='1e-6'/>"
+            "      <Parameter  name='Value'    type='double' value='1.0'/>"
             "      <Parameter  name='Index'    type='int'    value='0'/>"
             "      <Parameter  name='Sides'    type='string' value='velocity'/>"
             "    </ParameterList>"
