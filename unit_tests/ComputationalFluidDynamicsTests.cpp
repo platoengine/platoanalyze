@@ -132,7 +132,7 @@ dot(const Plato::OrdinalType & aCellOrdinal,
 namespace blas1
 {
 
-inline void fabs(Plato::ScalarVector & aXvec)
+inline void abs(const Plato::ScalarVector & aXvec)
 {
     Plato::OrdinalType tLength = aXvec.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
@@ -147,7 +147,7 @@ template<Plato::OrdinalType Length,
          typename BViewTypeT>
 DEVICE_TYPE inline void
 update(const Plato::OrdinalType & aCellOrdinal,
-      const ScalarT & aAlpha,
+       const ScalarT & aAlpha,
       const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
       const ScalarT & aBeta,
       const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
@@ -8012,7 +8012,7 @@ calculate_misfit_inf_norm
     auto tMyResidual = Plato::cbs::calculate_field_misfit<DofsPerNode>(aNumNodes, aFieldOne, aFieldTwo);
 
     Plato::Scalar tOutput = 0.0;
-    Plato::blas1::fabs(tMyResidual);
+    Plato::blas1::abs(tMyResidual);
     Plato::blas1::max(tMyResidual, tOutput);
 
     return tOutput;
@@ -10207,17 +10207,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateStableTimeStep)
     tHostVelocity(3) = 4;
     Kokkos::deep_copy(tVelocity, tHostVelocity);
 
-    // set artificial compressibility
-    Plato::ScalarVector tArtificialCompress("artificial compressibility", tNumNodes);
-    auto tHostArtificialCompress = Kokkos::create_mirror(tArtificialCompress);
-    tHostArtificialCompress(0) = 0.1;
-    tHostArtificialCompress(1) = 0.2;
-    tHostArtificialCompress(2) = 0.3;
-    tHostArtificialCompress(3) = 0.4;
-    Kokkos::deep_copy(tArtificialCompress, tHostArtificialCompress);
-
     // call function
-    auto tTimeStep = Plato::cbs::calculate_critical_time_step(tSpatialModel, tElemCharSize, tVelocity, tArtificialCompress);
+    auto tTimeStep = Plato::cbs::calculate_critical_time_step(tSpatialModel, tElemCharSize, tVelocity);
 
     // test results
     auto tTol = 1e-4;
