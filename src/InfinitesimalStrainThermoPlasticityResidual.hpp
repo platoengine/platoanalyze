@@ -238,8 +238,7 @@ private:
         if (tMaterialInputs.isSublist("Isotropic Linear Thermoelastic"))
         {
             auto tThermoelasticSubList = tMaterialInputs.sublist("Isotropic Linear Thermoelastic");
-            //mPoissonsRatio = tThermoelasticSubList.get<Plato::Scalar>("Poissons Ratio");
-            //mElasticModulus = tThermoelasticSubList.get<Plato::Scalar>("Youngs Modulus");
+
             mPoissonsRatio = Plato::parse_poissons_ratio(tThermoelasticSubList);
             mElasticModulus = Plato::parse_elastic_modulus(tThermoelasticSubList);
             mElasticBulkModulus = Plato::compute_bulk_modulus(mElasticModulus, mPoissonsRatio);
