@@ -315,7 +315,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
     Plato::Comm::Machine tMachine(myComm);
 
-    constexpr Plato::Scalar tPressureScaling    = 100.0;
+    //constexpr Plato::Scalar tPressureScaling    = 100.0;
     constexpr Plato::Scalar tTemperatureScaling = 100.0;
 
     // 1. Construct plasticity problem
@@ -329,7 +329,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     const Plato::OrdinalType tDispDofX = 0;
     const Plato::OrdinalType tDispDofY = 1;
     const Plato::OrdinalType tTemperatureDof = 2;
-    const Plato::OrdinalType tPressureDof = 3;
+    //const Plato::OrdinalType tPressureDof = 3;
     constexpr auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     auto tDirichletIndicesBoundaryX0_X = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
     auto tDirichletIndicesBoundaryX0_Y = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofY);
@@ -413,7 +413,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     Plato::OrdinalType tTimeStep = 4;
     for(Plato::OrdinalType tOrdinal=0; tOrdinal< tSolution.extent(1); tOrdinal++)
     {
-        TEST_FLOATING_EQUALITY(tHostSolution(tTimeStep, tOrdinal), tGoldSolution[0][tOrdinal], tTolerance);
+        const Plato::Scalar tValue = std::abs(tHostSolution(tTimeStep, tOrdinal)) < 1.0e-14 ? 0.0 : tHostSolution(tTimeStep, tOrdinal);
+        TEST_FLOATING_EQUALITY(tValue, tGoldSolution[0][tOrdinal], tTolerance);
     }
 
     // Plato::OrdinalType tIdx = 0;
@@ -534,7 +535,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
     Plato::Comm::Machine tMachine(myComm);
 
-    constexpr Plato::Scalar tPressureScaling    = 100.0;
+    //constexpr Plato::Scalar tPressureScaling    = 100.0;
     constexpr Plato::Scalar tTemperatureScaling = 100.0;
 
     // 1. Construct plasticity problem
@@ -549,7 +550,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     const Plato::OrdinalType tDispDofY = 1;
     const Plato::OrdinalType tDispDofZ = 2;
     const Plato::OrdinalType tTemperatureDof = 3;
-    const Plato::OrdinalType tPressureDof = 4;
+    //const Plato::OrdinalType tPressureDof = 4;
     constexpr auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     auto tDirichletIndicesBoundaryX0_X = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
     auto tDirichletIndicesBoundaryX0_Y = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofY);
@@ -662,7 +663,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     Plato::OrdinalType tTimeStep = 4;
     for(Plato::OrdinalType tOrdinal=0; tOrdinal< tSolution.extent(1); tOrdinal++)
     {
-        TEST_FLOATING_EQUALITY(tHostSolution(tTimeStep, tOrdinal), tGoldSolution[0][tOrdinal], tTolerance);
+        const Plato::Scalar tValue = std::abs(tHostSolution(tTimeStep, tOrdinal)) < 1.0e-14 ? 0.0 : tHostSolution(tTimeStep, tOrdinal);
+        TEST_FLOATING_EQUALITY(tValue, tGoldSolution[0][tOrdinal], tTolerance);
     }
 
     // Plato::OrdinalType tIdx = 0;
@@ -770,7 +772,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution2D)
     Plato::OrdinalType tDispDofX = 0;
     Plato::OrdinalType tDispDofY = 1;
     Plato::OrdinalType tTemperatureDof = 2;
-    Plato::OrdinalType tPressureDof = 3;
+    //Plato::OrdinalType tPressureDof = 3;
     constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     auto tDirichletIndicesBoundaryX0_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
     auto tDirichletIndicesBoundaryY0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
@@ -949,7 +951,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_RodElasticSolution3D)
     Plato::OrdinalType tDispDofY = 1;
     Plato::OrdinalType tDispDofZ = 2;
     Plato::OrdinalType tTemperatureDof = 3;
-    Plato::OrdinalType tPressureDof = 4;
+    //Plato::OrdinalType tPressureDof = 4;
     constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     auto tDirichletIndicesBoundaryX0_X = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
     auto tDirichletIndicesBoundaryY0_Y = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
@@ -1151,7 +1153,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
     Plato::OrdinalType tDispDofY = 1;
     Plato::OrdinalType tDispDofZ = 2;
     Plato::OrdinalType tTemperatureDof = 3;
-    Plato::OrdinalType tPressureDof = 4;
+    //Plato::OrdinalType tPressureDof = 4;
     constexpr Plato::OrdinalType tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     auto tDirichletIndicesBoundaryX0_Xdof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
     auto tDirichletIndicesBoundaryY0_Ydof = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_3D(*tMesh, "y0", tNumDofsPerNode, tDispDofY);
