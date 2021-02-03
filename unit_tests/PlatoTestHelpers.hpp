@@ -269,6 +269,37 @@ inline Omega_h::LOs get_edge_ids_on_y1(Omega_h::Mesh & aMesh)
     return (tLocalOrdinals);
 }
 
+/******************************************************************************//**
+ * \brief Get face IDs on a specific side of the box mesh for applying loads
+ *   Specialized for 3-D applications.
+ *
+ * \param [in] aMesh       finite element mesh
+ * \param [in] aBoundaryID boundary identifier
+ * \return array of face ids
+ **********************************************************************************/
+inline Omega_h::LOs get_face_ids_on_boundary_3D(Omega_h::Mesh & aMesh, const std::string & aBoundaryID)
+{
+    const Omega_h::Int tFaceDim = 2;
+    Omega_h::Read<Omega_h::I8> Marks;
+    if(aBoundaryID == "x0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 12);
+    else if(aBoundaryID == "x1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 14);
+    else if(aBoundaryID == "y0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 10);
+    else if(aBoundaryID == "y1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 16);
+    else if(aBoundaryID == "z0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 4);
+    else if(aBoundaryID == "z1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tFaceDim, tFaceDim, 22);
+    else
+        THROWERR("Specifed boundary ID not implemented.")
+
+    Omega_h::LOs tLocalOrdinals = Omega_h::collect_marked(Marks);
+    return (tLocalOrdinals);
+}
+
 /******************************************************************************/
 // This one Tpetra likes; will have to check whether this works with Magma
 // Sparse and AmgX or if we need to do something to factor this out
