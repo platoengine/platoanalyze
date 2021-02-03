@@ -8704,25 +8704,57 @@ private:
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aVariables)
     {
-        // calculate current residual and jacobian matrix
         auto tCurrentPressure = aVariables.vector("current pressure");
         Plato::blas1::fill(0.0, tCurrentPressure);
-        auto tResidualPressure = mPressureResidual.value(aControl, aVariables);
-        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aVariables);
+
+        // calculate current residual and jacobian matrix
+        auto tResidual = mPressureResidual.value(aControl, aVariables);
+        auto tJacobian = mPressureResidual.gradientCurrentPress(aControl, aVariables);
 
         // apply constraints
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mPressureEssentialBCs.get(tBcDofs, tBcValues);
-        Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobianPressure, tResidualPressure);
-        Plato::print_sparse_matrix_to_file(tJacobianPressure,"jacobian_pressure.txt");
+        Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+        auto tInitialResidualNorm = Plato::blas1::norm(tResidual);
 
-        // solve mass equation (consistent or mass lumped)
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
-        Plato::blas1::scale(-1.0, tResidualPressure);
-        tSolver->solve(*tJacobianPressure, tCurrentPressure, tResidualPressure);
+        Plato::OrdinalType tIteration = 1;
+        auto tPreviousPressure = aVariables.vector("previous pressure");
+        Plato::blas1::update(1.0, tPreviousPressure, 1.0, tCurrentPressure);
+        Plato::ScalarVector tDeltaPressure("delta pressure", tCurrentPressure.size());
+
+        while(true)
+        {
+            // solve mass equation (consistent or mass lumped)
+            Plato::blas1::scale(-1.0, tResidual);
+            Plato::blas1::fill(0.0, tDeltaPressure);
+            auto tParamList = mInputs.sublist("Linear Solver");
+            Plato::SolverFactory tSolverFactory(tParamList);
+            auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
+            tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
+
+            // update current pressure
+            Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
+
+            // calculate current residual and jacobian matrix
+            tResidual = mPressureResidual.value(aControl, aVariables);
+            tJacobian = mPressureResidual.gradientCurrentPress(aControl, aVariables);
+
+            // apply constraints
+            Plato::ScalarVector tBcValues;
+            Plato::LocalOrdinalVector tBcDofs;
+            mPressureEssentialBCs.get(tBcDofs, tBcValues);
+            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+
+            auto tResidualNorm = Plato::blas1::norm(tResidual);
+            auto tStopCriterion = tResidualNorm / tInitialResidualNorm;
+            if(tStopCriterion <= 1e-4)
+            {
+                break;
+            }
+
+            tIteration++
+        }
     }
 
     void updateTemperature
