@@ -8502,11 +8502,29 @@ private:
         aVariables.vector("artificial compressibility", tArtificialCompress);
         //auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, tArtificialCompress, mTimeStepSafetyFactor);
         */
+        auto tIteration = aVariables.scalar("iteration");
         auto tPreviousVelocity = aVariables.vector("previous velocity");
         auto tElemCharSize = aVariables.vector("element characteristic size");
-        auto tConvectiveVel =  Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tPreviousVelocity);
-        auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, mTimeStepSafetyFactor);
-        aVariables.vector("critical time step", tTimeStep);
+
+        if(tIteration > 0)
+        {
+            auto tConvectiveVel =  Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tPreviousVelocity);
+            auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, mTimeStepSafetyFactor);
+            aVariables.vector("critical time step", tTimeStep);
+        }
+        else
+        {
+            Plato::ScalarVector tBcValues;
+            Plato::LocalOrdinalVector tBcDofs;
+            mVelocityEssentialBCs.get(tBcDofs, tBcValues);
+            Plato::ScalarVector tInitialVelocity("initial velocity", tPreviousVelocity.size());
+            Plato::blas1::update(1.0, tPreviousVelocity, 0.0, tInitialVelocity);
+            Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tInitialVelocity);
+
+            auto tInitialConvectiveVel =  Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tInitialVelocity);
+            auto tInitialTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tInitialConvectiveVel, mTimeStepSafetyFactor);
+            aVariables.vector("critical time step", tInitialTimeStep);
+        }
     }
 
     void updateSurfaceVelocityField(Plato::Primal & aVariables)
