@@ -222,8 +222,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
 {
     const bool tOutputData = true; // for debugging purpose, set true to enable Paraview output
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    const Plato::OrdinalType tNumElemX = 50;
-    const Plato::OrdinalType tNumElemY = 5;
+    const Plato::OrdinalType tNumElemX = 10;
+    const Plato::OrdinalType tNumElemY = 2;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(10.0,1.0,tNumElemX,tNumElemY);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -243,16 +243,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
       "  <Parameter name='Physics'          type='string'  value='Plasticity'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
       "  <ParameterList name='Material Models'>                                                 \n"
-      "    <Parameter  name='Pressure Scaling'    type='double' value='1000.0'/>                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='100.0'/>                 \n"
       "    <Parameter  name='Temperature Scaling' type='double' value='100.0'/>                 \n"
       "    <ParameterList name='Unobtainium'>                                                   \n"
       "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
       "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
-      "        <Parameter  name='Poissons Ratio' type='double' value='0.0'/>                    \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
       "        <Parameter  name='Youngs Modulus' type='double' value='75.0e3'/>                 \n"
-      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='50.0'/> \n"
-      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-20'/>  \n"
-      "        <Parameter  name='Reference Temperature' type='double' value='10.0'/>            \n"
+      "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
+      "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
+      "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
       "      </ParameterList>                                                                   \n"
       "      <ParameterList name='Plasticity Model'>                                               \n"
       "        <ParameterList name='J2 Plasticity'>                                                \n"
@@ -285,25 +285,25 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='5'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='5'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='6'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='6'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
-      "    <Parameter name='Maximum Number Iterations' type='int' value='10'/>                  \n"
+      "    <Parameter name='Maximum Number Iterations' type='int' value='25'/>                  \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList  name='Natural Boundary Conditions'>                                    \n"
       "   <ParameterList  name='Mechanical Natural Boundary Conditions'>                        \n"
       "   <ParameterList  name='Traction Vector Boundary Condition'>                            \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
-      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, -7.0}'/>              \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{0.0, -16.0}'/>             \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "   </ParameterList>                                                                      \n"
       "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
       "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
-      "     <Parameter  name='Values'   type='Array(double)' value='{0.0e-9}'/>                 \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                 \n"
       "     <Parameter  name='Sides'    type='string'        value='Load'/>                     \n"
       "   </ParameterList>                                                                      \n"
       "   </ParameterList>                                                                      \n"
@@ -315,7 +315,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
     Plato::Comm::Machine tMachine(myComm);
 
-    constexpr Plato::Scalar tPressureScaling    = 1000.0;
+    constexpr Plato::Scalar tPressureScaling    = 100.0;
     constexpr Plato::Scalar tTemperatureScaling = 100.0;
 
     // 1. Construct plasticity problem
@@ -329,6 +329,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     const Plato::OrdinalType tDispDofX = 0;
     const Plato::OrdinalType tDispDofY = 1;
     const Plato::OrdinalType tTemperatureDof = 2;
+    const Plato::OrdinalType tPressureDof = 3;
     constexpr auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
     auto tDirichletIndicesBoundaryX0_X = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofX);
     auto tDirichletIndicesBoundaryX0_Y = PlatoUtestHelpers::get_dirichlet_indices_on_boundary_2D(*tMesh, "x0", tNumDofsPerNode, tDispDofY);
@@ -356,7 +357,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     tOffset += tDirichletIndicesBoundaryX0_Y.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tDirichletIndicesBoundaryX0_T.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aIndex)
     {
-        tDirichletValues(aIndex + tOffset) = 110.0/tTemperatureScaling;
+        tDirichletValues(aIndex + tOffset) = 0.0/tTemperatureScaling;
         tDirichletDofs(aIndex + tOffset) = tDirichletIndicesBoundaryX0_T(aIndex);
     }, "set dirichlet values and indices");
 
@@ -370,48 +371,58 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     auto tSolution = tPlasticityProblem.solution(tControls).State;
 
     // 5. Test results
-    Plato::ScalarMultiVector tPressure("Pressure", tSolution.extent(0), tNumVertices);
-    Plato::ScalarMultiVector tDisplacements("Displacements", tSolution.extent(0), tNumVertices * tSpaceDim);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>(tSolution, tPressure);
-    Plato::blas2::extract<PhysicsT::mNumDofsPerNode, tSpaceDim>(tNumVertices, tSolution, tDisplacements);
+    constexpr Plato::Scalar tTolerance = 1e-4;
+    auto tHostSolution = Kokkos::create_mirror(tSolution);
+    Kokkos::deep_copy(tHostSolution, tSolution);
+    std::vector<std::vector<Plato::Scalar>> tGoldSolution =
+        {
+         {   0.00000e+00,  0.00000e+00, 0.00000e+00, -4.60073e-01, 
+             0.00000e+00,  0.00000e+00, 0.00000e+00,  2.92597e-01, 
+            -5.99021e-03, -6.11782e-03, 5.55556e-02, -6.10071e-01, 
+            -1.37979e-04, -6.16735e-03, 5.55556e-02, -4.73334e-02, 
+             5.30779e-03, -5.97557e-03, 5.55556e-02,  5.01814e-01, 
+             0.00000e+00,  0.00000e+00, 0.00000e+00,  7.56213e-01, 
+             1.05837e-02, -2.24066e-02, 1.11111e-01,  4.79371e-01, 
+            -1.01017e-02, -2.27897e-02, 1.11111e-01, -5.30318e-01, 
+             2.39631e-04, -2.27974e-02, 1.11111e-01, -3.39245e-02, 
+            -1.36176e-02, -4.79304e-02, 1.66667e-01, -5.19952e-01, 
+             6.50520e-04, -4.78380e-02, 1.66667e-01, -9.47773e-02, 
+             1.48799e-02, -4.73995e-02, 1.66667e-01,  3.46734e-01, 
+            -1.64159e-02, -8.03862e-02, 2.22222e-01, -4.87420e-01, 
+             1.24878e-03, -8.01807e-02, 2.22222e-01, -1.24111e-01, 
+             1.88708e-02, -7.96757e-02, 2.22222e-01,  2.56499e-01, 
+             2.57863e-02, -1.61998e-01, 3.33333e-01,  6.82856e-02, 
+             2.25060e-02, -1.18226e-01, 2.77778e-01,  1.62893e-01, 
+             2.01154e-03, -1.18789e-01, 2.77778e-01, -1.55874e-01, 
+            -1.85247e-02, -1.19103e-01, 2.77778e-01, -4.57126e-01, 
+             2.94142e-03, -1.62620e-01, 3.33333e-01, -1.88294e-01, 
+            -1.99453e-02, -1.63042e-01, 3.33333e-01, -4.27379e-01, 
+             2.87126e-02, -2.09949e-01, 3.88889e-01, -2.60069e-02, 
+             4.03889e-03, -2.10631e-01, 3.88889e-01, -2.20413e-01, 
+            -2.06769e-02, -2.11161e-01, 3.88889e-01, -3.97245e-01, 
+             5.30302e-03, -2.61778e-01, 4.44444e-01, -2.51787e-01, 
+            -2.07204e-02, -2.62419e-01, 4.44444e-01, -3.65485e-01, 
+             3.12849e-02, -2.61036e-01, 4.44444e-01, -1.19732e-01, 
+             3.53487e-02, -3.68458e-01, 5.55556e-01, -2.77992e-01, 
+             3.35094e-02, -3.14218e-01, 5.00000e-01, -2.19214e-01, 
+             6.74259e-03, -3.15013e-01, 5.00000e-01, -2.92422e-01, 
+            -2.00609e-02, -3.15766e-01, 5.00000e-01, -3.47337e-01, 
+             8.33202e-03, -3.69287e-01, 5.55556e-01, -3.19877e-01, 
+            -1.87189e-02, -3.70104e-01, 5.55556e-01, -3.46729e-01}
+        };
+    Plato::OrdinalType tTimeStep = 4;
+    for(Plato::OrdinalType tOrdinal=0; tOrdinal< tSolution.extent(1); tOrdinal++)
+    {
+        TEST_FLOATING_EQUALITY(tHostSolution(tTimeStep, tOrdinal), tGoldSolution[0][tOrdinal], tTolerance);
+    }
 
-    // 5.1 test pressure
-    // constexpr Plato::Scalar tTolerance = 1e-4;
-    // auto tHostPressure = Kokkos::create_mirror(tPressure);
-    // Kokkos::deep_copy(tHostPressure, tPressure);
-    // std::vector<std::vector<Plato::Scalar>> tGoldPress =
-    //     {
-    //      {-2.115362e+02, -1.874504e+03, -2.294189e+02, -1.516672e+03, -2.785281e+03, -2.925495e+03, -2.970340e+03, -4.293099e+02,
-    //       -1.685521e+03, -5.322904e+02, -1.665030e+03, -2.835582e+03, -6.988780e+02, -1.668066e+03, -2.687101e+03, -2.258380e+03,
-    //       -2.495897e+03, -1.672543e+03, -9.116663e+02, -1.675849e+03, -1.168386e+03, -1.974995e+03, -1.677669e+03, -1.470044e+03,
-    //       -1.702233e+03, -1.860586e+03, -1.668134e+03, -1.143118e+03, -1.319865e+03, -1.653114e+03, -2.204908e+03, -1.995014e+03,
-    //       -2.705687e+03}
-    //     };
-    // Plato::OrdinalType tTimeStep = 1;
-    // for(Plato::OrdinalType tOrdinal=0; tOrdinal< tPressure.extent(1); tOrdinal++)
+    // Plato::OrdinalType tIdx = 0;
+    // for (Plato::OrdinalType tIndexK = 0; tIndexK < tNumVertices; tIndexK++)
     // {
-    //     //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostPressure(tTimeStep, tOrdinal));
-    //     TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), tGoldPress[0][tOrdinal], tTolerance);
-    // }
-
-    // 5.2 test displacement
-    // auto tHostDisplacements = Kokkos::create_mirror(tDisplacements);
-    // Kokkos::deep_copy(tHostDisplacements, tDisplacements);
-    // std::vector<std::vector<Plato::Scalar>> tGoldDisp =
-    //     {
-    //      {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, -6.164854e-02, -1.189951e-03,
-    //       -6.163677e-02, 0.0, -6.243005e-02, -2.395852e-03, -5.908745e-02, 9.381758e-04, -5.919208e-02, -7.291411e-04, -5.909716e-02,
-    //       1.326328e-03, -5.503616e-02, -1.099687e-03, -5.494402e-02, -3.525908e-03, -5.492911e-02, 1.629318e-03, -4.941788e-02,  -1.472318e-03,
-    //       -4.933201e-02, -4.573797e-03, -4.931350e-02, -6.306177e-03, -3.454268e-02, -5.510012e-03, -4.243363e-02, -1.845476e-03, -4.245746e-02,
-    //       1.819180e-03, -4.253584e-02, -2.219095e-03, -3.457328e-02, 1.868041e-03, -3.464274e-02, -6.934208e-03, -2.594957e-02, -2.593272e-03,
-    //       -2.598862e-02, 1.747752e-03, -2.604802e-02, -2.966076e-03, -1.706881e-02, 1.432299e-03, -1.711426e-02, -7.365046e-03, -1.702033e-02,
-    //       -7.602023e-03, 1.234104e-04,  -7.582309e-03, -8.182097e-03, -3.335936e-03, -8.239034e-03, 8.764536e-04, -8.256626e-03, -3.587180e-03,
-    //       1.188541e-05, 0.0, 0.0}
-    //     };
-    // for(Plato::OrdinalType tOrdinal=0; tOrdinal< tDisplacements.extent(1); tOrdinal++)
-    // {
-    //     //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostDisplacements(tTimeStep, tOrdinal));
-    //     TEST_FLOATING_EQUALITY(tHostDisplacements(tTimeStep, tOrdinal), tGoldDisp[0][tOrdinal], tTolerance);
+    //   tIdx = tIndexK * tNumDofsPerNode + tDispDofX;       printf("DofX: %12.5e, ",  tHostSolution(4, tIdx));
+    //   tIdx = tIndexK * tNumDofsPerNode + tDispDofY;       printf("DofY: %12.5e, ",  tHostSolution(4, tIdx));
+    //   tIdx = tIndexK * tNumDofsPerNode + tTemperatureDof; printf("DofT: %12.5e, ",  tHostSolution(4, tIdx));
+    //   tIdx = tIndexK * tNumDofsPerNode + tPressureDof;    printf("DofP: %12.5e \n", tHostSolution(4, tIdx));
     // }
 
     // 6. Output Data
