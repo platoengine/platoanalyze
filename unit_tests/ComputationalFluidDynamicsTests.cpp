@@ -1520,10 +1520,12 @@ build_vector_function_worksets
     Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
     aWorkSets.set("critical time step", tCriticalTimeStep);
 
+/*
     auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("surface velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
     tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("surface velocity"), tVelBCsWS->mData);
     aWorkSets.set("surface velocity", tVelBCsWS);
+*/
 
     if(aVariables.defined("artificial compressibility"))
     {
@@ -1606,10 +1608,12 @@ build_vector_function_worksets
     Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
     aWorkSets.set("critical time step", tCriticalTimeStep);
 
+/*
     auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
         ( Plato::ScalarMultiVector("surface velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
     tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("surface velocity"), tVelBCsWS->mData);
     aWorkSets.set("surface velocity", tVelBCsWS);
+*/
 
     if(aVariables.defined("artificial compressibility"))
     {
@@ -4561,7 +4565,7 @@ private:
     using CurPressT  = typename EvaluationT::CurrentMassScalarType;
     using PrevPressT = typename EvaluationT::PreviousMassScalarType;
 
-    using PressGradT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevPressT, ConfigT>;
+    using PressGradT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurPressT, PrevPressT, ConfigT>;
 
     Plato::DataMap& mDataMap;                   /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
@@ -6172,16 +6176,16 @@ public:
 
             // 1. add divergence of previous pressure gradient to residual, i.e. RHS += -1.0*\theta^{u}\Delta{t} L p^{n}
             Plato::Fluids::calculate_scalar_field_gradient<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCurPressWS, tPrevPressGradGP);
+                (aCellOrdinal, tGradient, tPrevPressWS, tPrevPressGradGP);
             auto tMultiplier = tCriticalTimeStep * tMomentumDamping;
             Plato::Fluids::integrate_laplacian_operator<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCellVolume, tPrevPressGradGP, tRightHandSide, tMultiplier);
+                (aCellOrdinal, tGradient, tCellVolume, tPrevPressGradGP, tRightHandSide, -tMultiplier);
 
-            // 2. add divergence of previous velocity to residual, RHS + Du_n
+            // 2. add divergence of previous velocity to residual, RHS += Du_n
             Plato::Fluids::integrate_divergence_operator<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPrevVelWS, tRightHandSide);
 
-            // 3. add divergence of delta predicted velocity to residual, RHS += D\Delta{\bar{u}}
+            // 3. add divergence of delta predicted velocity to residual, RHS += D\Delta{\bar{u}}, where \Delta{\bar{u}} = \bar{u} - u_n
             Plato::Fluids::integrate_divergence_operator<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPredVelWS, tRightHandSide, tMomentumDamping);
             Plato::Fluids::integrate_divergence_operator<mNumNodesPerCell, mNumSpatialDims>
@@ -9884,7 +9888,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Max Number Iterations' type='int'    value='5'/>"
+            "    <Parameter name='Max Number Iterations' type='int'    value='25'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
