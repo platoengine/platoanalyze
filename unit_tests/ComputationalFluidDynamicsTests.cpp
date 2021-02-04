@@ -8698,12 +8698,11 @@ private:
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
         Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
 
-        auto tParamList = mInputs.sublist("Linear Solver");
+        /*auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        tSolver->solve(*tJacobian, tCurrentVelocity, tResidual);
+        tSolver->solve(*tJacobian, tCurrentVelocity, tResidual);*/
 
-/*
         auto tInitialResidualNorm = Plato::blas1::norm(tResidual);
 
         Plato::OrdinalType tIteration = 1;
@@ -8711,16 +8710,14 @@ private:
         Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
         Plato::ScalarVector tDeltaVelocity("delta velocity", tCurrentVelocity.size());
 
+        auto tParamList = mInputs.sublist("Linear Solver");
+        Plato::SolverFactory tSolverFactory(tParamList);
+        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
+
         while(true)
         {
-            // solve velocity equation (consistent mass matrix)
             Plato::blas1::fill(0.0, tDeltaVelocity);
-            auto tParamList = mInputs.sublist("Linear Solver");
-            Plato::SolverFactory tSolverFactory(tParamList);
-            auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
             tSolver->solve(*tJacobian, tDeltaVelocity, tResidual);
-
-            // update current velocity
             Plato::blas1::update(1.0, tDeltaVelocity, 1.0, tCurrentVelocity);
 
             // calculate current residual and jacobian matrix
@@ -8738,31 +8735,59 @@ private:
 
             tIteration++;
         }
-*/
     }
 
     void updatePredictor
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aVariables)
     {
-        // calculate current residual and jacobian matrix
         auto tCurrentPredictor = aVariables.vector("current predictor");
         Plato::blas1::fill(0.0, tCurrentPredictor);
-        auto tResidualPredictor = mPredictorResidual.value(aControl, aVariables);
-        Plato::blas1::scale(-1.0, tResidualPredictor);
-        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aVariables);
+
+        // calculate current residual and jacobian matrix
+        auto tResidual = mPredictorResidual.value(aControl, aVariables);
+        Plato::blas1::scale(-1.0, tResidual);
+        auto tJacobian = mPredictorResidual.gradientPredictor(aControl, aVariables);
 
         // apply constraints
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobianPredictor, tResidualPredictor);
+        Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+        auto tInitialResidualNorm = Plato::blas1::norm(tResidual);
 
-        // solve predictor equation (consistent or mass lumped)
-        auto tParamList = mInputs.sublist("Linear Solver");
+        /*auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        tSolver->solve(*tJacobianPredictor, tCurrentPredictor, tResidualPredictor);
+        tSolver->solve(*tJacobian, tCurrentPredictor, tResidual);*/
+
+        // create linear solver
+        auto tParamList = mInputs.sublist("Linear Solver");
+        Plato::SolverFactory tSolverFactory(tParamList);
+        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
+
+        Plato::OrdinalType tIteration = 1;
+        Plato::ScalarVector tDeltaPredictor("delta predictor", tCurrentPredictor.size());
+        while(true)
+        {
+            Plato::blas1::fill(0.0, tDeltaPredictor);
+            tSolver->solve(*tJacobian, tDeltaPredictor, tResidual);
+            Plato::blas1::update(1.0, tDeltaPredictor, 1.0, tCurrentPredictor);
+
+            tResidual = mPredictorResidual.value(aControl, aVariables);
+            Plato::blas1::scale(-1.0, tResidual);
+            tJacobian = mPredictorResidual.gradientPredictor(aControl, aVariables);
+            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+
+            auto tResidualNorm = Plato::blas1::norm(tResidual);
+            auto tStopCriterion = tResidualNorm / tInitialResidualNorm;
+            if(tStopCriterion <= 1e-8)
+            {
+                break;
+            }
+
+            tIteration++;
+        }
     }
 
     void updatePressure
@@ -8784,21 +8809,19 @@ private:
         Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
         auto tInitialResidualNorm = Plato::blas1::norm(tResidual);
 
+        // create linear solver
+        auto tParamList = mInputs.sublist("Linear Solver");
+        Plato::SolverFactory tSolverFactory(tParamList);
+        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
+
         Plato::OrdinalType tIteration = 1;
         auto tPreviousPressure = aVariables.vector("previous pressure");
         Plato::blas1::update(1.0, tPreviousPressure, 1.0, tCurrentPressure);
         Plato::ScalarVector tDeltaPressure("delta pressure", tCurrentPressure.size());
-
         while(true)
         {
-            // solve mass equation (consistent or mass lumped)
             Plato::blas1::fill(0.0, tDeltaPressure);
-            auto tParamList = mInputs.sublist("Linear Solver");
-            Plato::SolverFactory tSolverFactory(tParamList);
-            auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
-
-            // update current pressure
             Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
 
             // calculate current residual and jacobian matrix
