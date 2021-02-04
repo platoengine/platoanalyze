@@ -4669,6 +4669,7 @@ public:
 
         // transfer member data to device
         auto tTheta = mTheta;
+        auto tCriticalTimeStep = tTimeStepWS(0);
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -4677,15 +4678,12 @@ public:
             tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
             tCellVolume(aCellOrdinal) *= tCubWeight;
 
-            // 1. add previous pressure gradient to residual, i.e. R += G(p_n + \theta\Delta{p})
+            // 1. add previous pressure gradient to residual, i.e. R += Delta{t} G(p_n + \theta\Delta{p})
             Plato::Fluids::calculate_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tTheta, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPressGradGP, aResultWS);
-
-            // 2. apply time step, i.e. R = \Delta{t}R
-            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                (aCellOrdinal, 1.0, tTimeStepWS, aResultWS);
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep, aResultWS);
 
             // 3. add current dleta inertial force to residual, i.e. R += M(u_{n+1} - u_n)
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
@@ -8189,7 +8187,7 @@ public:
         this->checkProblemSetup();
 
         Plato::Primal tPrimalVars;
-        this->setInitialConditions(tPrimalVars);
+        //this->setInitialConditions(tPrimalVars);
         this->calculateElemCharacteristicSize(tPrimalVars);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumIterations; tIteration++)
@@ -8412,7 +8410,7 @@ private:
             auto tTimeIntegration = aInputs.sublist("Time Integration");
             auto tArtificialDampingTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping", 0.0);
             mIsExplicitSolve = tArtificialDampingTwo > static_cast<Plato::Scalar>(0.0) ? false : true;
-            mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.5);
+            mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
             mMaxNumIterations = tTimeIntegration.get<Plato::OrdinalType>("Max Number Iterations", 1e3);
         }
     }
@@ -8691,6 +8689,7 @@ private:
 
         // calculate current residual and jacobian matrix
         auto tResidual = mVelocityResidual.value(aControl, aVariables);
+        Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
 
         // apply constraints
@@ -8698,6 +8697,13 @@ private:
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
         Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+
+        auto tParamList = mInputs.sublist("Linear Solver");
+        Plato::SolverFactory tSolverFactory(tParamList);
+        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
+        tSolver->solve(*tJacobian, tCurrentVelocity, tResidual);
+
+/*
         auto tInitialResidualNorm = Plato::blas1::norm(tResidual);
 
         Plato::OrdinalType tIteration = 1;
@@ -8708,7 +8714,6 @@ private:
         while(true)
         {
             // solve velocity equation (consistent mass matrix)
-            Plato::blas1::scale(-1.0, tResidual);
             Plato::blas1::fill(0.0, tDeltaVelocity);
             auto tParamList = mInputs.sublist("Linear Solver");
             Plato::SolverFactory tSolverFactory(tParamList);
@@ -8720,6 +8725,7 @@ private:
 
             // calculate current residual and jacobian matrix
             tResidual = mVelocityResidual.value(aControl, aVariables);
+            Plato::blas1::scale(-1.0, tResidual);
             tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
             Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
 
@@ -8732,6 +8738,7 @@ private:
 
             tIteration++;
         }
+*/
     }
 
     void updatePredictor
@@ -8742,6 +8749,7 @@ private:
         auto tCurrentPredictor = aVariables.vector("current predictor");
         Plato::blas1::fill(0.0, tCurrentPredictor);
         auto tResidualPredictor = mPredictorResidual.value(aControl, aVariables);
+        Plato::blas1::scale(-1.0, tResidualPredictor);
         auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aVariables);
 
         // apply constraints
@@ -8754,7 +8762,6 @@ private:
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        Plato::blas1::scale(-1.0, tResidualPredictor);
         tSolver->solve(*tJacobianPredictor, tCurrentPredictor, tResidualPredictor);
     }
 
@@ -8767,6 +8774,7 @@ private:
 
         // calculate current residual and jacobian matrix
         auto tResidual = mPressureResidual.value(aControl, aVariables);
+        Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mPressureResidual.gradientCurrentPress(aControl, aVariables);
 
         // apply constraints
@@ -8784,7 +8792,6 @@ private:
         while(true)
         {
             // solve mass equation (consistent or mass lumped)
-            Plato::blas1::scale(-1.0, tResidual);
             Plato::blas1::fill(0.0, tDeltaPressure);
             auto tParamList = mInputs.sublist("Linear Solver");
             Plato::SolverFactory tSolverFactory(tParamList);
@@ -8796,6 +8803,7 @@ private:
 
             // calculate current residual and jacobian matrix
             tResidual = mPressureResidual.value(aControl, aVariables);
+            Plato::blas1::scale(-1.0, tResidual);
             tJacobian = mPressureResidual.gradientCurrentPress(aControl, aVariables);
             Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
 
