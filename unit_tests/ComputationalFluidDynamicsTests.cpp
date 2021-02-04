@@ -8657,22 +8657,55 @@ private:
         // calculate current residual and jacobian matrix
         auto tCurrentVelocity = aVariables.vector("current velocity");
         Plato::blas1::fill(0.0, tCurrentVelocity);
-        auto tResidualCorrector = mVelocityResidual.value(aControl, aVariables);
-        auto tJacobianCorrector = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
+
+        // calculate current residual and jacobian matrix
+        auto tResidual = mVelocityResidual.value(aControl, aVariables);
+        auto tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
 
         // apply constraints
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobianCorrector, tResidualCorrector);
-        Plato::print_sparse_matrix_to_file(tJacobianCorrector,"jacobian_velocity.txt");
+        Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+        auto tInitialResidualNorm = Plato::blas1::norm(tResidual);
 
-        // solve velocity equation (consistent mass matrix)
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        Plato::blas1::scale(-1.0, tResidualCorrector);
-        tSolver->solve(*tJacobianCorrector, tCurrentVelocity, tResidualCorrector);
+        Plato::OrdinalType tIteration = 1;
+        auto tPreviousVelocity = aVariables.vector("previous velocity");
+        Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
+        Plato::ScalarVector tDeltaVelocity("delta velocity", tCurrentVelocity.size());
+
+        while(true)
+        {
+            // solve velocity equation (consistent mass matrix)
+            Plato::blas1::scale(-1.0, tResidual);
+            Plato::blas1::fill(0.0, tDeltaVelocity);
+            auto tParamList = mInputs.sublist("Linear Solver");
+            Plato::SolverFactory tSolverFactory(tParamList);
+            auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
+            tSolver->solve(*tJacobian, tDeltaVelocity, tResidual);
+
+            // update current velocity
+            Plato::blas1::update(1.0, tDeltaVelocity, 1.0, tCurrentVelocity);
+
+            // calculate current residual and jacobian matrix
+            auto tResidual = mVelocityResidual.value(aControl, aVariables);
+            auto tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
+
+            // apply constraints
+            Plato::ScalarVector tBcValues;
+            Plato::LocalOrdinalVector tBcDofs;
+            mVelocityEssentialBCs.get(tBcDofs, tBcValues);
+            Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+
+            auto tResidualNorm = Plato::blas1::norm(tResidual);
+            auto tStopCriterion = tResidualNorm / tInitialResidualNorm;
+            if(tStopCriterion <= 1e-8)
+            {
+                break;
+            }
+
+            tIteration++
+        }
     }
 
     void updatePredictor
@@ -8690,7 +8723,6 @@ private:
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
         Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobianPredictor, tResidualPredictor);
-        Plato::print_sparse_matrix_to_file(tJacobianPredictor,"jacobian_predictor.txt");
 
         // solve predictor equation (consistent or mass lumped)
         auto tParamList = mInputs.sublist("Linear Solver");
@@ -8748,7 +8780,7 @@ private:
 
             auto tResidualNorm = Plato::blas1::norm(tResidual);
             auto tStopCriterion = tResidualNorm / tInitialResidualNorm;
-            if(tStopCriterion <= 1e-4)
+            if(tStopCriterion <= 1e-8)
             {
                 break;
             }
