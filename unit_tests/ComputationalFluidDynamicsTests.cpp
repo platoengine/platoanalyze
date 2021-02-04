@@ -8189,6 +8189,7 @@ public:
         this->checkProblemSetup();
 
         Plato::Primal tPrimalVars;
+        this->setInitialConditions(tPrimalVars);
         this->calculateElemCharacteristicSize(tPrimalVars);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumIterations; tIteration++)
@@ -8197,7 +8198,6 @@ public:
 
             this->setPrimalStates(tPrimalVars);
             this->calculateCriticalTimeSteps(tPrimalVars);
-            //this->updateSurfaceVelocityField(tPrimalVars);
 
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
@@ -8344,6 +8344,37 @@ public:
     }
 
 private:
+    void setInitialConditions
+    (Plato::Primal & aVariables)
+    {
+        const auto tTime = 0.0;
+        const auto tPrevStep = 0;
+
+        Plato::ScalarVector tVelBcValues;
+        Plato::LocalOrdinalVector tVelBcDofs;
+        mVelocityEssentialBCs.get(tVelBcDofs, tVelBcValues, tTime);
+        auto tPreviouVel = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
+        Plato::cbs::enforce_boundary_condition(tVelBcDofs, tVelBcValues, tPreviouVel);
+        aVariables.vector("previous velocity", tPreviouVel);
+
+        Plato::ScalarVector tPressBcValues;
+        Plato::LocalOrdinalVector tPressBcDofs;
+        mPressureEssentialBCs.get(tPressBcDofs, tPressBcValues, tTime);
+        auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
+        Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
+        aVariables.vector("previous pressure", tPreviousPress);
+
+        if(mCalculateHeatTransfer)
+        {
+            Plato::ScalarVector tTempBcValues;
+            Plato::LocalOrdinalVector tTempBcDofs;
+            mTemperatureEssentialBCs.get(tTempBcDofs, tTempBcValues, tTime);
+            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
+            Plato::cbs::enforce_boundary_condition(tPressBcDofs, tPressBcValues, tPreviousPress);
+            aVariables.vector("previous temperature", tPreviousTemp);
+        }
+    }
+
     void initialize
     (Teuchos::ParameterList & aInputs)
     {
