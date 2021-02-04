@@ -8764,7 +8764,7 @@ private:
         // create linear solver
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
+        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
 
         Plato::OrdinalType tIteration = 1;
         Plato::ScalarVector tDeltaPredictor("delta predictor", tCurrentPredictor.size());
