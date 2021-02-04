@@ -260,34 +260,36 @@ private:
     **************************************************************************/
     void parseMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
-        if(aProblemParams.isSublist("Material Model"))
+        if(aProblemParams.isSublist("Material Models"))
         {
-            this->parseIsotropicMaterialProperties(aProblemParams);
+            auto tMaterialName = mSpatialDomain.getMaterialName();
+            Teuchos::ParameterList tMaterialsList = aProblemParams.sublist("Material Models");
+            Teuchos::ParameterList tMaterialList  = tMaterialsList.sublist(tMaterialName);
+            this->parseIsotropicMaterialProperties(tMaterialList);
         }
         else
         {
-            THROWERR("'Material Model' SUBLIST IS NOT DEFINED.")
+            THROWERR("'Material Models' SUBLIST IS NOT DEFINED.")
         }
     }
 
     /**********************************************************************//**
      * \brief Parse isotropic material properties
-     * \param [in] aProblemParams input XML data, i.e. parameter list
+     * \param [in] aMaterialParams input XML data, i.e. parameter list
     **************************************************************************/
-    void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
+    void parseIsotropicMaterialProperties(Teuchos::ParameterList &aMaterialParams)
     {
-        auto tMaterialInputs = aProblemParams.get<Teuchos::ParameterList>("Material Model");
-        if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
+        if (aMaterialParams.isSublist("Isotropic Linear Elastic"))
         {
-            auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
+            auto tElasticSubList = aMaterialParams.sublist("Isotropic Linear Elastic");
             auto tPoissonsRatio = Plato::parse_poissons_ratio(tElasticSubList);
             auto tElasticModulus = Plato::parse_elastic_modulus(tElasticSubList);
             mBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
             mShearModulus = Plato::compute_shear_modulus(tElasticModulus, tPoissonsRatio);
         }
-        else if (tMaterialInputs.isSublist("Isotropic Linear Thermoelastic"))
+        else if (aMaterialParams.isSublist("Isotropic Linear Thermoelastic"))
         {
-            auto tThermoelasticSubList = tMaterialInputs.sublist("Isotropic Linear Thermoelastic");
+            auto tThermoelasticSubList = aMaterialParams.sublist("Isotropic Linear Thermoelastic");
             auto tPoissonsRatio = Plato::parse_poissons_ratio(tThermoelasticSubList);
             auto tElasticModulus = Plato::parse_elastic_modulus(tThermoelasticSubList);
             mBulkModulus = Plato::compute_bulk_modulus(tElasticModulus, tPoissonsRatio);
