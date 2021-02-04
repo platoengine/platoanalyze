@@ -8688,13 +8688,8 @@ private:
             Plato::blas1::update(1.0, tDeltaVelocity, 1.0, tCurrentVelocity);
 
             // calculate current residual and jacobian matrix
-            auto tResidual = mVelocityResidual.value(aControl, aVariables);
-            auto tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
-
-            // apply constraints
-            Plato::ScalarVector tBcValues;
-            Plato::LocalOrdinalVector tBcDofs;
-            mVelocityEssentialBCs.get(tBcDofs, tBcValues);
+            tResidual = mVelocityResidual.value(aControl, aVariables);
+            tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
             Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
 
             auto tResidualNorm = Plato::blas1::norm(tResidual);
@@ -8771,11 +8766,6 @@ private:
             // calculate current residual and jacobian matrix
             tResidual = mPressureResidual.value(aControl, aVariables);
             tJacobian = mPressureResidual.gradientCurrentPress(aControl, aVariables);
-
-            // apply constraints
-            Plato::ScalarVector tBcValues;
-            Plato::LocalOrdinalVector tBcDofs;
-            mPressureEssentialBCs.get(tBcDofs, tBcValues);
             Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
 
             auto tResidualNorm = Plato::blas1::norm(tResidual);
