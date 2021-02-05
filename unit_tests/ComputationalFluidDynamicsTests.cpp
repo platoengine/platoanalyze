@@ -3160,10 +3160,10 @@ public:
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
         // set input state worksets
-        auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
-        auto tConfigWS   = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tPredVelWS  = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
-        auto tPrevVelWS  = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
+        auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tPredVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
+        auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
+        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
 
         // transfer member data to device
         auto tTheta = mTheta;
@@ -3197,8 +3197,7 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tAdvection, aResultWS);
 
             // 4. apply time step, i.e. \Delta{t}( \theta K\bar{u} + C u_n - (\theta-1)K u_n )
-            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                (aCellOrdinal, 1.0, tTimeStepWS, aResultWS);
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS)
 
             // 5. add predicted inertial force to residual, i.e. R += M\bar{u}
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredVelWS, tPredVelGP);
@@ -3248,7 +3247,7 @@ public:
    void evaluatePrescribed
    (const Plato::SpatialModel & aSpatialModel,
     const Plato::WorkSets & aWorkSets,
-    Plato::ScalarMultiVectorT<ResultT> & aResult)
+    Plato::ScalarMultiVectorT<ResultT> & aResultWS)
    const override
    {
        if( mPrescribedBCs != nullptr )
@@ -3259,16 +3258,16 @@ public:
            auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
 
            // 1. add prescribed traction force to residual
-           auto tNumCells = aResult.extent(0);
+           auto tNumCells = aResultWS.extent(0);
            Plato::ScalarMultiVectorT<ResultT> tTractionWS("traction forces", tNumCells, mNumDofsPerCell);
            mPrescribedBCs->get( aSpatialModel, tPrevVelWS, tControlWS, tConfigWS, tTractionWS);
 
            // 2. apply time step to traction force
-           auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
+           auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
            {
-               Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>(aCellOrdinal, 1.0, tTimeStepWS, tTractionWS);
-               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tTractionWS, 1.0, aResult);
+               Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
+               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tTractionWS, 1.0, aResultWS);
            }, "traction force");
        }
    }
@@ -3490,12 +3489,12 @@ public:
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
         // set input state worksets
-        auto tTimeStepWS  = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         auto tControlWS   = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
         auto tPrevTempWS  = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
         auto tPredictorWS = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
+        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
 
         // transfer member data to device
         auto tGrNum = mGrNum;
@@ -3535,8 +3534,7 @@ public:
                 (aCellOrdinal, tPenalizedPermeability, tPrevVelGP, tBrinkman);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tBrinkman, tInternalForces);
-            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tStabilization);
 
             // 2. calculate stabilization term
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal, -1.0, tAdvection, 1.0, tStabilization);
@@ -3544,8 +3542,8 @@ public:
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tNaturalConvection, 1.0, tStabilization);
             Plato::Fluids::integrate_stabilizing_momentum_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
-            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
+            auto tMultiplier = static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tMultiplier, tStabilization);
 
             // 3. calculate residual
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredictorWS, tPredVelGP);
@@ -3595,7 +3593,7 @@ public:
    void evaluatePrescribed
    (const Plato::SpatialModel & aSpatialModel,
     const Plato::WorkSets & aWorkSets,
-    Plato::ScalarMultiVectorT<ResultT> & aResult)
+    Plato::ScalarMultiVectorT<ResultT> & aResultWS)
    const override
    {
        if( mPrescribedBCs != nullptr )
@@ -3606,17 +3604,16 @@ public:
            auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
 
            // 1. add prescribed deviatoric traction forces
-           auto tNumCells = aResult.extent(0);
+           auto tNumCells = aResultWS.extent(0);
            Plato::ScalarMultiVectorT<ResultT> tResultWS("traction forces", tNumCells, mNumDofsPerCell);
            mPrescribedBCs->get( aSpatialModel, tPrevVelWS, tControlWS, tConfigWS, tResultWS); // prescribed traction forces
 
            // 3. multiply force vector by the corresponding nodal time steps
-           auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
+           auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
            {
-               Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                   (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
-               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
+               Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
+               Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResultWS);
            }, "prescribed traction forces");
        }
    }
@@ -4029,13 +4026,13 @@ public:
         Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("predicted velocity at Gauss points", tNumCells, mNumSpatialDims);
 
         // set input state worksets
-        auto tTimeStepWS  = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tCurVelWS    = Plato::metadata<Plato::ScalarMultiVectorT<CurVelT>>(aWorkSets.get("current velocity"));
         auto tPrevVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
         auto tPredVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
         auto tCurPressWS  = Plato::metadata<Plato::ScalarMultiVectorT<CurPressT>>(aWorkSets.get("current pressure"));
         auto tPrevPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevPressT>>(aWorkSets.get("previous pressure"));
+        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
@@ -4043,7 +4040,6 @@ public:
 
         // transfer member data to device
         auto tTheta = mTheta;
-        auto tCriticalTimeStep = tTimeStepWS(0);
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -4057,7 +4053,7 @@ public:
                 (aCellOrdinal, tTheta, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPressGradGP, aResultWS);
-            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep, aResultWS);
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
             // 3. add current dleta inertial force to residual, i.e. R += M(u_{n+1} - u_n)
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
@@ -4440,12 +4436,12 @@ public:
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
         // set input state worksets
-        auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         auto tControlWS  = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
         auto tConfigWS   = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS  = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
         auto tCurTempWS  = Plato::metadata<Plato::ScalarMultiVectorT<CurTempT>>(aWorkSets.get("current temperature"));
         auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
+        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
 
         // transfer member data to device
         auto tRefTemp          = mReferenceTemperature;
@@ -4477,15 +4473,14 @@ public:
             tHeatSource(aCellOrdinal) += tDimensionlessConst * tPrescribedHeatSource(aCellOrdinal);
             Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, tInternalForces);
-            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
+            Plato::blas1::scale<mNumTempDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tInternalForces);
 
             // 2. calculate stabilizing forces
             tStabilization(aCellOrdinal) += tHeatSource(aCellOrdinal) - tConvection(aCellOrdinal);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
-            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
+            auto tMultiplier = static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            Plato::blas1::scale<mNumTempDofsPerCell>(aCellOrdinal, tMultiplier, tInternalForces);
 
             // 3. calculate residual
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
@@ -4525,7 +4520,7 @@ public:
     void evaluatePrescribed
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult)
+     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
     const override
     {
         if( mHeatFlux != nullptr )
@@ -4536,16 +4531,15 @@ public:
             auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
 
             // evaluate prescribed flux
-            auto tNumCells = aResult.extent(0);
+            auto tNumCells = aResultWS.extent(0);
             Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumDofsPerCell);
             mHeatFlux->get( aSpatialModel, tPrevTempWS, tControlWS, tConfigWS, tResultWS );
 
-            auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
+            auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                    (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
-                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
+                Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
+                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResultWS);
             }, "heat flux contribution");
         }
     }
@@ -4813,12 +4807,12 @@ public:
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
         // set input state worksets
-        auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         auto tControlWS  = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
         auto tConfigWS   = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS  = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
         auto tCurTempWS  = Plato::metadata<Plato::ScalarMultiVectorT<CurTempT>>(aWorkSets.get("current temperature"));
         auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
+        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
 
         // transfer member data to device
         auto tRefTemp               = mReferenceTemperature;
@@ -4859,15 +4853,14 @@ public:
             tHeatSource(aCellOrdinal) += tPenalizedDimensionlessConst * tPrescribedHeatSource(aCellOrdinal);
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tHeatSource, tInternalForces);
-            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                (aCellOrdinal, 1.0, tTimeStepWS, tInternalForces);
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tInternalForces);
 
             // 2. calculate stabilizing forces
             tStabilization(aCellOrdinal) += tHeatSource(aCellOrdinal) - tConvection(aCellOrdinal);
             Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
-            Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                (aCellOrdinal, 0.5, tTimeStepWS, tStabForces, 2.0);
+            auto tMultiplier = static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tMultiplier, tInternalForces);
 
             // 3. add inertial force contribution
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
@@ -4907,7 +4900,7 @@ public:
     void evaluatePrescribed
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult)
+     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
     const override
     {
         if( mHeatFlux != nullptr )
@@ -4918,16 +4911,15 @@ public:
             auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
 
             // evaluate prescribed flux
-            auto tNumCells = aResult.extent(0);
+            auto tNumCells = aResultWS.extent(0);
             Plato::ScalarMultiVectorT<ResultT> tResultWS("heat flux", tNumCells, mNumDofsPerCell);
             mHeatFlux->get( aSpatialModel, tPrevTempWS, tControlWS, tConfigWS, tResultWS );
 
-            auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
+            auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-                    (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
-                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
+                Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
+                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResultWS);
             }, "heat flux contribution");
         }
     }
@@ -5417,17 +5409,16 @@ public:
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
 
         // set input state worksets
-        auto tTimeStepWS  = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
         auto tPredVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<PredVelT>>(aWorkSets.get("current predictor"));
         auto tCurPressWS  = Plato::metadata<Plato::ScalarMultiVectorT<CurPressT>>(aWorkSets.get("current pressure"));
         auto tPrevPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevPressT>>(aWorkSets.get("previous pressure"));
+        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
 
         // transfer member data to device
         auto tPressDamping = mPressDamping;
         auto tMomentumDamping = mMomentumDamping;
-        auto tCriticalTimeStep = tTimeStepWS(0);
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -5439,7 +5430,7 @@ public:
             // 1. add divergence of previous pressure gradient to residual, i.e. RHS += -1.0*\theta^{u}\Delta{t} L p^{n}
             Plato::Fluids::calculate_scalar_field_gradient<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tPrevPressWS, tPrevPressGradGP);
-            auto tMultiplier = tCriticalTimeStep * tMomentumDamping;
+            auto tMultiplier = tCriticalTimeStep(0) * tMomentumDamping;
             Plato::Fluids::integrate_laplacian_operator<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tPrevPressGradGP, tRightHandSide, -tMultiplier);
 
@@ -5454,7 +5445,7 @@ public:
                 (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPrevVelWS, tRightHandSide, -tMomentumDamping);
 
             // 4. apply \frac{1}{\Delta{t}} multiplier to right hand side, i.e. RHS = \frac{1}{\Delta{t}} * RHS
-            tMultiplier = static_cast<Plato::Scalar>(1.0) / tCriticalTimeStep;
+            tMultiplier = static_cast<Plato::Scalar>(1.0) / tCriticalTimeStep(0);
             Plato::blas1::scale<mNumPressDofsPerCell>(aCellOrdinal, tMultiplier, tRightHandSide);
 
             // 5. add divergence of current pressure gradient to residual, i.e. R += \theta^{p}\theta^{u} L p^{n+1}
@@ -7217,7 +7208,7 @@ inline void apply_constraints
 }
 
 
-void set_values
+void set_dofs_values
 (const Plato::LocalOrdinalVector & aBcDofs,
        Plato::ScalarVector & aOutput,
        Plato::Scalar aValue = 0.0)
@@ -7228,6 +7219,40 @@ void set_values
     }, "set values at bc dofs to zero");
 }
 
+void open_text_file
+(const std::string & aFileName,
+ std::ofstream & aTextFile,
+ bool aPrint = true)
+{
+    if (aPrint == false)
+    {
+        return;
+    }
+    aTextFile.open(aFileName);
+}
+
+void close_text_file
+(std::ofstream & aTextFile,
+ bool aPrint = true)
+{
+    if (aPrint == false)
+    {
+        return;
+    }
+    aTextFile.close();
+}
+
+void append_text_to_file
+(const std::stringstream & aMsg,
+ std::ofstream & aTextFile,
+ bool aPrint = true)
+{
+    if (aPrint == false)
+    {
+        return;
+    }
+    aTextFile << aMsg.str().c_str();
+}
 
 namespace Fluids
 {
@@ -7261,7 +7286,11 @@ private:
     Plato::DataMap mDataMap; /*!< static output fields metadata interface */
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
+    bool mPrintDiagnostics = true;
     bool mCalculateHeatTransfer = false;
+
+    std::ofstream mDiagnostics; /*!< output diagnostics */
+
     Plato::Scalar mThermalTolerance = 1e-4;
     Plato::Scalar mPressureTolerance = 1e-2;
     Plato::Scalar mPredictorTolerance = 1e-4;
@@ -7318,6 +7347,14 @@ public:
         return mDataMap;
     }
 
+    ~QuasiImplicit()
+    {
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            Plato::close_text_file(mDiagnostics, mPrintDiagnostics);
+        }
+    }
+
     void output(std::string aFilePath = "output")
     {
         auto tMesh = mSpatialModel.Mesh;
@@ -7362,10 +7399,10 @@ public:
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxSteadyStateIterations; tIteration++)
         {
             tPrimalVars.scalar("iteration", tIteration);
-
             this->setPrimalStates(tPrimalVars);
             this->calculateCriticalTimeSteps(tPrimalVars);
 
+            this->printIteration(tPrimalVars);
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
             this->updateCorrector(aControl, tPrimalVars);
@@ -7538,11 +7575,44 @@ private:
         }
     }
 
+    void printIteration
+    (const Plato::Primal & aVariables)
+    {
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            if(mPrintDiagnostics)
+            {
+                std::stringstream tMsg;
+                auto tCriticalTimeStep = aVariables.vector("critical time step");
+                auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
+                Kokkos::deep_copy(tHostCriticalTimeStep, tCriticalTimeStep);
+                const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
+                tMsg << "*************************************************************************************\n";
+                tMsg << "* Critical Time Step: " << tHostCriticalTimeStep(0) << "\n";
+                tMsg << "* CFD Quasi-Implicit Solver Iteration: " << tIteration << "\n";
+                tMsg << "*************************************************************************************\n";
+                Plato::append_text_to_file(tMsg, mDiagnostics);
+            }
+        }
+    }
+
+    void areDianosticsEnabled
+    (Teuchos::ParameterList & aInputs)
+    {
+        mPrintDiagnostics = aInputs.get<bool>("Diagnostics", true);
+        auto tFileName = aInputs.get<std::string>("Diagnostics File Name", "cfd_solver_diagnostics.txt");
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            Plato::open_text_file(tFileName, mDiagnostics, mPrintDiagnostics);
+        }
+    }
+
     void initialize
     (Teuchos::ParameterList & aInputs)
     {
         this->allocateCriteriaList(aInputs);
         this->allocateMemberStates(aInputs);
+        this->areDianosticsEnabled(aInputs);
         this->parseNewtonSolverInputs(aInputs);
         this->parseTimeIntegratorInputs(aInputs);
         this->parseHeatTransferEquation(aInputs);
@@ -7660,15 +7730,31 @@ private:
         return tOutput;
     }
 
-    bool checkStoppingCriteria(const Plato::Primal & aVariables)
+    void printSteadyStateCriterion
+    (const Plato::Primal & aVariables)
+    {
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            if(mPrintDiagnostics)
+            {
+                std::stringstream tMsg;
+                auto tCriterion = aVariables.scalar("steady state criterion");
+                tMsg << "-------------------------------------------------------------------------------------\n";
+                tMsg << std::scientific << " Steady State Convergence: " << tCriterion << "\n";
+                tMsg << "-------------------------------------------------------------------------------------\n\n";
+                Plato::append_text_to_file(tMsg, mDiagnostics);
+            }
+        }
+    }
+
+    bool checkStoppingCriteria
+    (Plato::Primal & aVariables)
     {
         bool tStop = false;
         const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
-        const auto tCriterionValue= this->calculateVelocityMisfitNorm(aVariables);
-        if(Plato::Comm::rank(mMachine) == 0)
-        {
-            printf("Convergence: Residual Norm = %e\n",tCriterionValue);
-        }
+        const auto tCriterionValue = this->calculateVelocityMisfitNorm(aVariables);
+        aVariables.scalar("steady state criterion", tCriterionValue);
+        this->printSteadyStateCriterion(aVariables)
 
         if (tCriterionValue < mSteadyStateTolerance)
         {
@@ -7800,10 +7886,28 @@ private:
         aVariables.vector("previous temperature", tPreviousTemp);
     }
 
+    void printCorrectorSolverHeader()
+    {
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            if(mPrintDiagnostics)
+            {
+                std::stringstream tMsg;
+                tMsg << "\n-------------------------------------------------------------------------------------\n";
+                tMsg << "*                           Momentum Corrector Solver                               *\n";
+                tMsg << "-------------------------------------------------------------------------------------\n";
+                Plato::append_text_to_file(tMsg, mDiagnostics);
+            }
+        }
+    }
+
     void updateCorrector
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aVariables)
     {
+        this->printCorrectorSolverHeader();
+        this->printNewtonHeader();
+
         // calculate current residual and jacobian matrix
         auto tCurrentVelocity = aVariables.vector("current velocity");
         Plato::blas1::fill(0.0, tCurrentVelocity);
@@ -7826,19 +7930,27 @@ private:
         // set initial guess for current velocity
         auto tPreviousVelocity = aVariables.vector("previous velocity");
         Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
-        Plato::ScalarVector tDeltaVelocity("delta velocity", tCurrentVelocity.size());
+        Plato::ScalarVector tDeltaCorrector("delta corrector", tCurrentVelocity.size());
 
-        Plato::OrdinalType tIteration = 1;
+        Plato::OrdinalType tIteration = 0;
         while(true)
         {
-            Plato::blas1::fill(0.0, tDeltaVelocity);
-            tSolver->solve(*tJacobian, tDeltaVelocity, tResidual);
-            Plato::set_values(tBcDofs, tDeltaVelocity);
-            Plato::blas1::update(1.0, tDeltaVelocity, 1.0, tCurrentVelocity);
+            aVariables.scalar("newton iteration", tIteration);
+
+            Plato::blas1::fill(0.0, tDeltaCorrector);
+            tSolver->solve(*tJacobian, tDeltaCorrector, tResidual);
+            Plato::set_dofs_values(tBcDofs, tResidual);
+            Plato::set_dofs_values(tBcDofs, tDeltaCorrector);
+            Plato::blas1::update(1.0, tDeltaCorrector, 1.0, tCurrentVelocity);
             Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
 
-            auto tStopCriterion = Plato::blas1::norm(tDeltaVelocity);
-            if(tStopCriterion <= mCorrectorTolerance)
+            auto tNormResidual = Plato::blas1::norm(tResidual);
+            aVariables.scalar("norm residual", tNormResidual);
+            auto tNormStep = Plato::blas1::norm(tDeltaCorrector);
+            aVariables.scalar("norm step", tNormStep);
+            this->printNewtonDiagnostics(aVariables);
+
+            if(tNormStep <= mCorrectorTolerance)
             {
                 break;
             }
@@ -7851,10 +7963,58 @@ private:
         }
     }
 
+    void printNewtonHeader()
+    {
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            if(mPrintDiagnostics)
+            {
+                std::stringstream tMsg;
+                tMsg << "Iteration\t\tDelta(u*)\t\tResidual";
+                Plato::append_text_to_file(tMsg, mDiagnostics);
+            }
+        }
+    }
+
+    void printPredictorSolverHeader()
+    {
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            if(mPrintDiagnostics)
+            {
+                std::stringstream tMsg;
+                tMsg << "\n-------------------------------------------------------------------------------------\n";
+                tMsg << "*                           Momentum Predictor Solver                               *\n";
+                tMsg << "-------------------------------------------------------------------------------------\n";
+                Plato::append_text_to_file(tMsg, mDiagnostics);
+            }
+        }
+    }
+
+    void printNewtonDiagnostics
+    (Plato::Primal & aVariables)
+    {
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            if(mPrintDiagnostics)
+            {
+                std::stringstream tMsg;
+                auto tNormStep = aVariables.scalar("norm step");
+                auto tNormResidual = aVariables.scalar("norm residual");
+                Plato::OrdinalType tIteration = aVariables.scalar("newton iteration");
+                tMsg << tIteration << "\t\t" << std::scientific << tNormStep << "\t\t" << tNormResidual "\n";
+                Plato::append_text_to_file(tMsg, mDiagnostics);
+            }
+        }
+    }
+
     void updatePredictor
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aVariables)
     {
+        this->printPredictorSolverHeader();
+        this->printNewtonHeader();
+
         auto tCurrentPredictor = aVariables.vector("current predictor");
         Plato::blas1::fill(0.0, tCurrentPredictor);
 
@@ -7873,18 +8033,26 @@ private:
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
 
-        Plato::OrdinalType tIteration = 1;
+        Plato::OrdinalType tIteration = 0;
         Plato::ScalarVector tDeltaPredictor("delta predictor", tCurrentPredictor.size());
         while(true)
         {
+            aVariables.scalar("newton iteration", tIteration);
+
             Plato::blas1::fill(0.0, tDeltaPredictor);
             tSolver->solve(*tJacobian, tDeltaPredictor, tResidual);
-            Plato::set_values(tBcDofs, tDeltaPredictor);
+            Plato::set_dofs_values(tBcDofs, tResidual);
+            Plato::set_dofs_values(tBcDofs, tDeltaPredictor);
             Plato::blas1::update(1.0, tDeltaPredictor, 1.0, tCurrentPredictor);
             Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPredictor);
 
-            auto tStopCriterion = Plato::blas1::norm(tDeltaPredictor);
-            if(tStopCriterion <= mPredictorTolerance)
+            auto tNormResidual = Plato::blas1::norm(tResidual);
+            aVariables.scalar("norm residual", tNormResidual);
+            auto tNormStep = Plato::blas1::norm(tDeltaPredictor);
+            aVariables.scalar("norm step", tNormStep);
+            this->printNewtonDiagnostics(aVariables);
+
+            if(tNormStep <= mPredictorTolerance)
             {
                 break;
             }
@@ -7896,10 +8064,28 @@ private:
         }
     }
 
+    void printPressureSolverHeader()
+    {
+        if(Plato::Comm::rank(mMachine) == 0)
+        {
+            if(mPrintDiagnostics)
+            {
+                std::stringstream tMsg;
+                tMsg << "\n-------------------------------------------------------------------------------------\n";
+                tMsg << "*                                Pressure Solver                                    *\n";
+                tMsg << "-------------------------------------------------------------------------------------\n";
+                Plato::append_text_to_file(tMsg, mDiagnostics);
+            }
+        }
+    }
+
     void updatePressure
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aVariables)
     {
+        this->printPressureSolverHeader();
+        this->printNewtonHeader();
+
         auto tCurrentPressure = aVariables.vector("current pressure");
         Plato::blas1::fill(0.0, tCurrentPressure);
 
@@ -7918,20 +8104,28 @@ private:
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
 
-        Plato::OrdinalType tIteration = 1;
+        Plato::OrdinalType tIteration = 0;
         auto tPreviousPressure = aVariables.vector("previous pressure");
         Plato::blas1::update(1.0, tPreviousPressure, 1.0, tCurrentPressure);
         Plato::ScalarVector tDeltaPressure("delta pressure", tCurrentPressure.size());
         while(true)
         {
+            aVariables.scalar("newton iteration", tIteration);
+
             Plato::blas1::fill(0.0, tDeltaPressure);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
-            Plato::set_values(tBcDofs, tDeltaPressure);
+            Plato::set_dofs_values(tBcDofs, tResidual);
+            Plato::set_dofs_values(tBcDofs, tDeltaPressure);
             Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
             Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
 
-            auto tStopCriterion = Plato::blas1::norm(tDeltaPressure);
-            if(tStopCriterion <= mPressureTolerance)
+            auto tNormResidual = Plato::blas1::norm(tResidual);
+            aVariables.scalar("norm residual", tNormResidual);
+            auto tNormStep = Plato::blas1::norm(tDeltaPressure);
+            aVariables.scalar("norm step", tNormStep);
+            this->printNewtonDiagnostics(aVariables);
+
+            if(tNormStep <= mPressureTolerance)
             {
                 break;
             }
