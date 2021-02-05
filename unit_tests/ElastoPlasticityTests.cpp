@@ -3349,8 +3349,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     }
 }
 
-//#define NOPE
-#ifdef NOPE
+//#ifdef NOPE
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_2D)
 {
@@ -3478,7 +3477,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_2D)
     TEST_FLOATING_EQUALITY(tCriterionValue, -0.539482, tTolerance);
 
     auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
-    std::vector<Plato::Scalar> tGold = {-0.927379, -0.46369, -0.927379, -0.46369};
+    std::vector<Plato::Scalar> tGold = {-1.087708, -0.543854, -1.087708, -0.543854};
     auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
     Kokkos::deep_copy(tHostGrad, tCriterionGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
@@ -3524,10 +3523,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>   \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/> \n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/>  \n"
       "        </ParameterList>                                                                     \n"
       "      </ParameterList>                                                                       \n"
       "    </ParameterList>                                                                       \n"
@@ -3535,8 +3534,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "  <ParameterList name='Elliptic'>                                                        \n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "      <Parameter name='Exponent' type='double' value='2.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Criteria'>                                                        \n"
@@ -3544,7 +3543,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
       "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                 \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
@@ -3761,9 +3760,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_3D)
     auto tObjGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
     std::vector<Plato::Scalar> tGold = 
         {
-         -0.0869418, -0.115922, -0.0289806, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.0289806, -0.115922,
-         -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.347767, -0.173884, -0.115922, -0.173884, -0.115922,
-         -0.0869418, -0.115922, -0.173884, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.115922, -0.0289806
+         -0.101973, -0.135963, -0.033991, -0.203945, -0.067982, -0.033991, -0.067982, -0.033991, 
+         -0.135963, -0.203945, -0.067982, -0.033991, -0.067982, -0.407890, -0.203945, -0.135963, 
+         -0.203945, -0.135963, -0.101973, -0.135963, -0.203945, -0.203945, -0.067982, -0.033991, 
+         -0.067982, -0.135963, -0.033991
         };
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
@@ -3811,10 +3811,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>   \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/> \n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/>  \n"
       "        </ParameterList>                                                                     \n"
       "      </ParameterList>                                                                       \n"
       "    </ParameterList>                                                                       \n"
@@ -3822,8 +3822,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "  <ParameterList name='Elliptic'>                                                        \n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "      <Parameter name='Exponent' type='double' value='2.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Criteria'>                                                        \n"
@@ -3831,7 +3831,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
       "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                 \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
@@ -4047,7 +4047,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
     TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
 
     auto tObjGrad = tPlasticityProblem.criterionGradient(tControls, tSolution, tCriterionName);
-    std::vector<Plato::Scalar> tGold = {-0.927379, -0.46369, -0.927379, -0.46369};
+    std::vector<Plato::Scalar> tGold = {-1.087708, -0.543854, -1.087708, -0.543854};
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
@@ -4094,10 +4094,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>   \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/> \n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/>  \n"
       "        </ParameterList>                                                                     \n"
       "      </ParameterList>                                                                       \n"
       "    </ParameterList>                                                                       \n"
@@ -4105,8 +4105,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "  <ParameterList name='Elliptic'>                                                        \n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "      <Parameter name='Exponent' type='double' value='2.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Criteria'>                                                        \n"
@@ -4114,7 +4114,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
       "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                 \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
@@ -4330,9 +4330,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
     auto tObjGrad = tPlasticityProblem.criterionGradient(tControls, tSolution, tCriterionName);
     std::vector<Plato::Scalar> tGold = 
         {
-         -0.0869418, -0.115922, -0.0289806, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.0289806, -0.115922,
-         -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.347767, -0.173884, -0.115922, -0.173884, -0.115922,
-         -0.0869418, -0.115922, -0.173884, -0.173884, -0.0579612, -0.0289806, -0.0579612, -0.115922, -0.0289806
+         -0.101973, -0.135963, -0.033991, -0.203945, -0.067982, -0.033991, -0.067982, -0.033991,
+         -0.135963, -0.203945, -0.067982, -0.033991, -0.067982, -0.407890, -0.203945, -0.135963,
+         -0.203945, -0.135963, -0.101973, -0.135963, -0.203945, -0.203945, -0.067982, -0.033991,
+         -0.067982, -0.135963, -0.033991
         };
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
@@ -4380,10 +4381,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>   \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/> \n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/>  \n"
       "        </ParameterList>                                                                     \n"
       "      </ParameterList>                                                                       \n"
       "    </ParameterList>                                                                       \n"
@@ -4391,8 +4392,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "  <ParameterList name='Elliptic'>                                                        \n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "      <Parameter name='Exponent' type='double' value='2.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Criteria'>                                                        \n"
@@ -4400,7 +4401,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
       "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                 \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
@@ -4523,10 +4524,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>   \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/> \n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/>  \n"
       "        </ParameterList>                                                                     \n"
       "      </ParameterList>                                                                       \n"
       "    </ParameterList>                                                                       \n"
@@ -4534,8 +4535,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "  <ParameterList name='Elliptic'>                                                        \n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "      <Parameter name='Exponent' type='double' value='2.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Criteria'>                                                        \n"
@@ -4543,7 +4544,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>        \n"
       "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                 \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
@@ -4646,10 +4647,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>   \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/> \n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/>  \n"
       "        </ParameterList>                                                                     \n"
       "      </ParameterList>                                                                       \n"
       "    </ParameterList>                                                                       \n"
@@ -4657,8 +4658,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "  <ParameterList name='Elliptic'>                                                        \n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "      <Parameter name='Exponent' type='double' value='2.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Criteria'>                                                        \n"
@@ -4666,7 +4667,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>        \n"
       "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                 \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>              \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
@@ -4789,10 +4790,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>   \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/> \n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/>  \n"
       "        </ParameterList>                                                                     \n"
       "      </ParameterList>                                                                       \n"
       "    </ParameterList>                                                                       \n"
@@ -4800,8 +4801,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "  <ParameterList name='Elliptic'>                                                        \n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "      <Parameter name='Exponent' type='double' value='2.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Criteria'>                                                        \n"
@@ -4813,13 +4814,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "    <ParameterList name='My Elastic Work'>                                                         \n"
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>                  \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                           \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
       "    </ParameterList>                                                                               \n"
       "    <ParameterList name='My Plastic Work'>                                                         \n"
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>                  \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                           \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
       "    </ParameterList>                                                                               \n"
       "  </ParameterList>                                                                       \n"
@@ -4922,10 +4923,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>       \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>              \n"
-      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>   \n"
-      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/>  \n"
-      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/> \n"
-      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>   \n"
+      "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
+      "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/> \n"
+      "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-4'/>  \n"
       "        </ParameterList>                                                                     \n"
       "      </ParameterList>                                                                       \n"
       "    </ParameterList>                                                                       \n"
@@ -4933,8 +4934,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "  <ParameterList name='Elliptic'>                                                        \n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
-      "      <Parameter name='Minimum Value' type='double' value='1.0e-6'/>                     \n"
+      "      <Parameter name='Exponent' type='double' value='2.0'/>                             \n"
+      "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>                     \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Criteria'>                                                        \n"
@@ -4946,13 +4947,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "    <ParameterList name='My Elastic Work'>                                                         \n"
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Elastic Work'/>                  \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                           \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
       "    </ParameterList>                                                                               \n"
       "    <ParameterList name='My Plastic Work'>                                                         \n"
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>                  \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                           \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                           \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-9'/>                        \n"
       "    </ParameterList>                                                                               \n"
       "  </ParameterList>                                                                       \n"
@@ -5039,5 +5040,5 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
-#endif
+//#endif
 }
