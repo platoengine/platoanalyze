@@ -3197,7 +3197,7 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tAdvection, aResultWS);
 
             // 4. apply time step, i.e. \Delta{t}( \theta K\bar{u} + C u_n - (\theta-1)K u_n )
-            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS)
+            Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
             // 5. add predicted inertial force to residual, i.e. R += M\bar{u}
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredVelWS, tPredVelGP);
@@ -7251,7 +7251,7 @@ void append_text_to_file
     {
         return;
     }
-    aTextFile << aMsg.str().c_str();
+    aTextFile << aMsg.str().c_str() << std::flush;
 }
 
 namespace Fluids
@@ -7297,7 +7297,7 @@ private:
     Plato::Scalar mCorrectorTolerance = 1e-4;
     Plato::Scalar mSteadyStateTolerance = 1e-5;
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
-    Plato::OrdinalType mMaxNewtonIterations = 1e2; /*!< maximum number of Newton iterations */
+    Plato::OrdinalType mMaxNewtonIterations = 2e2; /*!< maximum number of Newton iterations */
     Plato::OrdinalType mMaxSteadyStateIterations = 1e3; /*!< maximum number of steady state iterations */
 
     Plato::ScalarMultiVector mPressure;
@@ -7398,7 +7398,7 @@ public:
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxSteadyStateIterations; tIteration++)
         {
-            tPrimalVars.scalar("iteration", tIteration);
+            tPrimalVars.scalar("iteration", tIteration+1);
             this->setPrimalStates(tPrimalVars);
             this->calculateCriticalTimeSteps(tPrimalVars);
 
@@ -7739,8 +7739,9 @@ private:
             {
                 std::stringstream tMsg;
                 auto tCriterion = aVariables.scalar("steady state criterion");
-                tMsg << "-------------------------------------------------------------------------------------\n";
+                tMsg << "\n-------------------------------------------------------------------------------------\n";
                 tMsg << std::scientific << " Steady State Convergence: " << tCriterion << "\n";
+                std::cout << std::scientific << " Steady State Convergence: " << tCriterion << "\n";
                 tMsg << "-------------------------------------------------------------------------------------\n\n";
                 Plato::append_text_to_file(tMsg, mDiagnostics);
             }
@@ -7754,7 +7755,7 @@ private:
         const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
         const auto tCriterionValue = this->calculateVelocityMisfitNorm(aVariables);
         aVariables.scalar("steady state criterion", tCriterionValue);
-        this->printSteadyStateCriterion(aVariables)
+        this->printSteadyStateCriterion(aVariables);
 
         if (tCriterionValue < mSteadyStateTolerance)
         {
@@ -7932,7 +7933,7 @@ private:
         Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
         Plato::ScalarVector tDeltaCorrector("delta corrector", tCurrentVelocity.size());
 
-        Plato::OrdinalType tIteration = 0;
+        Plato::OrdinalType tIteration = 1;
         while(true)
         {
             aVariables.scalar("newton iteration", tIteration);
@@ -7950,7 +7951,7 @@ private:
             aVariables.scalar("norm step", tNormStep);
             this->printNewtonDiagnostics(aVariables);
 
-            if(tNormStep <= mCorrectorTolerance)
+            if(tNormStep <= mCorrectorTolerance || tIteration > mMaxNewtonIterations)
             {
                 break;
             }
@@ -7970,7 +7971,7 @@ private:
             if(mPrintDiagnostics)
             {
                 std::stringstream tMsg;
-                tMsg << "Iteration\t\tDelta(u*)\t\tResidual";
+                tMsg << "Iteration" << std::setw(16) << "Delta(u*)" << std::setw(18) << "Residual\n";
                 Plato::append_text_to_file(tMsg, mDiagnostics);
             }
         }
@@ -8002,7 +8003,7 @@ private:
                 auto tNormStep = aVariables.scalar("norm step");
                 auto tNormResidual = aVariables.scalar("norm residual");
                 Plato::OrdinalType tIteration = aVariables.scalar("newton iteration");
-                tMsg << tIteration << "\t\t" << std::scientific << tNormStep << "\t\t" << tNormResidual "\n";
+                tMsg << tIteration << std::setw(24) << std::scientific << tNormStep << std::setw(18) << tNormResidual << "\n";
                 Plato::append_text_to_file(tMsg, mDiagnostics);
             }
         }
@@ -8033,7 +8034,7 @@ private:
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
 
-        Plato::OrdinalType tIteration = 0;
+        Plato::OrdinalType tIteration = 1;
         Plato::ScalarVector tDeltaPredictor("delta predictor", tCurrentPredictor.size());
         while(true)
         {
@@ -8052,7 +8053,7 @@ private:
             aVariables.scalar("norm step", tNormStep);
             this->printNewtonDiagnostics(aVariables);
 
-            if(tNormStep <= mPredictorTolerance)
+            if(tNormStep <= mPredictorTolerance || tIteration > mMaxNewtonIterations)
             {
                 break;
             }
@@ -8104,7 +8105,7 @@ private:
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
 
-        Plato::OrdinalType tIteration = 0;
+        Plato::OrdinalType tIteration = 1;
         auto tPreviousPressure = aVariables.vector("previous pressure");
         Plato::blas1::update(1.0, tPreviousPressure, 1.0, tCurrentPressure);
         Plato::ScalarVector tDeltaPressure("delta pressure", tCurrentPressure.size());
@@ -8125,7 +8126,7 @@ private:
             aVariables.scalar("norm step", tNormStep);
             this->printNewtonDiagnostics(aVariables);
 
-            if(tNormStep <= mPressureTolerance)
+            if(tNormStep <= mPressureTolerance || tIteration > mMaxNewtonIterations)
             {
                 break;
             }
@@ -8499,12 +8500,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "  </ParameterList>"
             "  <ParameterList  name='Newton Iteration'>"
             "    <Parameter name='Pressure Tolerance'  type='double' value='1e-2'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Maximum Iterations'  type='int'    value='100'/>"
+            "    <Parameter name='Predictor Tolerance' type='double' value='1e-3'/>"
+            "    <Parameter name='Corrector Tolerance' type='double' value='1e-3'/>"
+            "    <Parameter name='Maximum Iterations'  type='int'    value='200'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor'          type='double' value='0.7'/>"
+            "    <Parameter name='Safety Factor'          type='double' value='0.9'/>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
             "    <Parameter name='Maximum Iterations'     type='int'    value='1000'/>"
             "  </ParameterList>"
