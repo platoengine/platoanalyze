@@ -7587,6 +7587,7 @@ private:
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
+            mSteadyStateTolerance = tTimeIntegration.get<Plato::Scalar>("Steady State Tolerance", 1e-3);
             mMaxSteadyStateIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Iterations", 1e3);
         }
     }
@@ -7845,7 +7846,6 @@ private:
             // calculate current residual and jacobian matrix
             tResidual = mVelocityResidual.value(aControl, aVariables);
             Plato::blas1::scale(-1.0, tResidual);
-            tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
 
             tIteration++;
         }
@@ -7891,7 +7891,6 @@ private:
 
             tResidual = mPredictorResidual.value(aControl, aVariables);
             Plato::blas1::scale(-1.0, tResidual);
-            tJacobian = mPredictorResidual.gradientPredictor(aControl, aVariables);
 
             tIteration++;
         }
@@ -7940,7 +7939,6 @@ private:
             // calculate current residual and jacobian matrix
             tResidual = mPressureResidual.value(aControl, aVariables);
             Plato::blas1::scale(-1.0, tResidual);
-            tJacobian = mPressureResidual.gradientCurrentPress(aControl, aVariables);
 
             tIteration++;
         }
@@ -8306,13 +8304,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance' type='int' value='1e-2'/>"
-            "    <Parameter name='Predictor Tolerance' type='int' value='1e-4'/>"
-            "    <Parameter name='Corrector Tolerance' type='int' value='1e-4'/>"
-            "    <Parameter name='Maximum Iterations' type='int' value='100'/>"
+            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-2'/>"
+            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
+            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
+            "    <Parameter name='Maximum Iterations'  type='int'    value='100'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Maximum Iterations' type='int' value='1000'/>"
+            "    <Parameter name='Safety Factor'          type='double' value='0.7'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
+            "    <Parameter name='Maximum Iterations'     type='int'    value='1000'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
