@@ -7741,7 +7741,6 @@ private:
                 auto tCriterion = aVariables.scalar("steady state criterion");
                 tMsg << "\n-------------------------------------------------------------------------------------\n";
                 tMsg << std::scientific << " Steady State Convergence: " << tCriterion << "\n";
-                std::cout << std::scientific << " Steady State Convergence: " << tCriterion << "\n";
                 tMsg << "-------------------------------------------------------------------------------------\n\n";
                 Plato::append_text_to_file(tMsg, mDiagnostics);
             }
