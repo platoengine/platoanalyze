@@ -8187,7 +8187,7 @@ public:
         this->checkProblemSetup();
 
         Plato::Primal tPrimalVars;
-        //this->setInitialConditions(tPrimalVars);
+        this->setInitialConditions(tPrimalVars);
         this->calculateElemCharacteristicSize(tPrimalVars);
 
         for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumIterations; tIteration++)
@@ -8200,9 +8200,6 @@ public:
             this->updatePredictor(aControl, tPrimalVars);
             this->updatePressure(aControl, tPrimalVars);
             this->updateCorrector(aControl, tPrimalVars);
-
-            this->enforceVelocityBoundaryConditions(tPrimalVars);
-            this->enforcePressureBoundaryConditions(tPrimalVars);
 
             if(mCalculateHeatTransfer)
             {
@@ -8410,7 +8407,7 @@ private:
             auto tTimeIntegration = aInputs.sublist("Time Integration");
             auto tArtificialDampingTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping", 0.0);
             mIsExplicitSolve = tArtificialDampingTwo > static_cast<Plato::Scalar>(0.0) ? false : true;
-            mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
+            //mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
             mMaxNumIterations = tTimeIntegration.get<Plato::OrdinalType>("Max Number Iterations", 1e3);
         }
     }
@@ -8696,45 +8693,49 @@ private:
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
 
-        /*auto tParamList = mInputs.sublist("Linear Solver");
+        // create linear solver
+        auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        tSolver->solve(*tJacobian, tCurrentVelocity, tResidual);*/
-
-        auto tInitialResidualNorm = Plato::blas1::norm(tResidual);
-
-        Plato::OrdinalType tIteration = 1;
+     
+        // set initial guess for current velocity 
         auto tPreviousVelocity = aVariables.vector("previous velocity");
         Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
         Plato::ScalarVector tDeltaVelocity("delta velocity", tCurrentVelocity.size());
 
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-
+        Plato::OrdinalType tIteration = 1;
         while(true)
         {
             Plato::blas1::fill(0.0, tDeltaVelocity);
             tSolver->solve(*tJacobian, tDeltaVelocity, tResidual);
+            this->set_values(tBcDofs, tDeltaVelocity);
             Plato::blas1::update(1.0, tDeltaVelocity, 1.0, tCurrentVelocity);
+            Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
+
+            auto tStopCriterion = Plato::blas1::norm(tDeltaVelocity);
+            if(tStopCriterion <= 1e-12)
+            {
+                break;
+            }
 
             // calculate current residual and jacobian matrix
             tResidual = mVelocityResidual.value(aControl, aVariables);
             Plato::blas1::scale(-1.0, tResidual);
             tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aVariables);
-            Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
-
-            auto tResidualNorm = Plato::blas1::norm(tResidual);
-            auto tStopCriterion = tResidualNorm / tInitialResidualNorm;
-            if(tStopCriterion <= 1e-8)
-            {
-                break;
-            }
 
             tIteration++;
         }
+    }
+
+    void set_values
+    (const Plato::LocalOrdinalVector & aBcDofs, 
+           Plato::ScalarVector & aOutput)
+    {
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aBcDofs.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+        {
+            aOutput(aBcDofs(aOrdinal)) = 0.0;
+        }, "set values at bc dofs to zero");
     }
 
     void updatePredictor
@@ -8749,17 +8750,10 @@ private:
         Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mPredictorResidual.gradientPredictor(aControl, aVariables);
 
-        // apply constraints
+        // prepare constraints dofs
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
-        auto tInitialResidualNorm = Plato::blas1::norm(tResidual);
-
-        /*auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        tSolver->solve(*tJacobian, tCurrentPredictor, tResidual);*/
 
         // create linear solver
         auto tParamList = mInputs.sublist("Linear Solver");
@@ -8772,19 +8766,19 @@ private:
         {
             Plato::blas1::fill(0.0, tDeltaPredictor);
             tSolver->solve(*tJacobian, tDeltaPredictor, tResidual);
+            this->set_values(tBcDofs, tDeltaPredictor);
             Plato::blas1::update(1.0, tDeltaPredictor, 1.0, tCurrentPredictor);
+            Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPredictor);
+
+            auto tStopCriterion = Plato::blas1::norm(tDeltaPredictor);
+            if(tStopCriterion <= 1e-12)
+            {
+                break;
+            }
 
             tResidual = mPredictorResidual.value(aControl, aVariables);
             Plato::blas1::scale(-1.0, tResidual);
             tJacobian = mPredictorResidual.gradientPredictor(aControl, aVariables);
-            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
-
-            auto tResidualNorm = Plato::blas1::norm(tResidual);
-            auto tStopCriterion = tResidualNorm / tInitialResidualNorm;
-            if(tStopCriterion <= 1e-8)
-            {
-                break;
-            }
 
             tIteration++;
         }
@@ -8802,12 +8796,10 @@ private:
         Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mPressureResidual.gradientCurrentPress(aControl, aVariables);
 
-        // apply constraints
+        // prepare constraints dofs
         Plato::ScalarVector tBcValues;
         Plato::LocalOrdinalVector tBcDofs;
         mPressureEssentialBCs.get(tBcDofs, tBcValues);
-        Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
-        auto tInitialResidualNorm = Plato::blas1::norm(tResidual);
 
         // create linear solver
         auto tParamList = mInputs.sublist("Linear Solver");
@@ -8822,20 +8814,20 @@ private:
         {
             Plato::blas1::fill(0.0, tDeltaPressure);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
+            this->set_values(tBcDofs, tDeltaPressure);
             Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
+            Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
+
+            auto tStopCriterion = Plato::blas1::norm(tDeltaPressure);
+            if(tStopCriterion <= 1e-4)
+            {
+                break;
+            }
 
             // calculate current residual and jacobian matrix
             tResidual = mPressureResidual.value(aControl, aVariables);
             Plato::blas1::scale(-1.0, tResidual);
             tJacobian = mPressureResidual.gradientCurrentPress(aControl, aVariables);
-            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
-
-            auto tResidualNorm = Plato::blas1::norm(tResidual);
-            auto tStopCriterion = tResidualNorm / tInitialResidualNorm;
-            if(tStopCriterion <= 1e-8)
-            {
-                break;
-            }
 
             tIteration++;
         }
@@ -9951,7 +9943,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    <Parameter name='Heat Transfer' type='string' value='None'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Prandtl Number'   type='double'  value='1.7'/>"
-            "      <Parameter  name='Reynolds Number'  type='double'  value='400'/>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
@@ -10022,7 +10014,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Max Number Iterations' type='int'    value='25'/>"
+            "    <Parameter name='Max Number Iterations' type='int' value='1000'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -10031,7 +10023,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,20,20);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -10043,11 +10035,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
     tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("velocity",tVelBcNodeIds) );    
 
     // add pressure essential boundary condition to node set list
-    /*Plato::ScalarMultiVector tPoints("points",1,2);
-    auto tHostPoints = Kokkos::create_mirror(tPoints);
-    tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
-    auto tNodeIds = Plato::find_node_ids_on_face_set<1,2>(*tMesh, tMeshSets, "y-", tPoints);
-    auto tLocalNodeIds = Plato::omega_h::copy(tNodeIds);*/
     Omega_h::Write<int> tWritePress(1);
     tWritePress[0]=0; auto tPressBcNodeIds = Omega_h::LOs(tWritePress);
     tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tPressBcNodeIds) );
