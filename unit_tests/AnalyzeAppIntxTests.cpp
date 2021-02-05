@@ -246,7 +246,7 @@ TEUCHOS_UNIT_TEST( AnalyzeAppTests, EffectiveEnergy )
   app.exportDataT("Objective Value", fauxStateOut);
   fauxStateOut.getData(stdStateOne);
 
-  TEST_FLOATING_EQUALITY(stdStateOne[0], 9558644.9896200113, 1e-12);
+  TEST_FLOATING_EQUALITY(stdStateOne[0], 9555665.134903859, 1e-12);
 }
 
 TEUCHOS_UNIT_TEST( AnalyzeAppTests, InternalEnergyGradX )
