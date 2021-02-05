@@ -1520,13 +1520,6 @@ build_vector_function_worksets
     Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
     aWorkSets.set("critical time step", tCriticalTimeStep);
 
-/*
-    auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-        ( Plato::ScalarMultiVector("surface velocity", tNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aDomain, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("surface velocity"), tVelBCsWS->mData);
-    aWorkSets.set("surface velocity", tVelBCsWS);
-*/
-
     if(aVariables.defined("artificial compressibility"))
     {
         auto tArtificialCompressWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
@@ -1607,13 +1600,6 @@ build_vector_function_worksets
     auto tCriticalTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("critical time step", 1) );
     Plato::blas1::copy(aVariables.vector("critical time step"), tCriticalTimeStep->mData);
     aWorkSets.set("critical time step", tCriticalTimeStep);
-
-/*
-    auto tVelBCsWS = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-        ( Plato::ScalarMultiVector("surface velocity", aNumCells, PhysicsT::SimplexT::mNumMomentumDofsPerCell) );
-    tWorkSetBuilder.buildMomentumWorkSet(aNumCells, aMaps.mVectorFieldOrdinalsMap, aVariables.vector("surface velocity"), tVelBCsWS->mData);
-    aWorkSets.set("surface velocity", tVelBCsWS);
-*/
 
     if(aVariables.defined("artificial compressibility"))
     {
@@ -2529,328 +2515,10 @@ private:
 
 
 
-template<typename PhysicsT, typename EvaluationT>
-class PressureSurfaceForces
-{
-private:
-    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;       /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;      /*!< number of nodes per face */
-    static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;   /*!< number of pressure dofs per node */
-    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace; /*!< number of spatial dimensions on face */
-
-    // forward automatic differentiation types
-    using ResultT    = typename EvaluationT::ResultScalarType;
-    using ConfigT    = typename EvaluationT::ConfigScalarType;
-    using PrevPressT = typename EvaluationT::PreviousMassScalarType;
-
-    // set local type names
-    using VolumeCubatureRule = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>;
-    using SurfaceCubatureRule = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
-
-    const std::string mSideSetName = "not defined"; /*!< side set name */
-
-    VolumeCubatureRule mVolumeCubatureRule; /*!< volume integration rule */
-    SurfaceCubatureRule mSurfaceCubatureRule; /*!< surface integration rule */
-    const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-
-public:
-    PressureSurfaceForces
-    (const Plato::SpatialDomain & aSpatialDomain,
-     std::string aSideSetName = "not defined") :
-         mSideSetName(aSideSetName),
-         mSpatialDomain(aSpatialDomain)
-    {
-        auto tLowerTag = Plato::tolower(mSideSetName);
-        if(tLowerTag == "not defined")
-        {
-            THROWERR("Side set with name '" + mSideSetName + "' is not defined.")
-        }
-    }
-
-    void operator()
-    (const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult,
-     Plato::Scalar aMultiplier = 1.0) const
-    {
-        // get mesh vertices
-        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
-        auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
-
-        // get face to element graph
-        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
-        auto tFace2Elems_map   = tFace2eElems.a2ab;
-        auto tFace2Elems_elems = tFace2eElems.ab2b;
-
-        // get element to face map
-        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
-
-        // set local functors
-        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
-        Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
-        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumPressDofsPerNode> tIntrplScalarField;
-        Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
-
-        // get sideset faces
-        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
-        auto tNumFaces = tFaceLocalOrdinals.size();
-        Plato::ScalarArray3DT<ConfigT> tSurfaceJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
-        auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Plato::ScalarVectorT<PrevPressT> tPrevPressGP("previous pressure at Gauss point", tNumCells);
-
-        // set input state worksets
-        auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tPrevPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevPressT>>(aWorkSets.get("previous pressure"));
-
-        // calculate surface integral
-        auto tVolumeBasisFunctions = mVolumeCubatureRule.getBasisFunctions();
-        auto tSurfaceCubatureWeight = mSurfaceCubatureRule.getCubWeight();
-        auto tSurfaceBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
-        {
-
-          auto tFaceOrdinal = tFaceLocalOrdinals[aFaceI];
-          // for each element that the face is connected to: (either 1 or 2 elements)
-          for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal + 1]; tElem++ )
-          {
-              // create a map from face local node index to elem local node index
-              Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
-              auto tCellOrdinal = tFace2Elems_elems[tElem];
-              tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
-
-              // calculate surface jacobians
-              ConfigT tSurfaceAreaTimesCubWeight(0.0);
-              tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tSurfaceJacobians);
-              tCalculateSurfaceArea(aFaceI, tSurfaceCubatureWeight, tSurfaceJacobians, tSurfaceAreaTimesCubWeight);
-
-              // compute unit normal vector
-              auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
-              auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
-
-              // project into aResult workset
-              tIntrplScalarField(tCellOrdinal, tVolumeBasisFunctions, tPrevPressWS, tPrevPressGP);
-              for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
-              {
-                  for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
-                  {
-                      auto tLocalCellNode = tLocalNodeOrd[tNode];
-                      auto tLocalCellDof = (tLocalCellNode * mNumSpatialDims) + tDim;
-                      aResult(tCellOrdinal, tLocalCellDof) += aMultiplier * tSurfaceBasisFunctions(tNode)
-                          * tSurfaceAreaTimesCubWeight * (tPrevPressGP(tCellOrdinal) * tUnitNormalVec(tDim));
-                  }
-              }
-          }
-        }, "calculate surface pressure integral");
-    }
-};
-// class PressureSurfaceForces
 
 
 
 
-
-
-/***************************************************************************//**
- * \brief Class used to integrate deviatoric stresses on a surface.  The integral
- * is defined as: \int_{\Gamma - \Gamma_t} N_i^a \left(\tau_{ij}n_j\right) d\Gamma.
- * The aforedefined integral is used by the momentum predictor residual evaluations.
- *
- * Note: The implementation works well for linear tetrahedral elements since the
- * gradient is constant across the element. However, the graident calculation, i.e
- * the calculation of the derivative of the shape functions, will require the
- * implementation of a map from a 3-D quantity into a 2 dimensional surface. Thus,
- * the gradients will need to be calculated using this map, which is not the case
- * for linear tetrahedral elements.
- *
- * \tparam PhysicsT    physics type
- * \tparam EvaluationT forward automatic differentiation type
- *
-*******************************************************************************/
-template<typename PhysicsT, typename EvaluationT>
-class DeviatoricSurfaceForces
-{
-private:
-    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode; /*!< number of degrees of freedom per node */
-    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell; /*!< number of degrees of freedom per cell */
-
-    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;       /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;      /*!< number of nodes per face */
-    static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;      /*!< number of nodes per cell */
-    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace; /*!< number of spatial dimensions on face */
-
-    // forward automatic differentiation types
-    using ResultT  = typename EvaluationT::ResultScalarType;
-    using ConfigT  = typename EvaluationT::ConfigScalarType;
-    using ControlT = typename EvaluationT::ControlScalarType;
-    using PrevVelT = typename EvaluationT::PreviousMomentumScalarType;
-    using StrainT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
-
-    // set local typenames
-    using SurfaceCubatureRule = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
-
-    std::string   mSideSetName; /*!< side set name */
-    Plato::Scalar mPrNum = 1.0; /*!< prandtl number */
-
-    Omega_h::LOs mFaceOrdinalsOnBoundary;
-    SurfaceCubatureRule mSurfaceCubatureRule; /*!< surface integration rule */
-    const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-
-public:
-    DeviatoricSurfaceForces
-    (const Plato::SpatialDomain & aSpatialDomain,
-     Teuchos::ParameterList & aInputs,
-     std::string aSideSetName = "") :
-         mSideSetName(aSideSetName),
-         mSpatialDomain(aSpatialDomain)
-    {
-        this->setParameters(aInputs);
-        this->setFacesOnNonPrescribedBoundary(aInputs);
-    }
-
-    void operator()
-    (const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult,
-     Plato::Scalar aMultiplier = 1.0) const
-    {
-        // get mesh vertices
-        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
-        auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
-
-        // get face to element graph
-        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
-        auto tFace2Elems_map   = tFace2eElems.a2ab;
-        auto tFace2Elems_elems = tFace2eElems.ab2b;
-
-        // get element to face map
-        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
-
-        // set local functors
-        Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
-        Plato::ComputeGradientWorkset<mNumSpatialDims> tCalculateGradients;
-        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
-        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceAreaTimesCubWeight;
-        Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
-
-        // transfer member data to device
-        auto tPrNum = mPrNum;
-        auto tFaceOrdinalsOnBoundary = mFaceOrdinalsOnBoundary;
-
-        // set local data structures
-        auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Plato::ScalarVectorT<ConfigT>  tCellVolume("cell weight", tNumCells);
-        Plato::ScalarArray3DT<ConfigT> tGradients("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::ScalarArray3DT<StrainT> tStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
-        auto tNumFaces = tFaceOrdinalsOnBoundary.size();
-        Plato::ScalarArray3DT<ConfigT> tJacobians("surface jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
-
-        // set input state worksets
-        auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
-        auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
-
-        // calculate surface integral
-        auto tSurfaceCubatureWeight = mSurfaceCubatureRule.getCubWeight();
-        auto tSurfaceBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
-        {
-            auto tFaceOrdinal = tFaceOrdinalsOnBoundary[aFaceI];
-            // for each element that the face is connected to: (either 1 or 2 elements)
-            for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal + 1]; tElem++ )
-            {
-                // create a map from face local node index to elem local node index
-                Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
-                auto tCellOrdinal = tFace2Elems_elems[tElem];
-                tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
-
-                // calculate surface jacobians
-                ConfigT tSurfaceAreaTimesCubWeight(0.0);
-                tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
-                tCalculateSurfaceAreaTimesCubWeight(aFaceI, tSurfaceCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
-
-                // compute unit normal vector
-                auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
-                auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
-
-                // calculate strain rate
-                tCalculateGradients(tCellOrdinal, tGradients, tConfigWS, tCellVolume);
-                Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
-                    (tCellOrdinal, tPrevVelWS, tGradients, tStrainRate);
-
-                // calculate deviatoric traction forces, which are defined as,
-                // \int_{\Gamma_e} N_u^a \left( \tau^h_{ij}n_j \right) d\Gamma_e
-                for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
-                {
-                    for(Plato::OrdinalType tDimI = 0; tDimI < mNumSpatialDims; tDimI++)
-                    {
-                        auto tLocalCellDofI = (mNumSpatialDims * tNode) + tDimI;
-                        for(Plato::OrdinalType tDimJ = 0; tDimJ < mNumSpatialDims; tDimJ++)
-                        {
-                            aResult(tCellOrdinal, tLocalCellDofI) += aMultiplier * tSurfaceBasisFunctions(tNode)
-                            * tSurfaceAreaTimesCubWeight * ( ( static_cast<Plato::Scalar>(2.0) * tPrNum *
-                                    tStrainRate(tCellOrdinal, tDimI, tDimJ) ) * tUnitNormalVec(tDimJ) );
-                        }
-                    }
-                }
-            }
-
-        }, "calculate deviatoric stress surface integral");
-    }
-
-private:
-    void setParameters
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Hyperbolic") == false)
-        {
-            THROWERR("'Hyperbolic' Parameter List is not defined.")
-        }
-        auto tHyperParamList = aInputs.sublist("Hyperbolic");
-
-        mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperParamList);
-        this->setPenaltyModel(tHyperParamList);
-    }
-
-    void setPenaltyModel
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Momentum Conservation"))
-        {
-            auto tMomentumParamList = aInputs.sublist("Momentum Conservation");
-            if (tMomentumParamList.isSublist("Penalty Function"))
-            {
-                auto tPenaltyFuncList = tMomentumParamList.sublist("Penalty Function");
-            }
-        }
-    }
-
-    void setFacesOnNonPrescribedBoundary(Teuchos::ParameterList& aInputs)
-    {
-        if (mSideSetName.empty())
-        {
-            if (aInputs.isSublist("Momentum Natural Boundary Conditions"))
-            {
-                auto tNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
-                auto tPrescribedSideSetNames = Plato::sideset_names(tNaturalBCs);
-                mFaceOrdinalsOnBoundary =
-                    Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>
-                        (tPrescribedSideSetNames, mSpatialDomain.Mesh, mSpatialDomain.MeshSets);
-            }
-            else
-            {
-                // integral is performed along all the fluid surfaces
-                std::vector<std::string> tEmptyPrescribedBCs;
-                mFaceOrdinalsOnBoundary =
-                    Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>
-                        (tEmptyPrescribedBCs, mSpatialDomain.Mesh, mSpatialDomain.MeshSets);
-            }
-        }
-        else
-        {
-            mFaceOrdinalsOnBoundary = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mSideSetName);
-        }
-    }
-};
-// class DeviatoricSurfaceForces
 
 // todo: abstract vector function
 template<typename PhysicsT, typename EvaluationT>
@@ -3177,196 +2845,6 @@ void integrate_vector_field
         }
     }
 }
-
-struct SupportedApplyWeightTags
-{
-private:
-    std::vector<std::string> mData = {"convexity", "minimum ersatz", "penalty"};
-
-public:
-    bool supported(const std::string & aTag)
-    {
-        if(std::find(mData.begin(), mData.end(), aTag) == mData.end())
-        {
-            THROWERR(std::string("Tag '" + aTag + "' is not a valid keyword."))
-        }
-        return true;
-    }
-};
-
-struct ApplyWeightData
-{
-private:
-    Plato::Fluids::SupportedApplyWeightTags mValidTags;
-    std::unordered_map<std::string, Plato::Scalar> mData;
-
-public:
-    void set(const std::string & aTag, const Plato::Scalar & aInput)
-    {
-        auto tLowerTag = Plato::tolower(aTag);
-        mValidTags.supported(tLowerTag);
-        mData[tLowerTag] = aInput;
-    }
-
-    Plato::Scalar get(const std::string & aTag) const
-    {
-        auto tLowerTag = Plato::tolower(aTag);
-        auto tItr = mData.find(tLowerTag);
-        if(tItr == mData.end())
-        {
-            THROWERR(std::string("Parameter with tag '" + aTag + "' is not defined."))
-        }
-        return tItr->second;
-    }
-};
-
-template<typename EvaluationT>
-class NoWeight
-{
-private:
-    using ControlT = typename EvaluationT::ControlScalarType;
-
-public:
-    void set(const Plato::Fluids::ApplyWeightData & aInputs){ return; }
-
-    DEVICE_TYPE inline ControlT operator()
-    (const Plato::OrdinalType & aCellOrdinal,
-     const Plato::Scalar & aPhysicalProperty,
-     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
-    {
-        ControlT tOutput = static_cast<Plato::Scalar>(1.0) * aPhysicalProperty;
-        return tOutput;
-    }
-};
-
-template<typename PhysicsT, typename EvaluationT>
-class WeightSIMP
-{
-private:
-    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
-    using ControlT = typename EvaluationT::ControlScalarType;
-
-    Plato::Scalar mPenalty;
-
-public:
-    void set(const Plato::Fluids::ApplyWeightData & aInputs)
-    {
-        mPenalty = aInputs.get("penalty");
-    }
-
-    DEVICE_TYPE inline ControlT operator()
-    (const Plato::OrdinalType & aCellOrdinal,
-     const Plato::Scalar & aPhysicalProperty,
-     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
-    {
-        ControlT tOutput =
-            Plato::Fluids::simp_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mPenalty, aControlWS);
-        return tOutput;
-    }
-};
-
-template<typename PhysicsT, typename EvaluationT>
-class WeightMSIMP
-{
-private:
-    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
-    using ControlT = typename EvaluationT::ControlScalarType;
-
-    Plato::Scalar mPenalty;
-    Plato::Scalar mMinErsatz;
-
-public:
-    void set(const Plato::Fluids::ApplyWeightData & aInputs)
-    {
-        mPenalty = aInputs.get("penalty");
-        mMinErsatz = aInputs.get("minimum ersatz");
-    }
-
-    DEVICE_TYPE inline ControlT operator()
-    (const Plato::OrdinalType & aCellOrdinal,
-     const Plato::Scalar & aPhysicalProperty,
-     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
-    {
-        ControlT tOutput =
-            Plato::Fluids::msimp_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mPenalty, mMinErsatz, aControlWS);
-        return tOutput;
-    }
-};
-
-template<typename PhysicsT, typename EvaluationT>
-class WeightBrinkman
-{
-private:
-    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
-    using ControlT = typename EvaluationT::ControlScalarType;
-
-    Plato::Scalar mConvexity;
-
-public:
-    void set(const Plato::Fluids::ApplyWeightData & aInputs)
-    {
-        mConvexity = aInputs.get("convexity");
-    }
-
-    DEVICE_TYPE inline ControlT operator()
-    (const Plato::OrdinalType & aCellOrdinal,
-     const Plato::Scalar & aPhysicalProperty,
-     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
-    {
-        ControlT tOutput =
-            Plato::Fluids::brinkman_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mConvexity, aControlWS);
-        return tOutput;
-    }
-};
-
-template<typename PhysicsT, typename EvaluationT>
-class WeightRAMP
-{
-private:
-    static constexpr auto mNumNodesPerCell = PhysicsT::mNumNodesPerCell;
-    using ControlT = typename EvaluationT::ControlScalarType;
-
-    Plato::Scalar mConvexity;
-
-public:
-    void set(const Plato::Fluids::ApplyWeightData & aInputs)
-    {
-        mConvexity = aInputs.get("convexity");
-    }
-
-    DEVICE_TYPE inline ControlT operator()
-    (const Plato::OrdinalType & aCellOrdinal,
-     const Plato::Scalar & aPhysicalProperty,
-     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
-    {
-        ControlT tOutput =
-            Plato::Fluids::ramp_penalization<mNumNodesPerCell>(aCellOrdinal, aPhysicalProperty, mConvexity, aControlWS);
-        return tOutput;
-    }
-};
-
-template<typename Method, typename EvaluationT>
-class ApplyWeight
-{
-private:
-    using ControlT = typename EvaluationT::ControlScalarType;
-    Method mMethod;
-
-public:
-    ApplyWeight(const Plato::Fluids::ApplyWeightData & aInputs)
-    {
-        mMethod.set(aInputs);
-    }
-
-    DEVICE_TYPE inline ControlT operator()
-    (const Plato::OrdinalType & aCellOrdinal,
-     const Plato::Scalar & aPhysicalProperty,
-     const Plato::ScalarMultiVectorT<ControlT> & aControlWS) const
-    {
-        ControlT tOutput = mMethod(aCellOrdinal, aPhysicalProperty, aControlWS);
-        return tOutput;
-    }
-};
 
 
 inline Plato::Scalar
@@ -3750,7 +3228,8 @@ public:
    (const Plato::SpatialModel & aSpatialModel,
     const Plato::WorkSets & aWorkSets,
     Plato::ScalarMultiVectorT<ResultT> & aResult)
-   const override { return; }
+   const override
+   { return; }
 
    /***************************************************************************//**
     * \fn void evaluatePrescribed
@@ -3894,14 +3373,6 @@ private:
     Plato::DataMap& mDataMap; /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< cubature rule evaluator */
-
-    // set local type names
-    using PressureForces   = Plato::Fluids::PressureSurfaceForces<PhysicsT, EvaluationT>;
-    using DeviatoricForces = Plato::Fluids::DeviatoricSurfaceForces<PhysicsT, EvaluationT>;
-
-    // set external force evaluators
-    std::unordered_map<std::string, std::shared_ptr<PressureForces>>     mPressureBCs;   /*!< prescribed pressure forces */
-    std::unordered_map<std::string, std::shared_ptr<DeviatoricForces>>   mDeviatoricBCs; /*!< stabilized deviatoric boundary forces */
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mPrescribedBCs; /*!< prescribed boundary conditions, e.g. tractions */
 
     // set member scalar data
@@ -3923,7 +3394,6 @@ public:
     {
         this->setParameters(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
-        this->setStabilizedNaturalBoundaryConditions(aInputs);
     }
 
     virtual ~VelocityPredictorResidual(){}
@@ -4106,24 +3576,7 @@ public:
     const Plato::WorkSets & aWorkSets,
     Plato::ScalarMultiVectorT<ResultT> & aResult)
    const override
-   {
-       // 1. calculate deviatoric traction forces
-       auto tNumCells = aResult.extent(0);
-       Plato::ScalarMultiVectorT<ResultT> tResultWS("deviatoric forces", tNumCells, mNumDofsPerCell);
-       for(auto& tPair : mDeviatoricBCs)
-       {
-           tPair.second->operator()(aWorkSets, tResultWS);
-       }
-
-       // 2. multiply force vector by the corresponding nodal time steps
-       auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
-       Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-       {
-           Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
-               (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
-           Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
-       }, "deviatoric traction forces on non-traction boundary");
-   }
+   { return; }
 
    /***************************************************************************//**
     * \fn void evaluatePrescribed
@@ -4156,12 +3609,6 @@ public:
            auto tNumCells = aResult.extent(0);
            Plato::ScalarMultiVectorT<ResultT> tResultWS("traction forces", tNumCells, mNumDofsPerCell);
            mPrescribedBCs->get( aSpatialModel, tPrevVelWS, tControlWS, tConfigWS, tResultWS); // prescribed traction forces
-           // 2. add previous pressure forces forces
-           for(auto& tPair : mPressureBCs)
-           {
-               // previous pressure on boundary where prescribed tractions are applied
-               tPair.second->operator()(aWorkSets, tResultWS);
-           }
 
            // 3. multiply force vector by the corresponding nodal time steps
            auto tTimeStepWS = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
@@ -4170,7 +3617,7 @@ public:
                Plato::Fluids::apply_time_step<mNumNodesPerCell, mNumDofsPerNode>
                    (aCellOrdinal, 1.0, tTimeStepWS, tResultWS);
                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tResultWS, 1.0, aResult);
-           }, "prescribed deviatoric traction forces");
+           }, "prescribed traction forces");
        }
    }
 
@@ -4310,79 +3757,6 @@ private:
         {
             auto tInputsNaturalBCs = aInputs.sublist("Momentum Natural Boundary Conditions");
             mPrescribedBCs = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tInputsNaturalBCs);
-
-            for (Teuchos::ParameterList::ConstIterator tItr = tInputsNaturalBCs.begin(); tItr != tInputsNaturalBCs.end(); ++tItr)
-            {
-                const Teuchos::ParameterEntry &tEntry = tInputsNaturalBCs.entry(tItr);
-                if (!tEntry.isList())
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name() 
-                        + "'. Parameter List block is not valid. Expects Parameter Lists only.")
-                }
-
-                const std::string &tName = tInputsNaturalBCs.name(tItr);
-                if(tInputsNaturalBCs.isSublist(tName) == false)
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name() 
-                        + "'. Parameter Sublist '" + tName.c_str() + "' is not defined.")
-                }
-
-                Teuchos::ParameterList &tSubList = tInputsNaturalBCs.sublist(tName);
-                if(tSubList.isParameter("Sides") == false)
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tSubList.name() + "'. 'Sides' keyword " 
-                        +"is not define in Parameter Sublist '" + tName.c_str() + "'. The 'Sides' keyword is used " 
-                        + "to define the 'side set' names where 'Natrual Boundary Conditions' are applied.")
-                }
-                const auto tSideSetName = tSubList.get<std::string>("Sides");
-                auto tMapItr = mPressureBCs.find(tSideSetName);
-                if(tMapItr == mPressureBCs.end())
-                {
-                    mPressureBCs[tSideSetName] = std::make_shared<PressureForces>(mSpatialDomain, tSideSetName);
-                }
-            }
-        }
-    }
-
-    void setStabilizedNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
-    {
-        if(aInputs.isSublist("Balancing Momentum Natural Boundary Conditions"))
-        {
-            auto tInputsNaturalBCs = aInputs.sublist("Balancing Momentum Natural Boundary Conditions");
-            for (Teuchos::ParameterList::ConstIterator tItr = tInputsNaturalBCs.begin(); tItr != tInputsNaturalBCs.end(); ++tItr)
-            {
-                const Teuchos::ParameterEntry &tEntry = tInputsNaturalBCs.entry(tItr);
-                if (!tEntry.isList())
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
-                        + "'. Parameter List block is not valid. Expects Parameter Lists only.")
-                }
-
-                const std::string &tName = tInputsNaturalBCs.name(tItr);
-                if(tInputsNaturalBCs.isSublist(tName) == false)
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tInputsNaturalBCs.name()
-                        + "'. Parameter Sublist '" + tName.c_str() + "' is not defined.")
-                }
-
-                Teuchos::ParameterList &tSubList = tInputsNaturalBCs.sublist(tName);
-                if(tSubList.isParameter("Sides") == false)
-                {
-                    THROWERR(std::string("Error parsing Parameter List '") + tSubList.name() + "'. 'Sides' keyword "
-                        +"is not define in Parameter Sublist '" + tName.c_str() + "'. The 'Sides' keyword is used "
-                        + "to define the 'side set' names where 'Natural Boundary Conditions' are applied.")
-                }
-                const auto tSideSetName = tSubList.get<std::string>("Sides");
-                auto tMapItr = mDeviatoricBCs.find(tSideSetName);
-                if(tMapItr == mDeviatoricBCs.end())
-                {
-                    mDeviatoricBCs[tSideSetName] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs, tSideSetName);
-                }
-            }
-        }
-        else
-        {
-            mDeviatoricBCs["automated"] = std::make_shared<DeviatoricForces>(mSpatialDomain, aInputs);
         }
     }
 };
@@ -5430,7 +4804,7 @@ public:
         Plato::ScalarMultiVectorT<ResultT>  tInternalForces("internal forces", mNumTempDofsPerCell);
         Plato::ScalarMultiVectorT<ResultT>  tStabForces("stabilizing forces", tNumCells, mNumTempDofsPerCell);
         Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss points", tNumCells, mNumVelDofsPerNode);
-        
+
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
 
         // set local functors
@@ -5656,116 +5030,6 @@ private:
 }
 // namespace SIMP
 
-
-template<typename PhysicsT, typename EvaluationT>
-class MomentumSurfaceForces
-{
-private:
-    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
-    static constexpr auto mNumVelDofsPerNode    = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
-    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace;   /*!< number of spatial dimensions on face */
-
-    // forward automatic differentiation types
-    using ResultT  = typename EvaluationT::ResultScalarType;
-    using ConfigT  = typename EvaluationT::ConfigScalarType;
-    using PrevVelT = typename EvaluationT::PreviousMomentumScalarType;
-
-    const std::string mEntitySetName; /*!< side set name */
-    const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mVolumeCubatureRule;  /*!< volume integration rule */
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mSurfaceCubatureRule; /*!< surface integration rule */
-
-public:
-    MomentumSurfaceForces
-    (const Plato::SpatialDomain & aSpatialDomain,
-     const std::string & aEntitySetName) :
-         mEntitySetName(aEntitySetName),
-         mSpatialDomain(aSpatialDomain)
-    {
-    }
-
-    void operator()
-    (const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult,
-     Plato::Scalar aMultiplier = 1.0) const
-    {
-        // get mesh vertices
-        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
-        auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
-
-        // get face to element graph
-        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
-        auto tFace2Elems_map   = tFace2eElems.a2ab;
-        auto tFace2Elems_elems = tFace2eElems.ab2b;
-
-        // get element to face map
-        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
-
-        // set local functors
-        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
-        Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
-        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
-        Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode,   0/*offset*/, mNumSpatialDims> tIntrplVectorField;
-
-        // get sideset faces
-        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mEntitySetName);
-        auto tNumFaces = tFaceLocalOrdinals.size();
-        Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
-        auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Plato::ScalarMultiVector tVelBCsGP("velocity boundary conditions", tNumCells, mNumVelDofsPerNode);
-        Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity", tNumCells, mNumVelDofsPerNode);
-
-        // set input state worksets
-        auto tVelBCsWS  = Plato::metadata<Plato::ScalarMultiVector>(aWorkSets.get("surface velocity"));
-        auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
-
-        // evaluate integral
-        auto tVolumeBasisFunctions = mVolumeCubatureRule.getBasisFunctions();
-        auto tSurfaceCubatureWeight = mSurfaceCubatureRule.getCubWeight();
-        auto tSurfaceBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
-        {
-
-          auto tFaceOrdinal = tFaceLocalOrdinals[aFaceI];
-          // for each element that the face is connected to: (either 1 or 2 elements)
-          for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal + 1]; tElem++ )
-          {
-              // create a map from face local node index to elem local node index
-              Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
-              auto tCellOrdinal = tFace2Elems_elems[tElem];
-              tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
-
-              // calculate surface jacobians
-              ConfigT tSurfaceAreaTimesCubWeight(0.0);
-              tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
-              tCalculateSurfaceArea(aFaceI, tSurfaceCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
-
-              // compute unit normal vector
-              auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
-              auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
-
-              // project into aResult workset
-              tIntrplVectorField(tCellOrdinal, tVolumeBasisFunctions, tVelBCsWS, tVelBCsGP);
-              tIntrplVectorField(tCellOrdinal, tVolumeBasisFunctions, tPrevVelWS, tPrevVelGP);
-              for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
-              {
-                  auto tLocalCellNode = tLocalNodeOrd[tNode];
-                  for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
-                  {
-                      aResult(tCellOrdinal, tLocalCellNode) += tUnitNormalVec(tDim) *
-                          ( tVelBCsGP(tCellOrdinal, tDim) - tPrevVelGP(tCellOrdinal, tDim) );
-                  }
-                  aResult(tCellOrdinal, tLocalCellNode) *=
-                      aMultiplier * tSurfaceBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight;
-              }
-          }
-        }, "calculate surface momentum integral");
-    }
-};
-// class MomentumSurfaceForces
 
 
 
@@ -7760,7 +7024,7 @@ calculate_diffusive_velocity_magnitude
         {
             Plato::OrdinalType tVertexIndex = tCell2Node[aCellOrdinal*NodesPerCell + tNode];
             auto tMyValue = static_cast<Plato::Scalar>(1.0) / (aCharElemSize(tVertexIndex) * aReynoldsNum);
-            tDiffusiveVelocity(tVertexIndex) = 
+            tDiffusiveVelocity(tVertexIndex) =
                 tMyValue >= tDiffusiveVelocity(tVertexIndex) ? tMyValue : tDiffusiveVelocity(tVertexIndex);
         }
     }, "calculate_diffusive_velocity_magnitude");
@@ -7842,35 +7106,6 @@ calculate_artificial_compressibility
     return tArtificialCompressibility;
 }
 
-/*
-inline Plato::ScalarVector
-calculate_critical_time_step
-(const Plato::SpatialModel & aSpatialModel,
- const Plato::ScalarVector & aElemCharSize,
- const Plato::ScalarVector & aVelocityField,
- const Plato::ScalarVector & aArtificialCompress,
- Plato::Scalar aSafetyFactor = 0.9)
-{
-    auto tNumNodes = aSpatialModel.Mesh.nverts();
-    Plato::ScalarVector tLocalTimeStep("time step", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
-    {
-        tLocalTimeStep(aNodeOrdinal) = aSafetyFactor * ( aElemCharSize(aNodeOrdinal) /
-            ( aVelocityField(aNodeOrdinal) + aArtificialCompress(aNodeOrdinal) ) );
-    }, "calculate local critical time step");
-
-    Plato::Scalar tMinValue = 0;
-    Plato::blas1::min(tLocalTimeStep, tMinValue);
-    Plato::ScalarVector tCriticalTimeStep("global critical time step", 1);
-    auto tHostCriticalTimeStep = Kokkos::create_mirror(tCriticalTimeStep);
-    tHostCriticalTimeStep(0) = tMinValue;
-    Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
-
-    return tCriticalTimeStep;
-}
-*/
-
-
 inline Plato::ScalarVector
 calculate_critical_time_step
 (const Plato::SpatialModel & aSpatialModel,
@@ -7895,25 +7130,6 @@ calculate_critical_time_step
     return tCriticalTimeStep;
 }
 
-
-
-inline Plato::ScalarVector
-update_surface_velocities
-(const Plato::LocalOrdinalVector & aBcDofs,
- Plato::ScalarVector             & aCurVel,
- Plato::ScalarVector             & aPrevVel)
-{
-    auto tLength = aBcDofs.size();
-    auto tNumNodes = aCurVel.size();
-    Plato::ScalarVector tSurfaceVelocities("surface velocities", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
-    {
-        auto tDof = aBcDofs(aOrdinal);
-        tSurfaceVelocities(tDof) = aPrevVel(tDof);
-    }, "calculate surface velocities on boundary where momentum bcs are prescribed");
-    return tSurfaceVelocities;
-}
-
 inline void
 enforce_boundary_condition
 (const Plato::LocalOrdinalVector & aBcDofs,
@@ -7927,31 +7143,6 @@ enforce_boundary_condition
         aState(tDOF) = aBcValues(aOrdinal);
     }, "enforce boundary condition");
 }
-
-/*
-inline Plato::ScalarVector
-calculate_field_misfit
-(const Plato::ScalarVector& aTimeStep,
- const Plato::ScalarVector& aCurrentPressure,
- const Plato::ScalarVector& aPreviousPressure,
- const Plato::ScalarVector& aArtificialCompress)
-{
-    // calculate stopping criterion, which is defined as
-    // \frac{1}{\beta^2} \left( \frac{p^{n} - p^{n-1}}{\Delta{t}}\right ),
-    // where \beta denotes the artificial compressibility
-    const auto tCriticalTimeStep = aTimeStep(0);
-    auto tNumNodes = aCurrentPressure.size();
-    Plato::ScalarVector tResidual("pressure residual", tNumNodes);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
-    {
-        auto tDeltaPressOverTimeStep = ( aCurrentPressure(aNodeOrdinal) - aPreviousPressure(aNodeOrdinal) ) / tCriticalTimeStep;
-        auto tOneOverBetaSquared = static_cast<Plato::Scalar>(1) / ( aArtificialCompress(aNodeOrdinal) * aArtificialCompress(aNodeOrdinal) );
-        tResidual(aNodeOrdinal) = tOneOverBetaSquared * tDeltaPressOverTimeStep;
-    }, "calculate stopping criterion");
-
-    return tResidual;
-}
-*/
 
 template
 <Plato::OrdinalType DofsPerNode>
@@ -7974,21 +7165,6 @@ calculate_field_misfit
     return tResidual;
 }
 
-/*
-inline Plato::Scalar
-calculate_field_misfit_euclidean_norm
-(const Plato::Variables & aStates)
-{
-    auto tTimeStep = aStates.vector("critical time step");
-    auto tCurrentPressure = aStates.vector("current pressure");
-    auto tPreviousPressure = aStates.vector("previous pressure");
-    auto tArtificialCompress = aStates.vector("artificial compressibility");
-    auto tResidual = Plato::cbs::calculate_field_misfit(tTimeStep, tCurrentPressure, tPreviousPressure, tArtificialCompress);
-    auto tValue = Plato::blas1::norm(tResidual);
-    return tValue;
-}
-*/
-
 template
 <Plato::OrdinalType DofsPerNode>
 inline Plato::Scalar
@@ -8001,25 +7177,6 @@ calculate_misfit_euclidean_norm
     auto tValue = Plato::blas1::norm(tResidual);
     return tValue;
 }
-
-/*
-inline Plato::Scalar
-calculate_field_misfit_inf_norm
-(const Plato::Variables & aStates)
-{
-    std::vector<Plato::Scalar> tErrors;
-
-    // pressure error
-    auto tTimeStep = aStates.vector("critical time step");
-    auto tCurrentState = aStates.vector("current pressure");
-    auto tPreviousState = aStates.vector("previous pressure");
-    auto tArtificialCompress = aStates.vector("artificial compressibility");
-    auto tMyResidual = Plato::cbs::calculate_field_misfit(tTimeStep, tCurrentState, tPreviousState, tArtificialCompress);
-    Plato::Scalar tInfinityNorm = 0.0;
-    Plato::blas1::max(tMyResidual, tInfinityNorm);
-    return tInfinityNorm;
-}
-*/
 
 template
 <Plato::OrdinalType DofsPerNode>
@@ -8060,6 +7217,18 @@ inline void apply_constraints
 }
 
 
+void set_values
+(const Plato::LocalOrdinalVector & aBcDofs,
+       Plato::ScalarVector & aOutput,
+       Plato::Scalar aValue = 0.0)
+{
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aBcDofs.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        aOutput(aBcDofs(aOrdinal)) = aValue;
+    }, "set values at bc dofs to zero");
+}
+
+
 namespace Fluids
 {
 
@@ -8077,7 +7246,7 @@ public:
 };
 
 template<typename PhysicsT>
-class SteadyState : public Plato::Fluids::AbstractProblem
+class QuasiImplicit : public Plato::Fluids::AbstractProblem
 {
 private:
     static constexpr auto mNumSpatialDims      = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -8092,15 +7261,15 @@ private:
     Plato::DataMap mDataMap; /*!< static output fields metadata interface */
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
-    bool mIsExplicitSolve = true;
     bool mCalculateHeatTransfer = false;
-
-    Plato::Scalar mViscosity = 1.0;
-    Plato::Scalar mPrandtlNumber = 1.0;
-    Plato::Scalar mReynoldsNumber = 1.0;
-    Plato::Scalar mCBSsolverTolerance = 1e-5;
+    Plato::Scalar mThermalTolerance = 1e-4;
+    Plato::Scalar mPressureTolerance = 1e-2;
+    Plato::Scalar mPredictorTolerance = 1e-4;
+    Plato::Scalar mCorrectorTolerance = 1e-4;
+    Plato::Scalar mSteadyStateTolerance = 1e-5;
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
-    Plato::OrdinalType mMaxNumIterations = 1e3; /*!< maximum number of steady state iterations */
+    Plato::OrdinalType mMaxNewtonIterations = 1e2; /*!< maximum number of Newton iterations */
+    Plato::OrdinalType mMaxSteadyStateIterations = 1e3; /*!< maximum number of steady state iterations */
 
     Plato::ScalarMultiVector mPressure;
     Plato::ScalarMultiVector mVelocity;
@@ -8126,7 +7295,7 @@ private:
     Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
 
 public:
-    SteadyState
+    QuasiImplicit
     (Omega_h::Mesh          & aMesh,
      Omega_h::MeshSets      & aMeshSets,
      Teuchos::ParameterList & aInputs,
@@ -8190,7 +7359,7 @@ public:
         this->setInitialConditions(tPrimalVars);
         this->calculateElemCharacteristicSize(tPrimalVars);
 
-        for(Plato::OrdinalType tIteration = 0; tIteration < mMaxNumIterations; tIteration++)
+        for(Plato::OrdinalType tIteration = 0; tIteration < mMaxSteadyStateIterations; tIteration++)
         {
             tPrimalVars.scalar("iteration", tIteration);
 
@@ -8204,7 +7373,6 @@ public:
             if(mCalculateHeatTransfer)
             {
                 this->updateTemperature(aControl, tPrimalVars);
-                this->enforceTemperatureBoundaryConditions(tPrimalVars);
             }
 
             if(this->checkStoppingCriteria(tPrimalVars))
@@ -8375,12 +7543,12 @@ private:
     {
         this->allocateCriteriaList(aInputs);
         this->allocateMemberStates(aInputs);
-        this->calculateHeatTransfer(aInputs);
-        this->readTimeIntegrationInputs(aInputs);
-        this->readDimensionlessProperties(aInputs);
+        this->parseNewtonSolverInputs(aInputs);
+        this->parseTimeIntegratorInputs(aInputs);
+        this->parseHeatTransferEquation(aInputs);
     }
 
-    void calculateHeatTransfer
+    void parseHeatTransferEquation
     (Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Hyperbolic") == false)
@@ -8399,16 +7567,27 @@ private:
         }
     }
 
-    void readTimeIntegrationInputs
+    void parseNewtonSolverInputs
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Newton Iteration"))
+        {
+            auto tNewtonIteration = aInputs.sublist("Newton Iteration");
+            mPressureTolerance = tNewtonIteration.get<Plato::Scalar>("Pressure Tolerance", 1e-2);
+            mPredictorTolerance = tNewtonIteration.get<Plato::Scalar>("Predictor Tolerance", 1e-4);
+            mCorrectorTolerance = tNewtonIteration.get<Plato::Scalar>("Corrector Tolerance", 1e-4);
+            mMaxNewtonIterations = tNewtonIteration.get<Plato::OrdinalType>("Maximum Iterations", 1e2);
+        }
+    }
+
+    void parseTimeIntegratorInputs
     (Teuchos::ParameterList & aInputs)
     {
         if(aInputs.isSublist("Time Integration"))
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
-            auto tArtificialDampingTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping", 0.0);
-            mIsExplicitSolve = tArtificialDampingTwo > static_cast<Plato::Scalar>(0.0) ? false : true;
-            //mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
-            mMaxNumIterations = tTimeIntegration.get<Plato::OrdinalType>("Max Number Iterations", 1e3);
+            mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
+            mMaxSteadyStateIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Iterations", 1e3);
         }
     }
 
@@ -8433,18 +7612,6 @@ private:
                 THROWERR("Heat transfer calculation requested but temperature 'Vector Function' is not allocated.")
             }
         }
-    }
-
-    void readDimensionlessProperties
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Hyperbolic") == false)
-        {
-            THROWERR("'Hyperbolic' Parameter List is not defined.")
-        }
-        auto tHyperbolicParamList = aInputs.sublist("Hyperbolic");
-        mPrandtlNumber = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolicParamList);
-        mReynoldsNumber = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolicParamList);
     }
 
     void allocateMemberStates(Teuchos::ParameterList & aInputs)
@@ -8486,7 +7653,9 @@ private:
         auto tNumNodes = mSpatialModel.Mesh.nverts();
         auto tCurrentVelocity = aVariables.vector("current velocity");
         auto tPreviousVelocity = aVariables.vector("previous velocity");
-        auto tOutput = Plato::cbs::calculate_misfit_euclidean_norm<mNumVelDofsPerNode>(tNumNodes, tCurrentVelocity, tPreviousVelocity);
+        auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm<mNumVelDofsPerNode>(tNumNodes, tCurrentVelocity, tPreviousVelocity);
+        auto tCurrentVelNorm = Plato::blas1::norm(tCurrentVelocity);
+        auto tOutput = tMisfitError / tCurrentVelNorm;
         return tOutput;
     }
 
@@ -8500,11 +7669,11 @@ private:
             printf("Convergence: Residual Norm = %e\n",tCriterionValue);
         }
 
-        if (tCriterionValue < mCBSsolverTolerance)
+        if (tCriterionValue < mSteadyStateTolerance)
         {
             tStop = true;
         }
-        else if (tIteration >= mMaxNumIterations)
+        else if (tIteration >= mMaxSteadyStateIterations)
         {
             tStop = true;
         }
@@ -8521,17 +7690,9 @@ private:
 
     void calculateCriticalTimeSteps(Plato::Primal & aVariables)
     {
-        /*
-        auto tDiffusiveVel = Plato::cbs::calculate_diffusive_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mReynoldsNumber, tElemCharSize);
-        auto tThermalVel = Plato::cbs::calculate_thermal_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mPrandtlNumber, mReynoldsNumber, tElemCharSize);
-        auto tArtificialCompress = Plato::cbs::calculate_artificial_compressibility(tConvectiveVel, tDiffusiveVel, tThermalVel);
-        aVariables.vector("artificial compressibility", tArtificialCompress);
-        //auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, tArtificialCompress, mTimeStepSafetyFactor);
-        */
         auto tIteration = aVariables.scalar("iteration");
         auto tPreviousVelocity = aVariables.vector("previous velocity");
         auto tElemCharSize = aVariables.vector("element characteristic size");
-
         if(tIteration > 0)
         {
             auto tConvectiveVel =  Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tPreviousVelocity);
@@ -8551,44 +7712,6 @@ private:
             auto tInitialTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tInitialConvectiveVel, mTimeStepSafetyFactor);
             aVariables.vector("critical time step", tInitialTimeStep);
         }
-    }
-
-    void updateSurfaceVelocityField(Plato::Primal & aVariables)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        auto tCurrentVelocity = aVariables.vector("current velocity");
-        auto tPreviousVelocity = aVariables.vector("previous velocity");
-        auto tSurfaceVelocities = Plato::cbs::update_surface_velocities(tBcDofs, tCurrentVelocity, tPreviousVelocity);
-        aVariables.vector("surface velocity", tSurfaceVelocities);
-    }
-
-    void enforceVelocityBoundaryConditions(Plato::Primal & aVariables)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        auto tCurrentVelocity = aVariables.vector("current velocity");
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
-    }
-
-    void enforcePressureBoundaryConditions(Plato::Primal& aVariables)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mPressureEssentialBCs.get(tBcDofs, tBcValues);
-        auto tCurrentPressure = aVariables.vector("current pressure");
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
-    }
-
-    void enforceTemperatureBoundaryConditions(Plato::Primal & aVariables)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mTemperatureEssentialBCs.get(tBcDofs, tBcValues);
-        auto tCurrentTemperature = aVariables.vector("current temperature");
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
     }
 
     void setDualVariables(Plato::Dual & aVariables)
@@ -8698,8 +7821,8 @@ private:
         auto tParamList = mInputs.sublist("Linear Solver");
         Plato::SolverFactory tSolverFactory(tParamList);
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-     
-        // set initial guess for current velocity 
+
+        // set initial guess for current velocity
         auto tPreviousVelocity = aVariables.vector("previous velocity");
         Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
         Plato::ScalarVector tDeltaVelocity("delta velocity", tCurrentVelocity.size());
@@ -8709,12 +7832,12 @@ private:
         {
             Plato::blas1::fill(0.0, tDeltaVelocity);
             tSolver->solve(*tJacobian, tDeltaVelocity, tResidual);
-            this->set_values(tBcDofs, tDeltaVelocity);
+            Plato::set_values(tBcDofs, tDeltaVelocity);
             Plato::blas1::update(1.0, tDeltaVelocity, 1.0, tCurrentVelocity);
             Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
 
             auto tStopCriterion = Plato::blas1::norm(tDeltaVelocity);
-            if(tStopCriterion <= 1e-12)
+            if(tStopCriterion <= mCorrectorTolerance)
             {
                 break;
             }
@@ -8726,16 +7849,6 @@ private:
 
             tIteration++;
         }
-    }
-
-    void set_values
-    (const Plato::LocalOrdinalVector & aBcDofs, 
-           Plato::ScalarVector & aOutput)
-    {
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, aBcDofs.size()), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
-        {
-            aOutput(aBcDofs(aOrdinal)) = 0.0;
-        }, "set values at bc dofs to zero");
     }
 
     void updatePredictor
@@ -8766,12 +7879,12 @@ private:
         {
             Plato::blas1::fill(0.0, tDeltaPredictor);
             tSolver->solve(*tJacobian, tDeltaPredictor, tResidual);
-            this->set_values(tBcDofs, tDeltaPredictor);
+            Plato::set_values(tBcDofs, tDeltaPredictor);
             Plato::blas1::update(1.0, tDeltaPredictor, 1.0, tCurrentPredictor);
             Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPredictor);
 
             auto tStopCriterion = Plato::blas1::norm(tDeltaPredictor);
-            if(tStopCriterion <= 1e-12)
+            if(tStopCriterion <= mPredictorTolerance)
             {
                 break;
             }
@@ -8814,12 +7927,12 @@ private:
         {
             Plato::blas1::fill(0.0, tDeltaPressure);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
-            this->set_values(tBcDofs, tDeltaPressure);
+            Plato::set_values(tBcDofs, tDeltaPressure);
             Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
             Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
 
             auto tStopCriterion = Plato::blas1::norm(tDeltaPressure);
-            if(tStopCriterion <= 1e-4)
+            if(tStopCriterion <= mPressureTolerance)
             {
                 break;
             }
@@ -8837,6 +7950,7 @@ private:
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aVariables)
     {
+        // TODO: modify - implement newton solver
         // calculate current residual and jacobian matrix
         auto tCurrentTemperature = aVariables.vector("current temperature");
         Plato::blas1::fill(0.0, tCurrentTemperature);
@@ -9035,829 +8149,7 @@ private:
         Plato::blas1::axpy(1.0, tGradCriterionWrtConfig, aTotalDerivative);
     }
 };
-// class SteadyState
-
-template<typename PhysicsT>
-class Transient : public Plato::Fluids::AbstractProblem
-{
-private:
-    static constexpr auto mNumSpatialDims      = PhysicsT::mNumSpatialDims;         /*!< number of spatial dimensions */
-    static constexpr auto mNumNodesPerCell     = PhysicsT::mNumNodesPerCell;        /*!< number of nodes per cell */
-    static constexpr auto mNumVelDofsPerNode   = PhysicsT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
-    static constexpr auto mNumTempDofsPerNode  = PhysicsT::mNumEnergyDofsPerNode;   /*!< number of energy dofs per node */
-    static constexpr auto mNumPressDofsPerNode = PhysicsT::mNumMassDofsPerNode;     /*!< number of mass dofs per node */
-
-    Plato::Comm::Machine& mMachine; /*!< parallel communication interface */
-    const Teuchos::ParameterList& mInputs; /*!< plato problem inputs */
-
-    Plato::DataMap      mDataMap;  /*!< static output fields metadata interface */
-    Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
-
-    bool mIsExplicitSolve = true;
-    bool mCalculateHeatTransfer = false;
-
-    Plato::Scalar mPrandtlNumber = 1.0;
-    Plato::Scalar mReynoldsNumber = 1.0;
-    Plato::Scalar mCBSsolverTolerance = 1e-5;
-    Plato::Scalar mTimeStepSafetyFactor = 0.5; /*!< safety factor applied to stable time step */
-    Plato::OrdinalType mMaxNumTimeSteps = 100;
-
-    Plato::ScalarMultiVector mPressure;
-    Plato::ScalarMultiVector mVelocity;
-    Plato::ScalarMultiVector mPredictor;
-    Plato::ScalarMultiVector mTemperature;
-
-    Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
-    Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
-    Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mVelocityResidual;
-    // Using pointer since default VectorFunction constructor allocations are not permitted.
-    // Temperature VectorFunction allocation is optional since heat transfer calculations are optional
-    std::shared_ptr<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>> mTemperatureResidual;
-
-    using Criterion = std::shared_ptr<Plato::Fluids::CriterionBase>;
-    using Criteria  = std::unordered_map<std::string, Criterion>;
-    Criteria mCriteria;
-
-    using MassConservationT     = typename Plato::MassConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
-    using EnergyConservationT   = typename Plato::EnergyConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
-    using MomentumConservationT = typename Plato::MomentumConservation<PhysicsT::mNumSpatialDims, PhysicsT::mNumControlDofsPerNode>;
-    Plato::EssentialBCs<MassConservationT>     mPressureEssentialBCs;
-    Plato::EssentialBCs<MomentumConservationT> mVelocityEssentialBCs;
-    Plato::EssentialBCs<EnergyConservationT>   mTemperatureEssentialBCs;
-
-public:
-    Transient
-    (Omega_h::Mesh          & aMesh,
-     Omega_h::MeshSets      & aMeshSets,
-     Teuchos::ParameterList & aInputs,
-     Plato::Comm::Machine   & aMachine) :
-         mMachine(aMachine),
-         mInputs(aInputs),
-         mSpatialModel(aMesh, aMeshSets, aInputs),
-         mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
-         mVelocityResidual("Velocity", mSpatialModel, mDataMap, aInputs),
-         mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
-         mPressureEssentialBCs(aInputs.sublist("Pressure Essential Boundary Conditions",false),aMeshSets),
-         mVelocityEssentialBCs(aInputs.sublist("Momentum Essential Boundary Conditions",false),aMeshSets),
-         mTemperatureEssentialBCs(aInputs.sublist("Temperature Essential Boundary Conditions",false),aMeshSets)
-    {
-        this->initialize(aInputs);
-    }
-
-    const decltype(mDataMap)& getDataMap() const
-    {
-        return mDataMap;
-    }
-
-    void output(std::string aFilePath = "output")
-    {
-        auto tMesh = mSpatialModel.Mesh;
-        const auto tTimeSteps = mVelocity.extent(0);
-        auto tWriter = Omega_h::vtk::Writer(aFilePath.c_str(), &tMesh, mNumSpatialDims);
-
-        constexpr auto tStride = 0;
-        const auto tNumNodes = tMesh.nverts();
-        for(Plato::OrdinalType tStep = 0; tStep < tTimeSteps; tStep++)
-        {
-            auto tPressSubView = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
-            Omega_h::Write<Omega_h::Real> tPressure(tPressSubView.size(), "Pressure");
-            Plato::copy<mNumPressDofsPerNode, mNumPressDofsPerNode>(tStride, tNumNodes, tPressSubView, tPressure);
-            tMesh.add_tag(Omega_h::VERT, "Pressure", mNumPressDofsPerNode, Omega_h::Reals(tPressure));
-
-            auto tVelSubView = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
-            Omega_h::Write<Omega_h::Real> tVelocity(tVelSubView.size(), "Velocity");
-            Plato::copy<mNumVelDofsPerNode, mNumVelDofsPerNode>(tStride, tNumNodes, tVelSubView, tVelocity);
-            tMesh.add_tag(Omega_h::VERT, "Velocity", mNumVelDofsPerNode, Omega_h::Reals(tVelocity));
-
-            if(mCalculateHeatTransfer)
-            {
-                auto tTempSubView = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
-                Omega_h::Write<Omega_h::Real> tTemperature(tTempSubView.size(), "Temperature");
-                Plato::copy<mNumTempDofsPerNode, mNumTempDofsPerNode>(tStride, tNumNodes, tTempSubView, tTemperature);
-                tMesh.add_tag(Omega_h::VERT, "Temperature", mNumTempDofsPerNode, Omega_h::Reals(tTemperature));
-
-            }
-
-            auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mNumSpatialDims);
-            auto tTime = static_cast<Plato::Scalar>(1.0 / tTimeSteps) * static_cast<Plato::Scalar>(tStep + 1);
-            tWriter.write(tStep, tTime, tTags);
-        }
-    }
-
-    Plato::Solutions solution
-    (const Plato::ScalarVector& aControl)
-    {
-        this->checkProblemSetup();
-
-        Plato::Primal tPrimalVars;
-        this->calculateElemCharacteristicSize(tPrimalVars);
-        for (Plato::OrdinalType tStep = 1; tStep < mMaxNumTimeSteps; tStep++)
-        {
-            tPrimalVars.scalar("step", tStep);
-            this->setPrimalVariables(tPrimalVars);
-            this->calculateStableTimeSteps(tPrimalVars);
-            this->updateSurfaceVelocityField(tPrimalVars);
-
-            this->updatePredictor(aControl, tPrimalVars);
-            this->updatePressure(aControl, tPrimalVars);
-            this->updateVelocity(aControl, tPrimalVars);
-            this->enforceVelocityBoundaryConditions(tPrimalVars);
-            this->enforcePressureBoundaryConditions(tPrimalVars);
-
-            if(mCalculateHeatTransfer)
-            {
-                this->updateTemperature(aControl, tPrimalVars);
-                this->enforceTemperatureBoundaryConditions(tPrimalVars);
-            }
-
-            if(this->checkStoppingCriteria(tPrimalVars))
-            {
-                break;
-            }
-        }
-
-        Plato::Solutions tSolution;
-        tSolution.set("mass state", mPressure);
-        tSolution.set("energy state", mTemperature);
-        tSolution.set("momentum state", mVelocity);
-        return tSolution;
-    }
-
-    Plato::Scalar criterionValue
-    (const Plato::ScalarVector & aControl,
-     const std::string         & aName)
-    {
-        auto tItr = mCriteria.find(aName);
-        if (tItr == mCriteria.end())
-        {
-            Plato::Primal tPrimalVars;
-            this->calculateElemCharacteristicSize(tPrimalVars);
-
-            Plato::Scalar tOutput(0);
-            auto tNumTimeSteps = mVelocity.extent(0);
-            for (Plato::OrdinalType tStep = 0; tStep < tNumTimeSteps; tStep++)
-            {
-                tPrimalVars.scalar("step", tStep);
-                auto tPressure = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
-                auto tVelocity = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
-                auto tTemperature = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
-                tPrimalVars.vector("current pressure", tPressure);
-                tPrimalVars.vector("current velocity", tVelocity);
-                tPrimalVars.vector("current temperature", tTemperature);
-                tOutput += tItr->second->value(aControl, tPrimalVars);
-            }
-            return tOutput;
-        }
-        else
-        {
-            THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
-        }
-    }
-
-    Plato::ScalarVector criterionGradient
-    (const Plato::ScalarVector & aControl,
-     const std::string         & aName)
-    {
-        auto tItr = mCriteria.find(aName);
-        if (tItr == mCriteria.end())
-        {
-            Plato::Dual tDualVars;
-            Plato::Primal tCurPrimalVars, tPrevPrimalVars;
-            this->calculateElemCharacteristicSize(tCurPrimalVars);
-
-            auto tLastStepIndex = mVelocity.extent(0) - 1;
-            Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
-            for(Plato::OrdinalType tStep = tLastStepIndex; tStep >= 0; tStep--)
-            {
-                tDualVars.scalar("step", tStep);
-                tCurPrimalVars.scalar("step", tStep);
-                tPrevPrimalVars.scalar("step", tStep + 1);
-
-                this->setDualVariables(tDualVars);
-                this->setPrimalVariables(tCurPrimalVars);
-                this->setPrimalVariables(tPrevPrimalVars);
-
-                this->calculateStableTimeSteps(tCurPrimalVars);
-                this->calculateStableTimeSteps(tPrevPrimalVars);
-
-                this->calculateVelocityAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
-                this->calculateTemperatureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
-                this->calculatePressureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
-                this->calculatePredictorAdjoint(aControl, tCurPrimalVars, tDualVars);
-
-                this->calculateGradientControl(aName, aControl, tCurPrimalVars, tDualVars, tTotalDerivative);
-            }
-
-            return tTotalDerivative;
-        }
-        else
-        {
-            THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
-        }
-    }
-
-    Plato::ScalarVector criterionGradientX
-    (const Plato::ScalarVector & aControl,
-     const std::string         & aName)
-    {
-        auto tItr = mCriteria.find(aName);
-        if (tItr == mCriteria.end())
-        {
-            Plato::Dual tDualVars;
-            Plato::Primal tCurPrimalVars, tPrevPrimalVars;
-            this->calculateElemCharacteristicSize(tCurPrimalVars);
-
-            auto tLastStepIndex = mVelocity.extent(0) - 1;
-            Plato::ScalarVector tTotalDerivative("Total Derivative", aControl.size());
-            for(Plato::OrdinalType tStep = tLastStepIndex; tStep >= 0; tStep--)
-            {
-                tDualVars.scalar("step", tStep);
-                tCurPrimalVars.scalar("step", tStep);
-                tPrevPrimalVars.scalar("step", tStep + 1);
-
-                this->setDualVariables(tDualVars);
-                this->setPrimalVariables(tCurPrimalVars);
-                this->setPrimalVariables(tPrevPrimalVars);
-
-                this->calculateStableTimeSteps(tCurPrimalVars);
-                this->calculateStableTimeSteps(tPrevPrimalVars);
-
-                this->calculateVelocityAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
-                this->calculateTemperatureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
-                this->calculatePressureAdjoint(aName, aControl, tCurPrimalVars, tPrevPrimalVars, tDualVars);
-                this->calculatePredictorAdjoint(aControl, tCurPrimalVars, tDualVars);
-
-                this->calculateGradientConfig(aName, aControl, tCurPrimalVars, tDualVars, tTotalDerivative);
-            }
-
-            return tTotalDerivative;
-        }
-        else
-        {
-            THROWERR(std::string("Criterion with tag '") + aName + "' is not supported");
-        }
-    }
-
-private:
-    void checkProblemSetup()
-    {
-        if(mPressureEssentialBCs.empty())
-        {
-            THROWERR("Pressure essential boundary conditions are not defined.")
-        }
-        if(mVelocityEssentialBCs.empty())
-        {
-            THROWERR("Velocity essential boundary conditions are not defined.")
-        }
-        if(mCalculateHeatTransfer)
-        {
-            if(mTemperatureEssentialBCs.empty())
-            {
-                THROWERR("Temperature essential boundary conditions are not defined.")
-            }
-        }
-    }
-
-    void initialize
-    (Teuchos::ParameterList & aInputs)
-    {
-        this->allocateCriteriaList(aInputs);
-        this->allocateMemberStates(aInputs);
-        this->calculateHeatTransfer(aInputs);
-        this->readTimeIntegrationInputs(aInputs);
-        this->readDimensionlessProperties(aInputs);
-    }
-
-    void calculateHeatTransfer
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Hyperbolic") == false)
-        {
-            THROWERR("'Hyperbolic' Parameter List is not defined.")
-        }
-
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-        auto tHeatTransfer = Plato::tolower(tTag);
-        mCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
-
-        if(mCalculateHeatTransfer)
-        {
-            mTemperatureResidual =
-                std::make_shared<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>>("Temperature", mSpatialModel, mDataMap, aInputs);
-        }
-    }
-
-    void readTimeIntegrationInputs
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Time Integration"))
-        {
-            auto tTimeIntegration = aInputs.sublist("Time Integration");
-            auto tArtificialDampingTwo = tTimeIntegration.get<Plato::Scalar>("Artificial Damping", 0.0);
-            mIsExplicitSolve = tArtificialDampingTwo > static_cast<Plato::Scalar>(0.0) ? false : true;
-            mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.5);
-            mMaxNumTimeSteps = tTimeIntegration.get<Plato::Scalar>("Max Number Time Steps", 1e3);
-        }
-    }
-
-    void readDimensionlessProperties
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Hyperbolic") == false)
-        {
-            THROWERR("'Hyperbolic' Parameter List is not defined.")
-        }
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        mPrandtlNumber = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-        mReynoldsNumber = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
-    }
-
-    void allocateMemberStates(Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Time Integration"))
-        {
-            mMaxNumTimeSteps = aInputs.sublist("Time Integration").get<int>("Number Time Steps", 100);
-        }
-        auto tNumNodes = mSpatialModel.Mesh.nverts();
-        mPressure    = Plato::ScalarMultiVector("Pressure Snapshots", mMaxNumTimeSteps, tNumNodes);
-        mVelocity    = Plato::ScalarMultiVector("Velocity Snapshots", mMaxNumTimeSteps, tNumNodes * mNumVelDofsPerNode);
-        mPredictor   = Plato::ScalarMultiVector("Predictor Snapshots", mMaxNumTimeSteps, tNumNodes * mNumVelDofsPerNode);
-        mTemperature = Plato::ScalarMultiVector("Temperature Snapshots", mMaxNumTimeSteps, tNumNodes);
-    }
-
-    void allocateCriteriaList(Teuchos::ParameterList &aInputs)
-    {
-        if(aInputs.isSublist("Criteria"))
-        {
-            Plato::Fluids::CriterionFactory<PhysicsT> tScalarFuncFactory;
-
-            auto tCriteriaParams = aInputs.sublist("Criteria");
-            for(Teuchos::ParameterList::ConstIterator tIndex = tCriteriaParams.begin(); tIndex != tCriteriaParams.end(); ++tIndex)
-            {
-                const Teuchos::ParameterEntry& tEntry = tCriteriaParams.entry(tIndex);
-                if(tEntry.isList())
-                {
-                    THROWERR("Parameter in Criteria block is not supported.  Expect lists only.")
-                }
-                auto tName = tCriteriaParams.name(tIndex);
-                auto tCriterion = tScalarFuncFactory.createCriterion(mSpatialModel, mDataMap, aInputs, tName);
-                if( tCriterion != nullptr )
-                {
-                    mCriteria[tName] = tCriterion;
-                }
-            }
-        }
-    }
-
-    Plato::Scalar calculateVelocityMisfitNorm(const Plato::Primal & aVariables)
-    {
-        auto tNumNodes = mSpatialModel.Mesh.nverts();
-        auto tCurrentVelocity = aVariables.vector("current velocity");
-        auto tPreviousVelocity = aVariables.vector("previous velocity");
-        auto tOutput = Plato::cbs::calculate_misfit_euclidean_norm<mNumVelDofsPerNode>(tNumNodes, tCurrentVelocity, tPreviousVelocity);
-        return tOutput;
-    }
-
-    bool checkStoppingCriteria(const Plato::Primal & aVariables)
-    {
-        bool tStop = false;
-        auto tTimeStepIndex = aVariables.scalar("step");
-        auto tCriterionValue = this->calculateVelocityMisfitNorm(aVariables);
-        if(Plato::Comm::rank(mMachine) == 0)
-        {
-            printf("Convergence: Residual Norm = %e\n",tCriterionValue);
-        }
-
-        if (tCriterionValue < mCBSsolverTolerance)
-        {
-            tStop = true;
-        }
-        else if (tTimeStepIndex >= mMaxNumTimeSteps)
-        {
-            tStop = true;
-        }
-        return tStop;
-    }
-
-    void calculateElemCharacteristicSize(Plato::Primal & aVariables)
-    {
-        auto tElemCharSizes =
-            Plato::cbs::calculate_element_characteristic_sizes<mNumSpatialDims,mNumNodesPerCell>(mSpatialModel);
-        aVariables.vector("element characteristic size", tElemCharSizes);
-    }
-
-    void calculateStableTimeSteps(Plato::Primal & aVariables)
-    {
-        auto tCurrentVelocity = aVariables.vector("current velocity");
-        auto tElemCharSize = aVariables.vector("element characteristic size");
-
-        auto tConvectiveVel =
-            Plato::cbs::calculate_convective_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, tCurrentVelocity);
-        auto tDiffusiveVel =
-            Plato::cbs::calculate_diffusive_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mReynoldsNumber, tElemCharSize);
-        auto tThermalVel =
-            Plato::cbs::calculate_thermal_velocity_magnitude<mNumNodesPerCell>(mSpatialModel, mPrandtlNumber, mReynoldsNumber, tElemCharSize);
-        auto tArtificialCompress =
-            Plato::cbs::calculate_artificial_compressibility(tConvectiveVel, tDiffusiveVel, tThermalVel);
-        aVariables.vector("artificial compressibility", tArtificialCompress);
-
-        auto tTimeStep = Plato::cbs::calculate_critical_time_step(mSpatialModel, tElemCharSize, tConvectiveVel, mTimeStepSafetyFactor);
-        aVariables.vector("critical time step", tTimeStep);
-    }
-
-    void updateSurfaceVelocityField(Plato::Primal & aVariables)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        auto tCurrentVelocity = aVariables.vector("current velocity");
-        auto tPreviousVelocity = aVariables.vector("previous velocity");
-        auto tSurfaceVelocities = Plato::cbs::update_surface_velocities(tBcDofs, tCurrentVelocity, tPreviousVelocity);
-        aVariables.vector("surface velocity", tSurfaceVelocities);
-    }
-
-    void enforceVelocityBoundaryConditions(Plato::Primal & aVariables)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mVelocityEssentialBCs.get(tBcDofs, tBcValues);
-        auto tCurrentVelocity = aVariables.vector("current velocity");
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
-    }
-
-    void enforcePressureBoundaryConditions(Plato::Primal& aVariables)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mPressureEssentialBCs.get(tBcDofs, tBcValues);
-        auto tCurrentPressure = aVariables.vector("current pressure");
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
-    }
-
-    void enforceTemperatureBoundaryConditions(Plato::Primal & aVariables)
-    {
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mTemperatureEssentialBCs.get(tBcDofs, tBcValues);
-        auto tCurrentTemperature = aVariables.vector("current temperature");
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
-    }
-
-    void setDualVariables(Plato::Dual & aVariables)
-    {
-        if(aVariables.isVectorMapEmpty())
-        {
-            // FIRST BACKWARD TIME INTEGRATION STEP
-            auto tTotalNumNodes = mSpatialModel.Mesh.nverts();
-            std::vector<std::string> tNames =
-                {"current pressure adjoint" , "current temperature adjoint",
-                "previous pressure adjoint", "previous temperature adjoint"};
-            for(auto& tName : tNames)
-            {
-                Plato::ScalarVector tView(tName, tTotalNumNodes);
-                aVariables.vector(tName, tView);
-            }
-
-            auto tTotalNumDofs = mNumVelDofsPerNode * tTotalNumNodes;
-            tNames = {"current velocity adjoint" , "current predictor adjoint" ,
-                      "previous velocity adjoint", "previous predictor adjoint"};
-            for(auto& tName : tNames)
-            {
-                Plato::ScalarVector tView(tName, tTotalNumDofs);
-                aVariables.vector(tName, tView);
-            }
-        }
-        else
-        {
-            // N-TH BACKWARD TIME INTEGRATION STEP
-            std::vector<std::string> tNames =
-                {"pressure adjoint", "temperature adjoint", "velocity adjoint", "predictor adjoint" };
-            for(auto& tName : tNames)
-            {
-                auto tVector = aVariables.vector(std::string("current ") + tName);
-                aVariables.vector(std::string("previous ") + tName, tVector);
-            }
-        }
-    }
-
-
-
-    void setPrimalVariables(Plato::Primal & aVariables)
-    {
-        Plato::OrdinalType tStep = aVariables.scalar("step");
-        auto tCurrentVel   = Kokkos::subview(mVelocity, tStep, Kokkos::ALL());
-        auto tCurrentPred  = Kokkos::subview(mPredictor, tStep, Kokkos::ALL());
-        auto tCurrentTemp  = Kokkos::subview(mTemperature, tStep, Kokkos::ALL());
-        auto tCurrentPress = Kokkos::subview(mPressure, tStep, Kokkos::ALL());
-        aVariables.vector("current velocity", tCurrentVel);
-        aVariables.vector("current pressure", tCurrentPress);
-        aVariables.vector("current temperature", tCurrentTemp);
-        aVariables.vector("current predictor", tCurrentPred);
-
-        auto tPrevStep = tStep - 1;
-        if (tPrevStep >= static_cast<Plato::OrdinalType>(0))
-        {
-            auto tPreviouVel    = Kokkos::subview(mVelocity, tPrevStep, Kokkos::ALL());
-            auto tPreviousPred  = Kokkos::subview(mPredictor, tPrevStep, Kokkos::ALL());
-            auto tPreviousTemp  = Kokkos::subview(mTemperature, tPrevStep, Kokkos::ALL());
-            auto tPreviousPress = Kokkos::subview(mPressure, tPrevStep, Kokkos::ALL());
-            aVariables.vector("previous velocity", tPreviouVel);
-            aVariables.vector("previous predictor", tPreviousPred);
-            aVariables.vector("previous pressure", tPreviousPress);
-            aVariables.vector("previous temperature", tPreviousTemp);
-        }
-        else
-        {
-            auto tLength = mPressure.extent(1);
-            Plato::ScalarVector tPreviousPress("previous pressure", tLength);
-            aVariables.vector("previous pressure", tPreviousPress);
-            tLength = mTemperature.extent(1);
-            Plato::ScalarVector tPreviousTemp("previous temperature", tLength);
-            aVariables.vector("previous temperature", tPreviousTemp);
-            tLength = mVelocity.extent(1);
-            Plato::ScalarVector tPreviousVel("previous velocity", tLength);
-            aVariables.vector("previous velocity", tPreviousVel);
-            tLength = mPredictor.extent(1);
-            Plato::ScalarVector tPreviousPred("previous predictor", tLength);
-            aVariables.vector("previous previous predictor", tPreviousPred);
-        }
-    }
-
-    void updateVelocity
-    (const Plato::ScalarVector & aControl,
-           Plato::Primal       & aVariables)
-    {
-        // calculate current residual and jacobian matrix
-        auto tResidualVelocity = mVelocityResidual.value(aVariables);
-        auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aVariables);
-
-        // solve velocity equation (consistent or mass lumped)
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        Plato::ScalarVector tDeltaVelocity("increment", tResidualVelocity.size());
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaVelocity);
-        Plato::blas1::scale(-1.0, tResidualVelocity);
-        tSolver->solve(*tJacobianVelocity, tDeltaVelocity, tResidualVelocity);
-
-        // update velocity
-        auto tCurrentVelocity  = aVariables.vector("current velocity");
-        auto tPreviousVelocity = aVariables.vector("previous velocity");
-        Plato::blas1::copy(tPreviousVelocity, tCurrentVelocity);
-        Plato::blas1::axpy(1.0, tDeltaVelocity, tCurrentVelocity);
-    }
-
-    void updatePredictor
-    (const Plato::ScalarVector & aControl,
-           Plato::Primal       & aVariables)
-    {
-        // calculate current residual and jacobian matrix
-        auto tResidualPredictor = mPredictorResidual.value(aVariables);
-        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aVariables);
-
-        // solve predictor equation (consistent or mass lumped)
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        Plato::ScalarVector tDeltaPredictor("increment", tResidualPredictor.size());
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPredictor);
-        Plato::blas1::scale(-1.0, tResidualPredictor);
-        tSolver->solve(*tJacobianPredictor, tDeltaPredictor, tResidualPredictor);
-
-        // update current predictor
-        auto tCurrentPredictor  = aVariables.vector("current predictor");
-        auto tPreviousPredictor = aVariables.vector("previous predictor");
-        Plato::blas1::copy(tPreviousPredictor, tCurrentPredictor);
-        Plato::blas1::axpy(1.0, tDeltaPredictor, tCurrentPredictor);
-    }
-
-    void updatePressure
-    (const Plato::ScalarVector & aControl,
-           Plato::Primal       & aVariables)
-    {
-        // calculate current residual and jacobian matrix
-        auto tResidualPressure = mPressureResidual.value(aVariables);
-        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aVariables);
-
-        // solve mass equation (consistent or mass lumped)
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
-        Plato::ScalarVector tDeltaPressure("increment", tResidualPressure.size());
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaPressure);
-        Plato::blas1::scale(-1.0, tResidualPressure);
-        tSolver->solve(*tJacobianPressure, tDeltaPressure, tResidualPressure);
-
-        // update pressure
-        auto tCurrentPressure = aVariables.vector("current pressure");
-        auto tPreviousPressure = aVariables.vector("previous pressure");
-        Plato::blas1::copy(tPreviousPressure, tCurrentPressure);
-        Plato::blas1::axpy(1.0, tDeltaPressure, tCurrentPressure);
-    }
-
-    void updateTemperature
-    (const Plato::ScalarVector & aControl,
-           Plato::Primal       & aVariables)
-    {
-        // calculate current residual and jacobian matrix
-        auto tResidualTemperature = mTemperatureResidual->value(aVariables);
-        auto tJacobianTemperature = mTemperatureResidual->gradientCurrentTemp(aVariables);
-
-        // solve energy equation (consistent or mass lumped)
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
-        Plato::ScalarVector tDeltaTemperature("increment", tResidualTemperature.size());
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), tDeltaTemperature);
-        Plato::blas1::scale(-1.0, tResidualTemperature);
-        tSolver->solve(*tJacobianTemperature, tDeltaTemperature, tResidualTemperature);
-
-        // update temperature
-        auto tCurrentTemperature  = aVariables.vector("current temperature");
-        auto tPreviousTemperature = aVariables.vector("previous temperature");
-        Plato::blas1::copy(tPreviousTemperature, tCurrentTemperature);
-        Plato::blas1::axpy(1.0, tDeltaTemperature, tCurrentTemperature);
-    }
-
-    void calculatePredictorAdjoint
-    (const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurPrimalVars,
-           Plato::Dual         & aDualVars)
-    {
-
-        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
-        auto tGradResVelWrtPredictor = mVelocityResidual.gradientPredictor(aControl, aCurPrimalVars);
-        Plato::ScalarVector tRHS("right hand side", tCurrentVelocityAdjoint.size());
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPredictor, tCurrentVelocityAdjoint, tRHS);
-
-        auto tCurrentPressureAdjoint = aDualVars.vector("current pressure adjoint");
-        auto tGradResPressWrtPredictor = mPressureResidual.gradientPredictor(aControl, aCurPrimalVars);
-        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPredictor, tCurrentPressureAdjoint, tRHS);
-        Plato::blas1::scale(-1.0, tRHS);
-
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
-        Plato::blas1::fill(0.0, tCurrentPredictorAdjoint);
-        auto tJacobianPredictor = mPredictorResidual.gradientPredictor(aControl, aCurPrimalVars);
-        tSolver->solve(*tJacobianPredictor, tCurrentPredictorAdjoint, tRHS);
-    }
-
-    void calculatePressureAdjoint
-    (const std::string         & aName,
-     const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurPrimalVars,
-     const Plato::Primal       & aPrevPrimalVars,
-           Plato::Dual         & aDualVars)
-    {
-        auto tRHS = mCriteria[aName]->gradientCurrentPress(aControl, aCurPrimalVars);
-
-        auto tGradResVelWrtCurPress = mVelocityResidual.gradientCurrentPress(aControl, aCurPrimalVars);
-        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtCurPress, tCurrentVelocityAdjoint, tRHS);
-
-        auto tGradResPressWrtPrevPress = mPressureResidual.gradientPreviousPress(aControl, aPrevPrimalVars);
-        auto tPrevPressureAdjoint = aDualVars.vector("previous pressure adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPrevPress, tPrevPressureAdjoint, tRHS);
-
-        auto tGradResVelWrtPrevPress = mVelocityResidual.gradientPreviousPress(aControl, aPrevPrimalVars);
-        auto tPrevVelocityAdjoint = aDualVars.vector("previous velocity adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPrevPress, tPrevVelocityAdjoint, tRHS);
-
-        auto tGradResPredWrtPrevPress = mPredictorResidual.gradientPreviousPress(aControl, aPrevPrimalVars);
-        auto tPrevPredictorAdjoint = aDualVars.vector("previous predictor adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevPress, tPrevPredictorAdjoint, tRHS);
-        Plato::blas1::scale(-1.0, tRHS);
-
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
-        auto tCurrentPressAdjoint = aDualVars.vector("current pressure adjoint");
-        Plato::blas1::fill(0.0, tCurrentPressAdjoint);
-        auto tJacobianPressure = mPressureResidual.gradientCurrentPress(aControl, aCurPrimalVars);
-        tSolver->solve(*tJacobianPressure, tCurrentPressAdjoint, tRHS);
-    }
-
-    void calculateTemperatureAdjoint
-    (const std::string         & aName,
-     const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurPrimalVars,
-     const Plato::Primal       & aPrevPrimalVars,
-           Plato::Dual         & aDualVars)
-    {
-        auto tRHS = mCriteria[aName]->gradientCurrentTemp(aControl, aCurPrimalVars);
-
-        auto tGradResPredWrtPrevTemp = mPredictorResidual.gradientPreviousTemp(aControl, aPrevPrimalVars);
-        auto tPrevPredictorAdjoint = aDualVars.vector("previous predictor adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevTemp, tPrevPredictorAdjoint, tRHS);
-
-        auto tGradResTempWrtPrevTemp = mTemperatureResidual->gradientPreviousTemp(aControl, aPrevPrimalVars);
-        auto tPrevTempAdjoint = aDualVars.vector("previous temperature adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtPrevTemp, tPrevTempAdjoint, tRHS);
-        Plato::blas1::scale(-1.0, tRHS);
-
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
-        auto tCurrentTempAdjoint = aDualVars.vector("current temperature adjoint");
-        Plato::blas1::fill(0.0, tCurrentTempAdjoint);
-        auto tJacobianTemperature = mTemperatureResidual->gradientCurrentTemp(aControl, aCurPrimalVars);
-        tSolver->solve(*tJacobianTemperature, tCurrentTempAdjoint, tRHS);
-    }
-
-    void calculateVelocityAdjoint
-    (const std::string         & aName,
-     const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurPrimalVars,
-     const Plato::Primal       & aPrevPrimalVars,
-           Plato::Dual         & aDualVars)
-    {
-        auto tRHS = mCriteria[aName]->gradientCurrentVel(aControl, aCurPrimalVars);
-
-        auto tGradResPredWrtPrevVel = mPredictorResidual.gradientPreviousVel(aControl, aPrevPrimalVars);
-        auto tPrevPredictorAdjoint = aDualVars.vector("previous predictor adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtPrevVel, tPrevPredictorAdjoint, tRHS);
-
-        auto tGradResVelWrtPrevVel = mVelocityResidual.gradientPreviousVel(aControl, aPrevPrimalVars);
-        auto tPrevVelocityAdjoint = aDualVars.vector("previous velocity adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtPrevVel, tPrevVelocityAdjoint, tRHS);
-
-        auto tGradResPressWrtPrevVel = mPressureResidual.gradientPreviousVel(aControl, aPrevPrimalVars);
-        auto tPrevPressureAdjoint = aDualVars.vector("previous pressure adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtPrevVel, tPrevPressureAdjoint, tRHS);
-
-        auto tGradResTempWrtPrevVel = mTemperatureResidual->gradientPreviousVel(aControl, aPrevPrimalVars);
-        auto tPrevTemperatureAdjoint = aDualVars.vector("previous temperature adjoint");
-        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtPrevVel, tPrevTemperatureAdjoint, tRHS);
-        Plato::blas1::scale(-1.0, tRHS);
-
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
-        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
-        Plato::blas1::fill(0.0, tCurrentVelocityAdjoint);
-        auto tJacobianVelocity = mVelocityResidual.gradientCurrentVel(aControl, aCurPrimalVars);
-        tSolver->solve(*tJacobianVelocity, tCurrentVelocityAdjoint, tRHS);
-    }
-
-    void calculateGradientControl
-    (const std::string         & aName,
-     const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurPrimalVars,
-     const Plato::Dual         & aDualVars,
-           Plato::ScalarVector & aTotalDerivative)
-    {
-        auto tGradCriterionWrtControl = mCriteria[aName]->gradientControl(aControl, aCurPrimalVars);
-
-        auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
-        auto tGradResPredWrtControl = mPredictorResidual.gradientControl(aControl, aCurPrimalVars);
-        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtControl, tCurrentPredictorAdjoint, tGradCriterionWrtControl);
-
-        auto tCurrentPressureAdjoint = aDualVars.vector("current pressure adjoint");
-        auto tGradResPressWrtControl = mPressureResidual.gradientControl(aControl, aCurPrimalVars);
-        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtControl, tCurrentPressureAdjoint, tGradCriterionWrtControl);
-
-        auto tCurrentTemperatureAdjoint = aDualVars.vector("current temperature adjoint");
-        auto tGradResTempWrtControl = mTemperatureResidual->gradientControl(aControl, aCurPrimalVars);
-        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtControl, tCurrentTemperatureAdjoint, tGradCriterionWrtControl);
-
-        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
-        auto tGradResVelWrtControl = mVelocityResidual.gradientControl(aControl, aCurPrimalVars);
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtControl, tCurrentVelocityAdjoint, tGradCriterionWrtControl);
-
-        Plato::blas1::axpy(1.0, tGradCriterionWrtControl, aTotalDerivative);
-    }
-
-    void calculateGradientConfig
-    (const std::string         & aName,
-     const Plato::ScalarVector & aControl,
-     const Plato::Primal       & aCurPrimalVars,
-     const Plato::Dual         & aDualVars,
-           Plato::ScalarVector & aTotalDerivative)
-    {
-        auto tGradCriterionWrtConfig = mCriteria[aName]->gradientConfig(aControl, aCurPrimalVars);
-
-        auto tCurrentPredictorAdjoint = aDualVars.vector("current predictor adjoint");
-        auto tGradResPredWrtConfig = mPredictorResidual.gradientConfig(aControl, aCurPrimalVars);
-        Plato::MatrixTimesVectorPlusVector(tGradResPredWrtConfig, tCurrentPredictorAdjoint, tGradCriterionWrtConfig);
-
-        auto tCurrentPressureAdjoint = aDualVars.vector("current pressure adjoint");
-        auto tGradResPressWrtConfig = mPressureResidual.gradientConfig(aControl, aCurPrimalVars);
-        Plato::MatrixTimesVectorPlusVector(tGradResPressWrtConfig, tCurrentPressureAdjoint, tGradCriterionWrtConfig);
-
-        auto tCurrentTemperatureAdjoint = aDualVars.vector("current temperature adjoint");
-        auto tGradResTempWrtConfig = mTemperatureResidual->gradientConfig(aControl, aCurPrimalVars);
-        Plato::MatrixTimesVectorPlusVector(tGradResTempWrtConfig, tCurrentTemperatureAdjoint, tGradCriterionWrtConfig);
-
-        auto tCurrentVelocityAdjoint = aDualVars.vector("current velocity adjoint");
-        auto tGradResVelWrtConfig = mVelocityResidual.gradientConfig(aControl, aCurPrimalVars);
-        Plato::MatrixTimesVectorPlusVector(tGradResVelWrtConfig, tCurrentVelocityAdjoint, tGradCriterionWrtConfig);
-
-        Plato::blas1::axpy(1.0, tGradCriterionWrtConfig, aTotalDerivative);
-    }
-};
+// class QuasiImplicit
 
 }
 // namespace Hyperbolic
@@ -9910,7 +8202,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
         TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex)); // @suppress("Invalid arguments")
     }
 
-    // test three 
+    // test three
     constexpr auto tNumPointsC = 2;
     Plato::ScalarMultiVector tPointsC("points",tNumPointsC,tSpaceDim);
     tHostPoints = Kokkos::create_mirror(tPointsC);
@@ -9926,7 +8218,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
     {
         auto tIndex = &tGoldId - &tGold[0];
         TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex)); // @suppress("Invalid arguments")
-    } 
+    }
 
     // test four
     tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsC,tSpaceDim>(*tMesh, tMeshSets, "dog", tPointsC);
@@ -10013,8 +8305,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "      <Parameter  name='Sides'    type='string' value='pressure'/>"
             "    </ParameterList>"
             "  </ParameterList>"
+            "  <ParameterList  name='Newton Iteration'>"
+            "    <Parameter name='Pressure Tolerance' type='int' value='1e-2'/>"
+            "    <Parameter name='Predictor Tolerance' type='int' value='1e-4'/>"
+            "    <Parameter name='Corrector Tolerance' type='int' value='1e-4'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='100'/>"
+            "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Max Number Iterations' type='int' value='1000'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='1000'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -10032,7 +8330,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
     Omega_h::Write<int> tWriteVel(4);
     tWriteVel[0]=13; tWriteVel[1]=15; tWriteVel[2]=20; tWriteVel[3]=22;
     auto tVelBcNodeIds = Omega_h::LOs(tWriteVel);
-    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("velocity",tVelBcNodeIds) );    
+    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("velocity",tVelBcNodeIds) );
 
     // add pressure essential boundary condition to node set list
     Omega_h::Write<int> tWritePress(1);
@@ -10046,181 +8344,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
 
     // create and run incompressible cfd problem
     constexpr auto tSpaceDim = 2;
-    Plato::Fluids::SteadyState<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
+    Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
     const auto tNumVerts = tMesh->nverts();
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
     tProblem.output("cfd_test_problem");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_Brinkman)
-{
-    constexpr auto tNumSpaceDims = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
-    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    Plato::Fluids::ApplyWeightData tInputs;
-    tInputs.set("convexity", 0.5);
-    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightBrinkman<PhysicsT,EvaluationT>,EvaluationT> tApplyWeight(tInputs);
-
-    auto tNumCells = 2;
-    auto tPhysicalParam = 20;
-    auto tNumNodesPerCell = 3;
-    Plato::ScalarVector tOutput("output", tNumCells);
-    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
-    Plato::blas2::fill(0.5, tControlWS);
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tPhysicalParam, tControlWS);
-    }, "unit test apply weight function - brinkman");
-
-    // test results
-    auto tTol = 1e-4;
-    auto tHostOutput = Kokkos::create_mirror(tOutput);
-    Kokkos::deep_copy(tHostOutput, tOutput);
-    std::vector<Plato::Scalar> tGold = {8.0,8.0};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
-    }
-    //Plato::print(tOutput, "output");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_MSIMP)
-{
-    constexpr auto tNumSpaceDims = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
-    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    Plato::Fluids::ApplyWeightData tInputs;
-    tInputs.set("penalty", 3.0);
-    tInputs.set("minimum ersatz", 1e-9);
-    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightMSIMP<PhysicsT,EvaluationT>,EvaluationT> tApplyWeight(tInputs);
-
-    auto tNumCells = 2;
-    auto tPhysicalParam = 20;
-    auto tNumNodesPerCell = 3;
-    Plato::ScalarVector tOutput("output", tNumCells);
-    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
-    Plato::blas2::fill(0.5, tControlWS);
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tPhysicalParam, tControlWS);
-    }, "unit test apply weight function - msimp");
-
-    // test results
-    auto tTol = 1e-4;
-    auto tHostOutput = Kokkos::create_mirror(tOutput);
-    Kokkos::deep_copy(tHostOutput, tOutput);
-    std::vector<Plato::Scalar> tGold = {2.5,2.5};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
-    }
-    //Plato::print(tOutput, "output");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_SIMP)
-{
-    constexpr auto tNumSpaceDims = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
-    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    Plato::Fluids::ApplyWeightData tInputs;
-    tInputs.set("penalty", 3.0);
-    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightSIMP<PhysicsT,EvaluationT>,EvaluationT> tApplyWeight(tInputs);
-
-    auto tNumCells = 2;
-    auto tPhysicalParam = 20;
-    auto tNumNodesPerCell = 3;
-    Plato::ScalarVector tOutput("output", tNumCells);
-    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
-    Plato::blas2::fill(0.5, tControlWS);
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tPhysicalParam, tControlWS);
-    }, "unit test apply weight function - simp");
-
-    // test results
-    auto tTol = 1e-4;
-    auto tHostOutput = Kokkos::create_mirror(tOutput);
-    Kokkos::deep_copy(tHostOutput, tOutput);
-    std::vector<Plato::Scalar> tGold = {2.5,2.5};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
-    }
-    //Plato::print(tOutput, "output");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_RAMP)
-{
-    constexpr auto tNumSpaceDims = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
-    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    Plato::Fluids::ApplyWeightData tInputs;
-    tInputs.set("convexity", 0.5);
-    Plato::Fluids::ApplyWeight<Plato::Fluids::WeightRAMP<PhysicsT,EvaluationT>,EvaluationT> tApplyWeight(tInputs);
-
-    auto tNumCells = 2;
-    auto tPhysicalParam = 20;
-    auto tNumNodesPerCell = 3;
-    Plato::ScalarVector tOutput("output", tNumCells);
-    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
-    Plato::blas2::fill(0.5, tControlWS);
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tPhysicalParam, tControlWS);
-    }, "unit test apply weight function - ramp");
-
-    // test results
-    auto tTol = 1e-4;
-    auto tHostOutput = Kokkos::create_mirror(tOutput);
-    Kokkos::deep_copy(tHostOutput, tOutput);
-    std::vector<Plato::Scalar> tGold = {0.22,0.22};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
-    }
-    //Plato::print(tOutput, "output");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ApplyWeight_NoWeight)
-{
-    constexpr auto tNumSpaceDims = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MomentumPhysicsT;
-    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    Plato::Fluids::ApplyWeightData tInputs;
-    Plato::Fluids::ApplyWeight<Plato::Fluids::NoWeight<EvaluationT>,EvaluationT> tApplyWeight(tInputs);
-
-    auto tReNum = 20;
-    auto tNumCells = 2;
-    auto tNumNodesPerCell = 3;
-    Plato::ScalarVector tOutput("output", tNumCells);
-    Plato::ScalarMultiVector tControlWS("controls", tNumCells, tNumNodesPerCell);
-    Plato::blas2::fill(0.1, tControlWS);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        tOutput(aCellOrdinal) = tApplyWeight(aCellOrdinal, tReNum, tControlWS);
-    }, "unit test apply weight function - no weight");
-
-    // test results
-    auto tTol = 1e-4;
-    auto tHostOutput = Kokkos::create_mirror(tOutput);
-    Kokkos::deep_copy(tHostOutput, tOutput);
-    std::vector<Plato::Scalar> tGold = {20.0,20.0};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        TEST_FLOATING_EQUALITY(tGold[tCell], tHostOutput(tCell), tTol); // @suppress("Invalid arguments")
-    }
-    //Plato::print(tOutput, "output");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
@@ -10525,7 +8654,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSizes)
 
     constexpr auto tNumSpaceDims = 2;
     constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
-    auto tElemCharSize = 
+    auto tElemCharSize =
         Plato::cbs::calculate_element_characteristic_sizes<tNumSpaceDims,tNumNodesPerCell>(tSpatialModel);
 
     // test value
@@ -10536,7 +8665,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateElementCharacteristicSizes)
 
     auto tNumNodes = tSpatialModel.Mesh.nverts();
     for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
-    {   
+    {
         TEST_FLOATING_EQUALITY(tGold[tNode], tHostElemCharSize(tNode), tTol);
     }
     //Plato::print(tElemCharSize, "element characteristic size");
@@ -10920,18 +9049,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureIncrementResidual_EvaluateBound
     tHostVelocity(0, 5) = 6; tHostVelocity(1, 5) = 16;
     Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
     tWorkSets.set("previous velocity", tPrevVel);
-
-    auto tPrescribedVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-        ( Plato::ScalarMultiVector("surface velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
-    auto tHostPrescribedVel = Kokkos::create_mirror(tPrescribedVel->mData);
-    tHostPrescribedVel(0, 0) = 0.1; tHostPrescribedVel(1, 0) = 0.7;
-    tHostPrescribedVel(0, 1) = 0.2; tHostPrescribedVel(1, 1) = 0.8;
-    tHostPrescribedVel(0, 2) = 0.3; tHostPrescribedVel(1, 2) = 0.9;
-    tHostPrescribedVel(0, 3) = 0.4; tHostPrescribedVel(1, 3) = 1.0;
-    tHostPrescribedVel(0, 4) = 0.5; tHostPrescribedVel(1, 4) = 1.1;
-    tHostPrescribedVel(0, 5) = 0.6; tHostPrescribedVel(1, 5) = 1.2;
-    Kokkos::deep_copy(tPrescribedVel->mData, tHostPrescribedVel);
-    tWorkSets.set("surface velocity", tPrescribedVel);
 
     auto tTimeStep = std::make_shared< Plato::MetaData< Plato::ScalarVector > >( Plato::ScalarVector("time step", 1) );
     auto tHostTimeStep = Kokkos::create_mirror(tTimeStep->mData);
@@ -11514,78 +9631,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateDeltaAdvectedForces)
     //Plato::print_array_2D(tResult, "results");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MomentumSurfaceForces)
-{
-    // set physics and evaluation type
-    constexpr Plato::OrdinalType tNumSpaceDims = 2;
-    using PhysicsT = Plato::IncompressibleFluids<tNumSpaceDims>::MassPhysicsT;
-    using EvaluationT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    auto tSpatialDomainName = std::string("my box");
-    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, tSpatialDomainName);
-    auto tElementBlockName = std::string("body");
-    tDomain.cellOrdinals(tElementBlockName);
-
-    // set workset
-    Plato::WorkSets tWorkSets;
-    auto tNumCells = tMesh->nelems();
-    constexpr auto tNumNodesPerCell = tNumSpaceDims + 1;
-    using ConfigT = EvaluationT::ConfigScalarType;
-    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
-    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
-    tWorkSets.set("configuration", tConfig);
-
-    using PrevVelT = EvaluationT::PreviousMomentumScalarType;
-    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
-        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
-    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
-    tHostVelocity(0, 0) = 1; tHostVelocity(1, 0) = 11;
-    tHostVelocity(0, 1) = 2; tHostVelocity(1, 1) = 12;
-    tHostVelocity(0, 2) = 3; tHostVelocity(1, 2) = 13;
-    tHostVelocity(0, 3) = 4; tHostVelocity(1, 3) = 14;
-    tHostVelocity(0, 4) = 5; tHostVelocity(1, 4) = 15;
-    tHostVelocity(0, 5) = 6; tHostVelocity(1, 5) = 16;
-    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
-    tWorkSets.set("previous velocity", tPrevVel);
-
-    auto tPrescribedVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVector > >
-        ( Plato::ScalarMultiVector("surface velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
-    auto tHostPrescribedVel = Kokkos::create_mirror(tPrescribedVel->mData);
-    tHostPrescribedVel(0, 0) = 0.1; tHostPrescribedVel(1, 0) = 0.7;
-    tHostPrescribedVel(0, 1) = 0.2; tHostPrescribedVel(1, 1) = 0.8;
-    tHostPrescribedVel(0, 2) = 0.3; tHostPrescribedVel(1, 2) = 0.9;
-    tHostPrescribedVel(0, 3) = 0.4; tHostPrescribedVel(1, 3) = 1.0;
-    tHostPrescribedVel(0, 4) = 0.5; tHostPrescribedVel(1, 4) = 1.1;
-    tHostPrescribedVel(0, 5) = 0.6; tHostPrescribedVel(1, 5) = 1.2;
-    Kokkos::deep_copy(tPrescribedVel->mData, tHostPrescribedVel);
-    tWorkSets.set("surface velocity", tPrescribedVel);
-
-    // build momentum surface forces interface and call funciton
-    auto tSideSetName = std::string("x-");
-    Plato::Fluids::MomentumSurfaceForces<PhysicsT, EvaluationT> tMomentumBoundaryForces(tDomain, tSideSetName);
-    Plato::ScalarMultiVectorT<EvaluationT::ResultScalarType> tResult("result", tNumCells, PhysicsT::mNumMassDofsPerCell);
-    tMomentumBoundaryForces(tWorkSets, tResult);
-
-    // test values
-    auto tTol = 1e-4;
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0.0,0.0,0.0},{0.0,6.05,6.05}};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (Plato::OrdinalType tDof = 0; tDof < tNumNodesPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
-        }
-    }
-    //Plato::print_array_2D(tResult, "results");
-}
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SIMP_TemperatureResidual)
 {
     // set xml file inputs
@@ -11678,9 +9723,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SIMP_TemperatureResidual)
     Plato::ScalarVector tTimeSteps("time step", 1);
     Plato::blas1::fill(0.1, tTimeSteps);
     tVariables.vector("critical time step", tTimeSteps);
-    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
-    Plato::blas1::fill(1.0, tVelBCs);
-    tVariables.vector("surface velocity", tVelBCs);
 
     // allocate vector function
     Plato::DataMap tDataMap;
@@ -12137,9 +10179,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, VelocityCorrectorResidual)
     Plato::ScalarVector tTimeSteps("time step", 1);
     Plato::blas1::fill(0.1, tTimeSteps);
     tVariables.vector("critical time step", tTimeSteps);
-    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
-    Plato::blas1::fill(1.0, tVelBCs);
-    tVariables.vector("surface velocity", tVelBCs);
 
     // allocate vector function
     Plato::DataMap tDataMap;
@@ -12365,7 +10404,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MultiplyTimeStep)
     Plato::blas2::fill(1.0, tResult);
     Plato::ScalarVector tTimeStep("time step", 1);
     auto tHostTimeStep = Kokkos::create_mirror(tTimeStep);
-    tHostTimeStep(0) = 1; 
+    tHostTimeStep(0) = 1;
     Kokkos::deep_copy(tTimeStep, tHostTimeStep);
 
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -12373,7 +10412,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MultiplyTimeStep)
         Plato::Fluids::apply_time_step<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, 0.5, tTimeStep, tResult);
     }, "unit test apply_time_step");
 
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES 
+    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
     auto tTol = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
         {{0.5,0.5,1.0,1.0,1.5,1.5},{2.0,2.0,2.5,2.5,3.0,3.0}};
@@ -12783,9 +10822,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
     Plato::ScalarVector tTimeSteps("time step", 1);
     Plato::blas1::fill(0.1, tTimeSteps);
     tVariables.vector("critical time step", tTimeSteps);
-    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
-    Plato::blas1::fill(1.0, tVelBCs);
-    tVariables.vector("surface velocity", tVelBCs);
 
     // allocate vector function
     Plato::DataMap tDataMap;
@@ -12804,7 +10840,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionBrinkman)
     {
         auto tIndex = &tValue - &tGold[0];
         TEST_FLOATING_EQUALITY(tValue,tHostResidual(tIndex),tTol);
-    } 
+    }
     //Plato::print(tResidual, "residual");
 }
 
@@ -12895,242 +10931,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
     TEST_EQUALITY(2, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFive(1)));
     TEST_EQUALITY(3, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFive(2)));
     TEST_EQUALITY(4, static_cast<Plato::OrdinalType>(tHostValuesUseCaseFive(3)));
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces)
-{
-    // set inputs
-    Teuchos::RCP<Teuchos::ParameterList> tInputs =
-        Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Plato Problem'>"
-            "  <ParameterList name='Hyperbolic'>"
-            "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Prandtl Number' type='double' value='1.0'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
-            "    <ParameterList  name='Traction Vector Boundary Condition'>"
-            "      <Parameter  name='Type'   type='string'        value='Uniform'/>"
-            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
-            "      <Parameter  name='Values' type='Array(double)' value='{0,-1.0}'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "</ParameterList>"
-            );
-
-    // set physics and evaluation type
-    constexpr Plato::OrdinalType tNumSpaceDims = 2;
-    using PhysicsT = Plato::MomentumConservation<tNumSpaceDims>;
-    using ResidualEvalT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    // build mesh, mesh sets, and spatial domain
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
-    tDomain.cellOrdinals("body");
-
-    // set workset
-    Plato::WorkSets tWorkSets;
-    auto tNumCells = tMesh->nelems();
-    constexpr Plato::OrdinalType tNumNodesPerCell = tNumSpaceDims + 1;
-    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-
-    using ConfigT = ResidualEvalT::ConfigScalarType;
-    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
-    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
-    tWorkSets.set("configuration", tConfig);
-
-    using PrevVelT = ResidualEvalT::PreviousMomentumScalarType;
-    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
-        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
-    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
-    tHostVelocity(0, 0) = 0.12; tHostVelocity(1, 0) = 0.22;
-    tHostVelocity(0, 1) = 0.41; tHostVelocity(1, 1) = 0.47;
-    tHostVelocity(0, 2) = 0.25; tHostVelocity(1, 2) = 0.86;
-    tHostVelocity(0, 3) = 0.15; tHostVelocity(1, 3) = 0.57;
-    tHostVelocity(0, 4) = 0.12; tHostVelocity(1, 4) = 0.18;
-    tHostVelocity(0, 5) = 0.43; tHostVelocity(1, 5) = 0.11;
-    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
-    tWorkSets.set("previous velocity", tPrevVel);
-
-    using ControlT = ResidualEvalT::ControlScalarType;
-    auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
-        ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
-    Plato::blas2::fill(0.5, tControl->mData);
-    tWorkSets.set("control", tControl);
-
-    // build criterion
-    Plato::ScalarMultiVectorT<ResidualEvalT::ResultScalarType>
-        tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::Fluids::DeviatoricSurfaceForces<PhysicsT, ResidualEvalT>
-        tDeviatoricSurfaceForces(tDomain, tInputs.operator*());
-
-    // test function
-    tDeviatoricSurfaceForces(tWorkSets, tResult);
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-
-    auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0.195,-0.28,0.195,-0.28,0,0},{0.64,-0.29,0.64,-0.29,0,0}};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
-            //printf("Results(Cell=%d,Dof=%d)=%f\n", tCell, tDof, tHostResult(tCell, tDof));
-        }
-    }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, DeviatoricSurfaceForces_Zeros)
-{
-    // set inputs
-    Teuchos::RCP<Teuchos::ParameterList> tInputs =
-        Teuchos::getParametersFromXmlString(
-            "<ParameterList name='Plato Problem'>"
-            "  <ParameterList name='Hyperbolic'>"
-            "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Prandtl Number' type='double' value='1.0'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList  name='Momentum Natural Boundary Conditions'>"
-            "    <ParameterList  name='Traction Vector Boundary Condition - X+'>"
-            "      <Parameter  name='Sides'  type='string'        value='x+'/>"
-            "      <Parameter  name='Values' type='Array(double)' value='{0,-1}'/>"
-            "    </ParameterList>"
-            "    <ParameterList  name='Traction Vector Boundary Condition - X-'>"
-            "      <Parameter  name='Sides'  type='string'        value='x-'/>"
-            "      <Parameter  name='Values' type='Array(double)' value='{0,-1}'/>"
-            "    </ParameterList>"
-            "    <ParameterList  name='Traction Vector Boundary Condition - Y-'>"
-            "      <Parameter  name='Sides'  type='string'        value='y-'/>"
-            "      <Parameter  name='Values' type='Array(double)' value='{0,-1}'/>"
-            "    </ParameterList>"
-            "    <ParameterList  name='Traction Vector Boundary Condition - Y+'>"
-            "      <Parameter  name='Sides'  type='string'        value='y+'/>"
-            "      <Parameter  name='Values' type='Array(double)' value='{0,-1}'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "</ParameterList>"
-            );
-
-    // set physics and evaluation type
-    constexpr Plato::OrdinalType tNumSpaceDims = 2;
-    using PhysicsT = Plato::MomentumConservation<tNumSpaceDims>;
-    using ResidualEvalT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    // build mesh, mesh sets, and spatial domain
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
-    tDomain.cellOrdinals("body");
-
-    // set workset
-    Plato::WorkSets tWorkSets;
-    auto tNumCells = tMesh->nelems();
-    constexpr Plato::OrdinalType tNumNodesPerCell = tNumSpaceDims + 1;
-    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-
-    using ConfigT = ResidualEvalT::ConfigScalarType;
-    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
-    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
-    tWorkSets.set("configuration", tConfig);
-
-    using PrevVelT = ResidualEvalT::PreviousMomentumScalarType;
-    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevVelT> > >
-        ( Plato::ScalarMultiVectorT<PrevVelT>("previous velocity", tNumCells, PhysicsT::mNumMomentumDofsPerCell) );
-    auto tHostVelocity = Kokkos::create_mirror(tPrevVel->mData);
-    tHostVelocity(0, 0) = 0.12; tHostVelocity(1, 0) = 0.22;
-    tHostVelocity(0, 1) = 0.41; tHostVelocity(1, 1) = 0.47;
-    tHostVelocity(0, 2) = 0.25; tHostVelocity(1, 2) = 0.86;
-    tHostVelocity(0, 3) = 0.15; tHostVelocity(1, 3) = 0.57;
-    tHostVelocity(0, 4) = 0.12; tHostVelocity(1, 4) = 0.18;
-    tHostVelocity(0, 5) = 0.43; tHostVelocity(1, 5) = 0.11;
-    Kokkos::deep_copy(tPrevVel->mData, tHostVelocity);
-    tWorkSets.set("previous velocity", tPrevVel);
-
-    using ControlT = ResidualEvalT::ControlScalarType;
-    auto tControl = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<ControlT> > >
-        ( Plato::ScalarMultiVectorT<ControlT>("control", tNumCells, PhysicsT::mNumControlDofsPerCell) );
-    Plato::blas2::fill(0.5, tControl->mData);
-    tWorkSets.set("control", tControl);
-
-    // build criterion
-    Plato::ScalarMultiVectorT<ResidualEvalT::ResultScalarType>
-        tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::Fluids::DeviatoricSurfaceForces<PhysicsT, ResidualEvalT>
-        tDeviatoricSurfaceForces(tDomain, tInputs.operator*());
-
-    // test function
-    tDeviatoricSurfaceForces(tWorkSets, tResult);
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-
-    auto tTol = 1e-4;
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(0.0, tHostResult(tCell, tDof), tTol);
-            //printf("Results(Cell=%d,Dof=%d)=%f\n", tCell, tDof, tHostResult(tCell, tDof));
-        }
-    }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PressureSurfaceForces)
-{
-    // set physics and evaluation type
-    constexpr Plato::OrdinalType tNumSpaceDims = 2;
-    using PhysicsT = Plato::MomentumConservation<tNumSpaceDims>;
-    using ResidualEvalT = Plato::Fluids::Evaluation<PhysicsT::SimplexT>::Residual;
-
-    // build mesh, mesh sets, and spatial domain
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
-    tDomain.cellOrdinals("body");
-
-    // set workset
-    Plato::WorkSets tWorkSets;
-    auto tNumCells = tMesh->nelems();
-    constexpr Plato::OrdinalType tNumNodesPerCell = 3;
-    Plato::NodeCoordinate<tNumSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-
-    using ConfigT = ResidualEvalT::ConfigScalarType;
-    auto tConfig = std::make_shared< Plato::MetaData< Plato::ScalarArray3DT<ConfigT> > >
-        ( Plato::ScalarArray3DT<ConfigT>("configuration", tNumCells, tNumNodesPerCell, tNumSpaceDims) );
-    Plato::workset_config_scalar<tNumSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfig->mData);
-    tWorkSets.set("configuration", tConfig);
-
-    using PrevPressT = ResidualEvalT::PreviousMassScalarType;
-    auto tPrevVel = std::make_shared< Plato::MetaData< Plato::ScalarMultiVectorT<PrevPressT> > >
-        ( Plato::ScalarMultiVectorT<PrevPressT>("previous pressure", tNumCells, PhysicsT::mNumMassDofsPerCell) );
-    Plato::blas2::fill(1, tPrevVel->mData);
-    tWorkSets.set("previous pressure", tPrevVel);
-
-    // build criterion
-    Plato::ScalarMultiVectorT<ResidualEvalT::ResultScalarType>
-        tResult("result", tNumCells, PhysicsT::mNumMomentumDofsPerCell);
-    Plato::Fluids::PressureSurfaceForces<PhysicsT, ResidualEvalT>
-        tPressureSurfaceForces(tDomain, "x+");
-
-    // test function
-    tPressureSurfaceForces(tWorkSets, tResult);
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-    
-    auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{0,0,0.5,0,0.5,0},{0,0,0,0,0,0}};
-    for (Plato::OrdinalType tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (Plato::OrdinalType tDof = 0; tDof < PhysicsT::mNumMomentumDofsPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(tGold[tCell][tDof], tHostResult(tCell, tDof), tTol);
-            //printf("Results(Cell=%d,Dof=%d)=%f\n", tCell, tDof, tHostResult(tCell, tDof));
-        }
-    }
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StrainRate)
@@ -14028,9 +11828,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
     Plato::ScalarVector tArtCompress("artificial compressibility", tNumNodes);
     Plato::blas1::fill(5.0, tArtCompress);
     tPrimal.vector("artificial compressibility", tArtCompress);
-    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
-    Plato::blas1::fill(6.0, tVelBCs);
-    tPrimal.vector("surface velocity", tVelBCs);
 
     // call build_vector_function_worksets
     Plato::WorkSets tWorkSets;
@@ -14148,20 +11945,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets_SpatialDoma
         }
     }
 
-    // test surface velocity results
-    auto tVelBCsWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("surface velocity"));
-    TEST_EQUALITY(tNumCells, tVelBCsWS.extent(0));
-    TEST_EQUALITY(tNumVelDofsPerCell, tVelBCsWS.extent(1));
-    auto tHostVelBCsWS = Kokkos::create_mirror(tVelBCsWS);
-    Kokkos::deep_copy(tHostVelBCsWS, tVelBCsWS);
-    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (decltype(tNumVelDofsPerCell) tDof = 0; tDof < tNumVelDofsPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(6.0, tHostVelBCsWS(tCell, tDof), tTol);
-        }
-    }
-
     // test controls results
     auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ResidualEvalT::ControlScalarType>>(tWorkSets.get("control"));
     TEST_EQUALITY(tNumCells, tControlWS.extent(0));
@@ -14242,9 +12025,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
     Plato::ScalarVector tArtCompress("artificial compressibility", tNumNodes);
     Plato::blas1::fill(5.0, tArtCompress);
     tPrimal.vector("artificial compressibility", tArtCompress);
-    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
-    Plato::blas1::fill(6.0, tVelBCs);
-    tPrimal.vector("surface velocity", tVelBCs);
 
     // set ordinal maps;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
@@ -14379,20 +12159,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksets)
         }
     }
 
-    // test surface velocity results
-    auto tVelBCsWS = Plato::metadata<Plato::ScalarMultiVector>(tWorkSets.get("surface velocity"));
-    TEST_EQUALITY(tNumCells, tVelBCsWS.extent(0));
-    TEST_EQUALITY(tNumVelDofsPerCell, tVelBCsWS.extent(1));
-    auto tHostVelBCsWS = Kokkos::create_mirror(tVelBCsWS);
-    Kokkos::deep_copy(tHostVelBCsWS, tVelBCsWS);
-    for (decltype(tNumCells) tCell = 0; tCell < tNumCells; tCell++)
-    {
-        for (decltype(tNumVelDofsPerCell) tDof = 0; tDof < tNumVelDofsPerCell; tDof++)
-        {
-            TEST_FLOATING_EQUALITY(6.0, tHostVelBCsWS(tCell, tDof), tTol);
-        }
-    }
-
     // test configuration results
     auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ResidualEvalT::ConfigScalarType>>(tWorkSets.get("configuration"));
     TEST_EQUALITY(tNumCells, tConfigWS.extent(0));
@@ -14456,9 +12222,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BuildVectorFunctionWorksetsTwo)
     Plato::ScalarVector tTimeSteps("critical time step", 1);
     Plato::blas1::fill(4.0, tTimeSteps);
     tPrimal.vector("critical time step", tTimeSteps);
-    Plato::ScalarVector tVelBCs("surface velocity", tNumVelDofs);
-    Plato::blas1::fill(6.0, tVelBCs);
-    tPrimal.vector("surface velocity", tVelBCs);
 
     // set ordinal maps;
     auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
