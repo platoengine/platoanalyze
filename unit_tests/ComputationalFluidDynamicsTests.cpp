@@ -8520,15 +8520,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
 
-    // add ramping boundary conditions to node set list
-    Omega_h::Write<int> tWriteVel(4);
-    tWriteVel[0]=13; tWriteVel[1]=15; tWriteVel[2]=20; tWriteVel[3]=22;
-    auto tVelBcNodeIds = Omega_h::LOs(tWriteVel);
-    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("velocity",tVelBcNodeIds) );
-
     // add pressure essential boundary condition to node set list
     Omega_h::Write<int> tWritePress(1);
-    tWritePress[0]=0; auto tPressBcNodeIds = Omega_h::LOs(tWritePress);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tWritePress[aOrdinal]=0; 
+    }, "set pressure bc dofs value");
+    auto tPressBcNodeIds = Omega_h::LOs(tWritePress);
     tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tPressBcNodeIds) );
 
     // create communicator
