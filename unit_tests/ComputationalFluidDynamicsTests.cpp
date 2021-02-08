@@ -2848,7 +2848,7 @@ void integrate_vector_field
 
 
 inline Plato::Scalar
-reynolds_number
+dimensionless_reynolds_number
 (Teuchos::ParameterList & aInputs)
 {
     if(aInputs.isSublist("Hyperbolic") == false)
@@ -2861,7 +2861,7 @@ reynolds_number
 }
 
 inline Plato::Scalar
-prandtl_number
+dimensionless_prandtl_number
 (Teuchos::ParameterList & aInputs)
 {
     if(aInputs.isSublist("Hyperbolic") == false)
@@ -2873,28 +2873,50 @@ prandtl_number
     return tPrNum;
 }
 
-inline Plato::Scalar
-dimensionless_viscosity_constant
+inline bool calculate_heat_transfer
 (Teuchos::ParameterList & aInputs)
 {
     if(aInputs.isSublist("Hyperbolic") == false)
     {
         THROWERR("'Hyperbolic' Parameter List is not defined.")
     }
-
     auto tHyperbolic = aInputs.sublist("Hyperbolic");
     auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
     auto tHeatTransfer = Plato::tolower(tTag);
+    auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
 
+    return tCalculateHeatTransfer;
+}
+
+inline std::string heat_transfer_tag
+(Teuchos::ParameterList & aInputs)
+{
+    if(aInputs.isSublist("Hyperbolic") == false)
+    {
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
+    }
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+    auto tHeatTransfer = Plato::tolower(tTag);
+    return tTag;
+}
+
+
+
+inline Plato::Scalar
+dimensionless_viscosity_constant
+(Teuchos::ParameterList & aInputs)
+{
+    auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if(tHeatTransfer == "forced" || tHeatTransfer == "none")
     {
-        auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
+        auto tReNum = Plato::Fluids::dimensionless_reynolds_number(aInputs);
         auto tViscocity = static_cast<Plato::Scalar>(1) / tReNum;
         return tViscocity;
     }
     else if(tHeatTransfer == "natural")
     {
-        auto tViscocity = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+        auto tViscocity = Plato::Fluids::dimensionless_prandtl_number(aInputs);
         return tViscocity;
     }
     else
@@ -2907,36 +2929,26 @@ inline Plato::Scalar
 dimensionless_buoyancy_constant
 (Teuchos::ParameterList & aInputs)
 {
-    if(aInputs.isSublist("Hyperbolic") == false)
-    {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
+    Plato::Scalar tBuoyancy = 0.0 // heat transfer calculations inactive if buoyancy = 0.0;
 
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-    auto tHeatTransfer = Plato::tolower(tTag);
-
+    auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if(tHeatTransfer == "forced")
     {
-        auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
-        auto tBuoyancy = static_cast<Plato::Scalar>(1) / (tReNum*tReNum);
-        return tBuoyancy;
+        auto tReNum = Plato::Fluids::dimensionless_reynolds_number(aInputs);
+        tBuoyancy = static_cast<Plato::Scalar>(1) / (tReNum*tReNum);
     }
     else if(tHeatTransfer == "natural")
     {
-        auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-        auto tBuoyancy = tPrNum*tPrNum;
-        return tBuoyancy;
-    }
-    else if(tHeatTransfer == "none")
-    {
-        auto tBuoyancy = 0;
-        return tBuoyancy;
+        auto tPrNum = Plato::Fluids::dimensionless_prandtl_number(aInputs);
+        tBuoyancy = tPrNum*tPrNum;
+
     }
     else
     {
         THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
     }
+
+    return tBuoyancy;
 }
 
 template<Plato::OrdinalType NumSpaceDim>
@@ -2979,6 +2991,7 @@ dimensionless_grashof_number
 
     return tOuput;
 }
+
 
 
 
@@ -3083,7 +3096,10 @@ private:
 
     // set member scalar data
     Plato::Scalar mTheta = 1.0; /*!< artificial viscous damping */
-    Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity number */
+    Plato::Scalar mBuoyancy = 0.0; /*!< dimensionless buoyancy constant */
+    Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity constant */
+    Plato::ScalarVector mGrNum; /*!< dimensionless grashof number */
+    bool mCalculateThermalBuoyancyForces = false; /*!< indicator to determine if thermal buoyancy forces will be considered in calculations */
 
 public:
     VelocityPredictorResidual
@@ -3094,9 +3110,9 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
+        this->setDimensionlessConstants(aInputs);
         this->setAritificalViscousDamping(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
-        mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
     }
 
     virtual ~VelocityPredictorResidual(){}
@@ -3181,7 +3197,6 @@ public:
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumTempDofsPerNode> tIntrplScalarField;
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
         // set input state worksets
@@ -3233,6 +3248,31 @@ public:
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, aResultWS, -1.0);
         }, "quasi-implicit predicted velocity residual");
+
+        if(mCalculateThermalBuoyancyForces)
+        {
+            Plato::InterpolateFromNodal<mNumSpatialDims, mNumTempDofsPerNode> tIntrplScalarField;
+
+            // set input and temporary worksets
+            Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
+            Plato::ScalarMultiVectorT<ResultT>  tNaturalConvection("natural convection", tNumCells, mNumSpatialDims);
+            auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
+
+            // transfer member data to device
+            auto tGrNum = mGrNum;
+            auto tBuoyancy = mBuoyancy;
+            auto tCriticalTimeStep = tCriticalTimeStep(0);
+
+            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+            {
+                // 6. add previous buoyancy force to residual, i.e. R -= (\Delta{t}*Bu*Gr_i) M T_n, where Bu is the buoyancy constant
+                tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
+                Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
+                    (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tNaturalConvection);
+                Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
+                    (aCellOrdinal, tBasisFunctions, tCellVolume, tNaturalConvection, aResultWS, -tCriticalTimeStep);
+            }, "add contribution from buoyancy forces to residual");
+        }
     }
 
    /***************************************************************************//**
@@ -3298,6 +3338,17 @@ public:
    }
 
 private:
+   void setDimensionlessConstants(Teuchos::ParameterList & aInputs)
+   {
+       mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
+       mCalculateThermalBuoyancyForces = Plato::Fluids::calculate_heat_transfer(aInputs);
+       if(mCalculateThermalBuoyancyForces)
+       {
+           mBuoyancy = Plato::Fluids::dimensionless_buoyancy_constant(aInputs);
+           mGrNum = Plato::Fluids::dimensionless_grashof_number<mNumSpatialDims>(aInputs);
+       }
+   }
+
    void setAritificalViscousDamping(Teuchos::ParameterList& aInputs)
    {
        if(aInputs.isSublist("Time Integration"))
@@ -7301,8 +7352,7 @@ inline void apply_constraints
     }
 }
 
-
-void set_dofs_values
+inline void set_dofs_values
 (const Plato::LocalOrdinalVector & aBcDofs,
        Plato::ScalarVector & aOutput,
        Plato::Scalar aValue = 0.0)
@@ -7313,7 +7363,7 @@ void set_dofs_values
     }, "set values at bc dofs to zero");
 }
 
-void open_text_file
+inline void open_text_file
 (const std::string & aFileName,
  std::ofstream & aTextFile,
  bool aPrint = true)
@@ -7325,7 +7375,7 @@ void open_text_file
     aTextFile.open(aFileName);
 }
 
-void close_text_file
+inline void close_text_file
 (std::ofstream & aTextFile,
  bool aPrint = true)
 {
@@ -7336,7 +7386,7 @@ void close_text_file
     aTextFile.close();
 }
 
-void append_text_to_file
+inline void append_text_to_file
 (const std::stringstream & aMsg,
  std::ofstream & aTextFile,
  bool aPrint = true)
@@ -7395,6 +7445,7 @@ private:
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
     Plato::OrdinalType mMaxNewtonIterations = 2e2; /*!< maximum number of Newton iterations */
     Plato::OrdinalType mMaxSteadyStateIterations = 1e3; /*!< maximum number of steady state iterations */
+    Plato::OrdinalType mMaxDivergentSolverIterations = 10; /*!< maximum number of divergent fluid solver iterations allowed */
 
     Plato::ScalarMultiVector mPressure;
     Plato::ScalarMultiVector mVelocity;
@@ -7704,21 +7755,14 @@ private:
     void parseDimensionlessProperties
     (Teuchos::ParameterList & aInputs)
     {
-        mPrandtlNumber = Plato::Fluids::prandtl_number(aInputs);
-        mReynoldsNumber = Plato::Fluids::reynolds_number(aInputs);
+        mPrandtlNumber = Plato::Fluids::dimensionless_prandtl_number(aInputs);
+        mReynoldsNumber = Plato::Fluids::dimensionless_reynolds_number(aInputs);
     }
 
     void parseHeatTransferEquation
     (Teuchos::ParameterList & aInputs)
     {
-        if(aInputs.isSublist("Hyperbolic") == false)
-        {
-            THROWERR("'Hyperbolic' Parameter List is not defined.")
-        }
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-        auto tHeatTransfer = Plato::tolower(tTag);
-        mCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
+        mCalculateHeatTransfer = Plato::Fluids::calculate_heat_transfer(aInputs);
 
         if(mCalculateHeatTransfer)
         {
@@ -7749,6 +7793,7 @@ private:
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
             mSteadyStateTolerance = tTimeIntegration.get<Plato::Scalar>("Steady State Tolerance", 1e-3);
             mMaxSteadyStateIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Iterations", 1e3);
+            mMaxDivergentSolverIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Divergent Iterations", 10);
         }
     }
 
@@ -7828,7 +7873,7 @@ private:
             if(mPrintDiagnostics)
             {
                 std::stringstream tMsg;
-                auto tCriterion = aVariables.scalar("steady state criterion");
+                auto tCriterion = aVariables.scalar("current steady state criterion");
                 tMsg << "\n-------------------------------------------------------------------------------------\n";
                 tMsg << std::scientific << " Steady State Convergence: " << tCriterion << "\n";
                 tMsg << "-------------------------------------------------------------------------------------\n\n";
@@ -7837,14 +7882,32 @@ private:
         }
     }
 
+    bool isFluidSolverDiverging
+    (Plato::Primal & aVariables)
+    {
+        auto tCurrentCriterion = aVariables.scalar("current steady state criterion");
+        auto tPreviousCriterion = aVariables.scalar("previous steady state criterion");
+
+        Plato::OrdinalType tDivergenceCriterionCount = aVariables.scalar("divergence count");
+        tDivergenceCriterionCount = tCurrentCriterion > tPreviousCriterion ? tDivergenceCriterionCount++ : 0;
+        aVariables.scalar("divergence count", tDivergenceCriterionCount);
+
+        if(tDivergenceCriterionCount >= mMaxDivergentSolverIterations)
+        {
+            return true;
+        }
+        return false;
+    }
+
     bool checkStoppingCriteria
     (Plato::Primal & aVariables)
     {
         bool tStop = false;
         const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
         const auto tCriterionValue = this->calculateVelocityMisfitNorm(aVariables);
-        aVariables.scalar("steady state criterion", tCriterionValue);
+        aVariables.scalar("current steady state criterion", tCriterionValue);
         this->printSteadyStateCriterion(aVariables);
+
 
         if (tCriterionValue < mSteadyStateTolerance)
         {
@@ -7854,6 +7917,12 @@ private:
         {
             tStop = true;
         }
+        else if(this->isFluidSolverDiverging(aVariables))
+        {
+            tStop = true;
+        }
+
+        aVariables.scalar("previous steady state criterion", tCriterionValue);
 
         return tStop;
     }
