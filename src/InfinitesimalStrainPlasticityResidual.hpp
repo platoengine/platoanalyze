@@ -175,8 +175,15 @@ private:
         // Parse Neumman loads
         if(aProblemParams.isSublist("Natural Boundary Conditions"))
         {
-            mNeumannLoads =
-                    std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>>(aProblemParams.sublist("Natural Boundary Conditions"));
+            auto tNaturalBCsParams = aProblemParams.sublist("Natural Boundary Conditions");
+
+            // Parse mechanical Neumann loads
+            if(tNaturalBCsParams.isSublist("Mechanical Natural Boundary Conditions"))
+            {
+                mNeumannLoads =
+                std::make_shared<Plato::NaturalBCs<mSpaceDim, mNumGlobalDofsPerNode>> (tNaturalBCsParams.sublist("Mechanical Natural Boundary Conditions"));
+            }
+
         }
 
         mDataMap.mScalarValues["LoadControlConstant"] = 1.0;
@@ -205,11 +212,11 @@ private:
     void parseIsotropicMaterialProperties(Teuchos::ParameterList &aProblemParams)
     {
         Teuchos::ParameterList tMaterialsInputs = aProblemParams.sublist("Material Models");
+        mPressureScaling =     tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
 
         auto tMaterialName = mSpatialDomain.getMaterialName();
         Teuchos::ParameterList tMaterialInputs = tMaterialsInputs.sublist(tMaterialName);
-
-        mPressureScaling = tMaterialInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        
         if (tMaterialInputs.isSublist("Isotropic Linear Elastic"))
         {
             auto tElasticSubList = tMaterialInputs.sublist("Isotropic Linear Elastic");
