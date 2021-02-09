@@ -8408,7 +8408,7 @@ private:
             }
 
             // calculate current residual and jacobian matrix
-            tResidual = mTemperatureResidual.value(aControl, aStates);
+            tResidual = mTemperatureResidual->value(aControl, aStates);
             Plato::blas1::scale(-1.0, tResidual);
 
             tIteration++;
