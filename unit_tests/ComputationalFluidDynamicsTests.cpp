@@ -3261,7 +3261,7 @@ public:
             // transfer member data to device
             auto tGrNum = mGrNum;
             auto tBuoyancy = mBuoyancy;
-            auto tCriticalTimeStep = tCriticalTimeStep(0);
+            auto tGlobalTimeStep = tCriticalTimeStep(0);
 
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
@@ -3270,7 +3270,7 @@ public:
                 Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
                     (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tNaturalConvection);
                 Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                    (aCellOrdinal, tBasisFunctions, tCellVolume, tNaturalConvection, aResultWS, -tCriticalTimeStep);
+                    (aCellOrdinal, tBasisFunctions, tCellVolume, tNaturalConvection, aResultWS, -tGlobalTimeStep);
             }, "add contribution from buoyancy forces to residual");
         }
     }
