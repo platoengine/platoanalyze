@@ -2929,7 +2929,7 @@ inline Plato::Scalar
 dimensionless_buoyancy_constant
 (Teuchos::ParameterList & aInputs)
 {
-    Plato::Scalar tBuoyancy = 0.0 // heat transfer calculations inactive if buoyancy = 0.0;
+    Plato::Scalar tBuoyancy = 0.0; // heat transfer calculations inactive if buoyancy = 0.0
 
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
     if(tHeatTransfer == "forced")
