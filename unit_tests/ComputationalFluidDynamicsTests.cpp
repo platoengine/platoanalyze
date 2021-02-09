@@ -4448,6 +4448,7 @@ private:
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< integration rule */
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mHeatFlux; /*!< heat flux evaluator */
 
+    Plato::Scalar mTheta = 1.0; /*!< artificial diffusive damping */
     Plato::Scalar mHeatSourceConstant         = 0.0;
     Plato::Scalar mCharacteristicLength       = 1.0;
     Plato::Scalar mReferenceTemperature       = 1.0;
@@ -4707,6 +4708,15 @@ private:
         }
         this->setCharacteristicLength(aInputs);
         this->setEffectiveConductivity(aInputs);
+    }
+
+    void setAritificalViscousDamping(Teuchos::ParameterList& aInputs)
+    {
+        if(aInputs.isSublist("Time Integration"))
+        {
+            auto tTimeIntegration = aInputs.sublist("Time Integration");
+            mTheta = tTimeIntegration.get<Plato::Scalar>("Diffusive Damping", 1.0);
+        }
     }
 
     void setNaturalBoundaryConditions
