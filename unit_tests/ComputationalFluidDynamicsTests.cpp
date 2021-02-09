@@ -4587,12 +4587,12 @@ public:
 
             // 6. add previous inertial force contribution to residual, i.e. R -= M T^n
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
-            Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumDofsPerNode>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, aResultWS, -1.0);
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevTempGP, aResultWS, -1.0);
 
-            // 7. add previous inertial force contribution to residual, i.e. R += M T^{n+1}
+            // 7. add current inertial force contribution to residual, i.e. R += M T^{n+1}
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
-            Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumDofsPerNode>
+            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS);
         }, "energy conservation residual");
     }
