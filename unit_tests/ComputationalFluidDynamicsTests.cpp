@@ -4468,6 +4468,7 @@ public:
         this->setThermalProperties(aInputs);
         this->setDimensionlessProperties(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
+        this->setAritificalDiffusiveDamping(aInputs);
     }
 
     virtual ~TemperatureResidual(){}
@@ -4710,7 +4711,8 @@ private:
         this->setEffectiveConductivity(aInputs);
     }
 
-    void setAritificalViscousDamping(Teuchos::ParameterList& aInputs)
+    void setAritificalDiffusiveDamping
+    (Teuchos::ParameterList& aInputs)
     {
         if(aInputs.isSublist("Time Integration"))
         {
