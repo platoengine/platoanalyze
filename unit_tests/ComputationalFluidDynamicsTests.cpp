@@ -2898,7 +2898,7 @@ inline std::string heat_transfer_tag
     auto tHyperbolic = aInputs.sublist("Hyperbolic");
     auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
     auto tHeatTransfer = Plato::tolower(tTag);
-    return tTag;
+    return tHeatTransfer;
 }
 
 
