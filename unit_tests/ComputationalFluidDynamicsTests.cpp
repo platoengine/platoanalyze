@@ -2873,21 +2873,6 @@ dimensionless_prandtl_number
     return tPrNum;
 }
 
-inline bool calculate_heat_transfer
-(Teuchos::ParameterList & aInputs)
-{
-    if(aInputs.isSublist("Hyperbolic") == false)
-    {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-    auto tHeatTransfer = Plato::tolower(tTag);
-    auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
-
-    return tCalculateHeatTransfer;
-}
-
 inline std::string heat_transfer_tag
 (Teuchos::ParameterList & aInputs)
 {
@@ -2901,7 +2886,13 @@ inline std::string heat_transfer_tag
     return tHeatTransfer;
 }
 
-
+inline bool calculate_heat_transfer
+(Teuchos::ParameterList & aInputs)
+{   
+    auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
+    auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
+    return tCalculateHeatTransfer;
+}
 
 inline Plato::Scalar
 dimensionless_viscosity_constant
@@ -7245,7 +7236,7 @@ calculate_critical_diffusive_time_step
     {
         auto tOptionOne = static_cast<Plato::Scalar>(0.5) * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) * aReynoldsNumber;
         auto tOptionTwo = static_cast<Plato::Scalar>(0.5) * aElemCharSize(aNodeOrdinal) * aElemCharSize(aNodeOrdinal) * aReynoldsNumber * aPrandtlNumber;
-        tLocalTimeStep(aNodeOrdinal) = min(tOptionOne, tOptionTwo);
+        tLocalTimeStep(aNodeOrdinal) = tOptionOne < tOptionTwo ? tOptionOne : tOptionTwo;
     }, "calculate local critical time step");
 
     Plato::Scalar tMinValue = 0;
@@ -7897,6 +7888,13 @@ private:
     bool isFluidSolverDiverging
     (Plato::Primal & aVariables)
     {
+        const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
+        if(tIteration <= 1)
+        {
+            aVariables.scalar("divergence count", 0);
+            return false;
+        }
+
         auto tCurrentCriterion = aVariables.scalar("current steady state criterion");
         auto tPreviousCriterion = aVariables.scalar("previous steady state criterion");
 
