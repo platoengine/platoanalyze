@@ -8089,9 +8089,10 @@ private:
         // set initial guess for current velocity
         auto tPreviousVelocity = aStates.vector("previous velocity");
         Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
-        Plato::ScalarVector tDeltaCorrector("delta corrector", tCurrentVelocity.size());
 
         Plato::OrdinalType tIteration = 1;
+        Plato::Scalar tInitialNormStep = 0.0;
+        Plato::ScalarVector tDeltaCorrector("delta corrector", tCurrentVelocity.size());
         while(true)
         {
             aStates.scalar("newton iteration", tIteration);
@@ -8107,8 +8108,13 @@ private:
             aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaCorrector);
             aStates.scalar("norm step", tNormStep);
-            this->printNewtonDiagnostics(aStates);
+            if(tIteration <= 1)
+            {
+                tInitialNormStep = tNormStep;
+            }
+            tNormStep = tNormStep / tInitialNormStep;
 
+            this->printNewtonDiagnostics(aStates);
             if(tNormStep <= mCorrectorTolerance || tIteration > mMaxNewtonIterations)
             {
                 break;
@@ -8193,6 +8199,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
 
         Plato::OrdinalType tIteration = 1;
+        Plato::Scalar tInitialNormStep = 0.0;
         Plato::ScalarVector tDeltaPredictor("delta predictor", tCurrentPredictor.size());
         while(true)
         {
@@ -8209,8 +8216,13 @@ private:
             aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaPredictor);
             aStates.scalar("norm step", tNormStep);
-            this->printNewtonDiagnostics(aStates);
+            if(tIteration <= 1)
+            {
+                tInitialNormStep = tNormStep;
+            }
+            tNormStep = tNormStep / tInitialNormStep;
 
+            this->printNewtonDiagnostics(aStates);
             if(tNormStep <= mPredictorTolerance || tIteration > mMaxNewtonIterations)
             {
                 break;
@@ -8264,6 +8276,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumPressDofsPerNode);
 
         Plato::OrdinalType tIteration = 1;
+        Plato::Scalar tInitialNormStep = 0.0;
         auto tPreviousPressure = aStates.vector("previous pressure");
         Plato::blas1::update(1.0, tPreviousPressure, 1.0, tCurrentPressure);
         Plato::ScalarVector tDeltaPressure("delta pressure", tCurrentPressure.size());
@@ -8282,8 +8295,13 @@ private:
             aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaPressure);
             aStates.scalar("norm step", tNormStep);
-            this->printNewtonDiagnostics(aStates);
+            if(tIteration <= 1)
+            {
+                tInitialNormStep = tNormStep;
+            }
+            tNormStep = tNormStep / tInitialNormStep;
 
+            this->printNewtonDiagnostics(aStates);
             if(tNormStep <= mPressureTolerance || tIteration > mMaxNewtonIterations)
             {
                 break;
@@ -8337,6 +8355,7 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
 
         Plato::OrdinalType tIteration = 1;
+        Plato::Scalar tInitialNormStep = 0.0;
         auto tPreviousTemperature = aStates.vector("previous temperature");
         Plato::blas1::update(1.0, tPreviousTemperature, 1.0, tCurrentTemperature);
         Plato::ScalarVector tDeltaTemperature("delta pressure", tCurrentTemperature.size());
@@ -8355,8 +8374,13 @@ private:
             aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaTemperature);
             aStates.scalar("norm step", tNormStep);
-            this->printNewtonDiagnostics(aStates);
+            if(tIteration <= 1)
+            {
+                tInitialNormStep = tNormStep;
+            }
+            tNormStep = tNormStep / tInitialNormStep;
 
+            this->printNewtonDiagnostics(aStates);
             if(tNormStep <= mThermalTolerance || tIteration > mMaxNewtonIterations)
             {
                 break;
