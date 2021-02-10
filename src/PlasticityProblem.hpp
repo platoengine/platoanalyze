@@ -44,7 +44,7 @@ private:
     static constexpr auto mSpaceDim                = PhysicsT::mSpaceDim;             /*!< spatial dimensions*/
     static constexpr auto mNumNodesPerCell         = PhysicsT::mNumNodesPerCell;      /*!< number of nodes per cell*/
     static constexpr auto mPressureDofOffset       = PhysicsT::mPressureDofOffset;    /*!< number of pressure dofs offset*/
-    static constexpr auto mTemperatureDofOffset    = PhysicsT::mTemperatureDofOffset;    /*!< number of temperature dofs offset*/
+    static constexpr auto mTemperatureDofOffset    = PhysicsT::mTemperatureDofOffset; /*!< number of temperature dofs offset*/
     static constexpr auto mNumGlobalDofsPerNode    = PhysicsT::mNumDofsPerNode;       /*!< number of global degrees of freedom per node*/
     static constexpr auto mNumGlobalDofsPerCell    = PhysicsT::mNumDofsPerCell;       /*!< number of global degrees of freedom per cell (i.e. element)*/
     static constexpr auto mNumLocalDofsPerCell     = PhysicsT::mNumLocalDofsPerCell;  /*!< number of local degrees of freedom per cell (i.e. element)*/
@@ -67,6 +67,7 @@ private:
     Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps */
     Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps */
 
+    Plato::Scalar mEndTime;                       /*!< end time */
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
     Plato::Scalar mPressureScaling;               /*!< pressure term scaling */
     Plato::Scalar mTemperatureScaling;            /*!< temperature term scaling */
@@ -81,6 +82,7 @@ private:
     Plato::ScalarMultiVector mReactionForce;      /*!< reaction */
     Plato::ScalarMultiVector mProjectedPressGrad; /*!< projected pressure gradient (# Time Steps, # Projected Pressure Gradient dofs) */
 
+    std::shared_ptr<Plato::EssentialBCs<PhysicsT>> mEssentialBCs; /*!< essential boundary conditions shared pointer */
     Plato::ScalarVector mDirichletValues;         /*!< values associated with the Dirichlet boundary conditions */
     Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
 
@@ -116,7 +118,8 @@ public:
       mProjectionEquation(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(mSpatialModel, mDataMap, aInputs, std::string("State Gradient Projection"))),
       mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
       mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
-      mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
+      mEndTime(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "End Time", 1.0)),
+      mPseudoTimeStep(mEndTime/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
       mPressureScaling(1.0),
       mTemperatureScaling(1.0),
       mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
@@ -134,7 +137,8 @@ public:
       mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mStopOptimization(false),
-      mMaxNumPseudoTimeStepsReached(false)
+      mMaxNumPseudoTimeStepsReached(false),
+      mEssentialBCs(nullptr)
     {
         this->initialize(aInputs);
     }
@@ -167,8 +171,17 @@ public:
         {
             THROWERR("Plasticity Problem: Essential Boundary Conditions are not defined for this problem.")
         }
-        Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputs.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets);
-        tDirichletBCs.get(mDirichletDofs, mDirichletValues);
+        Plato::OrdinalType tPressureDofOffset    = mPressureDofOffset;
+        Plato::OrdinalType tTemperatureDofOffset = mTemperatureDofOffset;
+
+        std::map<Plato::OrdinalType, Plato::Scalar> tDofOffsetToScaleFactor;
+        tDofOffsetToScaleFactor[tPressureDofOffset]    = mPressureScaling;
+        tDofOffsetToScaleFactor[tTemperatureDofOffset] = mTemperatureScaling;
+        
+        mEssentialBCs = 
+        std::make_shared<Plato::EssentialBCs<PhysicsT>>
+             (aInputs.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets, tDofOffsetToScaleFactor);
+        mEssentialBCs->get(mDirichletDofs, mDirichletValues);
     }
 
     /***************************************************************************//**
@@ -185,7 +198,7 @@ public:
                 << "DOFS SIZE = " << aDirichletDofs.size() << " AND VALUES SIZE = " << aDirichletValues.size();
             THROWERR(tError.str())
         }
-        mDirichletDofs = aDirichletDofs;
+        mDirichletDofs   = aDirichletDofs;
         mDirichletValues = aDirichletValues;
     }
 
@@ -734,7 +747,7 @@ private:
             mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
             mMaxNumPseudoTimeStepsReached = true;
         }
-        mPseudoTimeStep = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
+        mPseudoTimeStep = static_cast<Plato::Scalar>(mEndTime) / static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
 
         Kokkos::resize(mLocalStates, mNumPseudoTimeSteps, mLocalEquation->size());
         Kokkos::resize(mGlobalStates, mNumPseudoTimeSteps, mGlobalEquation->size());
