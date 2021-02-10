@@ -8098,9 +8098,10 @@ private:
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaCorrector);
+            Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
             tSolver->solve(*tJacobian, tDeltaCorrector, tResidual);
-            Plato::set_dofs_values(tBcDofs, tResidual);
-            Plato::set_dofs_values(tBcDofs, tDeltaCorrector);
+            Plato::set_dofs_values(tBcDofs, tResidual, 0.0);
+            Plato::set_dofs_values(tBcDofs, tDeltaCorrector, 0.0);
             Plato::blas1::update(1.0, tDeltaCorrector, 1.0, tCurrentVelocity);
             Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
 
@@ -8121,6 +8122,7 @@ private:
             }
 
             // calculate current residual and jacobian matrix
+            tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aStates);
             tResidual = mVelocityResidual.value(aControl, aStates);
             Plato::blas1::scale(-1.0, tResidual);
 
@@ -8206,6 +8208,7 @@ private:
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaPredictor);
+            Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
             tSolver->solve(*tJacobian, tDeltaPredictor, tResidual);
             Plato::set_dofs_values(tBcDofs, tResidual);
             Plato::set_dofs_values(tBcDofs, tDeltaPredictor);
@@ -8228,6 +8231,7 @@ private:
                 break;
             }
 
+            tJacobian = mPredictorResidual.gradientPredictor(aControl, aStates);
             tResidual = mPredictorResidual.value(aControl, aStates);
             Plato::blas1::scale(-1.0, tResidual);
 
@@ -8285,6 +8289,7 @@ private:
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaPressure);
+            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
             Plato::set_dofs_values(tBcDofs, tResidual);
             Plato::set_dofs_values(tBcDofs, tDeltaPressure);
@@ -8308,6 +8313,7 @@ private:
             }
 
             // calculate current residual and jacobian matrix
+            tJacobian = mPressureResidual.gradientCurrentPress(aControl, aStates);
             tResidual = mPressureResidual.value(aControl, aStates);
             Plato::blas1::scale(-1.0, tResidual);
 
@@ -8692,9 +8698,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-2'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-3'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-3'/>"
+            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
+            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
+            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
             "    <Parameter name='Maximum Iterations'  type='int'    value='200'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
