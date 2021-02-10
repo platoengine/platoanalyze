@@ -2664,7 +2664,7 @@ void divergence
 }
 
 /***************************************************************************//**
- * \fn device_type void integrate_stabilizing_momentum_forces
+ * \fn device_type void integrate_stabilizing_vector_force
  * \brief Integrate stabilizing momentum forces, which are defined as
  *
  * \f[
@@ -2683,7 +2683,7 @@ template
  typename PrevVelT,
  typename StabilityT>
 DEVICE_TYPE inline void
-integrate_stabilizing_momentum_forces
+integrate_stabilizing_vector_force
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
@@ -3195,6 +3195,12 @@ public:
             // 6. add previous inertial force to residual, i.e. R -= M u_n
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, aResultWS, -1.0);
+
+            // 7. add stabilizing convective term to residual. i.e. R -= \frac{\Delta{t}^2}{2}K_{u}u^{n}
+            tMultiplier = static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tAdvection, aResultWS, -tMultiplier);
+
         }, "quasi-implicit predicted velocity residual");
 
         if(mCalculateThermalBuoyancyForces)
@@ -3203,7 +3209,7 @@ public:
 
             // set input and temporary worksets
             Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
-            Plato::ScalarMultiVectorT<ResultT>  tNaturalConvection("natural convection", tNumCells, mNumSpatialDims);
+            Plato::ScalarMultiVectorT<ResultT>  tThermalBuoyancy("thermal buoyancy", tNumCells, mNumSpatialDims);
             auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
 
             // transfer member data to device
@@ -3213,13 +3219,18 @@ public:
 
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
-                // 6. add previous buoyancy force to residual, i.e. R -= (\Delta{t}*Bu*Gr_i) M T_n, where Bu is the buoyancy constant
+                // 1. add previous buoyancy force to residual, i.e. R -= (\Delta{t}*Bu*Gr_i) M T_n, where Bu is the buoyancy constant
                 tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
                 Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
-                    (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tNaturalConvection);
+                    (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tThermalBuoyancy);
                 Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                    (aCellOrdinal, tBasisFunctions, tCellVolume, tNaturalConvection, aResultWS, -tGlobalTimeStep);
-            }, "add contribution from buoyancy forces to residual");
+                    (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, -tGlobalTimeStep);
+
+                // 2. add stabilizing buoyancy force to residual. i.e. R -= \frac{\Delta{t}^2}{2} Bu*Gr_i) M T_n
+                auto tMultiplier = static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+                Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
+                    (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tThermalBuoyancy, aResultWS, -tMultiplier);
+            }, "add contribution from thermal buoyancy forces to residual");
         }
     }
 
@@ -3573,7 +3584,7 @@ public:
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal, -1.0, tAdvection, 1.0, tStabilization);
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tBrinkman , 1.0, tStabilization);
             Plato::blas1::update<mNumSpatialDims>(aCellOrdinal,  1.0, tNaturalConvection, 1.0, tStabilization);
-            Plato::Fluids::integrate_stabilizing_momentum_forces<mNumNodesPerCell, mNumSpatialDims>
+            Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tStabilization, tStabForces);
             auto tMultiplier = static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tMultiplier, tStabilization);
@@ -10676,9 +10687,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IntegrateStabilizingForces)
     {
         tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
         tCellVolume(aCellOrdinal) *= tCubWeight;
-        Plato::Fluids::integrate_stabilizing_momentum_forces<tNumNodesPerCell, tSpaceDims>
+        Plato::Fluids::integrate_stabilizing_vector_force<tNumNodesPerCell, tSpaceDims>
             (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tForce, tResult);
-    }, "unit test integrate_stabilizing_momentum_forces");
+    }, "unit test integrate_stabilizing_vector_force");
 
     // TODO: FIX GOLD VALUES ONCE THINGS ARE WORKING
     auto tTol = 1e-4;
