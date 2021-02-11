@@ -3252,7 +3252,64 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tNumVertices = tMesh->nverts();
     Plato::ScalarVector tControls("Controls", tNumVertices);
     Plato::blas1::fill(1.0, tControls);
-    auto tSolution = tPlasticityProblem.solution(tControls);
+    auto tSolution = tPlasticityProblem.solution(tControls).State;
+
+    auto tHostSolution = Kokkos::create_mirror(tSolution);
+    Kokkos::deep_copy(tHostSolution, tSolution);
+
+    std::vector<Plato::Scalar> tGold =
+        {
+          0.00000e+00, -9.74759e-02, -3.57558e+02,
+          0.00000e+00, -9.72167e-02, -2.84145e+03,
+          8.00801e-04, -9.59243e-02, -4.40892e+02,
+         -6.02807e-04, -9.57732e-02, -2.42892e+03,
+         -1.94591e-03, -9.57160e-02, -4.32220e+03,
+          0.00000e+00, -9.69970e-02, -4.36626e+03,
+         -3.94215e-03, -9.15770e-02, -4.60649e+03,
+          1.45770e-03, -9.17414e-02, -7.00782e+02,
+         -1.23191e-03, -9.15957e-02, -2.62583e+03,
+          2.04318e-03, -8.51066e-02, -8.03803e+02,
+         -1.79265e-03, -8.49671e-02, -2.49708e+03,
+         -5.63077e-03, -8.49419e-02, -4.24237e+03,
+          2.49019e-03, -7.62863e-02, -1.06800e+03,
+         -2.35589e-03, -7.61575e-02, -2.51475e+03,
+         -7.20158e-03, -7.61291e-02, -4.03499e+03,
+         -9.79729e-03, -5.32166e-02, -3.39354e+03,
+         -8.60457e-03, -6.54266e-02, -3.75035e+03,
+         -2.91871e-03, -6.54630e-02, -2.52249e+03,
+          2.76731e-03, -6.55808e-02, -1.38828e+03,
+         -3.48213e-03, -5.32632e-02, -2.52697e+03,
+          2.83310e-03, -5.33676e-02, -1.77299e+03,
+         -1.07379e-02, -3.99623e-02, -2.96851e+03,
+         -4.04642e-03, -4.00216e-02, -2.52971e+03,
+          2.64515e-03, -4.01110e-02, -2.22548e+03,
+         -4.60862e-03, -2.62863e-02, -2.56690e+03,
+          2.16448e-03, -2.63547e-02, -2.81185e+03,
+         -1.13826e-02, -2.62129e-02, -2.50853e+03,
+         -1.17359e-02,  1.87292e-04, -1.71914e+03,
+         -1.17072e-02, -1.26091e-02, -1.98608e+03,
+         -5.16640e-03, -1.26951e-02, -2.49241e+03,
+          1.32300e-03, -1.27216e-02, -3.32704e+03,
+         -5.54531e-03,  1.87763e-05, -3.00547e+03,
+          0.00000e+00,  0.00000e+00, -4.07787e+03
+        };
+
+    const Plato::Scalar tTolerance = 1e-4;
+    const Plato::OrdinalType tDim1 = tSolution.extent(1);
+    for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
+    {
+        //printf("X(%d,%d) = %f\n", 3, tIndexJ, tHostInput(3, tIndexJ));
+        TEST_FLOATING_EQUALITY(tHostSolution(3, tIndexJ), tGold[tIndexJ], tTolerance);
+    }
+
+    // auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
+    // Plato::OrdinalType tIdx = 0;
+    // for (Plato::OrdinalType tIndexK = 0; tIndexK < tNumVertices; tIndexK++)
+    // {
+    //  tIdx = tIndexK * tNumDofsPerNode + 0; printf("%12.5e, ",  tHostSolution(3, tIdx));
+    //  tIdx = tIndexK * tNumDofsPerNode + 1; printf("%12.5e, ",  tHostSolution(3, tIdx));
+    //  tIdx = tIndexK * tNumDofsPerNode + 2; printf("%12.5e,\n", tHostSolution(3, tIdx));
+    // }
 
     // 6. Output Data
     if(tOutputData)
