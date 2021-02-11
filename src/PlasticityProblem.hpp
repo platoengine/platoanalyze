@@ -83,6 +83,7 @@ private:
     Plato::ScalarMultiVector mProjectedPressGrad; /*!< projected pressure gradient (# Time Steps, # Projected Pressure Gradient dofs) */
 
     std::shared_ptr<Plato::EssentialBCs<PhysicsT>> mEssentialBCs; /*!< essential boundary conditions shared pointer */
+    Plato::ScalarVector mPreviousStepDirichletValues;            /*!< previous time step values associated with the Dirichlet boundary conditions */
     Plato::ScalarVector mDirichletValues;         /*!< values associated with the Dirichlet boundary conditions */
     Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
 
@@ -181,7 +182,9 @@ public:
         mEssentialBCs = 
         std::make_shared<Plato::EssentialBCs<PhysicsT>>
              (aInputs.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets, tDofOffsetToScaleFactor);
-        mEssentialBCs->get(mDirichletDofs, mDirichletValues);
+        mEssentialBCs->get(mDirichletDofs, mDirichletValues); // BCs at time = 0
+        Kokkos::resize(mPreviousStepDirichletValues, mDirichletValues.size());
+        Plato::blas1::fill(0.0, mPreviousStepDirichletValues);
     }
 
     /***************************************************************************//**
@@ -200,6 +203,8 @@ public:
         }
         mDirichletDofs   = aDirichletDofs;
         mDirichletValues = aDirichletValues;
+        Kokkos::resize(mPreviousStepDirichletValues, aDirichletValues.size());
+        Plato::blas1::fill(0.0, mPreviousStepDirichletValues);
     }
 
     /***************************************************************************//**
@@ -749,6 +754,8 @@ private:
         }
         mPseudoTimeStep = static_cast<Plato::Scalar>(mEndTime) / static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
 
+        Plato::blas1::fill(0.0, mPreviousStepDirichletValues);
+
         Kokkos::resize(mLocalStates, mNumPseudoTimeSteps, mLocalEquation->size());
         Kokkos::resize(mGlobalStates, mNumPseudoTimeSteps, mGlobalEquation->size());
         Kokkos::resize(mReactionForce, mNumPseudoTimeSteps, mGlobalEquation->numNodes());
@@ -834,6 +841,21 @@ private:
         mNewtonSolver->setDirichletValuesMultiplier(mPseudoTimeStep);
         auto tLoadControlConstant = mPseudoTimeStep * static_cast<Plato::Scalar>(aInput + 1);
         mDataMap.mScalarValues["LoadControlConstant"] = tLoadControlConstant;
+
+        if (aInput != static_cast<Plato::OrdinalType>(0))
+          Plato::blas1::copy(mDirichletValues, mPreviousStepDirichletValues);
+        
+        auto tCurrentTime = tLoadControlConstant;
+        if (mEssentialBCs != nullptr)
+          mEssentialBCs->get(mDirichletDofs, mDirichletValues, tCurrentTime);
+        else
+          THROWERR("EssentialBCs pointer is null!")
+        
+        Plato::ScalarVector tNewtonUpdateDirichletValues("Dirichlet Increment Values", mDirichletValues.size());
+        Plato::blas1::copy(mDirichletValues, tNewtonUpdateDirichletValues);
+        Plato::blas1::axpy(static_cast<Plato::Scalar>(-1.0), mPreviousStepDirichletValues, tNewtonUpdateDirichletValues);
+        
+        mNewtonSolver->appendDirichletValues(tNewtonUpdateDirichletValues);
     }
 
     /***************************************************************************//**

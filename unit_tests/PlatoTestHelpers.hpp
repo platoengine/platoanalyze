@@ -425,6 +425,110 @@ inline Omega_h::LOs get_2D_boundary_nodes_y1(Omega_h::Mesh& aMesh)
 }
 
 /******************************************************************************//**
+ * \brief Return list of boundary nodes, specialized for 3-D applications.
+ *
+ * \param [in]     aMesh       finite element mesh
+ * \param [in]     aBoundaryID boundary identifier
+ *
+ * \return list of boundary nodes
+ *
+ **********************************************************************************/
+inline Omega_h::LOs get_boundary_nodes_3D(Omega_h::Mesh & aMesh, const std::string & aBoundaryID)
+{
+    const Omega_h::Int tVertexDim = 0;
+    const Omega_h::Int tFaceDim = 2;
+    Omega_h::Read<Omega_h::I8> Marks;
+    if(aBoundaryID == "x0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 12);
+    else if(aBoundaryID == "x1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 14);
+    else if(aBoundaryID == "y0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 10);
+    else if(aBoundaryID == "y1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 16);
+    else if(aBoundaryID == "z0")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 4);
+    else if(aBoundaryID == "z1")
+        Marks = Omega_h::mark_class_closure(&aMesh, tVertexDim, tFaceDim, 22);
+    else
+        THROWERR("Specified boundary ID is not defined.")
+
+    Omega_h::LOs tBoundaryNodes = Omega_h::collect_marked(Marks);
+
+    return (tBoundaryNodes);
+}
+
+/******************************************************************************//**
+ * \brief Label boundarys with nodesets and sidesets, specialized for 2-D applications.
+ *
+ * \param [in]     aMesh       finite element mesh
+ * \param [in]     aMeshSets   mesh sets to be filled
+ *
+ *
+ **********************************************************************************/
+inline void set_mesh_sets_2D(Omega_h::Mesh & aMesh, Omega_h::MeshSets & aMeshSets)
+{
+    auto tNodesX0 = PlatoUtestHelpers::get_2D_boundary_nodes_x0(aMesh);
+    auto tNodesX1 = PlatoUtestHelpers::get_2D_boundary_nodes_x1(aMesh);
+    auto tNodesY0 = PlatoUtestHelpers::get_2D_boundary_nodes_y0(aMesh);
+    auto tNodesY1 = PlatoUtestHelpers::get_2D_boundary_nodes_y1(aMesh);
+
+    aMeshSets[Omega_h::NODE_SET]["ns_X0"] = tNodesX0;
+    aMeshSets[Omega_h::NODE_SET]["ns_X1"] = tNodesX1;
+    aMeshSets[Omega_h::NODE_SET]["ns_Y0"] = tNodesY0;
+    aMeshSets[Omega_h::NODE_SET]["ns_Y1"] = tNodesY1;
+
+    auto tFacesX0 = PlatoUtestHelpers::get_edge_ids_on_x0(aMesh);
+    auto tFacesX1 = PlatoUtestHelpers::get_edge_ids_on_x1(aMesh);
+    auto tFacesY0 = PlatoUtestHelpers::get_edge_ids_on_y0(aMesh);
+    auto tFacesY1 = PlatoUtestHelpers::get_edge_ids_on_y1(aMesh);
+
+    aMeshSets[Omega_h::SIDE_SET]["ss_X0"] = tFacesX0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_X1"] = tFacesX1;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Y0"] = tFacesY0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Y1"] = tFacesY1;
+}
+
+/******************************************************************************//**
+ * \brief Label boundarys with nodesets and sidesets, specialized for 3-D applications.
+ *
+ * \param [in]     aMesh       finite element mesh
+ * \param [in]     aMeshSets   mesh sets to be filled
+ *
+ *
+ **********************************************************************************/
+inline void set_mesh_sets_3D(Omega_h::Mesh & aMesh, Omega_h::MeshSets & aMeshSets)
+{
+    auto tNodesX0 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "x0");
+    auto tNodesX1 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "x1");
+    auto tNodesY0 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "y0");
+    auto tNodesY1 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "y1");
+    auto tNodesZ0 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "z0");
+    auto tNodesZ1 = PlatoUtestHelpers::get_boundary_nodes_3D(aMesh, "z1");
+
+    aMeshSets[Omega_h::NODE_SET]["ns_X0"] = tNodesX0;
+    aMeshSets[Omega_h::NODE_SET]["ns_X1"] = tNodesX1;
+    aMeshSets[Omega_h::NODE_SET]["ns_Y0"] = tNodesY0;
+    aMeshSets[Omega_h::NODE_SET]["ns_Y1"] = tNodesY1;
+    aMeshSets[Omega_h::NODE_SET]["ns_Z0"] = tNodesZ0;
+    aMeshSets[Omega_h::NODE_SET]["ns_Z1"] = tNodesZ1;
+
+    auto tFacesX0 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "x0");
+    auto tFacesX1 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "x1");
+    auto tFacesY0 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "y0");
+    auto tFacesY1 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "y1");
+    auto tFacesZ0 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "z0");
+    auto tFacesZ1 = PlatoUtestHelpers::get_face_ids_on_boundary_3D(aMesh, "z1");
+
+    aMeshSets[Omega_h::SIDE_SET]["ss_X0"] = tFacesX0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_X1"] = tFacesX1;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Y0"] = tFacesY0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Y1"] = tFacesY1;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Z0"] = tFacesZ0;
+    aMeshSets[Omega_h::SIDE_SET]["ss_Z1"] = tFacesZ1;
+}
+
+/******************************************************************************//**
  *
  * \brief Set point load
  * \param[in] aNodeOrdinal node ordinal associated with point load

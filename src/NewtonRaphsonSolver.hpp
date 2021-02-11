@@ -128,7 +128,7 @@ private:
         Plato::blas1::fill(0.0, tDispControlledDirichletValues);
         if(mCurrentSolverIter == static_cast<Plato::OrdinalType>(0))
         {
-            Plato::blas1::update(mDirichletValuesMultiplier, mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
+            Plato::blas1::update(static_cast<Plato::Scalar>(1.), mDirichletValues, static_cast<Plato::Scalar>(0.), tDispControlledDirichletValues);
         }
 
         if(mDebugFlag == true)
