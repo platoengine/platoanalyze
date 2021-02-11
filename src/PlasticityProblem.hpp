@@ -178,8 +178,8 @@ public:
         std::map<Plato::OrdinalType, Plato::Scalar> tDofOffsetToScaleFactor;
         tDofOffsetToScaleFactor[tPressureDofOffset]    = mPressureScaling;
         tDofOffsetToScaleFactor[tTemperatureDofOffset] = mTemperatureScaling;
-        
-        mEssentialBCs = 
+
+        mEssentialBCs =
         std::make_shared<Plato::EssentialBCs<PhysicsT>>
              (aInputs.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets, tDofOffsetToScaleFactor);
         mEssentialBCs->get(mDirichletDofs, mDirichletValues); // BCs at time = 0
@@ -227,7 +227,7 @@ public:
           Plato::blas2::extract<mNumGlobalDofsPerNode, mTemperatureDofOffset>(mGlobalStates, tTemperature);
           Plato::blas2::scale(mTemperatureScaling, tTemperature);
         }
-        
+
 
         Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
         for(Plato::OrdinalType tSnapshot = 0; tSnapshot < tDisplacements.extent(0); tSnapshot++)
@@ -844,17 +844,19 @@ private:
 
         if (aInput != static_cast<Plato::OrdinalType>(0))
           Plato::blas1::copy(mDirichletValues, mPreviousStepDirichletValues);
-        
+        else
+          Plato::blas1::fill(0.0, mPreviousStepDirichletValues);
+
         auto tCurrentTime = tLoadControlConstant;
         if (mEssentialBCs != nullptr)
           mEssentialBCs->get(mDirichletDofs, mDirichletValues, tCurrentTime);
         else
           THROWERR("EssentialBCs pointer is null!")
-        
+
         Plato::ScalarVector tNewtonUpdateDirichletValues("Dirichlet Increment Values", mDirichletValues.size());
         Plato::blas1::copy(mDirichletValues, tNewtonUpdateDirichletValues);
         Plato::blas1::axpy(static_cast<Plato::Scalar>(-1.0), mPreviousStepDirichletValues, tNewtonUpdateDirichletValues);
-        
+
         mNewtonSolver->appendDirichletValues(tNewtonUpdateDirichletValues);
     }
 

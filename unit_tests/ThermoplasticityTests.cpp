@@ -135,11 +135,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_SimplySupportedBeamTra
 
     using PhysicsT = Plato::InfinitesimalStrainThermoPlasticity<tSpaceDim>;
 
-    const Plato::OrdinalType tDispDofX = 0;
-    const Plato::OrdinalType tDispDofY = 1;
-    const Plato::OrdinalType tTemperatureDof = 2;
-    constexpr auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-
     // 1. Construct plasticity problem
     PlatoUtestHelpers::set_mesh_sets_2D(*tMesh, tMeshSets);
 
@@ -323,9 +318,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     MPI_Comm myComm;
     MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
     Plato::Comm::Machine tMachine(myComm);
-
-    //constexpr Plato::Scalar tPressureScaling    = 100.0;
-    constexpr Plato::Scalar tTemperatureScaling = 100.0;
 
     // 1. Construct plasticity problem
     PlatoUtestHelpers::set_mesh_sets_2D(*tMesh, tMeshSets);
@@ -533,9 +525,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_CantileverBeamTraction
     MPI_Comm myComm;
     MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
     Plato::Comm::Machine tMachine(myComm);
-
-    //constexpr Plato::Scalar tPressureScaling    = 100.0;
-    constexpr Plato::Scalar tTemperatureScaling = 100.0;
 
     // 1. Construct plasticity problem
     PlatoUtestHelpers::set_mesh_sets_3D(*tMesh, tMeshSets);
