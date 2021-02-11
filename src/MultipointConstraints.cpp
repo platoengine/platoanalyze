@@ -251,7 +251,7 @@ void MultipointConstraints::checkEssentialBcsConflicts(const LocalOrdinalVector 
     LAMBDA_EXPRESSION(const Plato::OrdinalType& aBcOrdinal, Plato::OrdinalType & aUpdate)
     {
         OrdinalType tBcDof = tBcDofs(aBcOrdinal);
-        OrdinalType tBcNode = tBcDof % tNumDofsPerNode;
+        OrdinalType tBcNode = ( tBcDof - tBcDof % tNumDofsPerNode ) / tNumDofsPerNode;
         for (OrdinalType tChildOrdinal=0; tChildOrdinal<tNumChildNodes; tChildOrdinal++)
         {
             if (tChildNodes(tChildOrdinal) == tBcNode) 
@@ -263,7 +263,7 @@ void MultipointConstraints::checkEssentialBcsConflicts(const LocalOrdinalVector 
     if ( tNumChildConflicts > 0 )
     {
         std::ostringstream tMsg;
-        tMsg << "MPC CHILD NODE CONFLICTS WITH ESSENTIAL BC NODE. \n";
+        tMsg << "MPC CHILD NODE CONFLICTS WITH ESSENTIAL BC NODE. CHECK MESH SIZES. \n";
         THROWERR(tMsg.str())
     }
     
@@ -273,7 +273,7 @@ void MultipointConstraints::checkEssentialBcsConflicts(const LocalOrdinalVector 
     LAMBDA_EXPRESSION(const Plato::OrdinalType& aBcOrdinal, Plato::OrdinalType & aUpdate)
     {
         OrdinalType tBcDof = tBcDofs(aBcOrdinal);
-        OrdinalType tBcNode = tBcDof % tNumDofsPerNode;
+        OrdinalType tBcNode = ( tBcDof - tBcDof % tNumDofsPerNode ) / tNumDofsPerNode;
         for (OrdinalType tParentOrdinal=0; tParentOrdinal<tNumParentNodes; tParentOrdinal++)
         {
             if (tParentNodes(tParentOrdinal) == tBcNode) 
@@ -285,7 +285,7 @@ void MultipointConstraints::checkEssentialBcsConflicts(const LocalOrdinalVector 
     if ( tNumParentConflicts > 0 )
     {
         std::ostringstream tMsg;
-        tMsg << "MPC PARENT NODE CONFLICTS WITH ESSENTIAL BC NODE. \n";
+        tMsg << "MPC PARENT NODE CONFLICTS WITH ESSENTIAL BC NODE. CHECK MESH SIZES. \n";
         THROWERR(tMsg.str())
     }
 }
