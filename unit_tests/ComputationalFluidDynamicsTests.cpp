@@ -3199,7 +3199,7 @@ public:
             // 7. add stabilizing convective term to residual. i.e. R -= \frac{\Delta{t}^2}{2}K_{u}u^{n}
             tMultiplier = static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
             Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tAdvection, aResultWS, -tMultiplier);
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tAdvection, aResultWS, tMultiplier);
 
         }, "quasi-implicit predicted velocity residual");
 
@@ -3850,13 +3850,13 @@ template<Plato::OrdinalType NumNodes,
          Plato::OrdinalType SpaceDim,
          typename ConfigT,
          typename FieldT,
-         typename PressGradT>
+         typename FieldGradT>
 DEVICE_TYPE inline void
 calculate_scalar_field_gradient
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarArray3DT<ConfigT> & aGradient,
  const Plato::ScalarMultiVectorT<FieldT> & aScalarField,
- const Plato::ScalarMultiVectorT<PressGradT> & aResult)
+ const Plato::ScalarMultiVectorT<FieldGradT> & aResult)
 {
     for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
     {
@@ -3980,7 +3980,8 @@ private:
     using CurPressT  = typename EvaluationT::CurrentMassScalarType;
     using PrevPressT = typename EvaluationT::PreviousMassScalarType;
 
-    using PressGradT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurPressT, PrevPressT, ConfigT>;
+    using PrevPressGradT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevPressT, ConfigT>;
+    using PressGradT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurPressT, PrevPressT, ConfigT>;
 
     Plato::DataMap& mDataMap;                   /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
@@ -4069,6 +4070,7 @@ public:
         Plato::ScalarMultiVectorT<CurVelT> tCurVelGP("current velocity at Gauss points", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss points", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("predicted velocity at Gauss points", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PrevPressGradT> tPrevPressGradGP("previous pressure gradient", tNumCells, mNumSpatialDims);
 
         // set input state worksets
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
@@ -4114,6 +4116,13 @@ public:
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPredVelGP, aResultWS, -1.0);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, aResultWS);
+
+            // 5. add stabilizing pressure force to residual, i.e. R += \frac{\Delta{t}^2}{2} Pp^n
+            /*auto tMultiplier = static_cast<Plato::Scalar>(0.5)*tCriticalTimeStep(0)*tCriticalTimeStep(0);
+            Plato::Fluids::calculate_scalar_field_gradient<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tGradient, tPrevPressWS, tPrevPressGradGP);
+            Plato::Fluids::integrate_stabilizing_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tPrevPressGradGP, aResultWS, -tMultiplier);*/
         }, "calculate corrected velocity residual");
     }
 
@@ -5475,12 +5484,15 @@ public:
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell weight", tNumCells);
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
 
+        Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("predicted velocity", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<ResultT> tRightHandSide("right hand side force", tNumCells, mNumPressDofsPerCell);
         Plato::ScalarMultiVectorT<CurPressGradT> tCurPressGradGP("current pressure gradient", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PrevPressGradT> tPrevPressGradGP("previous pressure gradient", tNumCells, mNumSpatialDims);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
         // set input state worksets
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
@@ -5509,14 +5521,16 @@ public:
                 (aCellOrdinal, tGradient, tCellVolume, tPrevPressGradGP, tRightHandSide, -tMultiplier);
 
             // 2. add divergence of previous velocity to residual, RHS += Du_n
+            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
             Plato::Fluids::integrate_divergence_operator<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPrevVelWS, tRightHandSide);
+                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPrevVelGP, tRightHandSide);
 
             // 3. add divergence of delta predicted velocity to residual, RHS += D\Delta{\bar{u}}, where \Delta{\bar{u}} = \bar{u} - u_n
+            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPredVelWS, tPredVelGP);
             Plato::Fluids::integrate_divergence_operator<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPredVelWS, tRightHandSide, tMomentumDamping);
+                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPredVelGP, tRightHandSide, tMomentumDamping);
             Plato::Fluids::integrate_divergence_operator<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPrevVelWS, tRightHandSide, -tMomentumDamping);
+                (aCellOrdinal, tBasisFunctions, tGradient, tCellVolume, tPrevVelGP, tRightHandSide, -tMomentumDamping);
 
             // 4. apply \frac{1}{\Delta{t}} multiplier to right hand side, i.e. RHS = \frac{1}{\Delta{t}} * RHS
             tMultiplier = static_cast<Plato::Scalar>(1.0) / tCriticalTimeStep(0);
@@ -8109,7 +8123,7 @@ private:
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaCorrector);
-            Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
+            //Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
             tSolver->solve(*tJacobian, tDeltaCorrector, tResidual);
             Plato::set_dofs_values(tBcDofs, tResidual, 0.0);
             Plato::set_dofs_values(tBcDofs, tDeltaCorrector, 0.0);
@@ -8119,21 +8133,21 @@ private:
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaCorrector);
-            aStates.scalar("norm step", tNormStep);
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
             }
             tNormStep = tNormStep / tInitialNormStep;
+            aStates.scalar("norm step", tNormStep);
 
             this->printNewtonDiagnostics(aStates);
-            if(tNormStep <= mCorrectorTolerance || tIteration > mMaxNewtonIterations)
+            if(tNormStep <= mCorrectorTolerance || tIteration >= mMaxNewtonIterations)
             {
                 break;
             }
 
             // calculate current residual and jacobian matrix
-            tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aStates);
+            //tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aStates);
             tResidual = mVelocityResidual.value(aControl, aStates);
             Plato::blas1::scale(-1.0, tResidual);
 
@@ -8219,7 +8233,7 @@ private:
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaPredictor);
-            Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+            //Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
             tSolver->solve(*tJacobian, tDeltaPredictor, tResidual);
             Plato::set_dofs_values(tBcDofs, tResidual);
             Plato::set_dofs_values(tBcDofs, tDeltaPredictor);
@@ -8229,20 +8243,20 @@ private:
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaPredictor);
-            aStates.scalar("norm step", tNormStep);
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
             }
             tNormStep = tNormStep / tInitialNormStep;
+            aStates.scalar("norm step", tNormStep);
 
             this->printNewtonDiagnostics(aStates);
-            if(tNormStep <= mPredictorTolerance || tIteration > mMaxNewtonIterations)
+            if(tNormStep <= mPredictorTolerance || tIteration >= mMaxNewtonIterations)
             {
                 break;
             }
 
-            tJacobian = mPredictorResidual.gradientPredictor(aControl, aStates);
+            // tJacobian = mPredictorResidual.gradientPredictor(aControl, aStates);
             tResidual = mPredictorResidual.value(aControl, aStates);
             Plato::blas1::scale(-1.0, tResidual);
 
@@ -8300,7 +8314,7 @@ private:
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaPressure);
-            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
+            //Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
             Plato::set_dofs_values(tBcDofs, tResidual);
             Plato::set_dofs_values(tBcDofs, tDeltaPressure);
@@ -8310,21 +8324,21 @@ private:
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaPressure);
-            aStates.scalar("norm step", tNormStep);
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
             }
             tNormStep = tNormStep / tInitialNormStep;
+            aStates.scalar("norm step", tNormStep);
 
             this->printNewtonDiagnostics(aStates);
-            if(tNormStep <= mPressureTolerance || tIteration > mMaxNewtonIterations)
+            if(tNormStep <= mPressureTolerance || tIteration >= mMaxNewtonIterations)
             {
                 break;
             }
 
             // calculate current residual and jacobian matrix
-            tJacobian = mPressureResidual.gradientCurrentPress(aControl, aStates);
+            //tJacobian = mPressureResidual.gradientCurrentPress(aControl, aStates);
             tResidual = mPressureResidual.value(aControl, aStates);
             Plato::blas1::scale(-1.0, tResidual);
 
@@ -8390,15 +8404,15 @@ private:
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
             auto tNormStep = Plato::blas1::norm(tDeltaTemperature);
-            aStates.scalar("norm step", tNormStep);
             if(tIteration <= 1)
             {
                 tInitialNormStep = tNormStep;
             }
             tNormStep = tNormStep / tInitialNormStep;
+            aStates.scalar("norm step", tNormStep);
 
             this->printNewtonDiagnostics(aStates);
-            if(tNormStep <= mThermalTolerance || tIteration > mMaxNewtonIterations)
+            if(tNormStep <= mThermalTolerance || tIteration >= mMaxNewtonIterations)
             {
                 break;
             }
@@ -8709,15 +8723,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Maximum Iterations'  type='int'    value='200'/>"
+            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-2'/>"
+            "    <Parameter name='Predictor Tolerance' type='double' value='1e-3'/>"
+            "    <Parameter name='Corrector Tolerance' type='double' value='1e-3'/>"
+            "    <Parameter name='Maximum Iterations'  type='int'    value='5'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
             "    <Parameter name='Safety Factor'          type='double' value='0.9'/>"
-            "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Maximum Iterations'     type='int'    value='1000'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-7'/>"
+            "    <Parameter name='Maximum Iterations'     type='int'    value='2000'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
