@@ -42,10 +42,12 @@ private:
     static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
     static constexpr Plato::OrdinalType mPressDofOffset = mSpaceDim; /*!< pressure degree of freedom offset */
 
+    using PhysicsType = typename Plato::SimplexStabilizedMechanics<mSpaceDim>;
+
     using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumVoigtTerms; /*!< number of Voigt terms */
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
-    using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerNode; /*!< number of nodes per node */
-    using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerCell; /*!< number of nodes per cell */
+    using PhysicsType::mNumDofsPerNode; /*!< number of nodes per node */
+    using PhysicsType::mNumDofsPerCell; /*!< number of nodes per cell */
 
     using Plato::AbstractVectorFunctionVMS<EvaluationType>::mSpatialDomain; /*!< mesh metadata */
     using Plato::AbstractVectorFunctionVMS<EvaluationType>::mDataMap; /*!< output data map */
@@ -64,7 +66,7 @@ private:
     Plato::ApplyWeighting<mSpaceDim, mSpaceDim,      IndicatorFunctionType> mApplyVectorWeighting; /*!< apply penalty to vector function */
     Plato::ApplyWeighting<mSpaceDim, 1 /* number of pressure dofs per node */, IndicatorFunctionType> mApplyScalarWeighting; /*!< apply penalty to scalar function */
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads; /*!< body loads interface */
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, PhysicsType>> mBodyLoads; /*!< body loads interface */
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumMechDims, mNumDofsPerNode, mMechDofOffset>> mBoundaryLoads; /*!< boundary loads interface */
 
     std::shared_ptr<CubatureType> mCubatureRule; /*!< cubature/integration rule interface */
@@ -89,7 +91,7 @@ private:
         // 
         if(aProblemParams.isSublist("Body Loads"))
         {
-            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, PhysicsType>>(aProblemParams.sublist("Body Loads"));
         }
   
         // parse mechanical boundary Conditions
