@@ -45,10 +45,12 @@ private:
     using Plato::Simplex<EvaluationType::SpatialDim>::mNumSpatialDims;
     using Plato::Simplex<EvaluationType::SpatialDim>::mNumNodesPerCell;
 
-    using Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>::mNumVoigtTerms;
-    using Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>::mComplexSpaceDim;
-    using Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>::mNumDofsPerCell;
-    using Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>::mNumDofsPerNode;
+    using PhysicsType = typename Plato::SimplexStructuralDynamics<EvaluationType::SpatialDim>;
+
+    using PhysicsType::mNumVoigtTerms;
+    using PhysicsType::mComplexSpaceDim;
+    using PhysicsType::mNumDofsPerCell;
+    using PhysicsType::mNumDofsPerNode;
 
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using FunctionBaseType = Plato::Elliptic::AbstractVectorFunction<EvaluationType>;
@@ -71,7 +73,7 @@ private:
 
     Omega_h::Matrix<mNumVoigtTerms, mNumVoigtTerms> mCellStiffness;
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, PhysicsType>> mBodyLoads;
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>> mCubatureRule;
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mBoundaryLoads;
 
@@ -450,7 +452,7 @@ private:
         // Parse body loads
         if(aParamList.isSublist("Body Loads"))
         {
-            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aParamList.sublist("Body Loads"));
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, PhysicsType>>(aParamList.sublist("Body Loads"));
         }
 
         // Parse Neumann loads

@@ -104,14 +104,14 @@ mapPoints(
 /*!
  \brief Class for essential boundary conditions.
  */
-template<typename EvaluationType>
+template<typename EvaluationType, typename PhysicsType>
 class BodyLoad
 /******************************************************************************/
 {
 private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
-    static constexpr Plato::OrdinalType mNumDofsPerNode = Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerNode; /*!< number of degrees of freedom per node */
-    static constexpr Plato::OrdinalType mNumNodesPerCell = Plato::SimplexMechanics<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell/element */
+    static constexpr Plato::OrdinalType mNumDofsPerNode = PhysicsType::mNumDofsPerNode; /*!< number of degrees of freedom per node */
+    static constexpr Plato::OrdinalType mNumNodesPerCell = PhysicsType::mNumNodesPerCell; /*!< number of nodes per cell/element */
 
 protected:
     const std::string mName;
@@ -121,9 +121,9 @@ protected:
 public:
 
     /**************************************************************************/
-    BodyLoad<EvaluationType>(const std::string &aName, Teuchos::ParameterList &aParam) :
+    BodyLoad<EvaluationType, PhysicsType>(const std::string &aName, Teuchos::ParameterList &aParam) :
             mName(aName),
-            mDof(aParam.get<Plato::OrdinalType>("Index")),
+            mDof(aParam.get<Plato::OrdinalType>("Index", 0)),
             mFuncString(aParam.get<std::string>("Function"))
     {
     }
@@ -187,7 +187,7 @@ public:
         {
             auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
             auto tDetElemJacobian = fabs(tJacobianDet(tCellOrdinal));
-            ControlScalarType tDensity = Plato::cell_density<mNumNodesPerCell>(tCellOrdinal, aControl);
+            ControlScalarType tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);
 
             auto tEntryOffset = aCellOrdinal * tNumPoints;
             for (Plato::OrdinalType tPtOrdinal=0; tPtOrdinal < tNumPoints; tPtOrdinal++)
@@ -197,7 +197,7 @@ public:
                 for (Plato::OrdinalType tFieldOrdinal = 0; tFieldOrdinal < tNumFields; tFieldOrdinal++)
                 {
 
-                    aResult(tCellOrdinal,tFieldOrdinal*mNumDofsPerNode+tDof) +=
+                    aResult(aCellOrdinal,tFieldOrdinal*mNumDofsPerNode+tDof) +=
                             tWeight * tFxnValue * tRefCellBasisValues(tFieldOrdinal,tPtOrdinal) * tDensity;
                 }
             }
@@ -211,12 +211,12 @@ public:
 /*!
  \brief Owner class that contains a vector of BodyLoad objects.
  */
-template<typename EvaluationType>
+template<typename EvaluationType, typename PhysicsType>
 class BodyLoads
 /******************************************************************************/
 {
 private:
-    std::vector<std::shared_ptr<BodyLoad<EvaluationType>>> mBodyLoads;
+    std::vector<std::shared_ptr<BodyLoad<EvaluationType, PhysicsType>>> mBodyLoads;
 
 public:
 
@@ -239,8 +239,8 @@ public:
             }
 
             Teuchos::ParameterList& tSublist = aParams.sublist(tName);
-            std::shared_ptr<Plato::BodyLoad<EvaluationType>> tBodyLoad;
-            auto tNewBodyLoad = new Plato::BodyLoad<EvaluationType>(tName, tSublist);
+            std::shared_ptr<Plato::BodyLoad<EvaluationType, PhysicsType>> tBodyLoad;
+            auto tNewBodyLoad = new Plato::BodyLoad<EvaluationType, PhysicsType>(tName, tSublist);
             tBodyLoad.reset(tNewBodyLoad);
             mBodyLoads.push_back(tBodyLoad);
         }
@@ -260,7 +260,7 @@ public:
               Plato::Scalar                                  aScale = 1.0
     ) const
     {
-        for(const std::shared_ptr<Plato::BodyLoad<EvaluationType>> &tBodyLoad : mBodyLoads)
+        for(const auto & tBodyLoad : mBodyLoads)
         {
             tBodyLoad->get(aSpatialDomain, aState, aControl, aResult, aScale);
         }

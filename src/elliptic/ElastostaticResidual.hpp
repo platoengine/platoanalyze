@@ -46,10 +46,12 @@ class ElastostaticResidual :
 private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim;
 
+    using PhysicsType = typename Plato::SimplexMechanics<mSpaceDim>;
+
     using Plato::SimplexMechanics<mSpaceDim>::mNumVoigtTerms;
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell;
-    using Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerNode;
-    using Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerCell;
+    using PhysicsType::mNumDofsPerNode;
+    using PhysicsType::mNumDofsPerCell;
 
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractVectorFunction<EvaluationType>::mDataMap;
@@ -64,7 +66,7 @@ private:
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<mSpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyWeighting;
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, PhysicsType>> mBodyLoads;
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim,mNumDofsPerNode>> mBoundaryLoads;
     std::shared_ptr<Plato::CellForcing<mNumVoigtTerms>> mCellForcing;
     std::shared_ptr<CubatureType> mCubatureRule;
@@ -104,7 +106,7 @@ public:
         // 
         if(aProblemParams.isSublist("Body Loads"))
         {
-            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, PhysicsType>>(aProblemParams.sublist("Body Loads"));
         }
   
         // parse boundary Conditions
