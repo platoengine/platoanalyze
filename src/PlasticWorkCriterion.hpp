@@ -70,6 +70,7 @@ private:
 
     Plato::Scalar mThermalExpansionCoefficient;    /*!< thermal expansion coefficient */
     Plato::Scalar mReferenceTemperature;           /*!< thermal reference temperature */
+    Plato::Scalar mTemperatureScaling;             /*!< temperature scaling */
 
     Plato::Scalar mPenaltySIMP;                /*!< SIMP penalty for elastic properties */
     Plato::Scalar mMinErsatz;                  /*!< SIMP min ersatz stiffness for elastic properties */
@@ -97,6 +98,9 @@ public:
         FunctionBaseType(aSpatialDomain, aDataMap, aName),
         mBulkModulus(-1.0),
         mShearModulus(-1.0),
+        mThermalExpansionCoefficient(0.0),
+        mReferenceTemperature(0.0),
+        mTemperatureScaling(1.0),
         mPenaltySIMP(3),
         mMinErsatz(1e-9),
         mUpperBoundOnPenaltySIMP(4),
@@ -167,7 +171,8 @@ public:
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
         Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature);
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature,
+                                                                                               mTemperatureScaling);
         Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatz);
 
         // allocate local containers used to evaluate criterion
@@ -286,6 +291,7 @@ private:
     **************************************************************************/
     void parseIsotropicMaterialProperties(Teuchos::ParameterList &aMaterialParams)
     {
+        mTemperatureScaling = aMaterialParams.get<Plato::Scalar>("Temperature Scaling", 1.0);
         if (aMaterialParams.isSublist("Isotropic Linear Elastic"))
         {
             auto tElasticSubList = aMaterialParams.sublist("Isotropic Linear Elastic");

@@ -106,9 +106,9 @@ private:
 
     std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads;                       /*!< body loads interface */
     std::shared_ptr<CubatureType> mCubatureRule;                                        /*!< linear cubature rule */
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumDisplacementDims, mNumGlobalDofsPerNode, mDisplacementDofOffset>> 
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumDisplacementDims, mNumGlobalDofsPerNode, mDisplacementDofOffset>>
                     mNeumannMechanicalLoads; /*!< Neumann mechanical loads interface */
-    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumThermalDims, mNumGlobalDofsPerNode, mTemperatureDofOffset>> 
+    std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumThermalDims, mNumGlobalDofsPerNode, mTemperatureDofOffset>>
                     mNeumannThermalLoads; /*!< Neumann thermal loads interface */
 
 // Private access functions
@@ -456,7 +456,7 @@ public:
         Plato::StrainDivergence <mSpaceDim> tComputeStrainDivergence;
         Plato::ComputeDeviatoricStress<mSpaceDim> tComputeDeviatoricStress;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
-        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature, 
+        Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature,
                                                                                                mTemperatureScaling);
         Plato::ComputeStabilization<mSpaceDim> tComputeStabilization(mPressureScaling, mElasticShearModulus);
         Plato::InterpolateFromNodal<mSpaceDim, mNumGlobalDofsPerNode, mPressureDofOffset> tInterpolatePressureFromNodal;
@@ -519,7 +519,7 @@ public:
             tInterpolateTemperatureFromNodal(aCellOrdinal, tBasisFunctions, aCurrentGlobalState, tTemperature);
             tInterpolateTemperatureGradFromNodal(aCellOrdinal, tConfigurationGradient, aCurrentGlobalState, tTemperatureGrad);
             // Trace of the isotropic thermal strain tensor which for 2D plane strain and 3D is always 3*thermal_strain
-            tThermalVolumetricStrain(aCellOrdinal) = static_cast<GlobalStateT>(3.0) * tThermalExpansionCoefficient * 
+            tThermalVolumetricStrain(aCellOrdinal) = static_cast<GlobalStateT>(3.0) * tThermalExpansionCoefficient *
                                                      (tTemperatureScaling * tTemperature(aCellOrdinal) - tReferenceTemperature);
 
             // compute elastic strain, i.e. e_elastic = e_total - e_plastic - e_thermal

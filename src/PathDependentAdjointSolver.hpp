@@ -134,7 +134,7 @@ private:
     using LocalPhysicsT = typename PhysicsT::LocalPhysicsT;
     using ProjectorT  = typename Plato::Projection<mNumSpatialDims, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
 
-    std::shared_ptr<Plato::LocalScalarFunctionInc> mCriterion;                    /*!< local criterion interface */ 
+    std::shared_ptr<Plato::LocalScalarFunctionInc> mCriterion;                    /*!< local criterion interface */
     std::shared_ptr<Plato::VectorFunctionVMS<ProjectorT>> mProjectionEquation;    /*!< global pressure gradient projection interface */
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;    /*!< global equality constraint interface */
     std::shared_ptr<Plato::LocalVectorFunctionInc<LocalPhysicsT>> mLocalEquation; /*!< local equality constraint interface */
@@ -231,7 +231,7 @@ private:
         auto tGlobalJacobian = Plato::CreateBlockMatrix<Plato::CrsMatrixType, mNumGlobalDofsPerNode, mNumGlobalDofsPerNode>(&tMesh);
         Plato::BlockMatrixEntryOrdinal<mNumSpatialDims, mNumGlobalDofsPerNode> tGlobalJacEntryOrdinal(tGlobalJacobian, &tMesh);
         auto tJacEntries = tGlobalJacobian->entries();
-        Plato::assemble_jacobian(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell, tGlobalJacEntryOrdinal, tDrDu, tJacEntries);
+        Plato::assemble_jacobian_transpose_2(tNumCells, mNumGlobalDofsPerCell, mNumGlobalDofsPerCell, tGlobalJacEntryOrdinal, tDrDu, tJacEntries);
 
         return tGlobalJacobian;
     }
