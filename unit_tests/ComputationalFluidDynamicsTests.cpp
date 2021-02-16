@@ -7464,14 +7464,14 @@ private:
     Plato::Scalar mPrandtlNumber = 1.0;
     Plato::Scalar mReynoldsNumber = 1.0;
     Plato::Scalar mThermalTolerance = 1e-4;
-    Plato::Scalar mPressureTolerance = 1e-2;
+    Plato::Scalar mPressureTolerance = 1e-4;
+    Plato::Scalar mMaxSteadyStateNorm = 1e3;
     Plato::Scalar mPredictorTolerance = 1e-4;
     Plato::Scalar mCorrectorTolerance = 1e-4;
     Plato::Scalar mSteadyStateTolerance = 1e-5;
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
-    Plato::OrdinalType mMaxNewtonIterations = 2e2; /*!< maximum number of Newton iterations */
-    Plato::OrdinalType mMaxSteadyStateIterations = 1e3; /*!< maximum number of steady state iterations */
-    Plato::OrdinalType mMaxDivergentSolverIterations = 10; /*!< maximum number of divergent fluid solver iterations allowed */
+    Plato::OrdinalType mMaxNewtonIterations = 10; /*!< maximum number of Newton iterations */
+    Plato::OrdinalType mMaxSteadyStateIterations = 2000; /*!< maximum number of steady state iterations */
 
     Plato::ScalarMultiVector mPressure;
     Plato::ScalarMultiVector mVelocity;
@@ -7598,13 +7598,7 @@ public:
         }
 
         Plato::Solutions tSolution;
-        tSolution.set("velocity", mVelocity);
-        tSolution.set("pressure", mPressure);
-        if(mCalculateHeatTransfer)
-        {
-            tSolution.set("temperature", mTemperature);
-        }
-
+        this->setOutput(tSolution);
         return tSolution;
     }
 
@@ -7707,6 +7701,16 @@ public:
     }
 
 private:
+    void setOutput(Plato::Solutions& aSolution)
+    {
+        aSolution.set("velocity", mVelocity);
+        aSolution.set("pressure", mPressure);
+        if(mCalculateHeatTransfer)
+        {
+            aSolution.set("temperature", mTemperature);
+        }
+    }
+
     void setInitialConditions
     (Plato::Primal & aVariables)
     {
@@ -7777,6 +7781,7 @@ private:
         this->allocateMemberStates(aInputs);
         this->areDianosticsEnabled(aInputs);
         this->parseNewtonSolverInputs(aInputs);
+        this->parseConvergenceCriteria(aInputs);
         this->parseTimeIntegratorInputs(aInputs);
         this->parseHeatTransferEquation(aInputs);
     }
@@ -7820,9 +7825,18 @@ private:
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
-            mSteadyStateTolerance = tTimeIntegration.get<Plato::Scalar>("Steady State Tolerance", 1e-5);
             mMaxSteadyStateIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Iterations", 2000);
-            mMaxDivergentSolverIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Divergent Iterations", 10);
+        }
+    }
+
+    void parseConvergenceCriteria
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(aInputs.isSublist("Convergence"))
+        {
+            auto tConvergence = aInputs.sublist("Convergence");
+            mMaxSteadyStateNorm = tConvergence.get<Plato::Scalar>("Maximum Norm", 1e3);
+            mSteadyStateTolerance = tConvergence.get<Plato::Scalar>("Steady State Tolerance", 1e-5);
         }
     }
 
@@ -7922,13 +7936,11 @@ private:
         }
 
         auto tCurrentCriterion = aVariables.scalar("current steady state criterion");
-        auto tPreviousCriterion = aVariables.scalar("previous steady state criterion");
-
-        Plato::OrdinalType tDivergenceCriterionCount = aVariables.scalar("divergence count");
-        tDivergenceCriterionCount = tCurrentCriterion > tPreviousCriterion ? tDivergenceCriterionCount++ : 0;
-        aVariables.scalar("divergence count", tDivergenceCriterionCount);
-
-        if(tDivergenceCriterionCount >= mMaxDivergentSolverIterations)
+        if(!std::isfinite(tCurrentCriterion) || std::isnan(tCurrentCriterion))
+        {
+            return true;
+        }
+        else if(tCurrentCriterion > mMaxSteadyStateNorm)
         {
             return true;
         }
@@ -8749,12 +8761,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    <Parameter name='Maximum Iterations'  type='int'    value='5'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor'          type='double' value='1.0'/>"
-            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
-            "    <Parameter name='Maximum Iterations'     type='int'    value='3000'/>"
+            "    <Parameter name='Safety Factor'      type='double' value='1.0'/>"
+            "    <Parameter name='Maximum Iterations' type='int'    value='3000'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
