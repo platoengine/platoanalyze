@@ -3313,7 +3313,7 @@ private:
        if(aInputs.isSublist("Time Integration"))
        {
            auto tTimeIntegration = aInputs.sublist("Time Integration");
-           mTheta = tTimeIntegration.get<Plato::Scalar>("Viscous Damping", 1.0);
+           mTheta = tTimeIntegration.get<Plato::Scalar>("Viscosity Damping", 1.0);
        }
    }
 
@@ -3980,14 +3980,17 @@ private:
     using CurPressT  = typename EvaluationT::CurrentMassScalarType;
     using PrevPressT = typename EvaluationT::PreviousMassScalarType;
 
-    using PrevPressGradT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevPressT, ConfigT>;
+    //using CurrentStrainT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurVelT, ConfigT>;
+    //using PrevPressGradT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevPressT, ConfigT>;
     using PressGradT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurPressT, PrevPressT, ConfigT>;
 
     Plato::DataMap& mDataMap;                   /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
     Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< integration rule */
 
-    Plato::Scalar mTheta = 1.0; /*!< artificial pressure damping */
+    //Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity constant */
+    Plato::Scalar mPressureTheta = 1.0; /*!< artificial pressure damping */
+    Plato::Scalar mViscosityTheta = 1.0; /*!< artificial viscosity damping */
 
 public:
     VelocityCorrectorResidual
@@ -3999,6 +4002,7 @@ public:
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
         this->setAritificalPressureDamping(aInputs);
+        //mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
     }
 
     virtual ~VelocityCorrectorResidual(){}
@@ -4065,12 +4069,13 @@ public:
         // set local data structures
         Plato::ScalarVectorT<ConfigT> tCellVolume("cell weight", tNumCells);
         Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+        //Plato::ScalarArray3DT<CurrentStrainT> tCurStrainRate("cell strain rate", tNumCells, mNumSpatialDims, mNumSpatialDims);
 
         Plato::ScalarMultiVectorT<PressGradT> tPressGradGP("pressure gradient", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<CurVelT> tCurVelGP("current velocity at Gauss points", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity at Gauss points", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PredVelT> tPredVelGP("predicted velocity at Gauss points", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<PrevPressGradT> tPrevPressGradGP("previous pressure gradient", tNumCells, mNumSpatialDims);
+        //Plato::ScalarMultiVectorT<PrevPressGradT> tPrevPressGradGP("previous pressure gradient", tNumCells, mNumSpatialDims);
 
         // set input state worksets
         auto tConfigWS    = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
@@ -4086,7 +4091,9 @@ public:
         Plato::InterpolateFromNodal<mNumSpatialDims, mNumDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
 
         // transfer member data to device
-        auto tTheta = mTheta;
+        //auto tViscocity = mViscocity;
+        auto tPressureTheta = mPressureTheta;
+        //auto tViscosityTheta = mViscosityTheta;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -4097,12 +4104,18 @@ public:
 
             // 1. add previous pressure gradient to residual, i.e. R += Delta{t} G(p_n + \theta\Delta{p})
             Plato::Fluids::calculate_pressure_gradient<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tTheta, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
+                (aCellOrdinal, tPressureTheta, tGradient, tCurPressWS, tPrevPressWS, tPressGradGP);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPressGradGP, aResultWS);
             Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
 
-            // 3. add current dleta inertial force to residual, i.e. R += M(u_{n+1} - u_n)
+            // 2. add viscous force to residual, i.e. R += \theta_3 Ku^{n+1}
+            /*Plato::Fluids::strain_rate<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCurVelWS, tGradient, tCurStrainRate);
+            Plato::Fluids::integrate_viscous_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tViscocity, tCellVolume, tGradient, tCurStrainRate, aResultWS, tViscosityTheta);*/
+
+            // 3. add current delta inertial force to residual, i.e. R += M(u_{n+1} - u_n)
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurVelGP, aResultWS);
@@ -4146,7 +4159,8 @@ private:
         if(aInputs.isSublist("Time Integration"))
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mTheta = tTimeIntegration.get<Plato::Scalar>("Pressure Damping", 1.0);
+            mPressureTheta = tTimeIntegration.get<Plato::Scalar>("Pressure Damping", 1.0);
+            //mViscosityTheta = tTimeIntegration.get<Plato::Scalar>("Viscosity Damping", 1.0);
         }
     }
 };
@@ -5421,6 +5435,7 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
+        this->setAritificalPressureDamping(aInputs);
     }
 
     PressureResidual
@@ -5582,6 +5597,17 @@ public:
      const Plato::WorkSets & aWorkSets,
      Plato::ScalarMultiVectorT<ResultT> & aResult) const override
     { return; }
+
+private:
+    void setAritificalPressureDamping(Teuchos::ParameterList& aInputs)
+    {
+        if(aInputs.isSublist("Time Integration"))
+        {
+            auto tTimeIntegration = aInputs.sublist("Time Integration");
+            mPressDamping = tTimeIntegration.get<Plato::Scalar>("Pressure Damping", 1.0);
+            mMomentumDamping = tTimeIntegration.get<Plato::Scalar>("Momentum Damping", 1.0);
+        }
+    }
 };
 // class PressureResidual
 
@@ -8098,7 +8124,7 @@ private:
 
         // calculate current residual and jacobian matrix
         auto tResidual = mVelocityResidual.value(aControl, aStates);
-        Plato::blas1::scale(-1.0, tResidual);
+        //Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aStates);
 
         // apply constraints
@@ -8113,7 +8139,8 @@ private:
 
         // set initial guess for current velocity
         auto tPreviousVelocity = aStates.vector("previous velocity");
-        Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
+        //Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
+        Plato::blas1::fill(0.0, tCurrentVelocity);
 
         Plato::OrdinalType tIteration = 1;
         Plato::Scalar tInitialNormStep = 0.0;
@@ -8124,11 +8151,12 @@ private:
 
             Plato::blas1::fill(0.0, tDeltaCorrector);
             //Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
+            Plato::blas1::scale(-1.0, tResidual);
             tSolver->solve(*tJacobian, tDeltaCorrector, tResidual);
-            Plato::set_dofs_values(tBcDofs, tResidual, 0.0);
-            Plato::set_dofs_values(tBcDofs, tDeltaCorrector, 0.0);
+            //Plato::set_dofs_values(tBcDofs, tResidual, 0.0);
+            //Plato::set_dofs_values(tBcDofs, tDeltaCorrector, 0.0);
             Plato::blas1::update(1.0, tDeltaCorrector, 1.0, tCurrentVelocity);
-            Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
+            //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
@@ -8149,10 +8177,10 @@ private:
             // calculate current residual and jacobian matrix
             //tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aStates);
             tResidual = mVelocityResidual.value(aControl, aStates);
-            Plato::blas1::scale(-1.0, tResidual);
 
             tIteration++;
         }
+        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
     }
 
     void printNewtonHeader()
@@ -8212,7 +8240,7 @@ private:
 
         // calculate current residual and jacobian matrix
         auto tResidual = mPredictorResidual.value(aControl, aStates);
-        Plato::blas1::scale(-1.0, tResidual);
+        //Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mPredictorResidual.gradientPredictor(aControl, aStates);
 
         // prepare constraints dofs
@@ -8234,11 +8262,12 @@ private:
 
             Plato::blas1::fill(0.0, tDeltaPredictor);
             //Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+            Plato::blas1::scale(-1.0, tResidual);
             tSolver->solve(*tJacobian, tDeltaPredictor, tResidual);
-            Plato::set_dofs_values(tBcDofs, tResidual);
-            Plato::set_dofs_values(tBcDofs, tDeltaPredictor);
+            //Plato::set_dofs_values(tBcDofs, tResidual);
+            //Plato::set_dofs_values(tBcDofs, tDeltaPredictor);
             Plato::blas1::update(1.0, tDeltaPredictor, 1.0, tCurrentPredictor);
-            Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPredictor);
+            //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPredictor);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
@@ -8258,7 +8287,6 @@ private:
 
             // tJacobian = mPredictorResidual.gradientPredictor(aControl, aStates);
             tResidual = mPredictorResidual.value(aControl, aStates);
-            Plato::blas1::scale(-1.0, tResidual);
 
             tIteration++;
         }
@@ -8291,7 +8319,7 @@ private:
 
         // calculate current residual and jacobian matrix
         auto tResidual = mPressureResidual.value(aControl, aStates);
-        Plato::blas1::scale(-1.0, tResidual);
+        //Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mPressureResidual.gradientCurrentPress(aControl, aStates);
 
         // prepare constraints dofs
@@ -8307,19 +8335,21 @@ private:
         Plato::OrdinalType tIteration = 1;
         Plato::Scalar tInitialNormStep = 0.0;
         auto tPreviousPressure = aStates.vector("previous pressure");
-        Plato::blas1::update(1.0, tPreviousPressure, 1.0, tCurrentPressure);
+        //Plato::blas1::update(1.0, tPreviousPressure, 1.0, tCurrentPressure);
+        Plato::blas1::fill(0.0, tCurrentPressure);
         Plato::ScalarVector tDeltaPressure("delta pressure", tCurrentPressure.size());
         while(true)
         {
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaPressure);
-            //Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
+            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
+            Plato::blas1::scale(-1.0, tResidual);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
-            Plato::set_dofs_values(tBcDofs, tResidual);
-            Plato::set_dofs_values(tBcDofs, tDeltaPressure);
+            //Plato::set_dofs_values(tBcDofs, tResidual);
+            //Plato::set_dofs_values(tBcDofs, tDeltaPressure);
             Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
-            Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
+            //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
@@ -8338,12 +8368,12 @@ private:
             }
 
             // calculate current residual and jacobian matrix
-            //tJacobian = mPressureResidual.gradientCurrentPress(aControl, aStates);
+            tJacobian = mPressureResidual.gradientCurrentPress(aControl, aStates);
             tResidual = mPressureResidual.value(aControl, aStates);
-            Plato::blas1::scale(-1.0, tResidual);
 
             tIteration++;
         }
+        //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
     }
 
     void printTemperatureSolverHeader()
@@ -8723,15 +8753,15 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Newton Iteration'>"
-            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-2'/>"
-            "    <Parameter name='Predictor Tolerance' type='double' value='1e-3'/>"
-            "    <Parameter name='Corrector Tolerance' type='double' value='1e-3'/>"
+            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
+            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
+            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
             "    <Parameter name='Maximum Iterations'  type='int'    value='5'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor'          type='double' value='0.9'/>"
-            "    <Parameter name='Steady State Tolerance' type='double' value='1e-7'/>"
-            "    <Parameter name='Maximum Iterations'     type='int'    value='2000'/>"
+            "    <Parameter name='Safety Factor'          type='double' value='1.0'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
+            "    <Parameter name='Maximum Iterations'     type='int'    value='3000'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
@@ -8740,7 +8770,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,20,20);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,80,80);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
