@@ -580,6 +580,21 @@ private:
     std::unordered_map<std::string, Plato::ScalarMultiVector> mSolution;
 
 public:
+    Plato::OrdinalType size() const
+    {
+        return (mSolution.size());
+    }
+
+    std::vector<std::string> tags() const
+    {
+        std::vector<std::string> tTags;
+        for(auto& tPair : mSolution)
+        {
+            tTags.push_back(tPair.first);
+        }
+        return tTags;
+    }
+
     void set(const std::string& aTag, const Plato::ScalarMultiVector& aData)
     {
         auto tLowerTag = Plato::tolower(aTag);
@@ -592,7 +607,7 @@ public:
         auto tItr = mSolution.find(tLowerTag);
         if(tItr == mSolution.end())
         {
-            THROWERR(std::string("Solution with tag '") + aTag + "' is not defined in the solution map.")
+            THROWERR(std::string("Solution with tag '") + aTag + "' is not defined.")
         }
         return tItr->second;
     }
@@ -7583,9 +7598,12 @@ public:
         }
 
         Plato::Solutions tSolution;
-        tSolution.set("mass state", mPressure);
-        tSolution.set("energy state", mTemperature);
-        tSolution.set("momentum state", mVelocity);
+        tSolution.set("velocity", mVelocity);
+        tSolution.set("pressure", mPressure);
+        if(mCalculateHeatTransfer)
+        {
+            tSolution.set("temperature", mTemperature);
+        }
 
         return tSolution;
     }
@@ -7788,10 +7806,10 @@ private:
         if(aInputs.isSublist("Newton Iteration"))
         {
             auto tNewtonIteration = aInputs.sublist("Newton Iteration");
-            mPressureTolerance = tNewtonIteration.get<Plato::Scalar>("Pressure Tolerance", 1e-2);
+            mPressureTolerance = tNewtonIteration.get<Plato::Scalar>("Pressure Tolerance", 1e-4);
             mPredictorTolerance = tNewtonIteration.get<Plato::Scalar>("Predictor Tolerance", 1e-4);
             mCorrectorTolerance = tNewtonIteration.get<Plato::Scalar>("Corrector Tolerance", 1e-4);
-            mMaxNewtonIterations = tNewtonIteration.get<Plato::OrdinalType>("Maximum Iterations", 1e2);
+            mMaxNewtonIterations = tNewtonIteration.get<Plato::OrdinalType>("Maximum Iterations", 10);
         }
     }
 
@@ -7802,8 +7820,8 @@ private:
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
-            mSteadyStateTolerance = tTimeIntegration.get<Plato::Scalar>("Steady State Tolerance", 1e-3);
-            mMaxSteadyStateIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Iterations", 1e3);
+            mSteadyStateTolerance = tTimeIntegration.get<Plato::Scalar>("Steady State Tolerance", 1e-5);
+            mMaxSteadyStateIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Iterations", 2000);
             mMaxDivergentSolverIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Divergent Iterations", 10);
         }
     }
@@ -8118,13 +8136,11 @@ private:
         this->printCorrectorSolverHeader();
         this->printNewtonHeader();
 
-        // calculate current residual and jacobian matrix
         auto tCurrentVelocity = aStates.vector("current velocity");
         Plato::blas1::fill(0.0, tCurrentVelocity);
 
         // calculate current residual and jacobian matrix
         auto tResidual = mVelocityResidual.value(aControl, aStates);
-        //Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aStates);
 
         // apply constraints
@@ -8138,10 +8154,6 @@ private:
         auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumVelDofsPerNode);
 
         // set initial guess for current velocity
-        auto tPreviousVelocity = aStates.vector("previous velocity");
-        //Plato::blas1::update(1.0, tPreviousVelocity, 1.0, tCurrentVelocity);
-        Plato::blas1::fill(0.0, tCurrentVelocity);
-
         Plato::OrdinalType tIteration = 1;
         Plato::Scalar tInitialNormStep = 0.0;
         Plato::ScalarVector tDeltaCorrector("delta corrector", tCurrentVelocity.size());
@@ -8150,13 +8162,9 @@ private:
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaCorrector);
-            //Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
             Plato::blas1::scale(-1.0, tResidual);
             tSolver->solve(*tJacobian, tDeltaCorrector, tResidual);
-            //Plato::set_dofs_values(tBcDofs, tResidual, 0.0);
-            //Plato::set_dofs_values(tBcDofs, tDeltaCorrector, 0.0);
             Plato::blas1::update(1.0, tDeltaCorrector, 1.0, tCurrentVelocity);
-            //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentVelocity);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
@@ -8175,7 +8183,6 @@ private:
             }
 
             // calculate current residual and jacobian matrix
-            //tJacobian = mVelocityResidual.gradientCurrentVel(aControl, aStates);
             tResidual = mVelocityResidual.value(aControl, aStates);
 
             tIteration++;
@@ -8240,7 +8247,6 @@ private:
 
         // calculate current residual and jacobian matrix
         auto tResidual = mPredictorResidual.value(aControl, aStates);
-        //Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mPredictorResidual.gradientPredictor(aControl, aStates);
 
         // prepare constraints dofs
@@ -8261,13 +8267,9 @@ private:
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaPredictor);
-            //Plato::apply_constraints<mNumVelDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
             Plato::blas1::scale(-1.0, tResidual);
             tSolver->solve(*tJacobian, tDeltaPredictor, tResidual);
-            //Plato::set_dofs_values(tBcDofs, tResidual);
-            //Plato::set_dofs_values(tBcDofs, tDeltaPredictor);
             Plato::blas1::update(1.0, tDeltaPredictor, 1.0, tCurrentPredictor);
-            //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPredictor);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
@@ -8285,7 +8287,6 @@ private:
                 break;
             }
 
-            // tJacobian = mPredictorResidual.gradientPredictor(aControl, aStates);
             tResidual = mPredictorResidual.value(aControl, aStates);
 
             tIteration++;
@@ -8319,7 +8320,6 @@ private:
 
         // calculate current residual and jacobian matrix
         auto tResidual = mPressureResidual.value(aControl, aStates);
-        //Plato::blas1::scale(-1.0, tResidual);
         auto tJacobian = mPressureResidual.gradientCurrentPress(aControl, aStates);
 
         // prepare constraints dofs
@@ -8334,22 +8334,16 @@ private:
 
         Plato::OrdinalType tIteration = 1;
         Plato::Scalar tInitialNormStep = 0.0;
-        auto tPreviousPressure = aStates.vector("previous pressure");
-        //Plato::blas1::update(1.0, tPreviousPressure, 1.0, tCurrentPressure);
-        Plato::blas1::fill(0.0, tCurrentPressure);
         Plato::ScalarVector tDeltaPressure("delta pressure", tCurrentPressure.size());
         while(true)
         {
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaPressure);
-            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs,tBcValues,tJacobian,tResidual);
+            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
             Plato::blas1::scale(-1.0, tResidual);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
-            //Plato::set_dofs_values(tBcDofs, tResidual);
-            //Plato::set_dofs_values(tBcDofs, tDeltaPressure);
             Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
-            //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
@@ -8373,7 +8367,6 @@ private:
 
             tIteration++;
         }
-        //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentPressure);
     }
 
     void printTemperatureSolverHeader()
@@ -8417,19 +8410,16 @@ private:
 
         Plato::OrdinalType tIteration = 1;
         Plato::Scalar tInitialNormStep = 0.0;
-        auto tPreviousTemperature = aStates.vector("previous temperature");
-        Plato::blas1::update(1.0, tPreviousTemperature, 1.0, tCurrentTemperature);
         Plato::ScalarVector tDeltaTemperature("delta pressure", tCurrentTemperature.size());
         while(true)
         {
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaTemperature);
+            Plato::apply_constraints<mNumTempDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
+            Plato::blas1::scale(-1.0, tResidual);
             tSolver->solve(*tJacobian, tDeltaTemperature, tResidual);
-            Plato::set_dofs_values(tBcDofs, tResidual);
-            Plato::set_dofs_values(tBcDofs, tDeltaTemperature);
             Plato::blas1::update(1.0, tDeltaTemperature, 1.0, tCurrentTemperature);
-            Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
@@ -8449,7 +8439,7 @@ private:
 
             // calculate current residual and jacobian matrix
             tResidual = mTemperatureResidual->value(aControl, aStates);
-            Plato::blas1::scale(-1.0, tResidual);
+            tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
 
             tIteration++;
         }
@@ -8770,7 +8760,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,80,80);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -8796,7 +8786,61 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PlatoProblem_SteadyState)
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    tProblem.output("cfd_test_problem");
+    //tProblem.output("cfd_test_problem");
+
+    // test solution
+    auto tTags = tSolution.tags();
+    std::vector<std::string> tGoldTags = { "velocity", "pressure" };
+    TEST_EQUALITY(tGoldTags.size(), tTags.size());
+    for(auto& tTag : tTags)
+    {
+        auto tItr = std::find(tGoldTags.begin(), tGoldTags.end(), tTag);
+        TEST_ASSERT(tItr != tGoldTags.end());
+        TEST_EQUALITY(*tItr, tTag);
+    }
+
+    auto tTol = 1e-4;
+    auto tPressure = tSolution.get("pressure");
+    auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
+    auto tHostPressure = Kokkos::create_mirror(tPressSubView);
+    Kokkos::deep_copy(tHostPressure, tPressSubView);
+    std::vector<double> tGoldPressure = { 0.0, 3.982160e-03, 8.206480e-03, 7.973774e-03, 1.278799e-02, 
+        1.131102e-02, 1.093623e-03, -1.763624e-03, 2.360455e-03, -5.474202e-02, -3.820367e-02, -2.246271e-01,
+        -3.595021e-01, -1.540489e-01, -1.047763e-01, -3.811096e-02, -3.199715e-02, -1.780515e-02, 8.898057e-03,
+        2.539824e-02, 4.242509e-02, 1.102655e-01, 1.505430e-01, 3.637371e-01, 2.259719e-01, 4.107290e-02,
+        6.216985e-02, 2.175097e-02, 8.312456e-03, 4.043589e-03, 4.836866e-03, 7.597876e-03, 1.222279e-02,
+        7.068479e-03, 1.987670e-02, 1.929609e-02 };
+    auto tNumPressDofs = tPressSubView.size();
+    for(auto& tGoldPress : tGoldPressure)
+    {
+        auto tDof = &tGoldPress - &tGoldPressure[0];
+        TEST_FLOATING_EQUALITY(tGoldPress, tHostPressure(tDof), tTol);
+    }    
+    //Plato::print(tPressSubView, "steady state pressure");
+
+    auto tVelocity = tSolution.get("velocity");
+    auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
+    auto tHostVelocity = Kokkos::create_mirror(tVelSubView);
+    Kokkos::deep_copy(tHostVelocity, tVelSubView);
+    std::vector<double> tGoldVelocity = 
+        { 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 3.452357e-02, 2.903029e-02, 0.000000e+00,
+         0.000000e+00, 0.000000e+00, 0.000000e+00, -2.979382e-02, 9.406492e-03, -2.408513e-01, -1.854999e-02,
+         -8.974591e-02, 8.471661e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, -2.160811e-01,
+         1.163226e-01, 0.000000e+00, 0.000000e+00, 1.000000e+00, 0.000000e+00, 1.000000e+00, -8.064271e-02,
+         1.846963e-01, 7.035822e-02, 1.000000e+00, 1.237385e-02, 1.801485e-01, 7.370865e-02, -1.982795e-01,
+         3.424909e-02, -2.381041e-01, -1.309028e-01, 1.463195e-01, -4.220927e-02, 1.000000e+00, 1.116160e-02,
+         1.631151e-01, -2.382172e-02, 1.000000e+00, -9.949473e-03, 1.000000e+00, 0.000000e+00, 0.000000e+00,
+         0.000000e+00, -3.213852e-01, -7.957307e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
+         -2.404209e-02, -8.421403e-03, -9.286622e-02, -8.792229e-02, -1.151474e-01, -4.248292e-02, 0.000000e+00,
+         0.000000e+00, 0.000000e+00, 0.000000e+00, 7.431213e-02, -1.556072e-02, 0.000000e+00,  0.000000e+00,
+         0.000000e+00, 0.000000e+00 };
+    auto tNumVelDofs = tVelSubView.size();
+    for(auto& tGoldVel : tGoldVelocity)
+    {
+        auto tDof = &tGoldVel - &tGoldVelocity[0];
+        TEST_FLOATING_EQUALITY(tGoldVel, tHostVelocity(tDof), tTol); 
+    }
+    //Plato::print(tVelSubView, "steady state velocity");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
