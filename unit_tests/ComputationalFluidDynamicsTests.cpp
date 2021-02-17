@@ -6681,16 +6681,6 @@ velocity_predictor_residual
     }
 }
 
-template <typename PhysicsT, typename EvaluationT>
-inline std::shared_ptr<Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>>
-momentum_conservation_residual
-(const Plato::SpatialDomain & aDomain,
- Plato::DataMap & aDataMap,
- Teuchos::ParameterList & aInputs)
-{
-    return ( std::make_shared<Plato::Fluids::MomentumConservationResidual<PhysicsT, EvaluationT>>(aDomain, aDataMap, aInputs) );
-}
-
 struct FunctionFactory
 {
 public:
@@ -6719,10 +6709,6 @@ public:
         else if( tLowerTag == "velocity predictor" )
         {
             return ( Plato::Fluids::velocity_predictor_residual<PhysicsT, EvaluationT>(aDomain, aDataMap, aInputs) );
-        }
-        else if( tLowerTag == "momentum" )
-        {
-            return ( Plato::Fluids::momentum_conservation_residual<PhysicsT, EvaluationT>(aDomain, aDataMap, aInputs) );
         }
         else
         {
@@ -7785,7 +7771,6 @@ private:
     Plato::ScalarMultiVector mTemperature;
 
     Plato::Fluids::VectorFunction<typename PhysicsT::MassPhysicsT>     mPressureResidual;
-    Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mMomentumResidual;
     Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mPredictorResidual;
     Plato::Fluids::VectorFunction<typename PhysicsT::MomentumPhysicsT> mCorrectorResidual;
     // Using pointer since default VectorFunction constructor allocations are not permitted.
@@ -7813,7 +7798,6 @@ public:
          mInputs(aInputs),
          mSpatialModel(aMesh, aMeshSets, aInputs),
          mPressureResidual("Pressure", mSpatialModel, mDataMap, aInputs),
-         mMomentumResidual("Momentum", mSpatialModel, mDataMap, aInputs),
          mCorrectorResidual("Velocity Corrector", mSpatialModel, mDataMap, aInputs),
          mPredictorResidual("Velocity Predictor", mSpatialModel, mDataMap, aInputs),
          mPressureEssentialBCs(aInputs.sublist("Pressure Essential Boundary Conditions",false),aMeshSets),
@@ -7897,7 +7881,6 @@ public:
                 this->updateTemperature(aControl, tPrimal);
             }
 
-            this->evaluateMomentum(aControl, tPrimal);
             if(this->checkStoppingCriteria(tPrimal))
             {
                 break;
@@ -8217,6 +8200,17 @@ private:
         return tOutput;
     }
 
+    Plato::Scalar calculatePressureMisfitNorm(const Plato::Primal & aVariables)
+    {
+        auto tNumNodes = mSpatialModel.Mesh.nverts();
+        auto tCurrentPressure = aVariables.vector("current pressure");
+        auto tPreviousPressure = aVariables.vector("previous pressure");
+        auto tMisfitError = Plato::cbs::calculate_misfit_euclidean_norm<mNumPressDofsPerNode>(tNumNodes, tCurrentPressure, tPreviousPressure);
+        auto tCurrentNorm = Plato::blas1::norm(tCurrentPressure);
+        auto tOutput = tMisfitError / tCurrentNorm;
+        return tOutput;
+    }
+
     void printSteadyStateCriterion
     (const Plato::Primal & aVariables)
     {
@@ -8262,6 +8256,7 @@ private:
         bool tStop = false;
         const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
         const auto tCriterionValue = this->calculateVelocityMisfitNorm(aVariables);
+        //const auto tCriterionValue = this->calculatePressureMisfitNorm(aVariables);
         aVariables.scalar("current steady state criterion", tCriterionValue);
         this->printSteadyStateCriterion(aVariables);
 
@@ -8448,14 +8443,6 @@ private:
                 Plato::append_text_to_file(tMsg, mDiagnostics);
             }
         }
-    }
-
-    void evaluateMomentum
-    (const Plato::ScalarVector & aControl,
-           Plato::Primal       & aStates)
-    {
-        auto tResidual = mMomentumResidual.value(aControl, aStates);
-        auto tNormResidual = Plato::blas1::norm(tResidual);
     }
 
     void updateCorrector
