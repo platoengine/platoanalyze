@@ -5658,7 +5658,7 @@ template<Plato::OrdinalType NumNodesPerCell,
 DEVICE_TYPE inline void
 integrate_gradient_operator
 (const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarArray3DT<ConfigT> & aBasisFunctions,
+ const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
  const Plato::ScalarMultiVectorT<FieldT> & aField,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
@@ -5696,6 +5696,7 @@ private:
     // set local ad types
     using ResultT    = typename EvaluationT::ResultScalarType;
     using ConfigT    = typename EvaluationT::ConfigScalarType;
+    using ControlT   = typename EvaluationT::ControlScalarType;
     using CurVelT    = typename EvaluationT::CurrentMomentumScalarType;
     using PrevVelT   = typename EvaluationT::PreviousMomentumScalarType;
     using PrevTempT  = typename EvaluationT::PreviousEnergyScalarType;
