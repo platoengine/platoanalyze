@@ -1109,7 +1109,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWorkGradientZ_2
       "  <Parameter name='Physics'          type='string'  value='Plasticity'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
       "  <ParameterList name='Material Models'>                                                 \n"
-      "    <Parameter  name='Pressure Scaling'    type='double' value='1000.0'/>                \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='1.0'/>                \n"
       "    <ParameterList name='Unobtainium'>                                                   \n"
       "      <ParameterList name='Isotropic Linear Elastic'>                                    \n"
       "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
@@ -1132,7 +1132,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWorkGradientZ_2
       "  <ParameterList name='Elliptic'>                                                        \n"
       "    <ParameterList name='Penalty Function'>                                              \n"
       "      <Parameter name='Type' type='string' value='SIMP'/>                                \n"
-      "      <Parameter name='Exponent' type='double' value='3.0'/>                             \n"
+      "      <Parameter name='Exponent' type='double' value='2.0'/>                             \n"
       "      <Parameter name='Minimum Value' type='double' value='1.0e-8'/>                     \n"
       "      <Parameter name='Plottable' type='Array(string)' value='{principal stresses}'/>    \n"
       "    </ParameterList>                                                                     \n"
@@ -1142,13 +1142,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWorkGradientZ_2
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>     \n"
       "      <Parameter name='Scalar Function Type' type='string' value='Plastic Work'/>        \n"
       "      <Parameter name='Multiplier'           type='double' value='-1.0'/>                \n"
-      "      <Parameter name='Exponent'             type='double' value='3.0'/>                 \n"
+      "      <Parameter name='Exponent'             type='double' value='2.0'/>                 \n"
       "      <Parameter name='Minimum Value'        type='double' value='1.0e-8'/>              \n"
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='64'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='64'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='1'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='1'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -2332,7 +2332,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_ElasticSolution3D)
         for (Plato::OrdinalType tIndexJ = 0; tIndexJ < tDim1; tIndexJ++)
         {
             //printf("X(%d,%d) = %f\n", tIndexI, tIndexJ, tHostInput(tIndexI, tIndexJ));
-            const Plato::Scalar tValue = std::abs(tHostSolution(tIndexI, tIndexJ)) < 1.0e-14 ? 0.0 : tHostSolution(tIndexI, tIndexJ);
+            const Plato::Scalar tValue = std::abs(tHostSolution(tIndexI, tIndexJ)) < 5.0e-14 ? 0.0 : tHostSolution(tIndexI, tIndexJ);
             TEST_FLOATING_EQUALITY(tValue, tGold[tIndexI][tIndexJ], tTolerance);
         }
     }

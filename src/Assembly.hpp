@@ -1299,7 +1299,7 @@ inline void assemble_jacobian(Plato::OrdinalType aNumCells,
 *
 *******************************************************************************/
 template<class MatrixEntriesOrdinal, class ReturnVal>
-inline void assemble_jacobian_transpose_2(Plato::OrdinalType aNumCells,
+inline void assemble_jacobian_transpose_pod(Plato::OrdinalType aNumCells,
                               Plato::OrdinalType aNumRowsPerCell,
                               Plato::OrdinalType aNumColumnsPerCell,
                               const MatrixEntriesOrdinal &aMatrixEntryOrdinal,

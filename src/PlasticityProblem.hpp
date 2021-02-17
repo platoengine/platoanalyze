@@ -434,7 +434,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
     }
 
@@ -466,7 +467,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
 
     }
@@ -499,7 +501,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
     }
 
@@ -537,7 +540,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
     }
 
@@ -603,7 +607,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
 
     }
@@ -640,7 +645,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
     }
 
