@@ -8886,7 +8886,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
       6.898296e-03, 2.266167e-02, 3.563244e-02, 1.129117e-01, 1.519040e-01, 3.731144e-01,
       2.325776e-01, 4.197060e-02, 6.356792e-02, 2.115928e-02, 7.908880e-03, 3.050671e-03,
       4.394201e-03, 7.350702e-03, 1.146635e-02, 6.443506e-03, 1.890785e-02, 1.827038e-02 };
-    auto tNumPressDofs = tPressSubView.size();
     for(auto& tGoldPress : tGoldPressure)
     {
         auto tDof = &tGoldPress - &tGoldPressure[0];
@@ -8911,7 +8910,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
           0.000000e+00, 0.000000e+00, -3.003773e-02, -1.087609e-02, -1.023158e-01, -9.410034e-02,
           -1.142110e-01, -4.599828e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
           7.111933e-02, -1.348906e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00 };
-    auto tNumVelDofs = tVelSubView.size();
     for(auto& tGoldVel : tGoldVelocity)
     {
         auto tDof = &tGoldVel - &tGoldVelocity[0];
@@ -9071,7 +9069,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
           -1.578797e-03, 4.713658e-03, -6.986284e-03, 8.882305e-02, 1.277841e-01, 3.863289e-01,
           1.952344e-01, 1.181027e-02, 2.533018e-02, 2.192144e-02, -2.588920e-03, 4.289334e-03,
           4.061401e-03, 6.653193e-04, 6.831889e-03, 3.598375e-03, 2.037281e-02, 1.476802e-02 };
-    auto tNumPressDofs = tPressSubView.size();
     for(auto& tGoldPress : tGoldPressure)
     {
         auto tDof = &tGoldPress - &tGoldPressure[0];
@@ -9096,7 +9093,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
           0.000000e+00, 0.000000e+00, 7.679686e-02, 3.779762e-02, -4.002098e-03, -8.364413e-03,
           -6.939600e-02, -5.700533e-03, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
           8.581847e-02, 1.703641e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00 };
-    auto tNumVelDofs = tVelSubView.size();
     for(auto& tGoldVel : tGoldVelocity)
     {
         auto tDof = &tGoldVel - &tGoldVelocity[0];
