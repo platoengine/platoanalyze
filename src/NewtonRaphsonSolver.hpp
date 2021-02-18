@@ -167,7 +167,6 @@ private:
     {
         const Plato::Scalar tAlpha = 1.0;
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStates.mDeltaGlobalState);
-        //Plato::Solve::Consistent<mNumGlobalDofsPerNode>(aMatrix, aStates.mDeltaGlobalState, aResidual, mUseAbsoluteTolerance);
         if (mLinearSolver == nullptr)
             THROWERR("Linear solver object not initialized.")
         mLinearSolver->solve(*aMatrix, aStates.mDeltaGlobalState, aResidual);
