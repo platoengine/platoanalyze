@@ -8116,7 +8116,7 @@ private:
         if(aInputs.isSublist("Time Integration"))
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.7);
+            mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.9);
             mMaxSteadyStateIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Iterations", 2000);
         }
     }
@@ -8255,8 +8255,8 @@ private:
     {
         bool tStop = false;
         const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
-        const auto tCriterionValue = this->calculateVelocityMisfitNorm(aVariables);
-        //const auto tCriterionValue = this->calculatePressureMisfitNorm(aVariables);
+        //const auto tCriterionValue = this->calculateVelocityMisfitNorm(aVariables);
+        const auto tCriterionValue = this->calculatePressureMisfitNorm(aVariables);
         aVariables.scalar("current steady state criterion", tCriterionValue);
         this->printSteadyStateCriterion(aVariables);
 
