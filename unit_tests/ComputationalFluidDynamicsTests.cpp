@@ -1956,6 +1956,22 @@ public:
 // struct WorkSetBuilder
 
 
+
+/***************************************************************************//**
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ * \tparam PhysicsT    fluid flow physics type
+ *
+ * \fn inline void build_scalar_function_worksets
+ *
+ * \brief Build metadata work sets used for the evaluation of a scalar function for fluid flow applications.
+ *
+ * \param [in] aDomain    computational domain metadata ( e.g. mesh and entity sets)
+ * \param [in] aControls  1D array of control field
+ * \param [in] aVariables state metadata (e.g. pressure, velocity, temperature, etc.)
+ * \param [in] aMaps      holds maps from element to local field degrees of freedom
+ *
+ * \param [in/out] aWorkSets state work sets initialize with the correct FAD type
+ ******************************************************************************/
 template
 <typename EvaluationT,
  typename PhysicsT>
@@ -2004,7 +2020,24 @@ build_scalar_function_worksets
     tWorkSetBuilder.buildConfigWorkSet(aDomain, aMaps.mNodeCoordinate, tConfig->mData);
     aWorkSets.set("configuration", tConfig);
 }
+// function build_scalar_function_worksets
 
+
+/***************************************************************************//**
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ * \tparam PhysicsT    fluid flow physics type
+ *
+ * \fn inline void build_scalar_function_worksets
+ *
+ * \brief Build metadata work sets used for the evaluation of a scalar function for fluid flow applications.
+ *
+ * \param [in] aNumCells  total number of cells
+ * \param [in] aControls  1D array of control field
+ * \param [in] aVariables state metadata (e.g. pressure, velocity, temperature, etc.)
+ * \param [in] aMaps      holds maps from element to local field degrees of freedom
+ *
+ * \param [in/out] aWorkSets state work sets initialize with the correct FAD type
+ ******************************************************************************/
 template
 <typename EvaluationT,
  typename PhysicsT>
@@ -2052,7 +2085,24 @@ build_scalar_function_worksets
     tWorkSetBuilder.buildConfigWorkSet(aNumCells, aMaps.mNodeCoordinate, tConfig->mData);
     aWorkSets.set("configuration", tConfig);
 }
+// function build_scalar_function_worksets
 
+
+/***************************************************************************//**
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ * \tparam PhysicsT    fluid flow physics type
+ *
+ * \fn inline void build_vector_function_worksets
+ *
+ * \brief Build metadata work sets used for the evaluation of a vector function for fluid flow applications.
+ *
+ * \param [in] aDomain    computational domain metadata ( e.g. mesh and entity sets)
+ * \param [in] aControls  1D array of control field
+ * \param [in] aVariables state metadata (e.g. pressure, velocity, temperature, etc.)
+ * \param [in] aMaps      holds maps from element to local field degrees of freedom
+ *
+ * \param [in/out] aWorkSets state work sets initialize with the correct FAD type
+ ******************************************************************************/
 template
 <typename EvaluationT,
  typename PhysicsT>
@@ -2135,7 +2185,24 @@ build_vector_function_worksets
         aWorkSets.set("artificial compressibility", tArtificialCompressWS);
     }
 }
+// function build_vector_function_worksets
 
+
+/***************************************************************************//**
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ * \tparam PhysicsT    fluid flow physics type
+ *
+ * \fn inline void build_vector_function_worksets
+ *
+ * \brief Build metadata work sets used for the evaluation of a vector function for fluid flow applications.
+ *
+ * \param [in] aNumCells  total number of cells/elements in the domain
+ * \param [in] aControls  1D array of control field
+ * \param [in] aVariables state metadata (e.g. pressure, velocity, temperature, etc.)
+ * \param [in] aMaps      holds maps from element to local field degrees of freedom
+ *
+ * \param [in/out] aWorkSets state work sets initialize with the correct FAD type
+ ******************************************************************************/
 template
 <typename EvaluationT,
  typename PhysicsT>
@@ -2216,15 +2283,23 @@ build_vector_function_worksets
         aWorkSets.set("artificial compressibility", tArtificialCompressWS);
     }
 }
+// function build_vector_function_worksets
 
 
 
-// todo: abstract scalar function
+/***************************************************************************//**
+ * \tparam PhysicsT    Plato physics type
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ *
+ * \class AbstractScalarFunction
+ *
+ * \brief Base pure virtual class for Plato scalar functions.
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class AbstractScalarFunction
 {
 private:
-    using ResultT = typename EvaluationT::ResultScalarType;
+    using ResultT = typename EvaluationT::ResultScalarType; /*!< result FAD type */
 
 public:
     AbstractScalarFunction(){}
@@ -2236,6 +2311,20 @@ public:
 };
 // class AbstractScalarFunction
 
+
+/***************************************************************************//**
+ * \tparam PhysicsT    Plato physics type
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ *
+ * \class AverageSurfacePressure
+ *
+ * \brief Includes functionalities to evaluate the average surface pressure
+ *   along a set of user-provided surfaces.
+ *
+ *                  \f$ \int_{\Gamma} p^n d\Gamma \f$,
+ *
+ * where \f$ n \f$ denotes the current time step and \f$ p \f$ denotes pressure.
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class AverageSurfacePressure : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
 {
@@ -2245,23 +2334,30 @@ private:
     static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
     static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of pressure dofs per node */
 
-    using ResultT   = typename EvaluationT::ResultScalarType;
-    using ConfigT   = typename EvaluationT::ConfigScalarType;
-    using PressureT = typename EvaluationT::CurrentMassScalarType;
+    using ResultT   = typename EvaluationT::ResultScalarType;      /*!< result FAD type */
+    using ConfigT   = typename EvaluationT::ConfigScalarType;      /*!< configuration FAD type */
+    using PressureT = typename EvaluationT::CurrentMassScalarType; /*!< pressure FAD type */
 
     // set local typenames
-    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
+    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>; /*!< local short name for cubature rule class */
 
     // member metadata
-    Plato::DataMap& mDataMap;
-    CubatureRule mCubatureRule;
-    const Plato::SpatialDomain& mSpatialDomain;
+    Plato::DataMap& mDataMap; /*!< holds output metadata */
+    CubatureRule mCubatureRule; /*!< cubature integration rule */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata */
 
     // member parameters
-    std::string mFuncName;
-    std::vector<std::string> mSideSets;
+    std::string mFuncName; /*!< scalar funciton name */
+    std::vector<std::string> mSideSets; /*!< sideset names corresponding to the surfaces associated with the surface integral */
 
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aName    scalar function name
+     * \param [in] aDomain  holds mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in] aDataMap holds output metadata
+     * \param [in] aInputs  input file metadata
+     ******************************************************************************/
     AverageSurfacePressure
     (const std::string          & aName,
      const Plato::SpatialDomain & aDomain,
@@ -2276,13 +2372,33 @@ public:
         mSideSets = Plato::parse_array<std::string>("Sides", tMyCriteria);
     }
 
+    /***************************************************************************//**
+     * \brief Destructor
+     ******************************************************************************/
     virtual ~AverageSurfacePressure(){}
 
+    /***************************************************************************//**
+     * \fn std::string name
+     * \brief Returns scalar function name
+     * \return scalar function name
+     ******************************************************************************/
     std::string name() const override { return mFuncName; }
 
+    /***************************************************************************//**
+     * \fn void evaluate
+     * \brief Evaluate scalar function inside the computational domain \f$ \Omega \f$.
+     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
+     * \param [in] aResult   1D output work set of size number of cells
+     ******************************************************************************/
     void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
     { return; }
 
+    /***************************************************************************//**
+     * \fn void evaluateBoundary
+     * \brief Evaluate scalar function along the computational boudary \f$ d\Gamma \f$.
+     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
+     * \param [in] aResult   1D output work set of size number of cells
+     ******************************************************************************/
     void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
     {
         // set face to element graph
@@ -2356,6 +2472,20 @@ public:
 };
 // class AverageSurfacePressure
 
+
+/***************************************************************************//**
+ * \tparam PhysicsT    Plato physics type
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ *
+ * \class AverageSurfaceTemperature
+ *
+ * \brief Includes functionalities to evaluate the average surface temperature
+ *   along a set of user-provided surfaces.
+ *
+ *                  \f$ \int_{\Gamma} T^n d\Gamma \f$,
+ *
+ * where \f$ n \f$ denotes the current time step and \f$ T \f$ denotes temperature.
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class AverageSurfaceTemperature : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
 {
@@ -2365,23 +2495,30 @@ private:
     static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
     static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of temperature dofs per node */
 
-    using TempT    = typename EvaluationT::CurrentEnergyScalarType;
-    using ResultT  = typename EvaluationT::ResultScalarType;
-    using ConfigT  = typename EvaluationT::ConfigScalarType;
+    using TempT    = typename EvaluationT::CurrentEnergyScalarType; /*!< temperature FAD type */
+    using ResultT  = typename EvaluationT::ResultScalarType;        /*!< result FAD type */
+    using ConfigT  = typename EvaluationT::ConfigScalarType;        /*!< configuration FAD type */
 
     // set local typenames
-    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>;
+    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>; /*!< local short name for cubature rule class */
 
     // member metadata
-    Plato::DataMap& mDataMap;
-    CubatureRule mCubatureRule;
-    const Plato::SpatialDomain& mSpatialDomain;
+    Plato::DataMap& mDataMap; /*!< holds output metadata */
+    CubatureRule mCubatureRule; /*!< cubature integration rule */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata */
 
     // member parameters
-    std::string mFuncName;
-    std::vector<std::string> mWallSets;
+    std::string mFuncName; /*!< scalar funciton name */
+    std::vector<std::string> mWallSets; /*!< sideset names corresponding to the surfaces associated with the surface integral */
 
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aName    scalar function name
+     * \param [in] aDomain  holds mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in] aDataMap holds output metadata
+     * \param [in] aInputs  input file metadata
+     ******************************************************************************/
     AverageSurfaceTemperature
     (const std::string          & aName,
      const Plato::SpatialDomain & aDomain,
@@ -2396,13 +2533,33 @@ public:
         mWallSets = Plato::parse_array<std::string>("Sides", tMyCriteria);
     }
 
+    /***************************************************************************//**
+     * \brief Destructor
+     ******************************************************************************/
     virtual ~AverageSurfaceTemperature(){}
 
+    /***************************************************************************//**
+     * \fn std::string name
+     * \brief Returns scalar function name
+     * \return scalar function name
+     ******************************************************************************/
     std::string name() const override { return mFuncName; }
 
+    /***************************************************************************//**
+     * \fn void evaluate
+     * \brief Evaluate scalar function inside the computational domain \f$ \Omega \f$.
+     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
+     * \param [in] aResult   1D output work set of size number of cells
+     ******************************************************************************/
     void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
     { return; }
 
+    /***************************************************************************//**
+     * \fn void evaluateBoundary
+     * \brief Evaluate scalar function along the computational boudary \f$ d\Gamma \f$.
+     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
+     * \param [in] aResult   1D output work set of size number of cells
+     ******************************************************************************/
     void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
     {
         // set face to element graph
@@ -2478,6 +2635,27 @@ public:
 // class AverageSurfaceTemperature
 
 
+/***************************************************************************//**
+ * \tparam NumNodesPerCell number of nodes per cell (integer)
+ * \tparam ControlT control work set Forward Automatic Differentiation (FAD) type
+ *
+ * \fn DEVICE_TYPE inline ControlT brinkman_penalization
+ *
+ * \brief Evaluate fictitious material penalty model.
+ *
+ * \f$  \alpha\frac{\left( 1 - \rho \right)}{1 + \epsilon\rho} \f$
+ *
+ * where \f$ \alpha \f$ denotes a scalar physical parameter, \f$ \rho \f$ denotes
+ * the fictitious density field used to depict the geometry, and \f$ \epsilon \f$
+ * is a parameter used to improve the convexity of the Brinkman penalization model.
+ *
+ * \param [in] aCellOrdinal    element/cell ordinal
+ * \param [in] aPhysicalParam  physical parameter to be penalized
+ * \param [in] aConvexityParam Brinkman model's convexity parameter
+ * \param [in] aControlWS      2D control work set
+ *
+ * \return penalized physical parameter
+ ******************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
 DEVICE_TYPE inline ControlT
 brinkman_penalization
@@ -2491,6 +2669,7 @@ brinkman_penalization
         / (static_cast<Plato::Scalar>(1.0) + (aConvexityParam * tDensity));
     return tPenalizedPhysicalParam;
 }
+// function brinkman_penalization
 
 // calculate strain rate for incompressible flows, which is defined as
 // \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
