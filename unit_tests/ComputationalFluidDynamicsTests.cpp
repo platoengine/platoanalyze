@@ -3645,33 +3645,17 @@ integrate_stabilizing_vector_force
 }
 // function integrate_stabilizing_vector_force
 
-
-template
-<Plato::OrdinalType NumNodesPerCell,
- Plato::OrdinalType NumDofPerNode,
- typename ResultT>
-DEVICE_TYPE inline void
-apply_time_step
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::Scalar & aMultiplier,
- const Plato::ScalarVector & aCriticalTimeStep,
- const Plato::ScalarMultiVectorT<ResultT> & aResult,
- Plato::Scalar aPower = 1.0)
-{
-    const auto& tCriticalTimeStep = aCriticalTimeStep(0);
-    for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
-    {
-        for(Plato::OrdinalType tDof = 0; tDof < NumDofPerNode; tDof++)
-        {
-            auto tLocalCellDof = (NumDofPerNode * tNode) + tDof;
-            aResult(aCellOrdinal, tLocalCellDof) *= pow(tCriticalTimeStep, aPower) * aMultiplier;
-        }
-    }
-}
-
 /***************************************************************************//**
- * \fn device_type void integrate_momentum_inertial_forces
- * \brief Integrate momentum inertial forces, which are defined as
+ * \tparam NumNodes number of nodes in cell/element (integer)
+ * \tparam SpaceDim spatial dimensions (integer)
+ * \tparam ResultT  output work set Forward Automatic Differentiation (FAD) type
+ * \tparam ConfigT  configuration work set FAD type
+ * \tparam PredVelT previous velocity work set FAD type
+ * \tparam PrevVelT predicted velocity work set FAD type
+ *
+ * \fn device_type inline void integrate_momentum_inertial_forces
+ *
+ * \brief Integrate momentum inertial forces, defined as
  *
  * Predictor Step:
  * \f[
@@ -3715,19 +3699,38 @@ integrate_momentum_inertial_forces
         }
     }
 }
+// function integrate_momentum_inertial_forces
 
+/***************************************************************************//**
+ * \tparam NumNodesPerCell number of nodes in cell/element (integer)
+ * \tparam NumDofsPerNode  number of degrees of freedom per node (integer)
+ * \tparam ResultT         output work set Forward Automatic Differentiation (FAD) type
+ * \tparam ConfigT         configuration work set FAD type
+ * \tparam FieldT          vector field work set FAD type
+ *
+ * \fn device_type inline void integrate_vector_field
+ *
+ * \brief Integrate vector field, defined as
+ *
+ * \f[
+ *   \alpha\int_{\Omega} w_i^h f_i d\Omega
+ * \f]
+ *
+ * where \f$\alpha\f$ denotes a scalar multiplier.
+ *
+ ******************************************************************************/
 template
 <Plato::OrdinalType NumNodesPerCell,
  Plato::OrdinalType NumDofsPerNode,
  typename ResultT,
  typename ConfigT,
- typename ForceT>
+ typename FieldT>
 DEVICE_TYPE inline
 void integrate_vector_field
 (const Plato::OrdinalType & aCellOrdinal,
  const Plato::ScalarVector & aBasisFunctions,
  const Plato::ScalarVectorT<ConfigT> & aCellVolume,
- const Plato::ScalarMultiVectorT<ForceT> & aField,
+ const Plato::ScalarMultiVectorT<FieldT> & aField,
  const Plato::ScalarMultiVectorT<ResultT> & aResult,
  Plato::Scalar aMultiplier = 1.0)
 {
@@ -3741,8 +3744,16 @@ void integrate_vector_field
         }
     }
 }
+// function integrate_vector_field
 
 
+/***************************************************************************//**
+ * \fn inline Plato::Scalar dimensionless_reynolds_number
+ *
+ * \brief Parse Reynolds number from input file.
+ * \param [in] aInputs input file metadata
+ * \return Reynolds number
+ ******************************************************************************/
 inline Plato::Scalar
 dimensionless_reynolds_number
 (Teuchos::ParameterList & aInputs)
@@ -3755,7 +3766,15 @@ dimensionless_reynolds_number
     auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
     return tReNum;
 }
+// function dimensionless_reynolds_number
 
+/***************************************************************************//**
+ * \fn inline Plato::Scalar dimensionless_prandtl_number
+ *
+ * \brief Parse Prandtl number from input file.
+ * \param [in] aInputs input file metadata
+ * \return Prandtl number
+ ******************************************************************************/
 inline Plato::Scalar
 dimensionless_prandtl_number
 (Teuchos::ParameterList & aInputs)
@@ -3768,7 +3787,15 @@ dimensionless_prandtl_number
     auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
     return tPrNum;
 }
+// function dimensionless_prandtl_number
 
+/***************************************************************************//**
+ * \fn inline std::string heat_transfer_tag
+ *
+ * \brief Parse heat transfer mechanism tag from input file.
+ * \param [in] aInputs input file metadata
+ * \return heat transfer mechanism tag
+ ******************************************************************************/
 inline std::string heat_transfer_tag
 (Teuchos::ParameterList & aInputs)
 {
@@ -3781,7 +3808,15 @@ inline std::string heat_transfer_tag
     auto tHeatTransfer = Plato::tolower(tTag);
     return tHeatTransfer;
 }
+// function heat_transfer_tag
 
+/***************************************************************************//**
+ * \fn inline bool calculate_heat_transfer
+ *
+ * \brief Returns true if buoyancy forces are part of the calculations, else, returns false.
+ * \param [in] aInputs input file metadata
+ * \return boolean (true or false)
+ ******************************************************************************/
 inline bool calculate_heat_transfer
 (Teuchos::ParameterList & aInputs)
 {   
@@ -3789,7 +3824,17 @@ inline bool calculate_heat_transfer
     auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
     return tCalculateHeatTransfer;
 }
+// function calculate_heat_transfer
 
+/***************************************************************************//**
+ * \fn inline Plato::Scalar dimensionless_viscosity_constant
+ *
+ * \brief Parse dimensionless viscocity \f$ \nu f\$, where \f$ \nu=\frac{1}{Re} f\$
+ * if forced convection dominates and \f$ \nu=Pr \f$ is natural convection dominates.
+ *
+ * \param [in] aInputs input file metadata
+ * \return dimensionless viscocity
+ ******************************************************************************/
 inline Plato::Scalar
 dimensionless_viscosity_constant
 (Teuchos::ParameterList & aInputs)
@@ -3811,7 +3856,17 @@ dimensionless_viscosity_constant
         THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
     }
 }
+// function dimensionless_viscosity_constant
 
+/***************************************************************************//**
+ * \fn inline Plato::Scalar dimensionless_buoyancy_constant
+ *
+ * \brief Parse dimensionless buoyancy constant \f$ \beta f\$, where \f$ \beta=\frac{1}{Re^2} f\$
+ * if forced convection dominates and \f$ \nu=Pr^2 \f$ is natural convection dominates.
+ *
+ * \param [in] aInputs input file metadata
+ * \return dimensionless buoyancy constant
+ ******************************************************************************/
 inline Plato::Scalar
 dimensionless_buoyancy_constant
 (Teuchos::ParameterList & aInputs)
@@ -3819,7 +3874,7 @@ dimensionless_buoyancy_constant
     Plato::Scalar tBuoyancy = 0.0; // heat transfer calculations inactive if buoyancy = 0.0
 
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
-    if(tHeatTransfer == "forced")
+    if(tHeatTransfer == "forced" || tHeatTransfer == "none")
     {
         auto tReNum = Plato::Fluids::dimensionless_reynolds_number(aInputs);
         tBuoyancy = static_cast<Plato::Scalar>(1) / (tReNum*tReNum);
@@ -3837,7 +3892,17 @@ dimensionless_buoyancy_constant
 
     return tBuoyancy;
 }
+// function dimensionless_buoyancy_constant
 
+/***************************************************************************//**
+ * \fn inline Plato::Scalar stabilization_constant
+ *
+ * \brief Parse stabilization constant, which is used to enable or disable
+ * the stabilization forcing term.
+ *
+ * \param [in] aInputs input file metadata
+ * \return stabilization constant
+ ******************************************************************************/
 inline Plato::Scalar 
 stabilization_constant
 (Teuchos::ParameterList & aInputs)
@@ -3856,8 +3921,19 @@ stabilization_constant
     }
     return tOutput;
 }
+// function stabilization_constant
 
-template<Plato::OrdinalType NumSpaceDim>
+/***************************************************************************//**
+ * \tparam SpaceDim spatial dimensions (integer)
+ *
+ * \fn inline Plato::ScalarVector dimensionless_grashof_number
+ *
+ * \brief Parse array of dimensionless Grashof constants.
+ *
+ * \param [in] aInputs input file metadata
+ * \return stabilization constant
+ ******************************************************************************/
+template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
 dimensionless_grashof_number
 (Teuchos::ParameterList & aInputs)
@@ -3872,19 +3948,19 @@ dimensionless_grashof_number
     auto tHeatTransfer = Plato::tolower(tTag);
     auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
 
-    Plato::ScalarVector tOuput("Grashof Number", NumSpaceDim);
+    Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
     if(tCalculateHeatTransfer)
     {
         auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
-        if(tGrNum.size() != NumSpaceDim)
+        if(tGrNum.size() != SpaceDim)
         {
             THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
                 + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
-                + std::to_string(NumSpaceDim) + "'.")
+                + std::to_string(SpaceDim) + "'.")
         }
 
         auto tHostGrNum = Kokkos::create_mirror(tOuput);
-        for(Plato::OrdinalType tDim = 0; tDim < NumSpaceDim; tDim++)
+        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
         {
             tHostGrNum(tDim) = tGrNum[tDim];
         }
@@ -3897,6 +3973,7 @@ dimensionless_grashof_number
 
     return tOuput;
 }
+// function dimensionless_grashof_number
 
 
 
@@ -3914,10 +3991,10 @@ dimensionless_grashof_number
 /***************************************************************************//**
  * \class VelocityPredictorResidual
  *
- * \tparam PhysicsT    physics type
- * \tparam EvaluationT forward automatic differentiation evaluation type
+ * \tparam PhysicsT    fluid flow physics type
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
  *
- * \brief Calculate the momentum predictor residual, which is defined as
+ * \brief Evaluate momentum predictor residual, defined as
  *
  * \f[
  *   \mathcal{R}^n_i(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) - E_i^n(w^h_i) = 0.
@@ -3934,34 +4011,29 @@ dimensionless_grashof_number
  *
  * \f[
  *   F^n_i(w^h_i) =
- *     -\int_{\Omega}w_i^h\left( \frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n
- *     +\bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \right) d\Omega
- *     -\int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
- *     +\int_\Omega w_i^h\left(Gr_i Pr^2\bar{T}^n\right)\,d\Omega
+ *     - \int_{\Omega} w_i^h\left( \bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \right) d\Omega
+ *     - \int_{\Omega} \frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
+ *     + \int_\Omega w_i^h\left(Gr_i Pr^2\bar{T}^n\right)\,d\Omega
  * \f]
  *
  * Stabilizing Forces:
  *
  * \f[
  *   S_i^n(w^h_i) =
- *     \frac{\Delta\bar{t}}{2}\left[ \int_{\Omega} \left( \frac{\partial w_i^h}
- *     {\partial\bar{x}_k}\bar{u}^n_k + w_i^h\frac{\partial \bar{u}^n_k}
- *     {\partial\bar{x}_k} \right) \hat{F}^n_{\bar{u}_i}\, d\Omega \right]
+ *     \frac{\Delta\bar{t}}{2}\left[ \int_{\Omega} \frac{\partial w_i^h}{\partial\bar{x}_k}
+ *     \left( \bar{u}^n_k \hat{F}^n_{\bar{u}_i} \right) d\Omega \right]
  * \f]
  *
  * where
  *
  * \f[
- *   \hat{F}^n_{\bar{u}_i} = -\frac{\partial\bar{u}_j^n}{\partial \bar{x}_j}\bar{u}_i^n
- *     - \bar{u}_j^n\frac{\partial\bar{u}_i^n}{\partial \bar{x}_j} + Gr_i Pr^2\bar{T}^n
+ *   \hat{F}^n_{\bar{u}_i} = -\bar{u}_j^n \frac{\partial\bar{u}_i^n}{\partial \bar{x}_j} + Gr_i Pr^2\bar{T}^n
  * \f]
  *
  * External Forces:
  *
  * \f[
- *   E_i^n(w^h_i) =
- *     \int_{\Gamma-\Gamma_t}w_i^h\bar{\tau}^n_{ij}n_j\,d\Gamma
- *     + \int_{\Gamma_t}w_i^h\left( t_i+\bar{p}^{n}n_i \right)\,d\Gamma
+ *   E_i^n(w^h_i) = \int_{\Gamma-\Gamma_t}w_i^h\bar{\tau}^n_{ij}n_j\,d\Gamma
  * \f]
  *
  ******************************************************************************/
@@ -3981,16 +4053,16 @@ private:
     static constexpr auto mNumConfigDofsPerCell = PhysicsT::SimplexT::mNumConfigDofsPerCell;   /*!< number of configuration degrees of freedom per cell */
 
     // set local ad types
-    using ResultT   = typename EvaluationT::ResultScalarType;
-    using ConfigT   = typename EvaluationT::ConfigScalarType;
-    using ControlT  = typename EvaluationT::ControlScalarType;
-    using PrevVelT  = typename EvaluationT::PreviousMomentumScalarType;
-    using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;
-    using PredVelT  = typename EvaluationT::MomentumPredictorScalarType;
+    using ResultT   = typename EvaluationT::ResultScalarType; /*!< result FAD type */
+    using ConfigT   = typename EvaluationT::ConfigScalarType; /*!< configuration FAD type */
+    using ControlT  = typename EvaluationT::ControlScalarType; /*!< control FAD type */
+    using PrevVelT  = typename EvaluationT::PreviousMomentumScalarType; /*!< previous velocity FAD type */
+    using PrevTempT = typename EvaluationT::PreviousEnergyScalarType; /*!< previous temperature FAD type */
+    using PredVelT  = typename EvaluationT::MomentumPredictorScalarType; /*!< predicted velocity FAD type */
 
-    using AdvectionT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
-    using PredStrainT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PredVelT, ConfigT>;
-    using PrevStrainT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>;
+    using AdvectionT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>; /*!< advection force FAD type */
+    using PredStrainT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PredVelT, ConfigT>; /*!< predicted strain rate FAD type */
+    using PrevStrainT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>; /*!< previous strain rate FAD type */
 
     Plato::DataMap& mDataMap; /*!< output database */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
@@ -4008,6 +4080,13 @@ private:
     bool mCalculateThermalBuoyancyForces = false; /*!< indicator to determine if thermal buoyancy forces will be considered in calculations */
 
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aDomain  holds mesh and entity sets (e.g. node and side sets)
+     *   metadata for this spatial domain (e.g. element block)
+     * \param [in] aDataMap holds output metadata
+     * \param [in] aInputs  input file metadata
+     ******************************************************************************/
     VelocityPredictorResidual
     (const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
@@ -4022,62 +4101,16 @@ public:
         mStabilization = Plato::Fluids::stabilization_constant(aInputs);
     }
 
+    /***************************************************************************//**
+     * \brief Destructor
+     ******************************************************************************/
     virtual ~VelocityPredictorResidual(){}
 
     /***************************************************************************//**
      * \fn void evaluate
-     * \brief Evaluate the total internal forces, which are given by the sum of the
-     *   inertial, internal, and stabilizing forces. The internal and stabilizing forces are
-     *   respectively calculated as follows:
-     *
-     * Inertial:
-     *
-     * \f[
-     *   I^n_i(w^h_i) =
-     *     \int_{\Omega}w_i^h\left(\frac{\bar{u}^{\ast}_i - \bar{u}_i^{n}}{\Delta\bar{t}}\right)d\Omega
-     * \f]
-     *
-     * Internal:
-     *
-     * \f[
-     *   F^n_i(w^h_i) =
-     *     -\int_{\Omega}w_i^h\left( \frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n
-     *     +\bar{u}_j^n\frac{\partial \bar{u}_i^n}{\partial\bar{x}_j} \right) d\Omega
-     *     -\int_{\Omega}\frac{\partial w_i^h}{\partial\bar{x}_j}\bar\tau_{ij}^n\,d\Omega
-     *     +\int_\Omega w_i^h\left(Gr_i Pr^2\bar{T}^n\right)\,d\Omega
-     * \f]
-     *
-     * Stabilizing:
-     *
-     * \f[
-     *   S_i^n(w^h_i) =
-     *     \frac{\Delta\bar{t}}{2}\left[ \int_{\Omega} \left( \frac{\partial w_i^h}
-     *     {\partial\bar{x}_k}\bar{u}^n_k + w_i^h\frac{\partial \bar{u}^n_k}
-     *     {\partial\bar{x}_k} \right) \hat{F}^n_{\bar{u}_i}\, d\Omega \right]
-     * \f]
-     *
-     * where
-     *
-     * \f[
-     *   \hat{F}^n_{\bar{u}_i} =
-     *     -\frac{\partial\bar{u}_j^n}{\partial \bar{x}_j}\bar{u}_i^n
-     *     - \bar{u}_j^n\frac{\partial\bar{u}_i^n}{\partial \bar{x}_j}
-     *     + Gr_i Pr^2\bar{T}^n
-     * \f]
-     *
-     * Finally, the internal momentum corrector residual is given by
-     *
-     * \f[
-     *   \hat{R}_i^n(w^h_i) = I^n_i(w^h_i) - F^n_i(w^h_i) - S_i^n(w^h_i) = 0.
-     * \f]
-     *
-     * In the equations presented above \f$ \alpha \f$ denotes a scalar multiplier,
-     * \f$ w_i^h \f$ are the test functions, \f$ \Delta\bar{t} \f$ denotes the current
-     * time step, \f$ \bar{\tau}^n_{ij} \f$ is the second order deviatoric stress tensor,
-     * \f$ \bar{u}^{\ast}_i \f$ is the current momentum (i.e. velocity) predictor,
-     * \f$ \bar{u}_i^{n} \f$ is the previous velocity, and \f$ n_i \f$ is the unit
-     * normal vector.
-     *
+     * \brief Evaluate predictor residual.
+     * \param [in]  aWorkSets holds state work sets
+     * \param [out] aResultWS result work sets
      ******************************************************************************/
     void evaluate
     (const Plato::WorkSets & aWorkSets,
@@ -4195,16 +4228,10 @@ public:
 
    /***************************************************************************//**
     * \fn void evaluateBoundary
-    * \brief Evaluate deviatoric traction forces on non-traction boundary, which are defined as
-    *
-    * \f[
-    *   \alpha\Delta\bar{t}\int_{\Gamma-\Gamma_t}w_i^h\bar{\tau}^n_{ij}n_j\,d\Gamma
-    * \f]
-    *
-    * where \f$ \alpha \f$ denotes a scalar multiplier, \f$ w_i^h \f$ are the test
-    * functions, \f$ \Delta\bar{t} \f$ denotes the current time step, \f$ \bar{\tau}^n_{ij} \f$
-    * is the second order deviatoric stress tensor, and \f$ n_i \f$ is the unit normal vector.
-    *
+    * \brief Evaluate non-prescribed boundary forces.
+    * \param [in]  aSpatialModel holds mesh and entity sets (e.g. node and side sets) metadata
+    * \param [in]  aWorkSets     holds state work sets
+    * \param [out] aResultWS     result work sets
     ******************************************************************************/
    void evaluateBoundary
    (const Plato::SpatialModel & aSpatialModel,
@@ -4215,17 +4242,10 @@ public:
 
    /***************************************************************************//**
     * \fn void evaluatePrescribed
-    * \brief Evaluate prescribed deviatoric traction forces, which are defined as
-    *
-    * \f[
-    *   \alpha\Delta\bar{t}\int_{\Gamma_t}w_i^h\left( t_i+\bar{p}^{n}n_i \right)\,d\Gamma
-    * \f]
-    *
-    * where \f$\alpha\f$ denotes a scalar multiplier, \f$\Delta\bar{t}\f$ denotes
-    * the current time step, \f${t}_i\f$ is the i-th component of the prescribed
-    * traction force, \f${p}^{n}\f$ is the previous pressure, and \f${n}_{i}\f$ is
-    * the unit normal vector.
-    *
+    * \brief Evaluate prescribed boundary forces.
+    * \param [in]  aSpatialModel holds mesh and entity sets (e.g. node and side sets) metadata
+    * \param [in]  aWorkSets     holds state work sets
+    * \param [out] aResultWS     result work sets
     ******************************************************************************/
    void evaluatePrescribed
    (const Plato::SpatialModel & aSpatialModel,
@@ -4256,6 +4276,11 @@ public:
    }
 
 private:
+   /***************************************************************************//**
+    * \fn void setDimensionlessConstants
+    * \brief Set dimnesionless constants, e.g. Reynolds number.
+    * \param [in] aInputs  input file metadata
+    ******************************************************************************/
    void setDimensionlessConstants(Teuchos::ParameterList & aInputs)
    {
        mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
@@ -4267,6 +4292,11 @@ private:
        }
    }
 
+   /***************************************************************************//**
+    * \fn void setAritificalViscousDamping
+    * \brief Set artificial viscous damping, which is a parameter associated to the time integration scheme.
+    * \param [in] aInputs  input file metadata
+    ******************************************************************************/
    void setAritificalViscousDamping(Teuchos::ParameterList& aInputs)
    {
        if(aInputs.isSublist("Time Integration"))
@@ -4276,6 +4306,11 @@ private:
        }
    }
 
+   /***************************************************************************//**
+    * \fn void setNaturalBoundaryConditions
+    * \brief Set natural boundary conditions if defined by the user.
+    * \param [in] aInputs  input file metadata
+    ******************************************************************************/
    void setNaturalBoundaryConditions(Teuchos::ParameterList& aInputs)
    {
        if(aInputs.isSublist("Momentum Natural Boundary Conditions"))
@@ -11956,43 +11991,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateInertialForces)
         }
     }
     //Plato::print_array_2D(tResult, "inertial forces");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MultiplyTimeStep)
-{
-    // set input data for unit test
-    constexpr auto tNumCells = 2;
-    constexpr auto tSpaceDims = 2;
-    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
-    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
-    Plato::ScalarMultiVector tResult("result", tNumCells, tNumDofsPerCell);
-    Plato::blas2::fill(1.0, tResult);
-    Plato::ScalarVector tTimeStep("time step", 1);
-    auto tHostTimeStep = Kokkos::create_mirror(tTimeStep);
-    tHostTimeStep(0) = 1;
-    Kokkos::deep_copy(tTimeStep, tHostTimeStep);
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        Plato::Fluids::apply_time_step<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, 0.5, tTimeStep, tResult);
-    }, "unit test apply_time_step");
-
-    // TODO: FIX DUE TO CRITICAL TIME STEP CHANGES
-    auto tTol = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold =
-        {{0.5,0.5,1.0,1.0,1.5,1.5},{2.0,2.0,2.5,2.5,3.0,3.0}};
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-    for(auto& tGoldVector : tGold)
-    {
-        auto tCell = &tGoldVector - &tGold[0];
-        for(auto& tGoldValue : tGoldVector)
-        {
-            auto tDof = &tGoldValue - &tGoldVector[0];
-            TEST_FLOATING_EQUALITY(tGoldValue,tHostResult(tCell,tDof),tTol);
-        }
-    }
-    //Plato::print_array_2D(tResult, "time step");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Integrate)
