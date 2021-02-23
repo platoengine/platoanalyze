@@ -2703,27 +2703,6 @@ strain_rate
     }
 }
 
-template<Plato::OrdinalType NumSpaceDim,
-         typename ControlT,
-         typename StrainT,
-         typename StressT>
-DEVICE_TYPE inline void
-deviatoric_stress
-(const Plato::OrdinalType & aCellOrdinal,
- const ControlT & aPrandtlNum,
- const Plato::ScalarArray3DT<StrainT> & aStrain,
- const Plato::ScalarArray3DT<StressT> & aStress)
-{
-    for(Plato::OrdinalType tDimI = 0; tDimI < NumSpaceDim; tDimI++)
-    {
-        for(Plato::OrdinalType tDimJ = 0; tDimJ < NumSpaceDim; tDimJ++)
-        {
-            aStress(aCellOrdinal, tDimI, tDimJ) +=
-                static_cast<Plato::Scalar>(2.0) * aPrandtlNum * aStrain(aCellOrdinal, tDimI, tDimJ);
-        }
-    }
-}
-
 
 
 // todo: internal energy
