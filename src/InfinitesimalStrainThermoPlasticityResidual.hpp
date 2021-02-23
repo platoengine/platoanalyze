@@ -297,7 +297,7 @@ private:
             mNeumannMechanicalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );
         }
 
-        tMultiplier = static_cast<Plato::Scalar>(-1.0);
+        //tMultiplier = static_cast<Plato::Scalar>(-1.0);
         if( mNeumannThermalLoads != nullptr )
         {
             mNeumannThermalLoads->get( aSpatialModel, aGlobalState, aControl, aConfig, aResult, tMultiplier );

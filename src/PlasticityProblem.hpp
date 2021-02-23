@@ -806,7 +806,7 @@ private:
             tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << " OUT OF " << mNumPseudoTimeSteps
                  << " TIME STEPS, TOTAL TIME = " << mCurrentPseudoTimeStep << "\n";
             mNewtonSolver->appendOutputMessage(tMsg);
-
+printf("%s\n", tMsg.str().c_str());
             tCurrentState.mCurrentStepIndex = tCurrentStepIndex;
             this->cacheStateData(tCurrentState);
 

@@ -579,6 +579,10 @@ public:
         Plato::print_newton_raphson_diagnostics_header(tOutputData, mSolverDiagnosticsFile);
 
         this->initializeSolver(aStates);
+        // Elastic trial step
+        mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
+                                         aStates.mCurrentLocalState, aStates.mPreviousLocalState,
+                                         aControls, aStates.mCurrentStepIndex);
         while(true)
         {
             tOutputData.mCurrentIteration = mCurrentSolverIter;

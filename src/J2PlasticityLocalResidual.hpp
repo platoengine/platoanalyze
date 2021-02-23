@@ -508,7 +508,7 @@ public:
         // compute the yield function at the trial state
         Plato::Scalar tTrialStateYieldFunction = tSqrt3Over2 * tDevStressMinusBackstressNorm(aCellOrdinal) - tYieldStress;
 
-        if (tTrialStateYieldFunction > 0.0) // plastic step
+        if (tTrialStateYieldFunction > static_cast<Plato::Scalar>(1.0e-10)) // plastic step
         {
           // Plastic Multiplier Increment (for J2 w/ linear isotropic/kinematic hardening -> analytical return mapping)
           aLocalState(aCellOrdinal, 1) = tTrialStateYieldFunction / (static_cast<Plato::Scalar>(3.0) * tPenalizedShearModulus +
