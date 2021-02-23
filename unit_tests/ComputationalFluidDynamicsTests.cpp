@@ -43,6 +43,22 @@ namespace Plato
 namespace blas2
 {
 
+/******************************************************************************//**
+ * \tparam LengthI    number of elements in the i-th index direction
+ * \tparam LengthJ    number of elements in the j-th index direction
+ * \tparam ScalarT    POD type
+ * \tparam AViewTypeT view type
+ * \tparam BViewTypeT view type
+ *
+ * \fn device_type inline void scale
+ *
+ * \brief Scale all the elements by input scalar value
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aScalar      input scalar
+ * \param [in]  aInputWS     input 3D scalar view
+ * \param [out] aOutputWS    output 3D scalar view
+**********************************************************************************/
 template<Plato::OrdinalType LengthI,
          Plato::OrdinalType LengthJ,
          typename ScalarT,
@@ -62,7 +78,24 @@ scale(const Plato::OrdinalType & aCellOrdinal,
         }
     }
 }
+// function scale
 
+/******************************************************************************//**
+ * \tparam LengthI    number of elements in the i-th index direction
+ * \tparam LengthJ    number of elements in the j-th index direction
+ * \tparam ScalarT    POD type
+ * \tparam AViewTypeT view type
+ * \tparam BViewTypeT view type
+ *
+ * \fn device_type inline void dot
+ *
+ * \brief Compute two-dimensional tensor dot product for each cell.
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aTensorA  input 3D scalar view
+ * \param [in]  aTensorB  input 3D scalar view
+ * \param [out] aOutput   output 1D scalar view
+**********************************************************************************/
 template<Plato::OrdinalType LengthI,
          Plato::OrdinalType LengthJ,
          typename AViewType,
@@ -82,6 +115,7 @@ dot(const Plato::OrdinalType & aCellOrdinal,
         }
     }
 }
+// function dot
 
 }
 // namespace blas3
@@ -89,25 +123,47 @@ dot(const Plato::OrdinalType & aCellOrdinal,
 namespace blas1
 {
 
-inline void abs(const Plato::ScalarVector & aXvec)
+/******************************************************************************//**
+ * \fn device_type inline void dot
+ *
+ * \brief Compute absolute value of a one-dimensional scalar array
+ *
+ * \param [in/out] aVector 1D scalar view
+**********************************************************************************/
+inline void abs(const Plato::ScalarVector & aVector)
 {
-    Plato::OrdinalType tLength = aXvec.size();
+    Plato::OrdinalType tLength = aVector.size();
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
-        aXvec(aOrdinal) = fabs(aXvec(aOrdinal));
-    }, "copy vector");
+        aVector(aOrdinal) = fabs(aVector(aOrdinal));
+    }, "calculate absolute value");
 }
+// function abs
 
+/******************************************************************************//**
+ * \tparam Length    number of elements along summation dimension
+ * \tparam aAlpha    multiplication/scaling factor
+ * \tparam aInputWS  2D scalar view
+ * \tparam aBeta     multiplication/scaling factor
+ * \tparam aOutputWS 2D scalar view
+ *
+ * \fn device_type inline void update
+ *
+ * \brief Add two-dimensional 2D views, b = \alpha a + \beta b
+ *
+ * \param [in/out] aVector 1D scalar view
+**********************************************************************************/
 template<Plato::OrdinalType Length,
          typename ScalarT,
          typename AViewTypeT,
          typename BViewTypeT>
 DEVICE_TYPE inline void
-update(const Plato::OrdinalType & aCellOrdinal,
-       const ScalarT & aAlpha,
-      const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
-      const ScalarT & aBeta,
-      const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
+update
+(const Plato::OrdinalType & aCellOrdinal,
+ const ScalarT & aAlpha,
+ const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
+ const ScalarT & aBeta,
+ const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
 {
     for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
     {
@@ -115,60 +171,118 @@ update(const Plato::OrdinalType & aCellOrdinal,
             aBeta * aOutputWS(aCellOrdinal, tIndex) + aAlpha * aInputWS(aCellOrdinal, tIndex);
     }
 }
+// update function
 
+/******************************************************************************//**
+ * \tparam Length   number of elements along summation dimension
+ * \tparam ScalarT  multiplication/scaling factor
+ * \tparam ResultT  2D scalar view
+ *
+ * \fn device_type inline void update
+ *
+ * \brief Scale all the elements by input scalar value, \mathbf{a} = \alpha\mathbf{a}
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aScalar      acalar multiplication factor
+ * \param [out] aOutputWS    output 2D scalar view
+**********************************************************************************/
 template<Plato::OrdinalType Length,
          typename ScalarT,
          typename ResultT>
 DEVICE_TYPE inline void
-scale(const Plato::OrdinalType & aCellOrdinal,
-      const ScalarT & aScalar,
-      const Plato::ScalarMultiVectorT<ResultT> & aOutputWS)
+scale
+(const Plato::OrdinalType & aCellOrdinal,
+ const ScalarT & aScalar,
+ const Plato::ScalarMultiVectorT<ResultT> & aOutputWS)
 {
     for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
     {
         aOutputWS(aCellOrdinal, tIndex) *= aScalar;
     }
 }
+// function scale
 
+/******************************************************************************//**
+ * \tparam Length   number of elements along summation dimension
+ * \tparam ScalarT  multiplication/scaling factor
+ * \tparam ResultT  2D scalar view
+ *
+ * \fn device_type inline void update
+ *
+ * \brief Scale all the elements by input scalar value, \mathbf{b} = \alpha\mathbf{a}
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aScalar      acalar multiplication factor
+ * \param [in]  aInputWS     input 2D scalar view
+ * \param [out] aOutputWS    output 2D scalar view
+**********************************************************************************/
 template<Plato::OrdinalType Length,
          typename ScalarT,
          typename AViewTypeT,
          typename BViewTypeT>
 DEVICE_TYPE inline void
-scale(const Plato::OrdinalType & aCellOrdinal,
-      const ScalarT & aScalar,
-      const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
-      const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
+scale
+(const Plato::OrdinalType & aCellOrdinal,
+ const ScalarT & aScalar,
+ const Plato::ScalarMultiVectorT<AViewTypeT> & aInputWS,
+ const Plato::ScalarMultiVectorT<BViewTypeT> & aOutputWS)
 {
     for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
     {
         aOutputWS(aCellOrdinal, tIndex) = aScalar * aInputWS(aCellOrdinal, tIndex);
     }
 }
+// function scale
 
+/******************************************************************************//**
+ * \tparam Length     number of elements in the summing direction
+ * \tparam AViewTypeT view type
+ * \tparam BViewTypeT view type
+ * \tparam CViewTypeT view type
+ *
+ * \fn device_type inline void dot
+ *
+ * \brief Compute two-dimensional tensor dot product for each cell.
+ *
+ * \param [in]  aCellOrdinal cell/element ordinal
+ * \param [in]  aViewA       input 2D scalar view
+ * \param [in]  aViewB       input 2D scalar view
+ * \param [out] aOutput      output 1D scalar view
+**********************************************************************************/
 template<Plato::OrdinalType Length,
          typename AViewType,
          typename BViewType,
          typename CViewType>
-DEVICE_TYPE inline void
-dot(const Plato::OrdinalType & aCellOrdinal,
-    const Plato::ScalarMultiVectorT<AViewType> & aVectorA,
-    const Plato::ScalarMultiVectorT<BViewType> & aVectorB,
-    const Plato::ScalarVectorT<CViewType>      & aOutput)
+DEVICE_TYPE inline void dot
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarMultiVectorT<AViewType> & aViewA,
+ const Plato::ScalarMultiVectorT<BViewType> & aViewB,
+ const Plato::ScalarVectorT<CViewType>      & aOutput)
 {
     for(Plato::OrdinalType tIndex = 0; tIndex < Length; tIndex++)
     {
-        aOutput(aCellOrdinal) += aVectorA(aCellOrdinal, tIndex) * aVectorB(aCellOrdinal, tIndex);
+        aOutput(aCellOrdinal) += aViewA(aCellOrdinal, tIndex) * aViewB(aCellOrdinal, tIndex);
     }
 }
+// function dot
 
 }
 // namespace blas1
 
 
-template <typename Type>
+/******************************************************************************//**
+ * \tparam ViewType view type
+ *
+ * \fn inline void print_fad_val_values
+ *
+ * \brief Print values of 1D view of forward automatic differentiation (FAD) types.
+ *
+ * \param [in] aInput input 1D FAD view
+ * \param [in] aName  name used to identify 1D view
+**********************************************************************************/
+template <typename ViewType>
 inline void print_fad_val_values
-(const Plato::ScalarVectorT<Type> & aInput,
+(const Plato::ScalarVectorT<ViewType> & aInput,
  const std::string & aName)
 {
     std::cout << "\nStart: Print ScalarVector '" << aName << "'.\n";
@@ -179,12 +293,25 @@ inline void print_fad_val_values
     }, "print_fad_val_values");
     std::cout << "End: Print ScalarVector '" << aName << "'.\n";
 }
+// function print_fad_val_values
 
+/******************************************************************************//**
+ * \tparam NumNodesPerCell number of nodes per cell (integer)
+ * \tparam NumDofsPerNode  number of degrees of freedom (integer)
+ * \tparam ViewType        view type
+ *
+ * \fn inline void print_fad_dx_values
+ *
+ * \brief Print derivaitve values of 1D view of forward automatic differentiation (FAD) types.
+ *
+ * \param [in] aInput input 1D FAD view
+ * \param [in] aName  name used to identify 1D view
+**********************************************************************************/
 template <Plato::OrdinalType NumNodesPerCell,
           Plato::OrdinalType NumDofsPerNode,
-          typename Type>
+          typename ViewType>
 inline void print_fad_dx_values
-(const Plato::ScalarVectorT<Type> & aInput,
+(const Plato::ScalarVectorT<ViewType> & aInput,
  const std::string & aName)
 {
     std::cout << "\nStart: Print ScalarVector '" << aName << "'.\n";
@@ -201,16 +328,26 @@ inline void print_fad_dx_values
     }, "print_fad_dx_values");
     std::cout << "End: Print ScalarVector '" << aName << "'.\n";
 }
+// function print_fad_dx_values
 
 namespace omega_h
 {
 
-template<typename Type>
-inline Omega_h::LOs
-copy(const ScalarVectorT<Type> & aInput)
+/******************************************************************************//**
+ * \tparam ViewType view type
+ *
+ * \fn inline void print_fad_dx_values
+ *
+ * \brief Copy Kokkos view into an Omega_h LOs array.
+ *
+ * \param [in] aInput input 1D view
+**********************************************************************************/
+template<typename ViewType>
+inline Omega_h::LOs copy
+(const ScalarVectorT<ViewType> & aInput)
 {
     auto tLength = aInput.size();
-    Omega_h::Write<Type> tWrite(tLength);
+    Omega_h::Write<ViewType> tWrite(tLength);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tLength), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
     {
         tWrite[aOrdinal] = aInput(aOrdinal);
@@ -218,9 +355,22 @@ copy(const ScalarVectorT<Type> & aInput)
 
     return (Omega_h::LOs(tWrite));
 }
+// function copy
 
-template<typename ArrayT>
-void print(const ArrayT & aInput, const std::string & aName)
+/******************************************************************************//**
+ * \tparam ViewType Omega_h array type
+ *
+ * \fn void print
+ *
+ * \brief Print Omega_h array to terminal.
+ *
+ * \param [in] aInput Omega_h array
+ * \param [in] aName  name used to identify Omega_h array
+**********************************************************************************/
+template<typename ViewType>
+void print
+(const ViewType & aInput,
+ const std::string & aName)
 {
     std::cout << "Start Printing Array with Name '" << aName << "'\n";
     auto tLength = aInput.size();
@@ -230,33 +380,59 @@ void print(const ArrayT & aInput, const std::string & aName)
     }, "print");
     std::cout << "Finished Printing Array with Name '" << aName << "'\n";
 }
+// function print
 
+/******************************************************************************//**
+ * \tparam NumSpatialDims  number of spatial dimensions
+ * \tparam NumNodesPerCell number of nodes per cell/element
+ *
+ * \fn Scalar calculate_element_size
+ *
+ * \brief Calculate characteristic element size
+ *
+ * \param [in] aCellOrdinal cell/element ordinal
+ * \param [in] aCells2Nodes map from cells to node ordinal
+ * \param [in] aCoords      cell/element coordinates
+**********************************************************************************/
 template<Plato::OrdinalType NumSpatialDims,
          Plato::OrdinalType NumNodesPerCell>
 DEVICE_TYPE inline
 Plato::Scalar
 calculate_element_size
 (const Plato::OrdinalType & aCellOrdinal,
- const Omega_h::LOs & tCells2Nodes,
- const Omega_h::Reals & tCoords)
+ const Omega_h::LOs & aCells2Nodes,
+ const Omega_h::Reals & aCoords)
 {
     Omega_h::Few<Omega_h::Vector<NumSpatialDims>, NumNodesPerCell> tElemCoords;
     for(Plato::OrdinalType tNode = 0; tNode < NumNodesPerCell; tNode++)
     {
-        const Plato::OrdinalType tVertexIndex = tCells2Nodes[aCellOrdinal*NumNodesPerCell + tNode];
+        const Plato::OrdinalType tVertexIndex = aCells2Nodes[aCellOrdinal*NumNodesPerCell + tNode];
         for(Plato::OrdinalType tDim = 0; tDim < NumSpatialDims; tDim++)
         {
-            tElemCoords[tNode][tDim] = tCoords[tVertexIndex*NumSpatialDims + tDim];
+            tElemCoords[tNode][tDim] = aCoords[tVertexIndex*NumSpatialDims + tDim];
         }
     }
     auto tSphere = Omega_h::get_inball(tElemCoords);
 
     return (static_cast<Plato::Scalar>(2.0) * tSphere.r);
 }
+// function calculate_element_size
 
 }
 // namespace omega_h
 
+/******************************************************************************//**
+ * \tparam EntitySet  entity set type (Omega_h::EntitySet)
+ *
+ * \fn Omega_h::LOs entity_ordinals
+ *
+ * \brief Return array with local entity identification numbers.
+ *
+ * \param [in] aMeshSets cell/element ordinal
+ * \param [in] aSetName  map from cells to node ordinal
+ * \param [in] aThrow    cell/element coordinates
+ * \return array with local entity identification numbers
+**********************************************************************************/
 template<Omega_h::SetType EntitySet>
 inline Omega_h::LOs
 entity_ordinals
@@ -274,8 +450,17 @@ entity_ordinals
     auto tFaceLids = (tEntitySetMapIterator->second);
     return tFaceLids;
 }
-// function node_set_face_ordinals
+// function entity_ordinals
 
+
+/******************************************************************************//**
+ * \fn void is_material_defined
+ *
+ * \brief Check if material is defined in input file and throw an error if it is not deifned.
+ *
+ * \param [in] aMaterialName material sublist name
+ * \param [in] aInputs       parameter list with input data information
+**********************************************************************************/
 inline void is_material_defined
 (const std::string & aMaterialName,
  const Teuchos::ParameterList & aInputs)
@@ -285,7 +470,18 @@ inline void is_material_defined
         THROWERR(std::string("Material with tag '") + aMaterialName + "' is not defined in 'Material Models' block")
     }
 }
+// function is_material_defined
 
+
+/******************************************************************************//**
+ * \fn inline void is_entity_set_defined
+ *
+ * \brief Return true if entity set, e.g. node or side set, is defined.
+ *
+ * \param [in] aMeshSets list with all entity sets
+ * \param [in] aSetName  entity set name
+ * \return boolean
+**********************************************************************************/
 template<Omega_h::SetType EntitySet>
 inline bool
 is_entity_set_defined
@@ -297,7 +493,21 @@ is_entity_set_defined
     auto tIsNodeSetDefined = tNodeSetMapItr != tNodeSets.end() ? true : false;
     return tIsNodeSetDefined;
 }
+// function is_entity_set_defined
 
+
+/******************************************************************************//**
+ * \tparam EntitySet entity set type
+ *
+ * \fn inline Omega_h::LOs get_entity_ordinals
+ *
+ * \brief Return list of entity ordinals. If not defined, throw error to terminal.
+ *
+ * \param [in] aMeshSets list with all entity sets
+ * \param [in] aSetName  entity set name
+ * \param [in] aThrow    flag to enable throw mechanism (default = true)
+ * \return list of entity ordinals for this entity set
+**********************************************************************************/
 template<Omega_h::SetType EntitySet>
 inline Omega_h::LOs
 get_entity_ordinals
@@ -316,7 +526,18 @@ get_entity_ordinals
         THROWERR(std::string("Entity set, i.e. side or node set, with name '") + aSetName + "' is not defined.")
     }
 }
+// function get_entity_ordinals
 
+
+/******************************************************************************//**
+ * \fn inline Plato::OrdinalType get_num_entities
+ *
+ * \brief Return total number of entities in the mesh.
+ *
+ * \param [in] aEntityDim entity dimension (vertex, edge, face, or region)
+ * \param [in] aMesh      computational mesh metadata
+ * \return total number of entities in the mesh
+**********************************************************************************/
 inline Plato::OrdinalType
 get_num_entities
 (const Omega_h::Int aEntityDim,
@@ -343,100 +564,30 @@ get_num_entities
         THROWERR("Entity is not supported. Supported entities: Omega_h::VERT, Omega_h::EDGE, Omega_h::FACE, and Omega_h::REGION")
     }
 }
+// function get_num_entities
 
-DEVICE_TYPE
-inline bool equal
-(const Plato::Scalar & aX,
- const Plato::Scalar & aY,
- Plato::OrdinalType aULP = 2)
-{
-    return (fabs(aX-aY) <= DBL_EPSILON * fabs(aX-aY) * aULP);
-}
 
-template<Plato::OrdinalType NumPoints, Plato::OrdinalType SpaceDim>
-inline Plato::ScalarVectorT<Plato::OrdinalType>
-find_node_ids_on_face_set
-(const Omega_h::Mesh & aMesh,
- const Omega_h::MeshSets & aMeshSets,
- const std::string & aEntitySetName,
- const Plato::ScalarMultiVector & aPoints)
-{
-    Plato::ScalarVectorT<Plato::OrdinalType> tNodeIds;
-    if(Plato::is_entity_set_defined<Omega_h::SIDE_SET>(aMeshSets, aEntitySetName) == false)
-    {
-        return tNodeIds;
-    }
-
-    auto tAllCoords = aMesh.coords();
-    auto tFaceLocalIds = Plato::get_entity_ordinals<Omega_h::SIDE_SET>(aMeshSets, aEntitySetName);
-    auto tFaceToNodeIds = aMesh.get_adj(Omega_h::FACE, Omega_h::VERT).ab2b;
-    const auto tNumNodesOnSet = tFaceToNodeIds.size();
-
-    Plato::ScalarVectorT<Plato::OrdinalType> tMatch("1=match & 0=no match", NumPoints);
-    Plato::ScalarVectorT<Plato::OrdinalType> tNodeIdMatch("matching node ids", NumPoints);
-    const auto tNumSetFaces = tFaceLocalIds.size();
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumSetFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
-    {
-        auto tNumNodes = SpaceDim;
-        Plato::OrdinalType tNodes[SpaceDim];
-        const auto tFace = tFaceLocalIds[aOrdinal];
-        for (Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
-        {
-            tNodes[tNode] = tFaceToNodeIds[tNumNodes*tFace+tNode];
-        }
-
-        for(Plato::OrdinalType tPoint = 0; tPoint < NumPoints; tPoint++)
-        {
-            for(Plato::OrdinalType tNode = 0; tNode < tNumNodes; tNode++)
-            {
-                Plato::OrdinalType tSum = 0;
-                for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
-                {
-                    tSum += Plato::equal(tAllCoords[SpaceDim*tNodes[tNode] + tDim], aPoints(tPoint,tDim)) ?
-                        static_cast<Plato::OrdinalType>(1) : static_cast<Plato::OrdinalType>(0);
-                }
-
-                if(tSum == SpaceDim) 
-                { //Found Match 
-                    tMatch(tPoint) = 1; 
-                    tNodeIdMatch(tPoint) = tNodes[tNode];
-                }
-            }
-        }
-    }, "find_node_ids_on_face_set");
-
-    auto tHostMatch = Kokkos::create_mirror(tMatch);
-    Kokkos::deep_copy(tHostMatch, tMatch);
-    auto tHostNodeIdMatch = Kokkos::create_mirror(tNodeIdMatch);
-    Kokkos::deep_copy(tHostNodeIdMatch, tNodeIdMatch);
-
-    auto tLength = tNodeIdMatch.size();
-    std::vector<Plato::OrdinalType> tIds;
-    for(decltype(tLength) tIndex = 0; tIndex < tLength; tIndex++)
-    {
-        if(tHostMatch(tIndex) == 1)
-        {
-            tIds.push_back(tHostNodeIdMatch(tIndex));
-        }
-    }
-
-    Kokkos::resize(tNodeIds, tIds.size());
-    auto tHostNodeIds = Kokkos::create_mirror(tNodeIds);
-    for(auto& tId : tIds)
-    {
-        auto tIndex = &tId - &tIds[0];
-        tHostNodeIds(tIndex) = tId;
-    }
-    Kokkos::deep_copy(tNodeIds, tHostNodeIds);
-
-    return tNodeIds;
-}
-
+/******************************************************************************//**
+ * \tparam EntityDim entity dimension (e.g. vertex, edge, face, or region)
+ * \tparam EntitySet entity set type (e.g. nodeset or sideset)
+ *
+ * \fn inline Omega_h::LOs find_entities_on_non_prescribed_boundary
+ *
+ * \brief Return list of entity ordinals on non-prescribed boundary. A prescribed
+ *   boundary is defined as the boundary where user-defined Neumann and Dirichlet
+ *   boundary conditions are applied.
+ *
+ * \param [in] aEntitySetNames list of prescribed entity set names
+ * \param [in] aMesh           computational mesh metadata
+ * \param [in] aMeshSets       list of mesh sets
+ *
+ * \return list of entity ordinals on non-prescribed boundary
+**********************************************************************************/
 template
 <Omega_h::Int EntityDim,
  Omega_h::SetType EntitySet>
 inline Omega_h::LOs
-entities_on_non_prescribed_boundary
+find_entities_on_non_prescribed_boundary
 (const std::vector<std::string> & aEntitySetNames,
        Omega_h::Mesh            & aMesh,
        Omega_h::MeshSets        & aMeshSets)
@@ -460,62 +611,36 @@ entities_on_non_prescribed_boundary
     auto tIDsOfEntitiesOnNonPrescribedBoundary = Omega_h::collect_marked(tEntitiesAreOnNonPrescribedBoundary);
     return tIDsOfEntitiesOnNonPrescribedBoundary;
 }
+// function find_entities_on_non_prescribed_boundary
 
-inline std::string is_valid_function(const std::string& aInput)
-{
-    std::vector<std::string> tValidKeys = {"scalar function", "vector function"};
-    auto tLowerKey = Plato::tolower(aInput);
-    if(std::find(tValidKeys.begin(), tValidKeys.end(), tLowerKey) == tValidKeys.end())
-    {
-        THROWERR(std::string("Input key with tag '") + tLowerKey + "' is not a valid vector function.")
-    }
-    return tLowerKey;
-}
 
-inline std::vector<std::string>
-sideset_names(Teuchos::ParameterList & aInputs)
-{
-    std::vector<std::string> tOutput;
-    for (Teuchos::ParameterList::ConstIterator tItr = aInputs.begin(); tItr != aInputs.end(); ++tItr)
-    {
-        const Teuchos::ParameterEntry &tEntry = aInputs.entry(tItr);
-        if (!tEntry.isList())
-        {
-            THROWERR("sideset_names: Parameter list block is not valid.  Expect lists only.")
-        }
-
-        const std::string &tName = aInputs.name(tItr);
-        if(aInputs.isSublist(tName) == false)
-        {
-            THROWERR(std::string("Parameter sublist with name '") + tName.c_str() + "' is not defined.")
-        }
-
-        Teuchos::ParameterList &tSubList = aInputs.sublist(tName);
-        if(tSubList.isParameter("Sides") == false)
-        {
-            THROWERR(std::string("Keyword 'Sides' is not define in Parameter Sublist with name '") + tName.c_str() + "'.")
-        }
-        const auto tValue = tSubList.get<std::string>("Sides");
-        tOutput.push_back(tValue);
-    }
-    return tOutput;
-}
-
-template <typename T>
-inline std::vector<T>
+/******************************************************************************//**
+ * \tparam Type array type
+ *
+ * \fn inline std::vector<Type> parse_array
+ *
+ * \brief Return array of type=Type parsed from input file.
+ *
+ * \param [in] aTag    input array tag
+ * \param [in] aInputs input file metadata
+ *
+ * \return array of type=Type
+**********************************************************************************/
+template <typename Type>
+inline std::vector<Type>
 parse_array
 (const std::string & aTag,
  const Teuchos::ParameterList & aInputs)
 {
     if(!aInputs.isParameter(aTag))
     {
-        std::vector<T> tOutput;
+        std::vector<Type> tOutput;
         return tOutput;
     }
-    auto tSideSets = aInputs.get< Teuchos::Array<T> >(aTag);
+    auto tSideSets = aInputs.get< Teuchos::Array<Type> >(aTag);
 
     auto tLength = tSideSets.size();
-    std::vector<T> tOutput(tLength);
+    std::vector<Type> tOutput(tLength);
     for(auto & tName : tOutput)
     {
         auto tIndex = &tName - &tOutput[0];
@@ -523,9 +648,24 @@ parse_array
     }
     return tOutput;
 }
+// function parse_array
 
-template <typename T>
-inline T parse_parameter
+
+/******************************************************************************//**
+ * \tparam Type parameter type
+ *
+ * \fn inline Type parse_parameter
+ *
+ * \brief Return parameter of type=Type parsed from input file.
+ *
+ * \param [in] aTag    input array tag
+ * \param [in] aBlock  XML sublist tag
+ * \param [in] aInputs input file metadata
+ *
+ * \return parameter of type=Type
+**********************************************************************************/
+template <typename Type>
+inline Type parse_parameter
 (const std::string            & aTag,
  const std::string            & aBlock,
  const Teuchos::ParameterList & aInputs)
@@ -541,9 +681,13 @@ inline T parse_parameter
     {
         THROWERR(std::string("Parameter with '") + aTag + "' is not defined in Parameter Sublist with name '" + aBlock + "'.")
     }
-    auto tOutput = tSublist.get<T>(aTag);
+    auto tOutput = tSublist.get<Type>(aTag);
     return tOutput;
 }
+// function parse_parameter
+
+
+
 
 /***************************************************************************//**
  *  \brief Base class for simplex-based fluid mechanics problems
@@ -557,7 +701,7 @@ public:
     using Plato::Simplex<SpaceDim>::mNumSpatialDims;  /*!< number of spatial dimensions */
     using Plato::Simplex<SpaceDim>::mNumNodesPerCell; /*!< number of nodes per simplex cell */
 
-    // optimizable quantities of interest
+    // optimization quantities of interest
     static constexpr Plato::OrdinalType mNumConfigDofsPerNode  = mNumSpatialDims; /*!< number of configuration degrees of freedom per node */
     static constexpr Plato::OrdinalType mNumControlDofsPerNode = NumControls;     /*!< number of controls per node */
     static constexpr Plato::OrdinalType mNumConfigDofsPerCell  = mNumConfigDofsPerNode * mNumNodesPerCell;  /*!< number of configuration degrees of freedom per cell */
@@ -574,17 +718,34 @@ public:
 };
 // class SimplexFluidDynamics
 
+
+/***************************************************************************//**
+ * \struct Solutions
+ *  \brief C++ structure with POD state solution data
+ ******************************************************************************/
 struct Solutions
 {
 private:
-    std::unordered_map<std::string, Plato::ScalarMultiVector> mSolution;
+    std::unordered_map<std::string, Plato::ScalarMultiVector> mSolution; /*!< map from state solution name to 2D POD array */
 
 public:
+    /***************************************************************************//**
+     * \fn Plato::OrdinalType size
+     *
+     * \brief Return number of elements in solution map.
+     * \return number of elements in solution map (integer)
+     ******************************************************************************/
     Plato::OrdinalType size() const
     {
         return (mSolution.size());
     }
 
+    /***************************************************************************//**
+     * \fn std::vector<std::string> tags
+     *
+     * \brief Return list with state solution tags.
+     * \return list with state solution tags
+     ******************************************************************************/
     std::vector<std::string> tags() const
     {
         std::vector<std::string> tTags;
@@ -595,12 +756,25 @@ public:
         return tTags;
     }
 
+    /***************************************************************************//**
+     * \fn void set
+     *
+     * \brief Set value of an element in the solution map.
+     * \param aTag  data tag
+     * \param aData 2D POD array
+     ******************************************************************************/
     void set(const std::string& aTag, const Plato::ScalarMultiVector& aData)
     {
         auto tLowerTag = Plato::tolower(aTag);
         mSolution[tLowerTag] = aData;
     }
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarMultiVector get
+     *
+     * \brief Return 2D POD array.
+     * \param aTag data tag
+     ******************************************************************************/
     Plato::ScalarMultiVector get(const std::string& aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
@@ -615,42 +789,87 @@ public:
 // struct Solutions
 
 
+/***************************************************************************//**
+ *  \class MetaDataBase
+ *  \brief Plato metadata pure virtual base class.
+ ******************************************************************************/
 class MetaDataBase
 {
 public:
     virtual ~MetaDataBase() = 0;
 };
 inline MetaDataBase::~MetaDataBase(){}
+// class MetaDataBase
 
+
+/***************************************************************************//**
+ * \tparam Type metadata type
+ * \class MetaData
+ * \brief Plato metadata derived class.
+ ******************************************************************************/
 template<class Type>
 class MetaData : public MetaDataBase
 {
 public:
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param aData metadata
+     ******************************************************************************/
     explicit MetaData(const Type &aData) : mData(aData) {}
     MetaData() {}
-    Type mData;
+    Type mData; /*!< metadata */
 };
+// class MetaData
 
+
+/***************************************************************************//**
+ * \tparam Type metadata type
+ *
+ * \fn inline Type metadata
+ *
+ * \brief Perform dynamic cast from MetaDataBase to Type data.
+ *
+ * \param aInput shared pointer of Plato metadata
+ * \return Type data
+ ******************************************************************************/
 template<class Type>
 inline Type metadata(const std::shared_ptr<Plato::MetaDataBase> & aInput)
 {
     return (dynamic_cast<Plato::MetaData<Type>&>(aInput.operator*()).mData);
 }
+// function metadata
 
+
+/***************************************************************************//**
+ * \struct WorkSets
+ * \brief Map with Plato metadata worksets.
+ ******************************************************************************/
 struct WorkSets
 {
 private:
-    std::unordered_map<std::string, std::shared_ptr<Plato::MetaDataBase>> mData;
+    std::unordered_map<std::string, std::shared_ptr<Plato::MetaDataBase>> mData; /*!< map from tag to metadata shared pointer */
 
 public:
     WorkSets(){}
 
+    /***************************************************************************//**
+     * \fn void set
+     * \brief Set element metadata at input key location.
+     * \param aName metadata tag (i.e. key)
+     * \param aData metadata shared pointer
+     ******************************************************************************/
     void set(const std::string & aName, const std::shared_ptr<Plato::MetaDataBase> & aData)
     {
         auto tLowerKey = Plato::tolower(aName);
         mData[tLowerKey] = aData;
     }
 
+    /***************************************************************************//**
+     * \fn const std::shared_ptr<Plato::MetaDataBase> & get
+     * \brief Return const reference to metadata shared pointer at input key location.
+     * \param aName metadata tag (i.e. key)
+     * \return metadata shared pointer
+     ******************************************************************************/
     const std::shared_ptr<Plato::MetaDataBase> & get(const std::string & aName) const
     {
         auto tLowerKey = Plato::tolower(aName);
@@ -665,6 +884,11 @@ public:
         }
     }
 
+    /***************************************************************************//**
+     * \fn std::vector<std::string> tags
+     * \brief Return list of keys/tags in the metadata map.
+     * \return list of keys/tags in the metadata map
+     ******************************************************************************/
     std::vector<std::string> tags() const
     {
         std::vector<std::string> tOutput;
@@ -675,6 +899,12 @@ public:
         return tOutput;
     }
 
+    /***************************************************************************//**
+     * \fn bool defined
+     * \brief Return true is key/metadata pair is defined in the metadata map, else
+     *   return false.
+     * \return boolean (true or false)
+     ******************************************************************************/
     bool defined(const std::string & aTag) const
     {
         auto tLowerKey = Plato::tolower(aTag);
@@ -686,15 +916,31 @@ public:
         { return false; }
     }
 };
+// struct WorkSets
 
+
+
+/***************************************************************************//**
+ * \tparam PhysicsT physics type, e.g. fluid, mechancis, thermal, etc.
+ *
+ * \struct LocalOrdinalMaps
+ *
+ * \brief Collection of ordinal id maps for scalar, vector, and control fields.
+ ******************************************************************************/
 template <typename PhysicsT>
 struct LocalOrdinalMaps
 {
-    Plato::NodeCoordinate<PhysicsT::SimplexT::mNumSpatialDims> mNodeCoordinate;
-    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, 1 /*scalar dofs per node*/>                 mScalarFieldOrdinalsMap;
-    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumSpatialDims>        mVectorFieldOrdinalsMap;
-    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumControlDofsPerNode> mControlOrdinalsMap;
+    Plato::NodeCoordinate<PhysicsT::SimplexT::mNumSpatialDims> mNodeCoordinate; /*!< list of node coordinates */
+    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, 1 /*scalar dofs per node*/>                 mScalarFieldOrdinalsMap; /*!< element to scalar field degree of freedom map */
+    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumSpatialDims>        mVectorFieldOrdinalsMap; /*!< element to vector field degree of freedom map */
+    Plato::VectorEntryOrdinal<PhysicsT::SimplexT::mNumSpatialDims, PhysicsT::SimplexT::mNumControlDofsPerNode> mControlOrdinalsMap; /*!< element to control field degree of freedom map */
 
+    /***************************************************************************//**
+     * \fn LocalOrdinalMaps
+     *
+     * \brief Constructor
+     * \param [in] aMesh mesh metadata
+     ******************************************************************************/
     LocalOrdinalMaps(Omega_h::Mesh & aMesh) :
         mNodeCoordinate(&aMesh),
         mScalarFieldOrdinalsMap(&aMesh),
@@ -702,14 +948,26 @@ struct LocalOrdinalMaps
         mControlOrdinalsMap(&aMesh)
     { return; }
 };
+// struct LocalOrdinalMaps
 
+
+/***************************************************************************//**
+ * \struct Variables
+ *
+ * \brief Maps to quantity of interest associated with the simulation.
+ ******************************************************************************/
 struct Variables
 {
 private:
-    std::unordered_map<std::string, Plato::Scalar> mScalars;
-    std::unordered_map<std::string, Plato::ScalarVector> mVectors;
+    std::unordered_map<std::string, Plato::Scalar> mScalars; /*!< map to scalar quantities of interest */
+    std::unordered_map<std::string, Plato::ScalarVector> mVectors; /*!< map to vector quantities of interest */
 
 public:
+    /***************************************************************************//**
+     * \fn void scalar
+     * \brief Return scalar value associated with this tag.
+     * \param [in] aTag element tag/key
+     ******************************************************************************/
     Plato::Scalar scalar(const std::string& aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
@@ -721,12 +979,23 @@ public:
         return tItr->second;
     }
 
+    /***************************************************************************//**
+     * \fn void scalar
+     * \brief Set (element,key) pair in scalar value map.
+     * \param [in] aTag   element tag/key
+     * \param [in] aInput element value
+     ******************************************************************************/
     void scalar(const std::string& aTag, const Plato::Scalar& aInput)
     {
         auto tLowerTag = Plato::tolower(aTag);
         mScalars[tLowerTag] = aInput;
     }
 
+    /***************************************************************************//**
+     * \fn void vector
+     * \brief Return scalar vector associated with this tag/key.
+     * \param [in] aTag element tag/key
+     ******************************************************************************/
     Plato::ScalarVector vector(const std::string& aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
@@ -738,22 +1007,43 @@ public:
         return tItr->second;
     }
 
+    /***************************************************************************//**
+     * \fn void vector
+     * \brief Set (element,key) pair in vector value map.
+     * \param [in] aTag   element tag/key
+     * \param [in] aInput element value
+     ******************************************************************************/
     void vector(const std::string& aTag, const Plato::ScalarVector& aInput)
     {
         auto tLowerTag = Plato::tolower(aTag);
         mVectors[tLowerTag] = aInput;
     }
 
+    /***************************************************************************//**
+     * \fn bool isVectorMapEmpty
+     * \brief Returns true if vector map is empty; false, if not empty.
+     * \return boolean (true or false)
+     ******************************************************************************/
     bool isVectorMapEmpty() const
     {
         return mVectors.empty();
     }
 
+    /***************************************************************************//**
+     * \fn bool isScalarMapEmpty
+     * \brief Returns true if scalar map is empty; false, if not empty.
+     * \return boolean (true or false)
+     ******************************************************************************/
     bool isScalarMapEmpty() const
     {
         return mScalars.empty();
     }
 
+    /***************************************************************************//**
+     * \fn bool defined
+     * \brief Returns true if element with tak/key is defined in a map.
+     * \return boolean (true or false)
+     ******************************************************************************/
     bool defined(const std::string & aTag) const
     {
         auto tLowerTag = Plato::tolower(aTag);
@@ -768,25 +1058,41 @@ public:
         { return false; }
     }
 };
-typedef Variables Dual;
-typedef Variables Primal;
+// struct Variables
+typedef Variables Dual;   /*!< variant name used for the Variables structure to identify quantities associated with the dual problem in optimization */
+typedef Variables Primal; /*!< variant name used for the Variables structure to identify quantities associated with the primal problem in optimization */
 
 
 namespace Fluids
 {
 
+/***************************************************************************//**
+ * \tparam SimplexPhysics physics type associated with simplex elements
+ *
+ * \struct SimplexFadTypes
+ *
+ * \brief The C++ structure owns the Forward Automatic Differentiation (FAD)
+ * types used for the Quantities of Interest (QoI) in fluid flow applications.
+ ******************************************************************************/
 template<typename SimplexPhysics>
 struct SimplexFadTypes
 {
-    using ConfigFad   = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumConfigDofsPerCell>;
-    using ControlFad  = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumNodesPerCell>;
-    using MassFad     = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMassDofsPerCell>;
-    using EnergyFad   = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumEnergyDofsPerCell>;
-    using MomentumFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMomentumDofsPerCell>;
+    using ConfigFad   = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumConfigDofsPerCell>;   /*!< configuration FAD type */
+    using ControlFad  = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumNodesPerCell>;        /*!< control FAD type */
+    using MassFad     = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMassDofsPerCell>;     /*!< mass QoI FAD type */
+    using EnergyFad   = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumEnergyDofsPerCell>;   /*!< energy QoI FAD type */
+    using MomentumFad = Sacado::Fad::SFad<Plato::Scalar, SimplexPhysics::mNumMomentumDofsPerCell>; /*!< momentum QoI FAD type */
 };
+// struct SimplexFadTypes
 
-// is_fad<TypesT, T>::value is true if T is of any AD type defined TypesT.
-//
+/***************************************************************************//**
+ * \tparam SimplexFadTypesT physics type associated with simplex elements
+ * \tparam ScalarType       scalar type
+ *
+ * \struct is_fad<SimplexFadTypesT, ScalarType>::value
+ *
+ * \brief is true if ScalarType is of any AD type defined in SimplexFadTypesT.
+ ******************************************************************************/
 template <typename SimplexFadTypesT, typename ScalarType>
 struct is_fad {
   static constexpr bool value = std::is_same< ScalarType, typename SimplexFadTypesT::MassFad     >::value ||
@@ -795,6 +1101,7 @@ struct is_fad {
                                 std::is_same< ScalarType, typename SimplexFadTypesT::EnergyFad   >::value ||
                                 std::is_same< ScalarType, typename SimplexFadTypesT::MomentumFad >::value;
 };
+// struct is_fad
 
 
 // which_fad<TypesT,T1,T2>::type returns:
@@ -822,6 +1129,7 @@ template <typename TypesT, typename T, typename ...P> struct fad_type<TypesT, T,
 };
 template <typename PhysicsT, typename ...P> using fad_type_t = typename fad_type<SimplexFadTypes<PhysicsT>,P...>::type;
 
+
 /***************************************************************************//**
  *  \brief Base class for automatic differentiation types used in fluid problems
  *  \tparam SpaceDim    (integer) spatial dimensions
@@ -835,6 +1143,13 @@ struct EvaluationTypes
     static constexpr Plato::OrdinalType mNumControlDofsPerNode = SimplexPhysicsT::mNumControlDofsPerNode; /*!< number of design variable fields */
 };
 
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct ResultTypes
+ *
+ * \brief Scalar types for residual evaluations.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct ResultTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -852,7 +1167,16 @@ struct ResultTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = Plato::Scalar;
 };
+// struct ResultTypes
 
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct GradCurrentMomentumTypes
+ *
+ * \brief Scalar types for evaluations associated with the partial derivative
+ * of a vector/scalar value function with respect to the current momentum field.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct GradCurrentMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -872,7 +1196,17 @@ struct GradCurrentMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = Plato::Scalar;
 };
+// struct GradCurrentMomentumTypes
 
+
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct GradCurrentEnergyTypes
+ *
+ * \brief Scalar types for evaluations associated with the partial derivative
+ * of a vector/scalar value function with respect to the current energy field.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct GradCurrentEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -892,7 +1226,16 @@ struct GradCurrentEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = Plato::Scalar;
 };
+// struct GradCurrentEnergyTypes
 
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct GradCurrentMassTypes
+ *
+ * \brief Scalar types for evaluations associated with the partial derivative
+ * of a vector/scalar value function with respect to the current mass field.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct GradCurrentMassTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -912,7 +1255,16 @@ struct GradCurrentMassTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = Plato::Scalar;
 };
+// struct GradCurrentMassTypes
 
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct GradPreviousMomentumTypes
+ *
+ * \brief Scalar types for evaluations associated with the partial derivative
+ * of a vector/scalar value function with respect to the previous momentum field.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct GradPreviousMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -932,7 +1284,17 @@ struct GradPreviousMomentumTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = Plato::Scalar;
 };
+// struct GradPreviousMomentumTypes
 
+
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct GradPreviousEnergyTypes
+ *
+ * \brief Scalar types for evaluations associated with the partial derivative
+ * of a vector/scalar value function with respect to the previous energy field.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct GradPreviousEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -952,7 +1314,16 @@ struct GradPreviousEnergyTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = Plato::Scalar;
 };
+// struct GradPreviousEnergyTypes
 
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct GradPreviousMassTypes
+ *
+ * \brief Scalar types for evaluations associated with the partial derivative
+ * of a vector/scalar value function with respect to the previous mass field.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct GradPreviousMassTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -972,7 +1343,16 @@ struct GradPreviousMassTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = Plato::Scalar;
 };
+// struct GradPreviousMassTypes
 
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct GradMomentumPredictorTypes
+ *
+ * \brief Scalar types for evaluations associated with the partial derivative
+ * of a vector/scalar value function with respect to the predictor field.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct GradMomentumPredictorTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -992,7 +1372,16 @@ struct GradMomentumPredictorTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = FadType;
 };
+// struct GradMomentumPredictorTypes
 
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct GradConfigTypes
+ *
+ * \brief Scalar types for evaluations associated with the partial derivative
+ * of a vector/scalar value function with respect to configuration variables.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct GradConfigTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -1012,7 +1401,16 @@ struct GradConfigTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = Plato::Scalar;
 };
+// struct GradConfigTypes
 
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct GradControlTypes
+ *
+ * \brief Scalar types for evaluations associated with the partial derivative
+ * of a vector/scalar value function with respect to control variables.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct GradControlTypes : EvaluationTypes<SimplexPhysicsT>
 {
@@ -1032,7 +1430,16 @@ struct GradControlTypes : EvaluationTypes<SimplexPhysicsT>
 
     using MomentumPredictorScalarType = Plato::Scalar;
 };
+// struct GradControlTypes
 
+
+/***************************************************************************//**
+ * \tparam SimplexPhysicsT physics type
+ *
+ * \struct Evaluation
+ *
+ * \brief Wrapper structure for the evaluation types used in fluid flow applications.
+ ******************************************************************************/
 template <typename SimplexPhysicsT>
 struct Evaluation
 {
@@ -1050,28 +1457,49 @@ struct Evaluation
     using GradPrevMomentum = GradPreviousMomentumTypes<SimplexPhysicsT>;
     using GradPredictor    = GradMomentumPredictorTypes<SimplexPhysicsT>;
 };
+// struct Evaluation
 
 
+/***************************************************************************//**
+ * \tparam PhysicsT physics type
+ *
+ * \struct Evaluation
+ *
+ * \brief Functionalities in this structure are used to build data work sets.
+ * The data types are assigned based on the physics and automatic differentiation
+ * (AD) evaluation types used for fluid flow applications.
+ ******************************************************************************/
 template<typename PhysicsT>
 struct WorkSetBuilder
 {
 private:
-    using SimplexPhysicsT = typename PhysicsT::SimplexT;
+    using SimplexPhysicsT = typename PhysicsT::SimplexT; /*!< holds static values used in fluid flow applications solved with simplex elements */
 
-    using ConfigLocalOridnalMap   = Plato::NodeCoordinate<SimplexPhysicsT::mNumSpatialDims>;
+    using ConfigLocalOridnalMap   = Plato::NodeCoordinate<SimplexPhysicsT::mNumSpatialDims>; /*!< short name used for wrapper class holding coordinate information */
 
-    using MassLocalOridnalMap     = Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumMassDofsPerNode>;
-    using EnergyLocalOridnalMap   = Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumEnergyDofsPerNode>;
-    using MomentumLocalOridnalMap = Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumMomentumDofsPerNode>;
-    using ControlLocalOridnalMap  = Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumControlDofsPerNode>;
+    using MassLocalOridnalMap     = Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumMassDofsPerNode>; /*!< short name used for wrapper class mapping elements to local mass degrees of freedom  */
+    using EnergyLocalOridnalMap   = Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumEnergyDofsPerNode>; /*!< short name used for wrapper class mapping elements to local energy degrees of freedom  */
+    using MomentumLocalOridnalMap = Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumMomentumDofsPerNode>; /*!< short name used for wrapper class mapping elements to local momentum degrees of freedom  */
+    using ControlLocalOridnalMap  = Plato::VectorEntryOrdinal<SimplexPhysicsT::mNumSpatialDims, SimplexPhysicsT::mNumControlDofsPerNode>; /*!< short name used for wrapper class mapping elements to local control degrees of freedom  */
 
-    using ConfigFad   = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::ConfigFad;
-    using ControlFad  = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::ControlFad;
-    using MassFad     = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::MassFad;
-    using EnergyFad   = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::EnergyFad;
-    using MomentumFad = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::MomentumFad;
+    using ConfigFad   = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::ConfigFad; /*!< configuration forward AD type  */
+    using ControlFad  = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::ControlFad; /*!< control forward AD type  */
+    using MassFad     = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::MassFad; /*!< mass forward AD type  */
+    using EnergyFad   = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::EnergyFad; /*!< energy forward AD type  */
+    using MomentumFad = typename Plato::Fluids::SimplexFadTypes<SimplexPhysicsT>::MomentumFad; /*!< momentum forward AD type  */
 
 public:
+    /***************************************************************************//**
+     * \fn void buildMomentumWorkSet
+     *
+     * \brief build momentum field work set of POD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local momentum degrees of freedom
+     * \param [in] aInput  one dimensional momentum field, i.e. flatten momentum field
+     *
+     * \param [in/out] aOutput two dimensional momentum work set
+     ******************************************************************************/
     void buildMomentumWorkSet
     (const Plato::SpatialDomain               & aDomain,
      const MomentumLocalOridnalMap            & aMap,
@@ -1084,6 +1512,17 @@ public:
         (aDomain, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildMomentumWorkSet
+     *
+     * \brief build momentum field work set of POD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local momentum degrees of freedom
+     * \param [in] aInput    one dimensional momentum field, i.e. flatten momentum field
+     *
+     * \param [in/out] aOutput two dimensional momentum work set
+     ******************************************************************************/
     void buildMomentumWorkSet
     (const Plato::OrdinalType                 & aNumCells,
      const MomentumLocalOridnalMap            & aMap,
@@ -1096,6 +1535,17 @@ public:
         (aNumCells, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildMomentumWorkSet
+     *
+     * \brief build momentum field work set of FAD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local momentum degrees of freedom
+     * \param [in] aInput  one dimensional momentum field, i.e. flatten momentum field
+     *
+     * \param [in/out] aOutput two dimensional momentum work set
+     ******************************************************************************/
     void buildMomentumWorkSet
     (const Plato::SpatialDomain             & aDomain,
      const MomentumLocalOridnalMap          & aMap,
@@ -1109,6 +1559,17 @@ public:
         (aDomain, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildMomentumWorkSet
+     *
+     * \brief build momentum field work set of FAD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local momentum degrees of freedom
+     * \param [in] aInput    one dimensional momentum field, i.e. flatten momentum field
+     *
+     * \param [in/out] aOutput two dimensional momentum work set
+     ******************************************************************************/
     void buildMomentumWorkSet
     (const Plato::OrdinalType               & aNumCells,
      const MomentumLocalOridnalMap          & aMap,
@@ -1122,6 +1583,17 @@ public:
         (aNumCells, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildEnergyWorkSet
+     *
+     * \brief build energy field work set of POD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local energy degrees of freedom
+     * \param [in] aInput  one dimensional energy field, i.e. flatten energy field
+     *
+     * \param [in/out] aOutput two dimensional energy work set
+     ******************************************************************************/
     void buildEnergyWorkSet
     (const Plato::SpatialDomain               & aDomain,
      const EnergyLocalOridnalMap              & aMap,
@@ -1134,6 +1606,17 @@ public:
         (aDomain, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildEnergyWorkSet
+     *
+     * \brief build energy field work set of POD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local energy degrees of freedom
+     * \param [in] aInput    one dimensional energy field, i.e. flatten energy field
+     *
+     * \param [in/out] aOutput two dimensional energy work set
+     ******************************************************************************/
     void buildEnergyWorkSet
     (const Plato::OrdinalType                 & aNumCells,
      const EnergyLocalOridnalMap              & aMap,
@@ -1146,6 +1629,17 @@ public:
         (aNumCells, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildEnergyWorkSet
+     *
+     * \brief build energy field work set of FAD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local energy degrees of freedom
+     * \param [in] aInput  one dimensional energy field, i.e. flatten energy field
+     *
+     * \param [in/out] aOutput two dimensional energy work set
+     ******************************************************************************/
     void buildEnergyWorkSet
     (const Plato::SpatialDomain              & aDomain,
      const EnergyLocalOridnalMap             & aMap,
@@ -1159,6 +1653,17 @@ public:
         (aDomain, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildEnergyWorkSet
+     *
+     * \brief build energy field work set of FAD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local energy degrees of freedom
+     * \param [in] aInput    one dimensional energy field, i.e. flatten energy field
+     *
+     * \param [in/out] aOutput two dimensional energy work set
+     ******************************************************************************/
     void buildEnergyWorkSet
     (const Plato::OrdinalType                & aNumCells,
      const EnergyLocalOridnalMap             & aMap,
@@ -1172,6 +1677,17 @@ public:
         (aNumCells, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildMassWorkSet
+     *
+     * \brief build mass field work set of POD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local mass degrees of freedom
+     * \param [in] aInput  one dimensional mass field, i.e. flatten mass field
+     *
+     * \param [in/out] aOutput two dimensional mass work set
+     ******************************************************************************/
     void buildMassWorkSet
     (const Plato::SpatialDomain               & aDomain,
      const MassLocalOridnalMap                & aMap,
@@ -1184,6 +1700,17 @@ public:
         (aDomain, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildMassWorkSet
+     *
+     * \brief build mass field work set of POD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local mass degrees of freedom
+     * \param [in] aInput    one dimensional mass field, i.e. flatten mass field
+     *
+     * \param [in/out] aOutput two dimensional mass work set
+     ******************************************************************************/
     void buildMassWorkSet
     (const Plato::OrdinalType                 & aNumCells,
      const MassLocalOridnalMap                & aMap,
@@ -1196,6 +1723,17 @@ public:
         (aNumCells, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildMassWorkSet
+     *
+     * \brief build mass field work set of FAD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local mass degrees of freedom
+     * \param [in] aInput  one dimensional mass field, i.e. flatten mass field
+     *
+     * \param [in/out] aOutput two dimensional mass work set
+     ******************************************************************************/
     void buildMassWorkSet
     (const Plato::SpatialDomain         & aDomain,
      const MassLocalOridnalMap          & aMap,
@@ -1209,6 +1747,17 @@ public:
         (aDomain, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildMassWorkSet
+     *
+     * \brief build mass field work set of FAD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local mass degrees of freedom
+     * \param [in] aInput    one dimensional mass field, i.e. flatten mass field
+     *
+     * \param [in/out] aOutput two dimensional mass work set
+     ******************************************************************************/
     void buildMassWorkSet
     (const Plato::OrdinalType           & aNumCells,
      const MassLocalOridnalMap          & aMap,
@@ -1222,6 +1771,17 @@ public:
         (aNumCells, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildControlWorkSet
+     *
+     * \brief build control field work set of POD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local control degrees of freedom
+     * \param [in] aInput  one dimensional control field, i.e. flatten control field
+     *
+     * \param [in/out] aOutput two dimensional control work set
+     ******************************************************************************/
     void buildControlWorkSet
     (const Plato::SpatialDomain               & aDomain,
      const ControlLocalOridnalMap             & aMap,
@@ -1234,6 +1794,17 @@ public:
         (aDomain, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildControlWorkSet
+     *
+     * \brief build control field work set of POD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local control degrees of freedom
+     * \param [in] aInput    one dimensional control field, i.e. flatten control field
+     *
+     * \param [in/out] aOutput two dimensional control work set
+     ******************************************************************************/
     void buildControlWorkSet
     (const Plato::OrdinalType                 & aNumCells,
      const ControlLocalOridnalMap             & aMap,
@@ -1246,6 +1817,17 @@ public:
         (aNumCells, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildControlWorkSet
+     *
+     * \brief build control field work set of FAD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local control degrees of freedom
+     * \param [in] aInput  one dimensional control field, i.e. flatten control field
+     *
+     * \param [in/out] aOutput two dimensional control work set
+     ******************************************************************************/
     void buildControlWorkSet
     (const Plato::SpatialDomain            & aDomain,
      const ControlLocalOridnalMap          & aMap,
@@ -1259,6 +1841,17 @@ public:
         (aDomain, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildControlWorkSet
+     *
+     * \brief build control field work set of FAD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local control degrees of freedom
+     * \param [in] aInput    one dimensional control field, i.e. flatten control field
+     *
+     * \param [in/out] aOutput two dimensional control work set
+     ******************************************************************************/
     void buildControlWorkSet
     (const Plato::OrdinalType              & aNumCells,
      const ControlLocalOridnalMap          & aMap,
@@ -1272,6 +1865,16 @@ public:
         (aNumCells, aMap, aInput, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildConfigWorkSet
+     *
+     * \brief build configuration field work set of POD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local configuration degrees of freedom
+     *
+     * \param [in/out] aOutput three dimensional configuration work set
+     ******************************************************************************/
     void buildConfigWorkSet
     (const Plato::SpatialDomain           & aDomain,
      const ConfigLocalOridnalMap          & aMap,
@@ -1283,6 +1886,16 @@ public:
         (aDomain, aMap, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildConfigWorkSet
+     *
+     * \brief build configuration field work set of POD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local configuration degrees of freedom
+     *
+     * \param [in/out] aOutput three dimensional configuration work set
+     ******************************************************************************/
     void buildConfigWorkSet
     (const Plato::OrdinalType             & aNumCells,
      const ConfigLocalOridnalMap          & aMap,
@@ -1294,6 +1907,16 @@ public:
         (aNumCells, aMap, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildConfigWorkSet
+     *
+     * \brief build configuration field work set of FAD type.
+     *
+     * \param [in] aDomain structure with computational domain metadata such as the mesh and entity sets.
+     * \param [in] aMap    map from element to local configuration degrees of freedom
+     *
+     * \param [in/out] aOutput three dimensional configuration work set
+     ******************************************************************************/
     void buildConfigWorkSet
     (const Plato::SpatialDomain       & aDomain,
      const ConfigLocalOridnalMap      & aMap,
@@ -1307,6 +1930,16 @@ public:
         (aDomain, aMap, aOutput);
     }
 
+    /***************************************************************************//**
+     * \fn void buildConfigWorkSet
+     *
+     * \brief build configuration field work set of FAD type.
+     *
+     * \param [in] aNumCells number of cells/elements
+     * \param [in] aMap      map from element to local configuration degrees of freedom
+     *
+     * \param [in/out] aOutput three dimensional configuration work set
+     ******************************************************************************/
     void buildConfigWorkSet
     (const Plato::OrdinalType         & aNumCells,
      const ConfigLocalOridnalMap      & aMap,
@@ -1320,6 +1953,7 @@ public:
         (aNumCells, aMap, aOutput);
     }
 };
+// struct WorkSetBuilder
 
 
 template
@@ -8672,71 +9306,6 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FindNodeIdsOnFaceSet)
-{
-    auto tSideSetName = "x-";
-    constexpr auto tSpaceDim = 2;
-    constexpr auto tNumPointsA = 1;
-    Plato::ScalarMultiVector tPointsA("points",tNumPointsA,tSpaceDim);
-    auto tHostPoints = Kokkos::create_mirror(tPointsA);
-    tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
-    Kokkos::deep_copy(tPointsA, tHostPoints);
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
-
-    // test one
-    auto tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsA,tSpaceDim>(*tMesh, tMeshSets, tSideSetName, tPointsA);
-    TEST_EQUALITY(1,tNodeIds.size());
-    auto tHostNodeIds = Kokkos::create_mirror(tNodeIds);
-    Kokkos::deep_copy(tHostNodeIds, tNodeIds);
-    std::vector<Plato::OrdinalType> tGold = {0};
-    for(auto& tGoldId : tGold)
-    {
-        auto tIndex = &tGoldId - &tGold[0];
-        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex)); // @suppress("Invalid arguments")
-    }
-
-    // test two
-    constexpr auto tNumPointsB = 2;
-    Plato::ScalarMultiVector tPointsB("points",tNumPointsB,tSpaceDim);
-    tHostPoints = Kokkos::create_mirror(tPointsB);
-    tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
-    tHostPoints(1,0) = 0.0; tHostPoints(1,1) = 1.0;
-    Kokkos::deep_copy(tPointsB, tHostPoints);
-    tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsB,tSpaceDim>(*tMesh, tMeshSets, tSideSetName, tPointsB);
-    TEST_EQUALITY(2,tNodeIds.size());
-    tHostNodeIds = Kokkos::create_mirror(tNodeIds);
-    Kokkos::deep_copy(tHostNodeIds, tNodeIds);
-    tGold = {0,1};
-    for(auto& tGoldId : tGold)
-    {
-        auto tIndex = &tGoldId - &tGold[0];
-        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex)); // @suppress("Invalid arguments")
-    }
-
-    // test three
-    constexpr auto tNumPointsC = 2;
-    Plato::ScalarMultiVector tPointsC("points",tNumPointsC,tSpaceDim);
-    tHostPoints = Kokkos::create_mirror(tPointsC);
-    tHostPoints(0,0) = 0.0; tHostPoints(0,1) = 0.0;
-    tHostPoints(1,0) = 0.0; tHostPoints(1,1) = 2.0;
-    Kokkos::deep_copy(tPointsC, tHostPoints);
-    tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsC,tSpaceDim>(*tMesh, tMeshSets, tSideSetName, tPointsC);
-    TEST_EQUALITY(1,tNodeIds.size());
-    tHostNodeIds = Kokkos::create_mirror(tNodeIds);
-    Kokkos::deep_copy(tHostNodeIds, tNodeIds);
-    tGold = {0};
-    for(auto& tGoldId : tGold)
-    {
-        auto tIndex = &tGoldId - &tGold[0];
-        TEST_EQUALITY(tGoldId, tHostNodeIds(tIndex)); // @suppress("Invalid arguments")
-    }
-
-    // test four
-    tNodeIds = Plato::find_node_ids_on_face_set<tNumPointsC,tSpaceDim>(*tMesh, tMeshSets, "dog", tPointsC);
-    TEST_EQUALITY(0,tNodeIds.size());
-}
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
 {
     // set xml file inputs
@@ -11573,12 +12142,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
 
     // test 1
     std::vector<std::string> tNames = {"x-","x+","y+","y-"};
-    auto tFaceOrdinalsOnBoundaryOne = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
+    auto tFaceOrdinalsOnBoundaryOne = Plato::find_entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
     TEST_EQUALITY(0, tFaceOrdinalsOnBoundaryOne.size());
 
     // test 2
     tNames = {"x+","y+","y-"};
-    auto tFaceOrdinalsOnBoundaryTwo = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
+    auto tFaceOrdinalsOnBoundaryTwo = Plato::find_entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
     auto tLength = tFaceOrdinalsOnBoundaryTwo.size();
     TEST_EQUALITY(1, tLength);
     Plato::ScalarVector tValuesUseCaseTwo("use case two", tLength);
@@ -11592,7 +12161,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
 
     // test 3
     tNames = {"y+","y-"};
-    auto tFaceOrdinalsOnBoundaryThree = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
+    auto tFaceOrdinalsOnBoundaryThree = Plato::find_entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
     tLength = tFaceOrdinalsOnBoundaryThree.size();
     TEST_EQUALITY(2, tLength);
     Plato::ScalarVector tValuesUseCaseThree("use case three", tLength);
@@ -11607,7 +12176,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
 
     // test 4
     tNames = {"y-"};
-    auto tFaceOrdinalsOnBoundaryFour = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
+    auto tFaceOrdinalsOnBoundaryFour = Plato::find_entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
     tLength = tFaceOrdinalsOnBoundaryFour.size();
     TEST_EQUALITY(3, tLength);
     Plato::ScalarVector tValuesUseCaseFour("use case four", tLength);
@@ -11623,7 +12192,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, FacesOnNonPrescribedBoundary)
 
     // test 5
     tNames = {};
-    auto tFaceOrdinalsOnBoundaryFive = Plato::entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
+    auto tFaceOrdinalsOnBoundaryFive =
+            Plato::find_entities_on_non_prescribed_boundary<Omega_h::EDGE, Omega_h::SIDE_SET>(tNames, tDomain.Mesh, tDomain.MeshSets);
     tLength = tFaceOrdinalsOnBoundaryFive.size();
     TEST_EQUALITY(4, tLength);
     Plato::ScalarVector tValuesUseCaseFive("use case five", tLength);
@@ -13289,49 +13859,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LocalOrdinalMaps)
             TEST_FLOATING_EQUALITY(tHostGoldControlOrdinals(tNode, tDim), tHostControlOrdinals(tNode, tDim), tTol);
             TEST_FLOATING_EQUALITY(tHostGoldScalarOrdinals(tNode, tDim), tHostScalarFieldOrdinals(tNode, tDim), tTol);
         }
-    }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsValidFunction)
-{
-    // 1. test throw
-    TEST_THROW(Plato::is_valid_function("some function"), std::runtime_error);
-
-    // 2. test scalar function
-    auto tOutput = Plato::is_valid_function("scalar function");
-    TEST_COMPARE(tOutput, ==, "scalar function");
-
-    // 2. test vector function
-    tOutput = Plato::is_valid_function("vector function");
-    TEST_COMPARE(tOutput, ==, "vector function");
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, SidesetNames)
-{
-    Teuchos::RCP<Teuchos::ParameterList> tParams =
-    Teuchos::getParametersFromXmlString(
-        "<ParameterList  name='Natural Boundary Conditions'>"
-        "  <ParameterList  name='Traction Vector Boundary Condition 1'>"
-        "    <Parameter  name='Type'     type='string'        value='Uniform'/>"
-        "    <Parameter  name='Values'   type='Array(double)' value='{0.0, -3.0e3, 0.0}'/>"
-        "    <Parameter  name='Sides'    type='string'        value='ss_1'/>"
-        "  </ParameterList>"
-        "  <ParameterList  name='Traction Vector Boundary Condition 2'>"
-        "    <Parameter  name='Type'     type='string'        value='Uniform'/>"
-        "    <Parameter  name='Values'   type='Array(double)' value='{0.0, -3.0e3, 0.0}'/>"
-        "    <Parameter  name='Sides'    type='string'        value='ss_2'/>"
-        "  </ParameterList>"
-        "</ParameterList>"
-    );
-
-    auto tBCs = tParams->sublist("Natural Boundary Conditions");
-    auto tOutput = Plato::sideset_names(tBCs);
-
-    std::vector<std::string> tGold = {"ss_1", "ss_2"};
-    for(auto& tName : tOutput)
-    {
-        auto tIndex = &tName - &tOutput[0];
-        TEST_COMPARE(tName, ==, tGold[tIndex]);
     }
 }
 
