@@ -2321,7 +2321,7 @@ public:
  * \brief Includes functionalities to evaluate the average surface pressure
  *   along a set of user-provided surfaces.
  *
- *                  \f$ \int_{\Gamma} p^n d\Gamma \f$,
+ *                  \f[ \int_{\Gamma} p^n d\Gamma \f],
  *
  * where \f$ n \f$ denotes the current time step and \f$ p \f$ denotes pressure.
  ******************************************************************************/
@@ -2344,7 +2344,7 @@ private:
     // member metadata
     Plato::DataMap& mDataMap; /*!< holds output metadata */
     CubatureRule mCubatureRule; /*!< cubature integration rule */
-    const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata for a domain (i.e. element block) */
 
     // member parameters
     std::string mFuncName; /*!< scalar funciton name */
@@ -2482,7 +2482,7 @@ public:
  * \brief Includes functionalities to evaluate the average surface temperature
  *   along a set of user-provided surfaces.
  *
- *                  \f$ \int_{\Gamma} T^n d\Gamma \f$,
+ *                  \f[ \int_{\Gamma} T^n d\Gamma \f],
  *
  * where \f$ n \f$ denotes the current time step and \f$ T \f$ denotes temperature.
  ******************************************************************************/
@@ -2505,7 +2505,7 @@ private:
     // member metadata
     Plato::DataMap& mDataMap; /*!< holds output metadata */
     CubatureRule mCubatureRule; /*!< cubature integration rule */
-    const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata for a domain (i.e. element block) */
 
     // member parameters
     std::string mFuncName; /*!< scalar funciton name */
@@ -2671,8 +2671,28 @@ brinkman_penalization
 }
 // function brinkman_penalization
 
-// calculate strain rate for incompressible flows, which is defined as
-// \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right)
+
+/***************************************************************************//**
+ * \tparam NumNodesPerCell number of nodes per cell (integer)
+ * \tparam NumSpaceDim     number of spatial dimensions (integer)
+ * \tparam AViewTypeT      input view Forward Automatic Differentiation (FAD) type
+ * \tparam BViewTypeT      input view FAD type
+ * \tparam CViewTypeT      input view FAD type
+ *
+ * \fn DEVICE_TYPE inline void strain_rate
+ *
+ * \brief Evaluate strain rate.
+ *
+ * \f[ \frac{1}{2}\left( \frac{\partial u_i}{\partial x_j} + \frac{\partial u_j}{\partial x_i} \right) \f]
+ *
+ * where \f$ \alpha \f$ denotes a scalar physical parameter, \f$ u_i \f$ denotes the
+ * i-th component of the velocity field and \f$ x_i \f$ denotes the i-th coordinate.
+ *
+ * \param [in] aCellOrdinal element/cell ordinal
+ * \param [in] aStateWS     2D view with element state work set
+ * \param [in] aGradient    3D view with shape function's derivatives
+ * \param [in] aStrainRate  3D view with element strain rate
+ ******************************************************************************/
 template<Plato::OrdinalType NumNodesPerCell,
          Plato::OrdinalType NumSpaceDim,
          typename AViewTypeT,
@@ -2702,15 +2722,24 @@ strain_rate
         }
     }
 }
+// function strain_rate
 
 
-
-// todo: internal energy
-// calculate internal energy, which is defined as
-//   \f$ \int_{\Omega_e}\left[ \tau_{ij}(\theta):\tau_{ij}(\theta) + \alpha(\theta)u_i^2 \right] d\Omega_e, \f$
-// where \f$\theta\f$ denotes the controls, \f$\alpha\f$ denotes the Brinkman penalization parameter.
+/***************************************************************************//**
+ * \tparam PhysicsT    Plato physics type
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ *
+ * \class InternalDissipationEnergy
+ *
+ * \brief Includes functionalities to evaluate the internal dissipation energy.
+ *
+ * \f[ \int_{\Omega_e}\left[ \tau_{ij}(\theta):\tau_{ij}(\theta) + \alpha(\theta)u_i^2 \right] d\Omega_e \f],
+ *
+ * where \f$\theta\f$ denotes the controls, \f$\alpha\f$ denotes the Brinkman
+ * penalization parameter.
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
-class InternalDissipationEnergyIncompressible : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
+class InternalDissipationEnergy : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
 {
 private:
     static constexpr auto mNumSpatialDims    = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
@@ -2718,28 +2747,35 @@ private:
     static constexpr auto mNumVelDofsPerNode = PhysicsT::SimplexT::mNumMomentumDofsPerCell; /*!< number of velocity dofs per node */
 
     // local forward automatic differentiation typenames
-    using ResultT  = typename EvaluationT::ResultScalarType;
-    using CurVelT  = typename EvaluationT::CurrentMomentumScalarType;
-    using ConfigT  = typename EvaluationT::ConfigScalarType;
-    using ControlT = typename EvaluationT::ControlScalarType;
-    using StrainT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurVelT, ConfigT>;
+    using ResultT  = typename EvaluationT::ResultScalarType;           /*!< result FAD type */
+    using CurVelT  = typename EvaluationT::CurrentMomentumScalarType;  /*!< current velocity FAD type */
+    using ConfigT  = typename EvaluationT::ConfigScalarType;           /*!< configuration FAD type */
+    using ControlT = typename EvaluationT::ControlScalarType;          /*!< control FAD type */
+    using StrainT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurVelT, ConfigT>; /*!< strain rate FAD type */
 
     // set local typenames
-    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>;
+    using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>; /*!< local short name/notation for cubature rule class */
 
     // member parameters
-    std::string mFuncName;
-    Plato::Scalar mPrNum = 1.0;
-    Plato::Scalar mDaNum = 1.0;
-    Plato::Scalar mBrinkmanConvexityParam = 0.5;
+    std::string mFuncName; /*!< scalar function name */
+    Plato::Scalar mPrNum = 1.0; /*!< Prandtl number */
+    Plato::Scalar mDaNum = 1.0; /*!< Darcy number */
+    Plato::Scalar mBrinkmanConvexityParam = 0.5; /*!< convexity parameter for Brinkmann penalization model */
 
     // member metadata
-    Plato::DataMap& mDataMap;
-    CubatureRule mCubatureRule;
-    const Plato::SpatialDomain& mSpatialDomain;
+    Plato::DataMap& mDataMap; /*!< holds output metadata */
+    CubatureRule mCubatureRule; /*!< cubature integration rule */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata for a domain (i.e. element block) */
 
 public:
-    InternalDissipationEnergyIncompressible
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aName    scalar function name
+     * \param [in] aDomain  holds mesh and entity sets (e.g. node and side sets) metadata
+     * \param [in] aDataMap holds output metadata
+     * \param [in] aInputs  input file metadata
+     ******************************************************************************/
+    InternalDissipationEnergy
     (const std::string          & aName,
      const Plato::SpatialDomain & aDomain,
      Plato::DataMap             & aDataMap,
@@ -2751,13 +2787,27 @@ public:
     {
         mDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", aInputs);
         mPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", aInputs);
-        this->setPenaltyModels(aInputs);
+        this->setBrinkmannModel(aInputs);
     }
 
-    virtual ~InternalDissipationEnergyIncompressible(){}
+    /***************************************************************************//**
+     * \brief Destructor
+     ******************************************************************************/
+    virtual ~InternalDissipationEnergy(){}
 
+    /***************************************************************************//**
+     * \fn std::string name
+     * \brief Returns scalar function name
+     * \return scalar function name
+     ******************************************************************************/
     std::string name() const override { return mFuncName; }
 
+    /***************************************************************************//**
+     * \fn void evaluate
+     * \brief Evaluate scalar function inside the computational domain \f$ \Omega \f$.
+     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
+     * \param [in] aResult   1D output work set of size number of cells
+     ******************************************************************************/
     void evaluate(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
     {
         // set local functors
@@ -2810,11 +2860,22 @@ public:
         }, "internal energy");
     }
 
+    /***************************************************************************//**
+     * \fn void evaluateBoundary
+     * \brief Evaluate scalar function along the computational boudary \f$ d\Gamma \f$.
+     * \param [in] aWorkSets holds state work sets initialize with correct FAD types
+     * \param [in] aResult   1D output work set of size number of cells
+     ******************************************************************************/
     void evaluateBoundary(const Plato::WorkSets & aWorkSets, Plato::ScalarVectorT<ResultT> & aResult) const override
     { return; }
 
 private:
-    void setPenaltyModels(Teuchos::ParameterList & aInputs)
+    /***************************************************************************//**
+     * \fn void setBrinkmannModel
+     * \brief Set parameters for the Brinkmann fictitious material penalization model.
+     * \param [in] aInputs input file metadata
+     ******************************************************************************/
+    void setBrinkmannModel(Teuchos::ParameterList & aInputs)
     {
         auto tMyCriterionInputs = aInputs.sublist("Criteria").sublist(mFuncName);
         if(tMyCriterionInputs.isSublist("Penalty Function"))
@@ -2824,31 +2885,24 @@ private:
         }
     }
 };
-// class InternalDissipationEnergyIncompressible
+// class InternalDissipationEnergy
 
 
-/******************************************************************************/
-/*! scalar function class
-
-   This class takes as a template argument a scalar function in the form:
-
-   \f$ J = J(\phi, U^k, P^k, T^k, X) \f$
-
-   and manages the evaluation of the function and derivatives with respect to
-   control, \f$\phi\f$, momentum state, \f$ U^k \f$, mass state, \f$ P^k \f$,
-   energy state, \f$ T^k \f$, and configuration, \f$ X \f$.
-
-*/
-/******************************************************************************/
+/***************************************************************************//**
+ * \class CriterionBase
+ *
+ * This pure virtual class defines the template for scalar functions in the form:
+ *
+ *    \f[ J = J(\phi, U^k, P^k, T^k, X) \f]
+ *
+ * It manages the evaluation of the function and corresponding derivatives with
+ * respect to control \f$\phi\f$, momentum state \f$ U^k \f$, mass state \f$ P^k \f$,
+ * energy state \f$ T^k \f$, and configuration \f$ X \f$ variables.
+ ******************************************************************************/
 class CriterionBase
 {
 public:
     virtual ~CriterionBase(){}
-
-    /******************************************************************************//**
-     * \brief Return function name
-     * \return user defined function name
-     **********************************************************************************/
     virtual std::string name() const = 0;
 
     virtual Plato::Scalar value
@@ -2875,15 +2929,27 @@ public:
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const = 0;
 };
-// class ScalarFunctionBase
+// class CriterionBase
 
 
-// todo: physics scalar function
+/***************************************************************************//**
+ * \tparam PhysicsT fluid flow physics type
+ *
+ * \class ScalarFunction
+ *
+ * This class manages the evaluation of scalar functions in the form:
+ *
+ *                  \f[ J(\phi, U^k, P^k, T^k, X) \f]
+ *
+ * and respective partial derivatives with respect to control \f$\phi\f$,
+ * momentum state \f$ U^k \f$, mass state \f$ P^k \f$, energy state \f$ T^k \f$,
+ * and configuration \f$ X \f$.
+ ******************************************************************************/
 template<typename PhysicsT>
-class PhysicsScalarFunction : public Plato::Fluids::CriterionBase
+class ScalarFunction : public Plato::Fluids::CriterionBase
 {
 private:
-    std::string mFuncName;
+    std::string mFuncName; /*!< scalar function name */
 
     static constexpr auto mNumSpatialDims         = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
     static constexpr auto mNumNodesPerCell        = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
@@ -2897,35 +2963,42 @@ private:
     static constexpr auto mNumControlDofsPerNode  = PhysicsT::SimplexT::mNumControlDofsPerNode;  /*!< number of design variables per node */
 
     // forward automatic differentiation evaluation types
-    using ResidualEvalT     = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::Residual;
-    using GradConfigEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradConfig;
-    using GradControlEvalT  = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradControl;
-    using GradCurVelEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurMomentum;
-    using GradCurTempEvalT  = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurEnergy;
-    using GradCurPressEvalT = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurMass;
+    using ResidualEvalT     = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::Residual;        /*!< residual FAD evaluation type */
+    using GradConfigEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradConfig;      /*!< partial wrt configuration FAD evaluation type */
+    using GradControlEvalT  = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradControl;     /*!< partial wrt control FAD evaluation type */
+    using GradCurVelEvalT   = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurMomentum; /*!< partial wrt current velocity state FAD evaluation type */
+    using GradCurTempEvalT  = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurEnergy;   /*!< partial wrt current temperature state FAD evaluation type */
+    using GradCurPressEvalT = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurMass;     /*!< partial wrt current pressure state FAD evaluation type */
 
     // element scalar functions types
-    using ResidualFunc     = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, ResidualEvalT>>;
-    using GradConfigFunc   = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradConfigEvalT>>;
-    using GradControlFunc  = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradControlEvalT>>;
-    using GradCurVelFunc   = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradCurVelEvalT>>;
-    using GradCurTempFunc  = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradCurTempEvalT>>;
-    using GradCurPressFunc = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradCurPressEvalT>>;
+    using ResidualFunc     = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, ResidualEvalT>>;     /*!< short name/notation for a scalar function of residual FAD evaluation type */
+    using GradConfigFunc   = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradConfigEvalT>>;   /*!< short name/notation for a scalar function of partial wrt configuration FAD evaluation type */
+    using GradControlFunc  = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradControlEvalT>>;  /*!< short name/notation for a scalar function of partial wrt control FAD evaluation type */
+    using GradCurVelFunc   = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradCurVelEvalT>>;   /*!< short name/notation for a scalar function of partial wrt current velocity state FAD evaluation type */
+    using GradCurTempFunc  = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradCurTempEvalT>>;  /*!< short name/notation for a scalar function of partial wrt current temperature state FAD evaluation type */
+    using GradCurPressFunc = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradCurPressEvalT>>; /*!< short name/notation for a scalar function of partial wrt current pressure state FAD evaluation type */
 
     // element scalar functions per element block, i.e. domain
-    std::unordered_map<std::string, ResidualFunc>     mResidualFuncs;
-    std::unordered_map<std::string, GradConfigFunc>   mGradConfigFuncs;
-    std::unordered_map<std::string, GradControlFunc>  mGradControlFuncs;
-    std::unordered_map<std::string, GradCurVelFunc>   mGradCurrentVelocityFuncs;
-    std::unordered_map<std::string, GradCurPressFunc> mGradCurrentPressureFuncs;
-    std::unordered_map<std::string, GradCurTempFunc>  mGradCurrentTemperatureFuncs;
+    std::unordered_map<std::string, ResidualFunc>     mResidualFuncs; /*!< map from domain (i.e. element block) to scalar function of residual FAD evaluation type */
+    std::unordered_map<std::string, GradConfigFunc>   mGradConfigFuncs; /*!< map from domain (i.e. element block) to scalar function of partial wrt configuration FAD evaluation type */
+    std::unordered_map<std::string, GradControlFunc>  mGradControlFuncs; /*!< map from domain (i.e. element block) to scalar function of partial wrt control FAD evaluation type */
+    std::unordered_map<std::string, GradCurVelFunc>   mGradCurrentVelocityFuncs; /*!< map from domain (i.e. element block) to scalar function of partial wrt current velocity state FAD evaluation type */
+    std::unordered_map<std::string, GradCurPressFunc> mGradCurrentPressureFuncs; /*!< map from domain (i.e. element block) to scalar function of partial wrt current pressure state FAD evaluation type */
+    std::unordered_map<std::string, GradCurTempFunc>  mGradCurrentTemperatureFuncs; /*!< map from domain (i.e. element block) to scalar function of partial wrt current temperature state FAD evaluation type */
 
-    Plato::DataMap& mDataMap;
-    const Plato::SpatialModel& mSpatialModel;
-    Plato::LocalOrdinalMaps<PhysicsT> mLocalOrdinalMaps;
+    Plato::DataMap& mDataMap; /*!< holds output metadata */
+    const Plato::SpatialModel& mSpatialModel; /*!< holds mesh and entity sets metadata */
+    Plato::LocalOrdinalMaps<PhysicsT> mLocalOrdinalMaps; /*!< holds maps from element to local state degree of freedom */
 
 public:
-    PhysicsScalarFunction
+    /***************************************************************************//**
+     * \brief Constructor
+     * \param [in] aModel   holds mesh and entity sets (e.g. node and side sets) metadata for a computational model
+     * \param [in] aDataMap holds output metadata
+     * \param [in] aInputs  input file metadata
+     * \param [in] aName    scalar function name
+     ******************************************************************************/
+    ScalarFunction
     (Plato::SpatialModel    & aModel,
      Plato::DataMap         & aDataMap,
      Teuchos::ParameterList & aInputs,
@@ -2938,13 +3011,30 @@ public:
         this->initialize(aInputs);
     }
 
-    virtual ~PhysicsScalarFunction(){}
+    /***************************************************************************//**
+     * \brief Destructor
+     ******************************************************************************/
+    virtual ~ScalarFunction(){}
 
+    /***************************************************************************//**
+     * \fn std::string name
+     * \brief Return scalar function name.
+     * \return scalar function name
+     ******************************************************************************/
     std::string name() const
     {
         return mFuncName;
     }
 
+    /***************************************************************************//**
+     * \fn Plato::Scalar value
+     * \brief Evaluate scalar function.
+     *
+     * \param [in] aControls  1D control field
+     * \param [in] aVariables holds state fields (e.g. velocity, temperature, pressure, etc.)
+     *
+     * \return scalar function evaluation
+     ******************************************************************************/
     Plato::Scalar value
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const
@@ -2983,6 +3073,15 @@ public:
         return tReturnValue;
     }
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientConfig
+     * \brief Evaluate partial derivative of scalar function with respect to configuration.
+     *
+     * \param [in] aControls  1D control field
+     * \param [in] aVariables holds state fields (e.g. velocity, temperature, pressure, etc.)
+     *
+     * \return partial derivative of scalar function with respect to configuration
+     ******************************************************************************/
     Plato::ScalarVector gradientConfig
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const
@@ -3024,6 +3123,15 @@ public:
         return tGradient;
     }
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientControl
+     * \brief Evaluate partial derivative of scalar function with respect to control.
+     *
+     * \param [in] aControls  1D control field
+     * \param [in] aVariables holds state fields (e.g. velocity, temperature, pressure, etc.)
+     *
+     * \return partial derivative of scalar function with respect to control
+     ******************************************************************************/
     Plato::ScalarVector gradientControl
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const
@@ -3065,6 +3173,15 @@ public:
         return tGradient;
     }
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentPress
+     * \brief Evaluate partial derivative of scalar function with respect to current pressure.
+     *
+     * \param [in] aControls  1D control field
+     * \param [in] aVariables holds state fields (e.g. velocity, temperature, pressure, etc.)
+     *
+     * \return partial derivative of scalar function with respect to current pressure
+     ******************************************************************************/
     Plato::ScalarVector gradientCurrentPress
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const
@@ -3106,6 +3223,15 @@ public:
         return tGradient;
     }
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentTemp
+     * \brief Evaluate partial derivative of scalar function with respect to current temperature.
+     *
+     * \param [in] aControls  1D control field
+     * \param [in] aVariables holds state fields (e.g. velocity, temperature, pressure, etc.)
+     *
+     * \return partial derivative of scalar function with respect to current temperature
+     ******************************************************************************/
     Plato::ScalarVector gradientCurrentTemp
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const
@@ -3147,6 +3273,15 @@ public:
         return tGradient;
     }
 
+    /***************************************************************************//**
+     * \fn Plato::ScalarVector gradientCurrentVel
+     * \brief Evaluate partial derivative of scalar function with respect to current velocity.
+     *
+     * \param [in] aControls  1D control field
+     * \param [in] aVariables holds state fields (e.g. velocity, temperature, pressure, etc.)
+     *
+     * \return partial derivative of scalar function with respect to current velocity
+     ******************************************************************************/
     Plato::ScalarVector gradientCurrentVel
     (const Plato::ScalarVector & aControls,
      const Plato::Primal & aVariables) const
@@ -3189,6 +3324,11 @@ public:
     }
 
 private:
+    /***************************************************************************//**
+     * \fn void initialize
+     * \brief Initialize maps from domain name to scalar function based on appropriate FAD evaluation type.
+     * \param [in] aInputs input file metadata
+     ******************************************************************************/
     void initialize(Teuchos::ParameterList & aInputs)
     {
         typename PhysicsT::FunctionFactory tScalarFuncFactory;
@@ -3222,7 +3362,7 @@ private:
         }
     }
 };
-// class PhysicsScalarFunction
+// class ScalarFunction
 
 
 
@@ -3238,7 +3378,14 @@ private:
 
 
 
-// todo: abstract vector function
+/***************************************************************************//**
+ * \tparam PhysicsT    Plato physics type
+ * \tparam EvaluationT Forward Automatic Differentiation (FAD) evaluation type
+ *
+ * \class AbstractVectorFunction
+ *
+ * \brief Pure virtual base class for Plato vector functions.
+ ******************************************************************************/
 template<typename PhysicsT, typename EvaluationT>
 class AbstractVectorFunction
 {
@@ -3267,15 +3414,22 @@ public:
 
 
 /***************************************************************************//**
- * \fn device_type void calculate_advected_momentum_forces
- * \brief Calculate advected momentum forces, which are defined as
+ * \tparam NumNodes number of nodes in cell/element (integer)
+ * \tparam SpaceDim spatial dimensions (integer)
+ * \tparam ResultT  output work set Forward Automatic Differentiation (FAD) type
+ * \tparam ConfigT  configuration work set FAD type
+ * \tparam PrevVelT previous velocity work set FAD type
+ *
+ * \fn device_type inline void calculate_advected_momentum_forces
+ *
+ * \brief Calculate advection momentum forces, defined as
  *
  * \f[
- * \alpha\frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n + \bar{u}_j^n
- * \frac{\partial \bar{u}_i^n}{\partial\bar{x}_j}
+ *   \alpha\frac{\partial \bar{u}_j^n}{\partial\bar{x}_j}\bar{u}_i^n + \bar{u}_j^n \frac{\partial \bar{u}_i^n}{\partial\bar{x}_j}
  * \f]
  *
- * where \f$\alpha\f$ denotes a scalar multiplier.
+ * where \f$\alpha\f$ is a scalar multiplier, \f$ u_i \f$ is the i-th velocity
+ * field, \f$ x_i \f$ is the i-th coordinate.
  *
  ******************************************************************************/
 template
@@ -3306,9 +3460,18 @@ calculate_advected_momentum_forces
         }
     }
 }
+// function calculate_advected_momentum_forces
 
 /***************************************************************************//**
- * \fn device_type void integrate_viscous_forces
+ * \tparam NumNodes number of nodes in cell/element (integer)
+ * \tparam SpaceDim spatial dimensions (integer)
+ * \tparam ResultT  output work set Forward Automatic Differentiation (FAD) type
+ * \tparam ConfigT  configuration work set FAD type
+ * \tparam ControlT control work set FAD type
+ * \tparam StrainT  strain rate work set FAD type
+ *
+ * \fn device_type inline void integrate_viscous_forces
+ *
  * \brief Integrate viscous forces, which are defined as
  *
  * \f[
@@ -3349,9 +3512,16 @@ integrate_viscous_forces
         }
     }
 }
+// function integrate_viscous_forces
 
 /***************************************************************************//**
- * \fn device_type void calculate_natural_convective_forces
+ * \tparam SpaceDim spatial dimensions (integer)
+ * \tparam ResultT   output work set Forward Automatic Differentiation (FAD) type
+ * \tparam ControlT  control work set FAD type
+ * \tparam PrevTempT previous temperature work set FAD type
+ *
+ * \fn device_type inline void calculate_natural_convective_forces
+ *
  * \brief Calculate natural convective forces, which are defined as
  *
  * \f[
@@ -3380,8 +3550,28 @@ calculate_natural_convective_forces
         aResult(aCellOrdinal, tDim) += aMultiplier * aGrashofNum(tDim) * aPrTimesPr * aPrevTempGP(aCellOrdinal);
     }
 }
+// function calculate_natural_convective_forces
 
-// calculate stabilized brinkman force, which is defined as F_i = \frac{Pr}{Da} u^{n-1}_i
+
+/***************************************************************************//**
+ * \tparam SpaceDim spatial dimensions (integer)
+ * \tparam ResultT   output work set Forward Automatic Differentiation (FAD) type
+ * \tparam ControlT  control work set FAD type
+ * \tparam PrevVelT  previous velocity work set FAD type
+ *
+ * \fn device_type inline void calculate_brinkman_forces
+ *
+ * \brief Calculate Brinkmann forces, defined as
+ *
+ * \f[
+ * \alpha\frac{Pr}{Da} u^{n-1}_i
+ * \f]
+ *
+ * where \f$\alpha\f$ is a scalar multiplier, \f$Pr\f$ is the Prandtl number,
+ * \f$Da\f$ is the Darcy number, and \f$u_i^{n-1}\f$ is i-th component of the
+ * previous velocity field.
+ *
+ ******************************************************************************/
 template
 <Plato::OrdinalType SpaceDim,
  typename ResultT,
@@ -3400,33 +3590,20 @@ calculate_brinkman_forces
         aResult(aCellOrdinal, tDim) += aMultiplier * aPenalizedBrinkmanCoeff * aPrevVelGP(aCellOrdinal, tDim);
     }
 }
+// function calculate_brinkman_forces
 
-template
-<Plato::OrdinalType NumNodes,
- Plato::OrdinalType SpaceDim,
- typename ResultT,
- typename ConfigT,
- typename PrevVelT>
-DEVICE_TYPE inline
-void divergence
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarArray3DT<ConfigT> & aGradient,
- const Plato::ScalarMultiVectorT<PrevVelT> & aPrevVelWS,
- const Plato::ScalarVectorT<ResultT> & aResult)
-{
-    for (Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-    {
-        for (Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
-        {
-            auto tCellDof = (SpaceDim * tNode) + tDim;
-            aResult(aCellOrdinal) += aGradient(aCellOrdinal, tNode, tDim) * aPrevVelWS(aCellOrdinal, tCellDof);
-        }
-    }
-}
 
 /***************************************************************************//**
- * \fn device_type void integrate_stabilizing_vector_force
- * \brief Integrate stabilizing momentum forces, which are defined as
+ * \tparam NumNodes number of nodes in cell/element (integer)
+ * \tparam SpaceDim   spatial dimensions (integer)
+ * \tparam ResultT    output work set Forward Automatic Differentiation (FAD) type
+ * \tparam ConfigT    configuration work set FAD type
+ * \tparam PrevVelT   previous velocity work set FAD type
+ * \tparam StabilityT stabilizing force work set at quadrature points FAD type
+ *
+ * \fn device_type inline void integrate_stabilizing_vector_force
+ *
+ * \brief Integrate stabilizing momentum forces, defined as
  *
  * \f[
  *   \alpha\int_{\Omega} \left( \frac{\partial w_i^h}{\partial\bar{x}_k}\bar{u}^n_k \right) \hat{R}^n_{\bar{u}_i}\, d\Omega
@@ -3466,6 +3643,7 @@ integrate_stabilizing_vector_force
         }
     }
 }
+// function integrate_stabilizing_vector_force
 
 
 template
@@ -7262,7 +7440,7 @@ public:
         }
         else if( tCriterionLowerTag == "internal dissipation energy" && tFlowLowerTag == "incompressible")
         {
-            return ( std::make_shared<Plato::Fluids::InternalDissipationEnergyIncompressible<PhysicsT, EvaluationT>>
+            return ( std::make_shared<Plato::Fluids::InternalDissipationEnergy<PhysicsT, EvaluationT>>
                 (aName, aDomain, aDataMap, aInputs) );
         }
         else
@@ -7314,7 +7492,7 @@ public:
         if(tLowerType == "scalar function")
         {
             auto tCriterion =
-                std::make_shared<Plato::Fluids::PhysicsScalarFunction<PhysicsT>>
+                std::make_shared<Plato::Fluids::ScalarFunction<PhysicsT>>
                     (aSpatialModel, aDataMap, aInputs, aName);
             return tCriterion;
         }
@@ -11817,53 +11995,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, MultiplyTimeStep)
     //Plato::print_array_2D(tResult, "time step");
 }
 
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Divergence)
-{
-    // build mesh, mesh sets, and spatial domain
-    constexpr auto tSpaceDims = 2;
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,1,1);
-
-    // set input data for unit test
-    auto tNumCells = tMesh->nelems();
-    constexpr auto tNumNodesPerCell = tSpaceDims + 1;
-    constexpr auto tNumDofsPerCell = tNumNodesPerCell * tSpaceDims;
-    Plato::ScalarVector tResult("divergence", tNumCells);
-    Plato::ScalarVector tCellVolume("cell weight", tNumCells);
-    Plato::ScalarArray3D tConfigWS("configuration", tNumCells, tNumNodesPerCell, tSpaceDims);
-    Plato::ScalarArray3D tGradient("cell gradient", tNumCells, tNumNodesPerCell, tSpaceDims);
-    Plato::ScalarMultiVector tPrevVelWS("previous velocity", tNumCells, tNumDofsPerCell);
-    auto tHostPrevVelWS = Kokkos::create_mirror(tPrevVelWS);
-    tHostPrevVelWS(0,0) = 1; tHostPrevVelWS(0,1) = 2; tHostPrevVelWS(0,2) = 3; tHostPrevVelWS(0,3) = 4 ; tHostPrevVelWS(0,4) = 5 ; tHostPrevVelWS(0,5) = 6;
-    tHostPrevVelWS(1,0) = 7; tHostPrevVelWS(1,1) = 8; tHostPrevVelWS(1,2) = 9; tHostPrevVelWS(1,3) = 10; tHostPrevVelWS(1,4) = 11; tHostPrevVelWS(1,5) = 12;
-    Kokkos::deep_copy(tPrevVelWS, tHostPrevVelWS);
-
-    // set functors for unit test
-    Plato::LinearTetCubRuleDegreeOne<tSpaceDims> tCubRule;
-    Plato::ComputeGradientWorkset<tSpaceDims> tComputeGradient;
-    Plato::NodeCoordinate<tSpaceDims> tNodeCoordinate( (&tMesh.operator*()) );
-
-    // call device kernel
-    auto tCubWeight = tCubRule.getCubWeight();
-    auto tBasisFunctions = tCubRule.getBasisFunctions();
-    Plato::workset_config_scalar<tSpaceDims, tNumNodesPerCell>(tMesh->nelems(), tNodeCoordinate, tConfigWS);
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
-        Plato::Fluids::divergence<tNumNodesPerCell, tSpaceDims>(aCellOrdinal, tGradient, tPrevVelWS, tResult);
-    }, "unit test divergence");
-
-    auto tTol = 1e-4;
-    std::vector<Plato::Scalar> tGold = {4.0,-4.0};
-    auto tHostResult = Kokkos::create_mirror(tResult);
-    Kokkos::deep_copy(tHostResult, tResult);
-    for(auto& tValue : tGold)
-    {
-        auto tCell = &tValue - &tGold[0];
-        TEST_FLOATING_EQUALITY(tValue,tHostResult(tCell),tTol);
-    }
-    //Plato::print(tResult, "divergence");
-}
-
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Integrate)
 {
     // set input data for unit test
@@ -12577,7 +12708,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     // build criterion
     Plato::DataMap tDataMap;
     std::string tFuncName("My Criteria");
-    Plato::Fluids::PhysicsScalarFunction<PhysicsT>
+    Plato::Fluids::ScalarFunction<PhysicsT>
         tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
@@ -12650,7 +12781,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     // build criterion
     Plato::DataMap tDataMap;
     std::string tFuncName("My Criteria");
-    Plato::Fluids::PhysicsScalarFunction<PhysicsT>
+    Plato::Fluids::ScalarFunction<PhysicsT>
         tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
@@ -12731,7 +12862,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, InternalDissipationEnergyIncompressible
     // build criterion
     Plato::DataMap tDataMap;
     std::string tFuncName("My Criteria");
-    Plato::Fluids::PhysicsScalarFunction<PhysicsT>
+    Plato::Fluids::ScalarFunction<PhysicsT>
         tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
@@ -12801,7 +12932,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_Value)
     // build criterion
     Plato::DataMap tDataMap;
     std::string tFuncName("My Criteria");
-    Plato::Fluids::PhysicsScalarFunction<PhysicsT>
+    Plato::Fluids::ScalarFunction<PhysicsT>
         tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
@@ -12863,7 +12994,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfacePressure_GradCurPress)
     // build criterion
     Plato::DataMap tDataMap;
     std::string tFuncName("My Criteria");
-    Plato::Fluids::PhysicsScalarFunction<PhysicsT>
+    Plato::Fluids::ScalarFunction<PhysicsT>
         tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
@@ -12932,7 +13063,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_Value)
     // build criterion
     Plato::DataMap tDataMap;
     std::string tFuncName("My Criteria");
-    Plato::Fluids::PhysicsScalarFunction<PhysicsT>
+    Plato::Fluids::ScalarFunction<PhysicsT>
         tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
@@ -12994,7 +13125,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, AverageSurfaceTemperature_GradCurTemp)
     // build criterion
     Plato::DataMap tDataMap;
     std::string tFuncName("My Criteria");
-    Plato::Fluids::PhysicsScalarFunction<PhysicsT>
+    Plato::Fluids::ScalarFunction<PhysicsT>
         tCriterion(tModel, tDataMap, tInputs.operator*(), tFuncName);
     TEST_EQUALITY("My Criteria", tCriterion.name());
 
