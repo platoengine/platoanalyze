@@ -2477,52 +2477,6 @@ public:
 };
 // class AverageSurfaceTemperature
 
-// todo: continue to build class abstractions
-template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
-DEVICE_TYPE inline ControlT
-simp_penalization
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::Scalar      & aPhysicalParam,
- const Plato::Scalar      & aPenaltyParam,
- const Plato::ScalarMultiVectorT<ControlT> & aControlWS)
-{
-    ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControlWS);
-    ControlT tPenalizedDensity = pow(tDensity, aPenaltyParam);
-    ControlT tPenalizedParam = tPenalizedDensity * aPhysicalParam;
-    return tPenalizedParam;
-}
-
-template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
-DEVICE_TYPE inline ControlT
-msimp_penalization
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::Scalar      & aPhysicalParam,
- const Plato::Scalar      & aPenaltyParam,
- const Plato::Scalar      & aMinErsatzParam,
- const Plato::ScalarMultiVectorT<ControlT> & aControlWS)
-{
-    ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControlWS);
-    ControlT tPenalizedDensity = aMinErsatzParam +
-        ( (static_cast<Plato::Scalar>(1.0) - aMinErsatzParam) * pow(tDensity, aPenaltyParam) );
-    ControlT tPenalizedParam = tPenalizedDensity * aPhysicalParam;
-    return tPenalizedParam;
-}
-
-template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
-DEVICE_TYPE inline ControlT
-ramp_penalization
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::Scalar      & aPhysicalParam,
- const Plato::Scalar      & aConvexityParam,
- const Plato::ScalarMultiVectorT<ControlT> & aControlWS)
-{
-    ControlT tDensity = Plato::cell_density<NumNodesPerCell>(aCellOrdinal, aControlWS);
-    ControlT tPenalizedPhysicalParam =
-        ( tDensity * ( aPhysicalParam * (static_cast<Plato::Scalar>(1.0) - aConvexityParam)
-            - static_cast<Plato::Scalar>(1.0) ) + static_cast<Plato::Scalar>(1.0) )
-            / ( aPhysicalParam * (static_cast<Plato::Scalar>(1.0) + aConvexityParam * tDensity) );
-    return tPenalizedPhysicalParam;
-}
 
 template<Plato::OrdinalType NumNodesPerCell, typename ControlT>
 DEVICE_TYPE inline ControlT
@@ -12406,31 +12360,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, BrinkmanPenalization)
     for(Plato::OrdinalType tIndex = 0; tIndex < tOutput.size(); tIndex++)
     {
         TEST_FLOATING_EQUALITY(0.4, tHostOutput(tIndex), tTol);
-    }
-}
-
-TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, RampPenalization)
-{
-    constexpr Plato::OrdinalType tNumCells = 2;
-    constexpr Plato::OrdinalType tNumNodesPerCell = 4;
-    Plato::Scalar tPhysicalNum = 1.0;
-    Plato::Scalar tConvexityParam = 0.5;
-    Plato::ScalarVector tOutput("output", tNumCells);
-    Plato::ScalarMultiVector tControlWS("control", tNumCells, tNumNodesPerCell);
-    Plato::blas2::fill(0.5, tControlWS);
-
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-    {
-        tOutput(aCellOrdinal) =
-            Plato::Fluids::ramp_penalization<tNumNodesPerCell>(aCellOrdinal, tPhysicalNum, tConvexityParam, tControlWS);
-    }, "ramp_penalization unit test");
-
-    auto tTol = 1e-6;
-    auto tHostOutput = Kokkos::create_mirror(tOutput);
-    Kokkos::deep_copy(tHostOutput, tOutput);
-    for(Plato::OrdinalType tIndex = 0; tIndex < tOutput.size(); tIndex++)
-    {
-        TEST_FLOATING_EQUALITY(0.6, tHostOutput(tIndex), tTol);
     }
 }
 
