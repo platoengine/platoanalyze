@@ -696,21 +696,22 @@ public:
      * \param [in] aAdjointVars C++ structure that holds current adjoint variables
     *******************************************************************************/
     void updateProjPressGradAdjointVars(const Plato::ScalarVector & aControls,
-                                        const Plato::ForwardStates & aStateVars,
+                                        const Plato::ForwardStates & aCurrentStateVars,
+                                        const Plato::ForwardStates & aPreviousStateVars,
                                         Plato::AdjointStates & aAdjointVars)
     {
-        auto tLastStepIndex = mNumPseudoTimeSteps - static_cast<Plato::OrdinalType>(1);
-        if(aStateVars.mCurrentStepIndex == tLastStepIndex)
+        
+        if(aPreviousStateVars.mCurrentStepIndex == mNumPseudoTimeSteps)
         {
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mProjPressGradAdjoint);
             return;
         }
-
+printf("Projected press grad adjoint update for current step %d\n", aCurrentStateVars.mCurrentStepIndex);
         // Compute Jacobian tDrDp_{k+1}^T, i.e. transpose of Jacobian with respect to projected pressure gradient
         auto tDrDp_T =
-            mGlobalEquation->gradient_n_T_assembled(aStateVars.mCurrentGlobalState, aStateVars.mPreviousGlobalState,
-                                                    aStateVars.mCurrentLocalState , aStateVars.mPreviousLocalState,
-                                                    aStateVars.mProjectedPressGrad, aControls, aStateVars.mCurrentStepIndex);
+            mGlobalEquation->gradient_n_T_assembled(aPreviousStateVars.mCurrentGlobalState, aPreviousStateVars.mPreviousGlobalState,
+                                                    aPreviousStateVars.mCurrentLocalState , aPreviousStateVars.mPreviousLocalState,
+                                                    aPreviousStateVars.mProjectedPressGrad, aControls, aPreviousStateVars.mCurrentStepIndex);
 
         // Compute tDrDp_{k+1}^T * lambda_{k+1}
         auto tNumProjPressGradDofs = mProjectionEquation->size();
@@ -720,11 +721,22 @@ public:
 
         // Solve for current projected pressure gradient adjoint, i.e.
         //   gamma_k =  INV(tDpDp_k^T) * (tDrDp_{k+1}^T * lambda_{k+1})
-        auto tProjJacobian = mProjectionEquation->gradient_u_T(aStateVars.mProjectedPressGrad, aStateVars.mPressure,
-                                                               aControls, aStateVars.mCurrentStepIndex);
+        auto tProjJacobian = mProjectionEquation->gradient_u_T(aCurrentStateVars.mProjectedPressGrad, aCurrentStateVars.mPressure,
+                                                               aControls, aCurrentStateVars.mCurrentStepIndex);
 
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mProjPressGradAdjoint);
         Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointVars.mProjPressGradAdjoint, tResidual);
+Plato::Scalar tTempSum = 0.0;
+Plato::blas1::local_sum(aAdjointVars.mProjPressGradAdjoint, tTempSum);
+printf("ProjPressAdjntSum %e\n", tTempSum);
+
+tTempSum = 0.0;
+Plato::blas1::local_sum(tResidual, tTempSum);
+printf("ResidualSum %e\n", tTempSum);
+
+tTempSum = 0.0;
+Plato::blas1::local_sum(aAdjointVars.mPreviousGlobalAdjoint, tTempSum);
+printf("PreviousGlobalAdjntSum %e\n", tTempSum);
     }
 
     /***************************************************************************//**
@@ -846,8 +858,10 @@ public:
                                 const Plato::ForwardStates & aPreviousStateVars,
                                 Plato::AdjointStates & aAdjointVars)
     {
+        printf("Updating Adjoint Vars Current Step = %d and Previous Step = %d\n", 
+            aCurrentStateVars.mCurrentStepIndex, aPreviousStateVars.mCurrentStepIndex);
         this->updateInverseLocalJacobian(aControls, aCurrentStateVars, aAdjointVars.mInvLocalJacT);
-        this->updateProjPressGradAdjointVars(aControls, aCurrentStateVars, aAdjointVars);
+        this->updateProjPressGradAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
         this->updateGlobalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
         this->updateLocalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
     }

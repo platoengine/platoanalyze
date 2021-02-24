@@ -945,7 +945,7 @@ printf("%s\n", tMsg.str().c_str());
                                         tCurrentLocalState, tPreviousLocalState,
                                         aControls, tCurrentStepIndex);
         }
-
+printf("Criterion value : %e\n", tOutput);
         return tOutput;
     }
 

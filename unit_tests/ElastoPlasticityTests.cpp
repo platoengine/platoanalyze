@@ -299,7 +299,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_computeCauchyStress3D)
 
     // 3. TEST RESULTS
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{153,159,165,12,15,18}, {306,318,330,24,30,36}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{167,173,179,12,15,18}, {334,346,358,24,30,36}};
     auto tHostCauchyStress = Kokkos::create_mirror(tCauchyStress);
     Kokkos::deep_copy(tHostCauchyStress, tCauchyStress);
     for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
@@ -344,7 +344,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_computeCauchyStress2D)
 
     // 3. TEST RESULTS
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{153,159,9,171}, {306,318,18,342}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{167,173,9,185}, {334,346,18,370}};
     auto tHostCauchyStress = Kokkos::create_mirror(tCauchyStress);
     Kokkos::deep_copy(tHostCauchyStress, tCauchyStress);
     for (unsigned int tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
@@ -3754,8 +3754,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
