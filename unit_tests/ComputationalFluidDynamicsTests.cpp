@@ -3748,6 +3748,36 @@ void integrate_vector_field
 
 
 /***************************************************************************//**
+ * \fn inline bool is_dimensionless_parameter_defined
+ *
+ * \brief Check if dimensionless parameter is deifned.
+ *
+ * \param [in] aTag    parameter tag
+ * \param [in] aInputs input file metadata
+ *
+ * \return boolean (true or false)
+ ******************************************************************************/
+inline bool is_dimensionless_parameter_defined
+(const std::string & aTag,
+ Teuchos::ParameterList & aInputs)
+{
+    if(aInputs.isSublist("Hyperbolic") == false)
+    {
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
+    }
+
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    if( !tHyperbolic.isSublist("Dimensionless Properties") )
+    {
+        THROWERR("'Dimensionless Properties' sublist is not defined.")
+    }
+    auto tSublist = aInputs.sublist("Dimensionless Properties");
+    return (tSublist.isParameter(aTag));
+}
+// function is_dimensionless_parameter_defined
+
+
+/***************************************************************************//**
  * \fn inline Plato::Scalar dimensionless_reynolds_number
  *
  * \brief Parse Reynolds number from input file.
@@ -3858,13 +3888,49 @@ dimensionless_viscosity_constant
 }
 // function dimensionless_viscosity_constant
 
+
+/***************************************************************************//**
+ * \fn inline Plato::Scalar dimensionless_natural_convection_buoyancy_constant
+ *
+ * \brief Parse buoyancy constant for natural convection problems.
+ *
+ * \param [in] aInputs input file metadata
+ *
+ * \return dimensionless buoyancy constant
+ ******************************************************************************/
+inline Plato::Scalar
+dimensionless_natural_convection_buoyancy_constant
+(Teuchos::ParameterList & aInputs)
+{
+    auto tPrNum = Plato::Fluids::dimensionless_prandtl_number(aInputs);
+    if(Plato::Fluids::is_dimensionless_parameter_defined("Rayleigh Number", aInputs))
+    {
+        auto tBuoyancy = tPrNum;
+        return tBuoyancy;
+    }
+    else if(Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs))
+    {
+        auto tBuoyancy = tPrNum*tPrNum;
+        return tBuoyancy;
+    }
+    else
+    {
+        THROWERR("Natural convection properties are not defined. One of these two options should be provided: Grashof or Rayleigh number")
+    }
+}
+// function dimensionless_natural_convection_buoyancy_constant
+
 /***************************************************************************//**
  * \fn inline Plato::Scalar dimensionless_buoyancy_constant
  *
- * \brief Parse dimensionless buoyancy constant \f$ \beta f\$, where \f$ \beta=\frac{1}{Re^2} f\$
- * if forced convection dominates and \f$ \nu=Pr^2 \f$ is natural convection dominates.
+ * \brief Parse dimensionless buoyancy constant \f$ \beta f\$, where \f$ \beta=
+ * \frac{1}{Re^2} f\$ if forced convection dominates. The buoyancy constant for
+ * natural convection dominated problems is given by \f$ \nu=Pr^2 \f$ or \f$ \nu=Pr \f$
+ * based on the dimensionless convective constant (i.e. Rayleigh or Grashof number)
+ * provided by the user.
  *
  * \param [in] aInputs input file metadata
+ *
  * \return dimensionless buoyancy constant
  ******************************************************************************/
 inline Plato::Scalar
@@ -3881,9 +3947,7 @@ dimensionless_buoyancy_constant
     }
     else if(tHeatTransfer == "natural")
     {
-        auto tPrNum = Plato::Fluids::dimensionless_prandtl_number(aInputs);
-        tBuoyancy = tPrNum*tPrNum;
-
+        tBuoyancy = Plato::Fluids::dimensionless_natural_convection_buoyancy_constant(aInputs);
     }
     else
     {
@@ -3926,12 +3990,64 @@ stabilization_constant
 /***************************************************************************//**
  * \tparam SpaceDim spatial dimensions (integer)
  *
+ * \fn inline Plato::ScalarVector dimensionless_rayleigh_number
+ *
+ * \brief Parse array of dimensionless Rayleigh constants.
+ *
+ * \param [in] aInputs input file metadata
+ * \return Rayleigh constants
+ ******************************************************************************/
+template<Plato::OrdinalType SpaceDim>
+inline Plato::ScalarVector
+dimensionless_rayleigh_number
+(Teuchos::ParameterList & aInputs)
+{
+    if(aInputs.isSublist("Hyperbolic") == false)
+    {
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
+    }
+
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+    auto tHeatTransfer = Plato::tolower(tTag);
+    auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
+
+    Plato::ScalarVector tOuput("Rayleigh Number", SpaceDim);
+    if(tCalculateHeatTransfer)
+    {
+        auto tRaNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Rayleigh Number", "Dimensionless Properties", tHyperbolic);
+        if(tRaNum.size() != SpaceDim)
+        {
+            THROWERR(std::string("'Rayleigh Number' array length should match the number of spatial dimensions. ")
+                + "Array length is '" + std::to_string(tRaNum.size()) + "' and the number of spatial dimensions is '"
+                + std::to_string(SpaceDim) + "'.")
+        }
+
+        auto tHostRaNum = Kokkos::create_mirror(tOuput);
+        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
+        {
+            tHostRaNum(tDim) = tRaNum[tDim];
+        }
+        Kokkos::deep_copy(tOuput, tHostRaNum);
+    }
+    else
+    {
+        Plato::blas1::fill(0.0, tOuput);
+    }
+
+    return tOuput;
+}
+// function dimensionless_rayleigh_number
+
+/***************************************************************************//**
+ * \tparam SpaceDim spatial dimensions (integer)
+ *
  * \fn inline Plato::ScalarVector dimensionless_grashof_number
  *
  * \brief Parse array of dimensionless Grashof constants.
  *
  * \param [in] aInputs input file metadata
- * \return stabilization constant
+ * \return Grashof constants
  ******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
 inline Plato::ScalarVector
@@ -3954,8 +4070,8 @@ dimensionless_grashof_number
         auto tGrNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Grashof Number", "Dimensionless Properties", tHyperbolic);
         if(tGrNum.size() != SpaceDim)
         {
-            THROWERR(std::string("'Grashof Number' array length should match the number of physical spatial dimensions. ")
-                + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of physical spatial dimensions is '"
+            THROWERR(std::string("'Grashof Number' array length should match the number of spatial dimensions. ")
+                + "Array length is '" + std::to_string(tGrNum.size()) + "' and the number of spatial dimensions is '"
                 + std::to_string(SpaceDim) + "'.")
         }
 
@@ -3976,6 +4092,37 @@ dimensionless_grashof_number
 // function dimensionless_grashof_number
 
 
+/***************************************************************************//**
+ * \tparam SpaceDim spatial dimensions (integer)
+ *
+ * \fn inline Plato::ScalarVector dimensionless_natural_convection_number
+ *
+ * \brief Parse array with dimensionless natural convection constants (e.g.
+ * Rayleigh or Grashof number).
+ *
+ * \param [in] aInputs input file metadata
+ *
+ * \return natural convection constants
+ ******************************************************************************/
+template<Plato::OrdinalType SpaceDim>
+inline Plato::ScalarVector
+dimensionless_natural_convection_number
+(Teuchos::ParameterList & aInputs)
+{
+    if(Plato::Fluids::is_dimensionless_parameter_defined("Rayleigh Number", aInputs))
+    {
+        return (Plato::Fluids::dimensionless_rayleigh_number<SpaceDim>(aInputs));
+    }
+    else if(Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs))
+    {
+        return (Plato::Fluids::dimensionless_grashof_number<SpaceDim>(aInputs));
+    }
+    else
+    {
+        THROWERR("Natural convection properties are not defined. One of these two options should be provided: Grashof or Rayleigh number")
+    }
+}
+// function dimensionless_natural_convection_number
 
 
 
@@ -4073,10 +4220,10 @@ private:
 
     // set member scalar data
     Plato::Scalar mTheta = 1.0; /*!< artificial viscous damping */
-    Plato::Scalar mBuoyancy = 0.0; /*!< dimensionless buoyancy constant */
+    Plato::Scalar mBuoyancyConst = 0.0; /*!< dimensionless buoyancy constant */
     Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity constant */
     Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
-    Plato::ScalarVector mGrNum; /*!< dimensionless grashof number */
+    Plato::ScalarVector mNaturalConvectionNum; /*!< dimensionless natural convection number (either Rayleigh or Grashof - depends on user's input) */
     bool mCalculateThermalBuoyancyForces = false; /*!< indicator to determine if thermal buoyancy forces will be considered in calculations */
 
 public:
@@ -4205,8 +4352,8 @@ public:
             auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
 
             // transfer member data to device
-            auto tGrNum = mGrNum;
-            auto tBuoyancy = mBuoyancy;
+            auto tBuoyancyConst = mBuoyancyConst;
+            auto tNaturalConvectionNum = mNaturalConvectionNum;
             auto tGlobalTimeStep = tCriticalTimeStep(0);
 
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
@@ -4214,7 +4361,7 @@ public:
                 // 1. add previous buoyancy force to residual, i.e. R -= (\Delta{t}*Bu*Gr_i) M T_n, where Bu is the buoyancy constant
                 tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
                 Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
-                    (aCellOrdinal, tBuoyancy, tGrNum, tPrevTempGP, tThermalBuoyancy);
+                    (aCellOrdinal, tBuoyancyConst, tNaturalConvectionNum, tPrevTempGP, tThermalBuoyancy);
                 Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                     (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, -tGlobalTimeStep);
 
@@ -4287,8 +4434,8 @@ private:
        mCalculateThermalBuoyancyForces = Plato::Fluids::calculate_heat_transfer(aInputs);
        if(mCalculateThermalBuoyancyForces)
        {
-           mBuoyancy = Plato::Fluids::dimensionless_buoyancy_constant(aInputs);
-           mGrNum = Plato::Fluids::dimensionless_grashof_number<mNumSpatialDims>(aInputs);
+           mBuoyancyConst = Plato::Fluids::dimensionless_buoyancy_constant(aInputs);
+           mNaturalConvectionNum = Plato::Fluids::dimensionless_natural_convection_number<mNumSpatialDims>(aInputs);
        }
    }
 
@@ -6021,8 +6168,22 @@ private:
     {
         if(aInputs.isSublist("Heat Source"))
         {
-            mHeatSourceConstant = aInputs.sublist("Heat Source").get<Plato::Scalar>("Constant", 0.0);
+            auto tHeatSource = aInputs.sublist("Heat Source");
+            mHeatSourceConstant = tHeatSource.get<Plato::Scalar>("Constant", 0.0);
+            mReferenceTemperature = tHeatSource.get<Plato::Scalar>("Reference Temperature", 0.0);
+            this->setCharacteristicLength(aInputs);
         }
+    }
+
+    void setCharacteristicLength
+    (Teuchos::ParameterList & aInputs)
+    {
+        if(!aInputs.isSublist("Hyperbolic"))
+        {
+            THROWERR("'Hyperbolic' Parameter List is not defined.")
+        }
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        mCharacteristicLength = Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolic);
     }
 
     void setThermalProperties
@@ -6032,16 +6193,8 @@ private:
         Plato::is_material_defined(tMaterialName, aInputs);
         auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
         auto tThermalPropBlock = std::string("Thermal Properties");
-        mReferenceTemperature = Plato::parse_parameter<Plato::Scalar>("Reference Temperature", tThermalPropBlock, tMaterial);
         mSolidThermalDiffusivity = Plato::parse_parameter<Plato::Scalar>("Solid Thermal Diffusivity", tThermalPropBlock, tMaterial);
         mFluidThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Fluid Thermal Conductivity", tThermalPropBlock, tMaterial);
-    }
-
-    void setCharacteristicLength
-    (Teuchos::ParameterList & aInputs)
-    {
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        mCharacteristicLength = Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolic);
     }
 
     void setEffectiveConductivity
@@ -6074,7 +6227,6 @@ private:
         {
             THROWERR("'Hyperbolic' Parameter List is not defined.")
         }
-        this->setCharacteristicLength(aInputs);
         this->setEffectiveConductivity(aInputs);
     }
 
@@ -9987,6 +10139,188 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
           0.000000e+00, 0.000000e+00, 7.679686e-02, 3.779762e-02, -4.002098e-03, -8.364413e-03,
           -6.939600e-02, -5.700533e-03, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
           8.581847e-02, 1.703641e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00 };
+    for(auto& tGoldVel : tGoldVelocity)
+    {
+        auto tDof = &tGoldVel - &tGoldVelocity[0];
+        TEST_FLOATING_EQUALITY(tGoldVel, tHostVelocity(tDof), tTol);
+    }
+    //Plato::print(tVelSubView, "steady state velocity");
+}
+
+
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Plato Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Prandtl Number' type='double'  value='0.7'/>"
+            "      <Parameter  name='Grashof Number' type='Array(double)' value='{0,1e3,0}'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Spatial Model'>"
+            "    <ParameterList name='Domains'>"
+            "      <ParameterList name='Design Volume'>"
+            "        <Parameter name='Element Block' type='string' value='body'/>"
+            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Material Models'>"
+            "    <ParameterList name='Water'>"
+            "      <ParameterList name='Thermal Properties'>"
+            "        <Parameter  name='Fluid Thermal Conductivity'  type='double'  value='1'/>"
+            "        <Parameter  name='Reference Temperature'       type='double'  value='10.0'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Momentum Essential Boundary Conditions'>"
+            "    <ParameterList  name='X-Dir No-Slip on X-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on X-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on X+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on X+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Tangential Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='1.0'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Normal Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='0'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
+            "    <ParameterList  name='Zero Pressure'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='pressure'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Newton Iteration'>"
+            "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
+            "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
+            "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Time Integration'>"
+            "    <Parameter name='Safety Factor'      type='double' value='1.0'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Linear Solver'>"
+            "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // add pressure essential boundary condition to node set list
+    Omega_h::Write<int> tWritePress(1);
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, 1), LAMBDA_EXPRESSION(const Plato::OrdinalType & aOrdinal)
+    {
+        tWritePress[aOrdinal]=0;
+    }, "set pressure bc dofs value");
+    auto tPressBcNodeIds = Omega_h::LOs(tWritePress);
+    tMeshSets[Omega_h::NODE_SET].insert( std::pair<std::string,Omega_h::LOs>("pressure",tPressBcNodeIds) );
+
+    // create communicator
+    MPI_Comm tMyComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
+    Plato::Comm::Machine tMachine(tMyComm);
+
+    // create and run incompressible cfd problem
+    constexpr auto tSpaceDim = 2;
+    Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
+    const auto tNumVerts = tMesh->nverts();
+    auto tControls = Plato::ScalarVector("Controls", tNumVerts);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tProblem.solution(tControls);
+    //tProblem.output("cfd_test_problem");
+
+    // test solution
+    auto tTags = tSolution.tags();
+    std::vector<std::string> tGoldTags = { "velocity", "pressure" };
+    TEST_EQUALITY(tGoldTags.size(), tTags.size());
+    for(auto& tTag : tTags)
+    {
+        auto tItr = std::find(tGoldTags.begin(), tGoldTags.end(), tTag);
+        TEST_ASSERT(tItr != tGoldTags.end());
+        TEST_EQUALITY(*tItr, tTag);
+    }
+
+    auto tTol = 1e-4;
+    auto tPressure = tSolution.get("pressure");
+    auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
+    auto tHostPressure = Kokkos::create_mirror(tPressSubView);
+    Kokkos::deep_copy(tHostPressure, tPressSubView);
+    std::vector<double> tGoldPressure =
+    { 0.000000e+00, 3.731415e-03, 7.816292e-03, 7.587085e-03, 1.241365e-02, 1.063465e-02,
+      -5.198417e-04, -3.482819e-03, -5.190182e-04, -6.584415e-02, -4.304338e-02, -2.550113e-01,
+      -4.137012e-01, -2.028317e-01, -1.218144e-01, -6.249967e-02, -3.871247e-02, -2.076437e-02,
+      6.898296e-03, 2.266167e-02, 3.563244e-02, 1.129117e-01, 1.519040e-01, 3.731144e-01,
+      2.325776e-01, 4.197060e-02, 6.356792e-02, 2.115928e-02, 7.908880e-03, 3.050671e-03,
+      4.394201e-03, 7.350702e-03, 1.146635e-02, 6.443506e-03, 1.890785e-02, 1.827038e-02 };
+    for(auto& tGoldPress : tGoldPressure)
+    {
+        auto tDof = &tGoldPress - &tGoldPressure[0];
+        TEST_FLOATING_EQUALITY(tGoldPress, tHostPressure(tDof), tTol);
+    }
+    //Plato::print(tPressSubView, "steady state pressure");
+
+    auto tVelocity = tSolution.get("velocity");
+    auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
+    auto tHostVelocity = Kokkos::create_mirror(tVelSubView);
+    Kokkos::deep_copy(tHostVelocity, tVelSubView);
+    std::vector<double> tGoldVelocity =
+        { 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 2.833694e-02, 3.161706e-02,
+          0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, -3.622390e-02, 7.679319e-03,
+          -2.513879e-01, -2.315935e-02, -9.600695e-02, 8.900196e-02, 0.000000e+00, 0.000000e+00,
+          0.000000e+00, 0.000000e+00, -2.127223e-01, 1.186893e-01, 0.000000e+00, 0.000000e+00,
+          1.000000e+00, 0.000000e+00, 1.000000e+00, -2.014148e-01, 2.209044e-01, 2.687383e-02,
+          1.000000e+00, -2.568389e-02, 2.108086e-01, 6.878037e-02, -2.008218e-01, 3.752568e-02,
+          -2.414176e-01, -1.413018e-01, 1.705768e-01, -4.762509e-02, 1.000000e+00, 1.943306e-02,
+          1.809571e-01, -2.627045e-02, 1.000000e+00, -1.559841e-02, 1.000000e+00, 0.000000e+00,
+          0.000000e+00, 0.000000e+00, -3.221432e-01, -8.796441e-02, 0.000000e+00, 0.000000e+00,
+          0.000000e+00, 0.000000e+00, -3.003773e-02, -1.087609e-02, -1.023158e-01, -9.410034e-02,
+          -1.142110e-01, -4.599828e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
+          7.111933e-02, -1.348906e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00 };
     for(auto& tGoldVel : tGoldVelocity)
     {
         auto tDof = &tGoldVel - &tGoldVelocity[0];
