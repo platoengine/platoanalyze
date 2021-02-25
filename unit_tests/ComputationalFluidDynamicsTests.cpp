@@ -3767,12 +3767,13 @@ inline bool is_dimensionless_parameter_defined
     }
 
     auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    if( !tHyperbolic.isSublist("Dimensionless Properties") )
+    if( tHyperbolic.isSublist("Dimensionless Properties") == false )
     {
         THROWERR("'Dimensionless Properties' sublist is not defined.")
     }
-    auto tSublist = aInputs.sublist("Dimensionless Properties");
-    return (tSublist.isParameter(aTag));
+    auto tSublist = tHyperbolic.sublist("Dimensionless Properties");
+    auto tIsDefined = tSublist.isParameter(aTag); 
+    return tIsDefined;
 }
 // function is_dimensionless_parameter_defined
 
@@ -3915,7 +3916,7 @@ dimensionless_natural_convection_buoyancy_constant
     }
     else
     {
-        THROWERR("Natural convection properties are not defined. One of these two options should be provided: Grashof or Rayleigh number")
+        THROWERR("Natural convection properties are not defined. One of these two options should be provided: 'Grashof Number' or 'Rayleigh Number'")
     }
 }
 // function dimensionless_natural_convection_buoyancy_constant
@@ -4119,7 +4120,7 @@ dimensionless_natural_convection_number
     }
     else
     {
-        THROWERR("Natural convection properties are not defined. One of these two options should be provided: Grashof or Rayleigh number")
+        THROWERR("Natural convection properties are not defined. One of these two options should be provided: 'Grashof Number' or 'Rayleigh Number'")
     }
 }
 // function dimensionless_natural_convection_number
@@ -10173,7 +10174,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
             "      <Parameter  name='Prandtl Number'  type='double'        value='0.7'/>"
-            "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3,0}'/>"
+            "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
@@ -11861,15 +11862,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, PenalizeThermalDiffusivity)
     tHostControl(0,0) = 0.5; tHostControl(0,1) = 0.5; tHostControl(0,2) = 0.5;
     tHostControl(1,0) = 1.0; tHostControl(1,1) = 1.0; tHostControl(1,2) = 1.0;
     Kokkos::deep_copy(tControl, tHostControl);
-    constexpr auto tFluidDiff  = 1.0;
-    constexpr auto tSolidDiff  = 4.0;
     constexpr auto tPenaltyExp = 3.0;
+    constexpr auto tDiffusivityRatio  = 4.0;
 
     // call device function
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
     {
         tResult(aCellOrdinal) =
-            Plato::Fluids::penalize_thermal_diffusivity<tNumNodesPerCell>(aCellOrdinal, tFluidDiff, tSolidDiff, tPenaltyExp, tControl);
+            Plato::Fluids::penalize_thermal_diffusivity<tNumNodesPerCell>(aCellOrdinal, tDiffusivityRatio, tPenaltyExp, tControl);
     }, "unit test penalize_thermal_diffusivity");
 
     auto tTol = 1e-4;
