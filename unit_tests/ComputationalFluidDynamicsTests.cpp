@@ -9592,7 +9592,7 @@ private:
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aStates)
     {
-        this->printPressureSolverHeader();
+        this->printTemperatureSolverHeader();
         this->printNewtonHeader();
 
         auto tCurrentTemperature = aStates.vector("current temperature");
