@@ -56,6 +56,20 @@ struct CurrentStates
     Plato::ScalarVector mCurrentGlobalState;   /*!< current global state */
     Plato::ScalarVector mPreviousGlobalState;  /*!< previous global state */
     Plato::ScalarVector mProjectedPressGrad;   /*!< current projected pressure gradient */
+
+    void print(const char my_string[]) const
+    {
+        const int width = 10;
+        const int precision = 4;
+        std::cout << std::scientific;
+        std::cout << "Printing CS " << my_string << " Step " << mCurrentStepIndex 
+          << " : CPPG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mProjectedPressGrad)
+          << " , CG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mCurrentGlobalState)
+          << " , PG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPreviousGlobalState)
+          << " , CL " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mCurrentLocalState)
+          << " , PL " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPreviousLocalState)
+          << std::endl;
+    }
 };
 // struct CurrentStates
 

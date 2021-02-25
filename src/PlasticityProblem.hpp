@@ -797,6 +797,9 @@ private:
         tCurrentState.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalEquation->size());
 
         this->initializeNewtonSolver();
+Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mLocalStates);
+Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mGlobalStates);
+Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressGrad);
 
         bool tForwardProblemSolved = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
@@ -806,7 +809,7 @@ private:
             tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << " OUT OF " << mNumPseudoTimeSteps
                  << " TIME STEPS, TOTAL TIME = " << mCurrentPseudoTimeStep << "\n";
             mNewtonSolver->appendOutputMessage(tMsg);
-printf("%s\n", tMsg.str().c_str());
+//printf("%s\n", tMsg.str().c_str());
             tCurrentState.mCurrentStepIndex = tCurrentStepIndex;
             this->cacheStateData(tCurrentState);
 
@@ -888,7 +891,7 @@ printf("%s\n", tMsg.str().c_str());
         Plato::blas1::fill(0.0, tNextProjectedPressureGradient);
         auto tProjResidual = mProjectionEquation->value(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
         auto tProjJacobian = mProjectionEquation->gradient_u(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
-        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aStateData.mProjectedPressGrad, tProjResidual);
+        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, tNextProjectedPressureGradient, tProjResidual);
     }
 
     /***************************************************************************//**
@@ -945,7 +948,7 @@ printf("%s\n", tMsg.str().c_str());
                                         tCurrentLocalState, tPreviousLocalState,
                                         aControls, tCurrentStepIndex);
         }
-printf("Criterion value : %e\n", tOutput);
+printf("Criterion value : %e\n\n", tOutput);
         return tOutput;
     }
 
@@ -966,8 +969,11 @@ printf("Criterion value : %e\n", tOutput);
         {
             auto tCurrentLocalState = Kokkos::subview(mLocalStates, tCurrentStepIndex, Kokkos::ALL());
             auto tCurrentGlobalState = Kokkos::subview(mGlobalStates, tCurrentStepIndex, Kokkos::ALL());
-
-            // SET PREVIOUS LOCAL STATES
+std::cout << "Partial Z " << tCurrentStepIndex 
+          << ": CL " << std::setw(10) << std::setprecision(4) << Plato::blas1::norm(tCurrentLocalState)
+          << ", CG " << std::setw(10) << std::setprecision(4) << Plato::blas1::norm(tCurrentGlobalState)
+          << std::endl;
+            // SET PREVIOUS STATES
             this->getPreviousState(tCurrentStepIndex, mLocalStates, tPreviousLocalState);
             this->getPreviousState(tCurrentStepIndex, mGlobalStates, tPreviousGlobalState);
 
@@ -1076,7 +1082,6 @@ printf("Criterion value : %e\n", tOutput);
         // SET ENTRIES IN CURRENT STATES TO ZERO
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentLocalState);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentGlobalState);
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mProjectedPressGrad);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mPressure);
     }
 
