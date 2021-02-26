@@ -969,10 +969,7 @@ printf("Criterion value : %e\n\n", tOutput);
         {
             auto tCurrentLocalState = Kokkos::subview(mLocalStates, tCurrentStepIndex, Kokkos::ALL());
             auto tCurrentGlobalState = Kokkos::subview(mGlobalStates, tCurrentStepIndex, Kokkos::ALL());
-std::cout << "Partial Z " << tCurrentStepIndex 
-          << ": CL " << std::setw(10) << std::setprecision(4) << Plato::blas1::norm(tCurrentLocalState)
-          << ", CG " << std::setw(10) << std::setprecision(4) << Plato::blas1::norm(tCurrentGlobalState)
-          << std::endl;
+
             // SET PREVIOUS STATES
             this->getPreviousState(tCurrentStepIndex, mLocalStates, tPreviousLocalState);
             this->getPreviousState(tCurrentStepIndex, mGlobalStates, tPreviousGlobalState);

@@ -33,7 +33,7 @@ struct FunctionFactory
         if(aStrVectorFunctionType == "State Gradient Projection")
         {
             auto tPenaltyParams = aParamList.sublist(aStrVectorFunctionType).sublist("Penalty Function");
-            std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "SIMP");
+            std::string tPenaltyType = tPenaltyParams.get<std::string>("Type", "NoPenalty");
             if(tPenaltyType == "SIMP")
             {
                 return std::make_shared<Plato::PressureGradientProjectionResidual<EvaluationType, Plato::MSIMP>>

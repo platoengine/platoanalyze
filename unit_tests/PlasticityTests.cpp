@@ -673,7 +673,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidual
     }, "Unit Test");
 
     constexpr Plato::Scalar tTolerance = 1e-5;
-    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-0.146463,-0.224745};
+    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-1.12626,-0.224745};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
 
@@ -731,7 +731,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidual
     }, "Unit Test");
 
     constexpr Plato::Scalar tTolerance = 1e-5;
-    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-0.146463,-0.224745,-0.303027,-0.381309};
+    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-0.146463,-1.44949,-1.77272,-2.09595};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
 
@@ -1855,7 +1855,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
     Kokkos::deep_copy(tHostLocalResidual, tLocalResidual);
 
     std::vector<Plato::Scalar> tGold = {-0.400000,26.941399,-0.480125,0.111393,
-        0.368732,0.022152,0.022152,0.022152,7.078994,-44.680887,37.601894,
+        0.368732,0.0443036,0.0443036,0.0443036,7.078994,-44.680887,37.601894,
         -0.829778,-0.829778,-0.829778};
     for (Plato::OrdinalType tIndex = 0; tIndex < tNumLocalDofs; ++tIndex)
         TEST_FLOATING_EQUALITY(tHostLocalResidual(tIndex), 
@@ -1952,7 +1952,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
     Kokkos::deep_copy(tHostLocalResidual, tLocalResidual);
 
     std::vector<Plato::Scalar> tGold = {-0.400000,9.72218,
-                                        -0.435375,0.457842,0.0450773,0.438152,
+                                        -0.435375,0.457842,0.0901547,0.438152,
                                         7.42286,-42.0187,-0.653611,3.3669};
     for (Plato::OrdinalType tIndex = 0; tIndex < tNumLocalDofs; ++tIndex)
         TEST_FLOATING_EQUALITY(tHostLocalResidual(tIndex), 

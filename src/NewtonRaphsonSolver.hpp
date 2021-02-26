@@ -623,7 +623,7 @@ if (mDebugFlag) printf("Update local states.\n");
         }
 if (mDebugFlag) printf("Newton finished\n");
         Plato::print_newton_raphson_stop_criterion(tOutputData, mSolverDiagnosticsFile);
-aStates.print("After Newton   "); std::cout << std::endl;
+aStates.print("After Newton   ");
         return (tNewtonRaphsonConverged);
     }
 };

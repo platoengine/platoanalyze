@@ -59,16 +59,15 @@ struct CurrentStates
 
     void print(const char my_string[]) const
     {
-        const int width = 10;
-        const int precision = 4;
-        std::cout << std::scientific;
-        std::cout << "Printing CS " << my_string << " Step " << mCurrentStepIndex 
-          << " : CPPG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mProjectedPressGrad)
-          << " , CG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mCurrentGlobalState)
-          << " , PG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPreviousGlobalState)
-          << " , CL " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mCurrentLocalState)
-          << " , PL " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPreviousLocalState)
-          << std::endl;
+        printf("Printing CS %s Step %d : CPPG %10.4e , CG %10.4e , PG %10.4e , CL %10.4e , PL %10.4e\n\n",
+        my_string, 
+        mCurrentStepIndex,
+        Plato::blas1::norm(mProjectedPressGrad),
+        Plato::blas1::norm(mCurrentGlobalState),
+        Plato::blas1::norm(mPreviousGlobalState),
+        Plato::blas1::norm(mCurrentLocalState),
+        Plato::blas1::norm(mPreviousLocalState)
+        );
     }
 };
 // struct CurrentStates

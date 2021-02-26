@@ -70,35 +70,21 @@ struct ForwardStates
 
     void print(const char my_string[]) const
     {
-          const int width = 10;
-          const int precision = 4;
-          std::cout << std::scientific;
-          std::cout << "Printing FS " << my_string << " : Step " << mCurrentStepIndex;
-          if (mProjectedPressGrad.size() > 0)
-            std::cout << " , CPPG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mProjectedPressGrad);
-          else
-            std::cout << ", CPPG Empty";
-          if (mPressure.size() > 0)
-            std::cout << " , CP " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPressure);
-          else
-            std::cout << ", CP Empty";
-          if (mCurrentGlobalState.size() > 0)
-            std::cout << " , CG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mCurrentGlobalState);
-          else
-            std::cout << ", CG Empty";
-          if (mPreviousGlobalState.size() > 0)
-            std::cout << " , PG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPreviousGlobalState);
-          else
-            std::cout << ", PG Empty";
-          if (mCurrentLocalState.size() > 0)
-            std::cout << " , CL " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mCurrentLocalState);
-          else
-            std::cout << ", CL Empty";
-          if (mPreviousLocalState.size() > 0)
-            std::cout << " , PL " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPreviousLocalState);
-          else
-            std::cout << ", PL Empty";
-          std::cout << std::endl;
+        if (mProjectedPressGrad.size() <= 0)
+        {
+            printf("Foreword States Empty\n");
+            return;
+        }
+        printf("Printing FS %s Step %d : CPPG %10.4e , CP %10.4e , CG %10.4e , PG %10.4e , CL %10.4e , PL %10.4e\n",
+        my_string, 
+        mCurrentStepIndex,
+        Plato::blas1::norm(mProjectedPressGrad),
+        Plato::blas1::norm(mPressure),
+        Plato::blas1::norm(mCurrentGlobalState),
+        Plato::blas1::norm(mPreviousGlobalState),
+        Plato::blas1::norm(mCurrentLocalState),
+        Plato::blas1::norm(mPreviousLocalState)
+        );
     }
 };
 // struct ForwardStates
@@ -142,18 +128,16 @@ struct AdjointStates
 
     void print(const char my_string[], const Plato::OrdinalType my_step) const
     {
-        const int width = 10;
-        const int precision = 4;
-        std::cout << std::scientific;
-        std::string step_string = std::string(" Step ") + std::to_string(my_step);
-        std::cout << "Printing AS " << my_string << step_string
-          << " : CPPG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mProjPressGradAdjoint)
-          << " : PPPG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPreviousProjPressGradAdjoint)
-          << " , CG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mCurrentGlobalAdjoint)
-          << " , PG " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPreviousGlobalAdjoint)
-          << " , CL " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mCurrentLocalAdjoint)
-          << " , PL " << std::setw(width) << std::setprecision(precision) << Plato::blas1::norm(mPreviousLocalAdjoint)
-          << std::endl;
+        printf("Printing AS %s Step %d : CPPG %10.4e , PPPG %10.4e , CG %10.4e , PG %10.4e , CL %10.4e , PL %10.4e\n",
+        my_string, 
+        my_step,
+        Plato::blas1::norm(mProjPressGradAdjoint),
+        Plato::blas1::norm(mPreviousProjPressGradAdjoint),
+        Plato::blas1::norm(mCurrentGlobalAdjoint),
+        Plato::blas1::norm(mPreviousGlobalAdjoint),
+        Plato::blas1::norm(mCurrentLocalAdjoint),
+        Plato::blas1::norm(mPreviousLocalAdjoint)
+        );
     }
 };
 // struct AdjointStates
@@ -900,11 +884,12 @@ Plato::blas1::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aCurrentStateVa
     {
         aCurrentStateVars.print("Current State ");
         aPreviousStateVars.print("Previous State");
+        aAdjointVars.print("Before ", aCurrentStateVars.mCurrentStepIndex);
         this->updateInverseLocalJacobian(aControls, aCurrentStateVars, aAdjointVars.mInvLocalJacT);
         this->updateGlobalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
         this->updateLocalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
         this->updateProjPressGradAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
-        aAdjointVars.print("\tUpdated", aCurrentStateVars.mCurrentStepIndex); std::cout << std::endl;
+        aAdjointVars.print("Updated", aCurrentStateVars.mCurrentStepIndex); printf("\n");
     }
 
     /***************************************************************************//**
