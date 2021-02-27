@@ -5857,7 +5857,6 @@ public:
         this->setThermalProperties(aInputs);
         this->setDimensionlessProperties(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
-        this->setAritificalDiffusiveDamping(aInputs);
     }
 
     virtual ~TemperatureResidual(){}
@@ -5912,7 +5911,7 @@ public:
 
             // 1. add previous diffusive force contribution to residual, i.e. R += K T^n
             Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tPrevTempWS, tPrevThermalFlux);
+                (aCellOrdinal, tGradient, tPrevTempWS, tThermalFlux);
             Plato::blas1::scale<mNumSpatialDims>(aCellOrdinal, tEffConductivity, tThermalFlux);
             Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tGradient, tCellVolume, tThermalFlux, aResultWS, -1.0);
@@ -6045,16 +6044,6 @@ private:
             THROWERR("'Hyperbolic' Parameter List is not defined.")
         }
         this->setEffectiveConductivity(aInputs);
-    }
-
-    void setAritificalDiffusiveDamping
-    (Teuchos::ParameterList& aInputs)
-    {
-        if(aInputs.isSublist("Time Integration"))
-        {
-            auto tTimeIntegration = aInputs.sublist("Time Integration");
-            mTheta = tTimeIntegration.get<Plato::Scalar>("Diffusive Damping", 1.0);
-        }
     }
 
     void setNaturalBoundaryConditions
