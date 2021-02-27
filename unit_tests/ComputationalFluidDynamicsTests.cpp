@@ -5801,261 +5801,8 @@ private:
         }
     }
 };
-
-/*
 // class TemperatureResidual
-template<typename PhysicsT, typename EvaluationT>
-class TemperatureResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
-{
-private:
-    static constexpr auto mNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell;
 
-    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;
-    static constexpr auto mNumNodesPerCell      = PhysicsT::SimplexT::mNumNodesPerCell;
-    static constexpr auto mNumVelDofsPerCell    = PhysicsT::SimplexT::mNumMomentumDofsPerCell;
-    static constexpr auto mNumTempDofsPerCell   = PhysicsT::SimplexT::mNumEnergyDofsPerCell;
-    static constexpr auto mNumVelDofsPerNode    = PhysicsT::SimplexT::mNumMomentumDofsPerNode;
-    static constexpr auto mNumTempDofsPerNode   = PhysicsT::SimplexT::mNumEnergyDofsPerNode;
-    static constexpr auto mNumConfigDofsPerCell = PhysicsT::SimplexT::mNumConfigDofsPerCell;
-
-    // set local ad type
-    using ResultT   = typename EvaluationT::ResultScalarType;
-    using ConfigT   = typename EvaluationT::ConfigScalarType;
-    using ControlT  = typename EvaluationT::ControlScalarType;
-    using CurVelT   = typename EvaluationT::CurrentMomentumScalarType;
-    using CurTempT  = typename EvaluationT::CurrentEnergyScalarType;
-    using PrevTempT = typename EvaluationT::PreviousEnergyScalarType;
-
-    using CurFluxT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurTempT, ConfigT>;
-    using PrevFluxT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevTempT, ConfigT>;
-    using ConvectionT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevTempT, CurVelT, ConfigT>;
-
-    Plato::DataMap& mDataMap;
-    const Plato::SpatialDomain& mSpatialDomain;
-
-    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule;
-    std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mHeatFlux;
-
-    Plato::Scalar mHeatSourceConstant    = 0.0;
-    Plato::Scalar mThermalConductivity   = 1.0;
-    Plato::Scalar mCharacteristicLength  = 0.0;
-    Plato::Scalar mReferenceTemperature  = 1.0;
-    Plato::Scalar mEffectiveConductivity = 1.0;
-
-public:
-    TemperatureResidual
-    (const Plato::SpatialDomain & aDomain,
-     Plato::DataMap             & aDataMap,
-     Teuchos::ParameterList     & aInputs) :
-         mDataMap(aDataMap),
-         mSpatialDomain(aDomain),
-         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
-    {
-        this->setSourceTerm(aInputs);
-        this->setThermalProperties(aInputs);
-        this->setDimensionlessProperties(aInputs);
-        this->setNaturalBoundaryConditions(aInputs);
-    }
-
-    virtual ~TemperatureResidual(){}
-
-    void evaluate
-    (const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
-    const override
-    {
-        auto tNumCells = mSpatialDomain.numCells();
-        if( tNumCells != static_cast<Plato::OrdinalType>(aResultWS.extent(0)) )
-        {
-            THROWERR(std::string("Number of elements mismatch. Spatial domain and output/result workset ")
-                + "have different number of cells. " + "Spatial domain has '" + std::to_string(tNumCells)
-                + "' elements and output workset has '" + std::to_string(aResultWS.extent(0)) + "' elements.")
-        }
-
-        // set constant heat source
-        Plato::ScalarVectorT<ResultT> tHeatSource("prescribed heat source", tNumCells);
-        Plato::blas1::fill(mHeatSourceConstant, tHeatSource);
-
-        // set local data
-        Plato::ScalarVectorT<ConfigT>   tCellVolume("cell weight", tNumCells);
-        Plato::ScalarArray3DT<ConfigT>  tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::ScalarVectorT<CurTempT>  tCurTempGP("current temperature at Gauss points", tNumCells);
-        Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss points", tNumCells);
-        Plato::ScalarVectorT<ConvectionT> tConvection("convection", tNumCells);
-
-        Plato::ScalarMultiVectorT<PrevFluxT> tThermalFlux("thermal flux", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<CurVelT>   tCurVelGP("current velocity at Gauss points", tNumCells, mNumVelDofsPerNode);
-
-        // set local functors
-        Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumTempDofsPerNode> tIntrplScalarField;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0, mNumSpatialDims> tIntrplVectorField;
-
-        // set input state worksets
-        auto tConfigWS   = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tCurVelWS   = Plato::metadata<Plato::ScalarMultiVectorT<CurVelT>>(aWorkSets.get("current velocity"));
-        auto tCurTempWS  = Plato::metadata<Plato::ScalarMultiVectorT<CurTempT>>(aWorkSets.get("current temperature"));
-        auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
-        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
-
-        // transfer member data to device
-        auto tEffConductivity = mEffectiveConductivity;
-        auto tCubWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-        {
-            tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
-            tCellVolume(aCellOrdinal) *= tCubWeight;
-
-            // 1. add previous diffusive force contribution to residual, i.e. R += K T^n
-            Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tPrevTempWS, tThermalFlux);
-            Plato::blas1::scale<mNumSpatialDims>(aCellOrdinal, tEffConductivity, tThermalFlux);
-            Plato::Fluids::calculate_flux_divergence<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCellVolume, tThermalFlux, aResultWS, -1.0);
-
-            // 2. add previous convective force contribution to residual, i.e. R += C T^n
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
-            Plato::Fluids::calculate_convective_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tGradient, tCurVelGP, tPrevTempWS, tConvection);
-            Plato::Fluids::integrate_scalar_field<mNumTempDofsPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tConvection, aResultWS);
-
-            auto tMultiplier = static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0);
-            Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tConvection, aResultWS, tMultiplier);
-
-            // 5. apply time step, i.e. R = \Delta{t}*( K T^n + C T^n + \frac{\Delta{t}}{2}K_s T^n )
-            Plato::blas1::scale<mNumTempDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), aResultWS);
-
-            // 6. add previous inertial force contribution to residual, i.e. R -= M T^n
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
-            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevTempGP, aResultWS, -1.0);
-
-            // 7. add current inertial force contribution to residual, i.e. R += M T^{n+1}
-            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
-            Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
-                (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS);
-        }, "energy conservation residual");
-    }
-
-    void evaluateBoundary
-    (const Plato::SpatialModel & aSpatialModel,
-     const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult)
-    const override
-    { return;  }
-
-    void evaluatePrescribed
-    (const Plato::SpatialModel & aSpatialModel,
-     const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
-    const override
-    {
-        if( mHeatFlux != nullptr )
-        {
-            // set input state worksets
-            auto tConfigWS   = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-            auto tControlWS  = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
-            auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
-
-            // evaluate prescribed flux
-            auto tNumCells = aResultWS.extent(0);
-            Plato::ScalarMultiVectorT<ResultT> tHeatFluxWS("heat flux", tNumCells, mNumDofsPerCell);
-            mHeatFlux->get( aSpatialModel, tPrevTempWS, tControlWS, tConfigWS, tHeatFluxWS );
-
-            auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
-            Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
-            {
-                Plato::blas1::scale<mNumDofsPerCell>(aCellOrdinal, tCriticalTimeStep(0), tHeatFluxWS);
-                Plato::blas1::update<mNumDofsPerCell>(aCellOrdinal, -1.0, tHeatFluxWS, 1.0, aResultWS);
-            }, "heat flux contribution");
-        }
-    }
-
-private:
-    void setSourceTerm
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Heat Source"))
-        {
-            auto tHeatSource = aInputs.sublist("Heat Source");
-            mHeatSourceConstant = tHeatSource.get<Plato::Scalar>("Constant", 0.0);
-            mReferenceTemperature = tHeatSource.get<Plato::Scalar>("Reference Temperature", 1.0);
-            this->setCharacteristicLength(aInputs);
-        }
-    }
-
-    void setThermalProperties
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Heat Source"))
-        {
-            auto tMaterialName = mSpatialDomain.getMaterialName();
-            Plato::is_material_defined(tMaterialName, aInputs);
-            auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
-            auto tThermalPropBlock = std::string("Thermal Properties");
-            mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
-        }
-    }
-
-    void setCharacteristicLength
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Hyperbolic") == false)
-        {
-            THROWERR("'Hyperbolic' Parameter List is not defined.")
-        }
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        mCharacteristicLength = Plato::parse_parameter<Plato::Scalar>("Characteristic Length", "Dimensionless Properties", tHyperbolic);
-    }
-
-    void setEffectiveConductivity
-    (Teuchos::ParameterList & aInputs)
-    {
-        auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
-        auto tHeatTransfer = Plato::tolower(tTag);
-
-        if(tHeatTransfer == "forced" || tHeatTransfer == "none")
-        {
-            auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
-            auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
-            mEffectiveConductivity = static_cast<Plato::Scalar>(1) / (tReNum*tPrNum);
-        }
-        else if(tHeatTransfer == "natural")
-        {
-            mEffectiveConductivity = 1.0;
-        }
-        else
-        {
-            THROWERR(std::string("'Heat Transfer' mechanism with tag '") + tHeatTransfer + "' is not supported.")
-        }
-    }
-
-    void setDimensionlessProperties
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Hyperbolic") == false)
-        {
-            THROWERR("'Hyperbolic' Parameter List is not defined.")
-        }
-        this->setEffectiveConductivity(aInputs);
-    }
-
-    void setNaturalBoundaryConditions
-    (Teuchos::ParameterList & aInputs)
-    {
-        if(aInputs.isSublist("Energy Natural Boundary Conditions"))
-        {
-            auto tSublist = aInputs.sublist("Energy Natural Boundary Conditions");
-            mHeatFlux = std::make_shared<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>>(tSublist);
-        }
-    }
-};
-*/
 
 
 // todo: energy equation - to
@@ -8615,16 +8362,11 @@ calculate_critical_convective_time_step
 inline Plato::Scalar
 calculate_critical_thermal_time_step
 (const Plato::ScalarVector & aElemCharSize,
- const Plato::Scalar & aKinematicViscotiy,
  const Plato::Scalar & aPrNum,
  Plato::Scalar aSafetyFactor = 0.7)
 {
     Plato::Scalar tMinValue = 0;
     Plato::blas1::min(aElemCharSize, tMinValue);
-    //auto tCriticalViscousStep = (tMinValue * tMinValue) / ( static_cast<Plato::Scalar>(2) * aKinematicViscotiy );
-    //auto tThermalDiffusion = aKinematicViscotiy / aPrNum;
-    //auto tCriticalDiffusiveStep = (tMinValue * tMinValue) / ( static_cast<Plato::Scalar>(2) * tThermalDiffusion );
-    //auto tCriticalStep = std::min(tCriticalViscousStep, tThermalDiffusion);
     auto tCriticalStep = tMinValue * tMinValue *  static_cast<Plato::Scalar>(2) * aPrNum;
     return tCriticalStep;
 }
@@ -8822,15 +8564,13 @@ private:
 
     Plato::Scalar mPrandtlNumber = 1.0;
     Plato::Scalar mPressureTolerance = 1e-4;
-    Plato::Scalar mMaxSteadyStateNorm = 1e3;
     Plato::Scalar mPredictorTolerance = 1e-4;
     Plato::Scalar mCorrectorTolerance = 1e-4;
     Plato::Scalar mTemperatureTolerance = 1e-4;
     Plato::Scalar mSteadyStateTolerance = 1e-5;
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
-    Plato::Scalar mCriticalKinematicViscocity = 1.787e-6;
 
-    Plato::OrdinalType mOutputFrequency = 10; 
+    Plato::OrdinalType mOutputFrequency = 1e6;
     Plato::OrdinalType mMaxPressureIterations = 10; /*!< maximum number of pressure solver iterations */
     Plato::OrdinalType mMaxPredictorIterations = 10; /*!< maximum number of predictor solver iterations */
     Plato::OrdinalType mMaxCorrectorIterations = 10; /*!< maximum number of corrector solver iterations */
@@ -8892,7 +8632,7 @@ public:
         }
     }
 
-    void output(std::string aFilePath = "output")
+    void output(std::string aFilePath = "intermediate_results")
     {
         auto tMesh = mSpatialModel.Mesh;
         auto tWriter = Omega_h::vtk::Writer(aFilePath.c_str(), &tMesh, mNumSpatialDims);
@@ -8963,8 +8703,7 @@ public:
             this->updatePreviousStates(tPrimal);
         }
 
-        Plato::Solutions tSolution;
-        this->setOutput(tSolution);
+        auto tSolution = this->setOutputSolution();
         return tSolution;
     }
 
@@ -9063,14 +8802,16 @@ public:
     }
 
 private:
-    void setOutput(Plato::Solutions& aSolution)
+    Plato::Solutions setOutputSolution()
     {
-        aSolution.set("velocity", mVelocity);
-        aSolution.set("pressure", mPressure);
+        Plato::Solutions tSolution;
+        tSolution.set("velocity", mVelocity);
+        tSolution.set("pressure", mPressure);
         if(mCalculateHeatTransfer)
         {
-            aSolution.set("temperature", mTemperature);
+            tSolution.set("temperature", mTemperature);
         }
+        return tSolution;
     }
 
     void setInitialConditions
@@ -9142,22 +8883,10 @@ private:
         this->allocateCriteriaList(aInputs);
         this->allocateMemberStates(aInputs);
         this->areDianosticsEnabled(aInputs);
-        this->parseFluidProperties(aInputs);
         this->parseNewtonSolverInputs(aInputs);
         this->parseConvergenceCriteria(aInputs);
         this->parseTimeIntegratorInputs(aInputs);
         this->parseHeatTransferEquation(aInputs);
-
-    }
-
-    void parseFluidProperties
-    (Teuchos::ParameterList & aInputs)
-    {
-        mPrandtlNumber = Plato::Fluids::dimensionless_prandtl_number(aInputs);
-        if(mCalculateHeatTransfer)
-        {
-            mCriticalKinematicViscocity = Plato::Fluids::critical_kinematic_viscocity(mSpatialModel, aInputs);
-        }
     }
 
     void parseHeatTransferEquation
@@ -9169,6 +8898,7 @@ private:
         {
             mTemperatureResidual =
                 std::make_shared<Plato::Fluids::VectorFunction<typename PhysicsT::EnergyPhysicsT>>("Temperature", mSpatialModel, mDataMap, aInputs);
+            mPrandtlNumber = Plato::Fluids::dimensionless_prandtl_number(aInputs);
         }
     }
 
@@ -9181,11 +8911,11 @@ private:
             mPressureTolerance = tNewtonIteration.get<Plato::Scalar>("Pressure Tolerance", 1e-4);
             mPredictorTolerance = tNewtonIteration.get<Plato::Scalar>("Predictor Tolerance", 1e-4);
             mCorrectorTolerance = tNewtonIteration.get<Plato::Scalar>("Corrector Tolerance", 1e-4);
-            mTemperatureTolerance = tNewtonIteration.get<Plato::Scalar>("Temperature Tolerance", 1e-4);
+            mTemperatureTolerance = tNewtonIteration.get<Plato::Scalar>("Temperature Tolerance", 1e-2);
             mMaxPressureIterations = tNewtonIteration.get<Plato::OrdinalType>("Pressure Iterations", 10);
             mMaxPredictorIterations = tNewtonIteration.get<Plato::OrdinalType>("Predictor Iterations", 10);
             mMaxCorrectorIterations = tNewtonIteration.get<Plato::OrdinalType>("Corrector Iterations", 10);
-            mMaxTemperatureIterations = tNewtonIteration.get<Plato::OrdinalType>("Temperature Iterations", 25);
+            mMaxTemperatureIterations = tNewtonIteration.get<Plato::OrdinalType>("Temperature Iterations", 10);
         }
     }
 
@@ -9206,7 +8936,7 @@ private:
         if(aInputs.isSublist("Convergence"))
         {
             auto tConvergence = aInputs.sublist("Convergence");
-            mMaxSteadyStateNorm = tConvergence.get<Plato::Scalar>("Maximum Norm", 1e3);
+            mOutputFrequency = tConvergence.get<Plato::OrdinalType>("Output Frequency", 1e6);
             mSteadyStateTolerance = tConvergence.get<Plato::Scalar>("Steady State Tolerance", 1e-5);
         }
     }
@@ -9307,22 +9037,11 @@ private:
         }
     }
 
-    bool isFluidSolverDiverging
+    bool isSolverDiverging
     (Plato::Primal & aVariables)
     {
-        const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
-        if(tIteration <= 1)
-        {
-            aVariables.scalar("divergence count", 0);
-            return false;
-        }
-
         auto tCurrentCriterion = aVariables.scalar("current steady state criterion");
         if(!std::isfinite(tCurrentCriterion) || std::isnan(tCurrentCriterion))
-        {
-            return true;
-        }
-        else if(tCurrentCriterion > mMaxSteadyStateNorm)
         {
             return true;
         }
@@ -9334,7 +9053,6 @@ private:
     {
         bool tStop = false;
         const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
-        //const auto tCriterionValue = this->calculateVelocityMisfitNorm(aVariables);
         const auto tCriterionValue = this->calculatePressureMisfitNorm(aVariables);
         aVariables.scalar("current steady state criterion", tCriterionValue);
         this->printSteadyStateCriterion(aVariables);
@@ -9348,7 +9066,7 @@ private:
         {
             tStop = true;
         }
-        else if(this->isFluidSolverDiverging(aVariables))
+        else if(this->isSolverDiverging(aVariables))
         {
             tStop = true;
         }
@@ -9380,7 +9098,7 @@ private:
         if(mCalculateHeatTransfer)
         {
 	    auto tCriticalThermalTimeStep = Plato::cbs::calculate_critical_thermal_time_step
-	        (tElemCharSize, mCriticalKinematicViscocity, mPrandtlNumber, mTimeStepSafetyFactor);
+	        (tElemCharSize, mPrandtlNumber, mTimeStepSafetyFactor);
             auto tMinCriticalTimeStep = std::min(tCriticalConvectiveTimeStep, tCriticalThermalTimeStep);
             tHostCriticalTimeStep(0) = tMinCriticalTimeStep;
             Kokkos::deep_copy(tCriticalTimeStep, tHostCriticalTimeStep);
@@ -9778,7 +9496,6 @@ private:
         }
     }
 
-/*
     void updateTemperature
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aStates)
@@ -9792,44 +9509,6 @@ private:
         // calculate current residual and jacobian matrix
         auto tResidual = mTemperatureResidual->value(aControl, aStates);
         auto tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
-
-        // apply constraints
-        Plato::ScalarVector tBcValues;
-        Plato::LocalOrdinalVector tBcDofs;
-        mTemperatureEssentialBCs.get(tBcDofs, tBcValues);
-
-        // solve energy equation (consistent or mass lumped)
-        auto tParamList = mInputs.sublist("Linear Solver");
-        Plato::SolverFactory tSolverFactory(tParamList);
-        auto tSolver = tSolverFactory.create(mSpatialModel.Mesh, mMachine, mNumTempDofsPerNode);
-
-        Plato::OrdinalType tIteration = 1;
-        Plato::Scalar tInitialNormStep = 0.0;
-        Plato::ScalarVector tDeltaTemperature("delta temperature", tCurrentTemperature.size());
-
-        Plato::blas1::fill(0.0, tDeltaTemperature);
-        Plato::blas1::scale(-1.0, tResidual);
-        Plato::apply_constraints<mNumTempDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
-        tSolver->solve(*tJacobian, tDeltaTemperature, tResidual);
-        Plato::blas1::update(1.0, tDeltaTemperature, 1.0, tCurrentTemperature);
-        Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
-    }
-    */
-
-    void updateTemperature
-    (const Plato::ScalarVector & aControl,
-           Plato::Primal       & aStates)
-    {
-        this->printTemperatureSolverHeader();
-        this->printNewtonHeader();
-
-        auto tCurrentTemperature = aStates.vector("current temperature");
-        Plato::blas1::fill(0.0, tCurrentTemperature);
-
-        // calculate current residual and jacobian matrix
-        auto tResidual = mTemperatureResidual->value(aControl, aStates);
-        auto tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
-        //auto tCopyJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
 
         // apply constraints
         Plato::ScalarVector tBcValues;
@@ -9850,15 +9529,8 @@ private:
 
             Plato::blas1::fill(0.0, tDeltaTemperature);
             Plato::blas1::scale(-1.0, tResidual);
-            //Plato::apply_constraints<mNumTempDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
-            //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tResidual);
             tSolver->solve(*tJacobian, tDeltaTemperature, tResidual);
-            //Plato::blas1::fill(0.0, tResidual);
-	    //Plato::MatrixTimesVectorPlusVector(tCopyJacobian, tDeltaTemperature, tResidual);
-	    //Plato::set_dofs_values(tBcDofs, tResidual, 0.0);
-	    //Plato::set_dofs_values(tBcDofs, tDeltaTemperature, 0.0);
             Plato::blas1::update(1.0, tDeltaTemperature, 1.0, tCurrentTemperature);
-            //Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
 
             auto tNormResidual = Plato::blas1::norm(tResidual);
             aStates.scalar("norm residual", tNormResidual);
@@ -9878,8 +9550,6 @@ private:
 
             // calculate current residual and jacobian matrix
             tResidual = mTemperatureResidual->value(aControl, aStates);
-            //tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
-            //tCopyJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
 
             tIteration++;
         }
