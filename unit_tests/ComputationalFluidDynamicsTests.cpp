@@ -5523,7 +5523,6 @@ calculate_inertial_forces
 
 
 // todo: energy equation FINISH DOXYGEN COMMENTS AND CHECK IMPLEMENTATION
-/*
 template<typename PhysicsT, typename EvaluationT>
 class TemperatureResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -5802,9 +5801,9 @@ private:
         }
     }
 };
-*/
-// class TemperatureResidual
 
+/*
+// class TemperatureResidual
 template<typename PhysicsT, typename EvaluationT>
 class TemperatureResidual : public Plato::Fluids::AbstractVectorFunction<PhysicsT, EvaluationT>
 {
@@ -6056,6 +6055,7 @@ private:
         }
     }
 };
+*/
 
 
 // todo: energy equation - to
@@ -8621,10 +8621,11 @@ calculate_critical_thermal_time_step
 {
     Plato::Scalar tMinValue = 0;
     Plato::blas1::min(aElemCharSize, tMinValue);
-    auto tCriticalViscousStep = (tMinValue * tMinValue) / ( static_cast<Plato::Scalar>(2) * aKinematicViscotiy );
-    auto tThermalDiffusion = aKinematicViscotiy / aPrNum;
-    auto tCriticalDiffusiveStep = (tMinValue * tMinValue) / ( static_cast<Plato::Scalar>(2) * tThermalDiffusion );
-    auto tCriticalStep = std::min(tCriticalViscousStep, tThermalDiffusion);
+    //auto tCriticalViscousStep = (tMinValue * tMinValue) / ( static_cast<Plato::Scalar>(2) * aKinematicViscotiy );
+    //auto tThermalDiffusion = aKinematicViscotiy / aPrNum;
+    //auto tCriticalDiffusiveStep = (tMinValue * tMinValue) / ( static_cast<Plato::Scalar>(2) * tThermalDiffusion );
+    //auto tCriticalStep = std::min(tCriticalViscousStep, tThermalDiffusion);
+    auto tCriticalStep = tMinValue * tMinValue *  static_cast<Plato::Scalar>(2) * aPrNum;
     return tCriticalStep;
 }
 
@@ -8829,6 +8830,7 @@ private:
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
     Plato::Scalar mCriticalKinematicViscocity = 1.787e-6;
 
+    Plato::OrdinalType mOutputFrequency = 10; 
     Plato::OrdinalType mMaxPressureIterations = 10; /*!< maximum number of pressure solver iterations */
     Plato::OrdinalType mMaxPredictorIterations = 10; /*!< maximum number of predictor solver iterations */
     Plato::OrdinalType mMaxCorrectorIterations = 10; /*!< maximum number of corrector solver iterations */
@@ -8946,6 +8948,11 @@ public:
             if(mCalculateHeatTransfer)
             {
                 this->updateTemperature(aControl, tPrimal);
+            }
+
+	    if(tIteration == mOutputFrequency)
+            {
+                this->output();
             }
 
             if(this->checkStoppingCriteria(tPrimal))
@@ -9771,7 +9778,7 @@ private:
         }
     }
 
-
+/*
     void updateTemperature
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aStates)
@@ -9802,12 +9809,13 @@ private:
 
         Plato::blas1::fill(0.0, tDeltaTemperature);
         Plato::blas1::scale(-1.0, tResidual);
+        Plato::apply_constraints<mNumTempDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
         tSolver->solve(*tJacobian, tDeltaTemperature, tResidual);
         Plato::blas1::update(1.0, tDeltaTemperature, 1.0, tCurrentTemperature);
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
     }
+    */
 
-    /*
     void updateTemperature
     (const Plato::ScalarVector & aControl,
            Plato::Primal       & aStates)
@@ -9821,7 +9829,7 @@ private:
         // calculate current residual and jacobian matrix
         auto tResidual = mTemperatureResidual->value(aControl, aStates);
         auto tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
-        auto tCopyJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
+        //auto tCopyJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
 
         // apply constraints
         Plato::ScalarVector tBcValues;
@@ -9870,14 +9878,13 @@ private:
 
             // calculate current residual and jacobian matrix
             tResidual = mTemperatureResidual->value(aControl, aStates);
-            tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
-            tCopyJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
+            //tJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
+            //tCopyJacobian = mTemperatureResidual->gradientCurrentTemp(aControl, aStates);
 
             tIteration++;
         }
         Plato::cbs::enforce_boundary_condition(tBcDofs, tBcValues, tCurrentTemperature);
     }
-    */
 
     void calculatePredictorAdjoint
     (const Plato::ScalarVector & aControl,
@@ -10418,7 +10425,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "  <ParameterList name='Material Models'>"
             "    <ParameterList name='Water'>"
             "      <ParameterList name='Thermal Properties'>"
-            "        <Parameter  name='Kinematic Viscocity'  type='double'  value='1.787e-6'/>"
+            "        <Parameter  name='Kinematic Viscocity'  type='double'  value='1.133e-4'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -10489,7 +10496,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "    <Parameter name='Pressure Tolerance'  type='double' value='1e-4'/>"
             "    <Parameter name='Predictor Tolerance' type='double' value='1e-4'/>"
             "    <Parameter name='Corrector Tolerance' type='double' value='1e-4'/>"
-            "    <Parameter name='Temperature Tolerance' type='double' value='1e-4'/>"
+            "    <Parameter name='Temperature Tolerance' type='double' value='1e-2'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
             "    <Parameter name='Safety Factor'      type='double' value='1.0'/>"
@@ -10504,7 +10511,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,30,30);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
