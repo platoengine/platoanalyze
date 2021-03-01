@@ -8564,15 +8564,15 @@ private:
     Plato::Scalar mPressureTolerance = 1e-4;
     Plato::Scalar mPredictorTolerance = 1e-4;
     Plato::Scalar mCorrectorTolerance = 1e-4;
-    Plato::Scalar mTemperatureTolerance = 1e-4;
+    Plato::Scalar mTemperatureTolerance = 1e-2;
     Plato::Scalar mSteadyStateTolerance = 1e-5;
-    Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
+    Plato::Scalar mTimeStepSafetyFactor = 0.9; /*!< safety factor applied to stable time step */
 
     Plato::OrdinalType mOutputFrequency = 1e6; 
-    Plato::OrdinalType mMaxPressureIterations = 10; /*!< maximum number of pressure solver iterations */
-    Plato::OrdinalType mMaxPredictorIterations = 10; /*!< maximum number of predictor solver iterations */
-    Plato::OrdinalType mMaxCorrectorIterations = 10; /*!< maximum number of corrector solver iterations */
-    Plato::OrdinalType mMaxTemperatureIterations = 25; /*!< maximum number of temperature solver iterations */
+    Plato::OrdinalType mMaxPressureIterations = 5; /*!< maximum number of pressure solver iterations */
+    Plato::OrdinalType mMaxPredictorIterations = 5; /*!< maximum number of predictor solver iterations */
+    Plato::OrdinalType mMaxCorrectorIterations = 5; /*!< maximum number of corrector solver iterations */
+    Plato::OrdinalType mMaxTemperatureIterations = 5; /*!< maximum number of temperature solver iterations */
     Plato::OrdinalType mMaxSteadyStateIterations = 2000; /*!< maximum number of steady state iterations */
 
     Plato::ScalarMultiVector mPressure;
@@ -8701,8 +8701,7 @@ public:
             this->updatePreviousStates(tPrimal);
         }
 
-        Plato::Solutions tSolution;
-        this->setOutput(tSolution);
+        auto tSolution = this->setOutputSolution();
         return tSolution;
     }
 
@@ -8801,14 +8800,16 @@ public:
     }
 
 private:
-    void setOutput(Plato::Solutions& aSolution)
+    Plato::Solutions setOutputSolution()
     {
-        aSolution.set("velocity", mVelocity);
-        aSolution.set("pressure", mPressure);
+	Plato::Solutions tSolution;
+        tSolution.set("velocity", mVelocity);
+        tSolution.set("pressure", mPressure);
         if(mCalculateHeatTransfer)
         {
-            aSolution.set("temperature", mTemperature);
+            tSolution.set("temperature", mTemperature);
         }
+	return tSolution;
     }
 
     void setInitialConditions
