@@ -5801,8 +5801,6 @@ private:
         }
     }
 };
-// class TemperatureResidual
-
 
 
 // todo: energy equation - to
@@ -8570,7 +8568,7 @@ private:
     Plato::Scalar mSteadyStateTolerance = 1e-5;
     Plato::Scalar mTimeStepSafetyFactor = 0.7; /*!< safety factor applied to stable time step */
 
-    Plato::OrdinalType mOutputFrequency = 1e6;
+    Plato::OrdinalType mOutputFrequency = 1e6; 
     Plato::OrdinalType mMaxPressureIterations = 10; /*!< maximum number of pressure solver iterations */
     Plato::OrdinalType mMaxPredictorIterations = 10; /*!< maximum number of predictor solver iterations */
     Plato::OrdinalType mMaxCorrectorIterations = 10; /*!< maximum number of corrector solver iterations */
@@ -8632,7 +8630,7 @@ public:
         }
     }
 
-    void output(std::string aFilePath = "intermediate_results")
+    void output(std::string aFilePath = "output")
     {
         auto tMesh = mSpatialModel.Mesh;
         auto tWriter = Omega_h::vtk::Writer(aFilePath.c_str(), &tMesh, mNumSpatialDims);
@@ -8703,7 +8701,8 @@ public:
             this->updatePreviousStates(tPrimal);
         }
 
-        auto tSolution = this->setOutputSolution();
+        Plato::Solutions tSolution;
+        this->setOutput(tSolution);
         return tSolution;
     }
 
@@ -8802,16 +8801,14 @@ public:
     }
 
 private:
-    Plato::Solutions setOutputSolution()
+    void setOutput(Plato::Solutions& aSolution)
     {
-        Plato::Solutions tSolution;
-        tSolution.set("velocity", mVelocity);
-        tSolution.set("pressure", mPressure);
+        aSolution.set("velocity", mVelocity);
+        aSolution.set("pressure", mPressure);
         if(mCalculateHeatTransfer)
         {
-            tSolution.set("temperature", mTemperature);
+            aSolution.set("temperature", mTemperature);
         }
-        return tSolution;
     }
 
     void setInitialConditions
@@ -8887,6 +8884,7 @@ private:
         this->parseConvergenceCriteria(aInputs);
         this->parseTimeIntegratorInputs(aInputs);
         this->parseHeatTransferEquation(aInputs);
+
     }
 
     void parseHeatTransferEquation
@@ -8911,7 +8909,7 @@ private:
             mPressureTolerance = tNewtonIteration.get<Plato::Scalar>("Pressure Tolerance", 1e-4);
             mPredictorTolerance = tNewtonIteration.get<Plato::Scalar>("Predictor Tolerance", 1e-4);
             mCorrectorTolerance = tNewtonIteration.get<Plato::Scalar>("Corrector Tolerance", 1e-4);
-            mTemperatureTolerance = tNewtonIteration.get<Plato::Scalar>("Temperature Tolerance", 1e-2);
+            mTemperatureTolerance = tNewtonIteration.get<Plato::Scalar>("Temperature Tolerance", 1e-4);
             mMaxPressureIterations = tNewtonIteration.get<Plato::OrdinalType>("Pressure Iterations", 10);
             mMaxPredictorIterations = tNewtonIteration.get<Plato::OrdinalType>("Predictor Iterations", 10);
             mMaxCorrectorIterations = tNewtonIteration.get<Plato::OrdinalType>("Corrector Iterations", 10);
@@ -8936,7 +8934,6 @@ private:
         if(aInputs.isSublist("Convergence"))
         {
             auto tConvergence = aInputs.sublist("Convergence");
-            mOutputFrequency = tConvergence.get<Plato::OrdinalType>("Output Frequency", 1e6);
             mSteadyStateTolerance = tConvergence.get<Plato::Scalar>("Steady State Tolerance", 1e-5);
         }
     }
@@ -9037,9 +9034,16 @@ private:
         }
     }
 
-    bool isSolverDiverging
+    bool isFluidSolverDiverging
     (Plato::Primal & aVariables)
     {
+        const Plato::OrdinalType tIteration = aVariables.scalar("iteration");
+        if(tIteration <= 1)
+        {
+            aVariables.scalar("divergence count", 0);
+            return false;
+        }
+
         auto tCurrentCriterion = aVariables.scalar("current steady state criterion");
         if(!std::isfinite(tCurrentCriterion) || std::isnan(tCurrentCriterion))
         {
@@ -9066,7 +9070,7 @@ private:
         {
             tStop = true;
         }
-        else if(this->isSolverDiverging(aVariables))
+        else if(this->isFluidSolverDiverging(aVariables))
         {
             tStop = true;
         }
@@ -10175,13 +10179,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
-            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-4'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,30,30);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,20,20);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -10209,10 +10213,10 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tSolution = tProblem.solution(tControls);
     tProblem.output("cfd_test_problem");
 
-    /*
     // test solution
     auto tTags = tSolution.tags();
-    std::vector<std::string> tGoldTags = { "velocity", "pressure" };
+    std::vector<std::string> tGoldTags = { "velocity", "pressure", "temperature" };
+    TEST_ASSERT(tTags.size() == tGoldTags.size());
     TEST_EQUALITY(tGoldTags.size(), tTags.size());
     for(auto& tTag : tTags)
     {
@@ -10221,49 +10225,32 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
         TEST_EQUALITY(*tItr, tTag);
     }
 
-    auto tTol = 1e-4;
+    auto tTol = 1e-3;
     auto tPressure = tSolution.get("pressure");
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
-    auto tHostPressure = Kokkos::create_mirror(tPressSubView);
-    Kokkos::deep_copy(tHostPressure, tPressSubView);
-    std::vector<double> tGoldPressure =
-    { 0.000000e+00, 3.731415e-03, 7.816292e-03, 7.587085e-03, 1.241365e-02, 1.063465e-02,
-      -5.198417e-04, -3.482819e-03, -5.190182e-04, -6.584415e-02, -4.304338e-02, -2.550113e-01,
-      -4.137012e-01, -2.028317e-01, -1.218144e-01, -6.249967e-02, -3.871247e-02, -2.076437e-02,
-      6.898296e-03, 2.266167e-02, 3.563244e-02, 1.129117e-01, 1.519040e-01, 3.731144e-01,
-      2.325776e-01, 4.197060e-02, 6.356792e-02, 2.115928e-02, 7.908880e-03, 3.050671e-03,
-      4.394201e-03, 7.350702e-03, 1.146635e-02, 6.443506e-03, 1.890785e-02, 1.827038e-02 };
-    for(auto& tGoldPress : tGoldPressure)
-    {
-        auto tDof = &tGoldPress - &tGoldPressure[0];
-        TEST_FLOATING_EQUALITY(tGoldPress, tHostPressure(tDof), tTol);
-    }
+    Plato::Scalar tMaxPress = 0;
+    Plato::blas1::max(tPressSubView, tMaxPress);
+    TEST_FLOATING_EQUALITY(426.298, tMaxPress, tTol);
+    Plato::Scalar tMinPress = 0;
+    Plato::blas1::min(tPressSubView, tMinPress);
+    TEST_FLOATING_EQUALITY(-2.11287, tMinPress, tTol);
     //Plato::print(tPressSubView, "steady state pressure");
 
     auto tVelocity = tSolution.get("velocity");
     auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
-    auto tHostVelocity = Kokkos::create_mirror(tVelSubView);
-    Kokkos::deep_copy(tHostVelocity, tVelSubView);
-    std::vector<double> tGoldVelocity =
-        { 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, 2.833694e-02, 3.161706e-02,
-          0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00, -3.622390e-02, 7.679319e-03,
-          -2.513879e-01, -2.315935e-02, -9.600695e-02, 8.900196e-02, 0.000000e+00, 0.000000e+00,
-          0.000000e+00, 0.000000e+00, -2.127223e-01, 1.186893e-01, 0.000000e+00, 0.000000e+00,
-          1.000000e+00, 0.000000e+00, 1.000000e+00, -2.014148e-01, 2.209044e-01, 2.687383e-02,
-          1.000000e+00, -2.568389e-02, 2.108086e-01, 6.878037e-02, -2.008218e-01, 3.752568e-02,
-          -2.414176e-01, -1.413018e-01, 1.705768e-01, -4.762509e-02, 1.000000e+00, 1.943306e-02,
-          1.809571e-01, -2.627045e-02, 1.000000e+00, -1.559841e-02, 1.000000e+00, 0.000000e+00,
-          0.000000e+00, 0.000000e+00, -3.221432e-01, -8.796441e-02, 0.000000e+00, 0.000000e+00,
-          0.000000e+00, 0.000000e+00, -3.003773e-02, -1.087609e-02, -1.023158e-01, -9.410034e-02,
-          -1.142110e-01, -4.599828e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00,
-          7.111933e-02, -1.348906e-02, 0.000000e+00, 0.000000e+00, 0.000000e+00, 0.000000e+00 };
-    for(auto& tGoldVel : tGoldVelocity)
-    {
-        auto tDof = &tGoldVel - &tGoldVelocity[0];
-        TEST_FLOATING_EQUALITY(tGoldVel, tHostVelocity(tDof), tTol);
-    }
+    Plato::Scalar tMaxVel = 0;
+    Plato::blas1::max(tVelSubView, tMaxVel);
+    TEST_FLOATING_EQUALITY(4.90872, tMaxVel, tTol);
+    Plato::Scalar tMinVel = 0;
+    Plato::blas1::min(tVelSubView, tMinVel);
+    TEST_FLOATING_EQUALITY(-3.43327, tMinVel, tTol);
     //Plato::print(tVelSubView, "steady state velocity");
-    */
+
+    auto tTemperature = tSolution.get("temperature");
+    auto tTempSubView = Kokkos::subview(tTemperature, 1, Kokkos::ALL());
+    auto tTempNorm = Plato::blas1::norm(tTempSubView);
+    TEST_FLOATING_EQUALITY(11.8231, tTempNorm, tTol);
+    //Plato::print(tTempSubView, "steady state temperature");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, CalculateMisfitEuclideanNorm)
