@@ -3820,28 +3820,6 @@ dimensionless_prandtl_number
 }
 // function dimensionless_prandtl_number
 
-inline Plato::Scalar
-critical_kinematic_viscocity
-(const Plato::SpatialModel & aModel,
- Teuchos::ParameterList & aInputs)
-{
-    std::vector<Plato::Scalar> tKinematicViscocities;
-    for(auto& tDomain : aModel.Domains)
-    {
-        auto tName = tDomain.getMaterialName();
-        auto tMaterialModels = aInputs.sublist("Material Models");
-        auto tMyMaterial = tMaterialModels.sublist(tName);
-        if(tMyMaterial.isParameter("Kinematic Viscocity") == false)
-        {
-            THROWERR("'Kinematic Viscocity' is not defined. Property is needed to calculate stable time step.")
-        }
-        auto tKinematicViscocity = tMyMaterial.get<Plato::Scalar>("Kinematic Viscocity");
-        tKinematicViscocities.push_back(tKinematicViscocity);
-    }
-    auto tCriticalValue = *std::min_element(tKinematicViscocities.begin(), tKinematicViscocities.end());
-    return tCriticalValue;
-}
-// function dimensionless_prandtl_number
 
 /***************************************************************************//**
  * \fn inline std::string heat_transfer_tag
@@ -3982,34 +3960,6 @@ dimensionless_buoyancy_constant
 }
 // function dimensionless_buoyancy_constant
 
-/***************************************************************************//**
- * \fn inline Plato::Scalar stabilization_constant
- *
- * \brief Parse stabilization constant, which is used to enable or disable
- * the stabilization forcing term.
- *
- * \param [in] aInputs input file metadata
- * \return stabilization constant
- ******************************************************************************/
-inline Plato::Scalar 
-stabilization_constant
-(Teuchos::ParameterList & aInputs)
-{
-    if(aInputs.isSublist("Hyperbolic") == false)
-    {
-        THROWERR("'Hyperbolic' Parameter List is not defined.")
-    }
-
-    auto tOutput = 0.0;
-    auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    if(tHyperbolic.isSublist("Momentum Conservation"))
-    {
-        auto tMomentumConservation = tHyperbolic.sublist("Momentum Conservation");
-        tOutput = tMomentumConservation.get<double>("Stabilization Constant", 0.0);
-    }
-    return tOutput;
-}
-// function stabilization_constant
 
 /***************************************************************************//**
  * \tparam SpaceDim spatial dimensions (integer)
@@ -4246,7 +4196,6 @@ private:
     Plato::Scalar mTheta = 1.0; /*!< artificial viscous damping */
     Plato::Scalar mBuoyancyConst = 0.0; /*!< dimensionless buoyancy constant */
     Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity constant */
-    Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
     Plato::ScalarVector mNaturalConvectionNum; /*!< dimensionless natural convection number (either Rayleigh or Grashof - depends on user's input) */
     bool mCalculateThermalBuoyancyForces = false; /*!< indicator to determine if thermal buoyancy forces will be considered in calculations */
 
@@ -4269,7 +4218,6 @@ public:
         this->setDimensionlessConstants(aInputs);
         this->setAritificalViscousDamping(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
-        mStabilization = Plato::Fluids::stabilization_constant(aInputs);
     }
 
     /***************************************************************************//**
@@ -4319,7 +4267,6 @@ public:
         // transfer member data to device
         auto tTheta = mTheta;
         auto tViscocity = mViscocity;
-        auto tStabilization = mStabilization;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -4359,11 +4306,6 @@ public:
             // 6. add previous inertial force to residual, i.e. R -= M u_n
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, aResultWS, -1.0);
-
-            // 7. add stabilizing convective term to residual. i.e. R += \frac{\Delta{t}^2}{2}K_{u}u^{n}
-            /*tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
-            Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
-                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tAdvection, aResultWS, tMultiplier);*/
         }, "quasi-implicit predicted velocity residual");
 
         if(mCalculateThermalBuoyancyForces)
@@ -4378,21 +4320,15 @@ public:
             // transfer member data to device
             auto tBuoyancyConst = mBuoyancyConst;
             auto tNaturalConvectionNum = mNaturalConvectionNum;
-            auto tGlobalTimeStep = tCriticalTimeStep(0);
-
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
                 // 1. add previous buoyancy force to residual, i.e. R -= (\Delta{t}*Bu*Gr_i) M T_n, where Bu is the buoyancy constant
+		auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tCriticalTimeStep(0);
                 tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
                 Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
                     (aCellOrdinal, tBuoyancyConst, tNaturalConvectionNum, tPrevTempGP, tThermalBuoyancy);
                 Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                    (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, -tGlobalTimeStep);
-
-                // 2. add stabilizing buoyancy force to residual. i.e. R -= \frac{\Delta{t}^2}{2} Bu*Gr_i) M T_n
-                /*auto tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
-                Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
-                    (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tThermalBuoyancy, aResultWS, -tMultiplier);*/
+                    (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, tMultiplier);
             }, "add contribution from thermal buoyancy forces to residual");
         }
     }
@@ -10093,12 +10029,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "    <ParameterList name='Domains'>"
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
-            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "        <Parameter name='Material Model' type='string' value='Air'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Material Models'>"
-            "    <ParameterList name='Water'>"
+            "    <ParameterList name='Air'>"
             "      <ParameterList name='Thermal Properties'>"
             "        <Parameter  name='Kinematic Viscocity'  type='double'  value='1.133e-4'/>"
             "      </ParameterList>"
@@ -10226,7 +10162,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
         TEST_EQUALITY(*tItr, tTag);
     }
 
-    auto tTol = 1e-3;
+    auto tTol = 1e-2;
     auto tPressure = tSolution.get("pressure");
     auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
     Plato::Scalar tMaxPress = 0;
