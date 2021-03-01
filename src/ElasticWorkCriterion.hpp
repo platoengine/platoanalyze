@@ -22,7 +22,6 @@
 #include "AbstractLocalScalarFunctionInc.hpp"
 
 #include "ExpInstMacros.hpp"
-#include "PlatoUtilities.hpp"
 
 namespace Plato
 {
@@ -168,22 +167,11 @@ public:
 
         using PreviousTotalStrainT   = typename Plato::fad_type_t<SimplexPhysicsType, PrevGlobalStateT, ConfigT>;
         using PreviousElasticStrainT = typename Plato::fad_type_t<SimplexPhysicsType, PrevLocalStateT, ConfigT, PrevGlobalStateT>;
-// Plato::print_type_to_console<GlobalStateT>("GlobalStateT");
-// Plato::print_type_to_console<PrevGlobalStateT>("PrevGlobalStateT");
-// Plato::print_type_to_console<LocalStateT>("LocalStateT");
-// Plato::print_type_to_console<PrevLocalStateT>("PrevLocalStateT");
-// Plato::print_type_to_console<ControlT>("ControlT");
-// Plato::print_type_to_console<ResultT>("ResultT");
-// Plato::print_type_to_console<TotalStrainT>("TotalStrainT");
-// Plato::print_type_to_console<ElasticStrainT>("ElasticStrainT");
-// Plato::print_type_to_console<PreviousTotalStrainT>("PreviousTotalStrainT");
-// Plato::print_type_to_console<PreviousElasticStrainT>("PreviousElasticStrainT");
-// Plato::print_type_to_console<ConfigT>("ConfigT");
+
         // allocate functors used to evaluate criterion
         Plato::ComputeGradientWorkset<mSpaceDim> tComputeGradient;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
         Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
-        Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature,
                                                                                                mTemperatureScaling);
         Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatz);
@@ -247,8 +235,10 @@ public:
                 tAverageCauchyStress(aCellOrdinal, tIndex) = tOneHalf * 
                                                              (tCurrentCauchyStress(aCellOrdinal, tIndex) + tPreviousCauchyStress(aCellOrdinal, tIndex));
 
-            // Compute elastic work
-            tComputeDoubleDotProduct(aCellOrdinal, tAverageCauchyStress, tElasticStrainMisfit, aResult);
+            // Compute elastic work (strain tensor shear terms already have factor of 2)
+            aResult(aCellOrdinal) = 0.0;
+            for (Plato::OrdinalType tIndex = 0; tIndex < tNumStressTerms; ++tIndex)
+                aResult(aCellOrdinal) += tAverageCauchyStress(aCellOrdinal, tIndex) * tElasticStrainMisfit(aCellOrdinal, tIndex);
             aResult(aCellOrdinal) *= tCellVolume(aCellOrdinal);
         }, "elastic work criterion");
     }

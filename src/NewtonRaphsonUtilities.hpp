@@ -57,7 +57,7 @@ struct CurrentStates
     Plato::ScalarVector mPreviousGlobalState;  /*!< previous global state */
     Plato::ScalarVector mProjectedPressGrad;   /*!< current projected pressure gradient */
 
-    void print(const char my_string[]) const
+    inline void print(const char my_string[]) const
     {
         printf("Printing CS %s Step %d : CPPG %10.4e , CG %10.4e , PG %10.4e , CL %10.4e , PL %10.4e\n\n",
         my_string, 

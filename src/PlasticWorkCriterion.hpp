@@ -173,7 +173,6 @@ public:
         Plato::ComputeCauchyStress<mSpaceDim> tComputeCauchyStress;
         Plato::J2PlasticityUtilities<mSpaceDim>  tJ2PlasticityUtils;
         Plato::Strain<mSpaceDim, mNumGlobalDofsPerNode> tComputeTotalStrain;
-        Plato::DoubleDotProduct2ndOrderTensor<mSpaceDim> tComputeDoubleDotProduct;
         Plato::ThermoPlasticityUtilities<mSpaceDim, SimplexPhysicsType> tThermoPlasticityUtils(mThermalExpansionCoefficient, mReferenceTemperature,
                                                                                                mTemperatureScaling);
         Plato::MSIMP tPenaltyFunction(mPenaltySIMP, mMinErsatz);
@@ -237,8 +236,10 @@ public:
                 tAverageCauchyStress(aCellOrdinal, tIndex) = tOneHalf * 
                                                              (tCurrentCauchyStress(aCellOrdinal, tIndex) + tPreviousCauchyStress(aCellOrdinal, tIndex));
 
-            // compute double dot product
-            tComputeDoubleDotProduct(aCellOrdinal, tAverageCauchyStress, tPlasticStrainMisfit, aResult);
+            // compute double dot product (strain tensor shear terms already have factor of 2)
+            aResult(aCellOrdinal) = 0.0;
+            for (Plato::OrdinalType tIndex = 0; tIndex < tNumStressTerms; ++tIndex)
+                aResult(aCellOrdinal) += tAverageCauchyStress(aCellOrdinal, tIndex) * tPlasticStrainMisfit(aCellOrdinal, tIndex);
             aResult(aCellOrdinal) *= tCellVolume(aCellOrdinal);
         }, "plastic work criterion");
     }

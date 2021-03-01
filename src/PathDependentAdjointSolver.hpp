@@ -68,11 +68,11 @@ struct ForwardStates
     *******************************************************************************/
     ~ForwardStates(){}
 
-    void print(const char my_string[]) const
+    inline void print(const char my_string[]) const
     {
         if (mProjectedPressGrad.size() <= 0)
         {
-            printf("Foreword States Empty\n");
+            printf("Forward States Empty\n");
             return;
         }
         printf("Printing FS %s Step %d : CPPG %10.4e , CP %10.4e , CG %10.4e , PG %10.4e , CL %10.4e , PL %10.4e\n",
@@ -126,7 +126,7 @@ struct AdjointStates
 
     Plato::ScalarArray3D mInvLocalJacT;                /*!< inverse of local Jacobian with respect to local states */
 
-    void print(const char my_string[], const Plato::OrdinalType my_step) const
+    inline void print(const char my_string[], const Plato::OrdinalType my_step) const
     {
         printf("Printing AS %s Step %d : CPPG %10.4e , PPPG %10.4e , CG %10.4e , PG %10.4e , CL %10.4e , PL %10.4e\n",
         my_string, 
@@ -882,6 +882,8 @@ Plato::blas1::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aCurrentStateVa
                                 const Plato::ForwardStates & aPreviousStateVars,
                                 Plato::AdjointStates & aAdjointVars)
     {
+Plato::blas1::fill(0.0, aAdjointVars.mPreviousProjPressGradAdjoint);
+Plato::blas1::fill(0.0, aAdjointVars.mProjPressGradAdjoint);
         aCurrentStateVars.print("Current State ");
         aPreviousStateVars.print("Previous State");
         aAdjointVars.print("Before ", aCurrentStateVars.mCurrentStepIndex);

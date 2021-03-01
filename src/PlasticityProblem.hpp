@@ -1080,6 +1080,8 @@ printf("Criterion value : %e\n\n", tOutput);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentLocalState);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentGlobalState);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mPressure);
+printf("Warning : zeroing out projected pressure grad again!\n");
+Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mProjectedPressGrad);
     }
 
     /***************************************************************************//**
