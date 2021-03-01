@@ -5688,10 +5688,10 @@ private:
     (Teuchos::ParameterList & aInputs)
     {
         auto tHyperbolic = aInputs.sublist("Hyperbolic");
-        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+        auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "natural");
         auto tHeatTransfer = Plato::tolower(tTag);
 
-        if(tHeatTransfer == "forced" || tHeatTransfer == "none")
+        if(tHeatTransfer == "forced" || tHeatTransfer == "mixed")
         {
             auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
             auto tReNum = Plato::parse_parameter<Plato::Scalar>("Reynolds Number", "Dimensionless Properties", tHyperbolic);
@@ -10021,7 +10021,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Prandtl Number'  type='double'        value='0.7'/>"
+            "      <Parameter  name='Prandtl Number'  type='double' value='0.7'/>"
             "      <Parameter  name='Rayleigh Number' type='Array(double)' value='{0,1e3}'/>"
             "    </ParameterList>"
             "  </ParameterList>"
@@ -10030,13 +10030,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "      <ParameterList name='Design Volume'>"
             "        <Parameter name='Element Block' type='string' value='body'/>"
             "        <Parameter name='Material Model' type='string' value='Air'/>"
-            "      </ParameterList>"
-            "    </ParameterList>"
-            "  </ParameterList>"
-            "  <ParameterList name='Material Models'>"
-            "    <ParameterList name='Air'>"
-            "      <ParameterList name='Thermal Properties'>"
-            "        <Parameter  name='Kinematic Viscocity'  type='double'  value='1.133e-4'/>"
             "      </ParameterList>"
             "    </ParameterList>"
             "  </ParameterList>"
