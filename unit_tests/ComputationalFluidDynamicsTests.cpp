@@ -3872,7 +3872,7 @@ dimensionless_viscosity_constant
 (Teuchos::ParameterList & aInputs)
 {
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
-    if(tHeatTransfer == "forced" || tHeatTransfer == "none")
+    if(tHeatTransfer == "forced" || tHeatTransfer == "mixed" || tHeatTransfer == "none")
     {
         auto tReNum = Plato::Fluids::dimensionless_reynolds_number(aInputs);
         auto tViscocity = static_cast<Plato::Scalar>(1) / tReNum;
@@ -3922,6 +3922,37 @@ dimensionless_natural_convection_buoyancy_constant
 }
 // function dimensionless_natural_convection_buoyancy_constant
 
+
+/***************************************************************************//**
+ * \fn inline Plato::Scalar dimensionless_mixed_convection_buoyancy_constant
+ *
+ * \brief Parse buoyancy constant for mixed convection problems.
+ *
+ * \param [in] aInputs input file metadata
+ *
+ * \return dimensionless buoyancy constant
+ ******************************************************************************/
+inline Plato::Scalar
+dimensionless_mixed_convection_buoyancy_constant
+(Teuchos::ParameterList & aInputs)
+{
+    if(Plato::Fluids::is_dimensionless_parameter_defined("Richardson Number", aInputs))
+    {
+        return static_cast<Plato::Scalar>(1.0);
+    }
+    else if(Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs))
+    {
+        auto tReNum = Plato::Fluids::dimensionless_reynolds_number(aInputs);
+        auto tBuoyancy = static_cast<Plato::Scalar>(1.0) / (tReNum * tReNum);
+        return tBuoyancy;
+    }
+    else
+    {
+        THROWERR("Mixed convection properties are not defined. One of these two options should be provided: 'Grashof Number' or 'Richardson Number'")
+    }
+}
+// function dimensionless_mixed_convection_buoyancy_constant
+
 /***************************************************************************//**
  * \fn inline Plato::Scalar dimensionless_buoyancy_constant
  *
@@ -3942,14 +3973,17 @@ dimensionless_buoyancy_constant
     Plato::Scalar tBuoyancy = 0.0; // heat transfer calculations inactive if buoyancy = 0.0
 
     auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
-    if(tHeatTransfer == "forced" || tHeatTransfer == "none")
+    if(tHeatTransfer == "mixed")
     {
-        auto tReNum = Plato::Fluids::dimensionless_reynolds_number(aInputs);
-        tBuoyancy = static_cast<Plato::Scalar>(1) / (tReNum*tReNum);
+        tBuoyancy = Plato::Fluids::dimensionless_mixed_convection_buoyancy_constant(aInputs);
     }
     else if(tHeatTransfer == "natural")
     {
         tBuoyancy = Plato::Fluids::dimensionless_natural_convection_buoyancy_constant(aInputs);
+    }
+    else if(tHeatTransfer == "forced" || tHeatTransfer == "none")
+    {
+        tBuoyancy = 0.0;
     }
     else
     {
@@ -4065,6 +4099,58 @@ dimensionless_grashof_number
 }
 // function dimensionless_grashof_number
 
+/***************************************************************************//**
+ * \tparam SpaceDim spatial dimensions (integer)
+ *
+ * \fn inline Plato::ScalarVector dimensionless_richardson_number
+ *
+ * \brief Parse array of dimensionless Richardson constants.
+ *
+ * \param [in] aInputs input file metadata
+ * \return Richardson constants
+ ******************************************************************************/
+template<Plato::OrdinalType SpaceDim>
+inline Plato::ScalarVector
+dimensionless_richardson_number
+(Teuchos::ParameterList & aInputs)
+{
+    if(aInputs.isSublist("Hyperbolic") == false)
+    {
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
+    }
+
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    auto tTag = tHyperbolic.get<std::string>("Heat Transfer", "None");
+    auto tHeatTransfer = Plato::tolower(tTag);
+    auto tCalculateHeatTransfer = tHeatTransfer == "none" ? false : true;
+
+    Plato::ScalarVector tOuput("Grashof Number", SpaceDim);
+    if(tCalculateHeatTransfer)
+    {
+        auto tRiNum = Plato::parse_parameter<Teuchos::Array<Plato::Scalar>>("Richardson Number", "Dimensionless Properties", tHyperbolic);
+        if(tRiNum.size() != SpaceDim)
+        {
+            THROWERR(std::string("'Richardson Number' array length should match the number of spatial dimensions. ")
+                + "Array length is '" + std::to_string(tRiNum.size()) + "' and the number of spatial dimensions is '"
+                + std::to_string(SpaceDim) + "'.")
+        }
+
+        auto tHostRiNum = Kokkos::create_mirror(tOuput);
+        for(Plato::OrdinalType tDim = 0; tDim < SpaceDim; tDim++)
+        {
+            tHostRiNum(tDim) = tRiNum[tDim];
+        }
+        Kokkos::deep_copy(tOuput, tHostRiNum);
+    }
+    else
+    {
+        Plato::blas1::fill(0.0, tOuput);
+    }
+
+    return tOuput;
+}
+// function dimensionless_richardson_number
+
 
 /***************************************************************************//**
  * \tparam SpaceDim spatial dimensions (integer)
@@ -4083,17 +4169,27 @@ inline Plato::ScalarVector
 dimensionless_natural_convection_number
 (Teuchos::ParameterList & aInputs)
 {
-    if(Plato::Fluids::is_dimensionless_parameter_defined("Rayleigh Number", aInputs))
+    auto tHeatTransfer = Plato::Fluids::heat_transfer_tag(aInputs);
+    if( Plato::Fluids::is_dimensionless_parameter_defined("Rayleigh Number", aInputs) &&
+            (tHeatTransfer == "natural") )
     {
         return (Plato::Fluids::dimensionless_rayleigh_number<SpaceDim>(aInputs));
     }
-    else if(Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs))
+    else if( Plato::Fluids::is_dimensionless_parameter_defined("Grashof Number", aInputs) &&
+            (tHeatTransfer == "natural" || tHeatTransfer == "mixed") )
     {
         return (Plato::Fluids::dimensionless_grashof_number<SpaceDim>(aInputs));
     }
+    else if( Plato::Fluids::is_dimensionless_parameter_defined("Richardson Number", aInputs) &&
+            (tHeatTransfer == "mixed") )
+    {
+        return (Plato::Fluids::dimensionless_richardson_number<SpaceDim>(aInputs));
+    }
     else
     {
-        THROWERR("Natural convection properties are not defined. One of these two options should be provided: 'Grashof Number' or 'Rayleigh Number'")
+        THROWERR(std::string("Natural convection properties are not defined. One of these options") +
+                 " should be provided: 'Grashof Number' (for natural or mixed convection problems), " +
+                 "'Rayleigh Number' (for natural convection problems), or 'Richardson Number' (for mixed convection problems).")
     }
 }
 // function dimensionless_natural_convection_number
@@ -5509,7 +5605,6 @@ public:
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
         this->setSourceTerm(aInputs);
-        this->setThermalProperties(aInputs);
         this->setDimensionlessProperties(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
         this->setAritificalDiffusiveDamping(aInputs);
@@ -5656,6 +5751,13 @@ private:
             auto tHeatSource = aInputs.sublist("Heat Source");
             mHeatSourceConstant = tHeatSource.get<Plato::Scalar>("Constant", 0.0);
             mReferenceTemperature = tHeatSource.get<Plato::Scalar>("Reference Temperature", 1.0);
+            if(mReferenceTemperature == static_cast<Plato::Scalar>(0.0))
+            {
+                THROWERR(std::string("Invalid 'Reference Temperature' input, value is set to an invalid numeric number '")
+                    + std::to_string(mReferenceTemperature) + "'.")
+            }
+
+            this->setThermalProperties(aInputs);
             this->setCharacteristicLength(aInputs);
         }
     }
@@ -5670,6 +5772,11 @@ private:
             auto tMaterial = aInputs.sublist("Material Models").sublist(tMaterialName);
             auto tThermalPropBlock = std::string("Thermal Properties");
             mThermalConductivity = Plato::parse_parameter<Plato::Scalar>("Thermal Conductivity", tThermalPropBlock, tMaterial);
+            if(mThermalConductivity <= static_cast<Plato::Scalar>(0.0))
+            {
+                THROWERR(std::string("Invalid 'Thermal Conductivity' input, value is set to an invalid numeric number '")
+                    + std::to_string(mThermalConductivity) + "'.")
+            }
         }
     }
 
