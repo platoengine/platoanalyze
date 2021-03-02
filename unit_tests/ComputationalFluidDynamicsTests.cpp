@@ -8870,12 +8870,11 @@ public:
                 this->output();
             }
 
+            this->updatePreviousStates(tPrimal);
             if(this->checkStoppingCriteria(tPrimal))
             {
                 break;
             }
-
-            this->updatePreviousStates(tPrimal);
         }
 
         auto tSolution = this->setOutputSolution();
@@ -9102,7 +9101,6 @@ private:
         {
             auto tTimeIntegration = aInputs.sublist("Time Integration");
             mTimeStepSafetyFactor = tTimeIntegration.get<Plato::Scalar>("Safety Factor", 0.9);
-            mMaxSteadyStateIterations = tTimeIntegration.get<Plato::OrdinalType>("Maximum Iterations", 2000);
         }
     }
 
@@ -9113,6 +9111,7 @@ private:
         {
             auto tConvergence = aInputs.sublist("Convergence");
             mSteadyStateTolerance = tConvergence.get<Plato::Scalar>("Steady State Tolerance", 1e-5);
+            mMaxSteadyStateIterations = tConvergence.get<Plato::OrdinalType>("Maximum Iterations", 2000);
         }
     }
 
@@ -9958,13 +9957,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Maximum Iterations' type='int' value='1'/>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(5,1,50,10);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,2,2);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -10251,7 +10251,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re400)
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
             "    <Parameter name='Safety Factor'      type='double' value='0.9'/>"
-            "    <Parameter name='Maximum Iterations' type='int'    value='2500'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
