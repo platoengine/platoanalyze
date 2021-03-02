@@ -4204,6 +4204,13 @@ dimensionless_natural_convection_number
 
 
 
+
+
+
+
+
+
+
 // todo: predictor equation
 /***************************************************************************//**
  * \class VelocityPredictorResidual
@@ -5552,6 +5559,135 @@ calculate_inertial_forces
             aBasisFunctions(tNode) * ( aCurrentState(aCellOrdinal) - aPreviousState(aCellOrdinal) );
     }
 }
+
+
+
+
+
+
+
+
+// todo: calculate average nusset number
+template<typename PhysicsT, typename EvaluationT>
+class AverageNussetNumber : public Plato::Fluids::AbstractScalarFunction<PhysicsT, EvaluationT>
+{
+private:
+    static constexpr auto mNumSpatialDims = PhysicsT::SimplexT::mNumSpatialDims; /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell = PhysicsT::SimplexT::mNumNodesPerCell; /*!< number of nodes per cell */
+    static constexpr auto mNumNodesPerFace = PhysicsT::SimplexT::mNumNodesPerFace; /*!< number of nodes per face */
+    static constexpr auto mNumTempDofsPerCell = PhysicsT::SimplexT::mNumEnergyDofsPerCell; /*!< number of energy dofs per cell */
+    static constexpr auto mNumTempDofsPerNode = PhysicsT::SimplexT::mNumEnergyDofsPerNode; /*!< number of energy dofs per node */
+    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace; /*!< number of spatial dimensions on face */
+
+    using ResultT = typename EvaluationT::ResultScalarType; /*!< result FAD type */
+    using ConfigT = typename EvaluationT::ConfigScalarType; /*!< configuration FAD type */
+    using CurrentTempT = typename EvaluationT::CurrentEnergyScalarType; /*!< current temperature FAD type */
+    using ThermalFluxT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, CurrentTempT, ConfigT>;
+
+    const Plato::SpatialModel& mSpatialModel; /*!< Plato spatial model */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mSurfaceCubatureRule; /*!< surface integration rule */
+
+public:
+    AverageNussetNumber
+    (const Plato::SpatialModel & aModel) :
+        mSpatialModel(aModel)
+    {}
+
+    std::string name() const override
+    {
+        return std::string("Average Nusset Number");
+    }
+
+    void evaluate
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
+    const override
+    {
+        // get mesh vertices
+        auto tFace2Verts = mSpatialModel.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
+        auto tCell2Verts = mSpatialModel.Mesh.ask_elem_verts();
+
+        // get face to element graph
+        auto tFace2eElems = mSpatialModel.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
+        auto tFace2Elems_map   = tFace2eElems.a2ab;
+        auto tFace2Elems_elems = tFace2eElems.ab2b;
+
+        // get element to face map
+        auto tElem2Faces = mSpatialModel.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
+
+        // define local functors
+        Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
+        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
+        Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialModel.Mesh));
+        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
+        Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
+
+        // set local containers
+        auto tNumCells = mSpatialModel.Mesh.nelems();
+        auto tNumFaces = mSpatialModel.Mesh.nfaces();
+        Plato::ScalarVectorT<ConfigT> tCellVolume("cell volume", tNumCells);
+        Plato::ScalarArray3DT<ConfigT> tGradient("gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+        Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<ThermalFluxT> tThermalFlux("current thermal flux", tNumCells, mNumSpatialDims);
+
+        // set input metadata
+        auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tCurTempWS = Plato::metadata<Plato::ScalarMultiVectorT<CurrentTempT>>(aWorkSets.get("current temperature"));
+
+        auto tCubatureWeight = mSurfaceCubatureRule.getCubWeight();
+        auto tBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceOrdinal)
+        {
+            // for each element connected to this face: (either 1 or 2)
+            for( Plato::OrdinalType tCell = tFace2Elems_map[aFaceOrdinal]; tCell < tFace2Elems_map[aFaceOrdinal+1]; tCell++ )
+            {
+                // create map from face local node index to element local node index
+                Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
+                auto tCellOrdinal = tFace2Elems_elems[tCell];
+                tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, aFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+
+                // calculate surface area times surface weight
+                ConfigT tSurfaceAreaTimesCubWeight(0.0);
+                tCalculateSurfaceJacobians(tCellOrdinal, aFaceOrdinal, tLocalNodeOrd, tConfigWS, tJacobians);
+                tCalculateSurfaceArea(aFaceOrdinal, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+
+                // calculate thermal flux
+                tComputeGradient(tCellOrdinal, tGradient, tConfigWS, tCellVolume);
+                Plato::Fluids::calculate_flux<mNumNodesPerCell, mNumSpatialDims>
+                    (tCellOrdinal, tGradient, tCurTempWS, tThermalFlux);
+
+                // compute unit normal vector
+                auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, aFaceOrdinal, tElem2Faces);
+                auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
+
+                // project into aResult workset
+                for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
+                {
+                    for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
+                    {
+                        auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * mNumTempDofsPerNode) + tDim;
+                        aResultWS(tCellOrdinal,tCellDofOrdinal) += tBasisFunctions(tNode) *
+                            ( tUnitNormalVec(tDim) * tThermalFlux(tDim) ) * tSurfaceAreaTimesCubWeight;
+                    }
+                }
+            }
+        }, "calculate average nusset number");
+    }
+
+    void evaluateBoundary
+    (const Plato::SpatialModel & aSpatialModel,
+     const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    const override
+    { return; }
+};
+
+
+
+
+
+
+
 
 
 // todo: energy equation FINISH DOXYGEN COMMENTS AND CHECK IMPLEMENTATION
@@ -7605,6 +7741,11 @@ public:
         if( tCriterionLowerTag == "average surface pressure" )
         {
             return ( std::make_shared<Plato::Fluids::AverageSurfacePressure<PhysicsT, EvaluationT>>
+                (aName, aDomain, aDataMap, aInputs) );
+        }
+        else if( tCriterionLowerTag == "average nusset number" )
+        {
+            return ( std::make_shared<Plato::Fluids::AverageNussetNumber<PhysicsT, EvaluationT>>
                 (aName, aDomain, aDataMap, aInputs) );
         }
         else if( tCriterionLowerTag == "average surface temperature" )
@@ -9756,6 +9897,100 @@ private:
 namespace ComputationalFluidDynamicsTests
 {
 
+TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
+{
+    // set xml file inputs
+    Teuchos::RCP<Teuchos::ParameterList> tInputs =
+        Teuchos::getParametersFromXmlString(
+            "<ParameterList name='Plato Problem'>"
+            "  <ParameterList name='Hyperbolic'>"
+            "    <Parameter name='Heat Transfer' type='string' value='None'/>"
+            "    <ParameterList  name='Dimensionless Properties'>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList name='Spatial Model'>"
+            "    <ParameterList name='Domains'>"
+            "      <ParameterList name='Design Volume'>"
+            "        <Parameter name='Element Block' type='string' value='body'/>"
+            "        <Parameter name='Material Model' type='string' value='Water'/>"
+            "      </ParameterList>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
+            "    <ParameterList  name='X-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y+'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y+'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='X-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir No-Slip on Y-'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='y-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='1.0'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='0'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
+            "    <ParameterList  name='Outlet Pressure'>"
+            "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x+'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Time Integration'>"
+            "    <Parameter name='Safety Factor'      type='double' value='1.0'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Linear Solver'>"
+            "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
+            "  </ParameterList>"
+            "  <ParameterList  name='Convergence'>"
+            "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
+            "  </ParameterList>"
+            "</ParameterList>"
+            );
+
+    // build mesh, spatial domain, and spatial model
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,15,40,40);
+    auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
+    Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
+    tDomain.cellOrdinals("body");
+
+    // create communicator
+    MPI_Comm tMyComm;
+    MPI_Comm_dup(MPI_COMM_WORLD, &tMyComm);
+    Plato::Comm::Machine tMachine(tMyComm);
+
+    // create and run incompressible cfd problem
+    constexpr auto tSpaceDim = 2;
+    Plato::Fluids::QuasiImplicit<Plato::IncompressibleFluids<tSpaceDim>> tProblem(*tMesh, tMeshSets, *tInputs, tMachine);
+    const auto tNumVerts = tMesh->nverts();
+    auto tControls = Plato::ScalarVector("Controls", tNumVerts);
+    Plato::blas1::fill(1.0, tControls);
+    auto tSolution = tProblem.solution(tControls);
+    tProblem.output("cfd_test_problem");
+}
+
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
 {
     // set xml file inputs
@@ -10125,6 +10360,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
+            "  <ParameterList  name='Criteria'>"
+            "    <Parameter  name='Type' type='string' value='Scalar Function'/>"
+            "    <ParameterList name='My Criteria'>"
+            "      <Parameter  name='Type'                 type='string' value='Scalar Function'/>"
+            "      <Parameter  name='Scalar Function Type' type='string' value='Average Nusset Number'/>"
+            "    </ParameterList>"
+            "  </ParameterList>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
@@ -10248,7 +10490,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    tProblem.output("cfd_test_problem");
+    //tProblem.output("cfd_test_problem");
 
     // test solution
     auto tTags = tSolution.tags();
