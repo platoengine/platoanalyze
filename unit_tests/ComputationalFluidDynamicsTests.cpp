@@ -5600,7 +5600,7 @@ public:
 
     void evaluate
     (const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
+     Plato::ScalarVectorT<ResultT> & aResultWS)
     const override
     {
         // get mesh vertices
@@ -5665,9 +5665,8 @@ public:
                 {
                     for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++)
                     {
-                        auto tCellDofOrdinal = (tLocalNodeOrd[tNode] * mNumTempDofsPerNode) + tDim;
-                        aResultWS(tCellOrdinal,tCellDofOrdinal) += tBasisFunctions(tNode) *
-                            ( tUnitNormalVec(tDim) * tThermalFlux(tDim) ) * tSurfaceAreaTimesCubWeight;
+                        aResultWS(tCellOrdinal) += tBasisFunctions(tNode) * tSurfaceAreaTimesCubWeight * 
+			    ( tUnitNormalVec(tDim) * tThermalFlux(tCellOrdinal, tDim) );
                     }
                 }
             }
@@ -5675,9 +5674,8 @@ public:
     }
 
     void evaluateBoundary
-    (const Plato::SpatialModel & aSpatialModel,
-     const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult)
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarVectorT<ResultT> & aResult)
     const override
     { return; }
 };
@@ -7743,11 +7741,6 @@ public:
             return ( std::make_shared<Plato::Fluids::AverageSurfacePressure<PhysicsT, EvaluationT>>
                 (aName, aDomain, aDataMap, aInputs) );
         }
-        else if( tCriterionLowerTag == "average nusset number" )
-        {
-            return ( std::make_shared<Plato::Fluids::AverageNussetNumber<PhysicsT, EvaluationT>>
-                (aName, aDomain, aDataMap, aInputs) );
-        }
         else if( tCriterionLowerTag == "average surface temperature" )
         {
             return ( std::make_shared<Plato::Fluids::AverageSurfaceTemperature<PhysicsT, EvaluationT>>
@@ -9641,8 +9634,8 @@ private:
             aStates.scalar("newton iteration", tIteration);
 
             Plato::blas1::fill(0.0, tDeltaPressure);
-            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
             Plato::blas1::scale(-1.0, tResidual);
+            Plato::apply_constraints<mNumPressDofsPerNode>(tBcDofs, tBcValues, tJacobian, tResidual);
             tSolver->solve(*tJacobian, tDeltaPressure, tResidual);
             Plato::blas1::update(1.0, tDeltaPressure, 1.0, tCurrentPressure);
 
@@ -9918,6 +9911,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
+            "    <ParameterList  name='X-Dir Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='1.0'/>"
+            "      <Parameter  name='Index'    type='int'    value='0'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
+            "    <ParameterList  name='Y-Dir Inlet Velocity'>"
+            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
+            "      <Parameter  name='Value'    type='double' value='0'/>"
+            "      <Parameter  name='Index'    type='int'    value='1'/>"
+            "      <Parameter  name='Sides'    type='string' value='x-'/>"
+            "    </ParameterList>"
             "    <ParameterList  name='X-Dir No-Slip on Y+'>"
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
             "      <Parameter  name='Index'    type='int'    value='0'/>"
@@ -9937,18 +9942,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "      <Parameter  name='Type'     type='string' value='Zero Value'/>"
             "      <Parameter  name='Index'    type='int'    value='1'/>"
             "      <Parameter  name='Sides'    type='string' value='y-'/>"
-            "    </ParameterList>"
-            "    <ParameterList  name='Inlet Velocity'>"
-            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
-            "      <Parameter  name='Value'    type='double' value='1.0'/>"
-            "      <Parameter  name='Index'    type='int'    value='0'/>"
-            "      <Parameter  name='Sides'    type='string' value='x-'/>"
-            "    </ParameterList>"
-            "    <ParameterList  name='Inlet Velocity'>"
-            "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
-            "      <Parameter  name='Value'    type='double' value='0'/>"
-            "      <Parameter  name='Index'    type='int'    value='1'/>"
-            "      <Parameter  name='Sides'    type='string' value='x-'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Pressure Essential Boundary Conditions'>"
@@ -9971,7 +9964,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,15,40,40);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(5,1,50,10);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -10360,13 +10353,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
     Teuchos::RCP<Teuchos::ParameterList> tInputs =
         Teuchos::getParametersFromXmlString(
             "<ParameterList name='Plato Problem'>"
-            "  <ParameterList  name='Criteria'>"
-            "    <Parameter  name='Type' type='string' value='Scalar Function'/>"
-            "    <ParameterList name='My Criteria'>"
-            "      <Parameter  name='Type'                 type='string' value='Scalar Function'/>"
-            "      <Parameter  name='Scalar Function Type' type='string' value='Average Nusset Number'/>"
-            "    </ParameterList>"
-            "  </ParameterList>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='Natural'/>"
             "    <ParameterList  name='Dimensionless Properties'>"
