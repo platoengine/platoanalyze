@@ -455,9 +455,9 @@ public:
     *******************************************************************************/
     NewtonRaphsonSolver(Omega_h::Mesh& aMesh, Teuchos::ParameterList& aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :
         mWorksetBase(aMesh),
-        mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-6)),
+        mStoppingTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Stopping Tolerance", 1e-12)),
         mDirichletValuesMultiplier(1),
-        mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 5e-7)),
+        mCurrentResidualNormTolerance(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Newton-Raphson", "Current Residual Norm Stopping Tolerance", 5e-12)),
         mMaxNumSolverIter(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Newton-Raphson", "Maximum Number Iterations", 10)),
         mCurrentSolverIter(0),
         mDebugFlag(aInputs.get<bool>("Debug",false)),

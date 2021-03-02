@@ -91,6 +91,7 @@ private:
 
     Plato::SolverFactory mLinearSolverFactory;            /*!< linear solver factory */
     std::shared_ptr<Plato::AbstractSolver> mLinearSolver; /*!< linear solver object */
+    std::shared_ptr<Plato::AbstractSolver> mProjectionLinearSolver;
 
     std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver;         /*!< Newton-Raphson solve interface */
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
@@ -135,8 +136,9 @@ public:
       mWorksetBase(aMesh),
       mLinearSolverFactory(aInputs.sublist("Linear Solver")),
       mLinearSolver(mLinearSolverFactory.create(aMesh, aMachine, PhysicsT::mNumDofsPerNode)),
+      mProjectionLinearSolver(mLinearSolverFactory.create(aMesh, aMachine, ProjectorT::SpaceDim)),
       mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
-      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
+      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver, mProjectionLinearSolver)),
       mStopOptimization(false),
       mMaxNumPseudoTimeStepsReached(false),
       mEssentialBCs(nullptr)
@@ -891,7 +893,11 @@ Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressGrad);
         Plato::blas1::fill(0.0, tNextProjectedPressureGradient);
         auto tProjResidual = mProjectionEquation->value(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
         auto tProjJacobian = mProjectionEquation->gradient_u(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
-        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, tNextProjectedPressureGradient, tProjResidual);
+        Plato::blas1::scale(-1.0, tProjResidual);
+        mProjectionLinearSolver->solve(*tProjJacobian, tNextProjectedPressureGradient, tProjResidual);
+aStateData.print("DERPPPP");
+std::cout << Plato::blas1::norm(tProjResidual) << " double derp " << Plato::blas1::norm(tNextProjectedPressureGradient) << std::endl;
+        //Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, tNextProjectedPressureGradient, tProjResidual);
     }
 
     /***************************************************************************//**
@@ -1080,8 +1086,8 @@ printf("Criterion value : %e\n\n", tOutput);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentLocalState);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentGlobalState);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mPressure);
-printf("Warning : zeroing out projected pressure grad again!\n");
-Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mProjectedPressGrad);
+//printf("Warning : zeroing out projected pressure grad again!\n");
+//Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mProjectedPressGrad);
     }
 
     /***************************************************************************//**

@@ -178,6 +178,7 @@ private:
     Plato::LocalOrdinalVector mDirichletDofs; /*!< Dirichlet boundary conditions degrees of freedom */
 
     std::shared_ptr<Plato::AbstractSolver> mLinearSolver; /*!< linear solver object */
+    std::shared_ptr<Plato::AbstractSolver> mProjectionLinearSolver;
 
 private:
     /***************************************************************************//**
@@ -610,10 +611,12 @@ public:
      * \param [in] aInputs input parameters list
      * \param [in] aLinearSolver linear solver object
     *******************************************************************************/
-    PathDependentAdjointSolver(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :
+    PathDependentAdjointSolver(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver,
+                               std::shared_ptr<Plato::AbstractSolver> &aProjectionLinearSolver) :
         mWorksetBase(aMesh),
         mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
-        mLinearSolver(aLinearSolver)
+        mLinearSolver(aLinearSolver),
+        mProjectionLinearSolver(aProjectionLinearSolver)
     {}
 
     /***************************************************************************//**
@@ -751,17 +754,18 @@ public:
         auto tNumProjPressGradDofs = mProjectionEquation->size();
         Plato::ScalarVector tResidual("Projected Pressure Gradient Residual", tNumProjPressGradDofs);
         Plato::MatrixTimesVectorPlusVector(tDrDp_T, aAdjointVars.mCurrentGlobalAdjoint, tResidual);
-        Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tResidual);
+        //Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tResidual);
 
         // Solve for current projected pressure gradient adjoint, i.e.
         //   gamma_k =  INV(tDpDp_k^T) * (tDrDp_{k+1}^T * lambda_{k+1})
-Plato::ScalarVector tPreviousPressure("Previous Pressure Field", aCurrentStateVars.mPressure.size());
-Plato::blas1::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aCurrentStateVars.mPreviousGlobalState, tPreviousPressure);
+        Plato::ScalarVector tPreviousPressure("Previous Pressure Field", aCurrentStateVars.mPressure.size());
+        Plato::blas1::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aCurrentStateVars.mPreviousGlobalState, tPreviousPressure);
         auto tProjJacobian = mProjectionEquation->gradient_u_T(aCurrentStateVars.mProjectedPressGrad, tPreviousPressure,
                                                                aControls, aCurrentStateVars.mCurrentStepIndex);
 
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mProjPressGradAdjoint);
-        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointVars.mProjPressGradAdjoint, tResidual);
+        mProjectionLinearSolver->solve(*tProjJacobian, aAdjointVars.mProjPressGradAdjoint, tResidual);
+        //Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointVars.mProjPressGradAdjoint, tResidual);
     }
 
     /***************************************************************************//**
@@ -882,8 +886,8 @@ Plato::blas1::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(aCurrentStateVa
                                 const Plato::ForwardStates & aPreviousStateVars,
                                 Plato::AdjointStates & aAdjointVars)
     {
-Plato::blas1::fill(0.0, aAdjointVars.mPreviousProjPressGradAdjoint);
-Plato::blas1::fill(0.0, aAdjointVars.mProjPressGradAdjoint);
+//Plato::blas1::fill(0.0, aAdjointVars.mPreviousProjPressGradAdjoint);
+//Plato::blas1::fill(0.0, aAdjointVars.mProjPressGradAdjoint);
         aCurrentStateVars.print("Current State ");
         aPreviousStateVars.print("Previous State");
         aAdjointVars.print("Before ", aCurrentStateVars.mCurrentStepIndex);
