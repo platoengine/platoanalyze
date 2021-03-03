@@ -700,7 +700,7 @@ private:
         // Workset current global state
         using GlobalStateScalar = typename JacobianPgrad::StateScalarType;
         Plato::ScalarMultiVectorT<GlobalStateScalar> tCurrentGlobalStateWS("Current Global State Workset", tNumCells, mNumGlobalDofsPerCell);
-        mWorksetBase.worksetState(aCurrentLocalState, tCurrentGlobalStateWS, aDomain);
+        mWorksetBase.worksetState(aCurrentGlobalState, tCurrentGlobalStateWS, aDomain);
 
         // Workset previous global state
         using PrevGlobalStateScalar = typename JacobianPgrad::PrevStateScalarType;

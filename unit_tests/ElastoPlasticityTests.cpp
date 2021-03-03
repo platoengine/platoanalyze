@@ -3697,7 +3697,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 2;
+    constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -3731,7 +3731,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "      <ParameterList name='Plasticity Model'>                                                \n"
       "        <ParameterList name='J2 Plasticity'>                                                 \n"
       "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e2'/>       \n"
-      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e-6'/>       \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e2'/>       \n"
       "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e2'/>              \n"
       "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>   \n"
       "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/>  \n"
@@ -3758,8 +3758,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='8'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='8'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -3781,13 +3781,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
       "     <ParameterList  name='Z Fixed Displacement Boundary Condition'>                     \n"
       "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
       "       <Parameter  name='Index'    type='int'    value='2'/>                             \n"
-      "       <Parameter  name='Sides'    type='string' value='ns_Z0'/>                         \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
       "     </ParameterList>                                                                    \n"
       "     <ParameterList  name='Applied Displacement Boundary Condition'>                     \n"
       "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
       "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
       "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
-      "       <Parameter  name='Function'    type='string' value='0.025*t'/>                    \n"
+      "       <Parameter  name='Function'    type='string' value='0.035*t'/>                    \n"
       "     </ParameterList>                                                                    \n"
       "   </ParameterList>                                                                      \n"
       "</ParameterList>                                                                         \n"
@@ -3819,6 +3819,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
     //
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
+    std::cout << "NUMBER OF NODES: " << tMesh->nverts() << std::endl;
     TEST_ASSERT(tApproxError < tUpperBound);
     //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -4316,7 +4317,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 6;
+    constexpr Plato::OrdinalType tMeshWidth = 3;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -4388,7 +4389,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "     <ParameterList  name='Y Fixed Displacement Boundary Condition'>                     \n"
       "       <Parameter  name='Type'     type='string' value='Zero Value'/>                    \n"
       "       <Parameter  name='Index'    type='int'    value='1'/>                             \n"
-      "       <Parameter  name='Sides'    type='string' value='ns_Y0'/>                         \n"
+      "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
       "     </ParameterList>                                                                    \n"
       "     <ParameterList  name='Applied Displacement Boundary Condition'>                     \n"
       "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
@@ -4415,7 +4416,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     const Plato::Scalar tUpperBound = 1e-6;
     TEST_ASSERT(tApproxError < tUpperBound);
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -4541,7 +4542,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -4658,7 +4659,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);

@@ -72,18 +72,18 @@ struct ForwardStates
     {
         if (mProjectedPressGrad.size() <= 0)
         {
-            printf("Forward States Empty\n");
+            printf("Forward States '%s' Empty\n", my_string);
             return;
         }
-        printf("Printing FS %s Step %d : CPPG %10.4e , CP %10.4e , CG %10.4e , PG %10.4e , CL %10.4e , PL %10.4e\n",
+        printf("Printing FS %s\n Step %d : CPPG %10.4e , CG %10.4e , PG %10.4e , CL %10.4e , PL %10.4e , CP %10.4e\n",
         my_string, 
         mCurrentStepIndex,
         Plato::blas1::norm(mProjectedPressGrad),
-        Plato::blas1::norm(mPressure),
         Plato::blas1::norm(mCurrentGlobalState),
         Plato::blas1::norm(mPreviousGlobalState),
         Plato::blas1::norm(mCurrentLocalState),
-        Plato::blas1::norm(mPreviousLocalState)
+        Plato::blas1::norm(mPreviousLocalState),
+        Plato::blas1::norm(mPressure)
         );
     }
 };
@@ -178,7 +178,6 @@ private:
     Plato::LocalOrdinalVector mDirichletDofs; /*!< Dirichlet boundary conditions degrees of freedom */
 
     std::shared_ptr<Plato::AbstractSolver> mLinearSolver; /*!< linear solver object */
-    std::shared_ptr<Plato::AbstractSolver> mProjectionLinearSolver;
 
 private:
     /***************************************************************************//**
@@ -371,7 +370,7 @@ private:
     {
         // Compute partial derivative of projected pressure gradient residual wrt pressure field, i.e. DpDn
         auto tDpDn = mProjectionEquation->gradient_n_workset(aPreviousStateVars.mProjectedPressGrad, aCurrentStateVars.mPressure,
-                                                              aControls, aPreviousStateVars.mCurrentStepIndex);
+                                                             aControls, aPreviousStateVars.mCurrentStepIndex);
 
         // Compute projected pressure gradient adjoint workset
         auto tNumCells = mProjectionEquation->numCells();
@@ -379,12 +378,12 @@ private:
         mWorksetBase.worksetNodeState(aAdjointVars.mPreviousProjPressGradAdjoint, tGamma);
 
         // Compute DpDn_k^T * gamma_k
-        const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 1.0;
+        const Plato::Scalar tAlpha = 1.0; const Plato::Scalar tBeta = 0.0;
         const auto tNumPressureDofsPerCell = mProjectionEquation->numNodeStatePerCell();
-        Plato::ScalarMultiVector tOuput("DpDn_{k+1}^T * gamma_{k+1}", tNumCells, tNumPressureDofsPerCell);
-        Plato::blas2::matrix_times_vector("T", tAlpha, tDpDn, tGamma, tBeta, tOuput);
+        Plato::ScalarMultiVector tOutput("DpDn_{k+1}^T * gamma_{k+1}", tNumCells, tNumPressureDofsPerCell);
+        Plato::blas2::matrix_times_vector("T", tAlpha, tDpDn, tGamma, tBeta, tOutput);
 
-        return (tOuput);
+        return (tOutput);
     }
 
     /***************************************************************************//**
@@ -533,7 +532,7 @@ private:
         auto tDpDz = mProjectionEquation->gradient_z_workset(aStateVars.mProjectedPressGrad, aStateVars.mPressure,
                                                              aControls, aStateVars.mCurrentStepIndex);
         tBeta = 1.0;
-        Plato::blas2::matrix_times_vector("T", tAlpha, tDpDz, tCurrentGamma, tBeta, tGradientControl);
+Plato::blas2::matrix_times_vector("T", 0.0/*tAlpha*/, tDpDz, tCurrentGamma, tBeta, tGradientControl);
 
         // compute local adjoint contribution to total gradient, i.e. (DhDz)^T * mu
         Plato::ScalarMultiVector tCurrentMu("Current Local State Adjoint", tNumCells, mNumLocalDofsPerCell);
@@ -611,12 +610,10 @@ public:
      * \param [in] aInputs input parameters list
      * \param [in] aLinearSolver linear solver object
     *******************************************************************************/
-    PathDependentAdjointSolver(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver,
-                               std::shared_ptr<Plato::AbstractSolver> &aProjectionLinearSolver) :
+    PathDependentAdjointSolver(Omega_h::Mesh & aMesh, Teuchos::ParameterList & aInputs, std::shared_ptr<Plato::AbstractSolver> &aLinearSolver) :
         mWorksetBase(aMesh),
         mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
-        mLinearSolver(aLinearSolver),
-        mProjectionLinearSolver(aProjectionLinearSolver)
+        mLinearSolver(aLinearSolver)
     {}
 
     /***************************************************************************//**
@@ -754,7 +751,7 @@ public:
         auto tNumProjPressGradDofs = mProjectionEquation->size();
         Plato::ScalarVector tResidual("Projected Pressure Gradient Residual", tNumProjPressGradDofs);
         Plato::MatrixTimesVectorPlusVector(tDrDp_T, aAdjointVars.mCurrentGlobalAdjoint, tResidual);
-        //Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tResidual);
+        Plato::blas1::scale(static_cast<Plato::Scalar>(-1), tResidual);
 
         // Solve for current projected pressure gradient adjoint, i.e.
         //   gamma_k =  INV(tDpDp_k^T) * (tDrDp_{k+1}^T * lambda_{k+1})
@@ -764,8 +761,7 @@ public:
                                                                aControls, aCurrentStateVars.mCurrentStepIndex);
 
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aAdjointVars.mProjPressGradAdjoint);
-        mProjectionLinearSolver->solve(*tProjJacobian, aAdjointVars.mProjPressGradAdjoint, tResidual);
-        //Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointVars.mProjPressGradAdjoint, tResidual);
+        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aAdjointVars.mProjPressGradAdjoint, tResidual);
     }
 
     /***************************************************************************//**
@@ -888,14 +884,14 @@ public:
     {
 //Plato::blas1::fill(0.0, aAdjointVars.mPreviousProjPressGradAdjoint);
 //Plato::blas1::fill(0.0, aAdjointVars.mProjPressGradAdjoint);
-        aCurrentStateVars.print("Current State ");
-        aPreviousStateVars.print("Previous State");
-        aAdjointVars.print("Before ", aCurrentStateVars.mCurrentStepIndex);
+        //aPreviousStateVars.print("Previous State");
+        //aCurrentStateVars.print("Current State ");
+        //aAdjointVars.print("Before ", aCurrentStateVars.mCurrentStepIndex);
         this->updateInverseLocalJacobian(aControls, aCurrentStateVars, aAdjointVars.mInvLocalJacT);
         this->updateGlobalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
         this->updateLocalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
         this->updateProjPressGradAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
-        aAdjointVars.print("Updated", aCurrentStateVars.mCurrentStepIndex); printf("\n");
+        //aAdjointVars.print("Updated", aCurrentStateVars.mCurrentStepIndex); printf("\n");
     }
 
     /***************************************************************************//**

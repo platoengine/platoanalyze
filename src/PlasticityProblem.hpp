@@ -91,7 +91,6 @@ private:
 
     Plato::SolverFactory mLinearSolverFactory;            /*!< linear solver factory */
     std::shared_ptr<Plato::AbstractSolver> mLinearSolver; /*!< linear solver object */
-    std::shared_ptr<Plato::AbstractSolver> mProjectionLinearSolver;
 
     std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver;         /*!< Newton-Raphson solve interface */
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
@@ -136,9 +135,8 @@ public:
       mWorksetBase(aMesh),
       mLinearSolverFactory(aInputs.sublist("Linear Solver")),
       mLinearSolver(mLinearSolverFactory.create(aMesh, aMachine, PhysicsT::mNumDofsPerNode)),
-      mProjectionLinearSolver(mLinearSolverFactory.create(aMesh, aMachine, ProjectorT::SpaceDim)),
       mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
-      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver, mProjectionLinearSolver)),
+      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mStopOptimization(false),
       mMaxNumPseudoTimeStepsReached(false),
       mEssentialBCs(nullptr)
@@ -799,9 +797,9 @@ private:
         tCurrentState.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalEquation->size());
 
         this->initializeNewtonSolver();
-Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mLocalStates);
-Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mGlobalStates);
-Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressGrad);
+        Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mLocalStates);
+        Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mGlobalStates);
+        Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressGrad);
 
         bool tForwardProblemSolved = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
@@ -811,7 +809,7 @@ Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressGrad);
             tMsg << "TIME STEP #" << tCurrentStepIndex + static_cast<Plato::OrdinalType>(1) << " OUT OF " << mNumPseudoTimeSteps
                  << " TIME STEPS, TOTAL TIME = " << mCurrentPseudoTimeStep << "\n";
             mNewtonSolver->appendOutputMessage(tMsg);
-//printf("%s\n", tMsg.str().c_str());
+
             tCurrentState.mCurrentStepIndex = tCurrentStepIndex;
             this->cacheStateData(tCurrentState);
 
@@ -894,10 +892,7 @@ Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressGrad);
         auto tProjResidual = mProjectionEquation->value(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
         auto tProjJacobian = mProjectionEquation->gradient_u(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
         Plato::blas1::scale(-1.0, tProjResidual);
-        mProjectionLinearSolver->solve(*tProjJacobian, tNextProjectedPressureGradient, tProjResidual);
-aStateData.print("DERPPPP");
-std::cout << Plato::blas1::norm(tProjResidual) << " double derp " << Plato::blas1::norm(tNextProjectedPressureGradient) << std::endl;
-        //Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, tNextProjectedPressureGradient, tProjResidual);
+        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, tNextProjectedPressureGradient, tProjResidual);
     }
 
     /***************************************************************************//**
@@ -954,7 +949,7 @@ std::cout << Plato::blas1::norm(tProjResidual) << " double derp " << Plato::blas
                                         tCurrentLocalState, tPreviousLocalState,
                                         aControls, tCurrentStepIndex);
         }
-printf("Criterion value : %e\n\n", tOutput);
+
         return tOutput;
     }
 
@@ -1086,8 +1081,6 @@ printf("Criterion value : %e\n\n", tOutput);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentLocalState);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentGlobalState);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mPressure);
-//printf("Warning : zeroing out projected pressure grad again!\n");
-//Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mProjectedPressGrad);
     }
 
     /***************************************************************************//**
