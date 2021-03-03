@@ -24,6 +24,7 @@
 #include "EssentialBCs.hpp"
 #include "ProjectToNode.hpp"
 #include "PlatoUtilities.hpp"
+#include "OmegaHUtilities.hpp"
 #include "SimplexFadTypes.hpp"
 #include "ApplyConstraints.hpp"
 #include "PlatoMathHelpers.hpp"
@@ -6618,6 +6619,121 @@ integrate_inertial_pressure_forces
 }
 
 
+
+
+
+
+template<typename PhysicsT, typename EvaluationT>
+class MomentumSurfaceForces
+{
+private:
+    static constexpr auto mNumSpatialDims       = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
+    static constexpr auto mNumVelDofsPerNode    = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+    static constexpr auto mNumSpatialDimsOnFace = PhysicsT::SimplexT::mNumSpatialDimsOnFace;   /*!< number of spatial dimensions on face */
+
+    // forward automatic differentiation types
+    using ResultT = typename EvaluationT::ResultScalarType;
+    using ConfigT = typename EvaluationT::ConfigScalarType;
+    using CurrentVelT = typename EvaluationT::CurrentMomentumScalarType;
+
+    const std::string mEntitySetName; /*!< side set name */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mVolumeCubatureRule;  /*!< volume integration rule */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace> mSurfaceCubatureRule; /*!< surface integration rule */
+
+public:
+    MomentumSurfaceForces
+    (const Plato::SpatialDomain & aSpatialDomain,
+     const std::string & aEntitySetName) :
+         mEntitySetName(aEntitySetName),
+         mSpatialDomain(aSpatialDomain)
+    {
+    }
+
+    void operator()
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResult,
+     Plato::Scalar aMultiplier = 1.0) const
+    {
+        // get mesh vertices
+        auto tFace2Verts = mSpatialDomain.Mesh.ask_verts_of(mNumSpatialDimsOnFace);
+        auto tCell2Verts = mSpatialDomain.Mesh.ask_elem_verts();
+
+        // get face to element graph
+        auto tFace2eElems = mSpatialDomain.Mesh.ask_up(mNumSpatialDimsOnFace, mNumSpatialDims);
+        auto tFace2Elems_map   = tFace2eElems.a2ab;
+        auto tFace2Elems_elems = tFace2eElems.ab2b;
+
+        // get element to face map
+        auto tElem2Faces = mSpatialDomain.Mesh.ask_down(mNumSpatialDims, mNumSpatialDimsOnFace).ab2b;
+
+        // set local functors
+        Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
+        Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
+        Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
+        Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode,   0/*offset*/, mNumSpatialDims> tIntrplVectorField;
+
+        // get sideset faces
+        auto tFaceLocalOrdinals = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, mEntitySetName);
+        auto tNumFaces = tFaceLocalOrdinals.size();
+        Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
+        auto tNumCells = mSpatialDomain.Mesh.nelems();
+        Plato::ScalarMultiVectorT<CurrentVelT> tCurrentVelGP("current velocity", tNumCells, mNumVelDofsPerNode);
+
+        // set input state worksets
+        auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tCurrentVelWS = Plato::metadata<Plato::ScalarMultiVectorT<CurrentVelT>>(aWorkSets.get("current velocity"));
+
+        // evaluate integral
+        auto tVolumeBasisFunctions = mVolumeCubatureRule.getBasisFunctions();
+        auto tSurfaceCubatureWeight = mSurfaceCubatureRule.getCubWeight();
+        auto tSurfaceBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
+        {
+
+          auto tFaceOrdinal = tFaceLocalOrdinals[aFaceI];
+          // for each element that the face is connected to: (either 1 or 2 elements)
+          for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal + 1]; tElem++ )
+          {
+              // create a map from face local node index to elem local node index
+              Plato::OrdinalType tLocalNodeOrd[mNumSpatialDims];
+              auto tCellOrdinal = tFace2Elems_elems[tElem];
+              tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrd);
+
+              // calculate surface jacobians
+              ConfigT tSurfaceAreaTimesCubWeight(0.0);
+              tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrd, tConfigWS, tJacobians);
+              tCalculateSurfaceArea(aFaceI, tSurfaceCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
+
+              // compute unit normal vector
+              auto tElemFaceOrdinal = Plato::get_face_ordinal<mNumSpatialDims>(tCellOrdinal, tFaceOrdinal, tElem2Faces);
+              auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
+
+              // project into aResult workset
+              tIntrplVectorField(tCellOrdinal, tVolumeBasisFunctions, tCurrentVelWS, tCurrentVelGP);
+              for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
+              {
+                  auto tLocalCellNode = tLocalNodeOrd[tNode];
+                  for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
+                  {
+                      aResult(tCellOrdinal, tLocalCellNode) += aMultiplier * tSurfaceBasisFunctions(tNode) *
+                          tUnitNormalVec(tDim) * tCurrentVelGP(tCellOrdinal, tDim) * tSurfaceAreaTimesCubWeight;
+                  }
+              }
+          }
+        }, "calculate surface momentum integral");
+    }
+};
+// class MomentumSurfaceForces
+
+
+
+
+
+
+
 // todo: continuity equation
 /***************************************************************************//**
  * \class PressureResidual
@@ -6693,6 +6809,10 @@ private:
     Plato::Scalar mPressDamping = 1.0;    /*!< artificial pressure damping */
     Plato::Scalar mMomentumDamping = 1.0; /*!< artificial momentum/velocity damping */
 
+    // surface integral
+    using MomentumForces = Plato::Fluids::MomentumSurfaceForces<PhysicsT, EvaluationT>;
+    std::unordered_map<std::string, std::shared_ptr<MomentumForces>> mMomentumBCs;
+
 public:
     PressureResidual
     (const Plato::SpatialDomain & aDomain,
@@ -6702,6 +6822,7 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
+        this->setSurfaceBoundaryIntegrals(aInputs);
         this->setAritificalPressureDamping(aInputs);
     }
 
@@ -6850,8 +6971,13 @@ public:
     void evaluateBoundary
     (const Plato::SpatialModel & aSpatialModel,
      const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResult) const override
-    { return; }
+     Plato::ScalarMultiVectorT<ResultT> & aResultWS) const override
+    {
+        for(auto& tPair : mMomentumBCs)
+        {
+            tPair.second->operator()(aWorkSets, aResultWS);
+        }
+    }
 
     /***************************************************************************//**
      * \fn void evaluatePrescribed
@@ -6873,6 +6999,42 @@ private:
             auto tTimeIntegration = aInputs.sublist("Time Integration");
             mPressDamping = tTimeIntegration.get<Plato::Scalar>("Pressure Damping", 1.0);
             mMomentumDamping = tTimeIntegration.get<Plato::Scalar>("Momentum Damping", 1.0);
+        }
+    }
+
+    void setSurfaceBoundaryIntegrals(Teuchos::ParameterList& aInputs)
+    {
+        // the natural BCs are applied on the side sets where velocity BCs
+        // are applied. therefore, the side sets corresponding to the velocity
+        // BCs should be read by this function.
+        std::unordered_map<std::string, std::vector<std::pair<Plato::OrdinalType, Plato::Scalar>>> tMap;
+        if(aInputs.isSublist("Velocity Essential Boundary Conditions") == false)
+        {
+            THROWERR("'Velocity Essential Boundary Conditions' block must be defined for fluid flow problems.")
+        }
+        auto tSublist = aInputs.sublist("Velocity Essential Boundary Conditions");
+
+        for (Teuchos::ParameterList::ConstIterator tItr = tSublist.begin(); tItr != tSublist.end(); ++tItr)
+        {
+            const Teuchos::ParameterEntry &tEntry = tSublist.entry(tItr);
+            if (!tEntry.isList())
+            {
+                THROWERR(std::string("Error reading 'Velocity Essential Boundary Conditions' block: Expects a parameter ")
+                    + "list input with information pertaining to the velocity boundary conditions .")
+            }
+
+            const std::string& tParamListName = tSublist.name(tItr);
+            Teuchos::ParameterList & tParamList = tSublist.sublist(tParamListName);
+            if (tParamList.isParameter("Sides") == false)
+            {
+                THROWERR(std::string("Keyword 'Sides' is not define in Parameter List '") + tParamListName + "'.")
+            }
+            const auto tEntitySetName = tParamList.get<std::string>("Sides");
+            auto tMapItr = mMomentumBCs.find(tEntitySetName);
+            if(tMapItr == mMomentumBCs.end())
+            {
+                mMomentumBCs[tEntitySetName] = std::make_shared<MomentumForces>(mSpatialDomain, tEntitySetName);
+            }
         }
     }
 };
