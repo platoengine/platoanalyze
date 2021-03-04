@@ -36,23 +36,12 @@ namespace Plato
 {
 
 /***********************************************************************//**
- * \brief Evaluate stabilized infinitesimal strain thermoplasticity residual, defined as
+ * \brief Evaluate stabilized infinitesimal strain thermoplasticity residual
  *
  * \tparam EvaluationType denotes evaluation type for vector function, possible
  *   options are Residual, Jacobian, PartialControl, etc.
  * \tparam SimplexPhysicsType simplex physics type, e.g. SimplexThermoPlasticity. gives
  *   access to static data related to the physics problem.
- * NEED TO UPDATE THESE EQUATIONS TO INCLUDE HEAT CONDUCTION
- * \f$   \langle \nabla{v_h}, s_h \rangle + \langle \nabla\cdot{v_h}, p_h \rangle
- *     - \langle v_h, f \rangle - \langle v_h, b \rangle = 0\ \forall\ v_h \in V_{h,0}
- *       = \{v_h \in V_h | v = 0\ \mbox{in}\ \partial\Omega_{u} \} \f$
- *
- * \f$   \langle q_h, \nabla\cdot{u_h} \rangle - \langle q_h, \frac{1}{K}p_h \rangle
- *     - \sum_{e=1}^{N_{elem}} \tau_e \langle \nabla{q_h} \left[ \nabla{p_h} - \Pi_h
- *       \right] \rangle = 0\ \forall\ q_h \in L_h \subset\ L^2(\Omega) \f$
- *
- * \f$ \langle \nabla{p_h}, \eta_h \rangle - \langle \Pi_h, \eta_h \rangle = 0\
- *     \forall\ \eta_h \in V_h \subset\ H^{1}(\Omega) \f$
  *
 ***************************************************************************/
 template<typename EvaluationType, typename SimplexPhysicsType>

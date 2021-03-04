@@ -853,7 +853,7 @@ public:
             //
             mBoundaryLoadsJacobianNFunction->evaluate_boundary( mSpatialModel, tStateWS, tNodeStateWS, tControlWS, tConfigWS, tJacobianWS, aTimeStep );
   
-            //Plato::transform_ad_type_to_pod_3Dview<mNumStateDofsPerCell, mNumNodeStateDofsPerCell>(mNumCells, tJacobianWS, tOutJacobian);
+            Plato::transform_ad_type_to_pod_3Dview<mNumStateDofsPerCell, mNumNodeStateDofsPerCell>(mNumCells, tJacobianWS, tOutJacobian);
         }
         return (tOutJacobian);
     }

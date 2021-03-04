@@ -326,7 +326,7 @@ inline void transform_ad_type_to_pod_3Dview(const Plato::OrdinalType& aNumCells,
       {
           for(Plato::OrdinalType tColumnIndex = 0; tColumnIndex < NumColsPerCell; tColumnIndex++)
           {
-              aOutput(aCellOrdinal, tRowIndex, tColumnIndex) = aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
+              aOutput(aCellOrdinal, tRowIndex, tColumnIndex) += aInput(aCellOrdinal, tRowIndex).dx(tColumnIndex);
           }
       }
     }, "convert AD type to Scalar type");

@@ -173,7 +173,7 @@ OrdinalType EssentialBC<SimplexPhysicsType>::get_length(const Omega_h::MeshSets&
     {
         const std::string tErrorMessage = std::string("The set '") +
               ns_name + "' specified in Essential Boundary Conditions contains 0 nodes.";
-        THROWERR(tErrorMessage)
+        WARNING(tErrorMessage)
     }
 
     return tNumberConstrainedNodes;
