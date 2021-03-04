@@ -308,6 +308,7 @@ public:
                 mProjResidual = mStateProjection.value      (mProjPGrad, mProjectState, aControl);
                 mProjJacobian = mStateProjection.gradient_u (mProjPGrad, mProjectState, aControl);
 
+                Plato::blas1::scale(static_cast<Plato::Scalar>(-1.0), mProjResidual);
                 Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPGrad, mProjResidual);
 
                 // compute the state solution
@@ -499,6 +500,7 @@ public:
                                   SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tStateAtStepK, mProjectState);
             mProjResidual = mStateProjection.value      (mProjPGrad, mProjectState, aControl);
             mProjJacobian = mStateProjection.gradient_u (mProjPGrad, mProjectState, aControl);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1.0), mProjResidual);
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPGrad, mProjResidual);
 
             // compute dgdu^T: Transpose of partial of PDE wrt state
@@ -522,7 +524,6 @@ public:
             // compute adjoint variable for projection equation
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjResidual);
             Plato::MatrixTimesVectorPlusVector(t_dg_dPI_T, tLambda, mProjResidual);
-            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mProjResidual);
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mEta, mProjResidual);
 
             // compute dgdz: partial of PDE wrt state.
@@ -651,6 +652,7 @@ public:
                                   SimplexPhysics::ProjectorT::SimplexT::mProjectionDof>(tStateAtStepK, mProjectState);
             mProjResidual = mStateProjection.value      (mProjPGrad, mProjectState, aControl);
             mProjJacobian = mStateProjection.gradient_u (mProjPGrad, mProjectState, aControl);
+            Plato::blas1::scale(static_cast<Plato::Scalar>(-1.0), mProjResidual);
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mProjPGrad, mProjResidual);
 
             // compute dgdu^T: Transpose of partial of PDE wrt state
@@ -674,7 +676,6 @@ public:
             // compute adjoint variable for projection equation
             Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mProjResidual);
             Plato::MatrixTimesVectorPlusVector(t_dg_dPI_T, tLambda, mProjResidual);
-            Plato::blas1::scale(static_cast<Plato::Scalar>(-1), mProjResidual);
             Plato::Solve::RowSummed<SimplexPhysics::mNumSpatialDims>(mProjJacobian, mEta, mProjResidual);
 
             // compute dgdx: partial of PDE wrt configuration
