@@ -586,14 +586,14 @@ public:
         while(true)
         {
             tOutputData.mCurrentIteration = mCurrentSolverIter;
-if (mDebugFlag) printf("Iter: %d\nUpdate Local Jacobian Inverse.\n", mCurrentSolverIter);
+            if (mDebugFlag) printf("Iter: %d\nUpdate Local Jacobian Inverse.\n", mCurrentSolverIter);
             // update inverse of local Jacobian -> store in tInvLocalJacobianT
             this->updateInverseLocalJacobian(aControls, aStates, tInvLocalJacobianT);
-if (mDebugFlag) printf("Assemble residual.\n");
+            if (mDebugFlag) printf("Assemble residual.\n");
             // assemble residual
             auto tGlobalResidual = this->assembleResidual(aControls, aStates, tInvLocalJacobianT);
             Plato::blas1::scale(static_cast<Plato::Scalar>(-1.0), tGlobalResidual);
-if (mDebugFlag) printf("Assemble tangent.\n");
+            if (mDebugFlag) printf("Assemble tangent.\n");
             // assemble tangent stiffness matrix
             auto tGlobalJacobian = this->assembleTangentMatrix(aControls, aStates, tInvLocalJacobianT);
 
@@ -611,19 +611,19 @@ if (mDebugFlag) printf("Assemble tangent.\n");
                 tNewtonRaphsonConverged = this->didNewtonRaphsonSolverConverge(tOutputData);
                 break;
             }
-if (mDebugFlag) printf("Update global states.\n");
+            if (mDebugFlag) printf("Update global states.\n");
             // update global states
             this->updateGlobalStates(tGlobalJacobian, tGlobalResidual, aStates);
-if (mDebugFlag) printf("Update local states.\n");
+            if (mDebugFlag) printf("Update local states.\n");
             // update local states
             mLocalEquation->updateLocalState(aStates.mCurrentGlobalState, aStates.mPreviousGlobalState,
                                              aStates.mCurrentLocalState, aStates.mPreviousLocalState,
                                              aControls, aStates.mCurrentStepIndex);
             mCurrentSolverIter++;
         }
-if (mDebugFlag) printf("Newton finished\n");
+        if (mDebugFlag) printf("Newton iteration completed.\n");
         Plato::print_newton_raphson_stop_criterion(tOutputData, mSolverDiagnosticsFile);
-//aStates.print("After Newton\n");
+        
         return (tNewtonRaphsonConverged);
     }
 };

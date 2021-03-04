@@ -3094,11 +3094,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     Kokkos::deep_copy(tHostPressure, tPressure);
     std::vector<Plato::Scalar> tGoldPress =
         {
-         {-2.115362e+02, -1.874504e+03, -2.294189e+02, -1.516672e+03, -2.785281e+03, -2.925495e+03, -2.970340e+03, -4.293099e+02,
-          -1.685521e+03, -5.322904e+02, -1.665030e+03, -2.835582e+03, -6.988780e+02, -1.668066e+03, -2.687101e+03, -2.258380e+03,
-          -2.495897e+03, -1.672543e+03, -9.116663e+02, -1.675849e+03, -1.168386e+03, -1.974995e+03, -1.677669e+03, -1.470044e+03,
-          -1.702233e+03, -1.860586e+03, -1.668134e+03, -1.143118e+03, -1.319865e+03, -1.653114e+03, -2.204908e+03, -1.995014e+03,
-          -2.705687e+03}
+         {2.311752e+02,-1.827696e+03,2.247582e+02,-1.485268e+03,-3.159835e+03,-3.310358e+03,
+         -3.355509e+03,-1.893416e+01,-1.667250e+03,-1.538996e+02,-1.643017e+03,-3.189432e+03,
+         -3.715330e+02,-1.644462e+03,-2.992111e+03,-2.432445e+03,-2.743322e+03,-1.650144e+03,
+         -6.506333e+02,-1.652914e+03,-9.859537e+02,-2.062321e+03,-1.655154e+03,-1.383581e+03,
+         -1.678354e+03,-1.883450e+03,-1.657927e+03,-9.691324e+02,-1.185495e+03,-1.607423e+03,
+         -2.312137e+03,-1.975908e+03,-2.933662e+03}
         };
     for(Plato::OrdinalType tTimeStep=1; tTimeStep < tPressure.extent(0); tTimeStep++)
     {
@@ -3113,14 +3114,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tHostDisplacements = Kokkos::create_mirror(tDisplacements);
     Kokkos::deep_copy(tHostDisplacements, tDisplacements);
     std::vector<Plato::Scalar> tGoldDisp =
-         {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, -6.164854e-02, -1.189951e-03,
-          -6.163677e-02, 0.0, -6.243005e-02, -2.395852e-03, -5.908745e-02, 9.381758e-04, -5.919208e-02, -7.291411e-04, -5.909716e-02,
-          1.326328e-03, -5.503616e-02, -1.099687e-03, -5.494402e-02, -3.525908e-03, -5.492911e-02, 1.629318e-03, -4.941788e-02,  -1.472318e-03,
-          -4.933201e-02, -4.573797e-03, -4.931350e-02, -6.306177e-03, -3.454268e-02, -5.510012e-03, -4.243363e-02, -1.845476e-03, -4.245746e-02,
-          1.819180e-03, -4.253584e-02, -2.219095e-03, -3.457328e-02, 1.868041e-03, -3.464274e-02, -6.934208e-03, -2.594957e-02, -2.593272e-03,
-          -2.598862e-02, 1.747752e-03, -2.604802e-02, -2.966076e-03, -1.706881e-02, 1.432299e-03, -1.711426e-02, -7.365046e-03, -1.702033e-02,
-          -7.602023e-03, 1.234104e-04,  -7.582309e-03, -8.182097e-03, -3.335936e-03, -8.239034e-03, 8.764536e-04, -8.256626e-03, -3.587180e-03,
-          1.188541e-05, 0.0, 0.0};
+         {0.000000e+00,-6.134811e-02,0.000000e+00,-6.119720e-02,4.890601e-04,-6.043469e-02,
+         -3.458934e-04,-6.035885e-02,-1.165818e-03,-6.032728e-02,0.000000e+00,-6.109650e-02,
+         -2.347652e-03,-5.783824e-02,9.053655e-04,-5.794102e-02,-7.213166e-04,-5.786790e-02,
+         1.280989e-03,-5.388596e-02,-1.085814e-03,-5.381352e-02,-3.452896e-03,-5.378025e-02,
+         1.573984e-03,-4.840284e-02,-1.452818e-03,-4.833418e-02,-4.479451e-03,-4.830023e-02,
+         -6.182190e-03,-3.387425e-02,-5.398447e-03,-4.158341e-02,-1.820375e-03,-4.161922e-02,
+         1.757783e-03,-4.168384e-02,-2.188273e-03,-3.391259e-02,1.805654e-03,-3.397251e-02,
+         -6.803693e-03,-2.547071e-02,-2.556661e-03,-2.551252e-02,1.690486e-03,-2.556736e-02,
+         -2.923613e-03,-1.677144e-02,1.387154e-03,-1.681750e-02,-7.234932e-03,-1.672620e-02,
+         -7.493506e-03,1.246463e-04,-7.461686e-03,-8.052684e-03,-3.289559e-03,-8.100860e-03,
+         8.484803e-04,-8.124464e-03,-3.535933e-03,2.311506e-05,0.000000e+00,0.000000e+00};
     for(Plato::OrdinalType tTimeStep=1; tTimeStep < tDisplacements.extent(0); tTimeStep++)
     {
         for(Plato::OrdinalType tOrdinal=0; tOrdinal< tDisplacements.extent(1); tOrdinal++)
@@ -3459,7 +3463,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -3952,7 +3956,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 6;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -4199,7 +4203,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestObjectiveGradientZ
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -4317,7 +4321,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 2;
-    constexpr Plato::OrdinalType tMeshWidth = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -4424,7 +4428,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 3;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -4592,7 +4596,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestWeightedSumCriteri
       "    <ParameterList name='Objective'>                                                               \n"
       "      <Parameter name='Type' type='string' value='Weighted Sum'/>                                  \n"
       "      <Parameter name='Functions' type='Array(string)' value='{My Elastic Work,My Plastic Work}'/> \n"
-      "      <Parameter name='Weights' type='Array(double)' value='{0.0,-1.0}'/>                         \n"
+      "      <Parameter name='Weights' type='Array(double)' value='{-1.0,-1.0}'/>                         \n"
       "    </ParameterList>                                                                               \n"
       "    <ParameterList name='My Elastic Work'>                                                         \n"
       "      <Parameter name='Type'                 type='string' value='Scalar Function'/>               \n"

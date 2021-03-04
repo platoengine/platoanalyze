@@ -532,7 +532,7 @@ private:
         auto tDpDz = mProjectionEquation->gradient_z_workset(aStateVars.mProjectedPressGrad, aStateVars.mPressure,
                                                              aControls, aStateVars.mCurrentStepIndex);
         tBeta = 1.0;
-Plato::blas2::matrix_times_vector("T", 0.0/*tAlpha*/, tDpDz, tCurrentGamma, tBeta, tGradientControl);
+        Plato::blas2::matrix_times_vector("T", tAlpha, tDpDz, tCurrentGamma, tBeta, tGradientControl);
 
         // compute local adjoint contribution to total gradient, i.e. (DhDz)^T * mu
         Plato::ScalarMultiVector tCurrentMu("Current Local State Adjoint", tNumCells, mNumLocalDofsPerCell);

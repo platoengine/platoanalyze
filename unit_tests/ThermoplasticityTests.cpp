@@ -814,27 +814,27 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_3D)
       "  </ParameterList>                                                                       \n"
       "  <Parameter name='Physics'          type='string'  value='Thermoplasticity'/>           \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
-      "    <ParameterList name='Linear Solver'>                                              \n"
-      "      <Parameter name='Iterations' type='int' value='5000'/>                                \n"
-      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                     \n"
+      "    <ParameterList name='Linear Solver'>                                                 \n"
+      "      <Parameter name='Iterations' type='int' value='5000'/>                             \n"
+      "      <Parameter name='Tolerance' type='double' value='1.0e-10'/>                        \n"
       "    </ParameterList>                                                                     \n"
       "  <ParameterList name='Material Models'>                                                 \n"
-      "    <Parameter  name='Pressure Scaling'    type='double' value='1.0'/>                 \n"
-      "    <Parameter  name='Temperature Scaling' type='double' value='1.0'/>                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='1.0'/>                   \n"
+      "    <Parameter  name='Temperature Scaling' type='double' value='1.0'/>                   \n"
       "    <ParameterList name='Unobtainium'>                                                   \n"
       "      <ParameterList name='Isotropic Linear Thermoelastic'>                              \n"
       "        <Parameter  name='Density' type='double' value='1000'/>                          \n"
-      "        <Parameter  name='Poissons Ratio' type='double' value='0.0'/>                    \n" /*0.3*/
-      "        <Parameter  name='Youngs Modulus' type='double' value='1.0e3'/>                 \n"
+      "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                    \n"
+      "        <Parameter  name='Youngs Modulus' type='double' value='1.0e4'/>                  \n"
       "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='180.'/> \n"
       "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='2.32e-5'/> \n"
       "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>             \n"
       "      </ParameterList>                                                                   \n"
       "      <ParameterList name='Plasticity Model'>                                               \n"
       "        <ParameterList name='J2 Plasticity'>                                                \n"
-      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e-5'/>      \n"
-      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e-5'/>     \n"
-      "          <Parameter  name='Initial Yield Stress' type='double' value='1.0'/>             \n"
+      "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e2'/>      \n"
+      "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e2'/>             \n"
       "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
       "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-8'/> \n"
       "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
@@ -861,8 +861,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_3D)
       "    </ParameterList>                                                                     \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Time Stepping'>                                                   \n"
-      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='2'/>              \n"
-      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='2'/>              \n"
+      "    <Parameter name='Initial Num. Pseudo Time Steps' type='int' value='4'/>              \n"
+      "    <Parameter name='Maximum Num. Pseudo Time Steps' type='int' value='4'/>              \n"
       "  </ParameterList>                                                                       \n"
       "  <ParameterList name='Newton-Raphson'>                                                  \n"
       "    <Parameter name='Stop Measure' type='string' value='residual'/>                      \n"
@@ -876,7 +876,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_3D)
       "   <ParameterList  name='Thermal Natural Boundary Conditions'>                           \n"
       "   <ParameterList  name='Thermal Flux Boundary Condition'>                               \n"
       "     <Parameter  name='Type'     type='string'        value='Uniform'/>                  \n"
-      "     <Parameter  name='Values'   type='Array(double)' value='{0.0e3}'/>                  \n"
+      "     <Parameter  name='Values'   type='Array(double)' value='{1.0e3}'/>                  \n"
       "     <Parameter  name='Sides'    type='string'        value='ss_X1'/>                    \n"
       "   </ParameterList>                                                                      \n"
       "   </ParameterList>                                                                      \n"
@@ -903,11 +903,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_3D)
       "       <Parameter  name='Sides'    type='string' value='ns_X0'/>                         \n"
       "       <Parameter  name='Function'    type='string' value='0.0'/>                        \n"
       "     </ParameterList>                                                                    \n"
-      "     <ParameterList  name='Applied Disp Boundary Condition'>                        \n"
+      "     <ParameterList  name='Applied Disp Boundary Condition'>                             \n"
       "       <Parameter  name='Type'     type='string' value='Time Dependent'/>                \n"
       "       <Parameter  name='Index'    type='int'    value='0'/>                             \n"
       "       <Parameter  name='Sides'    type='string' value='ns_X1'/>                         \n"
-      "       <Parameter  name='Function'    type='string' value='0.02*t'/>                        \n"
+      "       <Parameter  name='Function'    type='string' value='0.2*t'/>                      \n"
       "     </ParameterList>                                                                    \n"
       "   </ParameterList>                                                                      \n"
       "</ParameterList>                                                                         \n"
@@ -935,20 +935,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, Thermoplasticity_PlasticWork_3D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     std::string tCriterionName("Plastic Work");
     auto tCriterionValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
-    TEST_FLOATING_EQUALITY(tCriterionValue, -0.01, tTolerance);
+    TEST_FLOATING_EQUALITY(tCriterionValue, -9.18505, tTolerance);
 
     auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
-    std::vector<Plato::Scalar> tGold = { -8.12531e-04, -2.70844e-04, -2.70844e-04, -2.70844e-04, 
-                                         -5.41688e-04, -1.08338e-03, -5.41688e-04, -1.08338e-03, 
-                                         -1.08338e-03, -5.41688e-04, -1.08338e-03, -5.41688e-04, 
-                                         -1.08338e-03, -5.41688e-04, -1.08338e-03, -5.41688e-04, 
-                                         -1.08338e-03, -5.41688e-04, -1.08338e-03, -5.41688e-04, 
-                                         -5.41687e-04, -1.08337e-03, -5.41687e-04, -1.08337e-03, 
-                                         -5.41687e-04, -1.08337e-03, -1.08337e-03, -5.41687e-04, 
-                                         -1.08337e-03, -5.41687e-04, -5.41687e-04, -1.08337e-03, 
-                                         -5.41687e-04, -1.08337e-03, -5.41687e-04, -1.08337e-03, 
-                                         -1.08337e-03, -5.41687e-04, -1.08337e-03, -5.41687e-04, 
-                                         -2.70844e-04, -8.12531e-04, -2.70844e-04, -2.70844e-04};
+    std::vector<Plato::Scalar> tGold = { -8.23158e-01,-2.74211e-01,-2.74205e-01,-2.74211e-01,-5.46915e-01,
+                                         -1.09598e+00,-5.46915e-01,-1.09091e+00,-1.07737e+00,-5.40880e-01,
+                                         -1.08590e+00,-5.40880e-01,-1.05793e+00,-5.26599e-01,-1.04844e+00,
+                                         -5.26599e-01,-1.07226e+00,-5.33831e-01,-1.06304e+00,-5.33831e-01,
+                                         -5.04852e-01,-1.00493e+00,-5.04852e-01,-1.01433e+00,-5.12007e-01,
+                                         -1.01919e+00,-1.03386e+00,-5.19301e-01,-1.04332e+00,-5.19301e-01,
+                                         -5.12007e-01,-1.02878e+00,-4.98050e-01,-1.00060e+00,-4.98050e-01,
+                                         -9.91065e-01,-9.80656e-01,-4.92349e-01,-9.88215e-01,-4.92349e-01,
+                                         -2.44243e-01,-7.35025e-01,-2.44243e-01,-2.43315e-01};
     auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
     Kokkos::deep_copy(tHostGrad, tCriterionGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
