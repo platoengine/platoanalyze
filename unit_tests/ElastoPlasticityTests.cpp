@@ -57,8 +57,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
     {
         tGlobalState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
         tGlobalState(aNodeOrdinal*tNumDofsPerNode+1) = (2e-7)*aNodeOrdinal; // disp_y
-        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // disp_z
-        //tGlobalState(aNodeOrdinal*tNumDofsPerNode+3) = (4e-7)*aNodeOrdinal; // press
+        tGlobalState(aNodeOrdinal*tNumDofsPerNode+2) = (3e-7)*aNodeOrdinal; // press
     }, "set global state");
     Plato::ScalarMultiVector tGlobalStateWS("current state", tNumCells, PhysicsT::mNumDofsPerCell);
     tWorksetBase.worksetState(tGlobalState, tGlobalStateWS);
@@ -76,14 +75,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
 
     // Test results
     constexpr Plato::Scalar tTolerance = 1e-4;
-    std::vector<std::vector<Plato::Scalar>> tGold = {{1.07377378e-06, -3.40439781e-07}, {7.83772234e-07, 1.41622777e-06}};
+    std::vector<std::vector<Plato::Scalar>> tGold = {{1.140440e-06, -2.737734e-07}, {9.837722e-07, 1.616228e-06}};
     auto tHostPrincipalStressWS = Kokkos::create_mirror(tPrincipalStressWS);
     Kokkos::deep_copy(tHostPrincipalStressWS, tPrincipalStressWS);
     for (size_t tCell = 0; tCell < tNumCells; tCell++)
     {
         for (size_t tDim = 0; tDim < tSpaceDim; tDim++)
         {
-            //printf("(%d,%d) = %e\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
+            //printf("%e\n", tHostPrincipalStressWS(tCell, tDim));
             TEST_FLOATING_EQUALITY(tHostPrincipalStressWS(tCell, tDim), tGold[tCell][tDim], tTolerance);
         }
     }
@@ -134,12 +133,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
     constexpr Plato::Scalar tTolerance = 1e-4;
     std::vector<std::vector<Plato::Scalar>> tGold =
         {
-         {4.800000e-06,7.040967e-06,4.559033e-06},
-         {4.266667e-06,6.497617e-06,3.235716e-06},
-         {2.225699e-06,2.666667e-06,4.707634e-06},
-         {3.077556e-06,5.333333e-07,-8.108889e-07},
-         {2.872078e-06,-3.70662e-19,-2.472078e-06},
-         {1.674022e-06,-1.600000e-06,-4.074022e-06},
+         {6.000000e-06,8.240967e-06,5.759033e-06},
+         {5.333333e-06,7.564284e-06,4.302383e-06},
+         {2.892366e-06,3.333333e-06,5.374301e-06},
+         {3.210889e-06,6.666667e-07,-6.775555e-07},
+         {2.872078e-06,-3.705232e-19,-2.472078e-06},
+         {1.274022e-06,-2.000000e-06,-4.474022e-06}
         };
     auto tHostPrincipalStressWS = Kokkos::create_mirror(tPrincipalStressWS);
     Kokkos::deep_copy(tHostPrincipalStressWS, tPrincipalStressWS);
@@ -147,7 +146,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputePrincipalStress
     {
         for (size_t tDim = 0; tDim < tSpaceDim; tDim++)
         {
-            //printf("(%d,%d) = %e\n", tCell, tDim, tHostPrincipalStressWS(tCell, tDim));
+            //printf("%e\n", tHostPrincipalStressWS(tCell, tDim));
             TEST_FLOATING_EQUALITY(tHostPrincipalStressWS(tCell, tDim), tGold[tCell][tDim], tTolerance);
         }
     }
@@ -2724,17 +2723,18 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     Kokkos::deep_copy(tHostPressure, tPressure);
     std::vector<Plato::Scalar> tGoldPress =
         {
-         {-2.115362e+02, -1.874504e+03, -2.294189e+02, -1.516672e+03, -2.785281e+03, -2.925495e+03, -2.970340e+03, -4.293099e+02,
-          -1.685521e+03, -5.322904e+02, -1.665030e+03, -2.835582e+03, -6.988780e+02, -1.668066e+03, -2.687101e+03, -2.258380e+03,
-          -2.495897e+03, -1.672543e+03, -9.116663e+02, -1.675849e+03, -1.168386e+03, -1.974995e+03, -1.677669e+03, -1.470044e+03,
-          -1.702233e+03, -1.860586e+03, -1.668134e+03, -1.143118e+03, -1.319865e+03, -1.653114e+03, -2.204908e+03, -1.995014e+03,
-          -2.705687e+03}
+         {2.311752e+02,-1.827696e+03,2.247582e+02,-1.485268e+03,-3.159835e+03,-3.310358e+03,
+         -3.355509e+03,-1.893416e+01,-1.667250e+03,-1.538996e+02,-1.643017e+03,-3.189432e+03,
+         -3.715330e+02,-1.644462e+03,-2.992111e+03,-2.432445e+03,-2.743322e+03,-1.650144e+03,
+         -6.506333e+02,-1.652914e+03,-9.859537e+02,-2.062321e+03,-1.655154e+03,-1.383581e+03,
+         -1.678354e+03,-1.883450e+03,-1.657927e+03,-9.691324e+02,-1.185495e+03,-1.607423e+03,
+         -2.312137e+03,-1.975908e+03,-2.933662e+03}
         };
     for(Plato::OrdinalType tTimeStep=1; tTimeStep < tPressure.extent(0); tTimeStep++)
     {
         for(Plato::OrdinalType tOrdinal=0; tOrdinal< tPressure.extent(1); tOrdinal++)
         {
-            //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostPressure(tTimeStep, tOrdinal));
+            //printf("%e\n", tHostPressure(tTimeStep, tOrdinal));
             TEST_FLOATING_EQUALITY(tHostPressure(tTimeStep, tOrdinal), tGoldPress[tOrdinal], tTolerance);
         }
     }
@@ -2743,19 +2743,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tHostDisplacements = Kokkos::create_mirror(tDisplacements);
     Kokkos::deep_copy(tHostDisplacements, tDisplacements);
     std::vector<Plato::Scalar> tGoldDisp =
-         {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, -6.164854e-02, -1.189951e-03,
-          -6.163677e-02, 0.0, -6.243005e-02, -2.395852e-03, -5.908745e-02, 9.381758e-04, -5.919208e-02, -7.291411e-04, -5.909716e-02,
-          1.326328e-03, -5.503616e-02, -1.099687e-03, -5.494402e-02, -3.525908e-03, -5.492911e-02, 1.629318e-03, -4.941788e-02,  -1.472318e-03,
-          -4.933201e-02, -4.573797e-03, -4.931350e-02, -6.306177e-03, -3.454268e-02, -5.510012e-03, -4.243363e-02, -1.845476e-03, -4.245746e-02,
-          1.819180e-03, -4.253584e-02, -2.219095e-03, -3.457328e-02, 1.868041e-03, -3.464274e-02, -6.934208e-03, -2.594957e-02, -2.593272e-03,
-          -2.598862e-02, 1.747752e-03, -2.604802e-02, -2.966076e-03, -1.706881e-02, 1.432299e-03, -1.711426e-02, -7.365046e-03, -1.702033e-02,
-          -7.602023e-03, 1.234104e-04,  -7.582309e-03, -8.182097e-03, -3.335936e-03, -8.239034e-03, 8.764536e-04, -8.256626e-03, -3.587180e-03,
-          1.188541e-05, 0.0, 0.0};
+         {0.000000e+00,-6.134811e-02,0.000000e+00,-6.119720e-02,4.890601e-04,-6.043469e-02,
+         -3.458934e-04,-6.035885e-02,-1.165818e-03,-6.032728e-02,0.000000e+00,-6.109650e-02,
+         -2.347652e-03,-5.783824e-02,9.053655e-04,-5.794102e-02,-7.213166e-04,-5.786790e-02,
+         1.280989e-03,-5.388596e-02,-1.085814e-03,-5.381352e-02,-3.452896e-03,-5.378025e-02,
+         1.573984e-03,-4.840284e-02,-1.452818e-03,-4.833418e-02,-4.479451e-03,-4.830023e-02,
+         -6.182190e-03,-3.387425e-02,-5.398447e-03,-4.158341e-02,-1.820375e-03,-4.161922e-02,
+         1.757783e-03,-4.168384e-02,-2.188273e-03,-3.391259e-02,1.805654e-03,-3.397251e-02,
+         -6.803693e-03,-2.547071e-02,-2.556661e-03,-2.551252e-02,1.690486e-03,-2.556736e-02,
+         -2.923613e-03,-1.677144e-02,1.387154e-03,-1.681750e-02,-7.234932e-03,-1.672620e-02,
+         -7.493506e-03,1.246463e-04,-7.461686e-03,-8.052684e-03,-3.289559e-03,-8.100860e-03,
+         8.484803e-04,-8.124464e-03,-3.535933e-03,2.311506e-05,0.000000e+00,0.000000e+00};
     for(Plato::OrdinalType tTimeStep=1; tTimeStep < tDisplacements.extent(0); tTimeStep++)
     {
         for(Plato::OrdinalType tOrdinal=0; tOrdinal< tDisplacements.extent(1); tOrdinal++)
         {
-            //printf("X(%d,%d) = %e\n", tTimeStep, tOrdinal, tHostDisplacements(tTimeStep, tOrdinal));
+            //printf("%e\n", tHostDisplacements(tTimeStep, tOrdinal));
             TEST_FLOATING_EQUALITY(tHostDisplacements(tTimeStep, tOrdinal), tGoldDisp[tOrdinal], tTolerance);
         }
     }
@@ -2765,7 +2768,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     {
         tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 
 
@@ -2905,11 +2908,12 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     Kokkos::deep_copy(tHostPressure, tPressure);
     std::vector<Plato::Scalar> tGoldPress =
         {
-         {-2.115362e+02, -1.874504e+03, -2.294189e+02, -1.516672e+03, -2.785281e+03, -2.925495e+03, -2.970340e+03, -4.293099e+02,
-          -1.685521e+03, -5.322904e+02, -1.665030e+03, -2.835582e+03, -6.988780e+02, -1.668066e+03, -2.687101e+03, -2.258380e+03,
-          -2.495897e+03, -1.672543e+03, -9.116663e+02, -1.675849e+03, -1.168386e+03, -1.974995e+03, -1.677669e+03, -1.470044e+03,
-          -1.702233e+03, -1.860586e+03, -1.668134e+03, -1.143118e+03, -1.319865e+03, -1.653114e+03, -2.204908e+03, -1.995014e+03,
-          -2.705687e+03}
+         {2.311752e+02,-1.827696e+03,2.247582e+02,-1.485268e+03,-3.159835e+03,-3.310358e+03,
+         -3.355509e+03,-1.893416e+01,-1.667250e+03,-1.538996e+02,-1.643017e+03,-3.189432e+03,
+         -3.715330e+02,-1.644462e+03,-2.992111e+03,-2.432445e+03,-2.743322e+03,-1.650144e+03,
+         -6.506333e+02,-1.652914e+03,-9.859537e+02,-2.062321e+03,-1.655154e+03,-1.383581e+03,
+         -1.678354e+03,-1.883450e+03,-1.657927e+03,-9.691324e+02,-1.185495e+03,-1.607423e+03,
+         -2.312137e+03,-1.975908e+03,-2.933662e+03}
         };
     for(Plato::OrdinalType tTimeStep=1; tTimeStep < tPressure.extent(0); tTimeStep++)
     {
@@ -2924,14 +2928,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     auto tHostDisplacements = Kokkos::create_mirror(tDisplacements);
     Kokkos::deep_copy(tHostDisplacements, tDisplacements);
     std::vector<Plato::Scalar> tGoldDisp =
-         {0.0, -6.267770e-02, 0.0, -6.250715e-02, 5.054901e-04, -6.174772e-02, -3.494325e-04, -6.164854e-02, -1.189951e-03,
-          -6.163677e-02, 0.0, -6.243005e-02, -2.395852e-03, -5.908745e-02, 9.381758e-04, -5.919208e-02, -7.291411e-04, -5.909716e-02,
-          1.326328e-03, -5.503616e-02, -1.099687e-03, -5.494402e-02, -3.525908e-03, -5.492911e-02, 1.629318e-03, -4.941788e-02,  -1.472318e-03,
-          -4.933201e-02, -4.573797e-03, -4.931350e-02, -6.306177e-03, -3.454268e-02, -5.510012e-03, -4.243363e-02, -1.845476e-03, -4.245746e-02,
-          1.819180e-03, -4.253584e-02, -2.219095e-03, -3.457328e-02, 1.868041e-03, -3.464274e-02, -6.934208e-03, -2.594957e-02, -2.593272e-03,
-          -2.598862e-02, 1.747752e-03, -2.604802e-02, -2.966076e-03, -1.706881e-02, 1.432299e-03, -1.711426e-02, -7.365046e-03, -1.702033e-02,
-          -7.602023e-03, 1.234104e-04,  -7.582309e-03, -8.182097e-03, -3.335936e-03, -8.239034e-03, 8.764536e-04, -8.256626e-03, -3.587180e-03,
-          1.188541e-05, 0.0, 0.0};
+         {0.000000e+00,-6.134811e-02,0.000000e+00,-6.119720e-02,4.890601e-04,-6.043469e-02,
+         -3.458934e-04,-6.035885e-02,-1.165818e-03,-6.032728e-02,0.000000e+00,-6.109650e-02,
+         -2.347652e-03,-5.783824e-02,9.053655e-04,-5.794102e-02,-7.213166e-04,-5.786790e-02,
+         1.280989e-03,-5.388596e-02,-1.085814e-03,-5.381352e-02,-3.452896e-03,-5.378025e-02,
+         1.573984e-03,-4.840284e-02,-1.452818e-03,-4.833418e-02,-4.479451e-03,-4.830023e-02,
+         -6.182190e-03,-3.387425e-02,-5.398447e-03,-4.158341e-02,-1.820375e-03,-4.161922e-02,
+         1.757783e-03,-4.168384e-02,-2.188273e-03,-3.391259e-02,1.805654e-03,-3.397251e-02,
+         -6.803693e-03,-2.547071e-02,-2.556661e-03,-2.551252e-02,1.690486e-03,-2.556736e-02,
+         -2.923613e-03,-1.677144e-02,1.387154e-03,-1.681750e-02,-7.234932e-03,-1.672620e-02,
+         -7.493506e-03,1.246463e-04,-7.461686e-03,-8.052684e-03,-3.289559e-03,-8.100860e-03,
+         8.484803e-04,-8.124464e-03,-3.535933e-03,2.311506e-05,0.000000e+00,0.000000e+00};
     for(Plato::OrdinalType tTimeStep=1; tTimeStep < tDisplacements.extent(0); tTimeStep++)
     {
         for(Plato::OrdinalType tOrdinal=0; tOrdinal< tDisplacements.extent(1); tOrdinal++)
@@ -2946,7 +2953,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
     {
         tPlasticityProblem.saveStates("SimplySupportedBeamPressure2D");
     }
-    std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
+    //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
 #endif
 
@@ -3260,39 +3267,39 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_SimplySupportedBeamPre
 
     std::vector<Plato::Scalar> tGold =
         {
-          0.00000e+00, -9.74759e-02, -3.57558e+02,
-          0.00000e+00, -9.72167e-02, -2.84145e+03,
-          8.00801e-04, -9.59243e-02, -4.40892e+02,
-         -6.02807e-04, -9.57732e-02, -2.42892e+03,
-         -1.94591e-03, -9.57160e-02, -4.32220e+03,
-          0.00000e+00, -9.69970e-02, -4.36626e+03,
-         -3.94215e-03, -9.15770e-02, -4.60649e+03,
-          1.45770e-03, -9.17414e-02, -7.00782e+02,
-         -1.23191e-03, -9.15957e-02, -2.62583e+03,
-          2.04318e-03, -8.51066e-02, -8.03803e+02,
-         -1.79265e-03, -8.49671e-02, -2.49708e+03,
-         -5.63077e-03, -8.49419e-02, -4.24237e+03,
-          2.49019e-03, -7.62863e-02, -1.06800e+03,
-         -2.35589e-03, -7.61575e-02, -2.51475e+03,
-         -7.20158e-03, -7.61291e-02, -4.03499e+03,
-         -9.79729e-03, -5.32166e-02, -3.39354e+03,
-         -8.60457e-03, -6.54266e-02, -3.75035e+03,
-         -2.91871e-03, -6.54630e-02, -2.52249e+03,
-          2.76731e-03, -6.55808e-02, -1.38828e+03,
-         -3.48213e-03, -5.32632e-02, -2.52697e+03,
-          2.83310e-03, -5.33676e-02, -1.77299e+03,
-         -1.07379e-02, -3.99623e-02, -2.96851e+03,
-         -4.04642e-03, -4.00216e-02, -2.52971e+03,
-          2.64515e-03, -4.01110e-02, -2.22548e+03,
-         -4.60862e-03, -2.62863e-02, -2.56690e+03,
-          2.16448e-03, -2.63547e-02, -2.81185e+03,
-         -1.13826e-02, -2.62129e-02, -2.50853e+03,
-         -1.17359e-02,  1.87292e-04, -1.71914e+03,
-         -1.17072e-02, -1.26091e-02, -1.98608e+03,
-         -5.16640e-03, -1.26951e-02, -2.49241e+03,
-          1.32300e-03, -1.27216e-02, -3.32704e+03,
-         -5.54531e-03,  1.87763e-05, -3.00547e+03,
-          0.00000e+00,  0.00000e+00, -4.07787e+03
+           0.00000e+00, -9.24987e-02,  1.20097e+03,
+           0.00000e+00, -9.23105e-02, -2.62729e+03,
+           7.51325e-04, -9.09949e-02,  1.15762e+03,
+          -5.84138e-04, -9.09250e-02, -2.29655e+03,
+          -1.84799e-03, -9.08052e-02, -5.65113e+03,
+           0.00000e+00, -9.20274e-02, -5.76246e+03,
+          -3.73117e-03, -8.68735e-02, -5.90141e+03,
+           1.35680e-03, -8.70326e-02,  7.69127e+02,
+          -1.17885e-03, -8.69632e-02, -2.51624e+03,
+           1.89395e-03, -8.07844e-02,  5.18011e+02,
+          -1.71680e-03, -8.07148e-02, -2.41709e+03,
+          -5.32817e-03, -8.06262e-02, -5.47771e+03,
+           2.30488e-03, -7.24758e-02,  7.65981e+01,
+          -2.26024e-03, -7.24074e-02, -2.43157e+03,
+          -6.82502e-03, -7.23248e-02, -5.11104e+03,
+          -9.31590e-03, -5.06970e-02, -4.01498e+03,
+          -8.16719e-03, -6.22313e-02, -4.62453e+03,
+          -2.80340e-03, -6.23101e-02, -2.44061e+03,
+           2.56041e-03, -6.23794e-02, -4.71812e+02,
+          -3.34687e-03, -5.07713e-02, -2.44270e+03,
+           2.62205e-03, -5.08418e-02, -1.12974e+03,
+          -1.02327e-02, -3.81471e-02, -3.29142e+03,
+          -3.89088e-03, -3.82169e-02, -2.44644e+03,
+           2.45115e-03, -3.82896e-02, -1.91496e+03,
+          -4.43252e-03, -2.51506e-02, -2.47836e+03,
+           2.01166e-03, -2.52203e-02, -2.87279e+03,
+          -1.08775e-02, -2.50869e-02, -2.49433e+03,
+          -1.13011e-02,  1.88454e-04, -1.14844e+03,
+          -1.12318e-02, -1.21057e-02, -1.56731e+03,
+          -4.97535e-03, -1.21635e-02, -2.33822e+03,
+           1.22980e-03, -1.22093e-02, -3.68515e+03,
+          -5.33903e-03,  5.43424e-05, -2.89933e+03,
+           0.00000e+00,  0.00000e+00, -4.82496e+03
         };
 
     const Plato::Scalar tTolerance = 1e-4;
@@ -3433,15 +3440,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_2D)
     auto tSolution = tPlasticityProblem.solution(tControls);
     std::string tCriterionName("Plastic Work");
     auto tCriterionValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
-    TEST_FLOATING_EQUALITY(tCriterionValue, -0.539482, tTolerance);
+    TEST_FLOATING_EQUALITY(tCriterionValue, -1.07121, tTolerance);
 
     auto tCriterionGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
-    std::vector<Plato::Scalar> tGold = {-1.087708, -0.543854, -1.087708, -0.543854};
+    std::vector<Plato::Scalar> tGold = {-1.128948e+00, -5.644739e-01, -1.128948e+00, -5.644739e-01};
     auto tHostGrad = Kokkos::create_mirror(tCriterionGrad);
     Kokkos::deep_copy(tHostGrad, tCriterionGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
     for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
     {
+        //printf("%e\n", tHostGrad(tIndex));
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
 }
@@ -3672,21 +3680,23 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_CriterionTest_3D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tObjValue = tPlasticityProblem.criterionValue(tControls, tCriterionName);
-    TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
+    TEST_FLOATING_EQUALITY(tObjValue, -1.07121, tTolerance);
 
     auto tObjGrad = tPlasticityProblem.criterionGradient(tControls, tCriterionName);
     std::vector<Plato::Scalar> tGold =
         {
-         -0.101973, -0.135963, -0.033991, -0.203945, -0.067982, -0.033991, -0.067982, -0.033991,
-         -0.135963, -0.203945, -0.067982, -0.033991, -0.067982, -0.407890, -0.203945, -0.135963,
-         -0.203945, -0.135963, -0.101973, -0.135963, -0.203945, -0.203945, -0.067982, -0.033991,
-         -0.067982, -0.135963, -0.033991
+         -1.058389e-01,-1.411185e-01,-3.527962e-02,-2.116777e-01,-7.055924e-02,-3.527962e-02,
+         -7.055924e-02,-3.527962e-02,-1.411185e-01,-2.116777e-01,-7.055924e-02,-3.527962e-02,
+         -7.055924e-02,-4.233554e-01,-2.116777e-01,-1.411185e-01,-2.116777e-01,-1.411185e-01,
+         -1.058389e-01,-1.411185e-01,-2.116777e-01,-2.116777e-01,-7.055924e-02,-3.527962e-02,
+         -7.055924e-02,-1.411185e-01,-3.527962e-02
         };
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
     for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
     {
+        //printf("%e\n", tHostGrad(tIndex));
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -3697,7 +3707,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
 {
     // 1. DEFINE PROBLEM
     constexpr Plato::OrdinalType tSpaceDim = 3;
-    constexpr Plato::OrdinalType tMeshWidth = 1;
+    constexpr Plato::OrdinalType tMeshWidth = 2;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
     Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
@@ -3805,21 +3815,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestCriterionGradientZ
 
     // 4. TEST PARTIAL DERIVATIVE
     std::string tCriterionName("Plastic Work");
-    //
-    // auto tNumVertices = tMesh->nverts();
-    // Plato::ScalarVector tControls("Controls", tNumVertices);
-    // Plato::blas1::fill(0.9, tControls);
-    // auto tSolution = tPlasticityProblem.solution(tControls);
-    // auto tObjValue = tPlasticityProblem.criterionValue(tControls, tSolution, tCriterionName);
-    // auto tObjGrad  = tPlasticityProblem.criterionGradient(tControls, tSolution, tCriterionName);
-    // auto tHostGrad = Kokkos::create_mirror(tObjGrad);
-    // Kokkos::deep_copy(tHostGrad, tObjGrad);
-    // for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
-    //     printf("%d    %12.5e\n", tIndex, tHostGrad(tIndex));
-    //
     auto tApproxError = Plato::test_criterion_grad_wrt_control(tPlasticityProblem, *tMesh, tCriterionName);
     constexpr Plato::Scalar tUpperBound = 1e-6;
-    std::cout << "NUMBER OF NODES: " << tMesh->nverts() << std::endl;
     TEST_ASSERT(tApproxError < tUpperBound);
     //std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
 }
@@ -3935,15 +3932,16 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_2D)
     constexpr Plato::Scalar tTolerance = 1e-4;
     auto tSolution = tPlasticityProblem.solution(tControls);
     auto tObjValue = tPlasticityProblem.criterionValue(tControls, tSolution, tCriterionName);
-    TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
+    TEST_FLOATING_EQUALITY(tObjValue, -1.07121, tTolerance);
 
     auto tObjGrad = tPlasticityProblem.criterionGradient(tControls, tSolution, tCriterionName);
-    std::vector<Plato::Scalar> tGold = {-1.087708, -0.543854, -1.087708, -0.543854};
+    std::vector<Plato::Scalar> tGold = {-1.128948e+00,-5.644739e-01,-1.128948e+00,-5.644739e-01};
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
     for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
     {
+        //printf("%e\n", tHostGrad(tIndex));
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -4174,21 +4172,23 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ObjectiveTest_3D)
     auto tSolution = tPlasticityProblem.solution(tControls);
     std::string tCriterionName("Plastic Work");
     auto tObjValue = tPlasticityProblem.criterionValue(tControls, tSolution, tCriterionName);
-    TEST_FLOATING_EQUALITY(tObjValue, -0.539482, tTolerance);
+    TEST_FLOATING_EQUALITY(tObjValue, -1.07121, tTolerance);
 
     auto tObjGrad = tPlasticityProblem.criterionGradient(tControls, tSolution, tCriterionName);
     std::vector<Plato::Scalar> tGold =
         {
-         -0.101973, -0.135963, -0.033991, -0.203945, -0.067982, -0.033991, -0.067982, -0.033991,
-         -0.135963, -0.203945, -0.067982, -0.033991, -0.067982, -0.407890, -0.203945, -0.135963,
-         -0.203945, -0.135963, -0.101973, -0.135963, -0.203945, -0.203945, -0.067982, -0.033991,
-         -0.067982, -0.135963, -0.033991
+         -1.058389e-01,-1.411185e-01,-3.527962e-02,-2.116777e-01,-7.055924e-02,-3.527962e-02,
+         -7.055924e-02,-3.527962e-02,-1.411185e-01,-2.116777e-01,-7.055924e-02,-3.527962e-02,
+         -7.055924e-02,-4.233554e-01,-2.116777e-01,-1.411185e-01,-2.116777e-01,-1.411185e-01,
+         -1.058389e-01,-1.411185e-01,-2.116777e-01,-2.116777e-01,-7.055924e-02,-3.527962e-02,
+         -7.055924e-02,-1.411185e-01,-3.527962e-02
         };
     auto tHostGrad = Kokkos::create_mirror(tObjGrad);
     Kokkos::deep_copy(tHostGrad, tObjGrad);
     TEST_ASSERT( tHostGrad.size() == static_cast<Plato::OrdinalType>(tGold.size() ));
     for(Plato::OrdinalType tIndex = 0; tIndex < tHostGrad.size(); tIndex++)
     {
+        //printf("%e\n", tHostGrad(tIndex));
         TEST_FLOATING_EQUALITY(tHostGrad(tIndex), tGold[tIndex], tTolerance);
     }
     std::system("rm -f plato_analyze_newton_raphson_diagnostics.txt");
@@ -4444,7 +4444,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_TestElasticWorkCriteri
       "  <Parameter name='Physics'          type='string'  value='Plasticity'/>                 \n"
       "  <Parameter name='PDE Constraint'   type='string'  value='Elliptic'/>                   \n"
       "  <ParameterList name='Material Models'>                                                 \n"
-      "    <Parameter  name='Pressure Scaling'    type='double' value='1.0e6'/>                 \n"
+      "    <Parameter  name='Pressure Scaling'    type='double' value='1.0e2'/>                 \n"
       "    <ParameterList name='Unobtainium'>                                                   \n"
       "      <ParameterList name='Isotropic Linear Elastic'>                                      \n"
       "        <Parameter  name='Density' type='double' value='1000'/>                            \n"

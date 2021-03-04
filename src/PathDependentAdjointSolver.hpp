@@ -882,16 +882,10 @@ public:
                                 const Plato::ForwardStates & aPreviousStateVars,
                                 Plato::AdjointStates & aAdjointVars)
     {
-//Plato::blas1::fill(0.0, aAdjointVars.mPreviousProjPressGradAdjoint);
-//Plato::blas1::fill(0.0, aAdjointVars.mProjPressGradAdjoint);
-        //aPreviousStateVars.print("Previous State");
-        //aCurrentStateVars.print("Current State ");
-        //aAdjointVars.print("Before ", aCurrentStateVars.mCurrentStepIndex);
         this->updateInverseLocalJacobian(aControls, aCurrentStateVars, aAdjointVars.mInvLocalJacT);
         this->updateGlobalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
         this->updateLocalAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
         this->updateProjPressGradAdjointVars(aControls, aCurrentStateVars, aPreviousStateVars, aAdjointVars);
-        //aAdjointVars.print("Updated", aCurrentStateVars.mCurrentStepIndex); printf("\n");
     }
 
     /***************************************************************************//**
