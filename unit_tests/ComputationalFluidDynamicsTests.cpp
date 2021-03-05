@@ -6849,7 +6849,7 @@ private:
     // artificial damping
     Plato::Scalar mPressDamping = 1.0; /*!< artificial pressure damping */
     Plato::Scalar mMomentumDamping = 1.0; /*!< artificial momentum/velocity damping */
-    Plato::Scalar mSurfaceMomentumDamping = 0.32; /*!< artificial surface momentum/velocity damping */
+    Plato::Scalar mSurfaceMomentumDamping = 0.31; /*!< artificial surface momentum/velocity damping */
 
     // surface integral
     using MomentumForces = Plato::Fluids::MomentumSurfaceForces<PhysicsT, EvaluationT>;
@@ -10176,14 +10176,14 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
-            "    <Parameter name='Maximum Iterations' type='int' value='250'/>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(15,1,120,12);
+    //auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(15,1,150,20);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,5,5);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
@@ -10200,7 +10200,40 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
     auto tControls = Plato::ScalarVector("Controls", tNumVerts);
     Plato::blas1::fill(1.0, tControls);
     auto tSolution = tProblem.solution(tControls);
-    tProblem.output("cfd_test_problem");
+    //tProblem.output("cfd_test_problem");
+
+    // test solution
+    auto tTags = tSolution.tags();
+    std::vector<std::string> tGoldTags = { "velocity", "pressure" };
+    TEST_ASSERT(tTags.size() == tGoldTags.size());
+    TEST_EQUALITY(tGoldTags.size(), tTags.size());
+    for(auto& tTag : tTags)
+    {
+        auto tItr = std::find(tGoldTags.begin(), tGoldTags.end(), tTag);
+        TEST_ASSERT(tItr != tGoldTags.end());
+        TEST_EQUALITY(*tItr, tTag);
+    }
+
+    auto tTol = 1e-2;
+    auto tPressure = tSolution.get("pressure");
+    auto tPressSubView = Kokkos::subview(tPressure, 1, Kokkos::ALL());
+    Plato::Scalar tMaxPress = 0;
+    Plato::blas1::max(tPressSubView, tMaxPress);
+    TEST_FLOATING_EQUALITY(0.163373, tMaxPress, tTol);
+    Plato::Scalar tMinPress = 0;
+    Plato::blas1::min(tPressSubView, tMinPress);
+    TEST_FLOATING_EQUALITY(0.0, tMinPress, tTol);
+    //Plato::print(tPressSubView, "steady state pressure");
+
+    auto tVelocity = tSolution.get("velocity");
+    auto tVelSubView = Kokkos::subview(tVelocity, 1, Kokkos::ALL());
+    Plato::Scalar tMaxVel = 0;
+    Plato::blas1::max(tVelSubView, tMaxVel);
+    TEST_FLOATING_EQUALITY(1.09563, tMaxVel, tTol);
+    Plato::Scalar tMinVel = 0;
+    Plato::blas1::min(tVelSubView, tMinVel);
+    TEST_FLOATING_EQUALITY(-0.0477337, tMinVel, tTol);
+    //Plato::print(tVelSubView, "steady state velocity");
 }
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, LidDrivenCavity_Re100)
