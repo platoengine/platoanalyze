@@ -4195,7 +4195,24 @@ dimensionless_natural_convection_number
 }
 // function dimensionless_natural_convection_number
 
+inline Plato::Scalar 
+stabilization_constant
+(Teuchos::ParameterList & aInputs)
+{
+    if(aInputs.isSublist("Hyperbolic") == false)
+    {
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
+    }
 
+    auto tOutput = 0.0;
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    if(tHyperbolic.isSublist("Momentum Conservation"))
+    {
+        auto tMomentumConservation = tHyperbolic.sublist("Momentum Conservation");
+        tOutput = tMomentumConservation.get<double>("Stabilization Constant", 0.0);
+    }
+    return tOutput;
+}
 
 
 
@@ -4300,6 +4317,7 @@ private:
     Plato::Scalar mTheta = 1.0; /*!< artificial viscous damping */
     Plato::Scalar mBuoyancyConst = 0.0; /*!< dimensionless buoyancy constant */
     Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity constant */
+    Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
     Plato::ScalarVector mNaturalConvectionNum; /*!< dimensionless natural convection number (either Rayleigh or Grashof - depends on user's input) */
     bool mCalculateThermalBuoyancyForces = false; /*!< indicator to determine if thermal buoyancy forces will be considered in calculations */
 
@@ -4322,6 +4340,7 @@ public:
         this->setDimensionlessConstants(aInputs);
         this->setAritificalViscousDamping(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
+        mStabilization = Plato::Fluids::stabilization_constant(aInputs);
     }
 
     /***************************************************************************//**
@@ -4371,6 +4390,7 @@ public:
         // transfer member data to device
         auto tTheta = mTheta;
         auto tViscocity = mViscocity;
+        auto tStabilization = mStabilization;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
         auto tBasisFunctions = mCubatureRule.getBasisFunctions();
@@ -4410,6 +4430,11 @@ public:
             // 6. add previous inertial force to residual, i.e. R -= M u_n
             Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tPrevVelGP, aResultWS, -1.0);
+
+            // 7. add stabilizing convective term to residual. i.e. R += \frac{\Delta{t}^2}{2}K_{u}u^{n}
+            tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tAdvection, aResultWS, tMultiplier);
         }, "quasi-implicit predicted velocity residual");
 
         if(mCalculateThermalBuoyancyForces)
@@ -4433,6 +4458,11 @@ public:
                     (aCellOrdinal, tBuoyancyConst, tNaturalConvectionNum, tPrevTempGP, tThermalBuoyancy);
                 Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
                     (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, tMultiplier);
+
+	        // 2. add stabilizing buoyancy force to residual. i.e. R -= \frac{\Delta{t}^2}{2} Bu*Gr_i) M T_n
+                tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+                Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
+                    (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tThermalBuoyancy, aResultWS, -tMultiplier);
             }, "add contribution from thermal buoyancy forces to residual");
         }
     }
@@ -5769,7 +5799,9 @@ public:
         Plato::ScalarArray3DT<ConfigT>  tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
         Plato::ScalarVectorT<CurTempT>  tCurTempGP("current temperature at Gauss points", tNumCells);
         Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss points", tNumCells);
+
         Plato::ScalarVectorT<ConvectionT> tConvection("convection", tNumCells);
+       // Plato::ScalarVectorT<ResultT> tStabilization("stabilization", tNumCells);
 
         Plato::ScalarMultiVectorT<CurFluxT>  tCurThermalFlux("current thermal flux", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PrevFluxT> tPrevThermalFlux("previous thermal flux", tNumCells, mNumSpatialDims);
@@ -6635,7 +6667,7 @@ private:
     // forward automatic differentiation types
     using ResultT = typename EvaluationT::ResultScalarType;
     using ConfigT = typename EvaluationT::ConfigScalarType;
-    using CurrentVelT = typename EvaluationT::CurrentMomentumScalarType;
+    using PrevVelT = typename EvaluationT::PreviousMomentumScalarType;
 
     const std::string mEntitySetName; /*!< side set name */
     const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
@@ -6680,11 +6712,11 @@ public:
         auto tNumFaces = tFaceLocalOrdinals.size();
         Plato::ScalarArray3DT<ConfigT> tJacobians("jacobian", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
         auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Plato::ScalarMultiVectorT<CurrentVelT> tCurrentVelGP("current velocity", tNumCells, mNumVelDofsPerNode);
+        Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("previous velocity", tNumCells, mNumVelDofsPerNode);
 
         // set input state worksets
-        auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tCurrentVelWS = Plato::metadata<Plato::ScalarMultiVectorT<CurrentVelT>>(aWorkSets.get("current velocity"));
+        auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
 
         // evaluate integral
         auto tVolumeBasisFunctions = mVolumeCubatureRule.getBasisFunctions();
@@ -6692,8 +6724,8 @@ public:
         auto tSurfaceBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
         Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
         {
-
           auto tFaceOrdinal = tFaceLocalOrdinals[aFaceI];
+
           // for each element that the face is connected to: (either 1 or 2 elements)
           for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal + 1]; tElem++ )
           {
@@ -6712,14 +6744,29 @@ public:
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project into aResult workset
-              tIntrplVectorField(tCellOrdinal, tVolumeBasisFunctions, tCurrentVelWS, tCurrentVelGP);
+              //tIntrplVectorField(tCellOrdinal, tVolumeBasisFunctions, tPrevVelWS, tPrevVelGP);
+	      for(Plato::OrdinalType tDof = 0; tDof < mNumSpatialDims; tDof++)
+              {
+                tPrevVelGP(tCellOrdinal, tDof) = 0.0;
+                for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
+                {
+                  auto tLocalCellNode = tLocalNodeOrd[tNode];
+	          auto tLocalCellDof = (mNumSpatialDims * tLocalCellNode) + tDof;
+                  tPrevVelGP(tCellOrdinal, tDof) += tSurfaceBasisFunctions(tNode) * tPrevVelWS(tCellOrdinal, tLocalCellDof);
+                }
+              }
+
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
               {
                   auto tLocalCellNode = tLocalNodeOrd[tNode];
                   for( Plato::OrdinalType tDim = 0; tDim < mNumSpatialDims; tDim++ )
                   {
-                      aResult(tCellOrdinal, tLocalCellNode) += aMultiplier * tSurfaceBasisFunctions(tNode) *
-                          tUnitNormalVec(tDim) * tCurrentVelGP(tCellOrdinal, tDim) * tSurfaceAreaTimesCubWeight;
+	              //auto tLocalCellDof = (mNumSpatialDims * tLocalCellNode) + tDim;
+                      /*aResult(tCellOrdinal, tLocalCellNode) += aMultiplier * tSurfaceBasisFunctions(tNode) *
+                          tUnitNormalVec(tDim) * tCurrentVelGP(tCellOrdinal, tDim) * tSurfaceAreaTimesCubWeight;*/
+                      //aResult(tCellOrdinal, tLocalCellNode) += aMultiplier * tUnitNormalVec(tDim) * tPrevVelWS(tCellOrdinal, tLocalCellDof) * tSurfaceAreaTimesCubWeight * tSurfaceBasisFunctions(tNode);
+                      //aResult(tCellOrdinal, tLocalCellNode) += aMultiplier * tUnitNormalVec(tDim) * tPrevVelWS(tCellOrdinal, tLocalCellDof);
+                      aResult(tCellOrdinal, tLocalCellNode) += aMultiplier * tSurfaceBasisFunctions(tNode) * tUnitNormalVec(tDim) * tPrevVelGP(tCellOrdinal, tDim);
                   }
               }
           }
@@ -6808,6 +6855,7 @@ private:
     // artificial damping
     Plato::Scalar mPressDamping = 1.0;    /*!< artificial pressure damping */
     Plato::Scalar mMomentumDamping = 1.0; /*!< artificial momentum/velocity damping */
+    Plato::Scalar mNormalMomentumDamping = 0.65; /*!< artificial normal momentum/velocity damping */
 
     // surface integral
     using MomentumForces = Plato::Fluids::MomentumSurfaceForces<PhysicsT, EvaluationT>;
@@ -6975,7 +7023,7 @@ public:
     {
         for(auto& tPair : mMomentumBCs)
         {
-            tPair.second->operator()(aWorkSets, aResultWS);
+            tPair.second->operator()(aWorkSets, aResultWS, mNormalMomentumDamping);
         }
     }
 
@@ -9032,11 +9080,12 @@ public:
                 this->output();
             }
 
-            this->updatePreviousStates(tPrimal);
             if(this->checkStoppingCriteria(tPrimal))
             {
+                this->updatePreviousStates(tPrimal);
                 break;
             }
+            this->updatePreviousStates(tPrimal);
         }
 
         auto tSolution = this->setOutputSolution();
@@ -10059,8 +10108,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "<ParameterList name='Plato Problem'>"
             "  <ParameterList name='Hyperbolic'>"
             "    <Parameter name='Heat Transfer' type='string' value='None'/>"
+            "    <ParameterList  name='Momentum Conservation'>"
+            "      <Parameter  name='Stabilization Constant' type='double' value='1.0'/>"
+            "    </ParameterList>"
             "    <ParameterList  name='Dimensionless Properties'>"
-            "      <Parameter  name='Reynolds Number'  type='double'  value='1e2'/>"
+            "      <Parameter  name='Reynolds Number'  type='double'  value='100'/>"
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList name='Spatial Model'>"
@@ -10074,7 +10126,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "  <ParameterList  name='Velocity Essential Boundary Conditions'>"
             "    <ParameterList  name='X-Dir Inlet Velocity'>"
             "      <Parameter  name='Type'     type='string' value='Fixed Value'/>"
-            "      <Parameter  name='Value'    type='double' value='1.0'/>"
+            "      <Parameter  name='Value'    type='double' value='1'/>"
             "      <Parameter  name='Index'    type='int'    value='0'/>"
             "      <Parameter  name='Sides'    type='string' value='x-'/>"
             "    </ParameterList>"
@@ -10113,20 +10165,21 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, IsothermalFlowOnChannel_Re100)
             "    </ParameterList>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor'      type='double' value='1.0'/>"
+            "    <Parameter name='Safety Factor' type='double' value='0.9'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Convergence'>"
-            "    <Parameter name='Maximum Iterations' type='int' value='1'/>"
+            "    <Parameter name='Maximum Iterations' type='int' value='500'/>"
             "    <Parameter name='Steady State Tolerance' type='double' value='1e-5'/>"
             "  </ParameterList>"
             "</ParameterList>"
             );
 
     // build mesh, spatial domain, and spatial model
-    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(1,1,2,2);
+    //auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(15,1,320,20);
+    auto tMesh = PlatoUtestHelpers::build_2d_box_mesh(15,1,80,20);
     auto tMeshSets = PlatoUtestHelpers::get_box_mesh_sets(tMesh.operator*());
     Plato::SpatialDomain tDomain(tMesh.operator*(), tMeshSets, "box");
     tDomain.cellOrdinals("body");
