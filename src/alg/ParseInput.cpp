@@ -36,9 +36,6 @@
 // ************************************************************************
 //@HEADER
 
-// Must be included first on Intel-Phi systems due to
-// redefinition of SEEK_SET in <mpi.h>.
-
 #include <cstdlib>
 #include <ctime>
 #include <iomanip>
@@ -48,7 +45,7 @@
 
 //----------------------------------------------------------------------------
 #include <Omega_h_file.hpp>
-#include <Omega_h_teuchos.hpp>
+#include <Teuchos_XMLParameterListHelpers.hpp>
 #include <Teuchos_CommandLineProcessor.hpp>
 #include <Teuchos_FileInputStream.hpp>
 #include <Teuchos_ParameterEntry.hpp>
@@ -124,21 +121,30 @@ Teuchos::ParameterList setParameters(
   return dest;
 }
 
-Teuchos::ParameterList add_input_file(
-    const Teuchos::ParameterList &problem, Comm::Machine const &machine) {
-  auto &                 runtime = problem.sublist("Runtime");
-  auto                   filename = runtime.get<std::string>("Input Config");
-  Teuchos::ParameterList file_input = problem;
-  if (Comm::rank(machine) == 0) {
+Teuchos::ParameterList
+add_input_file(
+    const Teuchos::ParameterList & problem,
+    const Comm::Machine          & machine
+)
+{
+  auto & runtime = problem.sublist("Runtime");
+  auto  filename = runtime.get<std::string>("Input Config");
+
+  Teuchos::ParameterList file_input(problem);
+
+  if (Comm::rank(machine) == 0)
+  {
     std::cout << " Reading input File: " << filename << std::endl;
   }
+
   auto Comm = machine.teuchosComm;
-  Omega_h::update_parameters_from_file(filename, &file_input, *Comm);
+  Teuchos::updateParametersFromXmlFileAndBroadcast(filename, Teuchos::Ptr<Teuchos::ParameterList>(&file_input), *Comm);
   return file_input;
 }
 
 Teuchos::ParameterList input_file_parsing(
-    int argc, char **argv, Comm::Machine const &machine) {
+    int argc, char **argv, Comm::Machine const &machine)
+{
   const bool throwExceptions = false;
   const bool recogniseAllOptions = true;
   const bool addOutputSetupOptions = false;
@@ -197,42 +203,6 @@ Teuchos::ParameterList input_file_parsing(
   problem = add_input_file(problem, machine);
 
   return problem;
-}
-
-static std::string get_extension(std::string const &filepath) {
-  auto dot_pos = filepath.rfind('.');
-  OMEGA_H_CHECK(dot_pos != std::string::npos);
-  return filepath.substr(dot_pos + 1, std::string::npos);
-}
-
-void input_file_echo(
-    Teuchos::ParameterList &problem,
-    Teuchos::Time &         time_main,
-    Comm::Machine const &   machine) {
-  add_timings(problem, time_main, machine);
-  std::string os;
-  unused(problem, "", os);
-  if (Comm::rank(machine) == 0) {
-    std::cout << std::endl;
-    if (os.empty())
-      std::cout << " No Unused Parameters:" << std::endl;
-    else
-      std::cout << " Unused Parameters:" << std::endl << os << std::endl;
-    const std::time_t     sec = std::time(nullptr);
-    const struct std::tm *t = std::localtime(&sec);
-
-    auto input_config =
-        problem.sublist("Runtime").get<std::string>("Input Config");
-    auto input_ext = get_extension(input_config);
-
-    std::ostringstream s;
-    s << std::setfill('0') << std::setw(2) << t->tm_year - 100 << std::setw(2)
-      << t->tm_mon << std::setw(2) << t->tm_mday << std::setw(2) << t->tm_hour
-      << std::setw(2) << t->tm_min << std::setw(2) << t->tm_sec << "_out."
-      << input_ext;
-    auto outpath = s.str();
-    Omega_h::write_parameters(outpath, problem);
-  }
 }
 
 }  // namespace Plato

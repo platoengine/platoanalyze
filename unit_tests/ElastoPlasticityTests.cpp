@@ -1608,7 +1608,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeStabilization3D
     auto tHostCellVolume = Kokkos::create_mirror(tCellVolume);
     for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
-        tHostCellVolume(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostCellVolume(tCellIndex) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
     }
     Kokkos::deep_copy(tCellVolume, tHostCellVolume);
 
@@ -1668,7 +1668,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeStabilization2D
     auto tHostCellVolume = Kokkos::create_mirror(tCellVolume);
     for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
-        tHostCellVolume(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostCellVolume(tCellIndex) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
     }
     Kokkos::deep_copy(tCellVolume, tHostCellVolume);
 
@@ -1726,7 +1726,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ElastoPlasticity_ComputeStabilization1D
     auto tHostCellVolume = Kokkos::create_mirror(tCellVolume);
     for(Plato::OrdinalType tCellIndex = 0; tCellIndex < tNumCells; tCellIndex++)
     {
-        tHostCellVolume(tCellIndex, 0) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
+        tHostCellVolume(tCellIndex) = static_cast<Plato::Scalar>(1+tCellIndex) * 0.1;
     }
     Kokkos::deep_copy(tCellVolume, tHostCellVolume);
 

@@ -200,30 +200,33 @@ getDataAsNonBlock( const Teuchos::RCP<Plato::CrsMatrixType>       & aMatrix,
     auto tNumColsPerBlock = aMatrix->numColsPerBlock();
     auto tBlockSize = tNumRowsPerBlock*tNumColsPerBlock;
 
+
     // generate non block row map
     //
     aMatrixRowMap = Plato::ScalarVectorT<Plato::OrdinalType>("non block row map", tNumMatrixRows+1);
 
     if (aRowStride == 1)
     {
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumMatrixRows+1), LAMBDA_EXPRESSION(const Plato::OrdinalType & tMatrixRowIndex) {
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumMatrixRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & tMatrixRowIndex) {
             auto tBlockRowIndex = tMatrixRowIndex / tNumRowsPerBlock;
             auto tLocalRowIndex = tMatrixRowIndex % tNumRowsPerBlock;
             auto tFrom = tRowMap(tBlockRowIndex);
             auto tTo   = tRowMap(tBlockRowIndex+1);
             auto tBlockRowSize = tTo - tFrom;
             aMatrixRowMap(tMatrixRowIndex) = tFrom * tBlockSize + tLocalRowIndex * tBlockRowSize * tNumColsPerBlock;
+            aMatrixRowMap(tMatrixRowIndex+1) = tFrom * tBlockSize + (tLocalRowIndex+1) * tBlockRowSize * tNumColsPerBlock;
         });
     }
     else 
     {
-        Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumMatrixRows+1), LAMBDA_EXPRESSION(const Plato::OrdinalType & tMatrixRowIndex) {
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumMatrixRows), LAMBDA_EXPRESSION(const Plato::OrdinalType & tMatrixRowIndex) {
             auto tBlockRowIndex = tMatrixRowIndex / aRowStride;
             auto tLocalRowIndex = tMatrixRowIndex % aRowStride;
             auto tFrom = tRowMap(tBlockRowIndex);
             auto tTo   = tRowMap(tBlockRowIndex+1);
             auto tBlockRowSize = tTo - tFrom;
             aMatrixRowMap(tMatrixRowIndex) = tFrom * aRowStride * tNumColsPerBlock + tLocalRowIndex * tBlockRowSize * tNumColsPerBlock;
+            aMatrixRowMap(tMatrixRowIndex+1) = tFrom * aRowStride * tNumColsPerBlock + (tLocalRowIndex+1) * tBlockRowSize * tNumColsPerBlock;
         });
     }
 
@@ -529,9 +532,8 @@ MatrixMinusMatrix(      Teuchos::RCP<Plato::CrsMatrixType> & aInMatrixOne,
 
     auto tAddHandle = tKernel.get_spadd_handle();
 
-    size_t tNumOutValues = tAddHandle->get_max_result_nnz();
-    OrdinalView tOutColMap("out column map", tNumOutValues);
-    ScalarView  tOutValues("out values",  tNumOutValues);
+    OrdinalView tOutColMap;
+    ScalarView  tOutValues;
     KokkosSparse::Experimental::spadd_numeric< KernelHandle,
       OrdinalView, OrdinalView, Scalar, ScalarView,
       OrdinalView, OrdinalView, Scalar, ScalarView,

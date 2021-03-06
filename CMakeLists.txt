@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.0)
 
 project(PLATOANALYZE VERSION 0.0.0 LANGUAGES CXX)
+
+# hdf5 dependency (introduced by exodus) needs C
+enable_language(C)
+
 MESSAGE("\n\nConfiguring Plato Analyze Version ${PLATOANALYZE_VERSION_MAJOR}.${PLATOANALYZE_VERSION_MINOR}.${PLATOANALYZE_VERSION_PATCH}")
 
 IF (DEFINED Trilinos_PREFIX)
@@ -44,7 +48,6 @@ endif()
 
 MESSAGE("-- BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}")
 
-SET(CMAKE_CXX_FLAGS ${Trilinos_CXX_COMPILER_FLAGS})
 SET(CMAKE_C_FLAGS ${Trilinos_C_COMPILER_FLAGS} )
 ## this has to be conditional, or building without cuda fails
 IF (DEFINED AMGX_PREFIX)
@@ -393,6 +396,8 @@ list(REMOVE_DUPLICATES Trilinos_TPL_LIBRARIES)
 list(REVERSE Trilinos_TPL_LIBRARIES)
 message(STATUS "Trilinos_EXTRA_LD_FLAGS: ${Trilinos_EXTRA_LD_FLAGS}")
 
+# omega-h adds -Werror which currently breaks build
+set_target_properties(Omega_h::omega_h PROPERTIES INTERFACE_COMPILE_OPTIONS "")
 
 ENABLE_TESTING()
 INCLUDE(CTest)

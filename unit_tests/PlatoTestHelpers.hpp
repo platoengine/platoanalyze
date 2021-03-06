@@ -8,6 +8,9 @@
 #define PLATOTESTHELPERS_HPP_
 
 #include <fstream>
+#include <Teuchos_RCP.hpp>
+#include <Teuchos_XMLParameterListHelpers.hpp>
+
 
 #include "Omega_h_build.hpp"
 #include "Omega_h_map.hpp"
@@ -15,7 +18,6 @@
 #include "Omega_h_mark.hpp"
 #include "Omega_h_matrix.hpp"
 #include "Omega_h_file.hpp"
-#include "Omega_h_teuchos.hpp"
 #include "Omega_h_library.hpp"
 #include "AnalyzeMacros.hpp"
 

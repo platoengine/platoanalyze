@@ -7,6 +7,8 @@
 #include "HDF5IO.hpp"
 #include <PlatoProblemFactory.hpp>
 #include <Plato_OperationsUtilities.hpp>
+#include <Teuchos_XMLParameterListHelpers.hpp>
+
 
 #ifdef PLATO_CONSOLE
 #include <Plato_Console.hpp>
@@ -242,16 +244,9 @@ createProblem(ProblemDefinition& aDefinition)
   mMesh.set_parting(Omega_h_Parting::OMEGA_H_GHOSTED);
 
   Omega_h::Assoc tAssoc;
-  if (aDefinition.params.isSublist("Associations"))
-  {
-    auto& tAssocParamList = aDefinition.params.sublist("Associations");
-    Omega_h::update_assoc(&tAssoc, tAssocParamList);
-  }
-  else {
-    tAssoc[Omega_h::ELEM_SET] = mMesh.class_sets;
-    tAssoc[Omega_h::NODE_SET] = mMesh.class_sets;
-    tAssoc[Omega_h::SIDE_SET] = mMesh.class_sets;
-  }
+  tAssoc[Omega_h::ELEM_SET] = mMesh.class_sets;
+  tAssoc[Omega_h::NODE_SET] = mMesh.class_sets;
+  tAssoc[Omega_h::SIDE_SET] = mMesh.class_sets;
   mMeshSets = Omega_h::invert(&mMesh, tAssoc);
 
   mDebugAnalyzeApp = aDefinition.params.get<bool>("Debug", false);
