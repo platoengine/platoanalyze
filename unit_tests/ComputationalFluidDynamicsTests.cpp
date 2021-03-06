@@ -4197,7 +4197,8 @@ dimensionless_natural_convection_number
 
 inline Plato::Scalar 
 stabilization_constant
-(Teuchos::ParameterList & aInputs)
+(const std::string & aSublistName,
+ Teuchos::ParameterList & aInputs)
 {
     if(aInputs.isSublist("Hyperbolic") == false)
     {
@@ -4206,9 +4207,9 @@ stabilization_constant
 
     auto tOutput = 0.0;
     auto tHyperbolic = aInputs.sublist("Hyperbolic");
-    if(tHyperbolic.isSublist("Momentum Conservation"))
+    if(tHyperbolic.isSublist(aSublistName))
     {
-        auto tMomentumConservation = tHyperbolic.sublist("Momentum Conservation");
+        auto tMomentumConservation = tHyperbolic.sublist(aSublistName);
         tOutput = tMomentumConservation.get<double>("Stabilization Constant", 0.0);
     }
     return tOutput;
@@ -4315,9 +4316,10 @@ private:
 
     // set member scalar data
     Plato::Scalar mTheta = 1.0; /*!< artificial viscous damping */
-    Plato::Scalar mBuoyancyConst = 0.0; /*!< dimensionless buoyancy constant */
     Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity constant */
     Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
+    Plato::Scalar mBuoyancyConst = 0.0; /*!< dimensionless buoyancy constant */
+    Plato::Scalar mBuoyancyDamping = 1.0; /*!< artificial buoyancy damping */
     Plato::ScalarVector mNaturalConvectionNum; /*!< dimensionless natural convection number (either Rayleigh or Grashof - depends on user's input) */
     bool mCalculateThermalBuoyancyForces = false; /*!< indicator to determine if thermal buoyancy forces will be considered in calculations */
 
@@ -4337,10 +4339,10 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
+        this->setAritificalDamping(aInputs);
         this->setDimensionlessConstants(aInputs);
-        this->setAritificalViscousDamping(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
-        mStabilization = Plato::Fluids::stabilization_constant(aInputs);
+        mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
     }
 
     /***************************************************************************//**
@@ -4448,19 +4450,20 @@ public:
 
             // transfer member data to device
             auto tBuoyancyConst = mBuoyancyConst;
+            auto tBuoyancyDamping = mBuoyancyDamping;
             auto tNaturalConvectionNum = mNaturalConvectionNum;
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
             {
                 // 1. add previous buoyancy force to residual, i.e. R -= (\Delta{t}*Bu*Gr_i) M T_n, where Bu is the buoyancy constant
-		auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tCriticalTimeStep(0);
+		auto tMultiplier = tBuoyancyDamping * tCriticalTimeStep(0);
                 tIntrplScalarField(aCellOrdinal, tBasisFunctions, tPrevTempWS, tPrevTempGP);
                 Plato::Fluids::calculate_natural_convective_forces<mNumSpatialDims>
                     (aCellOrdinal, tBuoyancyConst, tNaturalConvectionNum, tPrevTempGP, tThermalBuoyancy);
                 Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
-                    (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, tMultiplier);
+                    (aCellOrdinal, tBasisFunctions, tCellVolume, tThermalBuoyancy, aResultWS, -tMultiplier);
 
 	        // 2. add stabilizing buoyancy force to residual. i.e. R -= \frac{\Delta{t}^2}{2} Bu*Gr_i) M T_n
-                tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+                tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tBuoyancyDamping * tCriticalTimeStep(0) * tCriticalTimeStep(0);
                 Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
                     (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tThermalBuoyancy, aResultWS, -tMultiplier);
             }, "add contribution from thermal buoyancy forces to residual");
@@ -4538,12 +4541,23 @@ private:
     * \brief Set artificial viscous damping, which is a parameter associated to the time integration scheme.
     * \param [in] aInputs  input file metadata
     ******************************************************************************/
-   void setAritificalViscousDamping(Teuchos::ParameterList& aInputs)
+   void setAritificalDamping(Teuchos::ParameterList& aInputs)
    {
        if(aInputs.isSublist("Time Integration"))
        {
            auto tTimeIntegration = aInputs.sublist("Time Integration");
            mTheta = tTimeIntegration.get<Plato::Scalar>("Viscosity Damping", 1.0);
+       }
+
+       if(aInputs.isSublist("Hyperbolic") == false)
+       {
+           THROWERR("'Hyperbolic' Parameter List is not defined.")
+       }
+       auto tHyperbolic = aInputs.sublist("Hyperbolic");
+       if(tHyperbolic.isSublist("Momentum Conservation"))
+       {
+           auto tMomentumConservation = tHyperbolic.sublist("Momentum Conservation");
+           mBuoyancyDamping = tMomentumConservation.get<Plato::Scalar>("Buoyancy Damping", 1.0);
        }
    }
 
@@ -5754,10 +5768,11 @@ private:
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mHeatFlux;
 
     Plato::Scalar mTheta = 1.0;
-    Plato::Scalar mHeatSourceConstant    = 0.0;
-    Plato::Scalar mThermalConductivity   = 1.0;
-    Plato::Scalar mCharacteristicLength  = 0.0;
-    Plato::Scalar mReferenceTemperature  = 1.0;
+    Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
+    Plato::Scalar mHeatSourceConstant = 0.0;
+    Plato::Scalar mThermalConductivity = 1.0;
+    Plato::Scalar mCharacteristicLength = 0.0;
+    Plato::Scalar mReferenceTemperature = 1.0;
     Plato::Scalar mEffectiveConductivity = 1.0;
 
 public:
@@ -5773,6 +5788,7 @@ public:
         this->setDimensionlessProperties(aInputs);
         this->setNaturalBoundaryConditions(aInputs);
         this->setAritificalDiffusiveDamping(aInputs);
+        mStabilization = Plato::Fluids::stabilization_constant("Energy Conservation", aInputs);
     }
 
     virtual ~TemperatureResidual(){}
@@ -5795,17 +5811,16 @@ public:
         Plato::blas1::fill(mHeatSourceConstant, tHeatSource);
 
         // set local data
-        Plato::ScalarVectorT<ConfigT>   tCellVolume("cell weight", tNumCells);
-        Plato::ScalarArray3DT<ConfigT>  tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
-        Plato::ScalarVectorT<CurTempT>  tCurTempGP("current temperature at Gauss points", tNumCells);
+        Plato::ScalarVectorT<ConfigT> tCellVolume("cell weight", tNumCells);
+        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+
+        Plato::ScalarVectorT<CurTempT> tCurTempGP("current temperature at Gauss points", tNumCells);
         Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss points", tNumCells);
-
         Plato::ScalarVectorT<ConvectionT> tConvection("convection", tNumCells);
-       // Plato::ScalarVectorT<ResultT> tStabilization("stabilization", tNumCells);
 
-        Plato::ScalarMultiVectorT<CurFluxT>  tCurThermalFlux("current thermal flux", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<CurFluxT> tCurThermalFlux("current thermal flux", tNumCells, mNumSpatialDims);
         Plato::ScalarMultiVectorT<PrevFluxT> tPrevThermalFlux("previous thermal flux", tNumCells, mNumSpatialDims);
-        Plato::ScalarMultiVectorT<CurVelT>   tCurVelGP("current velocity at Gauss points", tNumCells, mNumVelDofsPerNode);
+        Plato::ScalarMultiVectorT<CurVelT> tCurVelGP("current velocity at Gauss points", tNumCells, mNumVelDofsPerNode);
 
         // set local functors
         Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
@@ -5824,6 +5839,7 @@ public:
         auto tRefTemp         = mReferenceTemperature;
         auto tCharLength      = mCharacteristicLength;
         auto tThermalCond     = mThermalConductivity;
+        auto tStabilization   = mStabilization;
         auto tEffConductivity = mEffectiveConductivity;
 
         auto tCubWeight = mCubatureRule.getCubWeight();
@@ -5872,6 +5888,14 @@ public:
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurTempWS, tCurTempGP);
             Plato::Fluids::integrate_scalar_field<mNumNodesPerCell>
                 (aCellOrdinal, tBasisFunctions, tCellVolume, tCurTempGP, aResultWS);
+
+	    // 8. add stabilizing force contribution to residual, i.e. R += C_u T^n - Q_u^n
+            tMultiplier = tStabilization * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tConvection, aResultWS, tMultiplier);
+            tMultiplier = tStabilization * tHeatSourceCnst * static_cast<Plato::Scalar>(0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            Plato::Fluids::integrate_stabilizing_scalar_forces<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCellVolume, tGradient, tCurVelGP, tHeatSource, aResultWS, -tMultiplier);
         }, "energy conservation residual");
     }
 
@@ -10689,7 +10713,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, NaturalConvectionSquareEnclosure_Ra1e3)
             "    <Parameter name='Temperature Tolerance' type='double' value='1e-2'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Time Integration'>"
-            "    <Parameter name='Safety Factor'      type='double' value='1.0'/>"
+            "    <Parameter name='Safety Factor' type='double' value='1.0'/>"
             "  </ParameterList>"
             "  <ParameterList  name='Linear Solver'>"
             "    <Parameter name='Solver Stack' type='string' value='Epetra'/>"
