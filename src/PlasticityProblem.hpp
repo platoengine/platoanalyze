@@ -15,8 +15,11 @@
 #include "OmegaHUtilities.hpp"
 #include "NewtonRaphsonSolver.hpp"
 #include "PlatoAbstractProblem.hpp"
+#include "alg/PlatoSolverFactory.hpp"
+#include "alg/PlatoAbstractSolver.hpp"
 #include "PathDependentAdjointSolver.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticity.hpp"
 #include "PathDependentScalarFunctionFactory.hpp"
 
 namespace Plato
@@ -41,6 +44,7 @@ private:
     static constexpr auto mSpaceDim                = PhysicsT::mSpaceDim;             /*!< spatial dimensions*/
     static constexpr auto mNumNodesPerCell         = PhysicsT::mNumNodesPerCell;      /*!< number of nodes per cell*/
     static constexpr auto mPressureDofOffset       = PhysicsT::mPressureDofOffset;    /*!< number of pressure dofs offset*/
+    static constexpr auto mTemperatureDofOffset    = PhysicsT::mTemperatureDofOffset; /*!< number of temperature dofs offset*/
     static constexpr auto mNumGlobalDofsPerNode    = PhysicsT::mNumDofsPerNode;       /*!< number of global degrees of freedom per node*/
     static constexpr auto mNumGlobalDofsPerCell    = PhysicsT::mNumDofsPerCell;       /*!< number of global degrees of freedom per cell (i.e. element)*/
     static constexpr auto mNumLocalDofsPerCell     = PhysicsT::mNumLocalDofsPerCell;  /*!< number of local degrees of freedom per cell (i.e. element)*/
@@ -51,7 +55,7 @@ private:
     Plato::SpatialModel mSpatialModel; /*!< SpatialModel instance contains the mesh, meshsets, domains, etc. */
 
     // Required
-    using PlasticityT = typename Plato::Plasticity<mSpaceDim>;
+    using PlasticityT = typename PhysicsT::LocalPhysicsT;
     using ProjectorT  = typename Plato::Projection<mSpaceDim, PhysicsT::mNumDofsPerNode, PhysicsT::mPressureDofOffset>;
     std::shared_ptr<Plato::VectorFunctionVMS<ProjectorT>> mProjectionEquation;  /*!< global pressure gradient projection interface */
     std::shared_ptr<Plato::GlobalVectorFunctionInc<PhysicsT>> mGlobalEquation;  /*!< global equality constraint interface */
@@ -63,8 +67,10 @@ private:
     Plato::OrdinalType mNumPseudoTimeSteps;       /*!< current number of pseudo time steps */
     Plato::OrdinalType mMaxNumPseudoTimeSteps;    /*!< maximum number of pseudo time steps */
 
+    Plato::Scalar mEndTime;                       /*!< end time */
     Plato::Scalar mPseudoTimeStep;                /*!< pseudo time step */
     Plato::Scalar mPressureScaling;               /*!< pressure term scaling */
+    Plato::Scalar mTemperatureScaling;            /*!< temperature term scaling */
     Plato::Scalar mInitialNormResidual;           /*!< initial norm of global residual */
     Plato::Scalar mDispControlConstant;           /*!< displacement control constant */
     Plato::Scalar mCurrentPseudoTimeStep;         /*!< current pseudo time step */
@@ -76,10 +82,15 @@ private:
     Plato::ScalarMultiVector mReactionForce;      /*!< reaction */
     Plato::ScalarMultiVector mProjectedPressGrad; /*!< projected pressure gradient (# Time Steps, # Projected Pressure Gradient dofs) */
 
+    std::shared_ptr<Plato::EssentialBCs<PhysicsT>> mEssentialBCs; /*!< essential boundary conditions shared pointer */
+    Plato::ScalarVector mPreviousStepDirichletValues;            /*!< previous time step values associated with the Dirichlet boundary conditions */
     Plato::ScalarVector mDirichletValues;         /*!< values associated with the Dirichlet boundary conditions */
     Plato::LocalOrdinalVector mDirichletDofs;     /*!< list of degrees of freedom associated with the Dirichlet boundary conditions */
 
-    Plato::WorksetBase<Plato::SimplexPlasticity<mSpaceDim>> mWorksetBase; /*!< assembly routine interface */
+    Plato::WorksetBase<PhysicsT> mWorksetBase;    /*!< assembly routine interface */
+
+    Plato::SolverFactory mLinearSolverFactory;            /*!< linear solver factory */
+    std::shared_ptr<Plato::AbstractSolver> mLinearSolver; /*!< linear solver object */
 
     std::shared_ptr<Plato::NewtonRaphsonSolver<PhysicsT>> mNewtonSolver;         /*!< Newton-Raphson solve interface */
     std::shared_ptr<Plato::PathDependentAdjointSolver<PhysicsT>> mAdjointSolver; /*!< Path-dependent adjoint solver interface */
@@ -108,8 +119,10 @@ public:
       mProjectionEquation(std::make_shared<Plato::VectorFunctionVMS<ProjectorT>>(mSpatialModel, mDataMap, aInputs, std::string("State Gradient Projection"))),
       mNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Initial Num. Pseudo Time Steps", 20)),
       mMaxNumPseudoTimeSteps(Plato::ParseTools::getSubParam<Plato::OrdinalType>(aInputs, "Time Stepping", "Maximum Num. Pseudo Time Steps", 80)),
-      mPseudoTimeStep(1.0/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
+      mEndTime(Plato::ParseTools::getSubParam<Plato::Scalar>(aInputs, "Time Stepping", "End Time", 1.0)),
+      mPseudoTimeStep(mEndTime/(static_cast<Plato::Scalar>(mNumPseudoTimeSteps))),
       mPressureScaling(1.0),
+      mTemperatureScaling(1.0),
       mInitialNormResidual(std::numeric_limits<Plato::Scalar>::max()),
       mDispControlConstant(std::numeric_limits<Plato::Scalar>::min()),
       mCurrentPseudoTimeStep(0.0),
@@ -120,10 +133,13 @@ public:
       mReactionForce("Reaction Force", mNumPseudoTimeSteps, aMesh.nverts()),
       mProjectedPressGrad("Projected Pressure Gradient", mNumPseudoTimeSteps, mProjectionEquation->size()),
       mWorksetBase(aMesh),
-      mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs)),
-      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs)),
+      mLinearSolverFactory(aInputs.sublist("Linear Solver")),
+      mLinearSolver(mLinearSolverFactory.create(aMesh, aMachine, PhysicsT::mNumDofsPerNode)),
+      mNewtonSolver(std::make_shared<Plato::NewtonRaphsonSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
+      mAdjointSolver(std::make_shared<Plato::PathDependentAdjointSolver<PhysicsT>>(aMesh, aInputs, mLinearSolver)),
       mStopOptimization(false),
-      mMaxNumPseudoTimeStepsReached(false)
+      mMaxNumPseudoTimeStepsReached(false),
+      mEssentialBCs(nullptr)
     {
         this->initialize(aInputs);
     }
@@ -156,8 +172,19 @@ public:
         {
             THROWERR("Plasticity Problem: Essential Boundary Conditions are not defined for this problem.")
         }
-        Plato::EssentialBCs<PhysicsT> tDirichletBCs(aInputs.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets);
-        tDirichletBCs.get(mDirichletDofs, mDirichletValues);
+        Plato::OrdinalType tPressureDofOffset    = mPressureDofOffset;
+        Plato::OrdinalType tTemperatureDofOffset = mTemperatureDofOffset;
+
+        std::map<Plato::OrdinalType, Plato::Scalar> tDofOffsetToScaleFactor;
+        tDofOffsetToScaleFactor[tPressureDofOffset]    = mPressureScaling;
+        tDofOffsetToScaleFactor[tTemperatureDofOffset] = mTemperatureScaling;
+
+        mEssentialBCs =
+        std::make_shared<Plato::EssentialBCs<PhysicsT>>
+             (aInputs.sublist("Essential Boundary Conditions", false), mSpatialModel.MeshSets, tDofOffsetToScaleFactor);
+        mEssentialBCs->get(mDirichletDofs, mDirichletValues); // BCs at time = 0
+        Kokkos::resize(mPreviousStepDirichletValues, mDirichletValues.size());
+        Plato::blas1::fill(0.0, mPreviousStepDirichletValues);
     }
 
     /***************************************************************************//**
@@ -174,8 +201,10 @@ public:
                 << "DOFS SIZE = " << aDirichletDofs.size() << " AND VALUES SIZE = " << aDirichletValues.size();
             THROWERR(tError.str())
         }
-        mDirichletDofs = aDirichletDofs;
+        mDirichletDofs   = aDirichletDofs;
         mDirichletValues = aDirichletValues;
+        Kokkos::resize(mPreviousStepDirichletValues, aDirichletValues.size());
+        Plato::blas1::fill(0.0, mPreviousStepDirichletValues);
     }
 
     /***************************************************************************//**
@@ -188,10 +217,17 @@ public:
 
         auto tNumNodes = mGlobalEquation->numNodes();
         Plato::ScalarMultiVector tPressure("Pressure", mGlobalStates.extent(0), tNumNodes);
+        Plato::ScalarMultiVector tTemperature("Temperature", mGlobalStates.extent(0), tNumNodes);
         Plato::ScalarMultiVector tDisplacements("Displacements", mGlobalStates.extent(0), tNumNodes*mSpaceDim);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mPressureDofOffset>(mGlobalStates, tPressure);
         Plato::blas2::extract<mNumGlobalDofsPerNode, mSpaceDim>(tNumNodes, mGlobalStates, tDisplacements);
         Plato::blas2::scale(mPressureScaling, tPressure);
+        if (mTemperatureDofOffset > 0)
+        {
+          Plato::blas2::extract<mNumGlobalDofsPerNode, mTemperatureDofOffset>(mGlobalStates, tTemperature);
+          Plato::blas2::scale(mTemperatureScaling, tTemperature);
+        }
+
 
         Omega_h::vtk::Writer tWriter = Omega_h::vtk::Writer(aFilepath.c_str(), &tMesh, mSpaceDim);
         for(Plato::OrdinalType tSnapshot = 0; tSnapshot < tDisplacements.extent(0); tSnapshot++)
@@ -205,6 +241,12 @@ public:
             auto tDispSubView = Kokkos::subview(tDisplacements, tSnapshot, Kokkos::ALL());
             auto tDispSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tDispSubView);
             tMesh.add_tag(Omega_h::VERT, "Displacements", mSpaceDim, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tDispSubViewDefaultMirror)));
+            if (mTemperatureDofOffset > 0)
+            {
+              auto tTemperatureSubView = Kokkos::subview(tTemperature, tSnapshot, Kokkos::ALL());
+              auto tTemperatureSubViewDefaultMirror = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace(), tTemperatureSubView);
+              tMesh.add_tag(Omega_h::VERT, "Temperature", 1, Omega_h::Reals(Omega_h::Write<Omega_h::Real>(tTemperatureSubViewDefaultMirror)));
+            }
             Plato::add_element_state_tags(tMesh, mDataMap, tSnapshot);
             auto tTags = Omega_h::vtk::get_all_vtk_tags(&tMesh, mSpaceDim);
             auto tTime = mPseudoTimeStep * static_cast<Plato::Scalar>(tSnapshot + 1);
@@ -392,7 +434,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
     }
 
@@ -424,7 +467,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
 
     }
@@ -457,7 +501,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
     }
 
@@ -495,7 +540,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
     }
 
@@ -561,7 +607,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
 
     }
@@ -598,7 +645,8 @@ public:
         }
         else
         {
-            THROWERR("REQUESTED CRITERION NOT DEFINED BY USER.");
+            const std::string tErrorMessage = std::string("REQUESTED CRITERION '") + aName + "' NOT DEFINED BY THE USER.";
+            THROWERR(tErrorMessage);
         }
     }
 
@@ -680,7 +728,8 @@ private:
         }
         Teuchos::ParameterList tMaterialsInputs = aInputParams.get<Teuchos::ParameterList>("Material Models");
 
-        mPressureScaling = tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        mPressureScaling    = tMaterialsInputs.get<Plato::Scalar>("Pressure Scaling", 1.0);
+        mTemperatureScaling = tMaterialsInputs.get<Plato::Scalar>("Temperature Scaling", 1.0);
     }
 
     /***************************************************************************//**
@@ -709,7 +758,9 @@ private:
             mNumPseudoTimeSteps = mMaxNumPseudoTimeSteps;
             mMaxNumPseudoTimeStepsReached = true;
         }
-        mPseudoTimeStep = static_cast<Plato::Scalar>(1.0) / static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
+        mPseudoTimeStep = static_cast<Plato::Scalar>(mEndTime) / static_cast<Plato::Scalar>(mNumPseudoTimeSteps);
+
+        Plato::blas1::fill(0.0, mPreviousStepDirichletValues);
 
         Kokkos::resize(mLocalStates, mNumPseudoTimeSteps, mLocalEquation->size());
         Kokkos::resize(mGlobalStates, mNumPseudoTimeSteps, mGlobalEquation->size());
@@ -746,6 +797,9 @@ private:
         tCurrentState.mDeltaGlobalState = Plato::ScalarVector("Global State Increment", mGlobalEquation->size());
 
         this->initializeNewtonSolver();
+        Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mLocalStates);
+        Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mGlobalStates);
+        Plato::blas2::fill(static_cast<Plato::Scalar>(0.0), mProjectedPressGrad);
 
         bool tForwardProblemSolved = false;
         for(Plato::OrdinalType tCurrentStepIndex = 0; tCurrentStepIndex < mNumPseudoTimeSteps; tCurrentStepIndex++)
@@ -796,6 +850,23 @@ private:
         mNewtonSolver->setDirichletValuesMultiplier(mPseudoTimeStep);
         auto tLoadControlConstant = mPseudoTimeStep * static_cast<Plato::Scalar>(aInput + 1);
         mDataMap.mScalarValues["LoadControlConstant"] = tLoadControlConstant;
+
+        if (aInput != static_cast<Plato::OrdinalType>(0))
+          Plato::blas1::copy(mDirichletValues, mPreviousStepDirichletValues);
+        else
+          Plato::blas1::fill(0.0, mPreviousStepDirichletValues);
+
+        auto tCurrentTime = tLoadControlConstant;
+        if (mEssentialBCs != nullptr)
+          mEssentialBCs->get(mDirichletDofs, mDirichletValues, tCurrentTime);
+        else
+          THROWERR("EssentialBCs pointer is null!")
+
+        Plato::ScalarVector tNewtonUpdateDirichletValues("Dirichlet Increment Values", mDirichletValues.size());
+        Plato::blas1::copy(mDirichletValues, tNewtonUpdateDirichletValues);
+        Plato::blas1::axpy(static_cast<Plato::Scalar>(-1.0), mPreviousStepDirichletValues, tNewtonUpdateDirichletValues);
+
+        mNewtonSolver->appendDirichletValues(tNewtonUpdateDirichletValues);
     }
 
     /***************************************************************************//**
@@ -820,7 +891,8 @@ private:
         Plato::blas1::fill(0.0, tNextProjectedPressureGradient);
         auto tProjResidual = mProjectionEquation->value(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
         auto tProjJacobian = mProjectionEquation->gradient_u(tNextProjectedPressureGradient, mPressure, aControls, tNextStepIndex);
-        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, aStateData.mProjectedPressGrad, tProjResidual);
+        Plato::blas1::scale(-1.0, tProjResidual);
+        Plato::Solve::RowSummed<PhysicsT::mNumSpatialDims>(tProjJacobian, tNextProjectedPressureGradient, tProjResidual);
     }
 
     /***************************************************************************//**
@@ -899,7 +971,7 @@ private:
             auto tCurrentLocalState = Kokkos::subview(mLocalStates, tCurrentStepIndex, Kokkos::ALL());
             auto tCurrentGlobalState = Kokkos::subview(mGlobalStates, tCurrentStepIndex, Kokkos::ALL());
 
-            // SET PREVIOUS LOCAL STATES
+            // SET PREVIOUS STATES
             this->getPreviousState(tCurrentStepIndex, mLocalStates, tPreviousLocalState);
             this->getPreviousState(tCurrentStepIndex, mGlobalStates, tPreviousGlobalState);
 
@@ -1008,7 +1080,6 @@ private:
         // SET ENTRIES IN CURRENT STATES TO ZERO
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentLocalState);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mCurrentGlobalState);
-        Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), aStateData.mProjectedPressGrad);
         Plato::blas1::fill(static_cast<Plato::Scalar>(0.0), mPressure);
     }
 
@@ -1090,13 +1161,16 @@ private:
 
 #ifdef PLATOANALYZE_1D
 extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<1>>;
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainThermoPlasticity<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
 extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainThermoPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::PlasticityProblem<Plato::InfinitesimalStrainThermoPlasticity<3>>;
 #endif
 

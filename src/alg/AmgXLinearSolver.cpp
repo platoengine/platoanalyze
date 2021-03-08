@@ -1,5 +1,6 @@
 #ifdef HAVE_AMGX
 #include "alg/AmgXLinearSolver.hpp"
+#include "AnalyzeMacros.hpp"
 #include <amgx_c.h>
 #include <string>
 #include <fstream>
@@ -142,6 +143,16 @@ AmgXLinearSolver::solve(
     int err = cudaDeviceSynchronize();
     assert(err == cudaSuccess);
     auto solverErr = AMGX_solver_solve(mSolverHandle, mForcingHandle, mSolutionHandle);
+    AMGX_SOLVE_STATUS tStatus;
+    AMGX_solver_get_status(mSolverHandle, &tStatus);
+    if (tStatus == AMGX_SOLVE_FAILED)
+    {
+        THROWERR("AMGX Solver Failed!");
+    }
+    else if (tStatus == AMGX_SOLVE_DIVERGED)
+    {
+        THROWERR("AMGX Solver Diverged!");
+    }
     AMGX_vector_download(mSolutionHandle, mSolution.data());
 }
 

@@ -65,6 +65,7 @@ if(PLASTICITY)
     ComputePrincipalStresses.cpp 
     WeightedLocalScalarFunction.cpp 
     InfinitesimalStrainPlasticityResidual.cpp 
+    InfinitesimalStrainThermoPlasticityResidual.cpp 
     ElasticWorkCriterion.cpp 
     PlasticWorkCriterion.cpp
   )

@@ -55,66 +55,66 @@ void Plato::OrthotropicLinearElasticMaterial<3>::checkOrthoMaterialStability
     // Stability Check 2: Symmetry relationships
     auto tPoissonRatioXY = aParamList.get<Plato::Scalar>("Poissons Ratio XY");
     auto tSqrtYoungsModulusXOverYoungsModulusY = sqrt(tYoungsModulusX / tYoungsModulusY);
-    if(abs(tPoissonRatioXY) > tSqrtYoungsModulusXOverYoungsModulusY)
+    if(fabs(tPoissonRatioXY) > tSqrtYoungsModulusXOverYoungsModulusY)
     {
         std::stringstream tMsg;
         tMsg << "OrthotropicLinearElasticMaterial 3D: Condition abs(Poisson's Ratio XY) < sqrt(Young's Modulus X / Young's Modulus Y) "
-                << "was not met.  The value of abs(Poisson's Ratio XY) = " << abs(tPoissonRatioXY) << " and the value of "
+                << "was not met.  The value of abs(Poisson's Ratio XY) = " << fabs(tPoissonRatioXY) << " and the value of "
                 << "sqrt(Young's Modulus X / Young's Modulus Y) = " << tSqrtYoungsModulusXOverYoungsModulusY << ".";
         THROWERR(tMsg.str().c_str())
     }
 
     auto tPoissonRatioYZ = aParamList.get<Plato::Scalar>("Poissons Ratio YZ");
     auto tSqrtYoungsModulusYOverYoungsModulusZ = sqrt(tYoungsModulusY / tYoungsModulusZ);
-    if(abs(tPoissonRatioYZ) > tSqrtYoungsModulusYOverYoungsModulusZ)
+    if(fabs(tPoissonRatioYZ) > tSqrtYoungsModulusYOverYoungsModulusZ)
     {
         std::stringstream tMsg;
         tMsg << "OrthotropicLinearElasticMaterial 3D: Condition abs(Poisson's Ratio YZ) < sqrt(Young's Modulus Y / Young's Modulus Z) "
-                << "was not met.  The value of abs(Poisson's Ratio YZ) = " << abs(tPoissonRatioYZ) << " and the value of "
+                << "was not met.  The value of abs(Poisson's Ratio YZ) = " << fabs(tPoissonRatioYZ) << " and the value of "
                 << "sqrt(Young's Modulus Y / Young's Modulus Z) = " << tSqrtYoungsModulusYOverYoungsModulusZ << ".";
         THROWERR(tMsg.str().c_str())
     }
 
     auto tPoissonRatioXZ = aParamList.get<Plato::Scalar>("Poissons Ratio XZ");
     auto tSqrtYoungsModulusXOverYoungsModulusZ = sqrt(tYoungsModulusX / tYoungsModulusZ);
-    if(abs(tPoissonRatioXZ) > tSqrtYoungsModulusXOverYoungsModulusZ)
+    if(fabs(tPoissonRatioXZ) > tSqrtYoungsModulusXOverYoungsModulusZ)
     {
         std::stringstream tMsg;
         tMsg << "OrthotropicLinearElasticMaterial 3D: Condition abs(Poisson's Ratio XZ) < sqrt(Young's Modulus X / Young's Modulus Z) "
-                << "was not met.  The value of abs(Poisson's Ratio XZ) = " << abs(tPoissonRatioXZ) << " and the value of "
+                << "was not met.  The value of abs(Poisson's Ratio XZ) = " << fabs(tPoissonRatioXZ) << " and the value of "
                 << "sqrt(Young's Modulus X / Young's Modulus Z) = " << tSqrtYoungsModulusXOverYoungsModulusZ << ".";
         THROWERR(tMsg.str().c_str())
     }
 
     auto tPoissonRatioYX = tPoissonRatioXY * (tYoungsModulusY / tYoungsModulusX);
     auto tSqrtYoungsModulusYOverYoungsModulusX = sqrt(tYoungsModulusY / tYoungsModulusX);
-    if(abs(tPoissonRatioYX) > tSqrtYoungsModulusYOverYoungsModulusX)
+    if(fabs(tPoissonRatioYX) > tSqrtYoungsModulusYOverYoungsModulusX)
     {
         std::stringstream tMsg;
         tMsg << "OrthotropicLinearElasticMaterial 3D: Condition abs(Poisson's Ratio YX) < sqrt(Young's Modulus Y / Young's Modulus X) "
-                << "was not met.  The value of abs(Poisson's Ratio YX) = " << abs(tPoissonRatioYX) << " and the value of "
+                << "was not met.  The value of abs(Poisson's Ratio YX) = " << fabs(tPoissonRatioYX) << " and the value of "
                 << "sqrt(Young's Modulus Y / Young's Modulus X) = " << tSqrtYoungsModulusYOverYoungsModulusX << ".";
         THROWERR(tMsg.str().c_str())
     }
 
     auto tPoissonRatioZY = tPoissonRatioYZ * (tYoungsModulusZ / tYoungsModulusY);
     auto tSqrtYoungsModulusZOverYoungsModulusY = sqrt(tYoungsModulusZ / tYoungsModulusY);
-    if(abs(tPoissonRatioZY) > tSqrtYoungsModulusZOverYoungsModulusY)
+    if(fabs(tPoissonRatioZY) > tSqrtYoungsModulusZOverYoungsModulusY)
     {
         std::stringstream tMsg;
         tMsg << "OrthotropicLinearElasticMaterial 3D: Condition abs(Poisson's Ratio ZY) < sqrt(Young's Modulus Z / Young's Modulus Y) "
-                << "was not met.  The value of abs(Poisson's Ratio ZY) = " << abs(tPoissonRatioZY) << " and the value of "
+                << "was not met.  The value of abs(Poisson's Ratio ZY) = " << fabs(tPoissonRatioZY) << " and the value of "
                 << "sqrt(Young's Modulus Z / Young's Modulus Y) = " << tSqrtYoungsModulusZOverYoungsModulusY << ".";
         THROWERR(tMsg.str().c_str())
     }
 
     auto tPoissonRatioZX = tPoissonRatioXZ * (tYoungsModulusZ / tYoungsModulusX);
     auto tSqrtYoungsModulusZOverYoungsModulusX = sqrt(tYoungsModulusZ / tYoungsModulusX);
-    if(abs(tPoissonRatioZX) > tSqrtYoungsModulusZOverYoungsModulusX)
+    if(fabs(tPoissonRatioZX) > tSqrtYoungsModulusZOverYoungsModulusX)
     {
         std::stringstream tMsg;
         tMsg << "OrthotropicLinearElasticMaterial 3D: Condition abs(Poisson's Ratio ZX) < sqrt(Young's Modulus Z / Young's Modulus X) "
-                << "was not met.  The value of abs(Poisson's Ratio ZX) = " << abs(tPoissonRatioZX) << " and the value of "
+                << "was not met.  The value of abs(Poisson's Ratio ZX) = " << fabs(tPoissonRatioZX) << " and the value of "
                 << "sqrt(Young's Modulus Z / Young's Modulus X) = " << tSqrtYoungsModulusZOverYoungsModulusX << ".";
         THROWERR(tMsg.str().c_str())
     }
@@ -278,22 +278,22 @@ void Plato::OrthotropicLinearElasticMaterial<2>::checkOrthoMaterialStability
     // Stability Check 2: Symmetry relationships
     auto tPoissonRatioXY = aParamList.get<Plato::Scalar>("Poissons Ratio XY");
     auto tSqrtYoungsModulusXOverYoungsModulusY = sqrt(tYoungsModulusX / tYoungsModulusY);
-    if(abs(tPoissonRatioXY) > tSqrtYoungsModulusXOverYoungsModulusY)
+    if(fabs(tPoissonRatioXY) > tSqrtYoungsModulusXOverYoungsModulusY)
     {
         std::stringstream tMsg;
         tMsg << "OrthotropicLinearElasticMaterial 2D: Condition abs(Poisson's Ratio XY) < sqrt(Young's Modulus X / Young's Modulus Y) "
-                << "was not met.  The value of abs(Poisson's Ratio XY) = " << abs(tPoissonRatioXY) << " and the value of "
+                << "was not met.  The value of abs(Poisson's Ratio XY) = " << fabs(tPoissonRatioXY) << " and the value of "
                 << "sqrt(Young's Modulus X / Young's Modulus Y) = " << tSqrtYoungsModulusXOverYoungsModulusY << ".";
         THROWERR(tMsg.str().c_str())
     }
 
     auto tPoissonRatioYX = tPoissonRatioXY * (tYoungsModulusY / tYoungsModulusX);
     auto tSqrtYoungsModulusYOverYoungsModulusX = sqrt(tYoungsModulusY / tYoungsModulusX);
-    if(abs(tPoissonRatioYX) > tSqrtYoungsModulusYOverYoungsModulusX)
+    if(fabs(tPoissonRatioYX) > tSqrtYoungsModulusYOverYoungsModulusX)
     {
         std::stringstream tMsg;
         tMsg << "OrthotropicLinearElasticMaterial 2D: Condition abs(Poisson's Ratio YX) < sqrt(Young's Modulus Y / Young's Modulus X) "
-                << "was not met.  The value of abs(Poisson's Ratio YX) = " << abs(tPoissonRatioYX) << " and the value of "
+                << "was not met.  The value of abs(Poisson's Ratio YX) = " << fabs(tPoissonRatioYX) << " and the value of "
                 << "sqrt(Young's Modulus Y / Young's Modulus X) = " << tSqrtYoungsModulusYOverYoungsModulusX << ".";
         THROWERR(tMsg.str().c_str())
     }

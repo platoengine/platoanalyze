@@ -1,7 +1,7 @@
 /*
- * InfinitesimalStrainPlasticity.hpp
+ * InfinitesimalStrainThermoPlasticity.hpp
  *
- *  Created on: Feb 29, 2020
+ *  Created on: Jan 20, 2021
  */
 
 #pragma once
@@ -9,23 +9,23 @@
 #include "Projection.hpp"
 #include "ElasticWorkCriterion.hpp"
 #include "PlasticWorkCriterion.hpp"
-#include "InfinitesimalStrainPlasticityResidual.hpp"
-#include "Plasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticityResidual.hpp"
+#include "ThermoPlasticity.hpp"
 
 namespace Plato
 {
 
-namespace InfinitesimalStrainPlasticityFactory
+namespace InfinitesimalStrainThermoPlasticityFactory
 {
 
-/***************************************************************************//**
- * \brief Factory for stabilized infinitesimal strain plasticity vector function.
-*******************************************************************************/
+/*********************************************************************************//**
+ * \brief Factory for stabilized infinitesimal strain thermoplasticity vector function.
+*************************************************************************************/
 struct FunctionFactory
 {
     /***************************************************************************//**
      * \brief Create a stabilized vector function with local path-dependent states
-     *  (e.g. plasticity)
+     *  (e.g. thermoplasticity)
      *
      * \tparam automatic differentiation evaluation type, e.g. JacobianU, JacobianZ, etc.
      *
@@ -49,7 +49,7 @@ struct FunctionFactory
         if(aFunctionName == "Elliptic")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
-            return ( std::make_shared<Plato::InfinitesimalStrainPlasticityResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+            return ( std::make_shared<Plato::InfinitesimalStrainThermoPlasticityResidual<EvaluationType, Plato::SimplexThermoPlasticity<tSpaceDim>>>
                     (aSpatialDomain, aDataMap, aInputParams) );
         }
         else
@@ -61,7 +61,7 @@ struct FunctionFactory
     }
 
     /***************************************************************************//**
-     * \brief Create a scalar function with local path-dependent states (e.g. plasticity)
+     * \brief Create a scalar function with local path-dependent states (e.g. thermoplasticity)
      *
      * \tparam automatic differentiation evaluation type, e.g. JacobianU, JacobianZ, etc.
      *
@@ -87,13 +87,13 @@ struct FunctionFactory
         if(aFuncType == "Plastic Work")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
-            return ( std::make_shared<Plato::PlasticWorkCriterion<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+            return ( std::make_shared<Plato::PlasticWorkCriterion<EvaluationType, Plato::SimplexThermoPlasticity<tSpaceDim>>>
                     (aSpatialDomain, aDataMap, aInputParams, aFuncName) );
         } else
         if(aFuncType == "Elastic Work")
         {
             constexpr auto tSpaceDim = EvaluationType::SpatialDim;
-            return ( std::make_shared<Plato::ElasticWorkCriterion<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
+            return ( std::make_shared<Plato::ElasticWorkCriterion<EvaluationType, Plato::SimplexThermoPlasticity<tSpaceDim>>>
                     (aSpatialDomain, aDataMap, aInputParams, aFuncName) );
         }
         else
@@ -107,7 +107,7 @@ struct FunctionFactory
 // struct FunctionFactory
 
 }
-// namespace InfinitesimalStrainPlasticityFactory
+// namespace InfinitesimalStrainThermoPlasticityFactory
 
 /*************************************************************************//**
  * \brief Defines the concrete physics Type templates for an infinitesimal
@@ -117,24 +117,24 @@ struct FunctionFactory
  * (VMS) approach.
 *****************************************************************************/
 template<Plato::OrdinalType NumSpaceDim>
-class InfinitesimalStrainPlasticity: public Plato::SimplexPlasticity<NumSpaceDim>
+class InfinitesimalStrainThermoPlasticity: public Plato::SimplexThermoPlasticity<NumSpaceDim>
 {
 public:
     static constexpr auto mSpaceDim = NumSpaceDim; /*!< number of spatial dimensions */
 
     /*!< short name for plasticity factory */
-    typedef Plato::InfinitesimalStrainPlasticityFactory::FunctionFactory FunctionFactory;
+    typedef Plato::InfinitesimalStrainThermoPlasticityFactory::FunctionFactory FunctionFactory;
 
-    /*!< short name for simplex plasticity physics */
-    using SimplexT = Plato::SimplexPlasticity<NumSpaceDim>;
+    /*!< short name for simplex thermoplasticity physics */
+    using SimplexT = Plato::SimplexThermoPlasticity<NumSpaceDim>;
 
     /*!< short name for projected pressure gradient physics */
     using ProjectorT = typename Plato::Projection<NumSpaceDim, SimplexT::mNumDofsPerNode, SimplexT::mPressureDofOffset>;
 
     /*!< short name for local physics physics */
-    using LocalPhysicsT = typename Plato::Plasticity<NumSpaceDim>;
+    using LocalPhysicsT = typename Plato::ThermoPlasticity<NumSpaceDim>;
 };
-// class InfinitesimalStrainPlasticity
+// class InfinitesimalStrainThermoPlasticity
 
 }
 // namespace Plato

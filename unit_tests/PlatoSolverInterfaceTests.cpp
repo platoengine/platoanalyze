@@ -428,7 +428,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra )
     "      <Parameter name='Exponent' type='double' value='1.0'/>              \n"
     "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                        \n"
-    "  <ParameterList name='Material Model'>                                   \n"
+    "  <ParameterList name='Material Models'>                                  \n"
     "    <ParameterList name='Unobtainium'>                                    \n"
     "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
     "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
@@ -540,7 +540,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra_wrongSize )
     "      <Parameter name='Exponent' type='double' value='1.0'/>              \n"
     "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                        \n"
-    "  <ParameterList name='Material Model'>                                   \n"
+    "  <ParameterList name='Material Models'>                                   \n"
     "    <ParameterList name='Unobtainium'>                                    \n"
     "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
     "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
@@ -1207,8 +1207,8 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_accept_parameterlist_input
   Plato::LocalOrdinalVector mBcDofs;
   Plato::ScalarVector mBcValues;
   Plato::EssentialBCs<SimplexPhysics>
-      tEssentialBoundaryConditions(tParamList->sublist("Essential Boundary Conditions",false));
-  tEssentialBoundaryConditions.get(tMeshSets, mBcDofs, mBcValues);
+      tEssentialBoundaryConditions(tParamList->sublist("Essential Boundary Conditions",false), tMeshSets);
+  tEssentialBoundaryConditions.get(mBcDofs, mBcValues);
   Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, mBcDofs, mBcValues);
 
   MPI_Comm myComm;
