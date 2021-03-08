@@ -679,7 +679,10 @@ void MPMD_App::ComputeCriterion::operator()()
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
     auto& tGradZ  = mMyApp->mCriterionGradientsZ[mStrCriterion];
 
-    mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
+    if ( mMyApp->mProblem->criterionIsLinear(mStrCriterion) == false )
+    {
+        mMyApp->mGlobalSolution = mMyApp->mProblem->solution(tControl);
+    }
 
     tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
     tValue -= mTarget;
@@ -737,7 +740,10 @@ void MPMD_App::ComputeCriterionX::operator()()
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
     auto& tGradX  = mMyApp->mCriterionGradientsX[mStrCriterion];
 
-    tState = mMyApp->mProblem->solution(tControl);
+    if ( mMyApp->mProblem->criterionIsLinear(mStrCriterion) == false )
+    {
+        tState = mMyApp->mProblem->solution(tControl);
+    }
     tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
     tValue -= mTarget;
     tGradX = mMyApp->mProblem->criterionGradientX(tControl, tState, mStrCriterion);
@@ -846,7 +852,10 @@ void MPMD_App::ComputeCriterionValue::operator()()
     auto& tState   = mMyApp->mGlobalSolution;
     auto& tValue  = mMyApp->mCriterionValues[mStrCriterion];
 
-    tState = mMyApp->mProblem->solution(tControl);
+    if ( mMyApp->mProblem->criterionIsLinear(mStrCriterion) == false )
+    {
+        tState = mMyApp->mProblem->solution(tControl);
+    }
     tValue = mMyApp->mProblem->criterionValue(tControl, tState, mStrCriterion);
     tValue -= mTarget;
 
