@@ -9,24 +9,37 @@
 
 #include <memory>
 #include <sstream>
-
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_assoc.hpp>
-
 #include <Teuchos_ParameterList.hpp>
 
-#include "elliptic/Problem.hpp"
-#include "EllipticVMSProblem.hpp"
-#include "parabolic/Problem.hpp"
 #include "AnalyzeMacros.hpp"
-
 #include "Mechanics.hpp"
-#include "PlasticityProblem.hpp"
-#include "StabilizedMechanics.hpp"
 #include "Electromechanics.hpp"
 #include "Thermomechanics.hpp"
-#include "StabilizedThermomechanics.hpp"
+
+#ifdef PLATO_PLASTICITY
+#include "PlasticityProblem.hpp"
+#endif
+
+#ifdef PLATO_ELLIPTIC
+#include "elliptic/Problem.hpp"
+#endif
+
+#ifdef PLATO_PARABOLIC
+#include "parabolic/Problem.hpp"
+#endif
+
+#ifdef PLATO_HYPERBOLIC
 #include "hyperbolic/HyperbolicProblem.hpp"
+#endif
+
+#ifdef PLATO_STABILIZED
+#include "EllipticVMSProblem.hpp"
+#include "StabilizedMechanics.hpp"
+#include "StabilizedThermomechanics.hpp"
+#endif
+
 //#include "StructuralDynamicsProblem.hpp"
 
 namespace Plato
@@ -61,13 +74,16 @@ public:
 
         if(tPhysics == "Mechanical")
         {
+#ifdef PLATO_ELLIPTIC
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else 
+#endif
+#ifdef PLATO_HYPERBOLIC
             if(tPDE == "Hyperbolic")
             {
                 return std::make_shared < HyperbolicProblem<::Plato::Hyperbolic::Mechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
@@ -76,13 +92,15 @@ public:
             {
                 THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
+#endif
+#ifdef PLATO_PLASTICITY
         }
         else if(tPhysics == "Plasticity")
         {
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainPlasticity<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
@@ -90,12 +108,12 @@ public:
                 THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
-        else if(tPhysics == "Stabilized Mechanical")
+        else if(tPhysics == "Thermoplasticity") 
         {
             if(tPDE == "Elliptic")
             {
-                auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                auto tOutput = std::make_shared < PlasticityProblem<::Plato::InfinitesimalStrainThermoPlasticity<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
@@ -103,39 +121,66 @@ public:
                 THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
+#endif
+#ifdef PLATO_STABILIZED
+        else if(tPhysics == "Stabilized Mechanical")
+        {
+  #ifdef PLATO_ELLIPTIC
+            if(tPDE == "Elliptic")
+            {
+                auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedMechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
+                tOutput->readEssentialBoundaryConditions(tInputData);
+                return tOutput;
+            }
+            else
+  #endif
+            {
+                THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
+            }
+        }
+#endif
         else if(tPhysics == "Thermal")
         {
+#ifdef PLATO_PARABOLIC
             if(tPDE == "Parabolic")
             {
                 return std::make_shared < Plato::Parabolic::Problem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
-            else if(tPDE == "Elliptic")
+            else
+#endif
+#ifdef PLATO_ELLIPTIC
+            if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermal<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
+#endif
             {
                 THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
-        else if(tPhysics == "StructuralDynamics")
+        else
+        if(tPhysics == "StructuralDynamics")
         {
 //            return std::make_shared<Plato::StructuralDynamicsProblem<Plato::StructuralDynamics<SpatialDim>>>(aMesh, aMeshSets, tInputData);
         }
-        else if(tPhysics == "Electromechanical")
+        else
+        if(tPhysics == "Electromechanical")
         {
             auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Electromechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-            tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+            tOutput->readEssentialBoundaryConditions(tInputData);
             return tOutput;
         }
-        else if(tPhysics == "Stabilized Thermomechanical")
+#ifdef PLATO_STABILIZED
+        else
+        if(tPhysics == "Stabilized Thermomechanical")
         {
             if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < EllipticVMSProblem<::Plato::StabilizedThermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
@@ -143,19 +188,26 @@ public:
                 THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
         }
-        else if(tPhysics == "Thermomechanical")
+#endif
+        else
+        if(tPhysics == "Thermomechanical")
         {
+#ifdef PLATO_PARABOLIC
             if(tPDE == "Parabolic")
             {
                 return std::make_shared < Plato::Parabolic::Problem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
             }
-            else if(tPDE == "Elliptic")
+            else
+#endif
+#ifdef PLATO_ELLIPTIC
+            if(tPDE == "Elliptic")
             {
                 auto tOutput = std::make_shared < Plato::Elliptic::Problem<::Plato::Thermomechanics<SpatialDim>> > (aMesh, aMeshSets, tInputData, aMachine);
-                tOutput->readEssentialBoundaryConditions(aMesh, aMeshSets, tInputData);
+                tOutput->readEssentialBoundaryConditions(tInputData);
                 return tOutput;
             }
             else
+#endif
             {
                 THROWERR(std::string("Requested 'PDE' keyword '") + tPDE + "' is not supported.");
             }
@@ -164,8 +216,7 @@ public:
         {
             THROWERR(std::string("Requested 'Physics' keyword '") + tPhysics + "' is not supported.");
         }
-
-        return (nullptr);
+        return nullptr;
     }
 };
 // class ProblemFactory

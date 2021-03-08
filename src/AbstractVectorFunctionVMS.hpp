@@ -1,10 +1,8 @@
 #ifndef ABSTRACT_VECTOR_FUNCTION_VMS_HPP
 #define ABSTRACT_VECTOR_FUNCTION_VMS_HPP
 
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
-
 #include "PlatoStaticsTypes.hpp"
+#include "SpatialModel.hpp"
 
 namespace Plato
 {
@@ -18,21 +16,22 @@ template<typename EvaluationType>
 class AbstractVectorFunctionVMS
 {
 protected:
-    Omega_h::Mesh& mMesh; /*!< volume mesh database */
-    Plato::DataMap& mDataMap; /*!< PLATO Analyze database */
-    Omega_h::MeshSets& mMeshSets;  /*!< surface mesh database */
+    const Plato::SpatialDomain & mSpatialDomain; /*!< Plato Analyze spatial model */
+          Plato::DataMap       & mDataMap;       /*!< Plato Analyze database */
 
 public:
     /******************************************************************************//**
      * \brief Constructor
-     * \param [in] aMesh volume mesh database
-     * \param [in] aMeshSets surface mesh database
-     * \param [in] aDataMap PLATO Analyze database
+     * \param [in] aSpatialDomain Plato Analyze spatial model
+     * \param [in] aDataMap Plato Analyze database
     **********************************************************************************/
-    explicit AbstractVectorFunctionVMS(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap) :
-            mMesh(aMesh),
-            mDataMap(aDataMap),
-            mMeshSets(aMeshSets)
+    explicit
+    AbstractVectorFunctionVMS(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap& aDataMap
+    ) :
+        mSpatialDomain (aSpatialDomain),
+        mDataMap       (aDataMap)
     {
     }
 
@@ -47,18 +46,18 @@ public:
     * \brief Return reference to Omega_h mesh database
     * \return volume mesh database
     ********************************************************************************/
-    decltype(mMesh) getMesh() const
+    decltype(mSpatialDomain.Mesh) getMesh() const
     {
-        return (mMesh);
+        return (mSpatialDomain.Mesh);
     }
 
     /****************************************************************************//**
     * \brief Return reference to Omega_h mesh sets
     * \return surface mesh database
     ********************************************************************************/
-    decltype(mMeshSets) getMeshSets() const
+    decltype(mSpatialDomain.MeshSets) getMeshSets() const
     {
-        return (mMeshSets);
+        return (mSpatialDomain.MeshSets);
     }
 
     /******************************************************************************//**
@@ -73,12 +72,34 @@ public:
      * N = number of nodes per cell, D = spatial dimensions
     **********************************************************************************/
     virtual void
-    evaluate(const Plato::ScalarMultiVectorT<typename EvaluationType::StateScalarType> & aState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::NodeStateScalarType> & aNodeState,
-             const Plato::ScalarMultiVectorT<typename EvaluationType::ControlScalarType> & aControl,
-             const Plato::ScalarArray3DT<typename EvaluationType::ConfigScalarType> & aConfig,
-             Plato::ScalarMultiVectorT<typename EvaluationType::ResultScalarType> & aResult,
-             Plato::Scalar aTimeStep = 0.0) const = 0;
+    evaluate(
+        const Plato::ScalarMultiVectorT <typename EvaluationType::StateScalarType>     & aState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::NodeStateScalarType> & aNodeState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType>   & aControl,
+        const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>    & aConfig,
+              Plato::ScalarMultiVectorT <typename EvaluationType::ResultScalarType>    & aResult,
+              Plato::Scalar aTimeStep = 0.0) const = 0;
+
+    /******************************************************************************//**
+     * \brief Evaluate vector function
+     * \param [in] aState 2D array with state variables (C,DOF)
+     * \param [in] aNodeState 2D array with state variables (C,D*N)
+     * \param [in] aControl 2D array with control variables (C,N)
+     * \param [in] aConfig 3D array with control variables (C,N,D)
+     * \param [in] aResult 1D array with control variables (C,DOF)
+     * \param [in] aTimeStep current time step
+     * Nomenclature: C = number of cells, DOF = number of degrees of freedom per cell
+     * N = number of nodes per cell, D = spatial dimensions
+    **********************************************************************************/
+    virtual void
+    evaluate_boundary(
+        const Plato::SpatialModel                                                      & aModel,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::StateScalarType>     & aState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::NodeStateScalarType> & aNodeState,
+        const Plato::ScalarMultiVectorT <typename EvaluationType::ControlScalarType>   & aControl,
+        const Plato::ScalarArray3DT     <typename EvaluationType::ConfigScalarType>    & aConfig,
+              Plato::ScalarMultiVectorT <typename EvaluationType::ResultScalarType>    & aResult,
+              Plato::Scalar aTimeStep = 0.0) const {}
 
     /******************************************************************************//**
      * \brief Update physics-based data within a frequency of optimization iterations
@@ -87,9 +108,10 @@ public:
      * \param [in] aTimeStep    pseudo time step
     **********************************************************************************/
     virtual void
-    updateProblem(const Plato::ScalarMultiVector & aState,
-                  const Plato::ScalarVector & aControl,
-                  Plato::Scalar aTimeStep = 0.0)
+    updateProblem(
+        const Plato::ScalarMultiVector & aState,
+        const Plato::ScalarVector      & aControl,
+              Plato::Scalar              aTimeStep = 0.0)
     { return; }
 };
 // class AbstractVectorFunctionVMS

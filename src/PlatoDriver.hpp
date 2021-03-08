@@ -83,6 +83,7 @@ void driver(Omega_h::Library*        aLibOSH,
       Omega_h::update_assoc(&tAssoc, tAssocParamList);
     } 
     else {
+      tAssoc[Omega_h::ELEM_SET] = tMesh.class_sets;
       tAssoc[Omega_h::NODE_SET] = tMesh.class_sets;
       tAssoc[Omega_h::SIDE_SET] = tMesh.class_sets;
     }

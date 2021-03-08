@@ -4,9 +4,8 @@
 #include <cassert>
 #include <vector>
 
-#include <Omega_h_mesh.hpp>
-
 #include "WorksetBase.hpp"
+#include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include "elliptic/ScalarFunctionBase.hpp"
 #include "elliptic/ScalarFunctionBaseFactory.hpp"
@@ -43,7 +42,7 @@ private:
     Omega_h::Vector<mNumDofsPerNode> mNormal;  /*!< Direction of solution criterion */
     bool mMagnitude;  /*!< Whether or not to compute magnitude of solution at each node in the domain */
 
-    const Omega_h::MeshSets & mMeshSets;
+    const Plato::SpatialModel & mSpatialModel;
 
     /******************************************************************************//**
      * @brief Initialization of Solution Function
@@ -54,7 +53,7 @@ private:
         Teuchos::ParameterList & aProblemParams
     )
     {
-        auto tFunctionParams = aProblemParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
         mDomainName = tFunctionParams.get<std::string>("Domain");
 
@@ -114,7 +113,7 @@ private:
         }
 
         // parse constrained nodesets
-        auto& tNodeSets = mMeshSets[Omega_h::NODE_SET];
+        auto& tNodeSets = mSpatialModel.MeshSets[Omega_h::NODE_SET];
         auto tNodeSetsIter = tNodeSets.find(mDomainName);
         if(tNodeSetsIter == tNodeSets.end())
         {
@@ -128,24 +127,23 @@ public:
     /******************************************************************************//**
      * @brief Primary solution function constructor
      * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
+     * @param [in] aSpatialModel Plato Analyze spatial model
+     * @param [in] aDataMap Plato Analyze data map
+     * @param [in] aProblemParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
     SolutionFunction(
-        Omega_h::Mesh          & aMesh,
-        Omega_h::MeshSets      & aMeshSets,
-        Plato::DataMap         & aDataMap,
-        Teuchos::ParameterList & aInputParams,
-        std::string            & aName
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              std::string            & aName
     ) :
-        Plato::WorksetBase<PhysicsT>(aMesh),
-        mMeshSets(aMeshSets),
-        mFunctionName(aName),
+        Plato::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mFunctionName (aName),
         mNormal{0.0}
     {
-        initialize(aInputParams);
+        initialize(aProblemParams);
     }
 
     /******************************************************************************//**
@@ -165,7 +163,7 @@ public:
         auto tLastIndex = aSolution.State.extent(0) - 1;
         auto tState = Kokkos::subview(aSolution.State, tLastIndex, Kokkos::ALL());
 
-        auto& tNodeSets = mMeshSets[Omega_h::NODE_SET];
+        auto& tNodeSets = mSpatialModel.MeshSets[Omega_h::NODE_SET];
         auto  tNodeIter = tNodeSets.find(mDomainName);
         auto  tNodeIds  = tNodeIter->second;
         auto  tNumNodes = tNodeIds.size();
@@ -252,7 +250,7 @@ public:
         
         auto tState = Kokkos::subview(aSolution.State, aStepIndex, Kokkos::ALL());
 
-        auto& tNodeSets = mMeshSets[Omega_h::NODE_SET];
+        auto& tNodeSets = mSpatialModel.MeshSets[Omega_h::NODE_SET];
         auto  tNodeIter = tNodeSets.find(mDomainName);
         auto  tNodeIds  = tNodeIter->second;
         auto  tNumNodes = tNodeIds.size();

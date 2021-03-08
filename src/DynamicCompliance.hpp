@@ -51,6 +51,11 @@ private:
     using ConfigScalarType = typename EvaluationType::ConfigScalarType;
     using ResultScalarType = typename EvaluationType::ResultScalarType;
 
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
+
+    using FunctionBaseType = Plato::Elliptic::AbstractScalarFunction<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>;
+
 private:
     Plato::Scalar mDensity;
 
@@ -64,36 +69,40 @@ private:
 
 public:
     /**************************************************************************/
-    DynamicCompliance(Omega_h::Mesh& aMesh,
-                      Omega_h::MeshSets& aMeshSets,
-                      Plato::DataMap& aDataMap, 
-                      Teuchos::ParameterList& aProblemParams,
-                      Teuchos::ParameterList& aPenaltyParams) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Dynamic Energy"),
-            mDensity(aProblemParams.get<Plato::Scalar>("Material Density", 1.0)),
-            mProjectionFunction(),
-            mPenaltyFunction(aPenaltyParams),
-            mApplyPenalty(mPenaltyFunction),
-            mApplyProjection(mProjectionFunction),
-            mCellStiffness(),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    DynamicCompliance(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+   ) :
+        FunctionBaseType(aSpatialDomain, aDataMap, "Dynamic Energy"),
+        mDensity(aProblemParams.get<Plato::Scalar>("Material Density", 1.0)),
+        mProjectionFunction(),
+        mPenaltyFunction(aPenaltyParams),
+        mApplyPenalty(mPenaltyFunction),
+        mApplyProjection(mProjectionFunction),
+        mCellStiffness(),
+        mCubatureRule(std::make_shared<CubatureType>())
     /**************************************************************************/
     {
         // Create material model and get stiffness
         Plato::ElasticModelFactory<EvaluationType::SpatialDim> tElasticModelFactory(aProblemParams);
-        auto tMaterialModel = tElasticModelFactory.create();
+        auto tMaterialModel = tElasticModelFactory.create(mSpatialDomain.getMaterialName());
         mCellStiffness = tMaterialModel->getStiffnessMatrix();
     }
     /**************************************************************************/
-    DynamicCompliance(Omega_h::Mesh& aMesh, Omega_h::MeshSets& aMeshSets, Plato::DataMap& aDataMap) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Dynamic Energy"),
+    DynamicCompliance(
+        const Plato::SpatialDomain & aSpatialDomain,
+              Plato::DataMap       & aDataMap
+    ) :
+            FunctionBaseType(aSpatialDomain, aDataMap, "Dynamic Energy"),
             mDensity(1.0),
             mProjectionFunction(),
             mPenaltyFunction(3.0, 0.0),
             mApplyPenalty(mPenaltyFunction),
             mApplyProjection(mProjectionFunction),
             mCellStiffness(),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+            mCubatureRule(std::make_shared<CubatureType>())
     /**************************************************************************/
     {
         // Create material model and get stiffness
@@ -115,11 +124,13 @@ public:
      * states, z denotes controls, K denotes the stiffness matrix and M denotes
      * the mass matrix.
      **************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0) const
     /**************************************************************************/
     {
         using StrainScalarType =

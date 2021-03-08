@@ -41,7 +41,7 @@ class EffectiveEnergy :
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell;
     using Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerCell;
 
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mFunctionName;
 
@@ -62,22 +62,23 @@ class EffectiveEnergy :
 
   public:
     /**************************************************************************/
-    EffectiveEnergy(Omega_h::Mesh& aMesh,
-                    Omega_h::MeshSets& aMeshSets,
-                    Plato::DataMap& aDataMap,
-                    Teuchos::ParameterList& aProblemParams,
-                    Teuchos::ParameterList& aPenaltyParams,
-                    std::string& aFunctionName) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyWeighting(mIndicatorFunction)
+    EffectiveEnergy(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams,
+              std::string            & aFunctionName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFunctionName),
+        mIndicatorFunction (aPenaltyParams),
+        mApplyWeighting    (mIndicatorFunction)
     /**************************************************************************/
     {
       Plato::ElasticModelFactory<mSpaceDim> mmfactory(aProblemParams);
-      auto materialModel = mmfactory.create();
+      auto materialModel = mmfactory.create(aSpatialDomain.getMaterialName());
       mCellStiffness = materialModel->getStiffnessMatrix();
 
-      Teuchos::ParameterList& tParams = aProblemParams.sublist(aFunctionName);
+      Teuchos::ParameterList& tParams = aProblemParams.sublist("Criteria").sublist(aFunctionName);
       auto tAssumedStrain = tParams.get<Teuchos::Array<Plato::Scalar>>("Assumed Strain");
       assert(tAssumedStrain.size() == mNumVoigtTerms);
       for( Plato::OrdinalType iVoigt=0; iVoigt<mNumVoigtTerms; iVoigt++)
@@ -107,14 +108,17 @@ class EffectiveEnergy :
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void 
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto numCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       Plato::Strain<mSpaceDim> voigtStrain;
       Plato::ScalarProduct<mNumVoigtTerms> scalarProduct;
@@ -125,21 +129,21 @@ class EffectiveEnergy :
         typename Plato::fad_type_t<Plato::SimplexMechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
 
       Plato::ScalarVectorT<ConfigScalarType>
-        cellVolume("cell weight",numCells);
+        cellVolume("cell weight",tNumCells);
 
       Kokkos::View<StrainScalarType**, Plato::Layout, Plato::MemSpace>
-        strain("strain",numCells,mNumVoigtTerms);
+        strain("strain", tNumCells, mNumVoigtTerms);
 
       Kokkos::View<ConfigScalarType***, Plato::Layout, Plato::MemSpace>
-        gradient("gradient",numCells,mNumNodesPerCell,mSpaceDim);
+        gradient("gradient", tNumCells, mNumNodesPerCell, mSpaceDim);
 
       Kokkos::View<ResultScalarType**, Plato::Layout, Plato::MemSpace>
-        stress("stress",numCells,mNumVoigtTerms);
+        stress("stress", tNumCells, mNumVoigtTerms);
 
       auto quadratureWeight = mQuadratureWeight;
       auto applyWeighting   = mApplyWeighting;
       auto assumedStrain    = mAssumedStrain;
-      Kokkos::parallel_for(Kokkos::RangePolicy<>(0,numCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+      Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
       {
         computeGradient(aCellOrdinal, gradient, aConfig, cellVolume);
         cellVolume(aCellOrdinal) *= quadratureWeight;
@@ -162,8 +166,8 @@ class EffectiveEnergy :
 
       },"energy gradient");
 
-      if( std::count(mPlottable.begin(),mPlottable.end(),"effective stress") ) toMap(mDataMap, stress, "effective stress");
-      if( std::count(mPlottable.begin(),mPlottable.end(),"cell volume") ) toMap(mDataMap, cellVolume, "cell volume");
+     if( std::count(mPlottable.begin(),mPlottable.end(),"effective stress") ) toMap(mDataMap, stress, "effective stress", mSpatialDomain);
+     if( std::count(mPlottable.begin(),mPlottable.end(),"cell volume") ) toMap(mDataMap, cellVolume, "cell volume", mSpatialDomain);
 
     }
 };

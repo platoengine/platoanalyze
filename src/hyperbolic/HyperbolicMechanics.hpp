@@ -4,6 +4,7 @@
 #include "Simp.hpp"
 #include "Ramp.hpp"
 #include "Heaviside.hpp"
+#include "SpatialModel.hpp"
 #include "SimplexMechanics.hpp"
 #include "hyperbolic/HyperbolicAbstractScalarFunction.hpp"
 #include "hyperbolic/ElastomechanicsResidual.hpp"
@@ -19,31 +20,43 @@ namespace Plato
       /******************************************************************************/
       template <typename EvaluationType>
       std::shared_ptr<::Plato::Hyperbolic::AbstractVectorFunction<EvaluationType>>
-      createVectorFunctionHyperbolic(Omega_h::Mesh& aMesh,
-                              Omega_h::MeshSets& aMeshSets,
-                              Plato::DataMap& aDataMap,
-                              Teuchos::ParameterList& aParamList,
-                              std::string strVectorFunctionType )
-      /******************************************************************************/
+      createVectorFunctionHyperbolic(
+          const Plato::SpatialDomain   & aSpatialDomain,
+                Plato::DataMap         & aDataMap,
+                Teuchos::ParameterList & aProblemParams,
+                std::string              strVectorFunctionType
+      )
       {
+        if( !aProblemParams.isSublist(strVectorFunctionType) )
+        {
+            std::cout << " Warning: '" << strVectorFunctionType << "' ParameterList not found" << std::endl;
+            std::cout << " Warning: Using defaults. " << std::endl;
+        }
+        auto tFunctionParams = aProblemParams.sublist(strVectorFunctionType);
         if( strVectorFunctionType == "Hyperbolic" )
         {
-            auto penaltyParams = aParamList.sublist(strVectorFunctionType).sublist("Penalty Function");
-            std::string penaltyType = penaltyParams.get<std::string>("Type");
-            if( penaltyType == "SIMP" )
+            if( !tFunctionParams.isSublist("Penalty Function") )
             {
+                std::cout << " Warning: 'Penalty Function' ParameterList not found" << std::endl;
+                std::cout << " Warning: Using defaults. " << std::endl;
+            }
+            auto tPenaltyParams = tFunctionParams.sublist("Penalty Function");
+            std::string tPenaltyType = tPenaltyParams.get<std::string>("Type");
+            if( tPenaltyType == "SIMP" )
+            {
+                std::cout << tFunctionParams << std::endl;
                 return std::make_shared<TransientMechanicsResidual<EvaluationType, Plato::MSIMP>>
-                         (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams);
+                         (aSpatialDomain, aDataMap, aProblemParams, tPenaltyParams);
             } else
-            if( penaltyType == "RAMP" )
+            if( tPenaltyType == "RAMP" )
             {
                 return std::make_shared<TransientMechanicsResidual<EvaluationType, Plato::RAMP>>
-                         (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams);
+                         (aSpatialDomain, aDataMap, aProblemParams, tPenaltyParams);
             } else
-            if( penaltyType == "Heaviside" )
+            if( tPenaltyType == "Heaviside" )
             {
                 return std::make_shared<TransientMechanicsResidual<EvaluationType, Plato::Heaviside>>
-                         (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams);
+                         (aSpatialDomain, aDataMap, aProblemParams, tPenaltyParams);
             } else {
                 THROWERR("Unknown 'Type' specified in 'Penalty Function' ParameterList");
             }
@@ -57,30 +70,30 @@ namespace Plato
       template <typename EvaluationType>
       std::shared_ptr<::Plato::Hyperbolic::AbstractScalarFunction<EvaluationType>>
       createScalarFunction(
-        Omega_h::Mesh&          aMesh,
-        Omega_h::MeshSets&      aMeshSets,
-        Plato::DataMap&         aDataMap,
-        Teuchos::ParameterList& aParamList,
-        std::string             strScalarFunctionType,
-        std::string             strScalarFunctionName
+          const Plato::SpatialDomain   & aSpatialDomain,
+                Plato::DataMap&          aDataMap,
+                Teuchos::ParameterList & aProblemParams,
+                std::string              strScalarFunctionType,
+                std::string              strScalarFunctionName
       )
       /******************************************************************************/
       {
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(strScalarFunctionName);
+        std::string tPenaltyType = tFunctionParams.sublist("Penalty Function").get<std::string>("Type");
+
         if( strScalarFunctionType == "Internal Elastic Energy" )
         {
-          auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
-          std::string penaltyType = penaltyParams.get<std::string>("Type");
-          if( penaltyType == "SIMP" ){
+          if( tPenaltyType == "SIMP" ){
             return std::make_shared<Plato::Hyperbolic::InternalElasticEnergy<EvaluationType, Plato::MSIMP>>
-                     (aMesh, aMeshSets, aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+                     (aSpatialDomain, aDataMap, aProblemParams, tFunctionParams, strScalarFunctionName);
           } else
-          if( penaltyType == "RAMP" ){
+          if( tPenaltyType == "RAMP" ){
             return std::make_shared<Plato::Hyperbolic::InternalElasticEnergy<EvaluationType, Plato::RAMP>>
-                     (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+                     (aSpatialDomain, aDataMap, aProblemParams, tFunctionParams, strScalarFunctionName);
           } else
-          if( penaltyType == "Heaviside" ){
+          if( tPenaltyType == "Heaviside" ){
             return std::make_shared<Plato::Hyperbolic::InternalElasticEnergy<EvaluationType, Plato::Heaviside>>
-                     (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+                     (aSpatialDomain, aDataMap, aProblemParams, tFunctionParams, strScalarFunctionName);
           } else {
             throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
           }
@@ -88,26 +101,24 @@ namespace Plato
         else
         if( strScalarFunctionType == "Stress P-Norm" )
         {
-          auto penaltyParams = aParamList.sublist(strScalarFunctionName).sublist("Penalty Function");
-          std::string penaltyType = penaltyParams.get<std::string>("Type");
-          if( penaltyType == "SIMP" ){
+          if( tPenaltyType == "SIMP" ){
             return std::make_shared<Plato::Hyperbolic::StressPNorm<EvaluationType, Plato::MSIMP>>
-                     (aMesh, aMeshSets, aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+                     (aSpatialDomain, aDataMap, aProblemParams, tFunctionParams, strScalarFunctionName);
           } else
-          if( penaltyType == "RAMP" ){
+          if( tPenaltyType == "RAMP" ){
             return std::make_shared<Plato::Hyperbolic::StressPNorm<EvaluationType, Plato::RAMP>>
-                     (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+                     (aSpatialDomain, aDataMap, aProblemParams, tFunctionParams, strScalarFunctionName);
           } else
-          if( penaltyType == "Heaviside" ){
+          if( tPenaltyType == "Heaviside" ){
             return std::make_shared<Plato::Hyperbolic::StressPNorm<EvaluationType, Plato::Heaviside>>
-                     (aMesh,aMeshSets,aDataMap,aParamList,penaltyParams, strScalarFunctionName);
+                     (aSpatialDomain, aDataMap, aProblemParams, tFunctionParams, strScalarFunctionName);
           } else {
             throw std::runtime_error("Unknown 'Type' specified in 'Penalty Function' ParameterList");
           }
         }
         else
         {
-          throw std::runtime_error("Unknown 'Objective' specified in 'Plato Problem' ParameterList");
+          throw std::runtime_error("Unknown 'Criterion' specified in 'Plato Problem' ParameterList");
         }
       }
     };

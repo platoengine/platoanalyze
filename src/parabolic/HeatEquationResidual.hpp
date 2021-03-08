@@ -46,9 +46,8 @@ class HeatEquationResidual :
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mSpatialDomain;
     using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mDataMap;
-    using Plato::Parabolic::AbstractVectorFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
     using StateDotScalarType  = typename EvaluationType::StateDotScalarType;
@@ -70,27 +69,27 @@ class HeatEquationResidual :
   public:
     /**************************************************************************/
     HeatEquationResidual(
-      Omega_h::Mesh& aMesh,
-      Omega_h::MeshSets& aMeshSets,
-      Plato::DataMap& aDataMap,
-      Teuchos::ParameterList& problemParams,
-      Teuchos::ParameterList& penaltyParams) :
-     Plato::Parabolic::AbstractVectorFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, {"Temperature"}),
-     mIndicatorFunction(penaltyParams),
-     mApplyFluxWeighting(mIndicatorFunction),
-     mApplyMassWeighting(mIndicatorFunction),
-     mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>()),
-     mBoundaryLoads(nullptr)
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & problemParams,
+              Teuchos::ParameterList & penaltyParams
+    ) :
+     Plato::Parabolic::AbstractVectorFunction<EvaluationType>(aSpatialDomain, aDataMap, {"Temperature"}),
+     mIndicatorFunction  (penaltyParams),
+     mApplyFluxWeighting (mIndicatorFunction),
+     mApplyMassWeighting (mIndicatorFunction),
+     mCubatureRule       (std::make_shared<Plato::LinearTetCubRuleDegreeOne<SpaceDim>>()),
+     mBoundaryLoads      (nullptr)
     /**************************************************************************/
     {
         {
             Plato::ThermalConductionModelFactory<SpaceDim> mmfactory(problemParams);
-            mThermalConductivityMaterialModel = mmfactory.create();
+            mThermalConductivityMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
         }
 
         {
             Plato::ThermalMassModelFactory<SpaceDim> mmfactory(problemParams);
-            mThermalMassMaterialModel = mmfactory.create();
+            mThermalMassMaterialModel = mmfactory.create(aSpatialDomain.getMaterialName());
         }
 
       // parse boundary Conditions
@@ -99,21 +98,22 @@ class HeatEquationResidual :
       {
           mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>>(problemParams.sublist("Natural Boundary Conditions"));
       }
-    
     }
 
 
     /**************************************************************************/
     void
-    evaluate( const Plato::ScalarMultiVectorT< StateScalarType    > & aState,
-              const Plato::ScalarMultiVectorT< StateDotScalarType > & aStateDot,
-              const Plato::ScalarMultiVectorT< ControlScalarType  > & aControl,
-              const Plato::ScalarArray3DT    < ConfigScalarType   > & aConfig,
-                    Plato::ScalarMultiVectorT< ResultScalarType   > & aResult,
-                    Plato::Scalar aTimeStep = 0.0) const
+    evaluate(
+        const Plato::ScalarMultiVectorT< StateScalarType    > & aState,
+        const Plato::ScalarMultiVectorT< StateDotScalarType > & aStateDot,
+        const Plato::ScalarMultiVectorT< ControlScalarType  > & aControl,
+        const Plato::ScalarArray3DT    < ConfigScalarType   > & aConfig,
+              Plato::ScalarMultiVectorT< ResultScalarType   > & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermal<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;
@@ -167,7 +167,6 @@ class HeatEquationResidual :
         //
         tFluxDivergence(tCellOrdinal, aResult, tFlux, tGradient, tCellVolume, -1.0);
 
-
         // add capacitance terms
         
         // compute temperature at gausspoints
@@ -189,10 +188,24 @@ class HeatEquationResidual :
 
       },"flux divergence");
 
-      if( mBoundaryLoads != nullptr )
-      {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aState, aControl, aConfig, aResult);
-      }
+    }
+    /**************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                             & aSpatialModel,
+        const Plato::ScalarMultiVectorT< StateScalarType    > & aState,
+        const Plato::ScalarMultiVectorT< StateDotScalarType > & aStateDot,
+        const Plato::ScalarMultiVectorT< ControlScalarType  > & aControl,
+        const Plato::ScalarArray3DT    < ConfigScalarType   > & aConfig,
+              Plato::ScalarMultiVectorT< ResultScalarType   > & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
+    /**************************************************************************/
+    {
+        if( mBoundaryLoads != nullptr )
+        {
+            mBoundaryLoads->get(aSpatialModel, aState, aControl, aConfig, aResult);
+        }
     }
 };
 // class HeatEquationResidual

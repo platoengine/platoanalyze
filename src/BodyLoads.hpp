@@ -8,6 +8,7 @@
 
 #include "alg/Basis.hpp"
 #include "alg/Cubature.hpp"
+#include "SpatialModel.hpp"
 #include "OmegaHUtilities.hpp"
 #include "ImplicitFunctors.hpp"
 #include "Plato_TopOptFunctors.hpp"
@@ -58,37 +59,42 @@ void getFunctionValues(Kokkos::View<Plato::Scalar***, Plato::Layout, Plato::MemS
 
 /******************************************************************************/
 template<Plato::OrdinalType SpaceDim>
-void mapPoints(Omega_h::Mesh& mesh,
-               Kokkos::View<Plato::Scalar**, Plato::Layout, Plato::MemSpace> refPoints,
-               Kokkos::View<Plato::Scalar***, Plato::Layout, Plato::MemSpace> mappedPoints)
+void
+mapPoints(
+    const Plato::SpatialDomain     & aSpatialDomain,
+          Plato::ScalarMultiVector   aRefPoints,
+          Plato::ScalarArray3D       aMappedPoints
+)
 /******************************************************************************/
 {
-    Plato::OrdinalType numCells = mesh.nelems();
-    Plato::OrdinalType numPoints = mappedPoints.extent(1);
+    Plato::OrdinalType tNumCells = aSpatialDomain.numCells();
+    Plato::OrdinalType tNumPoints = aMappedPoints.extent(1);
 
-    Kokkos::deep_copy(mappedPoints, Plato::Scalar(0.0)); // initialize to 0
+    Kokkos::deep_copy(aMappedPoints, Plato::Scalar(0.0)); // initialize to 0
 
-    Plato::NodeCoordinate<SpaceDim> nodeCoordinate(&mesh);
+    Plato::NodeCoordinate<SpaceDim> tNodeCoordinate(&(aSpatialDomain.Mesh));
 
-    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, numCells), LAMBDA_EXPRESSION(Plato::OrdinalType cellOrdinal)
+    auto tCellOrdinals = aSpatialDomain.cellOrdinals();
+    Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(Plato::OrdinalType aCellOrdinal)
     {
-        for (Plato::OrdinalType ptOrdinal=0; ptOrdinal<numPoints; ptOrdinal++)
+        auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+        for (Plato::OrdinalType ptOrdinal=0; ptOrdinal<tNumPoints; ptOrdinal++)
         {
-            Plato::OrdinalType nodeOrdinal;
-            Scalar finalNodeValue = 1.0;
-            for (nodeOrdinal=0; nodeOrdinal<SpaceDim; nodeOrdinal++)
+            Plato::OrdinalType tNodeOrdinal;
+            Scalar tFinalNodeValue = 1.0;
+            for (tNodeOrdinal=0; tNodeOrdinal<SpaceDim; tNodeOrdinal++)
             {
-                Scalar nodeValue = refPoints(ptOrdinal,nodeOrdinal);
-                finalNodeValue -= nodeValue;
+                Scalar tNodeValue = aRefPoints(ptOrdinal,tNodeOrdinal);
+                tFinalNodeValue -= tNodeValue;
                 for (Plato::OrdinalType d=0; d<SpaceDim; d++)
                 {
-                    mappedPoints(cellOrdinal,ptOrdinal,d) += nodeValue * nodeCoordinate(cellOrdinal,nodeOrdinal,d);
+                    aMappedPoints(aCellOrdinal, ptOrdinal, d) += tNodeValue * tNodeCoordinate(tCellOrdinal, tNodeOrdinal, d);
                 }
             }
-            nodeOrdinal = SpaceDim;
+            tNodeOrdinal = SpaceDim;
             for (Plato::OrdinalType d=0; d<SpaceDim; d++)
             {
-                mappedPoints(cellOrdinal,ptOrdinal,d) += finalNodeValue * nodeCoordinate(cellOrdinal,nodeOrdinal,d);
+                aMappedPoints(aCellOrdinal, ptOrdinal, d) += tFinalNodeValue * tNodeCoordinate(tCellOrdinal, tNodeOrdinal, d);
             }
         }
     });
@@ -98,14 +104,14 @@ void mapPoints(Omega_h::Mesh& mesh,
 /*!
  \brief Class for essential boundary conditions.
  */
-template<typename EvaluationType>
+template<typename EvaluationType, typename PhysicsType>
 class BodyLoad
 /******************************************************************************/
 {
 private:
     static constexpr Plato::OrdinalType mSpaceDim = EvaluationType::SpatialDim; /*!< spatial dimensions */
-    static constexpr Plato::OrdinalType mNumDofsPerNode = Plato::SimplexMechanics<mSpaceDim>::mNumDofsPerNode; /*!< number of degrees of freedom per node */
-    static constexpr Plato::OrdinalType mNumNodesPerCell = Plato::SimplexMechanics<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell/element */
+    static constexpr Plato::OrdinalType mNumDofsPerNode = PhysicsType::mNumDofsPerNode; /*!< number of degrees of freedom per node */
+    static constexpr Plato::OrdinalType mNumNodesPerCell = PhysicsType::mNumNodesPerCell; /*!< number of nodes per cell/element */
 
 protected:
     const std::string mName;
@@ -115,9 +121,9 @@ protected:
 public:
 
     /**************************************************************************/
-    BodyLoad<EvaluationType>(const std::string &aName, Teuchos::ParameterList &aParam) :
+    BodyLoad<EvaluationType, PhysicsType>(const std::string &aName, Teuchos::ParameterList &aParam) :
             mName(aName),
-            mDof(aParam.get<Plato::OrdinalType>("Index")),
+            mDof(aParam.get<Plato::OrdinalType>("Index", 0)),
             mFuncString(aParam.get<std::string>("Function"))
     {
     }
@@ -129,13 +135,15 @@ public:
 
     /**************************************************************************/
     template<typename StateScalarType, typename ControlScalarType, typename ResultScalarType>
-    void get(Omega_h::Mesh& aMesh,
-             const Plato::ScalarMultiVectorT<StateScalarType>,
-             const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-             const Plato::ScalarMultiVectorT<ResultScalarType> & aResult,
-             Plato::Scalar aScale) const
+    void
+    get(
+        const Plato::SpatialDomain                         & aSpatialDomain,
+        const Plato::ScalarMultiVectorT<StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
+        const Plato::ScalarMultiVectorT<ResultScalarType>  & aResult,
+              Plato::Scalar                                  aScale
+    ) const
     {
-
         // get refCellQuadraturePoints, quadratureWeights
         //
         Plato::OrdinalType tQuadratureDegree = 1;
@@ -158,11 +166,11 @@ public:
 
         // map points to physical space
         //
-        Plato::OrdinalType tNumCells = aMesh.nelems();
+        Plato::OrdinalType tNumCells = aSpatialDomain.numCells();
         Kokkos::View<Plato::Scalar***, Plato::Layout, Plato::MemSpace>
             tQuadraturePoints("quadrature points", tNumCells, tNumPoints, mSpaceDim);
 
-        Plato::mapPoints<mSpaceDim>(aMesh, tRefCellQuadraturePoints, tQuadraturePoints);
+        Plato::mapPoints<mSpaceDim>(aSpatialDomain, tRefCellQuadraturePoints, tQuadraturePoints);
 
         // get integrand values at quadrature points
         //
@@ -172,11 +180,13 @@ public:
         // integrate and assemble
         //
         auto tDof = mDof;
-        Plato::JacobianDet<mSpaceDim> tJacobianDet(&aMesh);
-        Plato::VectorEntryOrdinal<mSpaceDim, mSpaceDim> tVectorEntryOrdinal(&aMesh);
+        auto tCellOrdinals = aSpatialDomain.cellOrdinals();
+        Plato::JacobianDet<mSpaceDim> tJacobianDet(&(aSpatialDomain.Mesh));
+        Plato::VectorEntryOrdinal<mSpaceDim, mSpaceDim> tVectorEntryOrdinal(&(aSpatialDomain.Mesh));
         Kokkos::parallel_for(Kokkos::RangePolicy<Plato::OrdinalType>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType &aCellOrdinal)
         {
-            auto tDetElemJacobian = fabs(tJacobianDet(aCellOrdinal));
+            auto tCellOrdinal = tCellOrdinals[aCellOrdinal];
+            auto tDetElemJacobian = fabs(tJacobianDet(tCellOrdinal));
             ControlScalarType tDensity = Plato::cell_density<mNumNodesPerCell>(aCellOrdinal, aControl);
 
             auto tEntryOffset = aCellOrdinal * tNumPoints;
@@ -201,12 +211,12 @@ public:
 /*!
  \brief Owner class that contains a vector of BodyLoad objects.
  */
-template<typename EvaluationType>
+template<typename EvaluationType, typename PhysicsType>
 class BodyLoads
 /******************************************************************************/
 {
 private:
-    std::vector<std::shared_ptr<BodyLoad<EvaluationType>>> mBodyLoads;
+    std::vector<std::shared_ptr<BodyLoad<EvaluationType, PhysicsType>>> mBodyLoads;
 
 public:
 
@@ -229,8 +239,8 @@ public:
             }
 
             Teuchos::ParameterList& tSublist = aParams.sublist(tName);
-            std::shared_ptr<Plato::BodyLoad<EvaluationType>> tBodyLoad;
-            auto tNewBodyLoad = new Plato::BodyLoad<EvaluationType>(tName, tSublist);
+            std::shared_ptr<Plato::BodyLoad<EvaluationType, PhysicsType>> tBodyLoad;
+            auto tNewBodyLoad = new Plato::BodyLoad<EvaluationType, PhysicsType>(tName, tSublist);
             tBodyLoad.reset(tNewBodyLoad);
             mBodyLoads.push_back(tBodyLoad);
         }
@@ -241,15 +251,18 @@ public:
      \brief Add the body load to the result workset
      */
     template<typename StateScalarType, typename ControlScalarType, typename ResultScalarType>
-    void get(Omega_h::Mesh& aMesh,
-             Plato::ScalarMultiVectorT<StateScalarType> aState,
-             Plato::ScalarMultiVectorT<ControlScalarType> aControl,
-             Plato::ScalarMultiVectorT<ResultScalarType> aResult,
-             Plato::Scalar aScale = 1.0) const
+    void
+    get(
+        const Plato::SpatialDomain                         & aSpatialDomain,
+              Plato::ScalarMultiVectorT<StateScalarType>     aState,
+              Plato::ScalarMultiVectorT<ControlScalarType>   aControl,
+              Plato::ScalarMultiVectorT<ResultScalarType>    aResult,
+              Plato::Scalar                                  aScale = 1.0
+    ) const
     {
-        for(const std::shared_ptr<Plato::BodyLoad<EvaluationType>> &tBodyLoad : mBodyLoads)
+        for(const auto & tBodyLoad : mBodyLoads)
         {
-            tBodyLoad->get(aMesh, aState, aControl, aResult, aScale);
+            tBodyLoad->get(aSpatialDomain, aState, aControl, aResult, aScale);
         }
     }
 };

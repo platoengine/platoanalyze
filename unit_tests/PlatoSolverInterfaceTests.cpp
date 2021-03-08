@@ -76,12 +76,12 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionEpetra )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   // create mesh based density
@@ -96,31 +96,44 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionEpetra )
 
   // create material model
   //
-  Teuchos::RCP<Teuchos::ParameterList> params =
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                    \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
-    "  <ParameterList name='Elliptic'>                                       \n"
-    "    <ParameterList name='Penalty Function'>                             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "  <ParameterList name='Material Model'>                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "</ParameterList>                                                        \n"
+    "<ParameterList name='Plato Problem'>                                      \n"
+    "  <ParameterList name='Spatial Model'>                                    \n"
+    "    <ParameterList name='Domains'>                                        \n"
+    "      <ParameterList name='Design Volume'>                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>      \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/> \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>       \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>               \n"
+    "  <ParameterList name='Elliptic'>                                         \n"
+    "    <ParameterList name='Penalty Function'>                               \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                 \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>              \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <ParameterList name='Material Models'>                                  \n"
+    "    <ParameterList name='Unobtainium'>                                    \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "</ParameterList>                                                          \n"
   );
 
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
 
   Plato::Elliptic::VectorFunction<SimplexPhysics>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *tParamList, tParamList->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
   //
@@ -130,7 +143,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionEpetra )
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::EpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::EpetraSystem tSystem(*tMesh, tMachine, tNumDofsPerNode);
 
   auto tEpetra_VbrMatrix = tSystem.fromMatrix(*jacobian);
 
@@ -355,6 +368,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromEpetraVector_invali
   TEST_THROW(tSystem.toVector(tConvertedVector,tTestVector),std::range_error);
 }
 
+
 #ifdef PLATO_TPETRA
 
 /******************************************************************************/
@@ -375,12 +389,12 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   // create mesh based density
@@ -395,31 +409,44 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra )
 
   // create material model
   //
-  Teuchos::RCP<Teuchos::ParameterList> params =
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                    \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
-    "  <ParameterList name='Elliptic'>                                       \n"
-    "    <ParameterList name='Penalty Function'>                             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "  <ParameterList name='Material Model'>                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "</ParameterList>                                                        \n"
+    "<ParameterList name='Plato Problem'>                                      \n"
+    "  <ParameterList name='Spatial Model'>                                    \n"
+    "    <ParameterList name='Domains'>                                        \n"
+    "      <ParameterList name='Design Volume'>                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>      \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/> \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>       \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>               \n"
+    "  <ParameterList name='Elliptic'>                                         \n"
+    "    <ParameterList name='Penalty Function'>                               \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                 \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>              \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <ParameterList name='Material Models'>                                  \n"
+    "    <ParameterList name='Unobtainium'>                                    \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "</ParameterList>                                                          \n"
   );
 
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
 
   Plato::Elliptic::VectorFunction<SimplexPhysics>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *tParamList, tParamList->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
   //
@@ -429,7 +456,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra )
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(*tMesh, tMachine, tNumDofsPerNode);
 
   auto tTpetra_Matrix = tSystem.fromMatrix(*jacobian);
 
@@ -455,6 +482,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra )
   }
 }
 
+
 /******************************************************************************/
 /*!
   \brief Test matrix conversion mismatch
@@ -473,12 +501,12 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra_wrongSize )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   // create mesh based density
@@ -493,31 +521,44 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, MatrixConversionTpetra_wrongSize )
 
   // create material model
   //
-  Teuchos::RCP<Teuchos::ParameterList> params =
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                    \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
-    "  <ParameterList name='Elliptic'>                                       \n"
-    "    <ParameterList name='Penalty Function'>                             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "  <ParameterList name='Material Model'>                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "</ParameterList>                                                        \n"
+    "<ParameterList name='Plato Problem'>                                      \n"
+    "  <ParameterList name='Spatial Model'>                                    \n"
+    "    <ParameterList name='Domains'>                                        \n"
+    "      <ParameterList name='Design Volume'>                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>      \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/> \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>       \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>               \n"
+    "  <ParameterList name='Elliptic'>                                         \n"
+    "    <ParameterList name='Penalty Function'>                               \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                 \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>              \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <ParameterList name='Material Models'>                                   \n"
+    "    <ParameterList name='Unobtainium'>                                    \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "</ParameterList>                                                          \n"
   );
 
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
 
   Plato::Elliptic::VectorFunction<SimplexPhysics>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *tParamList, tParamList->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
   //
@@ -552,19 +593,19 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToTpetraVector )
   // create test mesh
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   MPI_Comm myComm;
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(*tMesh, tMachine, tNumDofsPerNode);
 
   Plato::ScalarVector tTestVector("test vector", tNumDofs);
 
@@ -604,19 +645,19 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionToTpetraVector_invalidI
   // create test mesh
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   MPI_Comm myComm;
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(*tMesh, tMachine, tNumDofsPerNode);
 
   Plato::ScalarVector tTestVector("test vector", tNumDofs+1);
 
@@ -644,19 +685,19 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector )
   // create test mesh
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   MPI_Comm myComm;
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(*tMesh, tMachine, tNumDofsPerNode);
 
   auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tSystem.getMap(),1));
 
@@ -695,19 +736,19 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector_invali
   // create test mesh
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   MPI_Comm myComm;
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(*tMesh, tMachine, tNumDofsPerNode);
 
   auto tBogusMap = Teuchos::rcp(new Plato::Tpetra_Map(tNumDofs+1, 0, tMachine.teuchosComm));
 
@@ -735,19 +776,19 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, VectorConversionFromTpetraVector_invali
   // create test mesh
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   MPI_Comm myComm;
   MPI_Comm_dup(MPI_COMM_WORLD, &myComm);
   Plato::Comm::Machine tMachine(myComm);
 
-  Plato::TpetraSystem tSystem(*mesh, tMachine, tNumDofsPerNode);
+  Plato::TpetraSystem tSystem(*tMesh, tMachine, tNumDofsPerNode);
 
   auto tTestVector = Teuchos::rcp(new Plato::Tpetra_MultiVector(tSystem.getMap(),1));
 
@@ -779,12 +820,12 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   //
   constexpr int meshWidth=8;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   // create mesh based density
@@ -799,22 +840,32 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
   // create material model
   //
-  Teuchos::RCP<Teuchos::ParameterList> params =
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                    \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
-    "  <ParameterList name='Elliptic'>                                       \n"
-    "    <ParameterList name='Penalty Function'>                             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "  <ParameterList name='Material Model'>                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
-    "    </ParameterList>                                                    \n"
+    "<ParameterList name='Plato Problem'>                                      \n"
+    "  <ParameterList name='Spatial Model'>                                    \n"
+    "    <ParameterList name='Domains'>                                        \n"
+    "      <ParameterList name='Design Volume'>                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>      \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/> \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>       \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>               \n"
+    "  <ParameterList name='Elliptic'>                                         \n"
+    "    <ParameterList name='Penalty Function'>                               \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                 \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>              \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <ParameterList name='Material Models'>                                  \n"
+    "    <ParameterList name='Unobtainium'>                                    \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                      \n"
     "  <ParameterList  name='Natural Boundary Conditions'>                   \n"
     "    <ParameterList  name='Traction Vector Boundary Condition'>          \n"
@@ -847,16 +898,19 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   );
 
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
-  Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 5 /* class id */);
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(tMesh.get(), Omega_h::EDGE, Omega_h::EDGE, 5 /* class id */);
   tMeshSets[Omega_h::SIDE_SET]["Load"] = Omega_h::collect_marked(tMarksLoad);
 
-  Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 3 /* class id */);
+  Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(tMesh.get(), Omega_h::EDGE, Omega_h::EDGE, 3 /* class id */);
   tMeshSets[Omega_h::NODE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
 
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
 
   Plato::Elliptic::VectorFunction<SimplexPhysics>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *tParamList, tParamList->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
   //
@@ -871,7 +925,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
   Plato::LocalOrdinalVector mBcDofs;
   Plato::ScalarVector mBcValues;
   Plato::EssentialBCs<SimplexPhysics>
-      tEssentialBoundaryConditions(params->sublist("Essential Boundary Conditions",false), tMeshSets);
+      tEssentialBoundaryConditions(tParamList->sublist("Essential Boundary Conditions",false), tMeshSets);
   tEssentialBoundaryConditions.get(mBcDofs, mBcValues);
   Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, mBcDofs, mBcValues);
 
@@ -895,7 +949,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
    Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-   auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+   auto tSolver = tSolverFactory.create(*tMesh, tMachine, tNumDofsPerNode);
 
    tSolver->solve(*jacobian, state, residual);
   }
@@ -921,7 +975,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
     Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+    auto tSolver = tSolverFactory.create(*tMesh, tMachine, tNumDofsPerNode);
 
     tSolver->solve(*jacobian, state, residual);
   }
@@ -949,7 +1003,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
     Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+    auto tSolver = tSolverFactory.create(*tMesh, tMachine, tNumDofsPerNode);
 
     tSolver->solve(*jacobian, state, residual);
   }
@@ -985,7 +1039,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
     Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+    auto tSolver = tSolverFactory.create(*tMesh, tMachine, tNumDofsPerNode);
 
     tSolver->solve(*jacobian, state, residual);
   }
@@ -1027,6 +1081,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, Elastic2D )
 
 }
 
+
 #ifdef PLATO_TPETRA
 /******************************************************************************/
 /*!
@@ -1047,12 +1102,12 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_accept_parameterlist_input
   //
   constexpr int meshWidth=8;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
 
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   // create mesh based density
@@ -1067,22 +1122,32 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_accept_parameterlist_input
 
   // create material model
   //
-  Teuchos::RCP<Teuchos::ParameterList> params =
+  Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                    \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>     \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>             \n"
-    "  <ParameterList name='Elliptic'>                                       \n"
-    "    <ParameterList name='Penalty Function'>                             \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>               \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>            \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "  <ParameterList name='Material Model'>                                 \n"
-    "    <ParameterList name='Isotropic Linear Elastic'>                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
-    "    </ParameterList>                                                    \n"
+    "<ParameterList name='Plato Problem'>                                      \n"
+    "  <ParameterList name='Spatial Model'>                                    \n"
+    "    <ParameterList name='Domains'>                                        \n"
+    "      <ParameterList name='Design Volume'>                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>      \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/> \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>       \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='true'/>               \n"
+    "  <ParameterList name='Elliptic'>                                         \n"
+    "    <ParameterList name='Penalty Function'>                               \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                 \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>              \n"
+    "    </ParameterList>                                                      \n"
+    "  </ParameterList>                                                        \n"
+    "  <ParameterList name='Material Models'>                                  \n"
+    "    <ParameterList name='Unobtainium'>                                    \n"
+    "      <ParameterList name='Isotropic Linear Elastic'>                     \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>     \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>  \n"
+    "      </ParameterList>                                                    \n"
+    "    </ParameterList>                                                      \n"
     "  </ParameterList>                                                      \n"
     "  <ParameterList  name='Natural Boundary Conditions'>                   \n"
     "    <ParameterList  name='Traction Vector Boundary Condition'>          \n"
@@ -1115,16 +1180,19 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_accept_parameterlist_input
   );
 
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
-  Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 5 /* class id */);
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
+  Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(tMesh.get(), Omega_h::EDGE, Omega_h::EDGE, 5 /* class id */);
   tMeshSets[Omega_h::SIDE_SET]["Load"] = Omega_h::collect_marked(tMarksLoad);
 
-  Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 3 /* class id */);
+  Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(tMesh.get(), Omega_h::EDGE, Omega_h::EDGE, 3 /* class id */);
   tMeshSets[Omega_h::NODE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
 
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tParamList);
 
   Plato::Elliptic::VectorFunction<SimplexPhysics>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *tParamList, tParamList->get<std::string>("PDE Constraint"));
 
   // compute and test constraint value
   //
@@ -1139,8 +1207,8 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_accept_parameterlist_input
   Plato::LocalOrdinalVector mBcDofs;
   Plato::ScalarVector mBcValues;
   Plato::EssentialBCs<SimplexPhysics>
-      tEssentialBoundaryConditions(params->sublist("Essential Boundary Conditions",false));
-  tEssentialBoundaryConditions.get(tMeshSets, mBcDofs, mBcValues);
+      tEssentialBoundaryConditions(tParamList->sublist("Essential Boundary Conditions",false), tMeshSets);
+  tEssentialBoundaryConditions.get(mBcDofs, mBcValues);
   Plato::applyBlockConstraints<SimplexPhysics::mNumDofsPerNode>(jacobian, residual, mBcDofs, mBcValues);
 
   MPI_Comm myComm;
@@ -1175,7 +1243,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_accept_parameterlist_input
 
     Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+    auto tSolver = tSolverFactory.create(*tMesh, tMachine, tNumDofsPerNode);
 
     tSolver->solve(*jacobian, state, residual);
   }
@@ -1204,7 +1272,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_accept_parameterlist_input
 
     Plato::SolverFactory tSolverFactory(*tSolverParams);
 
-    auto tSolver = tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode);
+    auto tSolver = tSolverFactory.create(*tMesh, tMachine, tNumDofsPerNode);
 
     tSolver->solve(*jacobian, state, residual);
   }
@@ -1238,7 +1306,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_valid_input )
 {
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
@@ -1281,7 +1349,7 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_invalid_solver_package )
 {
   constexpr int meshWidth=2;
   constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
@@ -1303,6 +1371,6 @@ TEUCHOS_UNIT_TEST( SolverInterfaceTests, TpetraSolver_invalid_solver_package )
   );
 
   Plato::SolverFactory tSolverFactory(*tSolverParams);
-  TEST_THROW(tSolverFactory.create(*mesh, tMachine, tNumDofsPerNode),std::invalid_argument);
+  TEST_THROW(tSolverFactory.create(*tMesh, tMachine, tNumDofsPerNode),std::invalid_argument);
 }
 #endif

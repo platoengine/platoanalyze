@@ -40,6 +40,11 @@ public:
     **********************************************************************************/
     explicit MSIMP(Teuchos::ParameterList & aInputParams)
     {
+        if( !aInputParams.isType<Plato::Scalar>("Exponent") )
+        {
+            std::cout << "Warning: 'Exponent' Parameter not found" << std::endl;
+            std::cout << "Warning: Using default value (3.0)" << std::endl;
+        }
         mPenaltyParam = aInputParams.get<Plato::Scalar>("Exponent", 3.0);
         mMinValue = aInputParams.get<Plato::Scalar>("Minimum Value", 1e-9);
         mUpperBoundOnPenaltyParam = aInputParams.get<Plato::Scalar>("Penalty Exponent Upper Bound", 3.0);

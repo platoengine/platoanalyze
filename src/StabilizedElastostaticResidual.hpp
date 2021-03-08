@@ -42,14 +42,15 @@ private:
     static constexpr Plato::OrdinalType mMechDofOffset = 0; /*!< mechanical degrees of freedom offset */
     static constexpr Plato::OrdinalType mPressDofOffset = mSpaceDim; /*!< pressure degree of freedom offset */
 
+    using PhysicsType = typename Plato::SimplexStabilizedMechanics<mSpaceDim>;
+
     using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumVoigtTerms; /*!< number of Voigt terms */
     using Plato::Simplex<mSpaceDim>::mNumNodesPerCell; /*!< number of nodes per cell */
-    using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerNode; /*!< number of nodes per node */
-    using Plato::SimplexStabilizedMechanics<mSpaceDim>::mNumDofsPerCell; /*!< number of nodes per cell */
+    using PhysicsType::mNumDofsPerNode; /*!< number of nodes per node */
+    using PhysicsType::mNumDofsPerCell; /*!< number of nodes per cell */
 
-    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mMesh; /*!< mesh metadata */
+    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mSpatialDomain; /*!< mesh metadata */
     using Plato::AbstractVectorFunctionVMS<EvaluationType>::mDataMap; /*!< output data map */
-    using Plato::AbstractVectorFunctionVMS<EvaluationType>::mMeshSets; /*!< side-sets metadata */
 
     using StateScalarType     = typename EvaluationType::StateScalarType; /*!< State Automatic Differentiation (AD) type */
     using NodeStateScalarType = typename EvaluationType::NodeStateScalarType; /*!< Node State AD type */
@@ -57,15 +58,18 @@ private:
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType; /*!< Configuration AD type */
     using ResultScalarType    = typename EvaluationType::ResultScalarType; /*!< Result AD type */
 
+    using FunctionBaseType = Plato::AbstractVectorFunctionVMS<EvaluationType>;
+    using CubatureType = Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>;
+
     IndicatorFunctionType mIndicatorFunction; /*!< material penalty function */
     Plato::ApplyWeighting<mSpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyTensorWeighting; /*!< apply penalty to tensor function */
     Plato::ApplyWeighting<mSpaceDim, mSpaceDim,      IndicatorFunctionType> mApplyVectorWeighting; /*!< apply penalty to vector function */
     Plato::ApplyWeighting<mSpaceDim, 1 /* number of pressure dofs per node */, IndicatorFunctionType> mApplyScalarWeighting; /*!< apply penalty to scalar function */
 
-    std::shared_ptr<Plato::BodyLoads<EvaluationType>> mBodyLoads; /*!< body loads interface */
+    std::shared_ptr<Plato::BodyLoads<EvaluationType, PhysicsType>> mBodyLoads; /*!< body loads interface */
     std::shared_ptr<Plato::NaturalBCs<mSpaceDim, mNumMechDims, mNumDofsPerNode, mMechDofOffset>> mBoundaryLoads; /*!< boundary loads interface */
 
-    std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule; /*!< cubature/integration rule interface */
+    std::shared_ptr<CubatureType> mCubatureRule; /*!< cubature/integration rule interface */
     Teuchos::RCP<Plato::LinearElasticMaterial<mSpaceDim>> mMaterialModel; /*!< material model interface */
 
     std::vector<std::string> mPlotTable; /*!< array with output data identifiers */
@@ -80,14 +84,14 @@ private:
         // create material model and get stiffness
         //
         Plato::ElasticModelFactory<mSpaceDim> tMaterialFactory(aProblemParams);
-        mMaterialModel = tMaterialFactory.create();
+        mMaterialModel = tMaterialFactory.create(mSpatialDomain.getMaterialName());
   
 
         // parse body loads
         // 
         if(aProblemParams.isSublist("Body Loads"))
         {
-            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType>>(aProblemParams.sublist("Body Loads"));
+            mBodyLoads = std::make_shared<Plato::BodyLoads<EvaluationType, PhysicsType>>(aProblemParams.sublist("Body Loads"));
         }
   
         // parse mechanical boundary Conditions
@@ -114,19 +118,20 @@ public:
      * \param [in] aProblemParams input XML data
      * \param [in] aPenaltyParams penalty function input XML data
     **********************************************************************************/
-    StabilizedElastostaticResidual(Omega_h::Mesh& aMesh,
-                                   Omega_h::MeshSets& aMeshSets,
-                                   Plato::DataMap& aDataMap,
-                                   Teuchos::ParameterList& aProblemParams,
-                                   Teuchos::ParameterList& aPenaltyParams) :
-            Plato::AbstractVectorFunctionVMS<EvaluationType>(aMesh, aMeshSets, aDataMap),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyTensorWeighting(mIndicatorFunction),
-            mApplyVectorWeighting(mIndicatorFunction),
-            mApplyScalarWeighting(mIndicatorFunction),
-            mBodyLoads(nullptr),
-            mBoundaryLoads(nullptr),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    StabilizedElastostaticResidual(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams
+    ) :
+        FunctionBaseType      (aSpatialDomain, aDataMap),
+        mIndicatorFunction    (aPenaltyParams),
+        mApplyTensorWeighting (mIndicatorFunction),
+        mApplyVectorWeighting (mIndicatorFunction),
+        mApplyScalarWeighting (mIndicatorFunction),
+        mBodyLoads            (nullptr),
+        mBoundaryLoads        (nullptr),
+        mCubatureRule         (std::make_shared<CubatureType>())
     {
         this->initialize(aProblemParams);
     }
@@ -140,14 +145,17 @@ public:
      * \param [in/out] aResultWS result, e.g. residual, workset
      * \param [in] aTimeStep time step
     **********************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType>     & aStateWS,
-                  const Plato::ScalarMultiVectorT<NodeStateScalarType> & aPressGradWS,
-                  const Plato::ScalarMultiVectorT<ControlScalarType>   & aControlWS,
-                  const Plato::ScalarArray3DT<ConfigScalarType>        & aConfigWS,
-                  Plato::ScalarMultiVectorT<ResultScalarType>          & aResultWS,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>     & aStateWS,
+        const Plato::ScalarMultiVectorT <NodeStateScalarType> & aPressGradWS,
+        const Plato::ScalarMultiVectorT <ControlScalarType>   & aControlWS,
+        const Plato::ScalarArray3DT     <ConfigScalarType>    & aConfigWS,
+              Plato::ScalarMultiVectorT <ResultScalarType>    & aResultWS,
+              Plato::Scalar aTimeStep = 0.0
+    ) const override
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
       typename Plato::fad_type_t<Plato::SimplexStabilizedMechanics
@@ -225,21 +233,41 @@ public:
 
       if( mBodyLoads != nullptr )
       {
-          mBodyLoads->get( mMesh, aStateWS, aControlWS, aResultWS, -1.0 );
-      }
-
-      if( mBoundaryLoads != nullptr )
-      {
-          mBoundaryLoads->get( &mMesh, mMeshSets, aStateWS, aControlWS, aConfigWS, aResultWS, -1.0 );
+          mBodyLoads->get( mSpatialDomain, aStateWS, aControlWS, aResultWS, -1.0 );
       }
 
       if(std::count(mPlotTable.begin(), mPlotTable.end(), "pressure"))
       {
-          toMap(mDataMap, tPressure, "pressure");
+          toMap(mDataMap, tPressure, "pressure", mSpatialDomain);
       }
       if( std::count(mPlotTable.begin(),mPlotTable.end(), "deviatoric stress" ) )
       {
-          toMap(mDataMap, tDevStress, "deviatoric stress");
+          toMap(mDataMap, tDevStress, "deviatoric stress", mSpatialDomain);
+      }
+    }
+    /******************************************************************************//**
+     * \brief Evaluate stabilized elastostatics boundary terms residual
+     * \param [in] aStateWS state, {disp_x, disp_y, disp_z, pressure}, workset
+     * \param [in] aPressGradWS pressure gradient workset
+     * \param [in] aControlWS control workset
+     * \param [in] aConfigWS configuration workset
+     * \param [in/out] aResultWS result, e.g. residual, workset
+     * \param [in] aTimeStep time step
+    **********************************************************************************/
+    void
+    evaluate_boundary(
+        const Plato::SpatialModel                             & aSpatialModel,
+        const Plato::ScalarMultiVectorT <StateScalarType>     & aStateWS,
+        const Plato::ScalarMultiVectorT <NodeStateScalarType> & aPressGradWS,
+        const Plato::ScalarMultiVectorT <ControlScalarType>   & aControlWS,
+        const Plato::ScalarArray3DT     <ConfigScalarType>    & aConfigWS,
+              Plato::ScalarMultiVectorT <ResultScalarType>    & aResultWS,
+              Plato::Scalar aTimeStep = 0.0
+    ) const override
+    {
+      if( mBoundaryLoads != nullptr )
+      {
+          mBoundaryLoads->get( aSpatialModel, aStateWS, aControlWS, aConfigWS, aResultWS, -1.0 );
       }
     }
 };

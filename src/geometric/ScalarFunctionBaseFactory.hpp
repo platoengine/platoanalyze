@@ -2,8 +2,7 @@
 
 #include <memory>
 
-#include <Omega_h_mesh.hpp>
-#include <Omega_h_assoc.hpp>
+#include "SpatialModel.hpp"
 #include "PlatoStaticsTypes.hpp"
 #include <Teuchos_ParameterList.hpp>
 #include "geometric/ScalarFunctionBase.hpp"
@@ -33,18 +32,17 @@ public:
 
     /******************************************************************************//**
      * \brief Create method
-     * \param [in] aMesh mesh database
-     * \param [in] aMeshSets side sets database
-     * \param [in] aDataMap PLATO Engine and Analyze data map
+     * \param [in] aSpatialModel Plato Analyze spatial model
+     * \param [in] aDataMap Plato Engine and Analyze data map
      * \param [in] aInputParams parameter input
      * \param [in] aFunctionName name of function in parameter list
      **********************************************************************************/
     std::shared_ptr<Plato::Geometric::ScalarFunctionBase> 
-    create(Omega_h::Mesh& aMesh,
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap & aDataMap,
-           Teuchos::ParameterList& aInputParams,
-           std::string& aFunctionName);
+    create(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+              std::string            & aFunctionName);
 };
 // class ScalarFunctionBaseFactory
 

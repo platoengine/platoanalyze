@@ -47,7 +47,7 @@ class InternalThermoelasticEnergy :
     using Plato::SimplexThermomechanics<mSpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermomechanics<mSpaceDim>::mNumDofsPerNode;
 
-    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Elliptic::AbstractScalarFunction<EvaluationType>::mDataMap;
 
     using StateScalarType   = typename EvaluationType::StateScalarType;
@@ -59,7 +59,7 @@ class InternalThermoelasticEnergy :
     
     IndicatorFunctionType mIndicatorFunction;
     Plato::ApplyWeighting<mSpaceDim, mNumVoigtTerms, IndicatorFunctionType> mApplyStressWeighting;
-    Plato::ApplyWeighting<mSpaceDim, mSpaceDim,        IndicatorFunctionType> mApplyFluxWeighting;
+    Plato::ApplyWeighting<mSpaceDim, mSpaceDim,      IndicatorFunctionType> mApplyFluxWeighting;
 
     std::shared_ptr<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>> mCubatureRule;
 
@@ -67,44 +67,66 @@ class InternalThermoelasticEnergy :
 
   public:
     /**************************************************************************/
-    InternalThermoelasticEnergy(Omega_h::Mesh& aMesh,
-                          Omega_h::MeshSets& aMeshSets,
-                          Plato::DataMap& aDataMap,
-                          Teuchos::ParameterList& aProblemParams,
-                          Teuchos::ParameterList& aPenaltyParams,
-                          std::string& aFunctionName ) :
-            Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, aFunctionName),
-            mIndicatorFunction(aPenaltyParams),
-            mApplyStressWeighting(mIndicatorFunction),
-            mApplyFluxWeighting(mIndicatorFunction),
-            mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
+    InternalThermoelasticEnergy(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+              Teuchos::ParameterList & aPenaltyParams,
+              std::string            & aFunctionName
+    ) :
+        Plato::Elliptic::AbstractScalarFunction<EvaluationType>(aSpatialDomain, aDataMap, aFunctionName),
+        mIndicatorFunction    (aPenaltyParams),
+        mApplyStressWeighting (mIndicatorFunction),
+        mApplyFluxWeighting   (mIndicatorFunction),
+        mCubatureRule(std::make_shared<Plato::LinearTetCubRuleDegreeOne<EvaluationType::SpatialDim>>())
     /**************************************************************************/
     {
-      Teuchos::ParameterList tProblemParams(aProblemParams);
+        Teuchos::ParameterList tProblemParams(aProblemParams);
 
-      auto& tParams = aProblemParams.sublist(aFunctionName);
-      if( tParams.get<bool>("Include Thermal Strain", true) == false )
-      {
-         tProblemParams.sublist("Material Model").sublist("Cubic Linear Thermoelastic").set("a11",0.0);
-         tProblemParams.sublist("Material Model").sublist("Cubic Linear Thermoelastic").set("a22",0.0);
-         tProblemParams.sublist("Material Model").sublist("Cubic Linear Thermoelastic").set("a33",0.0);
-      }
-      Plato::ThermoelasticModelFactory<mSpaceDim> mmfactory(tProblemParams);
-      mMaterialModel = mmfactory.create();
+        auto tMaterialName = aSpatialDomain.getMaterialName();
 
-      if( tProblemParams.isType<Teuchos::Array<std::string>>("Plottable") )
-        mPlottable = tProblemParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        if( aProblemParams.isSublist("Material Models") == false )
+        {
+            THROWERR("Required input list ('Material Models') is missing.");
+        }
+
+        if( aProblemParams.sublist("Material Models").isSublist(tMaterialName) == false )
+        {
+            std::stringstream ss;
+            ss << "Specified material model ('" << tMaterialName << "') is not defined";
+            THROWERR(ss.str());
+        }
+
+        auto& tParams = aProblemParams.sublist(aFunctionName);
+        if( tParams.get<bool>("Include Thermal Strain", true) == false )
+        {
+           auto tMaterialParams = tProblemParams.sublist("Material Models").sublist(tMaterialName);
+           tMaterialParams.sublist("Cubic Linear Thermoelastic").set("a11",0.0);
+           tMaterialParams.sublist("Cubic Linear Thermoelastic").set("a22",0.0);
+           tMaterialParams.sublist("Cubic Linear Thermoelastic").set("a33",0.0);
+        }
+
+        Plato::ThermoelasticModelFactory<mSpaceDim> mmfactory(tProblemParams);
+        mMaterialModel = mmfactory.create(tMaterialName);
+
+        if( tProblemParams.isType<Teuchos::Array<std::string>>("Plottable") )
+        {
+            mPlottable = tProblemParams.get<Teuchos::Array<std::string>>("Plottable").toVector();
+        }
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>   & aState,
+        const Plato::ScalarMultiVectorT <ControlScalarType> & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>  & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>  & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-      auto tNumCells = mMesh.nelems();
+      auto tNumCells = mSpatialDomain.numCells();
 
       using GradScalarType =
         typename Plato::fad_type_t<Plato::SimplexThermomechanics<EvaluationType::SpatialDim>, StateScalarType, ConfigScalarType>;

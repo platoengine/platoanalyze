@@ -37,19 +37,22 @@ private:
     std::vector<Plato::Scalar> mFunctionNormalization; /*!< Vector of function normalization values */
     std::vector<std::shared_ptr<Plato::Geometric::ScalarFunctionBase>> mScalarFunctionBaseContainer; /*!< Vector of ScalarFunctionBase objects */
 
+    const Plato::SpatialModel & mSpatialModel;
+
     Plato::DataMap& mDataMap; /*!< PLATO Engine and Analyze data map */
 
     std::string mFunctionName; /*!< User defined function name */
 
     const Plato::Scalar mFunctionNormalizationCutoff = 0.1; /*!< if (|GoldValue| > 0.1) then ((f - f_gold) / f_gold)^2 ; otherwise  (f - f_gold)^2 */
 
-	/******************************************************************************//**
+    /******************************************************************************//**
      * @brief Initialization of Least Squares Function
-     * @param [in] aInputParams input parameters database
+     * @param [in] aProblemParams input parameters database
     **********************************************************************************/
-    void initialize (Omega_h::Mesh& aMesh, 
-                     Omega_h::MeshSets& aMeshSets, 
-                     Teuchos::ParameterList & aInputParams)
+    void
+    initialize(
+        Teuchos::ParameterList & aProblemParams
+    )
     {
         Plato::Geometric::ScalarFunctionBaseFactory<PhysicsT> tFactory;
 
@@ -58,15 +61,15 @@ private:
         mFunctionGoldValues.clear();
         mFunctionNormalization.clear();
 
-        auto tProblemFunctionName = aInputParams.sublist(mFunctionName);
+        auto tFunctionParams = aProblemParams.sublist("Criteria").sublist(mFunctionName);
 
-        auto tFunctionNamesTeuchos = tProblemFunctionName.get<Teuchos::Array<std::string>>("Functions");
-        auto tFunctionWeightsTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Weights");
-        auto tFunctionGoldValuesTeuchos = tProblemFunctionName.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
+        auto tFunctionNamesArray = tFunctionParams.get<Teuchos::Array<std::string>>("Functions");
+        auto tFunctionWeightsArray = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Weights");
+        auto tFunctionGoldValuesArray = tFunctionParams.get<Teuchos::Array<Plato::Scalar>>("Gold Values");
 
-        auto tFunctionNames      = tFunctionNamesTeuchos.toVector();
-        auto tFunctionWeights    = tFunctionWeightsTeuchos.toVector();
-        auto tFunctionGoldValues = tFunctionGoldValuesTeuchos.toVector();
+        auto tFunctionNames      = tFunctionNamesArray.toVector();
+        auto tFunctionWeights    = tFunctionWeightsArray.toVector();
+        auto tFunctionGoldValues = tFunctionGoldValuesArray.toVector();
 
         if (tFunctionNames.size() != tFunctionWeights.size())
         {
@@ -86,7 +89,7 @@ private:
         {
             mScalarFunctionBaseContainer.push_back(
                 tFactory.create(
-                    aMesh, aMeshSets, mDataMap, aInputParams, tFunctionNames[tFunctionIndex]));
+                    mSpatialModel, mDataMap, aProblemParams, tFunctionNames[tFunctionIndex]));
             mFunctionWeights.push_back(tFunctionWeights[tFunctionIndex]);
 
             appendGoldFunctionValue(tFunctionGoldValues[tFunctionIndex]);
@@ -97,33 +100,38 @@ private:
 public:
     /******************************************************************************//**
      * @brief Primary least squares function constructor
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
-     * @param [in] aDataMap PLATO Engine and Analyze data map
-     * @param [in] aInputParams input parameters database
+     * @param [in] aSpatialModel Plato Analyze spatial model
+     * @param [in] aDataMap Plato Analyze data map
+     * @param [in] aProblemParams input parameters database
      * @param [in] aName user defined function name
     **********************************************************************************/
-    LeastSquaresFunction(Omega_h::Mesh& aMesh,
-                         Omega_h::MeshSets& aMeshSets,
-                         Plato::DataMap & aDataMap,
-                         Teuchos::ParameterList& aInputParams,
-                         std::string& aName) :
-            Plato::Geometric::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName(aName)
+    LeastSquaresFunction(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aProblemParams,
+        const std::string            & aName
+    ) :
+        Plato::Geometric::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName (aName)
     {
-        initialize(aMesh, aMeshSets, aInputParams);
+        initialize(aProblemParams);
     }
 
     /******************************************************************************//**
      * @brief Secondary least squares function constructor, used for unit testing / mass properties
-     * @param [in] aMesh mesh database
-     * @param [in] aMeshSets side sets database
+     * @param [in] aSpatialModel Plato Analyze spatial model
+     * @param [in] aDataMap Plato Analyze data map
     **********************************************************************************/
-    LeastSquaresFunction(Omega_h::Mesh& aMesh, Plato::DataMap& aDataMap) :
-            Plato::Geometric::WorksetBase<PhysicsT>(aMesh),
-            mDataMap(aDataMap),
-            mFunctionName("Least Squares")
+    LeastSquaresFunction(
+        const Plato::SpatialModel & aSpatialModel,
+              Plato::DataMap      & aDataMap
+    ) :
+        Plato::Geometric::WorksetBase<PhysicsT>(aSpatialModel.Mesh),
+        mSpatialModel (aSpatialModel),
+        mDataMap      (aDataMap),
+        mFunctionName ("Least Squares")
     {
     }
 
@@ -180,7 +188,7 @@ public:
      * @brief Update physics-based parameters within optimization iterations
      * @param [in] aControl 1D view of control variables
      **********************************************************************************/
-    void updateProblem(const Plato::ScalarVector & aControl) const
+    void updateProblem(const Plato::ScalarVector & aControl) const override
     {
         for (Plato::OrdinalType tFunctionIndex = 0; tFunctionIndex < mScalarFunctionBaseContainer.size(); ++tFunctionIndex)
         {
@@ -193,7 +201,7 @@ public:
      * @param [in] aControl 1D view of control variables
      * @return scalar function evaluation
     **********************************************************************************/
-    Plato::Scalar value(const Plato::ScalarVector & aControl) const
+    Plato::Scalar value(const Plato::ScalarVector & aControl) const override
     {
         assert(mFunctionWeights.size() == mScalarFunctionBaseContainer.size());
         assert(mFunctionGoldValues.size() == mScalarFunctionBaseContainer.size());
@@ -230,7 +238,7 @@ public:
      * @param [in] aControl 1D view of control variables
      * @return 1D view with the gradient of the scalar function wrt the configuration parameters
     **********************************************************************************/
-    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl) const
+    Plato::ScalarVector gradient_x(const Plato::ScalarVector & aControl) const override
     {
         const Plato::OrdinalType tNumDofs = mNumSpatialDims * mNumNodes;
         Plato::ScalarVector tGradientX ("gradient configuration", tNumDofs);
@@ -255,7 +263,7 @@ public:
      * @param [in] aControl 1D view of control variables
      * @return 1D view with the gradient of the scalar function wrt the control variables
     **********************************************************************************/
-    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl) const
+    Plato::ScalarVector gradient_z(const Plato::ScalarVector & aControl) const override
     {
         const Plato::OrdinalType tNumDofs = mNumNodes;
         Plato::ScalarVector tGradientZ ("gradient control", tNumDofs);

@@ -43,23 +43,40 @@ public:
             mParamList(aParamList)
     {
     }
-    Teuchos::RCP<MaterialModel<SpatialDim>> create();
+    Teuchos::RCP<MaterialModel<SpatialDim>> create(std::string aModelName);
 private:
     const Teuchos::ParameterList& mParamList;
 };
 /******************************************************************************/
 template<int SpatialDim>
-Teuchos::RCP<MaterialModel<SpatialDim>> ThermalConductionModelFactory<SpatialDim>::create()
+Teuchos::RCP<MaterialModel<SpatialDim>>
+ThermalConductionModelFactory<SpatialDim>::create(std::string aModelName)
 /******************************************************************************/
 {
-    auto tModelParamList = mParamList.get < Teuchos::ParameterList > ("Material Model");
-
-    if(tModelParamList.isSublist("Thermal Conduction"))
+    if (!mParamList.isSublist("Material Models"))
     {
-        return Teuchos::rcp(new ThermalConductionModel<SpatialDim>(tModelParamList.sublist("Thermal Conduction")));
+        REPORT("'Material Models' list not found! Returning 'nullptr'");
+        return Teuchos::RCP<Plato::MaterialModel<SpatialDim>>(nullptr);
     }
     else
-    THROWERR("Expected 'Thermal Conduction' ParameterList");
+    {
+        auto tModelsParamList = mParamList.get < Teuchos::ParameterList > ("Material Models");
+
+        if (!tModelsParamList.isSublist(aModelName))
+        {
+            std::stringstream ss;
+            ss << "Requested a material model ('" << aModelName << "') that isn't defined";
+            THROWERR(ss.str());
+        }
+
+        auto tModelParamList = tModelsParamList.sublist(aModelName);
+        if(tModelParamList.isSublist("Thermal Conduction"))
+        {
+            return Teuchos::rcp(new ThermalConductionModel<SpatialDim>(tModelParamList.sublist("Thermal Conduction")));
+        }
+        else
+        THROWERR("Expected 'Thermal Conduction' ParameterList");
+    }
 }
 
 }

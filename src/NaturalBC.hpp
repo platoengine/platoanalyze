@@ -127,13 +127,11 @@ public:
      * \tparam ConfigScalarType  configuration FAD type
      * \tparam ResultScalarType  result FAD type
      *
-     * \param [in]  aMesh     Omega_h mesh database.
-     * \param [in]  aMeshSets Omega_h side set database.
-     * \param [in]  aState    2-D view of state variables.
-     * \param [in]  aControl  2-D view of control variables.
-     * \param [in]  aConfig   3-D view of configuration variables.
-     * \param [out] aResult   Assembled vector to which the boundary terms will be added
-     * \param [in]  aScale    scalar multiplier
+     * \param [in]  aState        2-D view of state variables.
+     * \param [in]  aControl      2-D view of control variables.
+     * \param [in]  aConfig       3-D view of configuration variables.
+     * \param [out] aResult       Assembled vector to which the boundary terms will be added
+     * \param [in]  aScale        scalar multiplier
      *
      * The boundary terms are integrated on the parameterized surface, \f$\phi(\xi,\psi)\f$, according to:
      *  \f{eqnarray*}{
@@ -155,8 +153,7 @@ public:
              typename ControlScalarType,
              typename ConfigScalarType,
              typename ResultScalarType>
-    void get(Omega_h::Mesh* aMesh,
-             const Omega_h::MeshSets& aMeshSets,
+    void get(const Plato::SpatialModel&,
              const Plato::ScalarMultiVectorT<  StateScalarType>&,
              const Plato::ScalarMultiVectorT<ControlScalarType>&,
              const Plato::ScalarArray3DT    < ConfigScalarType>&,
@@ -187,14 +184,13 @@ template<typename StateScalarType,
          typename ConfigScalarType,
          typename ResultScalarType>
 void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(
-       Omega_h::Mesh * aMesh,
- const Omega_h::MeshSets & aMeshSets,
- const Plato::ScalarMultiVectorT<  StateScalarType>& aState,
- const Plato::ScalarMultiVectorT<ControlScalarType>& aControl,
- const Plato::ScalarArray3DT    < ConfigScalarType>& aConfig,
- const Plato::ScalarMultiVectorT< ResultScalarType>& aResult,
-       Plato::Scalar aScale,
-       Plato::Scalar aCurrentTime
+    const Plato::SpatialModel                          & aSpatialModel,
+    const Plato::ScalarMultiVectorT<  StateScalarType> & aState,
+    const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
+    const Plato::ScalarArray3DT    < ConfigScalarType> & aConfig,
+    const Plato::ScalarMultiVectorT< ResultScalarType> & aResult,
+          Plato::Scalar aScale,
+          Plato::Scalar aCurrentTime
 )
 {
 
@@ -213,13 +209,13 @@ void NaturalBC<SpatialDim,NumDofs,DofsPerNode,DofOffset>::get(
         case Plato::Neumann::UNIFORM_COMPONENT:
         {
             Plato::SurfaceLoadIntegral<SpatialDim, NumDofs, DofsPerNode, DofOffset> tSurfaceLoad(mSideSetName, mFlux);
-            tSurfaceLoad(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+            tSurfaceLoad(aSpatialModel, aState, aControl, aConfig, aResult, aScale);
             break;
         }
         case Plato::Neumann::UNIFORM_PRESSURE:
         {
             Plato::SurfacePressureIntegral<SpatialDim, NumDofs, DofsPerNode, DofOffset> tSurfacePress(mSideSetName, mFlux);
-            tSurfacePress(aMesh, aMeshSets, aState, aControl, aConfig, aResult, aScale);
+            tSurfacePress(aSpatialModel, aState, aControl, aConfig, aResult, aScale);
             break;
         }
         default:

@@ -31,47 +31,51 @@ class ThermalFluxRate :
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerCell;
     using Plato::SimplexThermal<SpaceDim>::mNumDofsPerNode;
 
-    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMesh;
+    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mSpatialDomain;
     using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mDataMap;
-    using Plato::Parabolic::AbstractScalarFunction<EvaluationType>::mMeshSets;
 
     using StateScalarType     = typename EvaluationType::StateScalarType;
     using StateDotScalarType  = typename EvaluationType::StateDotScalarType;
     using ControlScalarType   = typename EvaluationType::ControlScalarType;
     using ConfigScalarType    = typename EvaluationType::ConfigScalarType;
     using ResultScalarType    = typename EvaluationType::ResultScalarType;
+
+ 
+    using FunctionType = Plato::Parabolic::AbstractScalarFunction<EvaluationType>;
     
     std::shared_ptr<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>> mBoundaryLoads;
 
   public:
     /**************************************************************************/
-    ThermalFluxRate(Omega_h::Mesh& aMesh,
-                    Omega_h::MeshSets& aMeshSets,
-                    Plato::DataMap& aDataMap,
-                    Teuchos::ParameterList& problemParams) :
-            Plato::Parabolic::AbstractScalarFunction<EvaluationType>(aMesh, aMeshSets, aDataMap, "Thermal Flux Rate"),
-            mBoundaryLoads(nullptr)
+    ThermalFluxRate(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & problemParams
+    ) :
+        FunctionType   (aSpatialDomain, aDataMap, "Thermal Flux Rate"),
+        mBoundaryLoads (nullptr)
     /**************************************************************************/
     {
-      if(problemParams.isSublist("Natural Boundary Conditions"))
-      {
-          mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>>(problemParams.sublist("Natural Boundary Conditions"));
-      }
+        if(problemParams.isSublist("Natural Boundary Conditions"))
+        {
+            mBoundaryLoads = std::make_shared<Plato::NaturalBCs<SpaceDim,mNumDofsPerNode>>
+                (problemParams.sublist("Natural Boundary Conditions"));
+        }
     }
 
     /**************************************************************************/
-    void evaluate(const Plato::ScalarMultiVectorT<StateScalarType> & aState,
-                  const Plato::ScalarMultiVectorT<StateDotScalarType> & aStateDot,
-                  const Plato::ScalarMultiVectorT<ControlScalarType> & aControl,
-                  const Plato::ScalarArray3DT<ConfigScalarType> & aConfig,
-                  Plato::ScalarVectorT<ResultScalarType> & aResult,
-                  Plato::Scalar aTimeStep = 0.0) const
+    void
+    evaluate(
+        const Plato::ScalarMultiVectorT <StateScalarType>    & aState,
+        const Plato::ScalarMultiVectorT <StateDotScalarType> & aStateDot,
+        const Plato::ScalarMultiVectorT <ControlScalarType>  & aControl,
+        const Plato::ScalarArray3DT     <ConfigScalarType>   & aConfig,
+              Plato::ScalarVectorT      <ResultScalarType>   & aResult,
+              Plato::Scalar aTimeStep = 0.0
+    ) const
     /**************************************************************************/
     {
-
-      Kokkos::deep_copy(aResult, 0.0);
-
-      auto numCells = mMesh.nelems();
+        auto numCells = mSpatialDomain.numCells();
 
       if( mBoundaryLoads != nullptr )
       {

@@ -20,6 +20,79 @@
 namespace PlasticityTests
 {
 
+    Teuchos::RCP<Teuchos::ParameterList> tGenericParamList =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                        \n"
+    "  <ParameterList name='Spatial Model'>                                                      \n"
+    "    <ParameterList name='Domains'>                                                          \n"
+    "      <ParameterList name='Design Volume'>                                                  \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>                        \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>                \n"
+    "      </ParameterList>                                                                      \n"
+    "    </ParameterList>                                                                        \n"
+    "  </ParameterList>                                                                          \n"
+    "  <ParameterList name='Material Models'>                                                    \n"
+    "    <ParameterList name='Unobtainium'>                                                      \n"
+    "      <ParameterList name='Isotropic Linear Thermoelastic'>                                 \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                       \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                     \n"
+    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>      \n"
+    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/>   \n"
+    "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>                \n"
+    "      </ParameterList>                                                                      \n"
+    "      <ParameterList name='Plasticity Model'>                                               \n"
+    "        <ParameterList name='J2 Plasticity'>                                                \n"
+    "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
+    "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
+    "          <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
+    "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
+    "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "        </ParameterList>                                                                    \n"
+    "      </ParameterList>                                                                      \n"
+    "    </ParameterList>                                                                        \n"
+    "  </ParameterList>                                                                          \n"
+    "</ParameterList>                                                                            \n"
+  );
+
+    Teuchos::RCP<Teuchos::ParameterList> tGenericParamList_Two =
+    Teuchos::getParametersFromXmlString(
+    "<ParameterList name='Plato Problem'>                                                        \n"
+    "  <ParameterList name='Spatial Model'>                                                      \n"
+    "    <ParameterList name='Domains'>                                                          \n"
+    "      <ParameterList name='Design Volume'>                                                  \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>                        \n"
+    "        <Parameter name='Material Model' type='string' value='Unobtainium'/>                \n"
+    "      </ParameterList>                                                                      \n"
+    "    </ParameterList>                                                                        \n"
+    "  </ParameterList>                                                                          \n"
+    "  <ParameterList name='Material Models'>                                                    \n"
+    "    <ParameterList name='Unobtainium'>                                                      \n"
+    "      <ParameterList name='Isotropic Linear Thermoelastic'>                                 \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                       \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                     \n"
+    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>      \n"
+    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/>   \n"
+    "        <Parameter  name='Reference Temperature' type='double' value='100.0'/>              \n"
+    "      </ParameterList>                                                                      \n"
+    "      <ParameterList name='Plasticity Model'>                                               \n"
+    "        <ParameterList name='J2 Plasticity'>                                                \n"
+    "          <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
+    "          <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
+    "          <Parameter  name='Initial Yield Stress' type='double' value='3.0'/>               \n"
+    "          <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
+    "          <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "          <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
+    "          <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
+    "        </ParameterList>                                                                    \n"
+    "      </ParameterList>                                                                      \n"
+    "    </ParameterList>                                                                        \n"
+    "  </ParameterList>                                                                          \n"
+    "</ParameterList>                                                                            \n"
+  );
+
+
 using namespace PlatoUtestHelpers;
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_GetLocalStateData_2D)
@@ -600,7 +673,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidual
     }, "Unit Test");
 
     constexpr Plato::Scalar tTolerance = 1e-5;
-    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-0.146463,-0.224745};
+    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-1.12626,-0.224745};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
 
@@ -658,7 +731,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2PlasticityUtils_PlasticStrainResidual
     }, "Unit Test");
 
     constexpr Plato::Scalar tTolerance = 1e-5;
-    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-0.146463,-0.224745,-0.303027,-0.381309};
+    std::vector<Plato::Scalar> tGold = {0.0101021,-0.0681803,-0.146463,-1.44949,-1.77272,-2.09595};
     auto tHostResult = Kokkos::create_mirror(tResult);
     Kokkos::deep_copy(tHostResult, tResult);
 
@@ -1006,6 +1079,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     constexpr Plato::OrdinalType tNodesPerCell        = PhysicsT::mNumNodesPerCell;
     constexpr Plato::OrdinalType tNumStressTerms      = PhysicsT::mNumStressTerms;
     constexpr Plato::OrdinalType tNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    constexpr Plato::OrdinalType tTemperature         = PhysicsT::mTemperatureDofOffset;
 
     // Create configuration workset
     Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
@@ -1031,7 +1105,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     set_dof_value_in_vector_on_boundary_2D(*tMesh, "y1", tGlobalState, tDofsPerNode, tDispX, 0.1);
     set_dof_value_in_vector_on_boundary_2D(*tMesh, "y1", tGlobalState, tDofsPerNode, tDispY, 0.1);
 
-    Plato::OrdinalType tTemperature = 3;
     set_dof_value_in_vector(tGlobalState, tDofsPerNode, tTemperature, 310.0);
 
     Plato::ScalarMultiVectorT<GlobalStateT> tGlobalStateWS("global state workset", tNumCells, tDofsPerCell);
@@ -1234,6 +1307,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     constexpr Plato::OrdinalType tNodesPerCell        = PhysicsT::mNumNodesPerCell;
     constexpr Plato::OrdinalType tNumStressTerms       = PhysicsT::mNumVoigtTerms;
     constexpr Plato::OrdinalType tNumLocalDofsPerCell = PhysicsT::mNumLocalDofsPerCell;
+    constexpr Plato::OrdinalType tTemperature         = PhysicsT::mTemperatureDofOffset;
 
     // Create configuration workset
     Plato::WorksetBase<PhysicsT> tWorksetBase(*tMesh);
@@ -1265,7 +1339,6 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, ThermoPlasticityUtils_ElasticStrainWith
     set_dof_value_in_vector_on_boundary_3D(*tMesh, "z1", tGlobalState, tDofsPerNode, tDispY, 0.1);
     set_dof_value_in_vector_on_boundary_3D(*tMesh, "z1", tGlobalState, tDofsPerNode, tDispZ, 0.1);
 
-    Plato::OrdinalType tTemperature = 4;
     set_dof_value_in_vector(tGlobalState, tDofsPerNode, tTemperature, 310.0);
 
     Plato::ScalarMultiVectorT<GlobalStateT> tGlobalStateWS("global state workset", tNumCells, tDofsPerCell);
@@ -1470,43 +1543,19 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradGlobalState3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::Jacobian;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
     Plato::test_partial_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
-
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradGlobalState2D)
 {
@@ -1514,40 +1563,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradGlobalState2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::Jacobian;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
     Plato::test_partial_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1558,40 +1584,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradPrevGlobalState3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::JacobianP;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1e6'/>                     \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
     Plato::test_partial_prev_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1602,40 +1605,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradPrevGlobalState2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::JacobianP;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
     Plato::test_partial_prev_global_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1646,40 +1626,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradLocalState3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::LocalJacobian;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
     Plato::test_partial_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1690,42 +1647,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradLocalState2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::LocalJacobian;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
     Plato::test_partial_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
+
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradPrevLocalState3D)
 {
@@ -1733,40 +1668,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradPrevLocalState3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::LocalJacobianP;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
     Plato::test_partial_prev_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1777,42 +1689,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradPrevLocalState2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::LocalJacobianP;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
     Plato::test_partial_prev_local_state<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
+
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradControl3D)
 {
@@ -1820,40 +1710,17 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradControl3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::GradientZ;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
     Plato::test_partial_local_vect_func_inc_wrt_control<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
 
@@ -1864,44 +1731,20 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_GradControl2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::GradientZ;
 
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e6'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='1.0e3'/>      \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='1.0e3'/>             \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='2'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-6'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='1.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList);
 
     Plato::test_partial_local_vect_func_inc_wrt_control<EvalType, PhysicsT>(*tMesh, tLocalVectorFuncInc);
 }
-
 
 TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
 {
@@ -1909,38 +1752,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
-
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='100.0'/>            \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='3.0'/>               \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
 
     const     Plato::OrdinalType tNumCells            = tMesh->nelems();
     constexpr Plato::OrdinalType tDofsPerNode         = PhysicsT::mNumDofsPerNode;
@@ -2024,7 +1842,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressYZ, 2.0);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressXZ, 2.0);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList_Two);
+
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
     Plato::ScalarVector tLocalResidual = tLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                    tLocalState, tPrevLocalState,
@@ -2035,7 +1855,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate3D)
     Kokkos::deep_copy(tHostLocalResidual, tLocalResidual);
 
     std::vector<Plato::Scalar> tGold = {-0.400000,26.941399,-0.480125,0.111393,
-        0.368732,0.022152,0.022152,0.022152,7.078994,-44.680887,37.601894,
+        0.368732,0.0443036,0.0443036,0.0443036,7.078994,-44.680887,37.601894,
         -0.829778,-0.829778,-0.829778};
     for (Plato::OrdinalType tIndex = 0; tIndex < tNumLocalDofs; ++tIndex)
         TEST_FLOATING_EQUALITY(tHostLocalResidual(tIndex), 
@@ -2049,38 +1869,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
-
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='100.0'/>            \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='3.0'/>               \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
 
     const     Plato::OrdinalType tNumCells            = tMesh->nelems();
     constexpr Plato::OrdinalType tDofsPerNode         = PhysicsT::mNumDofsPerNode;
@@ -2144,7 +1939,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressXY, 2.0);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressZZ, 0.);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList_Two);
+
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
     Plato::ScalarVector tLocalResidual = tLocalVectorFuncInc.value(tGlobalState, tPrevGlobalState,
                                                                    tLocalState, tPrevLocalState,
@@ -2155,7 +1952,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_Evaluate2D)
     Kokkos::deep_copy(tHostLocalResidual, tLocalResidual);
 
     std::vector<Plato::Scalar> tGold = {-0.400000,9.72218,
-                                        -0.435375,0.457842,0.0450773,0.438152,
+                                        -0.435375,0.457842,0.0901547,0.438152,
                                         7.42286,-42.0187,-0.653611,3.3669};
     for (Plato::OrdinalType tIndex = 0; tIndex < tNumLocalDofs; ++tIndex)
         TEST_FLOATING_EQUALITY(tHostLocalResidual(tIndex), 
@@ -2169,38 +1966,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
-
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='100.0'/>            \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='3.0'/>               \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
 
     const     Plato::OrdinalType tNumCells            = tMesh->nelems();
     constexpr Plato::OrdinalType tDofsPerNode         = PhysicsT::mNumDofsPerNode;
@@ -2267,7 +2039,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState3D)
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressYZ, 2.0);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressXZ, 2.0);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList_Two);
+
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
     tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
                                          tLocalState, tPrevLocalState,
@@ -2292,38 +2066,13 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState2D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     // ### NOTICE THAT THIS IS ONLY PLASTICITY (NO TEMPERATURE) ###
     using PhysicsT = Plato::Plasticity<tSpaceDim>;
 
     using EvalType = typename Plato::Evaluation<PhysicsT>::Residual;
-
-    Teuchos::RCP<Teuchos::ParameterList> tParamList =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.3'/>                     \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='520.0'/>                   \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e2'/>    \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='910.0'/> \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='100.0'/>            \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Plasticity Model'>                                               \n"
-    "    <ParameterList name='J2 Plasticity'>                                                \n"
-    "      <Parameter  name='Hardening Modulus Isotropic' type='double' value='20.0'/>       \n"
-    "      <Parameter  name='Hardening Modulus Kinematic' type='double' value='15.0'/>       \n"
-    "      <Parameter  name='Initial Yield Stress' type='double' value='3.0'/>               \n"
-    "      <Parameter  name='Elastic Properties Penalty Exponent' type='double' value='3'/>  \n"
-    "      <Parameter  name='Elastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "      <Parameter  name='Plastic Properties Penalty Exponent' type='double' value='2.5'/>\n"
-    "      <Parameter  name='Plastic Properties Minimum Ersatz' type='double' value='1e-9'/> \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
-  );
 
     const     Plato::OrdinalType tNumCells            = tMesh->nelems();
     constexpr Plato::OrdinalType tDofsPerNode         = PhysicsT::mNumDofsPerNode;
@@ -2377,7 +2126,9 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState2D)
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressXY, 2.0);
     set_dof_value_in_vector(tPrevLocalState, tNumLocalDofsPerCell, tBackstressZZ, -0.02);
 
-    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(*tMesh, tMeshSets, tDataMap, *tParamList);
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tGenericParamList_Two);
+
+    Plato::LocalVectorFunctionInc<PhysicsT> tLocalVectorFuncInc(tSpatialModel, tDataMap, *tGenericParamList_Two);
 
     tLocalVectorFuncInc.updateLocalState(tGlobalState, tPrevGlobalState,
                                          tLocalState, tPrevLocalState,
@@ -2394,6 +2145,5 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, J2Plasticity_UpdateLocalState2D)
         TEST_FLOATING_EQUALITY(tHostLocalState(tIndex), 
                                 tGold[tIndex % tNumLocalDofsPerCell], tTolerance);
 }
-
 
 } // namespace AugLagStressTest

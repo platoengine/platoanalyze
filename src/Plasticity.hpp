@@ -28,24 +28,31 @@ struct FunctionFactory
     **********************************************************************************/
     template<typename EvaluationType>
     std::shared_ptr<Plato::AbstractLocalVectorFunctionInc<EvaluationType>>
-    createLocalVectorFunctionInc(Omega_h::Mesh& aMesh, 
-                                 Omega_h::MeshSets& aMeshSets,
-                                 Plato::DataMap& aDataMap, 
-                                 Teuchos::ParameterList& aInputParams)
+    createLocalVectorFunctionInc(
+        const Plato::SpatialDomain   & aSpatialDomain,
+              Plato::DataMap         & aDataMap, 
+              Teuchos::ParameterList & aInputParams
+    )
     {
-        if(aInputParams.isSublist("Plasticity Model") == false)
+        if(aInputParams.isSublist("Material Models") == false)
+        {
+            THROWERR("'Material Models' Sublist is not defined.")
+        }
+        Teuchos::ParameterList tMaterialModelsList = aInputParams.sublist("Material Models");
+        Teuchos::ParameterList tMaterialModelList  = tMaterialModelsList.sublist(aSpatialDomain.getMaterialName());
+        if(tMaterialModelList.isSublist("Plasticity Model") == false)
         {
             THROWERR("Plasticity Model Sublist is not defined.")
         }
 
-        auto tPlasticityParamList = aInputParams.get<Teuchos::ParameterList>("Plasticity Model");
+        auto tPlasticityParamList = tMaterialModelList.get<Teuchos::ParameterList>("Plasticity Model");
 
         if(tPlasticityParamList.isSublist("J2 Plasticity"))
         {
           constexpr Plato::OrdinalType tSpaceDim = EvaluationType::SpatialDim;
           return std::make_shared
             <J2PlasticityLocalResidual<EvaluationType, Plato::SimplexPlasticity<tSpaceDim>>>
-            (aMesh, aMeshSets, aDataMap, aInputParams);
+            (aSpatialDomain, aDataMap, aInputParams);
         }
         else
         {

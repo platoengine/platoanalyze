@@ -53,13 +53,13 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
 
   // create mesh based solution from host data
   //
   int tNumDofsPerNode = (spaceDim+1);
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
   Plato::ScalarMultiVector states("states", /*numSteps=*/1, tNumDofs);
   auto state = Kokkos::subview(states, 0, Kokkos::ALL());
@@ -82,7 +82,6 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
     Teuchos::getParametersFromXmlString(
     "<ParameterList name='Plato Problem'>                                         \n"
     "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>          \n"
-    "  <Parameter name='Objective' type='string' value='My Internal Thermoelastic Energy'/>  \n"
     "  <Parameter name='Self-Adjoint' type='bool' value='true'/>                  \n"
     "  <ParameterList name='Elliptic'>                                            \n"
     "    <ParameterList name='Penalty Function'>                                  \n"
@@ -91,33 +90,47 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
     "      <Parameter name='Minimum Value' type='double' value='0.0'/>            \n"
     "    </ParameterList>                                                         \n"
     "  </ParameterList>                                                           \n"
-    "  <ParameterList name='My Internal Thermoelastic Energy'>                    \n"
-    "    <Parameter name='Type' type='string' value='Scalar Function'/>           \n"
-    "    <Parameter name='Scalar Function Type' type='string' value='Internal Thermoelastic Energy'/>  \n"
-    "    <ParameterList name='Penalty Function'>                                  \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                 \n"
-    "      <Parameter name='Minimum Value' type='double' value='0.0'/>            \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                    \n"
+    "  <ParameterList name='Criteria'>                                            \n"
+    "    <ParameterList name='Internal Thermoelastic Energy'>                     \n"
+    "      <Parameter name='Type' type='string' value='Scalar Function'/>         \n"
+    "      <Parameter name='Scalar Function Type' type='string' value='Internal Thermoelastic Energy'/>  \n"
+    "      <ParameterList name='Penalty Function'>                                \n"
+    "        <Parameter name='Exponent' type='double' value='1.0'/>               \n"
+    "        <Parameter name='Minimum Value' type='double' value='0.0'/>          \n"
+    "        <Parameter name='Type' type='string' value='SIMP'/>                  \n"
+    "      </ParameterList>                                                       \n"
     "    </ParameterList>                                                         \n"
     "  </ParameterList>                                                           \n"
-    "  <ParameterList name='Material Model'>                                      \n"
-    "    <ParameterList name='Thermoelastic'>                                     \n"
-    "      <ParameterList name='Elastic Stiffness'>                               \n"
-    "        <Parameter  name='Poissons Ratio' type='double' value='0.3'/>        \n"
-    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>     \n"
-    "      </ParameterList>                                                       \n"
-    "      <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>  \n"
-    "      <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>  \n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>   \n"
-    "    </ParameterList>                                                         \n"
+    "  <ParameterList name='Spatial Model'>                                        \n"
+    "    <ParameterList name='Domains'>                                            \n"
+    "      <ParameterList name='Design Volume'>                                    \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>          \n"
+    "        <Parameter name='Material Model' type='string' value='Beef Jerky'/>   \n"
+    "      </ParameterList>                                                        \n"
+    "    </ParameterList>                                                          \n"
+    "  </ParameterList>                                                            \n"
+    "  <ParameterList name='Material Models'>                                      \n"
+    "    <ParameterList name='Beef Jerky'>                                          \n"
+    "      <ParameterList name='Thermoelastic'>                                     \n"
+    "        <ParameterList name='Elastic Stiffness'>                               \n"
+    "          <Parameter  name='Poissons Ratio' type='double' value='0.3'/>        \n"
+    "          <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>     \n"
+    "        </ParameterList>                                                       \n"
+    "        <Parameter  name='Thermal Expansivity' type='double' value='1.0e-5'/>  \n"
+    "        <Parameter  name='Thermal Conductivity' type='double' value='910.0'/>  \n"
+    "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>   \n"
+    "      </ParameterList>                                                         \n"
+    "    </ParameterList>                                                           \n"
     "  </ParameterList>                                                           \n"
     "</ParameterList>                                                             \n"
   );
 
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
   Plato::Elliptic::VectorFunction<::Plato::Thermomechanics<spaceDim>>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
 
   // compute and test constraint value
@@ -242,8 +255,9 @@ TEUCHOS_UNIT_TEST( ThermoelasticTests, InternalThermoelasticEnergy3D )
 
   // create objective
   //
+  std::string tMyFunction("Internal Thermoelastic Energy");
   Plato::Elliptic::PhysicsScalarFunction<::Plato::Thermomechanics<spaceDim>>
-    scalarFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("Objective"));
+    scalarFunction(tSpatialModel, tDataMap, *params, tMyFunction);
 
   // compute and test objective value
   //

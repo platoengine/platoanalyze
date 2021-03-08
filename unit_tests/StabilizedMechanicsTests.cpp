@@ -35,7 +35,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Kinematics3D)
     // Set state workset
     auto tNumNodes = tMesh->nverts();
     auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    Plato::ScalarVector tState("state", tSpaceDim * tNumNodes);
+    Plato::ScalarVector tState("state", tNumDofsPerNode * tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
         tState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
@@ -91,7 +91,8 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
     Plato::DataMap    tDataMap;
-    Omega_h::MeshSets tMeshSets;
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
 
     Teuchos::RCP<Teuchos::ParameterList> tParamList =
     Teuchos::getParametersFromXmlString(
@@ -110,12 +111,22 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Solution3D)
           "<Parameter name='Time Step' type='double' value='1.0'/>                        \n"
         "</ParameterList>                                                                 \n"
         "<ParameterList name='Newton Iteration'>                                          \n"
-          "<Parameter name='Number Iterations' type='int' value='3'/>                      \n"
+          "<Parameter name='Number Iterations' type='int' value='3'/>                     \n"
         "</ParameterList>                                                                 \n"
-        "<ParameterList name='Material Model'>                                            \n"
-          "<ParameterList name='Isotropic Linear Elastic'>                                 \n"
-            "<Parameter  name='Poissons Ratio' type='double' value='0.35'/>               \n"
-            "<Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>             \n"
+        "<ParameterList name='Spatial Model'>                                             \n"
+          "<ParameterList name='Domains'>                                                 \n"
+            "<ParameterList name='Design Volume'>                                         \n"
+              "<Parameter name='Element Block' type='string' value='body'/>               \n"
+              "<Parameter name='Material Model' type='string' value='Playdoh'/>           \n"
+            "</ParameterList>                                                             \n"
+          "</ParameterList>                                                               \n"
+        "</ParameterList>                                                                 \n"
+        "<ParameterList name='Material Models'>                                           \n"
+          "<ParameterList name='Playdoh'>                                                 \n"
+            "<ParameterList name='Isotropic Linear Elastic'>                              \n"
+              "<Parameter  name='Poissons Ratio' type='double' value='0.35'/>             \n"
+              "<Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>           \n"
+            "</ParameterList>                                                             \n"
           "</ParameterList>                                                               \n"
         "</ParameterList>                                                                 \n"
     "</ParameterList>                                                                     \n"
@@ -216,29 +227,43 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Residual3D)
 {
     // 1. PREPARE PROBLEM INPUS FOR TEST
     Plato::DataMap tDataMap;
-    Omega_h::MeshSets tMeshSets;
     constexpr Plato::OrdinalType tSpaceDim = 3;
     constexpr Plato::OrdinalType tMeshWidth = 1;
     auto tMesh = PlatoUtestHelpers::getBoxMesh(tSpaceDim, tMeshWidth);
 
+    Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(tSpaceDim);
+    Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+
     Teuchos::RCP<Teuchos::ParameterList> tPDEInputs =
         Teuchos::getParametersFromXmlString(
-        "<ParameterList name='Plato Problem'>                                   \n"
-        "<ParameterList name='Material Model'>                                  \n"
-        "  <ParameterList name='Isotropic Linear Elastic'>                      \n"
-        "    <Parameter  name='Poissons Ratio' type='double' value='0.35'/>     \n"
-        "    <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>   \n"
-        "  </ParameterList>                                                     \n"
-        "</ParameterList>                                                       \n"
-        "<ParameterList name='Elliptic'>                                        \n"
-        "  <ParameterList name='Penalty Function'>                              \n"
-        "    <Parameter name='Type' type='string' value='SIMP'/>                \n"
-        "    <Parameter name='Exponent' type='double' value='3.0'/>             \n"
-        "    <Parameter name='Minimum Value' type='double' value='1.0e-9'/>     \n"
-        "  </ParameterList>                                                     \n"
-        "</ParameterList>                                                       \n"
-        "</ParameterList>                                                       \n"
+        "<ParameterList name='Plato Problem'>                                           \n"
+        "  <ParameterList name='Spatial Model'>                                         \n"
+        "    <ParameterList name='Domains'>                                             \n"
+        "      <ParameterList name='Design Volume'>                                     \n"
+        "        <Parameter name='Element Block' type='string' value='body'/>           \n"
+        "        <Parameter name='Material Model' type='string' value='Fancy Feast'/>   \n"
+        "      </ParameterList>                                                         \n"
+        "    </ParameterList>                                                           \n"
+        "  </ParameterList>                                                             \n"
+        "  <ParameterList name='Material Models'>                                       \n"
+        "    <ParameterList name='Fancy Feast'>                                         \n"
+        "      <ParameterList name='Isotropic Linear Elastic'>                          \n"
+        "        <Parameter  name='Poissons Ratio' type='double' value='0.35'/>         \n"
+        "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>       \n"
+        "      </ParameterList>                                                         \n"
+        "    </ParameterList>                                                           \n"
+        "  </ParameterList>                                                             \n"
+        "  <ParameterList name='Elliptic'>                                              \n"
+        "    <ParameterList name='Penalty Function'>                                    \n"
+        "      <Parameter name='Type' type='string' value='SIMP'/>                      \n"
+        "      <Parameter name='Exponent' type='double' value='3.0'/>                   \n"
+        "      <Parameter name='Minimum Value' type='double' value='1.0e-9'/>           \n"
+        "    </ParameterList>                                                           \n"
+        "  </ParameterList>                                                             \n"
+        "</ParameterList>                                                               \n"
       );
+
+    Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *tPDEInputs);
 
     // 2. PREPARE FUNCTION INPUTS FOR TEST
     const Plato::OrdinalType tNumNodes = tMesh->nverts();
@@ -257,7 +282,7 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Residual3D)
 
     // 2.3 SET GLOBAL STATE
     auto tNumDofsPerNode = PhysicsT::mNumDofsPerNode;
-    Plato::ScalarVector tState("state", tSpaceDim * tNumNodes);
+    Plato::ScalarVector tState("state", tNumDofsPerNode * tNumNodes);
     Kokkos::parallel_for(Kokkos::RangePolicy<>(0,tNumNodes), LAMBDA_EXPRESSION(const Plato::OrdinalType & aNodeOrdinal)
     {
         tState(aNodeOrdinal*tNumDofsPerNode+0) = (1e-7)*aNodeOrdinal; // disp_x
@@ -282,9 +307,11 @@ TEUCHOS_UNIT_TEST(PlatoAnalyzeUnitTests, StabilizedMechanics_Residual3D)
         }
     }, "set projected pressure grad");
 
+    auto tOnlyDomain = tSpatialModel.Domains.front();
+
     // 3. CALL FUNCTION
     auto tPenaltyParams = tPDEInputs->sublist("Elliptic").sublist("Penalty Function");
-    Plato::StabilizedElastostaticResidual<EvalType, Plato::MSIMP> tComputeResidual(*tMesh, tMeshSets, tDataMap, *tPDEInputs, tPenaltyParams);
+    Plato::StabilizedElastostaticResidual<EvalType, Plato::MSIMP> tComputeResidual(tOnlyDomain, tDataMap, *tPDEInputs, tPenaltyParams);
     Plato::ScalarMultiVectorT<EvalType::ResultScalarType> tResidualWS("residual", tNumCells, PhysicsT::mNumDofsPerCell);
     tComputeResidual.evaluate(tStateWS, tProjPressGradWS, tControlWS, tConfigWS, tResidualWS);
 

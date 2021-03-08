@@ -75,14 +75,19 @@ public:
      * \param [in] aVector 1D view of Right-Hand-Side forces
     **********************************************************************************/
     virtual void
-    applyConstraints(const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix, const Plato::ScalarVector & aVector)=0;
+    applyConstraints(
+        const Teuchos::RCP<Plato::CrsMatrixType> & aMatrix,
+        const Plato::ScalarVector                & aVector
+    )=0;
 
     /******************************************************************************//**
      * \brief Apply boundary forces
      * \param [in/out] aForce 1D view of forces
     **********************************************************************************/
     virtual void
-    applyBoundaryLoads(const Plato::ScalarVector & aForce)=0;
+    applyBoundaryLoads(
+        const Plato::ScalarVector & aForce
+    )=0;
 
     /******************************************************************************//**
      * \brief Update physics-based parameters within optimization iterations
@@ -90,7 +95,10 @@ public:
      * \param [in] aSolution Plato::Solution containing state
     **********************************************************************************/
     virtual void
-    updateProblem(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)=0;
+    updateProblem(
+        const Plato::ScalarVector & aControl,
+        const Plato::Solution     & aSolution
+    )=0;
 
     /******************************************************************************//**
      * \brief Solve system of equations
@@ -98,82 +106,96 @@ public:
      * \return 2D view of state variables
     **********************************************************************************/
     virtual Plato::Solution
-    solution(const Plato::ScalarVector & aControl)=0;
+    solution(
+        const Plato::ScalarVector & aControl
+    )=0;
 
     /******************************************************************************//**
-     * \brief Evaluate constraint function
+     * \brief Is criterion independent of the solution state?
+     * \param [in] aName Name of criterion.
+    **********************************************************************************/
+    virtual bool
+    criterionIsLinear(
+        const std::string & aName
+    ){ return false; }
+
+    /******************************************************************************//**
+     * \brief Evaluate criterion function
      * \param [in] aControl 1D view of control variables
-     * \return constraint function value
+     * \param [in] aName Name of criterion.
+     * \return criterion function value
     **********************************************************************************/
     virtual Plato::Scalar
-    constraintValue(const Plato::ScalarVector & aControl)=0;
+    criterionValue(
+        const Plato::ScalarVector & aControl,
+        const std::string         & aName
+    )=0;
 
     /******************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt control variables
+     * \brief Evaluate criterion function
      * \param [in] aControl 1D view of control variables
-     * \return 1D view - constraint partial derivative wrt control variables
-    **********************************************************************************/
-    virtual Plato::ScalarVector
-    constraintGradient(const Plato::ScalarVector & aControl)=0;
-
-    /******************************************************************************//**
-     * \brief Evaluate constraint partial derivative wrt configuration variables
-     * \param [in] aControl 1D view of control variables
-     * \return 1D view - constraint partial derivative wrt configuration variables
-    **********************************************************************************/
-    virtual Plato::ScalarVector
-    constraintGradientX(const Plato::ScalarVector & aControl)=0;
-
-    /******************************************************************************//**
-     * \brief Evaluate objective function
-     * \param [in] aControl 1D view of control variables
-     * \return objective function value
+     * \param [in] aSolution Plato::Solution containing state
+     * \param [in] aName Name of criterion.
+     * \return criterion function value
     **********************************************************************************/
     virtual Plato::Scalar
-    objectiveValue(const Plato::ScalarVector & aControl)=0;
+    criterionValue(
+        const Plato::ScalarVector & aControl,
+        const Plato::Solution     & aSolution,
+        const std::string         & aName
+    )=0;
 
     /******************************************************************************//**
-     * \brief Evaluate objective function
+     * \brief Evaluate criterion partial derivative wrt control variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aName Name of criterion.
+     * \return 1D view - criterion partial derivative wrt control variables
+    **********************************************************************************/
+    virtual Plato::ScalarVector
+    criterionGradient(
+        const Plato::ScalarVector & aControl,
+        const std::string         & aName
+    )=0;
+
+    /******************************************************************************//**
+     * \brief Evaluate criterion partial derivative wrt configuration variables
+     * \param [in] aControl 1D view of control variables
+     * \param [in] aName Name of criterion.
+     * \return 1D view - criterion partial derivative wrt configuration variables
+    **********************************************************************************/
+    virtual Plato::ScalarVector
+    criterionGradientX(
+        const Plato::ScalarVector & aControl,
+        const std::string         & aName
+    )=0;
+
+    /******************************************************************************//**
+     * \brief Evaluate criterion gradient wrt control variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aSolution Plato::Solution containing state
-     * \return objective function value
-    **********************************************************************************/
-    virtual Plato::Scalar
-    objectiveValue(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)=0;
-
-    /******************************************************************************//**
-     * \brief Evaluate objective partial derivative wrt control variables
-     * \param [in] aControl 1D view of control variables
-     * \return 1D view - objective partial derivative wrt control variables
+     * \param [in] aName Name of criterion.
+     * \return 1D view - criterion gradient wrt control variables
     **********************************************************************************/
     virtual Plato::ScalarVector
-    objectiveGradient(const Plato::ScalarVector & aControl)=0;
+    criterionGradient(
+        const Plato::ScalarVector & aControl,
+        const Plato::Solution     & aSolution,
+        const std::string         & aName
+    )=0;
 
     /******************************************************************************//**
-     * \brief Evaluate objective gradient wrt control variables
+     * \brief Evaluate criterion gradient wrt configuration variables
      * \param [in] aControl 1D view of control variables
      * \param [in] aSolution Plato::Solution containing state
-     * \return 1D view - objective gradient wrt control variables
+     * \param [in] aName Name of criterion.
+     * \return 1D view - criterion gradient wrt configuration variables
     **********************************************************************************/
     virtual Plato::ScalarVector
-    objectiveGradient(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)=0;
-
-    /******************************************************************************//**
-     * \brief Evaluate objective partial derivative wrt configuration variables
-     * \param [in] aControl 1D view of control variables
-     * \return 1D view - objective partial derivative wrt configuration variables
-    **********************************************************************************/
-    virtual Plato::ScalarVector
-    objectiveGradientX(const Plato::ScalarVector & aControl)=0;
-
-    /******************************************************************************//**
-     * \brief Evaluate objective gradient wrt configuration variables
-     * \param [in] aControl 1D view of control variables
-     * \param [in] aSolution Plato::Solution containing state
-     * \return 1D view - objective gradient wrt configuration variables
-    **********************************************************************************/
-    virtual Plato::ScalarVector
-    objectiveGradientX(const Plato::ScalarVector & aControl, const Plato::Solution & aSolution)=0;
+    criterionGradientX(
+        const Plato::ScalarVector & aControl,
+        const Plato::Solution     & aSolution,
+        const std::string         & aName
+    )=0;
 
     /******************************************************************************//**
      * \brief Return output database that enables import/export rights to PLATO Engine

@@ -16,6 +16,7 @@
 
 #include "LocalScalarFunctionInc.hpp"
 #include "InfinitesimalStrainPlasticity.hpp"
+#include "InfinitesimalStrainThermoPlasticity.hpp"
 
 namespace Plato
 {
@@ -48,11 +49,11 @@ public:
      * \return shared pointer to the interface of path-dependent scalar functions
      **********************************************************************************/
     std::shared_ptr<Plato::LocalScalarFunctionInc>
-    create(Omega_h::Mesh& aMesh,
-           Omega_h::MeshSets& aMeshSets,
-           Plato::DataMap & aDataMap,
-           Teuchos::ParameterList& aInputParams,
-           std::string& aFunctionName);
+    create(
+        const Plato::SpatialModel    & aSpatialModel,
+              Plato::DataMap         & aDataMap,
+              Teuchos::ParameterList & aInputParams,
+        const std::string            & aFunctionName);
 };
 // class PathDependentScalarFunctionFactory
 
@@ -61,12 +62,15 @@ public:
 
 #ifdef PLATOANALYZE_1D
 extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<1>>;
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainThermoPlasticity<1>>;
 #endif
 
 #ifdef PLATOANALYZE_2D
 extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<2>>;
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainThermoPlasticity<2>>;
 #endif
 
 #ifdef PLATOANALYZE_3D
 extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainPlasticity<3>>;
+extern template class Plato::PathDependentScalarFunctionFactory<Plato::InfinitesimalStrainThermoPlasticity<3>>;
 #endif

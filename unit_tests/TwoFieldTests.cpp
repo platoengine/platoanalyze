@@ -4,6 +4,7 @@
 
 #include "PlatoTestHelpers.hpp"
 #include "Omega_h_build.hpp"
+#include "Omega_h_assoc.hpp"
 #include "Omega_h_map.hpp"
 #include "Omega_h_matrix.hpp"
 #include "Omega_h_file.hpp"
@@ -36,6 +37,7 @@
 #include <VectorFunctionVMS.hpp>
 #include <StateValues.hpp>
 #include <Plato_Solve.hpp>
+#include "SpatialModel.hpp"
 #include "ApplyConstraints.hpp"
 #include "PressureDivergence.hpp"
 #include "StabilizedThermomechanics.hpp"
@@ -127,28 +129,30 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, 3D )
   //
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Thermal Mass'>                                                 \n"
-    "      <Parameter name='Mass Density' type='double' value='0.3'/>                        \n"
-    "      <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
-    "    </ParameterList>                                                                    \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
+    "<ParameterList name='Plato Problem'>                                                      \n"
+    "  <ParameterList name='Material Models'>                                                  \n"
+    "    <ParameterList name='Unobtainium'>                                                    \n"
+    "      <ParameterList name='Thermal Mass'>                                                 \n"
+    "        <Parameter name='Mass Density' type='double' value='0.3'/>                        \n"
+    "        <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
+    "      </ParameterList>                                                                    \n"
+    "      <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
+    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
+    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
+    "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
+    "      </ParameterList>                                                                    \n"
+    "    </ParameterList>                                                                      \n"
+    "  </ParameterList>                                                                        \n"
+    "</ParameterList>                                                                          \n"
   );
 
   Plato::ThermalMassModelFactory<spaceDim> mmmfactory(*params);
-  auto massMaterialModel = mmmfactory.create();
+  auto massMaterialModel = mmmfactory.create("Unobtainium");
 
   Plato::LinearThermoelasticModelFactory<spaceDim> mmfactory(*params);
-  auto materialModel = mmfactory.create();
+  auto materialModel = mmfactory.create("Unobtainium");
 
   Plato::ComputeGradientWorkset<spaceDim>    computeGradient;
   Plato::StabilizedTMKinematics<spaceDim>      kinematics;
@@ -636,12 +640,12 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, StabilizedThermomechResidual3D )
   //
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   // create mesh based solution from host data
   //
   int tNumDofsPerNode = (spaceDim+2);
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   int tNumDofs = tNumNodes*tNumDofsPerNode;
 
   Plato::ScalarVector tState        ("state",         tNumDofs);
@@ -665,44 +669,56 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, StabilizedThermomechResidual3D )
   //
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>                     \n"
-    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                            \n"
-    "  <ParameterList name='Stabilized Elliptic'>                                            \n"
-    "    <ParameterList name='Penalty Function'>                                             \n"
-    "      <Parameter name='Exponent' type='double' value='1.0'/>                            \n"
-    "      <Parameter name='Type' type='string' value='SIMP'/>                               \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Thermal Mass'>                                                 \n"
-    "      <Parameter name='Mass Density' type='double' value='0.3'/>                        \n"
-    "      <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
-    "    </ParameterList>                                                                    \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Time Stepping'>                                                  \n"
-    "    <Parameter name='Number Time Steps' type='int' value='2'/>                          \n"
-    "    <Parameter name='Time Step' type='double' value='1.0'/>                             \n"
-    "  </ParameterList>                                                                      \n"
-    "  <ParameterList name='Newton Iteration'>                                               \n"
-    "    <Parameter name='Number Iterations' type='int' value='2'/>                          \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
+    "<ParameterList name='Plato Problem'>                                                      \n"
+    "  <Parameter name='PDE Constraint' type='string' value='Elliptic'/>                       \n"
+    "  <Parameter name='Self-Adjoint' type='bool' value='false'/>                              \n"
+    "  <ParameterList name='Stabilized Elliptic'>                                              \n"
+    "    <ParameterList name='Penalty Function'>                                               \n"
+    "      <Parameter name='Exponent' type='double' value='1.0'/>                              \n"
+    "      <Parameter name='Type' type='string' value='SIMP'/>                                 \n"
+    "    </ParameterList>                                                                      \n"
+    "  </ParameterList>                                                                        \n"
+    "  <ParameterList name='Spatial Model'>                                                    \n"
+    "    <ParameterList name='Domains'>                                                        \n"
+    "      <ParameterList name='Design Volume'>                                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>                      \n"
+    "        <Parameter name='Material Model' type='string' value='Kryptonite'/>               \n"
+    "      </ParameterList>                                                                    \n"
+    "    </ParameterList>                                                                      \n"
+    "  </ParameterList>                                                                        \n"
+    "  <ParameterList name='Material Models'>                                                  \n"
+    "    <ParameterList name='Kryptonite'>                                                     \n"
+    "      <ParameterList name='Thermal Mass'>                                                 \n"
+    "        <Parameter name='Mass Density' type='double' value='0.3'/>                        \n"
+    "        <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
+    "      </ParameterList>                                                                    \n"
+    "      <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
+    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
+    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
+    "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
+    "      </ParameterList>                                                                    \n"
+    "    </ParameterList>                                                                      \n"
+    "  </ParameterList>                                                                        \n"
+    "  <ParameterList name='Time Stepping'>                                                    \n"
+    "    <Parameter name='Number Time Steps' type='int' value='2'/>                            \n"
+    "    <Parameter name='Time Step' type='double' value='1.0'/>                               \n"
+    "  </ParameterList>                                                                        \n"
+    "  <ParameterList name='Newton Iteration'>                                                 \n"
+    "    <Parameter name='Number Iterations' type='int' value='2'/>                            \n"
+    "  </ParameterList>                                                                        \n"
+    "</ParameterList>                                                                          \n"
   );
 
   // create constraint evaluator
   //
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
   Plato::VectorFunctionVMS<::Plato::StabilizedThermomechanics<spaceDim>>
-    vectorFunction(*mesh, tMeshSets, tDataMap, *params, params->get<std::string>("PDE Constraint"));
+    vectorFunction(tSpatialModel, tDataMap, *params, params->get<std::string>("PDE Constraint"));
 
   // create input pressure gradient projector
   //
@@ -731,7 +747,7 @@ TEUCHOS_UNIT_TEST( StabilizedThermomechTests, StabilizedThermomechResidual3D )
   // create constraint evaluator
   //
   Plato::VectorFunctionVMS<::Plato::Projection<spaceDim>>
-    tProjectorVectorFunction(*mesh, tMeshSets, tDataMap, *paramsProjector, "State Gradient Projection");
+    tProjectorVectorFunction(tSpatialModel, tDataMap, *paramsProjector, "State Gradient Projection");
 
   auto tProjResidual = tProjectorVectorFunction.value      (tProjPGrad, tProjectState, tControl);
   auto tProjJacobian = tProjectorVectorFunction.gradient_u (tProjPGrad, tProjectState, tControl);
@@ -905,11 +921,11 @@ TEUCHOS_UNIT_TEST( PlatoMathFunctors, RowSumSolve )
   constexpr int meshWidth=2;
   constexpr int spaceDim=3;
 
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+  auto tMesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
 
   // create mesh based solution from host data
   //
-  int tNumNodes = mesh->nverts();
+  int tNumNodes = tMesh->nverts();
   Plato::ScalarVector tProjectState ("state",     tNumNodes);
   Plato::ScalarVector tProjPGrad    ("ProjPGrad", tNumNodes*spaceDim);
   Plato::ScalarVector tControl      ("Control",   tNumNodes);
@@ -924,27 +940,39 @@ TEUCHOS_UNIT_TEST( PlatoMathFunctors, RowSumSolve )
   //
   Teuchos::RCP<Teuchos::ParameterList> params =
     Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                                    \n"
-    "  <ParameterList name='Material Model'>                                                 \n"
-    "    <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
-    "      <Parameter name='Mass Density' type='double' value='0.3'/>                        \n"
-    "      <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
-    "      <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
-    "      <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
-    "      <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
-    "      <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
-    "      <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
-    "    </ParameterList>                                                                    \n"
-    "  </ParameterList>                                                                      \n"
-    "</ParameterList>                                                                        \n"
+    "<ParameterList name='Plato Problem'>                                                      \n"
+    "  <ParameterList name='Spatial Model'>                                                    \n"
+    "    <ParameterList name='Domains'>                                                        \n"
+    "      <ParameterList name='Design Volume'>                                                \n"
+    "        <Parameter name='Element Block' type='string' value='body'/>                      \n"
+    "        <Parameter name='Material Model' type='string' value='Squeaky Cheese'/>           \n"
+    "      </ParameterList>                                                                    \n"
+    "    </ParameterList>                                                                      \n"
+    "  </ParameterList>                                                                        \n"
+    "  <ParameterList name='Material Models'>                                                  \n"
+    "    <ParameterList name='Squeaky Cheese'>                                                 \n"
+    "      <ParameterList name='Isotropic Linear Thermoelastic'>                               \n"
+    "        <Parameter name='Mass Density' type='double' value='0.3'/>                        \n"
+    "        <Parameter name='Specific Heat' type='double' value='1.0e6'/>                     \n"
+    "        <Parameter  name='Poissons Ratio' type='double' value='0.499'/>                   \n"
+    "        <Parameter  name='Youngs Modulus' type='double' value='1.0e11'/>                  \n"
+    "        <Parameter  name='Thermal Expansion Coefficient' type='double' value='1.0e-5'/>   \n"
+    "        <Parameter  name='Thermal Conductivity Coefficient' type='double' value='1000.0'/>\n"
+    "        <Parameter  name='Reference Temperature' type='double' value='0.0'/>              \n"
+    "      </ParameterList>                                                                    \n"
+    "    </ParameterList>                                                                      \n"
+    "  </ParameterList>                                                                        \n"
+    "</ParameterList>                                                                          \n"
   );
 
   // create constraint evaluator
   //
   Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
+  Omega_h::Assoc tAssoc = Omega_h::get_box_assoc(spaceDim);
+  Omega_h::MeshSets tMeshSets = Omega_h::invert(&(*tMesh), tAssoc);
+  Plato::SpatialModel tSpatialModel(*tMesh, tMeshSets, *params);
   Plato::VectorFunctionVMS<::Plato::Projection<spaceDim>>
-    tVectorFunction(*mesh, tMeshSets, tDataMap, *params, "State Gradient Projection");
+    tVectorFunction(tSpatialModel, tDataMap, *params, "State Gradient Projection");
 
   auto tResidual = tVectorFunction.value      (tProjPGrad, tProjectState, tControl);
   auto tJacobian = tVectorFunction.gradient_u (tProjPGrad, tProjectState, tControl);
@@ -1061,6 +1089,7 @@ TEUCHOS_UNIT_TEST( PlatoMathFunctors, RowSumSolve )
 
   { // test row summed solve
     //
+    Plato::blas1::scale(-1.0, tResidual);
     Plato::Solve::RowSummed<spaceDim>(tJacobian, tProjPGrad, tResidual);
 
     auto tProjPGrad_Host = Kokkos::create_mirror_view( tProjPGrad );

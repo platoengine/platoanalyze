@@ -39,7 +39,7 @@ namespace Plato {
   {
     public:
       ThermalMassModelFactory(const Teuchos::ParameterList& paramList) : mParamList(paramList) {}
-      Teuchos::RCP<Plato::MaterialModel<SpatialDim>> create();
+      Teuchos::RCP<Plato::MaterialModel<SpatialDim>> create(std::string aModelName);
     private:
       const Teuchos::ParameterList& mParamList;
   };
@@ -47,17 +47,35 @@ namespace Plato {
   /******************************************************************************/
   template<int SpatialDim>
   Teuchos::RCP<MaterialModel<SpatialDim>>
-  ThermalMassModelFactory<SpatialDim>::create()
+  ThermalMassModelFactory<SpatialDim>::create(std::string aModelName)
   /******************************************************************************/
   {
-    auto modelParamList = mParamList.get<Teuchos::ParameterList>("Material Model");
+      if (!mParamList.isSublist("Material Models"))
+      {
+          REPORT("'Material Models' list not found! Returning 'nullptr'");
+          return Teuchos::RCP<Plato::MaterialModel<SpatialDim>>(nullptr);
+      }
+      else
+      {
+          auto tModelsParamList = mParamList.get<Teuchos::ParameterList>("Material Models");
 
-    if( modelParamList.isSublist("Thermal Mass") )
-    {
-      return Teuchos::rcp(new Plato::ThermalMassMaterial<SpatialDim>(modelParamList.sublist("Thermal Mass")));
-    }
-    else
-    THROWERR("Expected 'Thermal Mass' ParameterList");
+          if (!tModelsParamList.isSublist(aModelName))
+          {
+              std::stringstream ss;
+              ss << "Requested a material model ('" << aModelName << "') that isn't defined";
+              THROWERR(ss.str());
+          }
+
+          auto tModelParamList = tModelsParamList.sublist(aModelName);
+
+          if( tModelParamList.isSublist("Thermal Mass") )
+          {
+              return Teuchos::rcp(new Plato::ThermalMassMaterial<SpatialDim>(tModelParamList.sublist("Thermal Mass")));
+          }
+          else
+          {
+              THROWERR("Expected 'Thermal Mass' ParameterList");
+          }
+      }
   }
-
 } // namespace Plato
