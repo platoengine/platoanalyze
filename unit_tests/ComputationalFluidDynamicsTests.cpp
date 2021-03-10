@@ -2972,7 +2972,7 @@ private:
     using GradCurPressEvalT = typename Plato::Fluids::Evaluation<typename PhysicsT::SimplexT>::GradCurMass;     /*!< partial wrt current pressure state FAD evaluation type */
 
     // element scalar functions types
-    using ResidualFunc     = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, ResidualEvalT>>;     /*!< short name/notation for a scalar function of residual FAD evaluation type */
+    using ValueFunc        = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, ResidualEvalT>>;     /*!< short name/notation for a scalar function of residual FAD evaluation type */
     using GradConfigFunc   = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradConfigEvalT>>;   /*!< short name/notation for a scalar function of partial wrt configuration FAD evaluation type */
     using GradControlFunc  = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradControlEvalT>>;  /*!< short name/notation for a scalar function of partial wrt control FAD evaluation type */
     using GradCurVelFunc   = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradCurVelEvalT>>;   /*!< short name/notation for a scalar function of partial wrt current velocity state FAD evaluation type */
@@ -2980,7 +2980,7 @@ private:
     using GradCurPressFunc = std::shared_ptr<Plato::Fluids::AbstractScalarFunction<PhysicsT, GradCurPressEvalT>>; /*!< short name/notation for a scalar function of partial wrt current pressure state FAD evaluation type */
 
     // element scalar functions per element block, i.e. domain
-    std::unordered_map<std::string, ResidualFunc>     mResidualFuncs; /*!< map from domain (i.e. element block) to scalar function of residual FAD evaluation type */
+    std::unordered_map<std::string, ValueFunc>        mValueFuncs; /*!< map from domain (i.e. element block) to scalar function of residual FAD evaluation type */
     std::unordered_map<std::string, GradConfigFunc>   mGradConfigFuncs; /*!< map from domain (i.e. element block) to scalar function of partial wrt configuration FAD evaluation type */
     std::unordered_map<std::string, GradControlFunc>  mGradControlFuncs; /*!< map from domain (i.e. element block) to scalar function of partial wrt control FAD evaluation type */
     std::unordered_map<std::string, GradCurVelFunc>   mGradCurrentVelocityFuncs; /*!< map from domain (i.e. element block) to scalar function of partial wrt current velocity state FAD evaluation type */
@@ -3053,7 +3053,7 @@ public:
 
             auto tName = tDomain.getDomainName();
             Plato::ScalarVectorT<ResultScalarT> tResultWS("cells value", tNumCells);
-            mResidualFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
+            mValueFuncs.at(tName)->evaluate(tInputWorkSets, tResultWS);
 
             tReturnValue += Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
         }
@@ -3066,7 +3066,7 @@ public:
                 (tNumCells, aControls, aVariables, mLocalOrdinalMaps, tInputWorkSets);
 
             Plato::ScalarVectorT<ResultScalarT> tResultWS("Cells Results", tNumCells);
-            mResidualFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
+            mValueFuncs.begin()->second->evaluateBoundary(tInputWorkSets, tResultWS);
 
             tReturnValue += Plato::local_result_sum<Plato::Scalar>(tNumCells, tResultWS);
         }
@@ -3337,7 +3337,7 @@ private:
         {
             auto tName = tDomain.getDomainName();
 
-            mResidualFuncs[tName] =
+            mValueFuncs[tName] =
                 tScalarFuncFactory.template createScalarFunction<PhysicsT, ResidualEvalT>
                     (mFuncName, tDomain, mDataMap, aInputs);
 
@@ -8059,7 +8059,7 @@ public:
         }*/
         else
         {
-            THROWERR(std::string("Scalar function in block '") + aName + "' with type '" + tType + "' is not supported.")
+            THROWERR(std::string("Scalar function in block '") + aName + "' with Type '" + tType + "' is not supported.")
         }
      }
 };
