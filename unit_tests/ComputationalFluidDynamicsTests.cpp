@@ -41,6 +41,52 @@
 namespace Plato
 {
 
+template<Plato::OrdinalType SpaceDims,
+         Plato::OrdinalType NumNodes,
+         typename InStateType,
+         typename OutStateType>
+DEVICE_TYPE inline void
+project_vector_field_onto_surface
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::OrdinalType aLocalNodeOrdinals[NumNodes],
+ const Plato::ScalarMultiVectorT<InStateType> & aInputState,
+ const Plato::ScalarMultiVectorT<OutStateType> & aOutputState)
+{
+    for(Plato::OrdinalType tDim = 0; tDim < SpaceDims; tDim++)
+    {
+        aOutputState(aCellOrdinal, tDim) = 0.0;
+        for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+        {
+            auto tLocalCellNode = aLocalNodeOrdinals[tNode];
+            auto tLocalCellDof = (SpaceDims * tLocalCellNode) + tDim;
+            aOutputState(aCellOrdinal, tDim) +=
+                aBasisFunctions(tNode) * aInputState(aCellOrdinal, tLocalCellDof);
+        }
+    }
+}
+// function project_vector_field_onto_surface
+
+template<Plato::OrdinalType NumNodes,
+         typename InStateType,
+         typename OutStateType>
+DEVICE_TYPE inline void
+project_scalar_field_onto_surface
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::OrdinalType aLocalNodeOrdinals[NumNodes],
+ const Plato::ScalarMultiVectorT<InStateType> & aInputState,
+ const Plato::ScalarMultiVectorT<OutStateType> & aOutputState)
+{
+    aOutputState(aCellOrdinal) = 0.0;
+    for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+    {
+        auto tLocalCellNode = aLocalNodeOrdinals[tNode];
+        aOutputState(aCellOrdinal) += aBasisFunctions(tNode) * aInputState(aCellOrdinal, tLocalCellNode);
+    }
+}
+// function project_scalar_field_onto_surface
+
 namespace blas2
 {
 
@@ -2344,7 +2390,7 @@ private:
 
     // member metadata
     Plato::DataMap& mDataMap; /*!< holds output metadata */
-    CubatureRule mCubatureRule; /*!< cubature integration rule */
+    CubatureRule mSurfaceCubatureRule; /*!< cubature integration rule on surface */
     const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata for a domain (i.e. element block) */
 
     // member parameters
@@ -2365,7 +2411,7 @@ public:
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs) :
          mDataMap(aDataMap),
-         mCubatureRule(CubatureRule()),
+         mSurfaceCubatureRule(CubatureRule()),
          mSpatialDomain(aDomain),
          mFuncName(aName)
     {
@@ -2415,20 +2461,19 @@ public:
         Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
         Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumPressDofsPerNode> tIntrplScalarField;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
-
-        // set local data
-        auto tCubatureWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
 
         // set local worksets
         auto tNumCells = mSpatialDomain.Mesh.nelems();
         Plato::ScalarVectorT<PressureT> tCurrentPressGP("current pressure at Gauss point", tNumCells);
 
         // set input worksets
-        auto tConfigurationWS   = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
-        auto tCurrentPressureWS = Plato::metadata<Plato::ScalarMultiVectorT<PressureT>>(aWorkSets.get("current pressure"));
+        auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tCurrentPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PressureT>>(aWorkSets.get("current pressure"));
+
+        // transfer member data to device
+        auto tCubatureWeight = mSurfaceCubatureRule.getCubWeight();
+        auto tBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
         for(auto& tName : mSideSets)
         {
             // get faces on this side set
@@ -2443,30 +2488,26 @@ public:
                 for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal+1]; tElem++ )
                 {
                     // create a map from face local node index to elem local node index
-                    Plato::OrdinalType tLocalNodeOrdinals[mNumSpatialDims];
                     auto tCellOrdinal = tFace2Elems_elems[tElem];
+                    Plato::OrdinalType tLocalNodeOrdinals[mNumSpatialDims];
                     tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrdinals);
 
                     // calculate surface Jacobian and surface integral weight
                     ConfigT tSurfaceAreaTimesCubWeight(0.0);
-                    tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigurationWS, tJacobians);
+                    tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigWS, tJacobians);
                     tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
-                    // evaluate surface scalar function
-                    tIntrplScalarField(tCellOrdinal, tBasisFunctions, tCurrentPressureWS, tCurrentPressGP);
+                    // project current pressure onto surface
+                    Plato::project_scalar_field_onto_surface<mNumNodesPerFace>
+                        (tCellOrdinal, tBasisFunctions, tLocalNodeOrdinals, tCurrentPressWS, tCurrentPressGP);
 
-                    // calculate surface integral, which is defined as
-                    // \int_{\Gamma_e}N_p^a p^h d\Gamma_e
+                    // calculate surface integral, which is defined as \int_{\Gamma_e}N_p^a p^h d\Gamma_e
                     for( Plato::OrdinalType tNode=0; tNode < mNumNodesPerFace; tNode++)
                     {
-                        for( Plato::OrdinalType tDof=0; tDof < mNumPressDofsPerNode; tDof++)
-                        {
-                            aResult(tCellOrdinal) += tBasisFunctions(tNode) *
-                                tCurrentPressGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
-                        }
+                        aResult(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentPressGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
                     }
                 }
-            }, "average surface pressure integral");
+            }, "average surface pressure");
 
         }
     }
@@ -2496,7 +2537,7 @@ private:
     static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
     static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of temperature dofs per node */
 
-    using TempT    = typename EvaluationT::CurrentEnergyScalarType; /*!< temperature FAD type */
+    using CurrentTempT    = typename EvaluationT::CurrentEnergyScalarType; /*!< temperature FAD type */
     using ResultT  = typename EvaluationT::ResultScalarType;        /*!< result FAD type */
     using ConfigT  = typename EvaluationT::ConfigScalarType;        /*!< configuration FAD type */
 
@@ -2505,7 +2546,7 @@ private:
 
     // member metadata
     Plato::DataMap& mDataMap; /*!< holds output metadata */
-    CubatureRule mCubatureRule; /*!< cubature integration rule */
+    CubatureRule mSurfaceCubatureRule; /*!< cubature integration rule */
     const Plato::SpatialDomain& mSpatialDomain; /*!< holds mesh and entity sets metadata for a domain (i.e. element block) */
 
     // member parameters
@@ -2526,7 +2567,7 @@ public:
      Plato::DataMap             & aDataMap,
      Teuchos::ParameterList     & aInputs) :
          mDataMap(aDataMap),
-         mCubatureRule(CubatureRule()),
+         mSurfaceCubatureRule(CubatureRule()),
          mSpatialDomain(aDomain),
          mFuncName(aName)
     {
@@ -2576,20 +2617,19 @@ public:
         Plato::CalculateSurfaceArea<mNumSpatialDims> tCalculateSurfaceArea;
         Plato::NodeCoordinate<mNumSpatialDims> tCoords(&(mSpatialDomain.Mesh));
         Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
-        Plato::InterpolateFromNodal<mNumSpatialDims, mNumPressDofsPerNode> tIntrplScalarField;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
         // set local data
-        auto tCubatureWeight = mCubatureRule.getCubWeight();
-        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+        auto tCubatureWeight = mSurfaceCubatureRule.getCubWeight();
+        auto tBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
 
         // set local worksets
         auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Plato::ScalarVectorT<TempT> tCurrentTempGP("current temperature at Gauss point", tNumCells);
+        Plato::ScalarVectorT<CurrentTempT> tCurrentTempGP("current temperature at Gauss point", tNumCells);
 
         // set input worksets
-        auto tCurrentTempWS   = Plato::metadata<Plato::ScalarMultiVectorT<TempT>>(aWorkSets.get("current temperature"));
-        auto tConfigurationWS = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tCurrentTempWS = Plato::metadata<Plato::ScalarMultiVectorT<CurrentTempT>>(aWorkSets.get("current temperature"));
 
         for(auto& tName : mWallSets)
         {
@@ -2605,30 +2645,26 @@ public:
                 for( Plato::OrdinalType tElem = tFace2Elems_map[tFaceOrdinal]; tElem < tFace2Elems_map[tFaceOrdinal+1]; tElem++ )
                 {
                     // create a map from face local node index to elem local node index
-                    Plato::OrdinalType tLocalNodeOrdinals[mNumSpatialDims];
                     auto tCellOrdinal = tFace2Elems_elems[tElem];
+                    Plato::OrdinalType tLocalNodeOrdinals[mNumSpatialDims];
                     tCreateFaceLocalNode2ElemLocalNodeIndexMap(tCellOrdinal, tFaceOrdinal, tCell2Verts, tFace2Verts, tLocalNodeOrdinals);
 
                     // calculate surface Jacobian and surface integral weight
                     ConfigT tSurfaceAreaTimesCubWeight(0.0);
-                    tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigurationWS, tJacobians);
+                    tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigWS, tJacobians);
                     tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
-                    // evaluate surface scalar function
-                    tIntrplScalarField(tCellOrdinal, tBasisFunctions, tCurrentTempWS, tCurrentTempGP);
+                    // project current pressure onto surface
+                    Plato::project_scalar_field_onto_surface<mNumNodesPerFace>
+                        (tCellOrdinal, tBasisFunctions, tLocalNodeOrdinals, tCurrentTempWS, tCurrentTempGP);
 
-                    // calculate surface integral, which is defined as
-                    // \int_{\Gamma_e}N_p^a p^h d\Gamma_e
+                    // calculate surface integral, which is defined as \int_{\Gamma_e}N_p^a T^h d\Gamma_e
                     for( Plato::OrdinalType tNode=0; tNode < mNumNodesPerFace; tNode++)
                     {
-                        for( Plato::OrdinalType tDof=0; tDof < mNumPressDofsPerNode; tDof++)
-                        {
-                            aResult(tCellOrdinal) += tBasisFunctions(tNode) *
-                                tCurrentTempGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
-                        }
+                        aResult(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentTempGP(tCellOrdinal) * tSurfaceAreaTimesCubWeight;
                     }
                 }
-            }, "average surface temperature integral");
+            }, "average surface temperature");
 
         }
     }
@@ -2849,8 +2885,8 @@ public:
 
             // calculate fictitious material model (i.e. brinkman model) contribution to internal energy
             auto tPermeability = tPrNum / tDaNum;
-            ControlT tPenalizedPermeability =
-                Plato::Fluids::brinkman_penalization<mNumNodesPerCell>(aCellOrdinal, tPermeability, tBrinkConvexParam, tControlWS);
+            ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
+                (aCellOrdinal, tPermeability, tBrinkConvexParam, tControlWS);
             tIntrplVectorField(aCellOrdinal, tBasisFunctions, tCurVelWS, tCurVelGP);
             Plato::blas1::dot<mNumSpatialDims>(aCellOrdinal, tCurVelGP, tCurVelGP, tCurVelDotCurVel);
             aResult(aCellOrdinal) += tPenalizedPermeability * tCurVelDotCurVel(aCellOrdinal);
@@ -4445,7 +4481,7 @@ public:
 
             // set input and temporary worksets
             Plato::ScalarVectorT<PrevTempT> tPrevTempGP("previous temperature at Gauss point", tNumCells);
-            Plato::ScalarMultiVectorT<ResultT>  tThermalBuoyancy("thermal buoyancy", tNumCells, mNumSpatialDims);
+            Plato::ScalarMultiVectorT<ResultT> tThermalBuoyancy("thermal buoyancy", tNumCells, mNumSpatialDims);
             auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
 
             // transfer member data to device
@@ -6674,31 +6710,6 @@ integrate_inertial_pressure_forces
     }
 }
 
-template<Plato::OrdinalType SpaceDims,
-         Plato::OrdinalType NumNodes,
-         typename InStateType,
-         typename OutStateType>
-DEVICE_TYPE inline void
-project_vector_field_onto_surface
-(const Plato::OrdinalType & aCellOrdinal,
- const Plato::ScalarVector & aBasisFunctions,
- const Plato::OrdinalType aLocalNodeOrdinals[NumNodes],
- const Plato::ScalarMultiVectorT<InStateType> & aInputState,
- const Plato::ScalarMultiVectorT<OutStateType> & aOutputState)
-{
-    for(Plato::OrdinalType tDim = 0; tDim < SpaceDims; tDim++)
-    {
-        aOutputState(aCellOrdinal, tDim) = 0.0;
-        for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
-        {
-            auto tLocalCellNode = aLocalNodeOrdinals[tNode];
-            auto tLocalCellDof = (SpaceDims * tLocalCellNode) + tDim;
-            aOutputState(aCellOrdinal, tDim) += 
-		aBasisFunctions(tNode) * aInputState(aCellOrdinal, tLocalCellDof);
-        }
-    }
-}
-// function integrate_scalar_field_onto_surface
 
 
 
@@ -6791,7 +6802,7 @@ public:
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project velocity field onto surface
-	      Plato::Fluids::project_vector_field_onto_surface<mNumSpatialDims,mNumNodesPerFace>
+	      Plato::project_vector_field_onto_surface<mNumSpatialDims,mNumNodesPerFace>
                  (tCellOrdinal, tSurfaceBasisFunctions, tLocalNodeOrd, tPrevVelWS, tPrevVelGP);
 
 	      auto tMultiplier = aMultiplier / tCriticalTimeStep(0);
