@@ -6674,7 +6674,31 @@ integrate_inertial_pressure_forces
     }
 }
 
-
+template<Plato::OrdinalType SpaceDims,
+         Plato::OrdinalType NumNodes,
+         typename InStateType,
+         typename OutStateType>
+DEVICE_TYPE inline void
+project_vector_field_onto_surface
+(const Plato::OrdinalType & aCellOrdinal,
+ const Plato::ScalarVector & aBasisFunctions,
+ const Plato::OrdinalType aLocalNodeOrdinals[NumNodes],
+ const Plato::ScalarMultiVectorT<InStateType> & aInputState,
+ const Plato::ScalarMultiVectorT<OutStateType> & aOutputState)
+{
+    for(Plato::OrdinalType tDim = 0; tDim < SpaceDims; tDim++)
+    {
+        aOutputState(aCellOrdinal, tDim) = 0.0;
+        for(Plato::OrdinalType tNode = 0; tNode < NumNodes; tNode++)
+        {
+            auto tLocalCellNode = aLocalNodeOrdinals[tNode];
+            auto tLocalCellDof = (SpaceDims * tLocalCellNode) + tDim;
+            aOutputState(aCellOrdinal, tDim) += 
+		aBasisFunctions(tNode) * aInputState(aCellOrdinal, tLocalCellDof);
+        }
+    }
+}
+// function integrate_scalar_field_onto_surface
 
 
 
@@ -6767,16 +6791,8 @@ public:
               auto tUnitNormalVec = Plato::unit_normal_vector(tCellOrdinal, tElemFaceOrdinal, tCoords);
 
               // project velocity field onto surface
-	      for(Plato::OrdinalType tDof = 0; tDof < mNumSpatialDims; tDof++)
-              {
-                tPrevVelGP(tCellOrdinal, tDof) = 0.0;
-                for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
-                {
-                  auto tLocalCellNode = tLocalNodeOrd[tNode];
-	          auto tLocalCellDof = (mNumSpatialDims * tLocalCellNode) + tDof;
-                  tPrevVelGP(tCellOrdinal, tDof) += tSurfaceBasisFunctions(tNode) * tPrevVelWS(tCellOrdinal, tLocalCellDof);
-                }
-              }
+	      Plato::Fluids::project_vector_field_onto_surface<mNumSpatialDims,mNumNodesPerFace>
+                 (tCellOrdinal, tSurfaceBasisFunctions, tLocalNodeOrd, tPrevVelWS, tPrevVelGP);
 
 	      auto tMultiplier = aMultiplier / tCriticalTimeStep(0);
               for( Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++ )
