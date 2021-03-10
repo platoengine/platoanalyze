@@ -3863,6 +3863,31 @@ dimensionless_prandtl_number
 }
 // function dimensionless_prandtl_number
 
+/***************************************************************************//**
+ * \fn inline bool calculate_brinkman_forces
+ *
+ * \brief Return true if Brinkman forces are enabled, return false if disabled.
+ * \param [in] aInputs input file metadata
+ * \return boolean (true or false)
+ ******************************************************************************/
+inline bool calculate_brinkman_forces
+(Teuchos::ParameterList& aInputs)
+{
+    if(aInputs.isSublist("Hyperbolic") == false)
+    {
+        THROWERR("'Hyperbolic' Parameter List is not defined.")
+    }
+
+    auto tOutput = false;
+    auto tHyperbolic = aInputs.sublist("Hyperbolic");
+    if(tHyperbolic.isSublist("Momentum Conservation"))
+    {
+        auto tMomentumConservation = tHyperbolic.sublist("Momentum Conservation");
+        tOutput = tMomentumConservation.get<bool>("Calculate Brinkman Forces", false);
+    }
+    return tOutput;
+}
+// function calculate_brinkman_forces
 
 /***************************************************************************//**
  * \fn inline std::string heat_transfer_tag
@@ -4329,8 +4354,8 @@ public:
         // set input worksets
         auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
-        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
         auto tPrevTempWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevTempT>>(aWorkSets.get("previous temperature"));
+        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
 
         // transfer member data to device
         auto tStabilization = mStabilization;
@@ -4383,6 +4408,113 @@ private:
 };
 
 
+template<typename PhysicsT, typename EvaluationT>
+class BrinkmanForces
+{
+private:
+    static constexpr auto mNumDofsPerCell = PhysicsT::mNumDofsPerCell; /*!< number of degrees of freedom per cell */
+
+    static constexpr auto mNumSpatialDims    = PhysicsT::SimplexT::mNumSpatialDims;         /*!< number of spatial dimensions */
+    static constexpr auto mNumNodesPerCell   = PhysicsT::SimplexT::mNumNodesPerCell;        /*!< number of nodes per cell */
+    static constexpr auto mNumVelDofsPerNode = PhysicsT::SimplexT::mNumMomentumDofsPerNode; /*!< number of momentum dofs per node */
+
+    // set local ad types
+    using ResultT  = typename EvaluationT::ResultScalarType; /*!< result FAD type */
+    using ConfigT  = typename EvaluationT::ConfigScalarType; /*!< configuration FAD type */
+    using ControlT = typename EvaluationT::ControlScalarType; /*!< control FAD type */
+    using PrevVelT = typename EvaluationT::PreviousMomentumScalarType; /*!< previous velocity FAD type */
+
+    Plato::Scalar mPermeability = 1.0; /*!< permeability dimensionless number */
+    Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
+    Plato::Scalar mBrinkmanConvexityParam = 0.5;  /*!< brinkman model convexity parameter */
+
+    Plato::DataMap& mDataMap; /*!< output database */
+    const Plato::SpatialDomain& mSpatialDomain; /*!< Plato spatial model */
+    Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims> mCubatureRule; /*!< cubature rule evaluator */
+
+public:
+    BrinkmanForces
+    (const Plato::SpatialDomain & aDomain,
+     Plato::DataMap             & aDataMap,
+     Teuchos::ParameterList     & aInputs) :
+         mDataMap(aDataMap),
+         mSpatialDomain(aDomain),
+         mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
+    {
+        this->setPermeability(aInputs);
+        mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
+    }
+
+    ~BrinkmanForces(){}
+
+    void evaluate
+    (const Plato::WorkSets & aWorkSets,
+     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
+    {
+        auto tNumCells = mSpatialDomain.numCells();
+        if( tNumCells != static_cast<Plato::OrdinalType>(aResultWS.extent(0)) )
+        {
+            THROWERR(std::string("Number of elements mismatch. Spatial domain and output/result workset ")
+                + "have different number of cells. " + "Spatial domain has '" + std::to_string(tNumCells)
+                + "' elements and output workset has '" + std::to_string(aResultWS.extent(0)) + "' elements.")
+        }
+
+        // set local functors
+        Plato::ComputeGradientWorkset<mNumSpatialDims> tComputeGradient;
+        Plato::InterpolateFromNodal<mNumSpatialDims, mNumVelDofsPerNode, 0/*offset*/, mNumSpatialDims> tIntrplVectorField;
+
+        // set temporary local worksets
+        Plato::ScalarVectorT<ConfigT> tCellVolume("cell weight", tNumCells);
+        Plato::ScalarArray3DT<ConfigT> tGradient("cell gradient", tNumCells, mNumNodesPerCell, mNumSpatialDims);
+
+        Plato::ScalarMultiVectorT<ResultT> tBrinkman("cell brinkman forces", tNumCells, mNumSpatialDims);
+        Plato::ScalarMultiVectorT<PrevVelT> tPrevVelGP("cell previous velocity", tNumCells, mNumSpatialDims);
+
+        // set input worksets
+        auto tControlWS = Plato::metadata<Plato::ScalarMultiVectorT<ControlT>>(aWorkSets.get("control"));
+        auto tConfigWS  = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
+        auto tPrevVelWS = Plato::metadata<Plato::ScalarMultiVectorT<PrevVelT>>(aWorkSets.get("previous velocity"));
+        auto tCriticalTimeStep = Plato::metadata<Plato::ScalarVector>(aWorkSets.get("critical time step"));
+
+        // transfer member host scalar data to device
+        auto tPermeability = mPermeability;
+        auto tStabilization = mStabilization;
+        auto tBrinkmanConvexityParam = mBrinkmanConvexityParam;
+
+        auto tCubWeight = mCubatureRule.getCubWeight();
+        auto tBasisFunctions = mCubatureRule.getBasisFunctions();
+        Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumCells), LAMBDA_EXPRESSION(const Plato::OrdinalType & aCellOrdinal)
+        {
+            tComputeGradient(aCellOrdinal, tGradient, tConfigWS, tCellVolume);
+            tCellVolume(aCellOrdinal) *= tCubWeight;
+
+            // 1. add brinkman force contribution to residual, R -= \Delta{t}\gamma M u^n
+            auto tMultiplier = static_cast<Plato::Scalar>(-1.0) * tCriticalTimeStep(0);
+            tIntrplVectorField(aCellOrdinal, tBasisFunctions, tPrevVelWS, tPrevVelGP);
+            ControlT tPenalizedPermeability = Plato::Fluids::brinkman_penalization<mNumNodesPerCell>
+                (aCellOrdinal, tPermeability, tBrinkmanConvexityParam, tControlWS);
+            Plato::Fluids::calculate_brinkman_forces<mNumSpatialDims>
+                (aCellOrdinal, tPenalizedPermeability, tPrevVelGP, aResultWS);
+            Plato::Fluids::integrate_vector_field<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tBasisFunctions, tCellVolume, tBrinkman, aResultWS, tMultiplier);
+
+            // 2. add stabilizing brinkman force to residual, R -= (\frac{\Delta{t}^2}{2}\gamma) M u_n
+            tMultiplier = tStabilization * static_cast<Plato::Scalar>(-0.5) * tCriticalTimeStep(0) * tCriticalTimeStep(0);
+            Plato::Fluids::integrate_stabilizing_vector_force<mNumNodesPerCell, mNumSpatialDims>
+                (aCellOrdinal, tCellVolume, tGradient, tPrevVelGP, tBrinkman, aResultWS, tMultiplier);
+        }, "brinkman force evaluator");
+    }
+
+private:
+    void setPermeability
+    (Teuchos::ParameterList & aInputs)
+    {
+        auto tHyperbolic = aInputs.sublist("Hyperbolic");
+        auto tDaNum = Plato::parse_parameter<Plato::Scalar>("Darcy Number", "Dimensionless Properties", tHyperbolic);
+        auto tPrNum = Plato::parse_parameter<Plato::Scalar>("Prandtl Number", "Dimensionless Properties", tHyperbolic);
+        mPermeability = tPrNum / tDaNum;
+    }
+};
 
 
 
@@ -4460,8 +4592,8 @@ private:
     using ConfigT   = typename EvaluationT::ConfigScalarType; /*!< configuration FAD type */
     using ControlT  = typename EvaluationT::ControlScalarType; /*!< control FAD type */
     using PrevVelT  = typename EvaluationT::PreviousMomentumScalarType; /*!< previous velocity FAD type */
-    using PrevTempT = typename EvaluationT::PreviousEnergyScalarType; /*!< previous temperature FAD type */
     using PredVelT  = typename EvaluationT::MomentumPredictorScalarType; /*!< predicted velocity FAD type */
+    using PrevTempT = typename EvaluationT::PreviousEnergyScalarType; /*!< previous temperature FAD type */
 
     using AdvectionT  = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PrevVelT, ConfigT>; /*!< advection force FAD type */
     using PredStrainT = typename Plato::Fluids::fad_type_t<typename PhysicsT::SimplexT, PredVelT, ConfigT>; /*!< predicted strain rate FAD type */
@@ -4473,12 +4605,15 @@ private:
 
     // set right hand side force evaluators
     std::shared_ptr<Plato::NaturalBCs<mNumSpatialDims, mNumDofsPerNode>> mPrescribedBCs; /*!< prescribed boundary conditions, e.g. tractions */
-    std::shared_ptr<Plato::Fluids::ThermalBuoyancy<PhysicsT,EvaluationT>> mThermalBuoyancy;
+    std::shared_ptr<Plato::Fluids::BrinkmanForces<PhysicsT,EvaluationT>> mBrinkmanForces; /*!< Brinkman force evaluator */
+    std::shared_ptr<Plato::Fluids::ThermalBuoyancy<PhysicsT,EvaluationT>> mThermalBuoyancy; /*!< thermal buoyancy force evaluator */
 
     // set member scalar data
     Plato::Scalar mTheta = 1.0; /*!< artificial viscous damping */
     Plato::Scalar mViscocity = 1.0; /*!< dimensionless viscocity constant */
     Plato::Scalar mStabilization = 0.0; /*!< stabilization constant */
+
+    bool mCalculateBrinkmanForces = false; /*!< indicator to determine if Brinkman forces will be considered in calculations */
     bool mCalculateThermalBuoyancyForces = false; /*!< indicator to determine if thermal buoyancy forces will be considered in calculations */
 
 public:
@@ -4497,17 +4632,7 @@ public:
          mSpatialDomain(aDomain),
          mCubatureRule(Plato::LinearTetCubRuleDegreeOne<mNumSpatialDims>())
     {
-        this->setAritificalDamping(aInputs);
-        this->setNaturalBoundaryConditions(aInputs);
-	
-        mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
-        mCalculateThermalBuoyancyForces = Plato::Fluids::calculate_heat_transfer(aInputs);
-        mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
-	if(mCalculateThermalBuoyancyForces)
-	{
-	    mThermalBuoyancy = 
-                std::make_shared<Plato::Fluids::ThermalBuoyancy<PhysicsT,EvaluationT>>(aDomain, aDataMap, aInputs);
-	}
+        this->initialize(aDomain, aDataMap, aInputs);
     }
 
     /***************************************************************************//**
@@ -4608,6 +4733,11 @@ public:
         {
 	    mThermalBuoyancy->evaluate(aWorkSets, aResultWS);
 	}
+
+        if(mCalculateBrinkmanForces)
+        {
+            mBrinkmanForces->evaluate(aWorkSets, aResultWS);
+        }
     }
 
    /***************************************************************************//**
@@ -4660,6 +4790,46 @@ public:
    }
 
 private:
+   void initialize
+   (const Plato::SpatialDomain & aDomain,
+    Plato::DataMap             & aDataMap,
+    Teuchos::ParameterList     & aInputs)
+   {
+       this->setAritificalDamping(aInputs);
+       this->setNaturalBoundaryConditions(aInputs);
+       mViscocity = Plato::Fluids::dimensionless_viscosity_constant(aInputs);
+       mStabilization = Plato::Fluids::stabilization_constant("Momentum Conservation", aInputs);
+
+       this->setBrinkmanForces(aDomain, aDataMap, aInputs);
+       this->setThermalBuoyancyForces(aDomain, aDataMap, aInputs);
+   }
+
+   void setBrinkmanForces
+   (const Plato::SpatialDomain & aDomain,
+    Plato::DataMap             & aDataMap,
+    Teuchos::ParameterList     & aInputs)
+   {
+       mCalculateBrinkmanForces = Plato::Fluids::calculate_brinkman_forces(aInputs);
+       if(mCalculateBrinkmanForces)
+       {
+           mBrinkmanForces =
+               std::make_shared<Plato::Fluids::BrinkmanForces<PhysicsT,EvaluationT>>(aDomain, aDataMap, aInputs);
+       }
+   }
+
+   void setThermalBuoyancyForces
+   (const Plato::SpatialDomain & aDomain,
+    Plato::DataMap             & aDataMap,
+    Teuchos::ParameterList     & aInputs)
+   {
+       mCalculateThermalBuoyancyForces = Plato::Fluids::calculate_heat_transfer(aInputs);
+       if(mCalculateThermalBuoyancyForces)
+       {
+           mThermalBuoyancy =
+               std::make_shared<Plato::Fluids::ThermalBuoyancy<PhysicsT,EvaluationT>>(aDomain, aDataMap, aInputs);
+       }
+   }
+
    /***************************************************************************//**
     * \fn void setAritificalViscousDamping
     * \brief Set artificial viscous damping, which is a parameter associated to the time integration scheme.
