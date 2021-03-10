@@ -2463,10 +2463,6 @@ public:
         Plato::CalculateSurfaceJacobians<mNumSpatialDims> tCalculateSurfaceJacobians;
         Plato::CreateFaceLocalNode2ElemLocalNodeIndexMap<mNumSpatialDims> tCreateFaceLocalNode2ElemLocalNodeIndexMap;
 
-        // set local worksets
-        auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Plato::ScalarVectorT<PressureT> tCurrentPressGP("current pressure at Gauss point", tNumCells);
-
         // set input worksets
         auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tCurrentPressWS = Plato::metadata<Plato::ScalarMultiVectorT<PressureT>>(aWorkSets.get("current pressure"));
@@ -2480,6 +2476,10 @@ public:
             auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
             auto tNumFaces = tFaceOrdinalsOnSideSet.size();
             Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
+
+            // set local worksets
+            auto tNumCells = mSpatialDomain.Mesh.nelems();
+            Plato::ScalarVectorT<PressureT> tCurrentPressGP("current pressure at Gauss point", tNumCells);
 
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
             {
@@ -2498,8 +2498,11 @@ public:
                     tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
                     // project current pressure onto surface
-                    Plato::project_scalar_field_onto_surface<mNumNodesPerFace>
-                        (tCellOrdinal, tBasisFunctions, tLocalNodeOrdinals, tCurrentPressWS, tCurrentPressGP);
+                    for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
+                    {
+                        auto tLocalCellNode = tLocalNodeOrdinals[tNode];
+                        tCurrentPressGP(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentPressWS(tCellOrdinal, tLocalCellNode);
+                    }
 
                     // calculate surface integral, which is defined as \int_{\Gamma_e}N_p^a p^h d\Gamma_e
                     for( Plato::OrdinalType tNode=0; tNode < mNumNodesPerFace; tNode++)
@@ -2537,9 +2540,9 @@ private:
     static constexpr auto mNumNodesPerFace      = PhysicsT::SimplexT::mNumNodesPerFace;        /*!< number of nodes per face */
     static constexpr auto mNumPressDofsPerNode  = PhysicsT::SimplexT::mNumMassDofsPerNode;     /*!< number of temperature dofs per node */
 
-    using CurrentTempT    = typename EvaluationT::CurrentEnergyScalarType; /*!< temperature FAD type */
-    using ResultT  = typename EvaluationT::ResultScalarType;        /*!< result FAD type */
-    using ConfigT  = typename EvaluationT::ConfigScalarType;        /*!< configuration FAD type */
+    using ResultT = typename EvaluationT::ResultScalarType;        /*!< result FAD type */
+    using ConfigT = typename EvaluationT::ConfigScalarType;        /*!< configuration FAD type */
+    using CurrentTempT = typename EvaluationT::CurrentEnergyScalarType; /*!< temperature FAD type */
 
     // set local typenames
     using CubatureRule  = Plato::LinearTetCubRuleDegreeOne<mNumSpatialDimsOnFace>; /*!< local short name for cubature rule class */
@@ -2623,10 +2626,6 @@ public:
         auto tCubatureWeight = mSurfaceCubatureRule.getCubWeight();
         auto tBasisFunctions = mSurfaceCubatureRule.getBasisFunctions();
 
-        // set local worksets
-        auto tNumCells = mSpatialDomain.Mesh.nelems();
-        Plato::ScalarVectorT<CurrentTempT> tCurrentTempGP("current temperature at Gauss point", tNumCells);
-
         // set input worksets
         auto tConfigWS = Plato::metadata<Plato::ScalarArray3DT<ConfigT>>(aWorkSets.get("configuration"));
         auto tCurrentTempWS = Plato::metadata<Plato::ScalarMultiVectorT<CurrentTempT>>(aWorkSets.get("current temperature"));
@@ -2637,6 +2636,10 @@ public:
             auto tFaceOrdinalsOnSideSet = Plato::side_set_face_ordinals(mSpatialDomain.MeshSets, tName);
             auto tNumFaces = tFaceOrdinalsOnSideSet.size();
             Plato::ScalarArray3DT<ConfigT> tJacobians("face Jacobians", tNumFaces, mNumSpatialDimsOnFace, mNumSpatialDims);
+
+            // set local worksets
+            auto tNumCells = mSpatialDomain.Mesh.nelems();
+            Plato::ScalarVectorT<CurrentTempT> tCurrentTempGP("current temperature at GP", tNumCells);
 
             Kokkos::parallel_for(Kokkos::RangePolicy<>(0, tNumFaces), LAMBDA_EXPRESSION(const Plato::OrdinalType & aFaceI)
             {
@@ -2654,9 +2657,12 @@ public:
                     tCalculateSurfaceJacobians(tCellOrdinal, aFaceI, tLocalNodeOrdinals, tConfigWS, tJacobians);
                     tCalculateSurfaceArea(aFaceI, tCubatureWeight, tJacobians, tSurfaceAreaTimesCubWeight);
 
-                    // project current pressure onto surface
-                    Plato::project_scalar_field_onto_surface<mNumNodesPerFace>
-                        (tCellOrdinal, tBasisFunctions, tLocalNodeOrdinals, tCurrentTempWS, tCurrentTempGP);
+                    // project current temperature onto surface
+                    for(Plato::OrdinalType tNode = 0; tNode < mNumNodesPerFace; tNode++)
+                    {
+                        auto tLocalCellNode = tLocalNodeOrdinals[tNode];
+                        tCurrentTempGP(tCellOrdinal) += tBasisFunctions(tNode) * tCurrentTempWS(tCellOrdinal, tLocalCellNode);
+                    }
 
                     // calculate surface integral, which is defined as \int_{\Gamma_e}N_p^a T^h d\Gamma_e
                     for( Plato::OrdinalType tNode=0; tNode < mNumNodesPerFace; tNode++)
