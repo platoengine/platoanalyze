@@ -4329,7 +4329,7 @@ public:
 
     void evaluate
     (const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
+     Plato::ScalarMultiVectorT<ResultT> & aResultWS) const
     {
         auto tNumCells = mSpatialDomain.numCells();
         if( tNumCells != static_cast<Plato::OrdinalType>(aResultWS.extent(0)) )
@@ -4449,7 +4449,7 @@ public:
 
     void evaluate
     (const Plato::WorkSets & aWorkSets,
-     Plato::ScalarMultiVectorT<ResultT> & aResultWS)
+     Plato::ScalarMultiVectorT<ResultT> & aResultWS) const 
     {
         auto tNumCells = mSpatialDomain.numCells();
         if( tNumCells != static_cast<Plato::OrdinalType>(aResultWS.extent(0)) )
