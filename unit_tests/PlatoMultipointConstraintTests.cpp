@@ -55,121 +55,82 @@ void print_view(const Plato::ScalarVectorT<DataType> & aView)
 
 /******************************************************************************/
 /*!
-  \brief test MPC nodeset or ID input
+  \brief test Omega-H parsing of node sets
 */
 /******************************************************************************/
-TEUCHOS_UNIT_TEST( MultipointConstraintTests, MPCNodeSetTest )
-{
+/* TEUCHOS_UNIT_TEST( MultipointConstraintTests, OmegaHNodeSetParsingTest ) */
+/* { */
+/*   // specify mesh */
+/*   // */
+/*   Teuchos::RCP<Teuchos::ParameterList> tMeshParams = */
+/*     Teuchos::getParametersFromXmlString( */
+/*     "<ParameterList name='Mesh File'>                                      \n" */
+/*     "  <Parameter  name='Input Mesh' type='string' value='test_mesh_rve.exo'/> \n" */
+/*     "  <Parameter  name='Node Set 1' type='string' value='ChildFaceX'/> \n" */
+/*     "  <Parameter  name='Node Set 2' type='string' value='ChildEdge15'/> \n" */
+/*     "</ParameterList>                                                      \n" */
+/*   ); */
+
+/*   // read in mesh */
+/*   // */
+/*   auto tLibOmegaH = PlatoUtestHelpers::getLibraryOmegaH(); */
+/*   auto tInputMesh = tMeshParams->get<std::string>("Input Mesh"); */
+
+/*   Omega_h::Mesh mesh = Omega_h::read_mesh_file(tInputMesh, tLibOmegaH->world()); */
   
-  // create test mesh
-  //
-  constexpr int meshWidth=2;
-  constexpr int spaceDim=2;
-  auto mesh = PlatoUtestHelpers::getBoxMesh(spaceDim, meshWidth);
+/*   // get mesh data */
+/*   // */
+/*   constexpr int spaceDim=3; */
+/*   using SimplexPhysics = ::Plato::Mechanics<spaceDim>; */
 
-  using SimplexPhysics = ::Plato::Mechanics<spaceDim>;
+/*   int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode; */
+/*   int tNumNodes = mesh.nverts(); */
+/*   int tNumDofs = tNumNodes*tNumDofsPerNode; */
 
-  int tNumDofsPerNode = SimplexPhysics::mNumDofsPerNode;
-  int tNumNodes = mesh->nverts();
-  int tNumDofs = tNumNodes*tNumDofsPerNode;
-   
-  // create parameter input list
-  Teuchos::RCP<Teuchos::ParameterList> params =
-    Teuchos::getParametersFromXmlString(
-    "<ParameterList name='Plato Problem'>                                    \n"
-    "  <ParameterList  name='Multipoint Constraints'>                        \n"
-    "    <ParameterList  name='Node Tie Constraint 1'>                       \n"
-    "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n"
-    "      <Parameter  name='Child'    type='int'       value='42'/>         \n"
-    "      <Parameter  name='Parent'   type='int'       value='73'/>         \n"
-    "      <Parameter  name='Value'    type='double'    value='3.0'/>        \n"
-    "    </ParameterList>                                                    \n"
-    "    <ParameterList  name='Node Tie Constraint 2'>                       \n"
-    "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n"
-    "      <Parameter  name='Child'    type='int'       value='24'/>         \n"
-    "      <Parameter  name='Parent'   type='int'       value='3'/>          \n"
-    "      <Parameter  name='Value'    type='double'    value='7.0'/>        \n"
-    "    </ParameterList>                                                    \n"
-    "    <ParameterList  name='Node Tie Constraint 3'>                       \n"
-    "      <Parameter  name='Type'     type='string'    value='Tie'/>        \n"
-    "      <Parameter  name='Child'    type='string'    value='MPC Child'/>  \n"
-    "      <Parameter  name='Parent'   type='string'    value='MPC Parent'/> \n"
-    "      <Parameter  name='Value'    type='double'    value='4.8'/>        \n"
-    "    </ParameterList>                                                    \n"
-    "  </ParameterList>                                                      \n"
-    "</ParameterList>                                                        \n"
-  );
+/*   std::cout << '\n' << "Number of Nodes: " << tNumNodes << std::endl; */
+
+/*   // get mesh sets */
+/*   // */
+/*   Omega_h::Assoc tAssoc; */
+/*   tAssoc[Omega_h::ELEM_SET] = mesh.class_sets; */
+/*   tAssoc[Omega_h::NODE_SET] = mesh.class_sets; */
+/*   tAssoc[Omega_h::SIDE_SET] = mesh.class_sets; */
+/*   Omega_h::MeshSets tMeshSets = Omega_h::invert(&mesh, tAssoc); */
+
+/*   // parse mesh node set 1 */
+/*   // */
+/*   auto& tNodeSets = tMeshSets[Omega_h::NODE_SET]; */
+/*   std::string tChildNodeSet1 = tMeshParams->get<std::string>("Node Set 1"); */
+/*   auto tChildNodeSets1Iter = tNodeSets.find(tChildNodeSet1); */
+/*   if(tChildNodeSets1Iter == tNodeSets.end()) */
+/*   { */
+/*       std::ostringstream tMsg; */
+/*       tMsg << "Could not find Node Set with name = '" << tChildNodeSet1.c_str() */
+/*               << "'. Node Set is not defined in input geometry/mesh file.\n"; */
+/*       THROWERR(tMsg.str()) */
+/*   } */
+/*   auto tChildNodeLids1 = (tChildNodeSets1Iter->second); */
+/*   auto tNumberChildNodes1 = tChildNodeLids1.size(); */
+
+/*   std::cout << '\n' << "Nodes in Set 1: " << tNumberChildNodes1 << std::endl; */
   
-  // assign edges MPC nodesets
-  //
-  Plato::DataMap tDataMap;
-  Omega_h::MeshSets tMeshSets;
-  Omega_h::Read<Omega_h::I8> tMarksLoad = Omega_h::mark_class_closure(mesh.get(), Omega_h::EDGE, Omega_h::EDGE, 5 /* class id */);
-  tMeshSets[Omega_h::SIDE_SET]["Load"] = Omega_h::collect_marked(tMarksLoad);
+/*   // parse mesh node set 2 */
+/*   // */
+/*   std::string tChildNodeSet2 = tMeshParams->get<std::string>("Node Set 2"); */
+/*   auto tChildNodeSets2Iter = tNodeSets.find(tChildNodeSet2); */
+/*   if(tChildNodeSets2Iter == tNodeSets.end()) */
+/*   { */
+/*       std::ostringstream tMsg; */
+/*       tMsg << "Could not find Node Set with name = '" << tChildNodeSet2.c_str() */
+/*               << "'. Node Set is not defined in input geometry/mesh file.\n"; */
+/*       THROWERR(tMsg.str()) */
+/*   } */
+/*   auto tChildNodeLids2 = (tChildNodeSets2Iter->second); */
+/*   auto tNumberChildNodes2 = tChildNodeLids2.size(); */
 
-  Omega_h::Read<Omega_h::I8> tMarksFix = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 3 /* class id */);
-  tMeshSets[Omega_h::NODE_SET]["Fix"] = Omega_h::collect_marked(tMarksFix);
-  
-  // assign edges for MPCs
-  //
-  Omega_h::Read<Omega_h::I8> tMarksParent = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 1 /* class id */); // bottom edge is parent
-  tMeshSets[Omega_h::NODE_SET]["MPC Parent"] = Omega_h::collect_marked(tMarksParent);
+/*   std::cout << '\n' << "Nodes in Set 2: " << tNumberChildNodes2 << std::endl; */
 
-  Omega_h::Read<Omega_h::I8> tMarksChild = Omega_h::mark_class_closure(mesh.get(), Omega_h::VERT, Omega_h::EDGE, 7 /* class id */); // top edge is child
-  tMeshSets[Omega_h::NODE_SET]["MPC Child"] = Omega_h::collect_marked(tMarksChild);
-
-  // test getting MPC type
-  auto tMpcParams = params->sublist("Multipoint Constraints", false);
-
-  for(Teuchos::ParameterList::ConstIterator tIndex = tMpcParams.begin(); tIndex != tMpcParams.end(); ++tIndex)
-  {
-      const Teuchos::ParameterEntry & tEntry = tMpcParams.entry(tIndex);
-      const std::string & tMyName = tMpcParams.name(tIndex);
-
-      TEUCHOS_TEST_FOR_EXCEPTION(!tEntry.isList(), std::logic_error, " Parameter in Multipoint Constraints block not valid. Expect lists only.");
-
-      Teuchos::ParameterList& tSublist = tMpcParams.sublist(tMyName);
-
-      std::cout << '\n'; 
-      if(tSublist.isType<std::string>("Child"))
-      {
-          std::cout << "Child is a string" << std::endl;
-
-          std::string tChildNodeSet = tSublist.get<std::string>("Child");
-          std::cout << tChildNodeSet << std::endl;
-
-          /* auto tChildNodeSetsIter = tNodeSets.find(this->mChildNodeSet); */
-          /* auto tChildNodeLids = (tChildNodeSetsIter->second); */
-          /* auto tNumberChildNodes = tChildNodeLids.size(); */
-      }
-
-      if(tSublist.isType<Plato::OrdinalType>("Child"))
-      {
-          std::cout << "Child is an int" << std::endl;
-
-          Plato::OrdinalType tChildNode = tSublist.get<Plato::OrdinalType>("Child");
-          std::cout << tChildNode << std::endl;
-      }
-
-      if(tSublist.isType<std::string>("Parent"))
-      {
-          std::cout << "Parent is a string" << std::endl;
-
-          std::string tParentNodeSet = tSublist.get<std::string>("Parent");
-          std::cout << tParentNodeSet << std::endl;
-      }
-
-      if(tSublist.isType<Plato::OrdinalType>("Parent"))
-      {
-          std::cout << "Parent is an int" << std::endl;
-
-          Plato::OrdinalType tParentNode = tSublist.get<Plato::OrdinalType>("Parent");
-          std::cout << tParentNode << std::endl;
-      }
-
-  }
-
-}
+/* } */
 
 /******************************************************************************/
 /*!
