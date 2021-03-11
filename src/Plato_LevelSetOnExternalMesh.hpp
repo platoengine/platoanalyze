@@ -64,6 +64,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
+#include <mpi.h>
 
 #include "BLAS1.hpp"
 #include "Plato_BuildMesh.hpp"
@@ -104,7 +105,7 @@ public:
             mPropellantDensity(1744),
             mSharpCornerAngle(Omega_h::PI/static_cast<Plato::Scalar>(4.0)),
             mReIninitializationDeltaTime(0),
-            mOmegaLib(nullptr, nullptr, mComm),
+            mOmegaLib(nullptr, nullptr),
             mMesh(&mOmegaLib)
     {
     }

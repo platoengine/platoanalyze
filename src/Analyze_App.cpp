@@ -126,7 +126,7 @@ getArgumentName(
 /******************************************************************************/
 MPMD_App::MPMD_App(int aArgc, char **aArgv, MPI_Comm& aLocalComm) :
         mDebugAnalyzeApp(false),
-        mLibOsh(&aArgc, &aArgv, aLocalComm),
+        mLibOsh(&aArgc, &aArgv),
         mMachine(aLocalComm),
         mNumSpatialDims(0),
         mMesh(&mLibOsh),
